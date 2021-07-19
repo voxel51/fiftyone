@@ -239,12 +239,14 @@ class COCOEvaluation(DetectionEvaluation):
                         pred_label = match[1]
                         iscrowd = match[-1]
 
+                        if _classes is not None:
+                            _classes.add(gt_label)
+                            _classes.add(pred_label)
+
                         if iscrowd:
                             continue
 
-                        c = gt_label if gt_label != None else pred_label
-                        if _classes is not None:
-                            _classes.add(c)
+                        c = gt_label if gt_label is not None else pred_label
 
                         if c not in thresh_matches[t]:
                             thresh_matches[t][c] = {
@@ -262,6 +264,7 @@ class COCOEvaluation(DetectionEvaluation):
                             thresh_matches[t][c]["num_gt"] += 1
 
         if _classes is not None:
+            _classes.discard(None)
             classes = sorted(_classes)
 
         # Compute precision-recall array

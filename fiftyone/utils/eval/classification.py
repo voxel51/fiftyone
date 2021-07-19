@@ -300,7 +300,7 @@ class TopKEvaluation(ClassificationEvaluation):
         k = self.config.k
 
         # This extracts a potentially huge number of logits
-        # @todo consider sample iteration for very large datasets
+        # @todo consider sample iteration for very large datasets?
         ytrue, ytrue_ids, ypred, ypred_ids, logits = samples.values(
             [
                 gt_field + ".label",
@@ -384,19 +384,46 @@ def _evaluate_top_k(ytrue, ypred, logits, k, targets_map):
                 + "compute top-k accuracy"
             )
             warnings.warn(msg)
+        elif _ytrue is None:
+            # Missing ground truth
+            _correct = ypred[idx] is None
+            _conf = None
         else:
-            target = targets_map[_ytrue]
-            top_k = np.argpartition(_logits, -k)[-k:]
-            if target in top_k:
+            try:
+                target = targets_map[_ytrue]
+            except KeyError:
+                raise ValueError(
+                    "Found ground truth label '%s' not in provided classes"
+                    % _ytrue
+                )
+
+            if k >= len(_logits):
+                found = True
+            else:
+                top_k = np.argpartition(_logits, -k)[-k:]
+                found = target in top_k
+
+            if found:
                 # Truth is in top-k; use it
                 ypred[idx] = _ytrue
                 logit = _logits[target]
                 _correct = True
             elif ypred[idx] is not None:
                 # Truth is not in top-k; retain actual prediction
-                logit = _logits[targets_map[ypred[idx]]]
+                _ypred = ypred[idx]
+
+                try:
+                    _pred_idx = targets_map[_ypred]
+                except KeyError:
+                    raise ValueError(
+                        "Found predicted label '%s' not in provided classes"
+                        % _ypred
+                    )
+
+                logit = _logits[_pred_idx]
                 _correct = False
             else:
+                # Missing prediction
                 logit = -np.inf
                 _correct = False
 
@@ -455,7 +482,7 @@ class BinaryEvaluation(ClassificationEvaluation):
         gt_field = self.config.gt_field
         is_frame_field = samples._is_frame_field(gt_field)
 
-        pos_label = classes[-1]
+        neg_label, pos_label = classes
 
         gt = gt_field + ".label"
         gt_id = gt_field + ".id"
@@ -497,14 +524,17 @@ class BinaryEvaluation(ClassificationEvaluation):
             gt = gt[len(samples._FRAMES_PREFIX) :]
             pred = pred[len(samples._FRAMES_PREFIX) :]
 
+            Fgt = (F(gt) != None).if_else(F(gt), neg_label)
+            Fpred = (F(pred) != None).if_else(F(pred), neg_label)
+
             # Sample-level accuracies
             dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_field(
-                eval_key,
-                F("frames").map((F(gt) == F(pred)).to_double()).mean(),
+                eval_key, F("frames").map((Fgt == Fpred).to_double()).mean(),
             ).save(eval_key)
 
             # Per-frame accuracies
+            # This implementation implicitly treats missing data as `neg_label`
             dataset._add_frame_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_frame,
@@ -519,6 +549,7 @@ class BinaryEvaluation(ClassificationEvaluation):
             ).save(eval_frame)
         else:
             # Per-sample accuracies
+            # This implementation implicitly treats missing data as `neg_label`
             dataset._add_sample_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_key,
@@ -591,12 +622,12 @@ class ClassificationResults(foe.EvaluationResults):
 
     def _get_labels(self, classes, include_missing=False):
         if classes is not None:
-            return classes
+            return np.asarray(classes)
 
         if include_missing:
             return self.classes
 
-        return [c for c in self.classes if c != self.missing]
+        return np.array([c for c in self.classes if c != self.missing])
 
     def report(self, classes=None):
         """Generates a classification report for the results via
@@ -611,18 +642,23 @@ class ClassificationResults(foe.EvaluationResults):
         """
         labels = self._get_labels(classes, include_missing=False)
 
-        if not labels:
+        if self.ytrue.size == 0 or labels.size == 0:
+            d = {}
             empty = {
                 "precision": 0.0,
                 "recall": 0.0,
                 "f1-score": 0.0,
                 "support": 0,
             }
-            return {
-                "micro avg": empty.copy(),
-                "macro avg": empty.copy(),
-                "weighted avg": empty.copy(),
-            }
+
+            if labels.size > 0:
+                for label in labels:
+                    d[label] = empty.copy()
+
+            d["micro avg"] = empty.copy()
+            d["macro avg"] = empty.copy()
+            d["weighted avg"] = empty.copy()
+            return d
 
         return skm.classification_report(
             self.ytrue,
@@ -652,16 +688,11 @@ class ClassificationResults(foe.EvaluationResults):
         """
         labels = self._get_labels(classes, include_missing=False)
 
-        accuracy = _compute_accuracy(
+        accuracy, support = _compute_accuracy_and_support(
             self.ytrue, self.ypred, labels=labels, weights=self.weights
         )
 
-        (
-            precision,
-            recall,
-            fscore,
-            support,
-        ) = skm.precision_recall_fscore_support(
+        precision, recall, fscore, _ = skm.precision_recall_fscore_support(
             self.ytrue,
             self.ypred,
             average=average,
@@ -670,8 +701,6 @@ class ClassificationResults(foe.EvaluationResults):
             sample_weight=self.weights,
             zero_division=0,
         )
-        if support is None:
-            support = 0
 
         return {
             "accuracy": accuracy,
@@ -691,7 +720,8 @@ class ClassificationResults(foe.EvaluationResults):
             digits (2): the number of digits of precision to print
         """
         labels = self._get_labels(classes, include_missing=False)
-        if not labels:
+
+        if labels.size == 0:
             print("No classes to analyze")
             return
 
@@ -1106,7 +1136,7 @@ def _to_binary_scores(y, confs, pos_label):
     return scores
 
 
-def _compute_accuracy(ytrue, ypred, labels=None, weights=None):
+def _compute_accuracy_and_support(ytrue, ypred, labels=None, weights=None):
     if labels is not None:
         labels = set(labels)
         found = np.array([y in labels for y in ytrue], dtype=bool)
@@ -1115,14 +1145,18 @@ def _compute_accuracy(ytrue, ypred, labels=None, weights=None):
         if weights is not None:
             weights = weights[found]
 
-    if ytrue.size == 0:
-        return 0.0
+    support = len(ytrue)
 
-    correct = ytrue == ypred
-    if weights is not None:
-        correct *= weights
+    if support > 0:
+        scores = ytrue == ypred
+        if weights is not None:
+            scores = weights * scores
 
-    return np.mean(correct)
+        accuracy = np.mean(scores)
+    else:
+        accuracy = 0.0
+
+    return accuracy, support
 
 
 def _compute_confusion_matrix(

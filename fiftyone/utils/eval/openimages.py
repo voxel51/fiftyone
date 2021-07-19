@@ -254,10 +254,11 @@ class OpenImagesEvaluation(DetectionEvaluation):
         # Sort matches
         for m in matches:
             # m = (gt_label, pred_label, iou, confidence, gt.id, pred.id)
-            c = m[0] if m[0] != None else m[1]
-
             if _classes is not None:
-                _classes.add(c)
+                _classes.add(m[0])
+                _classes.add(m[1])
+
+            c = m[0] if m[0] is not None else m[1]
 
             if c not in class_matches:
                 class_matches[c] = {
@@ -276,6 +277,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 counted_gts.append(m[4])
 
         if _classes is not None:
+            _classes.discard(None)
             classes = sorted(_classes)
 
         # Compute precision-recall array
