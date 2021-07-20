@@ -68,6 +68,9 @@ class ClassificationTests(unittest.TestCase):
             method="simple",
         )
 
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
         results.report()
         results.print_report()
 
@@ -87,6 +90,9 @@ class ClassificationTests(unittest.TestCase):
             eval_key="eval",
             method="simple",
         )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
 
         results.report()
         results.print_report()
@@ -131,6 +137,9 @@ class ClassificationTests(unittest.TestCase):
             method="top-k",
         )
 
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
         results.report()
         results.print_report()
 
@@ -155,6 +164,9 @@ class ClassificationTests(unittest.TestCase):
             classes=["cat", "dog"],
             method="top-k",
         )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
 
         results.report()
         results.print_report()
@@ -175,6 +187,11 @@ class ClassificationTests(unittest.TestCase):
             dataset.values("eval"), [False, False, False, True, True],
         )
 
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval", dataset.get_field_schema())
+
         results = dataset.evaluate_classifications(
             "predictions",
             gt_field="ground_truth",
@@ -184,28 +201,15 @@ class ClassificationTests(unittest.TestCase):
             k=1,
         )
 
-        results.report()
-        results.print_report()
-
-        metrics = results.metrics()
-        self.assertEqual(metrics["support"], 3)
-
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         actual = results.confusion_matrix()
         expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
-        self.assertIn("eval", dataset.list_evaluations())
-        self.assertIn("eval", dataset.get_field_schema())
         self.assertListEqual(
             dataset.values("eval"), [False, False, False, True, False],
         )
-
-        dataset.delete_evaluation("eval")
-
-        self.assertNotIn("eval", dataset.list_evaluations())
-        self.assertNotIn("eval", dataset.get_field_schema())
 
     @drop_datasets
     def test_evaluate_classifications_binary(self):
@@ -225,6 +229,9 @@ class ClassificationTests(unittest.TestCase):
             classes=["cat", "dog"],
             method="binary",
         )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
 
         results.report()
         results.print_report()
@@ -250,11 +257,14 @@ class ClassificationTests(unittest.TestCase):
             method="binary",
         )
 
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
         results.report()
         results.print_report()
 
         metrics = results.metrics()
-        self.assertEqual(metrics["support"], len(dataset))
+        self.assertEqual(metrics["support"], 5)
 
         # rows = GT, cols = predicted, labels = [cat, dog]
         # Missing predictions are assigned the negative label ("cat")
@@ -273,6 +283,286 @@ class ClassificationTests(unittest.TestCase):
 
         self.assertNotIn("eval", dataset.list_evaluations())
         self.assertNotIn("eval", dataset.get_field_schema())
+
+
+class VideoClassificationTests(unittest.TestCase):
+    def _make_video_classification_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(
+            ground_truth=fo.Classification(label="cat"), predictions=None,
+        )
+        sample3.frames[2] = fo.Frame(
+            ground_truth=None,
+            predictions=fo.Classification(
+                label="cat", confidence=0.9, logits=[0.9, 0.1]
+            ),
+        )
+        sample4 = fo.Sample(filepath="video4.mp4")
+        sample4.frames[1] = fo.Frame(
+            ground_truth=fo.Classification(label="cat"),
+            predictions=fo.Classification(
+                label="cat", confidence=0.9, logits=[0.9, 0.1]
+            ),
+        )
+        sample4.frames[2] = fo.Frame(
+            ground_truth=fo.Classification(label="cat"),
+            predictions=fo.Classification(
+                label="dog", confidence=0.9, logits=[0.1, 0.9]
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3, sample4])
+
+        return dataset
+
+    @drop_datasets
+    def test_evaluate_video_classifications_simple(self):
+        dataset = self._make_video_classification_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_classifications(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_classifications(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 3)
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        actual = results.confusion_matrix()
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertIn("eval", dataset.get_field_schema())
+        self.assertIn("eval", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval"),
+            [[], [True], [False, False], [True, False]],
+        )
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval", dataset.get_field_schema())
+        self.assertNotIn("eval", dataset.get_frame_field_schema())
+
+    @drop_datasets
+    def test_evaluate_video_classifications_top_k(self):
+        dataset = self._make_video_classification_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_classifications(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            classes=["cat", "dog"],
+            method="top-k",
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        # rows = GT, cols = predicted, labels = [cat, dog]
+        actual = results.confusion_matrix()
+        expected = np.array([[0, 0], [0, 0]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_classifications(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            classes=["cat", "dog"],
+            method="top-k",
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 3)
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        actual = results.confusion_matrix()
+        expected = np.array([[2, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertIn("eval", dataset.get_field_schema())
+        self.assertIn("eval", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval"),
+            [[], [False], [False, False], [True, True]],
+        )
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval", dataset.get_field_schema())
+        self.assertNotIn("eval", dataset.get_frame_field_schema())
+
+        results = dataset.evaluate_classifications(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            classes=["cat", "dog"],
+            method="top-k",
+            k=1,
+        )
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        actual = results.confusion_matrix()
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertListEqual(
+            dataset.values("frames.eval"),
+            [[], [False], [False, False], [True, False]],
+        )
+
+    @drop_datasets
+    def test_evaluate_video_classifications_binary(self):
+        dataset = self._make_video_classification_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_classifications(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            classes=["cat", "dog"],
+            method="binary",
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        # rows = GT, cols = predicted, labels = [cat, dog]
+        actual = results.confusion_matrix()
+        expected = np.array([[0, 0], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_classifications(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            classes=["cat", "dog"],
+            method="binary",
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 5)
+
+        # rows = GT, cols = predicted, labels = [cat, dog]
+        # Missing predictions are assigned the negative label ("cat")
+        actual = results.confusion_matrix()
+        expected = np.array([[4, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertIn("eval", dataset.get_field_schema())
+        self.assertIn("eval", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval"),
+            [[], ["TN"], ["TN", "TN"], ["TN", "FP"]],
+        )
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval", dataset.get_field_schema())
+        self.assertNotIn("eval", dataset.get_frame_field_schema())
 
 
 class DetectionsTests(unittest.TestCase):
@@ -543,6 +833,9 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
         results.report()
         results.print_report()
         results.mAP()
@@ -566,6 +859,9 @@ class DetectionsTests(unittest.TestCase):
             classwise=True,  # don't allow matches w/ different classes
             **kwargs,
         )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
 
         results.report()
         results.print_report()
@@ -626,13 +922,6 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
-        results.report()
-        results.print_report()
-        results.mAP()
-
-        metrics = results.metrics()
-        self.assertEqual(metrics["support"], 3)
-
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         actual = results.confusion_matrix()
         expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
@@ -640,7 +929,6 @@ class DetectionsTests(unittest.TestCase):
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
-        self.assertIn("eval", dataset.list_evaluations())
         self.assertListEqual(
             dataset.values(gt_eval_field),
             [None, ["fn"], None, ["tp"], ["fn"]],
@@ -649,27 +937,9 @@ class DetectionsTests(unittest.TestCase):
             dataset.values(pred_eval_field),
             [None, None, ["fp"], ["tp"], ["fp"]],
         )
-        self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
-        self.assertIn("eval_fp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
-        self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
-
-        dataset.delete_evaluation("eval")
-
-        self.assertNotIn("eval", dataset.list_evaluations())
-        self.assertListEqual(
-            dataset.values(gt_eval_field),
-            [None, [None], None, [None], [None]],
-        )
-        self.assertListEqual(
-            dataset.values(pred_eval_field),
-            [None, None, [None], [None], [None]],
-        )
-        self.assertNotIn("eval_tp", dataset.get_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_field_schema())
 
     def _evaluate_open_images(self, dataset, kwargs):
         _, gt_eval_field = dataset._get_label_field_path(
@@ -694,6 +964,9 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
         results.report()
         results.print_report()
         results.mAP()
@@ -716,6 +989,9 @@ class DetectionsTests(unittest.TestCase):
             classwise=True,  # don't allow matches w/ different classes
             **kwargs,
         )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
 
         results.report()
         results.print_report()
@@ -775,13 +1051,6 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
-        results.report()
-        results.print_report()
-        results.mAP()
-
-        metrics = results.metrics()
-        self.assertEqual(metrics["support"], 3)
-
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         actual = results.confusion_matrix()
         expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
@@ -789,7 +1058,6 @@ class DetectionsTests(unittest.TestCase):
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
-        self.assertIn("eval", dataset.list_evaluations())
         self.assertListEqual(
             dataset.values(gt_eval_field),
             [None, ["fn"], None, ["tp"], ["fn"]],
@@ -798,27 +1066,9 @@ class DetectionsTests(unittest.TestCase):
             dataset.values(pred_eval_field),
             [None, None, ["fp"], ["tp"], ["fp"]],
         )
-        self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
-        self.assertIn("eval_fp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
-        self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
-
-        dataset.delete_evaluation("eval")
-
-        self.assertNotIn("eval", dataset.list_evaluations())
-        self.assertListEqual(
-            dataset.values(gt_eval_field),
-            [None, [None], None, [None], [None]],
-        )
-        self.assertListEqual(
-            dataset.values(pred_eval_field),
-            [None, None, [None], [None], [None]],
-        )
-        self.assertNotIn("eval_tp", dataset.get_field_schema())
-        self.assertNotIn("eval_fp", dataset.get_field_schema())
-        self.assertNotIn("eval_fn", dataset.get_field_schema())
 
     @drop_datasets
     def test_evaluate_detections_coco(self):
@@ -861,6 +1111,360 @@ class DetectionsTests(unittest.TestCase):
         kwargs = {}
 
         self._evaluate_open_images(dataset, kwargs)
+
+
+class VideoDetectionsTests(unittest.TestCase):
+    def _make_video_detections_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    )
+                ]
+            ),
+            predictions=None,
+        )
+        sample3.frames[2] = fo.Frame(
+            ground_truth=None,
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        confidence=0.9,
+                    )
+                ]
+            ),
+        )
+        sample4 = fo.Sample(filepath="video4.mp4")
+        sample4.frames[1] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    )
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        confidence=0.9,
+                    )
+                ]
+            ),
+        )
+        sample4.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    )
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        confidence=0.9,
+                    )
+                ]
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3, sample4])
+
+        return dataset
+
+    def test_evaluate_video_detections_coco(self):
+        dataset = self._make_video_detections_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_detections(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="coco",
+            compute_mAP=True,
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+        results.mAP()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
+        #
+        # Test classwise evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_detections(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="coco",
+            compute_mAP=True,
+            classwise=True,  # don't allow matches w/ different classes
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+        results.mAP()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 3)
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        actual = results.confusion_matrix()
+        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertListEqual(
+            dataset.values("frames.ground_truth.detections.eval"),
+            [[], [None], [["fn"], None], [["tp"], ["fn"]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.eval"),
+            [[], [None], [None, ["fp"]], [["tp"], ["fp"]]],
+        )
+        self.assertIn("eval_tp", dataset.get_field_schema())
+        self.assertIn("eval_tp", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+        )
+        self.assertIn("eval_fp", dataset.get_field_schema())
+        self.assertIn("eval_fp", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+        )
+        self.assertIn("eval_fn", dataset.get_field_schema())
+        self.assertIn("eval_fn", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+        )
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertListEqual(
+            dataset.values("frames.ground_truth.detections.eval"),
+            [[], [None], [[None], None], [[None], [None]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.eval"),
+            [[], [None], [None, [None]], [[None], [None]]],
+        )
+        self.assertNotIn("eval_tp", dataset.get_field_schema())
+        self.assertNotIn("eval_tp", dataset.get_frame_field_schema())
+        self.assertNotIn("eval_fp", dataset.get_field_schema())
+        self.assertNotIn("eval_fp", dataset.get_frame_field_schema())
+        self.assertNotIn("eval_fn", dataset.get_field_schema())
+        self.assertNotIn("eval_fn", dataset.get_frame_field_schema())
+
+        #
+        # Test non-classwise evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_detections(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="coco",
+            compute_mAP=True,
+            classwise=False,  # allow matches w/ different classes
+        )
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        actual = results.confusion_matrix()
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertListEqual(
+            dataset.values("frames.ground_truth.detections.eval"),
+            [[], [None], [["fn"], None], [["tp"], ["fn"]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.eval"),
+            [[], [None], [None, ["fp"]], [["tp"], ["fp"]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+        )
+
+    def test_evaluate_video_detections_open_images(self):
+        dataset = self._make_video_detections_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_detections(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="open-images",
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+        results.mAP()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
+        #
+        # Test classwise evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_detections(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="open-images",
+            classwise=True,  # don't allow matches w/ different classes
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+        results.mAP()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 3)
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        actual = results.confusion_matrix()
+        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertListEqual(
+            dataset.values("frames.ground_truth.detections.eval"),
+            [[], [None], [["fn"], None], [["tp"], ["fn"]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.eval"),
+            [[], [None], [None, ["fp"]], [["tp"], ["fp"]]],
+        )
+        self.assertIn("eval_tp", dataset.get_field_schema())
+        self.assertIn("eval_tp", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+        )
+        self.assertIn("eval_fp", dataset.get_field_schema())
+        self.assertIn("eval_fp", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+        )
+        self.assertIn("eval_fn", dataset.get_field_schema())
+        self.assertIn("eval_fn", dataset.get_frame_field_schema())
+        self.assertListEqual(
+            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+        )
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertListEqual(
+            dataset.values("frames.ground_truth.detections.eval"),
+            [[], [None], [[None], None], [[None], [None]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.eval"),
+            [[], [None], [None, [None]], [[None], [None]]],
+        )
+        self.assertNotIn("eval_tp", dataset.get_field_schema())
+        self.assertNotIn("eval_tp", dataset.get_frame_field_schema())
+        self.assertNotIn("eval_fp", dataset.get_field_schema())
+        self.assertNotIn("eval_fp", dataset.get_frame_field_schema())
+        self.assertNotIn("eval_fn", dataset.get_field_schema())
+        self.assertNotIn("eval_fn", dataset.get_frame_field_schema())
+
+        #
+        # Test non-classwise evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_detections(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="open-images",
+            classwise=False,  # allow matches w/ different classes
+        )
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        actual = results.confusion_matrix()
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertListEqual(
+            dataset.values("frames.ground_truth.detections.eval"),
+            [[], [None], [["fn"], None], [["tp"], ["fn"]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.eval"),
+            [[], [None], [None, ["fp"]], [["tp"], ["fp"]]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+        )
+        self.assertListEqual(
+            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+        )
 
 
 class SegmentationTests(unittest.TestCase):
@@ -911,6 +1515,9 @@ class SegmentationTests(unittest.TestCase):
             method="simple",
         )
 
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
         results.report()
         results.print_report()
 
@@ -932,6 +1539,9 @@ class SegmentationTests(unittest.TestCase):
             mask_targets={0: "background", 1: "cat", 2: "dog"},
         )
 
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
         results.report()
         results.print_report()
 
@@ -947,23 +1557,8 @@ class SegmentationTests(unittest.TestCase):
 
         self.assertIn("eval", dataset.list_evaluations())
         self.assertIn("eval_accuracy", dataset.get_field_schema())
-        self.assertTrue(
-            np.allclose(
-                dataset.values("eval_accuracy"), [0.0, 0.0, 0.0, 1.0, 0.0]
-            )
-        )
         self.assertIn("eval_precision", dataset.get_field_schema())
-        self.assertTrue(
-            np.allclose(
-                dataset.values("eval_precision"), [0.0, 0.0, 0.0, 1.0, 0.0]
-            )
-        )
         self.assertIn("eval_recall", dataset.get_field_schema())
-        self.assertTrue(
-            np.allclose(
-                dataset.values("eval_recall"), [0.0, 0.0, 0.0, 1.0, 0.0]
-            )
-        )
 
         dataset.delete_evaluation("eval")
 
@@ -971,6 +1566,113 @@ class SegmentationTests(unittest.TestCase):
         self.assertNotIn("eval_accuracy", dataset.get_field_schema())
         self.assertNotIn("eval_precision", dataset.get_field_schema())
         self.assertNotIn("eval_recall", dataset.get_field_schema())
+
+
+class VideoSegmentationTests(unittest.TestCase):
+    def _make_video_segmentation_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(
+            ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+            predictions=None,
+        )
+        sample3.frames[2] = fo.Frame(
+            ground_truth=None,
+            predictions=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+        )
+        sample4 = fo.Sample(filepath="video4.mp4")
+        sample4.frames[1] = fo.Frame(
+            ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+            predictions=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+        )
+        sample4.frames[2] = fo.Frame(
+            ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
+            predictions=fo.Segmentation(mask=np.array([[1, 2], [0, 0]])),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3, sample4])
+
+        return dataset
+
+    @drop_datasets
+    def test_evaluate_video_segmentations_simple(self):
+        dataset = self._make_video_segmentation_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_segmentations(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_segmentations(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="simple",
+            mask_targets={0: "background", 1: "cat", 2: "dog"},
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 4)
+
+        # rows = GT, cols = predicted, labels = [background, cat, dog]
+        actual = results.confusion_matrix()
+        expected = np.array([[2, 1, 1], [1, 1, 0], [1, 0, 1]], dtype=int)
+
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        self.assertIn("eval", dataset.list_evaluations())
+        self.assertIn("eval_accuracy", dataset.get_field_schema())
+        self.assertIn("eval_accuracy", dataset.get_frame_field_schema())
+        self.assertIn("eval_precision", dataset.get_field_schema())
+        self.assertIn("eval_precision", dataset.get_frame_field_schema())
+        self.assertIn("eval_recall", dataset.get_field_schema())
+        self.assertIn("eval_recall", dataset.get_frame_field_schema())
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval_accuracy", dataset.get_field_schema())
+        self.assertNotIn("eval_accuracy", dataset.get_frame_field_schema())
+        self.assertNotIn("eval_precision", dataset.get_field_schema())
+        self.assertNotIn("eval_precision", dataset.get_frame_field_schema())
+        self.assertNotIn("eval_recall", dataset.get_field_schema())
+        self.assertNotIn("eval_recall", dataset.get_frame_field_schema())
 
 
 if __name__ == "__main__":
