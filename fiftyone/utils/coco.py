@@ -1776,11 +1776,11 @@ def _download_images(images_dir, image_ids, images, num_workers):
         return
 
     if num_workers == 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(iters_str="images") as pb:
             for task in pb(tasks):
                 _do_download(task)
     else:
-        with fou.ProgressBar(total=len(tasks)) as pb:
+        with fou.ProgressBar(total=len(tasks), iters_str="images") as pb:
             with multiprocessing.Pool(num_workers) as pool:
                 for _ in pool.imap_unordered(_do_download, tasks):
                     pb.update()
