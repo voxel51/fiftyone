@@ -578,10 +578,6 @@ class COCO2014Dataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
-    @property
-    def size(self):
-        return {"train": 82783, "test": 40775, "validation": 40504}
-
     def _is_download_required(self, dataset_dir, split):
         return fouc.is_download_required(
             dataset_dir,
@@ -774,10 +770,6 @@ class COCO2017Dataset(FiftyOneDataset):
     @property
     def supported_splits(self):
         return ("train", "validation", "test")
-
-    @property
-    def size(self):
-        return {"train": 118287, "test": 40670, "validation": 5000}
 
     @property
     def supports_partial_downloads(self):
@@ -1279,10 +1271,6 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     @property
     def supports_partial_downloads(self):
         return True
-
-    @property
-    def size(self):
-        return {"train": 1743042, "test": 125436, "validation": 41620}
 
     def _is_download_required(self, dataset_dir, split):
         return fouo.is_download_required(

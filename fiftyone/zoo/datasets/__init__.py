@@ -826,13 +826,6 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
-    def size(self):
-        """The number of samples in the dataset, or, if the dataset has splits,
-        a dict mapping split names to sample counts, or None if unknown.
-        """
-        return None
-
-    @property
     def supports_partial_downloads(self):
         """Whether the dataset supports downloading partial subsets of its
         splits.
@@ -1050,10 +1043,6 @@ class ZooDataset(object):
         sufficient contents such that :meth:`_download_and_prepare` does not
         need to be called.
 
-        Note that :meth:`download_and_prepare` will first use the
-        :class:`ZooDatasetInfo` to check if the split is fully downloaded and
-        only call this method if the download status remains unclear.
-
         Args:
             dataset_dir: the dataset or split directory
             split: the split, or None if the dataset does not have splits
@@ -1120,18 +1109,6 @@ class ZooDataset(object):
 
             return True
 
-        try:
-            # try-except because `size` may not be available
-            if info.downloaded_splits[split].num_samples >= self.size[split]:
-                if self.requires_manual_download:
-                    logger.info("Split '%s' already prepared", split)
-                else:
-                    logger.info("Split '%s' already downloaded", split)
-
-                return True
-        except:
-            pass
-
         if self._is_download_required(split_dir, split):
             return False
 
@@ -1158,21 +1135,6 @@ class ZooDataset(object):
                 logger.info("Dataset already downloaded")
 
             return True
-
-        if self.size is None or info.num_samples is None:
-            return False
-
-        try:
-            # try-except because `size` may not be available
-            if info.num_samples >= self.size:
-                if self.requires_manual_download:
-                    logger.info("Dataset already prepared")
-                else:
-                    logger.info("Dataset already downloaded")
-
-                return True
-        except:
-            pass
 
         if self._is_download_required(dataset_dir, None):
             return False
