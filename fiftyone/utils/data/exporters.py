@@ -807,7 +807,10 @@ class MediaExporter(object):
                 directory in which to export the media
             -   When ``export_mode`` is "manifest", the path to write a JSON
                 file mapping UUIDs to input filepaths
-            -   When ``export_media`` is False, this parameter has no effect
+            -   When ``export_media`` is False, this parameter can optionally
+                be a root directory to strip from each exported image's path to
+                yield a UUID for each image. If no path is provided, only the
+                filename of each image is used for UUID generation
         supported_modes (None): an optional tuple specifying a subset of the
             ``export_mode`` values that are allowed
         default_ext (None): the file extension to use when generating default
@@ -839,6 +842,9 @@ class MediaExporter(object):
                 % export_mode
             )
 
+        if export_path is not None:
+            export_path = os.path.abspath(os.path.expanduser(export_path))
+
         self.export_mode = export_mode
         self.export_path = export_path
         self.supported_modes = supported_modes
@@ -853,11 +859,16 @@ class MediaExporter(object):
         raise NotImplementedError("subclass must implement _write_media()")
 
     def _get_uuid(self, media_path):
-        filename = os.path.basename(media_path)
-        if self.ignore_exts:
-            return os.path.splitext(filename)[0]
+        if self.export_mode == False and self.export_path is not None:
+            media_path = os.path.abspath(media_path)
+            uuid = os.path.relpath(media_path, self.export_path)
+        else:
+            uuid = os.path.basename(media_path)
 
-        return filename
+        if self.ignore_exts:
+            return os.path.splitext(uuid)[0]
+
+        return uuid
 
     def setup(self):
         """Performs necessary setup to begin exporting media.
@@ -869,7 +880,7 @@ class MediaExporter(object):
         manifest_path = None
         manifest = None
 
-        if self.export_mode in {True, False, "move", "symlink"}:
+        if self.export_mode in {True, "move", "symlink"}:
             output_dir = self.export_path
         elif self.export_mode == "manifest":
             manifest_path = self.export_path
@@ -897,8 +908,13 @@ class MediaExporter(object):
         """
         if etau.is_str(media_or_path):
             media_path = media_or_path
-            outpath = self._filename_maker.get_output_path(media_path)
-            uuid = self._get_uuid(outpath)
+
+            if self.export_mode != False:
+                outpath = self._filename_maker.get_output_path(media_path)
+                uuid = self._get_uuid(outpath)
+            else:
+                outpath = None
+                uuid = self._get_uuid(media_path)
 
             if self.export_mode == True:
                 etau.copy_file(media_path, outpath)
