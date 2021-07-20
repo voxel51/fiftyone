@@ -447,8 +447,7 @@ class COCO2014Dataset(FiftyOneDataset):
     -   COCO defines 91 classes but the data only uses 80 classes
     -   Some images from the train and validation sets don't have annotations
     -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
+    -   COCO 2014 and 2017 use the same images, but the splits are different
 
     Example usage::
 
@@ -649,8 +648,7 @@ class COCO2017Dataset(FiftyOneDataset):
     -   COCO defines 91 classes but the data only uses 80 classes
     -   Some images from the train and validation sets don't have annotations
     -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
+    -   COCO 2014 and 2017 use the same images, but the splits are different
 
     Example usage::
 
