@@ -42,8 +42,8 @@ def evaluate_segmentations(
 
     By default, this method simply performs pixelwise evaluation of the full
     masks, but other strategies such as boundary-only evaluation can be
-    configured by passing additional parameters for the method's
-    :class:`SegmentationEvaluationConfig` class as ``kwargs``.
+    configured by passing additional parameters for the method's config class
+    as ``kwargs``.
 
     The supported ``method`` values and their associated configs are:
 

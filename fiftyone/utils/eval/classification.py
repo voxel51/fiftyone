@@ -37,8 +37,7 @@ def evaluate_classifications(
     top-k matching can be configured via the ``method`` parameter.
 
     You can customize the evaluation method by passing additional
-    parameters for the method's :class:`ClassificationEvaluationConfig` class
-    as ``kwargs``.
+    parameters for the method's config class as ``kwargs``.
 
     The supported ``method`` values and their associated configs are:
 

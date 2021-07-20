@@ -48,7 +48,7 @@ def evaluate_detections(
     By default, this method uses COCO-style evaluation, but you can use the
     ``method`` parameter to select a different method, and you can optionally
     customize the method by passing additional parameters for the method's
-    :class:`DetectionEvaluationConfig` class as ``kwargs``.
+    config class as ``kwargs``.
 
     The supported ``method`` values and their associated configs are:
 
@@ -514,6 +514,7 @@ def _tally_matches(matches):
             fn += 1
         elif gt_label != pred_label:
             fp += 1
+            fn += 1
         else:
             tp += 1
 

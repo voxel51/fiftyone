@@ -1501,9 +1501,7 @@ class SampleCollection(object):
         top-k matching can be configured via the ``method`` parameter.
 
         You can customize the evaluation method by passing additional
-        parameters for the method's
-        :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
-        class as ``kwargs``.
+        parameters for the method's config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
@@ -1588,9 +1586,7 @@ class SampleCollection(object):
         By default, this method uses COCO-style evaluation, but you can use the
         ``method`` parameter to select a different method, and you can
         optionally customize the method by passing additional parameters for
-        the method's
-        :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig` class
-        as ``kwargs``.
+        the method's config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
@@ -1691,8 +1687,7 @@ class SampleCollection(object):
         By default, this method simply performs pixelwise evaluation of the
         full masks, but other strategies such as boundary-only evaluation can
         be configured by passing additional parameters for the method's
-        :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
-        class as ``kwargs``.
+        config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
