@@ -123,7 +123,7 @@ jobs:
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets torch torchvision
+          pip install pytest tensorflow tensorflow-datasets torch torchvision shapely
       - name: Install fiftyone
         run: |
           pip install scikit-learn scikit-image
@@ -145,7 +145,7 @@ jobs:
       - name: Install test dependencies (Windows)
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets
+          pip install pytest tensorflow tensorflow-datasets shapely
           pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Configure fiftyone for tests
         id: test_config
