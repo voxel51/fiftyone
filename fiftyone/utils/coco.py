@@ -182,10 +182,10 @@ def add_coco_labels(
     )
     view.compute_metadata()
 
-    heights, widths = view.values(["metadata.height", "metadata.width"])
+    widths, heights = view.values(["metadata.width", "metadata.height"])
 
     labels = []
-    for coco_id, height, width in zip(coco_ids, heights, widths):
+    for coco_id, width, height in zip(coco_ids, widths, heights):
         coco_objects = coco_objects_map[coco_id]
         frame_size = (height, width)
 
