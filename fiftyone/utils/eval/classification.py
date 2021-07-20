@@ -355,8 +355,9 @@ class TopKEvaluation(ClassificationEvaluation):
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level accuracies
+            avg_accuracies = [np.mean(c) if c else None for c in correct]
             dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
-            samples.set_values(eval_key, [np.mean(c) for c in correct])
+            samples.set_values(eval_key, avg_accuracies)
 
             # Per-frame accuracies
             dataset._add_frame_field_if_necessary(eval_key, fof.BooleanField)

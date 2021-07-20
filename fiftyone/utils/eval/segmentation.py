@@ -453,6 +453,9 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     missing = 0 if values[0] == 0 else None
     results = SegmentationResults(confusion_matrix, values, missing=missing)
     metrics = results.metrics(average=average)
+    if metrics["support"] == 0:
+        return None, None, None
+
     return metrics["accuracy"], metrics["precision"], metrics["recall"]
 
 
