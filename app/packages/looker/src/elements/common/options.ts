@@ -41,14 +41,11 @@ export class OptionsPanelElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  isShown({ config: { thumbnail } }: Readonly<State>) {
+  isShown({ thumbnail }: Readonly<State["config"]>) {
     return !thumbnail;
   }
 
-  renderSelf({ showOptions, config: { thumbnail } }: Readonly<State>) {
-    if (thumbnail) {
-      return this.element;
-    }
+  renderSelf({ showOptions }: Readonly<State>) {
     if (this.showOptions === showOptions) {
       return this.element;
     }

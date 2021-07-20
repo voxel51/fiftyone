@@ -532,14 +532,11 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     return this.createHelpPanel(COMMON);
   }
 
-  isShown({ config: { thumbnail } }: Readonly<State>) {
+  isShown({ thumbnail }: Readonly<State["config"]>) {
     return !thumbnail;
   }
 
-  renderSelf({ showHelp, config: { thumbnail } }: Readonly<State>) {
-    if (thumbnail) {
-      return this.element;
-    }
+  renderSelf({ showHelp }: Readonly<State>) {
     if (this.showHelp === showHelp) {
       return this.element;
     }

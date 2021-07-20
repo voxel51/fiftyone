@@ -38,7 +38,7 @@ import { dispatchTooltipEvent } from "./common/util";
 export class LoaderBar extends BaseElement<VideoState> {
   private buffering: boolean = false;
 
-  isShown({ config: { thumbnail } }: Readonly<VideoState>) {
+  isShown({ thumbnail }: Readonly<VideoState["config"]>) {
     return thumbnail;
   }
 
@@ -182,7 +182,11 @@ export class SeekBarThumbElement extends BaseElement<
         update({ seekBarHovering: true });
       },
       mousedown: ({ update }) => {
-        update({ seeking: true, json: false, seekBarHovering: true });
+        update({
+          seeking: true,
+          seekBarHovering: true,
+          options: { showJSON: false },
+        });
       },
       mouseleave: ({ update }) => {
         update(({ seeking }) => ({ seekBarHovering: seeking }));
@@ -233,7 +237,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       mousedown: ({ update }) => {
         update({
           seeking: true,
-          json: false,
+          options: { showJSON: false },
         });
       },
       mouseenter: ({ update }) => {
@@ -535,6 +539,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
       },
       mouseenter: ({ update }) => {
         update(({ config: { thumbnail } }) => {
+          return {};
           if (thumbnail) {
             return {
               playing: true,

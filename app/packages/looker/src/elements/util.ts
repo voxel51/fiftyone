@@ -32,6 +32,7 @@ type ElementConstructor<
   State extends BaseState,
   Element extends BaseElement<State>
 > = new (
+  config: Readonly<State["config"]>,
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent,
   children?: BaseElement<State>[]
@@ -49,6 +50,7 @@ export function createElementsTree<
   State extends BaseState,
   Element extends BaseElement<State> = BaseElement<State>
 >(
+  config: Readonly<State["config"]>,
   root: ElementsTemplate<State, Element>,
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
@@ -56,11 +58,11 @@ export function createElementsTree<
   let children = new Array<BaseElement<State>>();
   children = root.children
     ? root.children.map((child) =>
-        createElementsTree<State>(child, update, dispatchEvent)
+        createElementsTree<State>(config, child, update, dispatchEvent)
       )
     : children;
 
-  return new root.node(update, dispatchEvent, children);
+  return new root.node(config, update, dispatchEvent, children);
 }
 
 const stringifyNumber = function (

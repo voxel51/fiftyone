@@ -1,25 +1,25 @@
-import React, { useEffect, useRef, useState } from "react";
-import { atom, selector, useRecoilValue } from "recoil";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
-import Flashlight, {
-  FlashlightConfig,
-  FlashlightOptions,
-} from "@fiftyone/flashlight";
+import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
+import { ItemData } from "@fiftyone/flashlight/src/state";
 
-import * as selectors from "../recoil/selectors";
 import {
   FrameLooker,
   ImageLooker,
   VideoLooker,
   zoomAspectRatio,
 } from "@fiftyone/looker";
-import { http } from "../shared/connection";
 import { scrollbarStyles } from "./utils";
 import { activeFields } from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
+import { getSampleSrc, lookerType } from "../recoil/utils";
+import { getMimeType } from "../utils/generic";
+import { filterView } from "../utils/view";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -33,14 +33,9 @@ const gridRowAspectRatio = selector<number>({
   },
 });
 
-const pageSize = selector<number>({
-  key: "pageSize",
-  get: ({ get }) => Math.ceil(get(gridRowAspectRatio) * 4),
-});
-
 const MARGIN = 3;
 
-const lookers = new Map<string, ImageLooker | FrameLooker | VideoLooker>();
+let samples = new Map<string, any>();
 
 const url = (() => {
   let origin = window.location.origin;
@@ -83,80 +78,134 @@ const flashlightLookerOptions = selector({
       filter: get(labelFilters(false)),
       activeLabels: get(activeFields),
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
+      loop: true,
     };
   },
 });
+
+const getLooker = () => {
+  return useRecoilCallback(
+    ({ snapshot }) => async (result) => {
+      const getLookerConstructor = await snapshot.getPromise(lookerType);
+      const constructor = getLookerConstructor(getMimeType(result.sample));
+      const options = await snapshot.getPromise(flashlightLookerOptions);
+
+      return new constructor(
+        result.sample,
+        {
+          src: getSampleSrc(result.sample.filepath, result.sample._id),
+          thumbnail: true,
+          dimensions: [result.width, result.height],
+          sampleId: result.sample._id,
+          frameRate: result.frame_rate,
+          frameNumber:
+            constructor === FrameLooker ? result.sample.frame_number : null,
+        },
+        options
+      );
+    },
+    []
+  );
+};
+
+const getAspectRatio = () => {
+  return useRecoilCallback(({ snapshot }) => async (result) => {
+    const options = await snapshot.getPromise(flashlightLookerOptions);
+    const aspectRatio = result.width / result.height;
+    return options.zoom
+      ? zoomAspectRatio(result.sample, aspectRatio)
+      : aspectRatio;
+  });
+};
+
+const stringifyObj = (obj) => {
+  if (typeof obj !== "object" || Array.isArray(obj)) return obj;
+  return JSON.stringify(
+    Object.keys(obj)
+      .map((key) => {
+        return [key, obj[key]];
+      })
+      .sort((a, b) => a[0] - b[0])
+  );
+};
 
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
-  const lookerOptionsRef = useRef<any>();
-  lookerOptionsRef.current = lookerOptions;
+  const lookerGeneratorRef = useRef<any>();
+  lookerGeneratorRef.current = getLooker();
+  const aspectRatioGenerator = useRef<any>();
+  aspectRatioGenerator.current = getAspectRatio();
+  const flashlight = useRef<Flashlight<number>>();
+  const crop =
+    useRecoilValue(selectors.isPatchesView) &&
+    useRecoilValue(atoms.cropToContent(false));
 
-  const initialRender = useRef(true);
+  const filters = useRecoilValue(selectors.filterStages);
+  const datasetName = useRecoilValue(selectors.datasetName);
+  const view = useRecoilValue(selectors.view);
+  const refresh = useRecoilValue(selectors.refresh);
 
-  const [flashlight] = useState(() => {
-    return new Flashlight<number>({
-      initialRequestKey: 1,
-      options,
-      get: (page) =>
-        fetch(`${url}page=${page}`)
-          .then((response) => response.json())
-          .then(({ results, more }) => {
-            return {
-              items: results.map((result) => {
-                lookers.set(
-                  result.sample._id,
-                  new ImageLooker(
-                    result.sample,
-                    {
-                      src: `${http}/filepath/${encodeURI(
-                        result.sample.filepath
-                      )}?id=${id}`,
-                      thumbnail: true,
-                      dimensions: [result.width, result.height],
-                      sampleId: result.sample._id,
-                    },
-                    lookerOptionsRef.current
-                  )
-                );
-
-                return {
-                  id: result.sample._id,
-                  aspectRatio: result.width / result.height,
-                };
-              }),
-              nextRequestKey: more ? page + 1 : null,
-            };
-          }),
-      render: (sampleId, element) => {
-        // lookers.get(sampleId).attach(element);
-      },
-    });
-  });
-
-  useEffect(() => flashlight.attach(id), [id]);
-
-  useEffect(() => {
-    if (initialRender.current) {
+  useLayoutEffect(() => {
+    if (!flashlight.current || !flashlight.current.isAttached()) {
       return;
     }
 
-    flashlight.updateOptions(options);
-  }, [options]);
+    lookers = new Map();
+    samples = new Map();
+    flashlight.current.reset();
+  }, [flashlight, filters, datasetName, view, refresh]);
 
-  useEffect(() => {
-    if (initialRender.current) {
-      return;
+  useLayoutEffect(() => {
+    if (!flashlight.current) {
+      flashlight.current = new Flashlight<number>({
+        initialRequestKey: 1,
+        options,
+        get: async (page) => {
+          const { results, more } = await fetch(
+            `${url}page=${page}`
+          ).then((response) => response.json());
+
+          const items = await Promise.all<ItemData>(
+            results.map((result) => {
+              return aspectRatioGenerator
+                .current(result)
+                .then((aspectRatio) => {
+                  samples.set(result.sample._id, result);
+
+                  return {
+                    id: result.sample._id,
+                    aspectRatio,
+                  };
+                });
+            })
+          );
+          return {
+            items,
+            nextRequestKey: more ? page + 1 : null,
+          };
+        },
+        render: (sampleId, element) => {
+          const result = samples.get(sampleId);
+
+          let looker, destroyed;
+
+          lookerGeneratorRef.current(result).then((looker) => {
+            !destroyed && looker.attach(element);
+          });
+
+          return () => {
+            looker && looker.destroy();
+            destroyed = true;
+          };
+        },
+      });
+      flashlight.current.attach(id);
+    } else {
+      flashlight.current.updateOptions(options);
     }
-
-    flashlight.updateItems((id) => {
-      lookers.get(id).updateOptions(lookerOptions);
-    });
-  }, [lookerOptions]);
-
-  initialRender.current = false;
+  }, [id, options, lookerOptions]);
 
   return <Container id={id}></Container>;
 });

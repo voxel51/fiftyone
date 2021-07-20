@@ -51,17 +51,11 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
     return container;
   }
 
-  isShown({ config: { thumbnail } }: Readonly<State>) {
+  isShown({ thumbnail }: Readonly<State["config"]>) {
     return !thumbnail;
   }
 
-  renderSelf({
-    config: { thumbnail },
-    options: { showJSON },
-  }: Readonly<State>) {
-    if (thumbnail) {
-      return this.element;
-    }
+  renderSelf({ options: { showJSON } }: Readonly<State>) {
     if (this.json === showJSON) {
       return this.element;
     }

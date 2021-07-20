@@ -36,7 +36,7 @@ export interface Response<K> {
 
 export type Get<K> = (key: K) => Promise<Response<K>>;
 
-export type Render = (id: string, HTMLDivElement) => void;
+export type Render = (id: string, HTMLDivElement) => (() => void) | void;
 
 export interface Options {
   margin: number;

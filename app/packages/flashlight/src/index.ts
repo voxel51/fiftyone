@@ -4,7 +4,16 @@
 
 import { NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
-import { Get, Optional, Options, RowData, State } from "./state";
+import {
+  Get,
+  ItemData,
+  Optional,
+  Options,
+  Render,
+  RowData,
+  Section,
+  State,
+} from "./state";
 
 import { flashlight } from "./styles.module.css";
 import tile from "./tile";
@@ -13,7 +22,7 @@ export interface FlashlightOptions extends Optional<Options> {}
 
 export interface FlashlightConfig<K> {
   get: Get<K>;
-  render: (id: string, element: HTMLDivElement) => void;
+  render: Render;
   initialRequestKey: K;
   options: FlashlightOptions;
 }
@@ -24,8 +33,10 @@ export default class Flashlight<K> {
   private state: State<K>;
   private intersectionObserver: IntersectionObserver;
   private resizeObserver: ResizeObserver;
+  private readonly config: FlashlightConfig<K>;
 
   constructor(config: FlashlightConfig<K>) {
+    this.config = config;
     this.container.classList.add(flashlight);
     this.state = this.getEmptyState(config);
 
@@ -48,6 +59,29 @@ export default class Flashlight<K> {
         this.reposition(width);
       }
     );
+  }
+
+  reset() {
+    this.intersectionObserver && this.intersectionObserver.disconnect();
+    this.setObservers();
+    const newContainer = document.createElement("div");
+    newContainer.classList.add(flashlight);
+    this.container.replaceWith(newContainer);
+    this.container = newContainer;
+    this.state = this.getEmptyState(this.config);
+
+    const {
+      width,
+      height,
+    } = this.container.parentElement.getBoundingClientRect();
+    this.state.width = width - 16;
+    this.state.containerHeight = height;
+
+    this.get();
+  }
+
+  isAttached() {
+    return Boolean(this.container.parentElement);
   }
 
   attach(element: HTMLElement | string): void {
@@ -76,15 +110,30 @@ export default class Flashlight<K> {
 
     if (retile) {
       requestAnimationFrame(() => {
-        const sections = this.tile(
-          this.state.sections.map((section) => section.getItems())
-        );
-        this.intersectionObserver.disconnect();
-
         this.intersectionObserver && this.intersectionObserver.disconnect();
         this.setObservers();
         const newContainer = document.createElement("div");
         newContainer.classList.add(flashlight);
+        this.container.replaceWith(newContainer);
+        this.container = newContainer;
+        const items = [
+          ...this.state.sections.map((section) => section.getItems()).flat(),
+          ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
+        ];
+        let sections = this.tile(items);
+
+        const lastSection = sections[sections.length - 1];
+        if (
+          Boolean(this.state.currentRequestKey) &&
+          lastSection.length !== NUM_ROWS_PER_SECTION
+        ) {
+          this.state.currentRowRemainder = lastSection;
+          sections = sections.slice(0, -1);
+
+          sections.length === 0 && this.get();
+        } else {
+          this.state.currentRowRemainder = [];
+        }
 
         this.state.height = 0;
         this.state.sections = [];
@@ -112,9 +161,6 @@ export default class Flashlight<K> {
         targets.forEach((target) => this.intersectionObserver.observe(target));
 
         newContainer.style.height = `${this.state.height}px`;
-
-        this.container.replaceWith(newContainer);
-        this.container = newContainer;
       });
     }
   }
@@ -134,7 +180,7 @@ export default class Flashlight<K> {
   }
 
   private get() {
-    if (this.loading) {
+    if (this.loading || this.state.currentRequestKey === null) {
       return;
     }
 
@@ -146,7 +192,7 @@ export default class Flashlight<K> {
 
         items = [...this.state.currentRemainder, ...items];
 
-        let sections = this.tile(items);
+        let sections = this.tile(items, true);
 
         const lastSection = sections[sections.length - 1];
         if (
@@ -200,6 +246,22 @@ export default class Flashlight<K> {
   }
 
   private setObservers() {
+    const showSection = (section: Section) => {
+      if (section.isShown()) {
+        return;
+      }
+
+      if (!this.state.clean.has(section.index)) {
+        this.state.updater &&
+          section
+            .getItems()
+            .map(({ id }) => id)
+            .forEach((id) => this.state.updater(id));
+      }
+      section.show();
+      this.state.shownSections.add(section.index);
+    };
+
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -209,21 +271,14 @@ export default class Flashlight<K> {
           ];
 
           if (entry.intersectionRatio > 0) {
-            const lastSection = this.state.sections[
-              this.state.sections.length - 1
-            ];
-            if (this.state.currentRequestKey && lastSection.target === target) {
+            if (
+              this.state.currentRequestKey &&
+              section.index >= this.state.sections.length - 2
+            ) {
               this.get();
             }
+            showSection(section);
 
-            if (!this.state.clean.has(section.index)) {
-              section
-                .getItems()
-                .map(({ id }) => id)
-                .forEach((id) => this.state.updater(id));
-            }
-            section.show();
-            this.state.shownSections.add(section.index);
             this.state.activeSection = section.index;
           } else if (section.isShown()) {
             section.hide();
@@ -238,7 +293,7 @@ export default class Flashlight<K> {
     );
   }
 
-  private tile(items): RowData[][] {
+  private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
     let { rows, remainder } = tile(
       items,
       this.state.options.rowAspectRatioThreshold,
@@ -247,7 +302,9 @@ export default class Flashlight<K> {
 
     this.state.currentRemainder = remainder;
 
-    rows = [...this.state.currentRowRemainder, ...rows];
+    if (useRowRemainder) {
+      rows = [...this.state.currentRowRemainder, ...rows];
+    }
 
     return new Array(Math.ceil(rows.length / NUM_ROWS_PER_SECTION))
       .fill(0)

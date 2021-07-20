@@ -12,7 +12,6 @@ import { v4 as uuid } from "uuid";
 
 import * as labelAtoms from "./Filters/utils";
 import { ContentDiv, ContentHeader } from "./utils";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler, useTheme } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
@@ -24,27 +23,8 @@ import {
   ImageOptions,
   VideoOptions,
 } from "@fiftyone/looker/src/state";
-import ExternalLink from "./ExternalLink";
 import { Warning } from "@material-ui/icons";
-
-type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
-
-const lookerType = selector<LookerTypes>({
-  key: "lookerType",
-  get: ({ get }) => {
-    const video = getMimeType(get(atoms.modalSample)).startsWith("video/");
-    const isFrame = get(selectors.isFramesView);
-    const isPatch = get(selectors.isPatchesView);
-    if (video && (isFrame || isPatch)) {
-      return FrameLooker;
-    }
-
-    if (video) {
-      return VideoLooker;
-    }
-    return ImageLooker;
-  },
-});
+import { getSampleSrc, lookerType } from "../recoil/utils";
 
 const InfoWrapper = styled.div`
   display: flex;
@@ -403,38 +383,6 @@ const useFullscreen = () => {
   });
 };
 
-const useErrorHandler = (looker, mimetype) => {
-  const [error, setError] = useState(null);
-  const video = mimetype.startsWith("video/");
-
-  useEventHandler(looker, "error", () =>
-    setError(
-      <>
-        <p>
-          The {video ? "video" : "image"} failed to load. The file may not
-          exist, or its type ({mimetype}) may be unsupported.
-        </p>
-        <p>
-          {video && (
-            <>
-              {" "}
-              You can use{" "}
-              <code>
-                <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
-                  fiftyone.utils.video.reencode_videos()
-                </ExternalLink>
-              </code>{" "}
-              to re-encode videos in a supported format.
-            </>
-          )}
-        </p>
-      </>
-    )
-  );
-
-  return error;
-};
-
 interface LookerProps {
   lookerRef?: MutableRefObject<any>;
   modal: boolean;
@@ -445,6 +393,9 @@ interface LookerProps {
   onSelectLabel?: EventCallback;
   sampleId: string;
   style?: React.CSSProperties;
+  dimensions: [number, number];
+  frameRate?: number;
+  frameNumber?: number;
 }
 
 const Looker = ({
@@ -456,38 +407,41 @@ const Looker = ({
   onSelectLabel,
   sampleId,
   style,
+  dimensions,
+  frameRate,
+  frameNumber,
 }: LookerProps) => {
-  return null;
   const [id] = useState(() => uuid());
-  let sample = useRecoilValue(atoms.modalSample);
-  const mimetype = getMediaType(sample);
-  const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
+  const sample = useRecoilValue(atoms.modalSample);
+  const mimetype = getMimeType(sample);
+  const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerModalOptions);
   const activeLabels = useRecoilValue(labelAtoms.activeModalFields);
-  const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
   const theme = useTheme();
-  const lookerConstructor = useRecoilValue(lookerType(sampleId));
+  const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
 
-  const [looker] = useState(
-    () =>
-      new lookerConstructor(
-        sample,
-        {
-          src: sampleSrc,
-          dimensions: [metadata.width, metadata.height],
-          frameRate: metadata.frameRate,
-          frameNumber: sample.frame_number,
-          sampleId,
-        },
-        {
-          activeLabels,
-          ...options,
-          hasNext: Boolean(onNext),
-          hasPrevious: Boolean(onPrevious),
-        }
-      )
-  );
+  const [looker] = useState(() => {
+    const constructor = getLookerConstructor(mimetype);
+
+    return new constructor(
+      sample,
+      {
+        src: sampleSrc,
+        dimensions,
+        frameRate,
+        frameNumber,
+        sampleId,
+        thumbnail: false,
+      },
+      {
+        activeLabels,
+        ...options,
+        hasNext: Boolean(onNext),
+        hasPrevious: Boolean(onPrevious),
+      }
+    );
+  });
 
   useEffect(() => {
     !initialRef.current && looker.updateOptions({ ...options, activeLabels });
@@ -503,7 +457,6 @@ const Looker = ({
 
   lookerRef && (lookerRef.current = looker);
 
-  const error = useErrorHandler(looker, mimetype);
   useEventHandler(looker, "options", useLookerOptionsUpdate());
   useEventHandler(looker, "fullscreen", useFullscreen());
   onNext && useEventHandler(looker, "next", onNext);

@@ -91,7 +91,7 @@ export abstract class Looker<
     this.state = this.getInitialState(config, options);
     this.pluckedOverlays = [];
     this.currentOverlays = [];
-    this.lookerElement = this.getElements();
+    this.lookerElement = this.getElements(config);
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
     this.imageSource = this.lookerElement.children[0].element as ImageSource;
@@ -282,7 +282,9 @@ export abstract class Looker<
     overlays: Overlay<State>[]
   ): boolean;
 
-  protected abstract getElements(): LookerElement<State>;
+  protected abstract getElements(
+    config: Readonly<State["config"]>
+  ): LookerElement<State>;
 
   protected abstract loadOverlays(sample: BaseSample): void;
 
@@ -427,8 +429,8 @@ export class FrameLooker extends Looker<FrameState> {
     this.overlays = [];
   }
 
-  getElements() {
-    return getFrameElements(this.updater, this.getDispatchEvent());
+  getElements(config) {
+    return getFrameElements(config, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(
@@ -521,8 +523,8 @@ export class ImageLooker extends Looker<ImageState> {
     this.overlays = [];
   }
 
-  getElements() {
-    return getImageElements(this.updater, this.getDispatchEvent());
+  getElements(config) {
+    return getImageElements(config, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(
@@ -758,7 +760,6 @@ let lookerWithReader: VideoLooker | null = null;
 export class VideoLooker extends Looker<VideoState, VideoSample> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
-  protected imageSource: HTMLVideoElement;
   private requestFrames: (frameNumber: number, force?: boolean) => void;
 
   constructor(
@@ -843,8 +844,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     return labels;
   }
 
-  getElements() {
-    return getVideoElements(this.updater, this.getDispatchEvent());
+  getElements(config) {
+    return getVideoElements(config, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(

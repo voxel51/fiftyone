@@ -22,11 +22,15 @@ export default class SectionElement implements Section {
     { aspectRatio: number; extraMargins: number },
     [HTMLElement, ItemData][]
   ][];
+  private readonly render: Render;
+  private destoryCallbacks: { [id: string]: () => void };
 
   constructor(index: number, rows: RowData[], render: Render) {
     this.index = index;
     this.container.classList.add(flashlightSectionContainer);
     this.container.dataset.index = String(index);
+    this.render = render;
+    this.destoryCallbacks = {};
 
     this.section.classList.add(flashlightSection);
     this.rows = rows.map(({ aspectRatio, extraMargins, items }) => {
@@ -35,7 +39,6 @@ export default class SectionElement implements Section {
         items.map((itemData) => {
           const itemElement = document.createElement("div");
           this.section.appendChild(itemElement);
-          render(itemData.id, itemElement);
           return [itemElement, itemData];
         }),
       ];
@@ -63,12 +66,13 @@ export default class SectionElement implements Section {
             (width - (items.length - 1 + extraMargins) * margin) /
             rowAspectRatio;
           let left = 0;
-          items.forEach(([item, { aspectRatio }]) => {
+          items.forEach(([item, { aspectRatio, id }]) => {
             const itemWidth = height * aspectRatio;
             item.style.height = `${height}px`;
             item.style.width = `${itemWidth}px`;
             item.style.left = `${left}px`;
             item.style.top = `${localTop}px`;
+            this.destoryCallbacks[id] = this.render(id, item);
 
             left += itemWidth + margin;
           });
@@ -103,6 +107,10 @@ export default class SectionElement implements Section {
     if (this.attached) {
       this.container.removeChild(this.section);
       this.attached = false;
+      Object.values(this.destoryCallbacks).forEach(
+        (callback) => callback && callback()
+      );
+      this.destoryCallbacks = {};
     }
   }
 

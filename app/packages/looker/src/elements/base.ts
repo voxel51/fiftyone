@@ -27,11 +27,16 @@ export abstract class BaseElement<
   readonly element: Element;
 
   constructor(
+    config: Readonly<State["config"]>,
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void,
     children?: BaseElement<State>[]
   ) {
     this.children = children || [];
+    if (!this.isShown(config)) {
+      return;
+    }
+
     this.element = this.createHTMLElement();
     Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
       this.element.addEventListener(
@@ -50,7 +55,7 @@ export abstract class BaseElement<
 
   abstract createHTMLElement(): Element;
 
-  isShown(state: Readonly<State>): boolean {
+  isShown(config: Readonly<State["config"]>): boolean {
     return true;
   }
 
@@ -58,7 +63,7 @@ export abstract class BaseElement<
     const self = this.renderSelf(state);
 
     this.children.forEach((child) => {
-      if (!child.isShown(state)) {
+      if (!child.isShown(state.config)) {
         return;
       }
 

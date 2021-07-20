@@ -16,11 +16,13 @@ import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
 
 export type GetElements<State extends BaseState> = (
+  config: Readonly<State["config"]>,
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
 ) => common.LookerElement<State>;
 
 export const getFrameElements: GetElements<FrameState> = (
+  config,
   update,
   dispatchEvent
 ) => {
@@ -72,6 +74,7 @@ export const getFrameElements: GetElements<FrameState> = (
   };
 
   return createElementsTree<FrameState, common.LookerElement<FrameState>>(
+    config,
     elements,
     update,
     dispatchEvent
@@ -79,6 +82,7 @@ export const getFrameElements: GetElements<FrameState> = (
 };
 
 export const getImageElements: GetElements<ImageState> = (
+  config,
   update,
   dispatchEvent
 ) => {
@@ -129,6 +133,7 @@ export const getImageElements: GetElements<ImageState> = (
   };
 
   return createElementsTree<ImageState, common.LookerElement<ImageState>>(
+    config,
     elements,
     update,
     dispatchEvent
@@ -136,6 +141,7 @@ export const getImageElements: GetElements<ImageState> = (
 };
 
 export const getVideoElements: GetElements<VideoState> = (
+  config,
   update,
   dispatchEvent
 ) => {
@@ -197,6 +203,7 @@ export const getVideoElements: GetElements<VideoState> = (
   };
 
   return createElementsTree<VideoState, common.LookerElement<VideoState>>(
+    config,
     elements,
     update,
     dispatchEvent
