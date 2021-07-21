@@ -13,6 +13,8 @@ import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 
 
@@ -1431,6 +1433,145 @@ class Values(Aggregation):
                 self._big_result,
                 big_field,
             )
+        )
+
+        return pipeline
+
+
+class _Fields(Aggregation):
+    """Returns the set of field names on a specified embedded document field
+    across all samples in a collection.
+
+    Fields aggregations are useful for detecting dynamic attributes that are
+    present on the :class:`fiftyone.core.labels.Label` instances in a
+    collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.core.aggregations as foa
+
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0, 0, 1, 1], foo="bar"
+                    ),
+                    fo.Detection(),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.png",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(),
+                    fo.Detection(
+                        label="dog", bounding_box=[0, 0, 1, 1], hello="world"
+                    ),
+                ]
+            )
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        #
+        # Get all dynamic attributes on the detections in a `Detections` field
+        #
+
+        aggregation = foa._Fields("ground_truth", custom_only=True)
+        print(dataset.aggregate(aggregation))
+        # ['foo', 'hello']
+
+    Args:
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
+        custom_only (False): whether to only return dynamically added fields of
+            the specified document field
+    """
+
+    def __init__(
+        self, field_or_expr, expr=None, custom_only=False, _raw=False
+    ):
+        super().__init__(field_or_expr, expr=expr)
+        self.custom_only = custom_only
+        self._raw = _raw
+        self._doc_type = None
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``[]``
+        """
+        return []
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the list of field names
+        """
+        fields = d["fields"]
+
+        if self.custom_only and self._doc_type is not None:
+            fields = set(fields) - set(self._doc_type._fields.keys())
+
+        return sorted(fields)
+
+    def to_mongo(self, sample_collection):
+        field_name = self._field_name
+        doc_type = None
+
+        if self._expr is None:
+            if not self._raw:
+                # Coerce label list fields, if necessary
+                try:
+                    label_type = sample_collection._get_label_field_type(
+                        field_name
+                    )
+                    if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+                        field_name += "." + label_type._LABEL_LIST_FIELD
+                except:
+                    pass
+
+            field_type = sample_collection._get_field_type(field_name)
+            if isinstance(field_type, fof.ListField):
+                field_type = field_type.field
+
+            if isinstance(field_type, fof.EmbeddedDocumentField):
+                doc_type = field_type.document_type
+
+        self._doc_type = doc_type
+
+        path, pipeline, _, _ = _parse_field_and_expr(
+            sample_collection, field_name, expr=self._expr
+        )
+
+        pipeline.extend(
+            [
+                {"$project": {"fields": {"$objectToArray": "$" + path}}},
+                {"$unwind": "$fields"},
+                {
+                    "$group": {
+                        "_id": None,
+                        "fields": {"$addToSet": "$fields.k"},
+                    }
+                },
+            ]
         )
 
         return pipeline
