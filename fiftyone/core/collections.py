@@ -4927,7 +4927,7 @@ class SampleCollection(object):
         field_or_expr,
         expr=None,
         dynamic_only=False,
-        include_private=False,
+        _include_private=False,
         _raw=False,
     ):
         """Extracts the names and types of the attributes of a specified
@@ -4988,7 +4988,7 @@ class SampleCollection(object):
             #
 
             print(dataset.schema("ground_truth", dynamic_only=True))
-            # {'foo': str, 'hello': [bool, str]}
+            # {'foo': StringField, 'hello': [BooleanField, StringField]}
 
         Args:
             field_or_expr: a field name, ``embedded.field.name``,
@@ -5001,18 +5001,17 @@ class SampleCollection(object):
                 aggregating
             dynamic_only (False): whether to only include dynamically added
                 attributes
-            include_private (False): whether to include private attributes
 
         Returns:
-            a dict mapping field names to types. If a field's values takes
-            multiple non-None types, the list of observed types will be
-            returned
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances. If a field's values takes multiple non-None types, the
+            list of observed types will be returned
         """
         make = lambda field_or_expr: foa.Schema(
             field_or_expr,
             expr=expr,
             dynamic_only=dynamic_only,
-            include_private=include_private,
+            _include_private=_include_private,
             _raw=_raw,
         )
         return self._make_and_aggregate(make, field_or_expr)

@@ -1071,7 +1071,7 @@ class Schema(Aggregation):
 
         aggregation = foa.Schema("ground_truth", dynamic_only=True)
         print(dataset.aggregate(aggregation))
-        # {'foo': str, 'hello': [bool, str]}
+        # {'foo': StringField, 'hello': [BooleanField, StringField]}
 
     Args:
         field_or_expr: a field name, ``embedded.field.name``,
@@ -1084,7 +1084,6 @@ class Schema(Aggregation):
             aggregating
         dynamic_only (False): whether to only include dynamically added
             attributes
-        include_private (False): whether to include private attributes
     """
 
     def __init__(
@@ -1092,12 +1091,12 @@ class Schema(Aggregation):
         field_or_expr,
         expr=None,
         dynamic_only=False,
-        include_private=False,
+        _include_private=False,
         _raw=False,
     ):
         super().__init__(field_or_expr, expr=expr)
         self.dynamic_only = dynamic_only
-        self.include_private = include_private
+        self._include_private = _include_private
         self._raw = _raw
         self._doc_type = None
 
@@ -1116,33 +1115,44 @@ class Schema(Aggregation):
             d: the result dict
 
         Returns:
-            a dict mapping field names to types. If a field's values takes
-            multiple non-None types, the list of observed types will be
-            returned
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances. If a field's values takes multiple non-None types, the
+            list of observed types will be returned
         """
-        if self.dynamic_only and self._doc_type is not None:
-            discard = set(self._doc_type._fields.keys())
+        if self._doc_type is not None:
+            doc_fields = self._doc_type._fields
         else:
-            discard = set()
+            doc_fields = {}
 
         raw_schema = defaultdict(set)
         for name_and_type in d["schema"]:
             name, _type = name_and_type.split(".", 1)
-            if name in discard:
+            if self.dynamic_only and name in doc_fields:
                 continue
 
-            if not self.include_private and name.startswith("_"):
+            if name in doc_fields:
+                field = doc_fields[name]
+                if isinstance(field, fof.ObjectIdField) and name.startswith(
+                    "_"
+                ):
+                    name = name[1:]  # "_id" -> "id"
+            else:
+                field_cls = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
+                field = field_cls() if field_cls is not None else None
+
+            if not self._include_private and name.startswith("_"):
                 continue
 
-            raw_schema[name].add(_MONGO_TO_PYTHON_TYPES.get(_type, None))
+            raw_schema[name].add(field)
 
         schema = {}
         for name, types in raw_schema.items():
-            if len(types) == 1:
-                schema[name] = next(iter(types))
+            if len(types) > 1:
+                types = [t for t in types if t != None]
             else:
-                _types = [t for t in types if t != None]
-                schema[name] = _types[0] if len(_types) == 1 else _types
+                types = list(types)
+
+            schema[name] = types[0] if len(types) == 1 else types
 
         return schema
 
@@ -1628,15 +1638,16 @@ class Values(Aggregation):
         return pipeline
 
 
-_MONGO_TO_PYTHON_TYPES = {
-    "string": str,
-    "bool": bool,
-    "int": int,
-    "long": int,
-    "double": float,
-    "decimal": float,
-    "array": list,
-    "object": object,
+_MONGO_TO_FIFTYONE_TYPES = {
+    "string": fof.StringField,
+    "bool": fof.BooleanField,
+    "int": fof.IntField,
+    "long": fof.IntField,
+    "double": fof.FloatField,
+    "decimal": fof.FloatField,
+    "array": fof.ListField,
+    "object": fof.DictField,
+    "objectId": fof.ObjectIdField,
 }
 
 
