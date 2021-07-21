@@ -6499,6 +6499,41 @@ class SampleCollection(object):
             ignore_primitives=ignore_primitives,
         )
 
+    def _get_attributes_schema(self, label_field):
+        label_type, attrs_path = self._get_label_field_path(
+            label_field, "attributes"
+        )
+
+        # We're implicitly dealing with nested list fields where possible
+        label_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_type, label_type)
+
+        if not issubclass(label_type, fol._HasAttributes):
+            return self.schema(label_field, dynamic_only=True)
+
+        #
+        # We must merge dynamic attributes with those in `attributes` dict
+        #
+
+        dynamic = foa.Schema(label_field, dynamic_only=True)
+        attrs = foa.Schema(attrs_path)
+
+        schema, attrs_map = self.aggregate([dynamic, attrs])
+
+        names = []
+        aggs = []
+        for name in attrs_map.keys():
+            if name not in schema:  # precedence goes to dynamic attributes
+                names.append(name)
+                aggs.append(foa.Schema(attrs_path + "." + name))
+
+        if not aggs:
+            return schema
+
+        for name, attr_schema in zip(names, self.aggregate(aggs)):
+            schema[name] = attr_schema.get("value", None)
+
+        return schema
+
     def _unwind_values(self, field_name, values):
         if values is None:
             return None
