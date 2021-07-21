@@ -24,57 +24,6 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-class BDDSampleParser(foud.LabeledImageTupleSampleParser):
-    """Parser for samples in
-    `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
-
-    This implementation supports samples that are
-    ``(image_or_path, anno_or_path)`` tuples, where:
-
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
-
-        - ``anno_or_path`` is a BDD labels dictionary or the path to such a
-          JSON file on disk. For unlabeled images, this can be ``None``.
-
-    See :ref:`this page <BDDDataset-import>` for format details.
-    """
-
-    @property
-    def label_cls(self):
-        return {
-            "attributes": fol.Classifications,
-            "detections": fol.Detections,
-            "polylines": fol.Polylines,
-        }
-
-    def get_label(self):
-        """Returns the label for the current sample.
-
-        Args:
-            sample: the sample
-
-        Returns:
-            a labels dictionary
-        """
-        labels = self.current_sample[1]
-
-        # We must have the image to convert to relative coordinates
-        img = self._current_image
-
-        return self._parse_label(labels, img)
-
-    def _parse_label(self, labels, img):
-        if labels is None:
-            return None
-
-        if etau.is_str(labels):
-            labels = etas.load_json(labels)
-
-        frame_size = etai.to_frame_size(img=img)
-        return _parse_bdd_annotation(labels, frame_size)
-
-
 class BDDDatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
