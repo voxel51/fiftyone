@@ -1116,7 +1116,7 @@ where the labels XML files are in the following format:
 .. code-block:: xml
 
     <annotation>
-        <folder>data</folder>
+        <folder></folder>
         <filename>image.ext</filename>
         <path>/path/to/dataset-dir/data/image.ext</path>
         <source>
@@ -1156,6 +1156,9 @@ where the labels XML files are in the following format:
         </object>
         ...
     </annotation>
+
+where either the `<filename>` and/or `<path>` field of the annotations may be
+populated to specify the corresponding source image.
 
 Unlabeled images have no corresponding file in `labels/`.
 

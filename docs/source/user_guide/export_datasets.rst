@@ -1043,7 +1043,7 @@ where the labels XML files are in the following format:
 .. code-block:: xml
 
     <annotation>
-        <folder>data</folder>
+        <folder></folder>
         <filename>image.ext</filename>
         <path>/path/to/dataset-dir/data/image.ext</path>
         <source>
