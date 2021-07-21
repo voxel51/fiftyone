@@ -1,7 +1,7 @@
 <annotation>
-    <folder>{{ folder }}</folder>
-    <filename>{{ filename }}</filename>
-    <path>{{ path }}</path>
+    <folder>{{ folder if folder is not none else "" }}</folder>
+    <filename>{{ filename if filename is not none else "" }}</filename>
+    <path>{{ path if path is not none else "" }}</path>
     <source>
         <database>{{ database if database is not none else "" }}</database>
     </source>

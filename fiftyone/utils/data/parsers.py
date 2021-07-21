@@ -1041,36 +1041,19 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
             confidence = None
 
         if self.attributes_field:
-            _attrs = obj.get(self.attributes_field, {})
-            attributes = {
-                k: self._parse_attribute(v) for k, v in _attrs.items()
-            }
+            attributes = obj.get(self.attributes_field, {})
         else:
-            attributes = None
+            attributes = {}
 
-        detection = fol.Detection(
+        return fol.Detection(
             label=label,
             bounding_box=bounding_box,
             confidence=confidence,
-            attributes=attributes,
+            **attributes,
         )
-
-        return detection
 
     def _parse_bbox(self, obj):
         return obj[self.bounding_box_field]
-
-    def _parse_attribute(self, value):
-        if etau.is_str(value):
-            return fol.CategoricalAttribute(value=value)
-
-        if isinstance(value, bool):
-            return fol.BooleanAttribute(value=value)
-
-        if etau.is_numeric(value):
-            return fol.NumericAttribute(value=value)
-
-        return fol.Attribute(value=value)
 
 
 class ImageLabelsSampleParser(LabeledImageTupleSampleParser):

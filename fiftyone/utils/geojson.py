@@ -616,12 +616,9 @@ class GeoJSONDatasetExporter(
                 if value is not None or not self.omit_none_fields:
                     properties[key] = fn(value)
 
-        out_filepath, _ = self._media_exporter.export(sample.filepath)
+        _, uuid = self._media_exporter.export(sample.filepath)
 
-        if self.export_media == False:
-            properties["filename"] = sample.filepath
-        else:
-            properties["filename"] = os.path.basename(out_filepath)
+        properties["filename"] = uuid
 
         location = sample[self.location_field]
         if location is not None:

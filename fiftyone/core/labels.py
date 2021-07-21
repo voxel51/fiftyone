@@ -6,6 +6,7 @@ Labels stored in dataset samples.
 |
 """
 import itertools
+import warnings
 
 from bson import ObjectId
 
@@ -110,17 +111,33 @@ class ListAttribute(Attribute):
 
 
 class _HasAttributes(Label):
-    """Mixin for :class:`Label` classes that have an ``attributes`` field that
-    contains a dict of of :class:`Attribute` instances.
+    """Mixin for :class:`Label` classes that have an :attr:`attributes` field
+    that contains a dict of of :class:`Attribute` instances.
     """
 
     meta = {"allow_inheritance": True}
 
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
+    def iter_attributes(self):
+        """Returns an iterator over the custom attributes of the label.
+
+        Returns:
+            a generator that emits ``(name, value)`` tuples
+        """
+        # pylint: disable=no-member
+        custom_fields = set(self._fields_ordered) - set(self._fields.keys())
+        custom_fields.update(self.attributes.keys())
+
+        for field in custom_fields:
+            yield field, self.get_attribute_value(field)
+
     def has_attribute(self, name):
         """Determines whether the detection has an attribute with the given
         name.
+
+        The specified attribute may either exist in the :attr:`attributes` dict
+        or as a dynamic instance attribute.
 
         Args:
             name: the attribute name
@@ -129,33 +146,43 @@ class _HasAttributes(Label):
             True/False
         """
         # pylint: disable=unsupported-membership-test
-        return name in self.attributes
+        return name in self.attributes or hasattr(self, name)
 
     def get_attribute_value(self, name, default=no_default):
         """Gets the value of the attribute with the given name.
 
+        The specified attribute may either exist in the :attr:`attributes` dict
+        or as a dynamic instance attribute.
+
         Args:
             name: the attribute name
             default (no_default): the default value to return if the attribute
-                does not exist. Can be ``None``. If no default value is
-                provided, an exception is raised if the attribute does not
-                exist
+                does not exist. Can be ``None``
 
         Returns:
             the attribute value
 
         Raises:
-            KeyError: if the attribute does not exist and no default value was
-                provided
+            AttributeError: if the attribute does not exist and no default
+                value was provided
         """
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            pass
+
         try:
             # pylint: disable=unsubscriptable-object
             return self.attributes[name].value
         except KeyError:
-            if default is not no_default:
-                return default
+            pass
 
-            raise
+        if default is not no_default:
+            return default
+
+        raise AttributeError(
+            "%s has no attribute '%s'" % (self.__class__.__name__, name)
+        )
 
 
 class _HasID(Label):
@@ -420,8 +447,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         mask = self.mask
         confidence = self.confidence
 
-        # pylint: disable=no-member
-        attrs = _to_eta_attributes(self.attributes)
+        attrs = _to_eta_attributes(self)
 
         return etao.DetectedObject(
             label=label,
@@ -470,8 +496,8 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             confidence=dobj.confidence,
             index=dobj.index,
             mask=dobj.mask,
-            attributes=attributes,
             tags=dobj.tags,
+            **attributes,
         )
 
 
@@ -598,14 +624,16 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         xtl, ytl, xbr, ybr = bbox.to_coords()
         bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
 
+        attributes = dict(self.iter_attributes())
+
         return Detection(
             label=self.label,
             bounding_box=bounding_box,
             confidence=self.confidence,
             mask=mask,
             index=self.index,
-            attributes=self.attributes,
             tags=self.tags,
+            **attributes,
         )
 
     def to_shapely(self, frame_size=None):
@@ -668,8 +696,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         Returns:
             an ``eta.core.polylines.Polyline``
         """
-        # pylint: disable=no-member
-        attrs = _to_eta_attributes(self.attributes)
+        attrs = _to_eta_attributes(self)
 
         return etap.Polyline(
             label=self.label,
@@ -717,8 +744,8 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             index=polyline.index,
             closed=polyline.closed,
             filled=polyline.filled,
-            attributes=attributes,
             tags=polyline.tags,
+            **attributes,
         )
 
 
@@ -838,8 +865,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         Returns:
             an ``eta.core.keypoints.Keypoints``
         """
-        # pylint: disable=no-member
-        attrs = _to_eta_attributes(self.attributes)
+        attrs = _to_eta_attributes(self)
 
         return etak.Keypoints(
             name=name,
@@ -883,8 +909,8 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
             points=keypoints.points,
             confidence=keypoints.confidence,
             index=keypoints.index,
-            attributes=attributes,
             tags=keypoints.tags,
+            **attributes,
         )
 
 
@@ -1146,33 +1172,22 @@ def _from_geo_json(d):
 
 
 def _from_eta_attributes(attrs):
-    attributes = {}
-    for attr in attrs:
-        if isinstance(attr, etad.NumericAttribute):
-            _attr = NumericAttribute(value=attr.value)
-        elif isinstance(attr, etad.BooleanAttribute):
-            _attr = BooleanAttribute(value=attr.value)
-        else:
-            _attr = CategoricalAttribute(value=str(attr.value))
-
-        if attr.confidence is not None:
-            _attr.confidence = attr.confidence
-
-        attributes[attr.name] = _attr
-
-    return attributes
+    return {a.name: a.value for a in attrs}
 
 
-def _to_eta_attributes(attributes):
+def _to_eta_attributes(label):
     attrs = etad.AttributeContainer()
-    for attr_name, attr in attributes.items():
-        attr_value = attr.value
-        if isinstance(attr_value, bool):
-            _attr = etad.BooleanAttribute(attr_name, attr_value)
-        elif etau.is_numeric(attr_value):
-            _attr = etad.NumericAttribute(attr_name, attr_value)
+    for name, value in label.iter_attributes():
+        if etau.is_str(value):
+            _attr = etad.CategoricalAttribute(name, value)
+        elif etau.is_numeric(value):
+            _attr = etad.NumericAttribute(name, value)
+        elif isinstance(value, bool):
+            _attr = etad.BooleanAttribute(name, value)
         else:
-            _attr = etad.CategoricalAttribute(attr_name, str(attr_value))
+            msg = "Ignoring unsupported attribute type '%s'" % type(value)
+            warnings.warn(msg)
+            continue
 
         attrs.add(_attr)
 

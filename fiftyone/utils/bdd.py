@@ -112,6 +112,12 @@ class BDDDatasetImporter(
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with label entries (False)
+        extra_attrs (None): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``None``/``False``: do not load extra attributes
+            -   ``True``: load all extra attributes found
+            -   a name or list of names of specific attributes to load
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -125,6 +131,7 @@ class BDDDatasetImporter(
         data_path=None,
         labels_path=None,
         include_all_data=False,
+        extra_attrs=None,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -149,6 +156,7 @@ class BDDDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.include_all_data = include_all_data
+        self.extra_attrs = extra_attrs
 
         self._image_paths_map = None
         self._anno_dict_map = None
@@ -177,7 +185,9 @@ class BDDDatasetImporter(
         if anno_dict is not None:
             # Labeled image
             frame_size = (image_metadata.width, image_metadata.height)
-            label = _parse_bdd_annotation(anno_dict, frame_size)
+            label = _parse_bdd_annotation(
+                anno_dict, frame_size, extra_attrs=self.extra_attrs
+            )
         else:
             # Unlabeled image
             label = None
@@ -281,6 +291,8 @@ class BDDDatasetExporter(
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        extra_attrs (None): an optional field name or list of field names of
+            extra label attributes to include in the exported annotations
     """
 
     def __init__(
@@ -290,6 +302,7 @@ class BDDDatasetExporter(
         labels_path=None,
         export_media=None,
         image_format=None,
+        extra_attrs=None,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -310,6 +323,7 @@ class BDDDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.image_format = image_format
+        self.extra_attrs = extra_attrs
 
         self._annotations = None
         self._media_exporter = None
@@ -336,7 +350,7 @@ class BDDDatasetExporter(
         self._media_exporter.setup()
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        out_image_path, _ = self._media_exporter.export(image_or_path)
+        _, uuid = self._media_exporter.export(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -348,10 +362,11 @@ class BDDDatasetExporter(
             return  # unlabeled
 
         if metadata is None:
-            metadata = fom.ImageMetadata.build_for(out_image_path)
+            metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        filename = os.path.basename(out_image_path)
-        annotation = _make_bdd_annotation(labels, metadata, filename)
+        annotation = _make_bdd_annotation(
+            labels, metadata, uuid, extra_attrs=self.extra_attrs
+        )
         self._annotations.append(annotation)
 
     def close(self, *args):
@@ -510,13 +525,17 @@ def _raise_bdd100k_error(msg):
     )
 
 
-def _parse_bdd_annotation(d, frame_size):
+def _parse_bdd_annotation(d, frame_size, extra_attrs=None):
     labels = {}
 
+    #
     # Frame attributes
-    # NOTE: problems may occur if frame attributes have names "detections" or
+    #
+    # @todo problems may occur if frame attributes have names "detections" or
     # "polylines", but we cross our fingers and proceeed
-    labels.update(_parse_frame_attributes(d.get("attributes", {})))
+    #
+    frame_labels = _parse_frame_labels(d.get("attributes", {}))
+    labels.update(frame_labels)
 
     # Objects and polylines
     for label in d.get("labels", []):
@@ -524,20 +543,20 @@ def _parse_bdd_annotation(d, frame_size):
             if "detections" not in labels:
                 labels["detections"] = fol.Detections()
 
-            detection = _parse_bdd_detection(label, frame_size)
+            detection = _parse_bdd_detection(label, frame_size, extra_attrs)
             labels["detections"].detections.append(detection)
 
         if "poly2d" in label:
             if "polylines" not in labels:
                 labels["polylines"] = fol.Polylines()
 
-            polylines = _parse_bdd_polylines(label, frame_size)
+            polylines = _parse_bdd_polylines(label, frame_size, extra_attrs)
             labels["polylines"].polylines.extend(polylines)
 
     return labels
 
 
-def _parse_frame_attributes(attrs_dict):
+def _parse_frame_labels(attrs_dict):
     labels = {}
     for name, value in attrs_dict.items():
         if isinstance(value, list):
@@ -550,26 +569,7 @@ def _parse_frame_attributes(attrs_dict):
     return labels
 
 
-def _parse_attributes(attrs_dict):
-    return {
-        name: _parse_attribute(value) for name, value in attrs_dict.items()
-    }
-
-
-def _parse_attribute(value):
-    if etau.is_str(value):
-        return fol.CategoricalAttribute(value=value)
-
-    if isinstance(value, bool):
-        return fol.BooleanAttribute(value=value)
-
-    if etau.is_numeric(value):
-        return fol.NumericAttribute(value=value)
-
-    return fol.Attribute(value=value)
-
-
-def _parse_bdd_detection(d, frame_size):
+def _parse_bdd_detection(d, frame_size, extra_attrs):
     label = d["category"]
 
     width, height = frame_size
@@ -581,18 +581,16 @@ def _parse_bdd_detection(d, frame_size):
         (box2d["y2"] - box2d["y1"]) / height,
     )
 
-    attrs_dict = d.get("attributes", {})
-    attributes = _parse_attributes(attrs_dict)
+    attributes = d.get("attributes", {})
+    attributes = _filter_attributes(attributes, extra_attrs)
 
-    return fol.Detection(
-        label=label, bounding_box=bounding_box, attributes=attributes,
-    )
+    return fol.Detection(label=label, bounding_box=bounding_box, **attributes)
 
 
-def _parse_bdd_polylines(d, frame_size):
+def _parse_bdd_polylines(d, frame_size, extra_attrs):
     label = d["category"]
 
-    attributes = _parse_attributes(d.get("attributes", {}))
+    attributes = d.get("attributes", {})
 
     polylines = []
     width, height = frame_size
@@ -604,9 +602,10 @@ def _parse_bdd_polylines(d, frame_size):
 
         _attributes = deepcopy(attributes)
 
-        types = poly2d.get("types", None)
-        if types is not None:
-            _attributes["types"] = _parse_attribute(types)
+        if "types" in poly2d:
+            _attributes["types"] = poly2d["types"]
+
+        _attributes = _filter_attributes(attributes, extra_attrs)
 
         polylines.append(
             fol.Polyline(
@@ -614,14 +613,29 @@ def _parse_bdd_polylines(d, frame_size):
                 points=[points],
                 closed=closed,
                 filled=filled,
-                attributes=_attributes,
+                **_attributes,
             )
         )
 
     return polylines
 
 
-def _make_bdd_annotation(labels, metadata, filename):
+def _filter_attributes(attributes, extra_attrs):
+    if not extra_attrs:
+        return {}
+
+    if extra_attrs == True:
+        return attributes
+
+    if etau.is_str(extra_attrs):
+        extra_attrs = {extra_attrs}
+    else:
+        extra_attrs = set(extra_attrs)
+
+    return {k: v for k, v in attributes.items() if k in extra_attrs}
+
+
+def _make_bdd_annotation(labels, metadata, filename, extra_attrs=None):
     frame_size = (metadata.width, metadata.height)
 
     # Convert labels to BDD format
@@ -634,15 +648,19 @@ def _make_bdd_annotation(labels, metadata, filename):
         elif isinstance(_labels, fol.Classifications):
             frame_attrs[name] = [l.label for l in _labels.classifications]
         elif isinstance(_labels, fol.Detection):
-            objects.append(_detection_to_bdd(_labels, frame_size))
+            obj = _detection_to_bdd(_labels, frame_size, extra_attrs)
+            objects.append(obj)
         elif isinstance(_labels, fol.Detections):
             for detection in _labels.detections:
-                objects.append(_detection_to_bdd(detection, frame_size))
+                obj = _detection_to_bdd(detection, frame_size, extra_attrs)
+                objects.append(obj)
         elif isinstance(_labels, fol.Polyline):
-            polylines.append(_polyline_to_bdd(_labels, frame_size))
+            obj = _polyline_to_bdd(_labels, frame_size, extra_attrs)
+            polylines.append(obj)
         elif isinstance(_labels, fol.Polylines):
             for polyline in _labels.polylines:
-                polylines.append(_polyline_to_bdd(polyline, frame_size))
+                obj = _polyline_to_bdd(polyline, frame_size, extra_attrs)
+                polylines.append(obj)
         elif _labels is not None:
             msg = "Ignoring unsupported label type '%s'" % _labels.__class__
             warnings.warn(msg)
@@ -668,7 +686,7 @@ def _make_bdd_annotation(labels, metadata, filename):
     }
 
 
-def _detection_to_bdd(detection, frame_size):
+def _detection_to_bdd(detection, frame_size, extra_attrs):
     width, height = frame_size
     x, y, w, h = detection.bounding_box
 
@@ -679,9 +697,7 @@ def _detection_to_bdd(detection, frame_size):
         "y2": round((y + h) * height, 1),
     }
 
-    attributes = {
-        name: attr.value for name, attr in detection.attributes.items()
-    }
+    attributes = _get_attributes(detection, extra_attrs)
 
     return {
         "id": None,
@@ -693,16 +709,12 @@ def _detection_to_bdd(detection, frame_size):
     }
 
 
-def _polyline_to_bdd(polyline, frame_size):
+def _polyline_to_bdd(polyline, frame_size, extra_attrs):
     width, height = frame_size
 
     types = polyline.get_attribute_value("types", None)
 
-    attributes = {
-        name: attr.value
-        for name, attr in polyline.attributes.items()
-        if name != "types"
-    }
+    attributes = _get_attributes(polyline, extra_attrs)
 
     poly2d = []
     for points in polyline.points:
@@ -721,3 +733,13 @@ def _polyline_to_bdd(polyline, frame_size):
         "attributes": attributes,
         "poly2d": poly2d,
     }
+
+
+def _get_attributes(label, extra_attrs):
+    if not extra_attrs:
+        return {}
+
+    if etau.is_str(extra_attrs):
+        extra_attrs = [extra_attrs]
+
+    return {label.get_attribute_value(name, None) for name in extra_attrs}

@@ -730,16 +730,16 @@ class COCODetectionDatasetExporter(
             self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path, _ = self._media_exporter.export(image_or_path)
+        _, uuid = self._media_exporter.export(image_or_path)
 
         if metadata is None:
-            metadata = fom.ImageMetadata.build_for(out_image_path)
+            metadata = fom.ImageMetadata.build_for(image_or_path)
 
         self._image_id += 1
         self._images.append(
             {
                 "id": self._image_id,
-                "file_name": os.path.basename(out_image_path),
+                "file_name": uuid,
                 "height": metadata.height,
                 "width": metadata.width,
                 "license": None,
@@ -1059,14 +1059,9 @@ class COCOObject(object):
 
         area = bbox[2] * bbox[3]
 
-        try:
-            _iscrowd = int(detection[iscrowd])
-        except KeyError:
-            # @todo remove Attribute usage
-            if detection.has_attribute(iscrowd):
-                _iscrowd = int(detection.get_attribute_value(iscrowd))
-            else:
-                _iscrowd = None
+        _iscrowd = detection.get_attribute_value(iscrowd, None)
+        if _iscrowd is not None:
+            _iscrowd = int(_iscrowd)
 
         frame_size = (width, height)
 
