@@ -19,6 +19,7 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getSampleSrc, lookerType, useSetModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
+import { filterView } from "../utils/view";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -158,7 +159,13 @@ export default React.memo(() => {
 
     samples = new Map();
     flashlight.current.reset();
-  }, [flashlight, filters, datasetName, view, refresh]);
+  }, [
+    flashlight,
+    stringifyObj(filters),
+    datasetName,
+    filterView(view),
+    refresh,
+  ]);
 
   useLayoutEffect(() => {
     if (!flashlight.current) {

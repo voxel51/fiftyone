@@ -47,6 +47,7 @@ interface BaseOptions {
   hasPrevious: boolean;
   fullscreen: boolean;
   zoomPad: number;
+  selected: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -197,6 +198,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   hasPrevious: false,
   fullscreen: false,
   zoomPad: 0.1,
+  selected: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

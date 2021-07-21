@@ -39,12 +39,16 @@ export abstract class BaseElement<
 
     this.element = this.createHTMLElement();
     Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
+      if (config.thumbnail && eventType === "wheel") {
+        return;
+      }
+
       this.element.addEventListener(
         eventType,
         (event) =>
           // @ts-ignore
           handler({ event, update, dispatchEvent }),
-        { passive: true }
+        { passive: eventType === "wheel" }
       );
     });
   }

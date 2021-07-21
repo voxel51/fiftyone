@@ -3,15 +3,55 @@
  */
 
 .lookerThumbnailSelector {
+  -webkit-transition: opacity 0.2s;
+  -moz-transition: opacity 0.2s;
+  -o-transition: opacity 0.2s;
+  -ms-transition: opacity 0.2s;
+  transition: opacity 0.2s;
   width: 100%;
   height: auto;
   position: absolute;
   top: 0;
   left: 0;
+  opacity: 0;
+  cursor: pointer;
+
+  padding: 3px;
 
   background: linear-gradient(
     0deg,
-    hsl(210, 11%, 11%) 0%,
-    hsl(210, 11%, 11%) 90%
+    hsla(210, 11%, 11%, 0) 0%,
+    hsl(210, 11%, 11%) 100%
   );
+}
+
+.lookerThumbnailSelector.showSelector {
+  opacity: 1;
+}
+
+.lookerThumbnailSelector span {
+  margin: 0.25rem !important;
+}
+
+.lookerThumbnailSelector *:hover,
+.lookerThumbnailSelector *:active,
+.lookerThumbnailSelector *:focus {
+  outline: none;
+}
+
+.lookerThumbnailSelector label {
+  display: grid;
+  justify-items: start;
+  grid-template-columns: 1fr;
+  margin: 0 0 1px;
+  line-height: 1.5;
+  cursor: unset;
+}
+
+/* Hide the browser's default checkbox */
+.lookerThumbnailSelector input {
+  position: absolute;
+  height: 0;
+  width: 0;
+  cursor: unset;
 }

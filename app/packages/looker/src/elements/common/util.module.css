@@ -20,13 +20,13 @@
   left: 0;
   height: 20px;
   width: 20px;
-  background: rgb(55, 55, 55);
+  background: rgb(140, 140, 140);
   margin-left: 1rem;
   border-radius: 3px;
 }
 .lookerLabel:hover input[type="radio"] ~ .lookerRadio,
 .lookerLabel:hover input[type="checkbox"] ~ .lookerCheckbox {
-  background: rgb(122, 122, 122);
+  background: rgb(55, 55, 55);
 }
 .lookerLabel input[type="radio"]:checked ~ .lookerRadio {
   background: rgb(225, 100, 40);
