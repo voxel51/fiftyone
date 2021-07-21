@@ -309,6 +309,15 @@ def load_annotations(
         logger.warning("Unsupported annotation backend %s" % backend)
         return
 
+    if type(list(annotations.values())[0]) != dict:
+        # Only setting top-level field, no parsing labels is required
+        for sample_id, value in annotations.items():
+            sample = samples[sample_id]
+            sample[label_field] = value
+            sample.save()
+        return
+
+    # Setting a label field, need to parse, add, delete, and merge labels
     annotation_label_ids = []
     for sample in annotations.values():
         annotation_label_ids.extend(list(sample.keys()))
@@ -374,24 +383,9 @@ class BaseAnnotationAPI(object):
     annotation, and importing them back into the collection.
     """
 
-    def get_username_password(self, host=""):
-        username = fo.annotation_config.cvat_username
-        password = fo.annotation_config.cvat_password
-
-        if username is None or password is None:
-            logger.log(
-                "No config or environment variables found for "
-                "authentication. Please enter login information. Set the "
-                "environment variables `FIFTYONE_ANNOTATION_USERNAME` and "
-                "`FIFTYONE_ANNOTATION_PASSWORD` to avoid this in the future."
-            )
-            username = input("%s Username: " % host)
-            password = getpass.getpass(prompt="%s Password: " % host)
-
-        return {
-            "username": username,
-            "password": password,
-        }
+    def prompt_username_password(self, host=""):
+        username = input("%s Username: " % host)
+        password = getpass.getpass(prompt="%s Password: " % host)
 
     def get_api_key(self, host=""):
         pass
