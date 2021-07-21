@@ -5551,7 +5551,13 @@ class SampleCollection(object):
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
-    def annotate(self, backend="cvat", label_field="ground_truth", **kwargs):
+    def annotate(
+        self,
+        backend="cvat",
+        label_field="ground_truth",
+        extra_attrs=None,
+        **kwargs,
+    ):
         """Exports the samples and a label field to the given annotation
         backend.
 
@@ -5561,10 +5567,19 @@ class SampleCollection(object):
             label_field: a string indicating the label field to export to the
                 annotation backend. A value of `None` indicates exporting only
                 the media.
+            extra_attrs (None): a list of attribute field names or dictionary of
+                attribute field names to `AnnotationWidgetType` specifying the
+                attribute field names on the `label_field` to annotate. By
+                default, no extra attributes are sent for annotation, only the
+                label
             **kwargs: additional arguments to send to the annotation backend
         """
         annotation_info = foua.annotate(
-            samples=self, backend=backend, label_field=label_field, **kwargs,
+            samples=self,
+            backend=backend,
+            label_field=label_field,
+            extra_attrs=extra_attrs,
+            **kwargs,
         )
         return annotation_info
 

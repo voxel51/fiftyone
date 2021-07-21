@@ -18,6 +18,7 @@ import warnings
 import webbrowser
 
 import jinja2
+import numpy as np
 
 import eta.core.data as etad
 import eta.core.image as etai
@@ -25,6 +26,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -36,6 +38,18 @@ logger = logging.getLogger(__name__)
 
 
 _MAX_TASKS_MESSAGE = "The user has the maximum number of tasks"
+_SUPPORTED_LABEL_TYPES = (
+    fol.Classifications,
+    fol.Detections,
+    fol.Keypoints,
+    fol.Polylines,
+)
+_SUPPORTED_FIELD_TYPES = (
+    fof.IntField,
+    fof.FloatField,
+    fof.StringField,
+    fof.BooleanField,
+)
 
 
 class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
@@ -2617,7 +2631,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             self._auth = self.get_username_password("CVAT")
         self._session = requests.Session()
         response = self._session.post(self.login_url, self._auth, verify=False)
-        response.raise_for_status()
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
@@ -2732,9 +2745,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return job_ids
 
-    def upload_samples(
-        self, samples, label_field="ground_truth", classes=None
-    ):
+    def upload_samples(self, samples, label_field, classes=None):
         """Upload samples into annotation tool.
         
         Args:
@@ -2742,31 +2753,42 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 upload to CVAT
             classes: list of class strings to use for annotation
         """
+        field_type = samples.get_field_schema()[label_field]
+        if (
+            isinstance(field_type, fof.EmbeddedDocumentField)
+            and field_type.document_type in _SUPPORTED_LABEL_TYPES
+        ):
+            is_supported_label = True
+        else:
+            is_supported_label = False
+
         if classes is None:
+            classes = []
             if label_field in samples.classes:
                 classes = samples.classes[label_field]
             elif samples.default_classes:
                 classes = samples.default_classes
-            else:
+            elif is_supported_label:
                 label_path = samples._get_label_field_path(
                     label_field, "label"
                 )[1]
                 classes = samples._dataset.distinct(label_path)
             self._classes = classes
 
-        label_attr = {
-            "name": "label",
-            "mutable": True,
-            "input_type": "select",
-            "values": classes,
-        }
-        label_id_attr = {
-            "name": "label_id",
-            "mutable": True,
-            "input_type": "select",
-        }
-        self._label_attributes["label"] = label_attr
-        self._label_attributes["label_id"] = label_id_attr
+        if is_supported_label:
+            label_attr = {
+                "name": "label",
+                "mutable": True,
+                "input_type": "select",
+                "values": classes,
+            }
+            label_id_attr = {
+                "name": "label_id",
+                "mutable": True,
+                "input_type": "select",
+            }
+            self._label_attributes["label"] = label_attr
+            self._label_attributes["label_id"] = label_id_attr
 
         annot_shapes = self.create_shapes(samples, label_field)
         attributes = list(self._label_attributes.values())
@@ -2784,7 +2806,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             "shapes": annot_shapes,
             "tracks": [],
         }
-
         resp = self._session.put(
             self.task_annotation_url(task_id), json=annot_json
         )
@@ -2794,10 +2815,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def download_annotations(self, label_field, task_id, job_ids):
         """Download annotations from the annotation tool"""
         response = self._session.get(self.task_annotation_url(task_id))
-        response.raise_for_status()
 
         resp_json = response.json()
         shapes = resp_json["shapes"]
+        tags = resp_json["tags"]
 
         data_resp = self._session.get(self.task_data_meta_url(task_id))
         frames = data_resp.json()["frames"]
@@ -2808,54 +2829,189 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             sample_id = self._frame_id_map[frame]
             if sample_id not in results:
                 results[sample_id] = {}
+
             metadata = frames[frame]
-            width = metadata["width"]
-            height = metadata["height"]
-            xtl, ytl, xbr, ybr = shape["points"]
-            bbox = [
-                xtl / width,
-                ytl / height,
-                (xbr - xtl) / width,
-                (ybr - ytl) / height,
-            ]
-            attributes = {}
-            attr_id_map_rev = {v: k for k, v in self._attribute_id_map.items()}
-            for attr in shape["attributes"]:
-                name = attr_id_map_rev[attr["spec_id"]]
-                val = self.parse_attribute(attr["value"])
-                attributes[name] = CVATAttribute(name=name, value=val)
-            class_name = attributes["label"].value
-            if class_name not in self._classes:
+            shape_type = shape["type"]
+
+            if shape_type == "rectangle":
+                label = self.shape_to_detection(shape, metadata)
+            elif shape_type == "polygon":
+                label = self.shape_to_poly(
+                    shape, metadata, closed=True, filled=True
+                )
+            elif shape_type == "polyline":
+                label = self.shape_to_poly(
+                    shape, metadata, closed=False, filled=False
+                )
+            elif shape_type == "points":
+                label = self.shape_to_points(shape, metadata)
+
+            if label is None:
                 continue
-            fo_attributes = {}
-            for attr_name, attribute in attributes.items():
-                if attr_name.startswith("attribute:"):
-                    name = attr_name.strip("attribute:")
-                    attribute.name = name
-                    if attribute.value is not None:
-                        fo_attributes[name] = attribute.to_attribute()
-            label = fol.Detection(
-                label=attributes["label"].value,
-                bounding_box=bbox,
-                attributes=fo_attributes,
-            )
-            label_id = attributes["label_id"].value
-            if label_id is not None:
-                label._id = label_id
-            for attr_name, attribute in attributes.items():
-                if attr_name not in [
-                    "label",
-                    "label_id",
-                ] and not attr_name.startswith("attribute:"):
-                    label[attr_name] = attribute.value
 
             results[sample_id][label.id] = label
 
         return results
 
+    def _to_pairs_of_points(self, points):
+        reshaped_points = np.reshape(points, (-1, 2))
+        return reshaped_points.tolist()
+
+    def shape_to_points(self, shape, metadata, closed=False, filled=False):
+        width = metadata["width"]
+        height = metadata["height"]
+        frame_size = (width, height)
+
+        points = self._to_pairs_of_points(shape["points"])
+        rel_points = HasCVATPoints._to_rel_points(points, frame_size)
+
+        attributes = {}
+        attr_id_map_rev = {v: k for k, v in self._attribute_id_map.items()}
+
+        for attr in shape["attributes"]:
+            name = attr_id_map_rev[attr["spec_id"]]
+            val = self.parse_attribute(attr["value"])
+            attributes[name] = CVATAttribute(name=name, value=val)
+
+        class_name = attributes["label"].value
+
+        if class_name not in self._classes:
+            return None
+
+        fo_attributes = {}
+
+        for attr_name, attribute in attributes.items():
+            if attr_name.startswith("attribute:"):
+                name = attr_name.strip("attribute:")
+                attribute.name = name
+                if attribute.value is not None:
+                    fo_attributes[name] = attribute.to_attribute()
+
+        label = fol.Polyline(
+            label=attributes["label"].value,
+            points=[rel_points],
+            closed=closed,
+            filled=filled,
+            attributes=fo_attributes,
+        )
+        label_id = attributes["label_id"].value
+
+        if label_id is not None:
+            label._id = label_id
+
+        for attr_name, attribute in attributes.items():
+            if attr_name not in [
+                "label",
+                "label_id",
+            ] and not attr_name.startswith("attribute:"):
+                label[attr_name] = attribute.value
+
+        return label
+
+    def shape_to_poly(self, shape, metadata, closed=False, filled=False):
+        width = metadata["width"]
+        height = metadata["height"]
+        frame_size = (width, height)
+
+        points = self._to_pairs_of_points(shape["points"])
+        rel_points = HasCVATPoints._to_rel_points(points, frame_size)
+
+        attributes = {}
+        attr_id_map_rev = {v: k for k, v in self._attribute_id_map.items()}
+
+        for attr in shape["attributes"]:
+            name = attr_id_map_rev[attr["spec_id"]]
+            val = self.parse_attribute(attr["value"])
+            attributes[name] = CVATAttribute(name=name, value=val)
+
+        class_name = attributes["label"].value
+
+        if class_name not in self._classes:
+            return None
+
+        fo_attributes = {}
+
+        for attr_name, attribute in attributes.items():
+            if attr_name.startswith("attribute:"):
+                name = attr_name.strip("attribute:")
+                attribute.name = name
+                if attribute.value is not None:
+                    fo_attributes[name] = attribute.to_attribute()
+
+        label = fol.Polyline(
+            label=attributes["label"].value,
+            points=[rel_points],
+            closed=closed,
+            filled=filled,
+            attributes=fo_attributes,
+        )
+        label_id = attributes["label_id"].value
+
+        if label_id is not None:
+            label._id = label_id
+
+        for attr_name, attribute in attributes.items():
+            if attr_name not in [
+                "label",
+                "label_id",
+            ] and not attr_name.startswith("attribute:"):
+                label[attr_name] = attribute.value
+
+        return label
+
+    def shape_to_detection(self, shape, metadata):
+        width = metadata["width"]
+        height = metadata["height"]
+        xtl, ytl, xbr, ybr = shape["points"]
+        bbox = [
+            xtl / width,
+            ytl / height,
+            (xbr - xtl) / width,
+            (ybr - ytl) / height,
+        ]
+        attributes = {}
+        attr_id_map_rev = {v: k for k, v in self._attribute_id_map.items()}
+
+        for attr in shape["attributes"]:
+            name = attr_id_map_rev[attr["spec_id"]]
+            val = self.parse_attribute(attr["value"])
+            attributes[name] = CVATAttribute(name=name, value=val)
+
+        class_name = attributes["label"].value
+
+        if class_name not in self._classes:
+            return None
+
+        fo_attributes = {}
+
+        for attr_name, attribute in attributes.items():
+            if attr_name.startswith("attribute:"):
+                name = attr_name.strip("attribute:")
+                attribute.name = name
+                if attribute.value is not None:
+                    fo_attributes[name] = attribute.to_attribute()
+
+        label = fol.Detection(
+            label=attributes["label"].value,
+            bounding_box=bbox,
+            attributes=fo_attributes,
+        )
+        label_id = attributes["label_id"].value
+
+        if label_id is not None:
+            label._id = label_id
+
+        for attr_name, attribute in attributes.items():
+            if attr_name not in [
+                "label",
+                "label_id",
+            ] and not attr_name.startswith("attribute:"):
+                label[attr_name] = attribute.value
+
+        return label
+
     def delete_task(self, task_id):
         response = self._session.delete(self.task_url(task_id))
-        response.raise_for_status()
 
     def launch_annotator(self, url=None):
         """Open the uploaded annotations in the annotation tool"""

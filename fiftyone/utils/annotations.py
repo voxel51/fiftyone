@@ -238,7 +238,12 @@ def _to_video_labels(sample, label_fields=None):
 
 
 def annotate(
-    samples, config=None, backend="cvat", label_field="ground_truth", **kwargs
+    samples,
+    config=None,
+    backend="cvat",
+    label_field="ground_truth",
+    extra_attrs=None,
+    **kwargs
 ):
     """Exports the samples and a label field to the given annotation
     backend.
@@ -252,6 +257,11 @@ def annotate(
         label_field: a string indicating the label field to export to the
             annotation backend. A value of `None` indicates exporting only
             the media.
+        extra_attrs (None): a list of attribute field names or dictionary of
+            attribute field names to `AnnotationWidgetType` specifying the
+            attribute field names on the `label_field` to annotate. By
+            default, no extra attributes are sent for annotation, only the
+            label
         **kwargs: additional arguments to send to the annotation backend
 
     Returns:
@@ -261,7 +271,7 @@ def annotate(
     """
     if backend == "cvat":
         annotation_info = fouc.annotate(
-            samples, label_field=label_field, **kwargs
+            samples, label_field=label_field, extra_attrs=extra_attrs, **kwargs
         )
     else:
         logger.warning("Unsupported annotation backend %s" % backend)
