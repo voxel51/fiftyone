@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
@@ -37,7 +37,7 @@ const Body = styled.div`
 `;
 
 function Dataset() {
-  const [modal, setModal] = useRecoilState(atoms.modal);
+  const isModalActive = useRecoilValue(selectors.isModalActive);
   const theme = useTheme();
 
   const fullscreen = useRecoilValue(atoms.fullscreen)
@@ -50,20 +50,16 @@ function Dataset() {
   useScreenshot();
 
   useEffect(() => {
-    document.body.classList.toggle("noscroll", modal.visible);
-  }, [modal.visible]);
+    document.body.classList.toggle("noscroll", isModalActive);
+  }, [isModalActive]);
   const ref = useRef();
 
   useOutsideClick(ref, clearModal);
   return (
     <>
-      {modal.visible ? (
+      {isModalActive ? (
         <ModalWrapper key={0} style={fullscreen}>
-          <SampleModal
-            onClose={clearModal}
-            ref={ref}
-            sampleId={modal.sampleId}
-          />
+          <SampleModal onClose={clearModal} ref={ref} />
         </ModalWrapper>
       ) : null}
       <Container key={1}>

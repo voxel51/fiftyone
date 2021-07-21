@@ -14,6 +14,13 @@ import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
 
+export const isModalActive = selector<boolean>({
+  key: "isModalActive",
+  get: ({ get }) => {
+    return Boolean(get(atoms.modal));
+  },
+});
+
 export const refresh = selector<boolean>({
   key: "refresh",
   get: ({ get }) => get(atoms.stateDescription).refresh,

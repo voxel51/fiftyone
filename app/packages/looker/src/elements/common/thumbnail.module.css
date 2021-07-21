@@ -1,0 +1,17 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
+.lookerThumbnailSelector {
+  width: 100%;
+  height: auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  background: linear-gradient(
+    0deg,
+    hsl(210, 11%, 11%) 0%,
+    hsl(210, 11%, 11%) 90%
+  );
+}

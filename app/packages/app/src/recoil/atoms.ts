@@ -1,14 +1,16 @@
-import { atom, atomFamily, SerializableParam } from "recoil";
+import { Sample, Dimensions } from "@fiftyone/looker/src/state";
+import { atom, atomFamily } from "recoil";
 
-export const modal = atom<{
-  visible: boolean;
-  sampleId: string;
-}>({
+export interface SampleData {
+  sample: Sample;
+  dimensions: Dimensions;
+  frameRate?: number;
+  frameNumber?: number;
+}
+
+export const modal = atom<SampleData | null>({
   key: "modal",
-  default: {
-    visible: false,
-    sampleId: null,
-  },
+  default: null,
 });
 
 export interface SortResults {
@@ -169,9 +171,4 @@ export const appTeamsIsOpen = atom({
 export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
-});
-
-export const modalSample = atom({
-  key: "modalSample",
-  default: null,
 });

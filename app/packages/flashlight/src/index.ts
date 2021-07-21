@@ -25,6 +25,7 @@ export interface FlashlightConfig<K> {
   render: Render;
   initialRequestKey: K;
   options: FlashlightOptions;
+  onClick?: (id: string) => void;
 }
 
 export default class Flashlight<K> {
@@ -39,7 +40,6 @@ export default class Flashlight<K> {
     this.config = config;
     this.container.classList.add(flashlight);
     this.state = this.getEmptyState(config);
-
     this.setObservers();
     this.get();
 
@@ -145,7 +145,8 @@ export default class Flashlight<K> {
           const sectionElement = new SectionElement(
             this.state.sections.length,
             rows,
-            this.state.render
+            this.state.render,
+            this.state.onClick
           );
           sectionElement.set(
             this.state.height,
@@ -212,7 +213,8 @@ export default class Flashlight<K> {
           const sectionElement = new SectionElement(
             this.state.sections.length,
             rows,
-            this.state.render
+            this.state.render,
+            this.state.onClick
           );
           sectionElement.set(
             this.state.height,
@@ -349,6 +351,7 @@ export default class Flashlight<K> {
       },
       clean: new Set(),
       shownSections: new Set(),
+      onClick: config.onClick,
     };
   }
 }

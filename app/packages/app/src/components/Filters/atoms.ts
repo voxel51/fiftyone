@@ -87,7 +87,7 @@ const modalStatsRaw = selector({
       type: "modal_statistics",
       uuid: id,
       args: {
-        sample_id: get(atoms.modal).sampleId,
+        sample_id: get(atoms.modal).sample._id,
       },
     });
 
@@ -108,7 +108,7 @@ const extendedModalStatsRaw = selector({
       type: "modal_statistics",
       uuid: id,
       args: {
-        sample_id: get(atoms.modal).sampleId,
+        sample_id: get(atoms.modal).sample._id,
         filters: get(modalFilterStages),
       },
     });
@@ -352,7 +352,7 @@ export const scalarCounts = selectorFamily<
   key: "scalarCounts",
   get: (modal) => ({ get }) => {
     if (modal) {
-      return get(atoms.modalSample);
+      return get(atoms.modal).sample;
     }
 
     const names = get(selectors.scalarNames("sample"));

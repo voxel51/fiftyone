@@ -23,9 +23,14 @@ export default class SectionElement implements Section {
     [HTMLElement, ItemData][]
   ][];
   private readonly render: Render;
-  private destoryCallbacks: { [id: string]: () => void };
+  private destoryCallbacks: { [id: string]: ReturnType<Render> };
 
-  constructor(index: number, rows: RowData[], render: Render) {
+  constructor(
+    index: number,
+    rows: RowData[],
+    render: Render,
+    onClick?: (id: string) => void
+  ) {
     this.index = index;
     this.container.classList.add(flashlightSectionContainer);
     this.container.dataset.index = String(index);
@@ -38,6 +43,8 @@ export default class SectionElement implements Section {
         { aspectRatio, extraMargins },
         items.map((itemData) => {
           const itemElement = document.createElement("div");
+          onClick &&
+            itemElement.addEventListener("click", () => onClick(itemData.id));
           this.section.appendChild(itemElement);
           return [itemElement, itemData];
         }),
@@ -66,13 +73,12 @@ export default class SectionElement implements Section {
             (width - (items.length - 1 + extraMargins) * margin) /
             rowAspectRatio;
           let left = 0;
-          items.forEach(([item, { aspectRatio, id }]) => {
+          items.forEach(([item, { aspectRatio }]) => {
             const itemWidth = height * aspectRatio;
             item.style.height = `${height}px`;
             item.style.width = `${itemWidth}px`;
             item.style.left = `${left}px`;
             item.style.top = `${localTop}px`;
-            this.destoryCallbacks[id] = this.render(id, item);
 
             left += itemWidth + margin;
           });
@@ -104,6 +110,7 @@ export default class SectionElement implements Section {
   }
 
   hide(): void {
+    return;
     if (this.attached) {
       this.container.removeChild(this.section);
       this.attached = false;
@@ -120,6 +127,12 @@ export default class SectionElement implements Section {
 
   show(): void {
     if (!this.attached) {
+      this.rows.forEach(([_, items]) =>
+        items.forEach(([item, { id }]) => {
+          this.destoryCallbacks[id] = this.render(id, item);
+        })
+      );
+
       this.container.appendChild(this.section);
       this.attached = true;
     }

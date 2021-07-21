@@ -59,9 +59,8 @@ export { zoomAspectRatio } from "./zoom";
 
 const labelsWorker = createWorker();
 
-type ImageSource = HTMLImageElement | HTMLVideoElement;
-
 export abstract class Looker<
+  ImageSource extends CanvasImageSource,
   State extends BaseState = BaseState,
   Sample extends BaseSample = BaseSample
 > {
@@ -96,8 +95,12 @@ export abstract class Looker<
     this.ctx = this.canvas.getContext("2d");
     this.imageSource = this.lookerElement.children[0].element as ImageSource;
     this.resizeObserver = new ResizeObserver(() =>
-      requestAnimationFrame(() =>
-        this.updater({ windowBBox: getElementBBox(this.lookerElement.element) })
+      requestAnimationFrame(
+        () =>
+          this.lookerElement &&
+          this.updater({
+            windowBBox: getElementBBox(this.lookerElement.element),
+          })
       )
     );
   }
@@ -239,8 +242,16 @@ export abstract class Looker<
   }
 
   destroy(): void {
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(
+      0,
+      0,
+      this.state.windowBBox[2],
+      this.state.windowBBox[3]
+    );
     this.detach();
     delete this.lookerElement;
+    delete this.imageSource;
   }
 
   abstract updateOptions(options: Optional<State["options"]>): void;
@@ -417,7 +428,7 @@ export abstract class Looker<
   }
 }
 
-export class FrameLooker extends Looker<FrameState> {
+export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
   private overlays: Overlay<FrameState>[];
 
   constructor(
@@ -511,7 +522,7 @@ export class FrameLooker extends Looker<FrameState> {
   }
 }
 
-export class ImageLooker extends Looker<ImageState> {
+export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
   private overlays: Overlay<ImageState>[];
 
   constructor(
@@ -757,7 +768,11 @@ const { aquireReader, addFrame } = (() => {
 
 let lookerWithReader: VideoLooker | null = null;
 
-export class VideoLooker extends Looker<VideoState, VideoSample> {
+export class VideoLooker extends Looker<
+  HTMLVideoElement,
+  VideoState,
+  VideoSample
+> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number, force?: boolean) => void;
@@ -779,7 +794,15 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 
   get waiting() {
-    return this.imageSource.seeking;
+    return this.imageSource.seeking || this.imageSource.readyState < 2;
+  }
+
+  destroy() {
+    this.imageSource.pause();
+    this.imageSource.removeAttribute("src");
+    this.imageSource.load();
+
+    super.destroy();
   }
 
   dispatchImpliedEvents(
@@ -952,6 +975,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         update: this.updater,
         dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       });
+      lookerWithReader && lookerWithReader.pause();
       lookerWithReader = this;
       this.state.buffers = [[1, 1]];
     } else if (lookerWithReader !== this && frameCount) {

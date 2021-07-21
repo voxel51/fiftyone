@@ -10,6 +10,11 @@ export interface BaseSample {
     height: number;
   };
   _id: string;
+  _media_type: "image" | "image";
+}
+
+export interface Sample extends BaseSample {
+  filepath: string;
 }
 
 export interface LabelData {

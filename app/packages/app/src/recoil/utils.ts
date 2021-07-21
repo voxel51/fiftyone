@@ -5,7 +5,6 @@ import * as selectors from "./selectors";
 
 import { labelFilters } from "../components/Filters/LabelFieldFilters.state";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { getMimeType } from "../utils/generic";
 import { http } from "../shared/connection";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
@@ -36,8 +35,8 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
 
 export const useSetModal = () => {
   return useRecoilCallback(
-    ({ set }) => async (sampleId: string) => {
-      set(atoms.modal, { visible: true, sampleId: sampleId });
+    ({ set }) => async (data: atoms.SampleData) => {
+      set(atoms.modal, data);
       set(labelFilters(true), {});
     },
     []
@@ -46,10 +45,10 @@ export const useSetModal = () => {
 
 export const useClearModal = () => {
   return useRecoilCallback(
-    ({ reset, set }) => async () => {
-      reset(atoms.modal);
+    ({ set }) => async () => {
+      set(atoms.modal, null);
       set(selectors.selectedLabels, {});
-      reset(atoms.hiddenLabels);
+      set(atoms.hiddenLabels, {});
     },
     []
   );

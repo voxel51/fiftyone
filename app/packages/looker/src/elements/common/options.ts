@@ -5,12 +5,8 @@
 import { BaseState, VideoState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import {
-  lookerOptionsPanel,
-  lookerOptionsInput,
-  lookerCheckbox,
-  lookerLabel,
-} from "./options.module.css";
+import { lookerOptionsPanel, lookerOptionsInput } from "./options.module.css";
+import { makeCheckboxRow } from "./util";
 
 export class OptionsPanelElement<State extends BaseState> extends BaseElement<
   State
@@ -293,22 +289,3 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
     return this.element;
   }
 }
-
-const makeCheckboxRow = function (
-  text: string,
-  checked: boolean
-): [HTMLLabelElement, HTMLInputElement] {
-  const label = document.createElement("label");
-  label.classList.add(lookerLabel);
-  label.innerHTML = text;
-
-  const checkbox = document.createElement("input");
-  checkbox.setAttribute("type", "checkbox");
-  checkbox.checked = checked;
-  const span = document.createElement("span");
-  span.classList.add(lookerCheckbox);
-  label.appendChild(checkbox);
-  label.appendChild(span);
-
-  return [label, checkbox];
-};

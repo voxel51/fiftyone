@@ -539,7 +539,6 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
       },
       mouseenter: ({ update }) => {
         update(({ config: { thumbnail } }) => {
-          return {};
           if (thumbnail) {
             return {
               playing: true,

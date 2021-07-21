@@ -17,9 +17,8 @@ import { activeFields } from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { getSampleSrc, lookerType } from "../recoil/utils";
+import { getSampleSrc, lookerType, useSetModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
-import { filterView } from "../utils/view";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -35,7 +34,11 @@ const gridRowAspectRatio = selector<number>({
 
 const MARGIN = 3;
 
-let samples = new Map<string, any>();
+let samples = new Map<string, atoms.SampleData>();
+let lookers = new Map<
+  string,
+  WeakRef<FrameLooker | ImageLooker | VideoLooker>
+>();
 
 const url = (() => {
   let origin = window.location.origin;
@@ -146,13 +149,13 @@ export default React.memo(() => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
+  const setModal = useSetModal();
 
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached()) {
       return;
     }
 
-    lookers = new Map();
     samples = new Map();
     flashlight.current.reset();
   }, [flashlight, filters, datasetName, view, refresh]);
@@ -162,6 +165,14 @@ export default React.memo(() => {
       flashlight.current = new Flashlight<number>({
         initialRequestKey: 1,
         options,
+        onClick: (sampleId) => {
+          const data = samples.get(sampleId);
+          setModal({
+            sample: data.sample,
+            dimensions: [data.width, data.height],
+            frameRate: data.frame_rate,
+          });
+        },
         get: async (page) => {
           const { results, more } = await fetch(
             `${url}page=${page}`
@@ -191,19 +202,29 @@ export default React.memo(() => {
 
           let looker, destroyed;
 
-          lookerGeneratorRef.current(result).then((looker) => {
-            !destroyed && looker.attach(element);
+          lookerGeneratorRef.current(result).then((item) => {
+            looker = item;
+
+            if (!destroyed) {
+              lookers.set(sampleId, new WeakRef(looker));
+              looker.attach(element);
+            }
           });
 
           return () => {
             looker && looker.destroy();
             destroyed = true;
+            looker = null;
           };
         },
       });
       flashlight.current.attach(id);
     } else {
       flashlight.current.updateOptions(options);
+      flashlight.current.updateItems((sampleId) => {
+        const looker = lookers.get(sampleId)?.deref();
+        looker && looker.updateOptions(lookerOptions);
+      });
     }
   }, [id, options, lookerOptions]);
 

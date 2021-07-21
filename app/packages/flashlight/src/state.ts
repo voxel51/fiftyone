@@ -59,4 +59,5 @@ export interface State<K> {
   clean: Set<number>;
   updater?: (id: string) => void;
   shownSections: Set<number>;
+  onClick?: (id: string) => void;
 }

@@ -385,17 +385,12 @@ const useFullscreen = () => {
 
 interface LookerProps {
   lookerRef?: MutableRefObject<any>;
-  modal: boolean;
   onClose?: EventCallback;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onNext?: EventCallback;
   onPrevious?: EventCallback;
   onSelectLabel?: EventCallback;
-  sampleId: string;
   style?: React.CSSProperties;
-  dimensions: [number, number];
-  frameRate?: number;
-  frameNumber?: number;
 }
 
 const Looker = ({
@@ -405,14 +400,12 @@ const Looker = ({
   onNext,
   onPrevious,
   onSelectLabel,
-  sampleId,
   style,
-  dimensions,
-  frameRate,
-  frameNumber,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const sample = useRecoilValue(atoms.modalSample);
+  const { sample, dimensions, frameRate, frameNumber } = useRecoilValue(
+    atoms.modal
+  );
   const mimetype = getMimeType(sample);
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerModalOptions);
@@ -431,7 +424,7 @@ const Looker = ({
         dimensions,
         frameRate,
         frameNumber,
-        sampleId,
+        sampleId: sample._id,
         thumbnail: false,
       },
       {
@@ -480,12 +473,6 @@ const Looker = ({
       }}
       onClick={onClick}
     >
-      {error && (
-        <InfoWrapper>
-          <Warning classes={{ root: "error" }} />
-          <div>{error}</div>
-        </InfoWrapper>
-      )}
       {<TooltipInfo looker={looker} />}
     </div>
   );

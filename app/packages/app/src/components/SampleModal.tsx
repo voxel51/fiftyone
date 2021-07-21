@@ -1,11 +1,6 @@
-import React, { Suspense, useState, useRef, useMemo } from "react";
+import React, { Suspense, useRef } from "react";
 import styled from "styled-components";
-import {
-  useRecoilValue,
-  useRecoilState,
-  selector,
-  useRecoilCallback,
-} from "recoil";
+import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
@@ -16,28 +11,7 @@ import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
-const modalSrc = selector<string | null>({
-  key: "modalSrc",
-  get: ({ get }) => get(selectors.sampleSrc(get(atoms.modal).sampleId)),
-});
-
-const modalIndex = selector<number>({
-  key: "modalIndex",
-  get: ({ get }) => {
-    const { sampleId } = get(atoms.modal);
-    return get(selectors.sampleIndices)[sampleId];
-  },
-  set: ({ get, set }, value) => {
-    if (typeof value !== "number") {
-      value = 0;
-    }
-    set(atoms.modal, {
-      visible: true,
-      sampleId: get(selectors.sampleIds)[value],
-    });
-  },
-});
+import { getSampleSrc } from "../recoil/utils";
 
 const Container = styled.div`
   position: relative;
@@ -188,7 +162,6 @@ const Row = ({ name, value, children, ...rest }: RowProps) => (
 
 type Props = {
   onClose: () => void;
-  sampleId: string;
 };
 
 interface SelectEvent {
@@ -204,7 +177,7 @@ const useOnSelectLabel = () => {
     ({ snapshot, set }) => async ({
       detail: { id, field, frameNumber },
     }: SelectEvent) => {
-      const { sampleId } = await snapshot.getPromise(atoms.modal);
+      const { sample } = await snapshot.getPromise(atoms.modal);
       let labels = {
         ...(await snapshot.getPromise(selectors.selectedLabels)),
       };
@@ -213,7 +186,7 @@ const useOnSelectLabel = () => {
       } else {
         labels[id] = {
           field,
-          sample_id: sampleId,
+          sample_id: sample._id,
           frame_number: frameNumber,
         };
       }
@@ -223,44 +196,24 @@ const useOnSelectLabel = () => {
   );
 };
 
-const SampleModal = ({ onClose, sampleId }: Props, ref) => {
-  const { filepath, _media_type, metadata, _id } = useRecoilValue(
-    atoms.sample(sampleId)
-  );
+const SampleModal = ({ onClose }: Props, ref) => {
   const fullscreen = useRecoilValue(atoms.fullscreen);
-  const sampleSrc = useRecoilValue(modalSrc);
-  const [index, setIndex] = useRecoilState(modalIndex);
-  const numSamples = useRecoilValue(selectors.currentSamplesSize);
+  const {
+    sample: { filepath, _id, _media_type, metadata },
+  } = useRecoilValue(atoms.modal);
+
+  const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
 
-  const onNext = useMemo(() => {
-    if (index < numSamples - 1) {
-      return () => setIndex(index + 1);
-    }
-    return null;
-  }, [index, numSamples]);
-
-  const onPrevious = useMemo(() => {
-    if (index > 0) {
-      return () => setIndex(index - 1);
-    }
-    return null;
-  }, [index]);
-
   const theme = useTheme();
-
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>
       <div className={`looker-element`}>
         <Looker
           key={`modal-${sampleSrc}`} // force re-render when this changes
-          sampleId={_id}
-          modal={true}
           lookerRef={lookerRef}
           onSelectLabel={onSelectLabel}
-          onNext={onNext}
-          onPrevious={onPrevious}
           onClose={onClose}
         />
       </div>

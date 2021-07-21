@@ -195,7 +195,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     const cursor = this.cursor;
     if (panning) {
       cursor !== "all-scroll" && (this.cursor = "all-scroll");
-    } else if (!thumbnail && mouseIsOnOverlay && !disableOverlays) {
+    } else if (thumbnail || (mouseIsOnOverlay && !disableOverlays)) {
       cursor !== "pointer" && (this.cursor = "pointer");
     } else if (thumbnail) {
       cursor !== "unset" && (this.cursor = "unset");

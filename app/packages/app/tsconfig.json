@@ -1,6 +1,8 @@
 {
     "compilerOptions": {
-        "module": "es2020",
+        "target": "ESNext",
+        "module": "ESNext",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
         "noImplicitAny": false,
         "sourceMap": true,
         "outDir": "dist",
