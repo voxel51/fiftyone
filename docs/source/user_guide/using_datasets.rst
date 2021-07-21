@@ -790,28 +790,37 @@ about the raw data in the sample. The :ref:`FiftyOne App <fiftyone-app>` and
 the :ref:`FiftyOne Brain <fiftyone-brain>` will use this provided metadata in
 some workflows when it is available.
 
-You can automically compute metadata for all samples in a dataset via
-:meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`.
-
 .. tabs::
 
     .. group-tab:: Images
 
-        For image samples, use the |ImageMetadata| class to store information
-        about your image.
-
-        |ImageMetadata| instances can also store arbitrary custom fields, but,
-        by default, they provide
+        For image samples, the |ImageMetadata| class is used to store
+        information about images, including their
         :attr:`size_bytes <fiftyone.core.metadata.ImageMetadata.size_bytes>`,
         :attr:`mime_type <fiftyone.core.metadata.ImageMetadata.mime_type>`,
         :attr:`width <fiftyone.core.metadata.ImageMetadata.width>`,
         :attr:`height <fiftyone.core.metadata.ImageMetadata.height>`, and
-        :attr:`num_channels <fiftyone.core.metadata.ImageMetadata.num_channels>`
-        attributes, which are `None` by default.
+        :attr:`num_channels <fiftyone.core.metadata.ImageMetadata.num_channels>`.
 
-        FiftyOne provides a convenient
+        You can populate the `metadata` field of an existing dataset by calling
+        :meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Populate metadata fields (if necessary)
+            dataset.compute_metadata()
+
+            print(dataset.first())
+
+        Alternatively, FiftyOne provides a
         :meth:`ImageMetadata.build_for() <fiftyone.core.metadata.ImageMetadata.build_for>`
-        factory method that you can use to populate metdata for your images:
+        factory method that you can use to compute the metadata for your images
+        when constructing |Sample| instances:
 
         .. code-block:: python
             :linenos:
@@ -842,11 +851,8 @@ You can automically compute metadata for all samples in a dataset via
 
     .. group-tab:: Videos
 
-        For video samples, use the |VideoMetadata| class to store information
-        about your video.
-
-        |VideoMetadata| instances can also store arbitrary custom fields, but,
-        by default, they provide
+        For video samples, the |VideoMetadata| class is used to store
+        information about videos, including their
         :attr:`size_bytes <fiftyone.core.metadata.VideoMetadata.size_bytes>`,
         :attr:`mime_type <fiftyone.core.metadata.VideoMetadata.mime_type>`,
         :attr:`frame_width <fiftyone.core.metadata.VideoMetadata.frame_width>`,
@@ -854,12 +860,27 @@ You can automically compute metadata for all samples in a dataset via
         :attr:`frame_rate <fiftyone.core.metadata.VideoMetadata.frame_rate>`,
         :attr:`total_frame_count <fiftyone.core.metadata.VideoMetadata.total_frame_count>`,
         :attr:`duration <fiftyone.core.metadata.VideoMetadata.duration>`, and
-        :attr:`encoding_str <fiftyone.core.metadata.VideoMetadata.encoding_str>`
-        attributes, which are `None` by default.
+        :attr:`encoding_str <fiftyone.core.metadata.VideoMetadata.encoding_str>`.
 
-        FiftyOne provides a convenient
+        You can populate the `metadata` field of an existing dataset by calling
+        :meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Populate metadata fields (if necessary)
+            dataset.compute_metadata()
+
+            print(dataset.first())
+
+        Alternatively, FiftyOne provides a
         :meth:`VideoMetadata.build_for() <fiftyone.core.metadata.VideoMetadata.build_for>`
-        factory method that you can use to populate metdata for your videos:
+        factory method that you can use to compute the metadata for your videos
+        when constructing |Sample| instances:
 
         .. code-block:: python
             :linenos:
@@ -890,45 +911,6 @@ You can automically compute metadata for all samples in a dataset via
                     'encoding_str': 'avc1',
                 }>,
                 'frames': <Frames: 0>,
-            }>
-
-    .. group-tab:: Generic data
-
-        For generic data, use the |Metadata| class to store information about
-        your sample.
-
-        |Metadata| instances can store arbitrary custom fields as desired, but,
-        by default, they provide
-        :attr:`size_bytes <fiftyone.core.metadata.Metadata.size_bytes>` and
-        :attr:`mime_type <fiftyone.core.metadata.Metadata.mime_type>`
-        attributes, which are `None` by default.
-
-        FiftyOne provides a convenient
-        :meth:`Metadata.build_for() <fiftyone.core.metadata.Metadata.build_for>`
-        factory method that you can use to populate metdata for your samples:
-
-        .. code-block:: python
-            :linenos:
-
-            data_path = "/path/to/data.zip"
-
-            metadata = fo.Metadata.build_for(data_path)
-
-            sample = fo.Sample(filepath=data_path, metadata=metadata)
-
-            print(sample)
-
-        .. code-block:: text
-
-            <Sample: {
-                'id': None,
-                'media_type': '-',
-                'filepath': '/path/to/data.zip',
-                'tags': [],
-                'metadata': <Metadata: {
-                    'size_bytes': 544559,
-                    'mime_type': 'application/zip',
-                }>,
             }>
 
 .. _using-labels:
@@ -1478,7 +1460,7 @@ dynamically adding new fields to each |Polyline| instance:
         points=[[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
         closed=True,
         filled=True,
-        type="right",  # custom attribute
+        kind="right",  # custom attribute
     )
 
     print(polyline)
@@ -1495,7 +1477,7 @@ dynamically adding new fields to each |Polyline| instance:
         'index': None,
         'closed': True,
         'filled': True,
-        'type': 'right',
+        'kind': 'right',
     }>
 
 You can also use :ref:`label attributes <label-attributes>` to store custom
@@ -1576,7 +1558,7 @@ dynamically adding new fields to each |Keypoint| instance:
     keypoint = fo.Keypoint(
         label="rectangle",
         points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
-        type="square",
+        kind="square",  # custom attribute
     )
 
     print(keypoint)
@@ -1591,7 +1573,7 @@ dynamically adding new fields to each |Keypoint| instance:
         'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
         'confidence': None,
         'index': None,
-        'type': 'square',
+        'kind': 'square',
     }>
 
 You can also use :ref:`label attributes <label-attributes>` to store custom
@@ -1870,7 +1852,9 @@ schema of the attributes that you're storing.
                     'id': '60f738e7467d81f41c20054c',
                     'attributes': BaseDict({
                         'age': <NumericAttribute: {'value': 51}>,
-                        'mood': <CategoricalAttribute: {'value': 'salty', 'confidence': None, 'logits': None}>,
+                        'mood': <CategoricalAttribute: {
+                            'value': 'salty', 'confidence': None, 'logits': None
+                        }>,
                     }),
                     'tags': BaseList([]),
                     'label': 'cat',
@@ -1887,7 +1871,9 @@ schema of the attributes that you're storing.
                     'id': '60f738e7467d81f41c20054d',
                     'attributes': BaseDict({
                         'age': <NumericAttribute: {'value': 51}>,
-                        'mood': <CategoricalAttribute: {'value': 'surly', 'confidence': 0.95, 'logits': None}>,
+                        'mood': <CategoricalAttribute: {
+                            'value': 'surly', 'confidence': 0.95, 'logits': None
+                        }>,
                     }),
                     'tags': BaseList([]),
                     'label': 'cat',

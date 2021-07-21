@@ -241,8 +241,8 @@ like.
 Metadata
 --------
 
-All |Sample| instances have a `metadata` attribute, which can store
-type-specific metadata about the source data in the sample.
+All |Sample| instances have a `metadata` attribute that stores type-specific
+metadata about the source media of the sample.
 
 .. custombutton::
     :button_text: Learn more about adding metadata to your samples
