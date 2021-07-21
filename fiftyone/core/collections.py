@@ -6499,7 +6499,7 @@ class SampleCollection(object):
             ignore_primitives=ignore_primitives,
         )
 
-    def _get_attributes_schema(self, label_field):
+    def _get_label_attributes_schema(self, label_field):
         label_type, attrs_path = self._get_label_field_path(
             label_field, "attributes"
         )
