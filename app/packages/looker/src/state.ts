@@ -42,6 +42,7 @@ interface BaseOptions {
   hasPrevious: boolean;
   fullscreen: boolean;
   zoomPad: number;
+  fieldsMap?: { [key: string]: string };
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -84,6 +85,7 @@ export interface VideoOptions extends BaseOptions {
   playbackRate: number;
   useFrameNumber: boolean;
   volume: number;
+  frameFieldsMap?: { [key: string]: string };
 }
 
 export interface TooltipOverlay {
@@ -192,6 +194,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   hasPrevious: false,
   fullscreen: false,
   zoomPad: 0.1,
+  fieldsMap: {},
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
@@ -212,6 +215,7 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
+  frameFieldsMap: {},
 };
 
 export interface FrameSample {

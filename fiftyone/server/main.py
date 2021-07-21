@@ -752,7 +752,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         if filters is not None:
-            view = get_extended_view(view, filters)
+            view = get_extended_view(
+                view, filters, count_labels_tags=False, only_matches=False
+            )
 
         view = view.select(sample_id)
 

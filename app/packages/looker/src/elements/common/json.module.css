@@ -7,8 +7,16 @@
 .lookerJSONPanel > div > div {
   width: 100%;
   height: 100%;
+  position: relative;
 }
 
 .lookerJSONPanel pre {
   font-weight: normal;
+}
+
+.lookerCloseJSON {
+  position: absolute;
+  top: 0;
+  right: 0;
+  cursor: pointer;
 }

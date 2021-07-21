@@ -38,7 +38,6 @@ import {
   VideoSample,
   FrameSample,
   Buffers,
-  BoundingBox,
   LabelData,
   BufferRange,
 } from "./state";
@@ -246,7 +245,19 @@ export abstract class Looker<
   }
 
   getSample(): Promise<Sample> {
-    return Promise.resolve(this.sample);
+    let sample = { ...this.sample };
+
+    console.log(Object.keys(sample), this.state.options.fieldsMap);
+    for (const field in sample) {
+      if (this.state.options.fieldsMap.hasOwnProperty(field)) {
+        sample[this.state.options.fieldsMap[field]] = sample[field];
+        delete sample[field];
+      } else if (field.startsWith("_")) {
+        delete sample[field];
+      }
+    }
+
+    return Promise.resolve(sample);
   }
 
   getCurrentSampleLabels(): LabelData[] {

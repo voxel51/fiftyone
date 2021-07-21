@@ -19,8 +19,10 @@ import {
   lookerPanelContainer,
   lookerPanelHeader,
   lookerPanelVerticalContainer,
+  lookerPanelClose,
 } from "./panel.module.css";
 import { dispatchTooltipEvent } from "./util";
+import closeIcon from "../../icons/close.svg";
 
 type Action<State extends BaseState> = (
   update: StateUpdate<State>,
@@ -58,14 +60,14 @@ const escape: Control = {
   title: "Escape context",
   shortcut: "Esc",
   eventKeys: "Escape",
-  detail: "Escape help -> settings -> zoom -> fullscreen -> close",
+  detail: "Escape help -> JSON -> settings -> zoom -> fullscreen -> close",
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
         hasDefaultZoom,
         showHelp,
         showOptions,
-        options: { fullscreen: fullscreenSetting },
+        options: { fullscreen: fullscreenSetting, showJSON },
       }) => {
         if (showHelp) {
           return { showHelp: false };
@@ -73,6 +75,10 @@ const escape: Control = {
 
         if (showOptions) {
           return { showOptions: false };
+        }
+
+        if (showJSON) {
+          return { options: { showJSON: false } };
         }
 
         if (!hasDefaultZoom) {
@@ -516,10 +522,9 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event }) => {
         event.stopPropagation();
         event.preventDefault();
-        update({ showHelp: false });
       },
       dblclick: ({ event }) => {
         event.stopPropagation();
@@ -528,8 +533,8 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     };
   }
 
-  createHTMLElement() {
-    return this.createHelpPanel(COMMON);
+  createHTMLElement(update) {
+    return this.createHelpPanel(update, COMMON);
   }
 
   isShown({ config: { thumbnail } }: Readonly<State>) {
@@ -554,7 +559,10 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     return this.element;
   }
 
-  protected createHelpPanel(controls: ControlMap<State>): HTMLElement {
+  protected createHelpPanel(
+    update: StateUpdate<State>,
+    controls: ControlMap<State>
+  ): HTMLElement {
     const element = document.createElement("div");
     const header = document.createElement("div");
     header.innerText = "Help";
@@ -576,6 +584,12 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     items.classList.add(lookerHelpPanelItems);
     this.items = items;
 
+    const close = document.createElement("img");
+    close.src = closeIcon;
+    close.classList.add(lookerPanelClose);
+    close.onclick = () => update({ showHelp: false });
+    element.appendChild(close);
+
     Object.values(controls)
       .sort((a, b) => (a.shortcut > b.shortcut ? 1 : -1))
       .forEach(addItem(items));
@@ -591,8 +605,8 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
 export class VideoHelpPanelElement<
   State extends VideoState
 > extends HelpPanelElement<State> {
-  createHTMLElement() {
-    return this.createHelpPanel({ ...COMMON, ...VIDEO });
+  createHTMLElement(update) {
+    return this.createHelpPanel(update, { ...COMMON, ...VIDEO });
   }
 }
 

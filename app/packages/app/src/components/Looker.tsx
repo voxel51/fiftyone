@@ -376,9 +376,13 @@ const lookerOptions = selector<
   get: ({ get }) => {
     return {
       colorMap: get(selectors.colorMap(false)),
+      filter: get(labelFilters(false)),
     };
   },
 });
+
+const reverse = (obj) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
 
 const lookerModalOptions = selector<
   Partial<FrameOptions | ImageOptions | VideoOptions>
@@ -392,6 +396,8 @@ const lookerModalOptions = selector<
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
+      fieldsMap: reverse(get(selectors.scalarsDbMap("sample"))),
+      frameFieldsMap: reverse(get(selectors.scalarsDbMap("frame"))),
     };
   },
 });

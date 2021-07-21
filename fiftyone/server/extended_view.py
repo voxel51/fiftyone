@@ -32,13 +32,17 @@ def get_view_field(fields_map, path):
     return F(path)
 
 
-def get_extended_view(view, filters, count_labels_tags=False):
+def get_extended_view(
+    view, filters, count_labels_tags=False, only_matches=True
+):
     """Create an extended view with the provided filters.
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         filters: a `dict` of App defined filters
         count_labels_tags (False): whether to set the hideen `_label_tags` field
             with counts of tags with respect to all label fields
+        only_matches (True): whether to filter unmatches samples when filtering
+            labels
     """
     cleanup_fields = set()
     filtered_labels = set()
@@ -57,7 +61,11 @@ def get_extended_view(view, filters, count_labels_tags=False):
                 view = view.match_tags(tags=tags["sample"])
 
         stages, cleanup_fields, filtered_labels = _make_filter_stages(
-            view, filters, label_tags=label_tags, hide_result=count_labels_tags
+            view,
+            filters,
+            label_tags=label_tags,
+            hide_result=count_labels_tags,
+            only_matches=only_matches,
         )
 
         for stage in stages:
@@ -99,7 +107,9 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     return view
 
 
-def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
+def _make_filter_stages(
+    view, filters, label_tags=None, hide_result=False, only_matches=True
+):
     field_schema = view.get_field_schema()
     if view.media_type == fom.VIDEO:
         frame_field_schema = view.get_frame_field_schema()
@@ -139,7 +149,12 @@ def _make_filter_stages(view, filters, label_tags=None, hide_result=False):
                 else:
                     new_field = None
                 stages.append(
-                    fosg.FilterLabels(path, expr, _new_field=new_field)
+                    fosg.FilterLabels(
+                        path,
+                        expr,
+                        _new_field=new_field,
+                        only_matches=only_matches,
+                    )
                 )
                 filtered_labels.add(path)
                 cleanup.add(new_field)
