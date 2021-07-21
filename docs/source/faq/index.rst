@@ -158,8 +158,7 @@ and video datasets:
 - :ref:`Classifications <classification>`
 - :ref:`Multilabel classifications <multilabel-classification>`
 - :ref:`Object detections <object-detection>`
-- :ref:`Instance segmentations <objects-with-instance-segmentations>`
-- :ref:`Object attributes <objects-with-attributes>`
+- :ref:`Instance segmentations <instance-segmentation>`
 - :ref:`Polylines and polygons <polylines>`
 - :ref:`Keypoints <keypoints>`
 - :ref:`Semantic segmentations <semantic-segmentation>`
