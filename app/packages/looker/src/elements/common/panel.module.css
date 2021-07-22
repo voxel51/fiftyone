@@ -44,7 +44,6 @@
 }
 
 .lookerPanelHeader {
-  margin-bottom: 0.5rem;
   font-size: 18px;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid rgb(225, 100, 40);
@@ -67,4 +66,10 @@
 .lookerPanelClose:hover {
   background-color: rgb(225, 100, 40);
   transform: translate(0, -1px);
+}
+
+.lookerPanelFlex {
+  display: flex;
+  max-height: 100%;
+  flex-direction: column;
 }

@@ -11,7 +11,16 @@
   grid-column-gap: 2rem;
   font-size: 1rem;
   width: 100%;
+  scrollbar-width: none;
+  flex-grow: 1;
   height: 100%;
+  overflow-y: auto;
+}
+
+.lookerHelpPanelItems::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+  display: none;
 }
 
 .lookerShortcutValue {
