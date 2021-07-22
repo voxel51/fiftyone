@@ -488,7 +488,9 @@ export class FrameLooker extends Looker<FrameState> {
       this.state.setZoom = this.hasResized();
     }
 
-    if (this.state.setZoom && this.pluckedOverlays.length) {
+    if (this.state.zoomToContent) {
+      toggleZoom(this.state, this.currentOverlays);
+    } else if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -497,11 +499,6 @@ export class FrameLooker extends Looker<FrameState> {
       }
 
       this.state.setZoom = false;
-    }
-
-    if (this.state.zoomToContent) {
-      this.state = zoomToContent(this.state, this.currentOverlays);
-      this.state.zoomToContent = false;
     }
 
     return super.postProcess();
@@ -582,7 +579,9 @@ export class ImageLooker extends Looker<ImageState> {
       this.state.setZoom = this.hasResized();
     }
 
-    if (this.state.setZoom && this.pluckedOverlays.length) {
+    if (this.state.zoomToContent) {
+      toggleZoom(this.state, this.currentOverlays);
+    } else if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -591,11 +590,6 @@ export class ImageLooker extends Looker<ImageState> {
       }
 
       this.state.setZoom = false;
-    }
-
-    if (this.state.zoomToContent) {
-      this.state = zoomToContent(this.state, this.currentOverlays);
-      this.state.zoomToContent = false;
     }
 
     return super.postProcess();
@@ -1040,17 +1034,19 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       this.state.setZoom = this.hasResized();
     }
 
-    if (this.state.setZoom) {
+    if (!this.state.setZoom) {
+      this.state.setZoom = this.hasResized();
+    }
+
+    if (this.state.zoomToContent) {
+      toggleZoom(this.state, this.currentOverlays);
+    } else if (this.state.setZoom) {
       this.state.pan = [0, 0];
       this.state.scale = 1;
 
       this.state.setZoom = false;
     }
 
-    if (this.state.zoomToContent) {
-      this.state = zoomToContent(this.state, this.currentOverlays);
-      this.state.zoomToContent = false;
-    }
     return super.postProcess();
   }
 
@@ -1072,3 +1068,38 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     );
   }
 }
+
+const toggleZoom = <State extends FrameState | ImageState | VideoState>(
+  state: State,
+  overlays: Overlay<State>[]
+) => {
+  if (state.options.selectedLabels) {
+    const ids = new Set(state.options.selectedLabels);
+    const selected = overlays.filter((o) => {
+      if (o instanceof ClassificationsOverlay) {
+        return false;
+      }
+
+      return ids.has(o.getSelectData(state).id);
+    });
+
+    if (selected.length) {
+      overlays = selected;
+    }
+  }
+  const { pan, scale } = zoomToContent(state, overlays);
+
+  if (
+    state.pan[0] === pan[0] &&
+    state.pan[1] === pan[1] &&
+    state.scale === scale
+  ) {
+    state.pan = [0, 0];
+    state.scale = 1;
+  } else {
+    state.pan = pan;
+    state.scale = scale;
+  }
+
+  state.zoomToContent = false;
+};

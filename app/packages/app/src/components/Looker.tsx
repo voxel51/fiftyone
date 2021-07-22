@@ -352,8 +352,8 @@ const defaultLookerOptions = selectorFamily({
       ? { loop: modal ? get(selectors.appConfig).loop_videos : true }
       : {};
     const zoom = get(selectors.isPatchesView)
-      ? { zoom: get(atoms.cropToContent(modal)) }
-      : {};
+      ? get(atoms.cropToContent(modal))
+      : false;
     const colorByLabel = get(atoms.colorByLabel(modal));
 
     return {
@@ -375,8 +375,12 @@ const lookerOptions = selector<
   key: "lookerOptions",
   get: ({ get }) => {
     return {
+      colorByLabel: get(atoms.colorByLabel(false)),
       colorMap: get(selectors.colorMap(false)),
       filter: get(labelFilters(false)),
+      zoom: get(selectors.isPatchesView)
+        ? get(atoms.cropToContent(false))
+        : false,
     };
   },
 });
