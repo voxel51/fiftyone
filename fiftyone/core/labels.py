@@ -1261,7 +1261,6 @@ def _render_instance(mask, detection, target):
     x0, y0 = offset
     dh, dw = obj_mask.shape
 
-    # @todo handle bboxes that extend past image extent
     overlay = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
     overlay[obj_mask] = target
     mask[y0 : (y0 + dh), x0 : (x0 + dw)] = overlay
