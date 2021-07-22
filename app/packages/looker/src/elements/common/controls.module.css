@@ -48,7 +48,6 @@
 .lookerControls img:hover,
 .lookerControls svg:hover,
 .lookerControls .lookerControlActive {
-  background-color: rgb(225, 100, 40);
   transform: translate(0, -1px);
 }
 

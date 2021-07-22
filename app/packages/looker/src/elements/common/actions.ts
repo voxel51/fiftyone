@@ -26,6 +26,7 @@ import {
   lookerPanelHeader,
   lookerPanelVerticalContainer,
   lookerPanelClose,
+  lookerPanelFlex,
 } from "./panel.module.css";
 import { dispatchTooltipEvent } from "./util";
 import closeIcon from "../../icons/close.svg";
@@ -629,7 +630,8 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     vContainer.appendChild(element);
 
     container.appendChild(vContainer);
-    const c = document.createElement("div");
+    const scroll = document.createElement("div");
+    scroll.classList.add(lookerPanelFlex);
 
     const items = document.createElement("div");
     items.classList.add(lookerHelpPanelItems);
@@ -645,9 +647,9 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
       .sort((a, b) => (a.shortcut > b.shortcut ? 1 : -1))
       .forEach(addItem(items));
 
-    c.appendChild(header);
-    c.appendChild(items);
-    element.append(c);
+    scroll.appendChild(header);
+    scroll.appendChild(items);
+    element.append(scroll);
 
     return container;
   }
