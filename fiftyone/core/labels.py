@@ -1261,9 +1261,9 @@ def _render_instance(mask, detection, target):
     x0, y0 = offset
     dh, dw = obj_mask.shape
 
-    overlay = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
-    overlay[obj_mask] = target
-    mask[y0 : (y0 + dh), x0 : (x0 + dw)] = overlay
+    patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
+    patch[obj_mask] = target
+    mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
 
 
 def _render_polyline(mask, polyline, target, thickness):
