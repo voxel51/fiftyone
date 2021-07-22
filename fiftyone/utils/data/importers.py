@@ -32,6 +32,7 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
+import fiftyone.types as fot
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
@@ -470,7 +471,7 @@ def _build_parse_sample_fcn(
 
 
 def build_dataset_importer(
-    dataset_type, strip_none=True, warn_unused=True, **kwargs
+    dataset_type, strip_none=True, warn_unused=True, name=None, **kwargs
 ):
     """Builds the :class:`DatasetImporter` instance for the given parameters.
 
@@ -479,6 +480,7 @@ def build_dataset_importer(
         strip_none (True): whether to exclude None-valued items from ``kwargs``
         warn_unused (True): whether to issue warnings for any non-None unused
             parameters encountered
+        name (None): the name of the dataset being imported into, if known
         **kwargs: keyword arguments to pass to the dataset importer's
             constructor via ``DatasetImporter(**kwargs)``
 
@@ -496,6 +498,26 @@ def build_dataset_importer(
 
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
+
+    # If we're importing TFRecords, they must be unpacked into an `images_dir`
+    # during import
+    if (
+        isinstance(
+            dataset_type,
+            (fot.TFImageClassificationDataset, fot.TFObjectDetectionDataset),
+        )
+        and "images_dir" not in kwargs
+    ):
+        if name is None:
+            name = fod.get_default_dataset_name()
+
+        images_dir = fod.get_default_dataset_dir(name)
+        logger.info(
+            "Unpacking images to '%s'. Pass the `images_dir` parameter to "
+            "customize this",
+            images_dir,
+        )
+        kwargs["images_dir"] = images_dir
 
     dataset_importer_cls = dataset_type.get_dataset_importer_cls()
 

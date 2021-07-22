@@ -9,7 +9,6 @@ from collections import defaultdict
 from copy import deepcopy
 import datetime
 import fnmatch
-import inspect
 import logging
 import numbers
 import os
@@ -43,7 +42,6 @@ import fiftyone.core.stages as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 
 foud = fou.lazy_import("fiftyone.utils.data")
 
@@ -2179,30 +2177,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        # If the input dataset contains TFRecords, they must be unpacked into a
-        # directory during import
-        if (
-            isinstance(
-                dataset_type,
-                (
-                    fot.TFImageClassificationDataset,
-                    fot.TFObjectDetectionDataset,
-                ),
-            )
-            and "images_dir" not in kwargs
-        ):
-            images_dir = get_default_dataset_dir(self.name)
-            logger.info("Unpacking images to '%s'", images_dir)
-            kwargs["images_dir"] = images_dir
-
         dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,
             data_path=data_path,
             labels_path=labels_path,
+            name=self.name,
             **kwargs,
         )
 
@@ -2373,30 +2353,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
         """
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        # If the input dataset contains TFRecords, they must be unpacked into a
-        # directory during import
-        if (
-            isinstance(
-                dataset_type,
-                (
-                    fot.TFImageClassificationDataset,
-                    fot.TFObjectDetectionDataset,
-                ),
-            )
-            and "images_dir" not in kwargs
-        ):
-            images_dir = get_default_dataset_dir(self.name)
-            logger.info("Unpacking images to '%s'", images_dir)
-            kwargs["images_dir"] = images_dir
-
         dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,
             data_path=data_path,
             labels_path=labels_path,
+            name=self.name,
             **kwargs,
         )
 
