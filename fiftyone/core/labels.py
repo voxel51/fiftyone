@@ -379,7 +379,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         )
         return Polyline.from_eta_polyline(polyline)
 
-    def to_segmentation(self, mask=None, frame_size=None, target=1):
+    def to_segmentation(self, mask=None, frame_size=None, target=255):
         """Returns a :class:`Segmentation` representation of this instance.
 
         The detection must have an instance mask, i.e., its :attr:`mask`
@@ -393,7 +393,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            target (1): the pixel value to use to render the object
+            target (255): the pixel value to use to render the object
 
         Returns:
             a :class:`Segmentation`
@@ -685,7 +685,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         )
 
     def to_segmentation(
-        self, mask=None, frame_size=None, target=1, thickness=1
+        self, mask=None, frame_size=None, target=255, thickness=1
     ):
         """Returns a :class:`Segmentation` representation of this instance.
 
@@ -697,7 +697,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            target (1): the pixel value to use to render the object
+            target (255): the pixel value to use to render the object
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
