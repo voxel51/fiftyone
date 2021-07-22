@@ -12,6 +12,7 @@ import {
   MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
   DASH_LENGTH,
+  LABEL_LISTS,
 } from "./constants";
 import {
   getFrameElements,
@@ -20,7 +21,7 @@ import {
 } from "./elements";
 import { LookerElement } from "./elements/common";
 import processOverlays from "./processOverlays";
-import { ClassificationsOverlay, loadOverlays } from "./overlays";
+import { ClassificationsOverlay, FROM_FO, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
@@ -246,14 +247,29 @@ export abstract class Looker<
 
   getSample(): Promise<Sample> {
     let sample = { ...this.sample };
-
-    console.log(Object.keys(sample), this.state.options.fieldsMap);
     for (const field in sample) {
       if (this.state.options.fieldsMap.hasOwnProperty(field)) {
         sample[this.state.options.fieldsMap[field]] = sample[field];
         delete sample[field];
       } else if (field.startsWith("_")) {
         delete sample[field];
+      } else if (
+        sample[field] &&
+        sample[field]._cls &&
+        FROM_FO.hasOwnProperty(sample[field]._cls)
+      ) {
+        if (!this.state.options.activeLabels.includes(field)) {
+          delete sample[field];
+          continue;
+        }
+
+        if (LABEL_LISTS[sample[field]._cls]) {
+          sample[field] = sample[field][
+            LABEL_LISTS[sample[field]._cls]
+          ].filter((label) => this.state.options.filter[field](label));
+        } else if (!this.state.options.filter[field](sample[field])) {
+          delete sample[field];
+        }
       }
     }
 
