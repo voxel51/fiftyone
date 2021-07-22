@@ -5,6 +5,11 @@
 export { CanvasElement } from "./canvas";
 export * from "./controls";
 export { JSONPanelElement } from "./json";
-export { HelpPanelElement, VideoHelpPanelElement } from "./actions";
+export {
+  HelpPanelElement,
+  VideoHelpPanelElement,
+  COMMON_SHORTCUTS,
+  VIDEO_SHORTCUTS,
+} from "./actions";
 export { LookerElement } from "./looker";
 export * from "./options";

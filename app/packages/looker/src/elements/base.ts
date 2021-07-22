@@ -4,8 +4,6 @@
 
 import { BaseState, StateUpdate } from "../state";
 
-export type DispatchEvent = (eventType: string, details?: any) => void;
-
 type ElementEvent<State extends BaseState, E extends Event> = (args: {
   event: E;
   update: StateUpdate<State>;

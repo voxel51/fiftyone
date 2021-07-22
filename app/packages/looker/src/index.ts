@@ -19,7 +19,11 @@ import {
   getImageElements,
   getVideoElements,
 } from "./elements";
-import { LookerElement } from "./elements/common";
+import {
+  COMMON_SHORTCUTS,
+  LookerElement,
+  VIDEO_SHORTCUTS,
+} from "./elements/common";
 import processOverlays from "./processOverlays";
 import { ClassificationsOverlay, FROM_FO, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
@@ -467,6 +471,7 @@ export class FrameLooker extends Looker<FrameState> {
       ...this.getInitialBaseState(),
       config: { ...config },
       options,
+      SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
 
@@ -558,6 +563,7 @@ export class ImageLooker extends Looker<ImageState> {
       ...this.getInitialBaseState(),
       config: { ...config },
       options,
+      SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
 
@@ -884,6 +890,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       },
       buffers: [[1, 1]] as Buffers,
       seekBarHovering: false,
+      SHORTCUTS: VIDEO_SHORTCUTS,
     };
   }
 

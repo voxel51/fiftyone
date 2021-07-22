@@ -523,16 +523,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 export function withVideoLookerEvents(): () => Events<VideoState> {
   return function () {
     return {
-      keydown: ({ event, update, dispatchEvent }) => {
-        if (event.altKey || event.ctrlKey || event.metaKey) {
-          return;
-        }
-
-        const e = event as KeyboardEvent;
-        if (e.key in VIDEO_SHORTCUTS) {
-          VIDEO_SHORTCUTS[e.key].action(update, dispatchEvent, e.key);
-        }
-      },
       mouseenter: ({ update }) => {
         update(({ config: { thumbnail } }) => {
           if (thumbnail) {

@@ -17,8 +17,12 @@ export const useSetModal = () => {
 
 export const useClearModal = () => {
   return useRecoilCallback(
-    ({ reset, set }) => async () => {
+    ({ reset, set, snapshot }) => async () => {
+      const currentOptions = await snapshot.getPromise(
+        atoms.savedLookerOptions
+      );
       reset(atoms.modal);
+      set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
       set(selectors.selectedLabels, {});
       reset(atoms.hiddenLabels);
     },

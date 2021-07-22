@@ -4,7 +4,6 @@
 
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
-import { COMMON_SHORTCUTS } from "./actions";
 
 import { looker, lookerFullscreen } from "./looker.module.css";
 
@@ -20,9 +19,13 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         }
 
         const e = event as KeyboardEvent;
-        if (e.key in COMMON_SHORTCUTS) {
-          COMMON_SHORTCUTS[e.key].action(update, dispatchEvent, e.key);
-        }
+        update(({ SHORTCUTS }) => {
+          if (e.key in SHORTCUTS) {
+            SHORTCUTS[e.key].action(update, dispatchEvent, e.key);
+          }
+
+          return {};
+        });
       },
       mouseenter: ({ update, dispatchEvent }) => {
         dispatchEvent("mouseenter");

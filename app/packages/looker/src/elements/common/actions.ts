@@ -3,9 +3,15 @@
  */
 
 import { SCALE_FACTOR } from "../../constants";
-import { BaseState, StateUpdate, VideoState } from "../../state";
+import {
+  BaseState,
+  Control,
+  ControlMap,
+  StateUpdate,
+  VideoState,
+} from "../../state";
 import { clampScale } from "../../util";
-import { BaseElement, DispatchEvent, Events } from "../base";
+import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
 
 import {
@@ -23,24 +29,6 @@ import {
 } from "./panel.module.css";
 import { dispatchTooltipEvent } from "./util";
 import closeIcon from "../../icons/close.svg";
-
-type Action<State extends BaseState> = (
-  update: StateUpdate<State>,
-  dispatchEvent: DispatchEvent,
-  eventKey?: string
-) => void;
-
-interface Control<State extends BaseState = BaseState> {
-  eventKeys?: string | string[];
-  title: string;
-  shortcut: string;
-  detail: string;
-  action: Action<State>;
-}
-
-interface ControlMap<State extends BaseState> {
-  [key: string]: Control<State>;
-}
 
 const readActions = <State extends BaseState>(
   actions: ControlMap<State>
@@ -504,7 +492,61 @@ const seekTo: Control<VideoState> = {
   },
 };
 
+const videoEscape: Control<VideoState> = {
+  title: "Escape context",
+  shortcut: "Esc",
+  eventKeys: "Escape",
+  detail:
+    "Escape help -> JSON -> settings -> zoom -> playback -> fullscreen -> close",
+  action: (update, dispatchEvent, eventKey) => {
+    update(
+      ({
+        hasDefaultZoom,
+        showHelp,
+        showOptions,
+        frameNumber,
+        options: { fullscreen: fullscreenSetting, showJSON },
+      }) => {
+        if (showHelp) {
+          return { showHelp: false };
+        }
+
+        if (showOptions) {
+          return { showOptions: false };
+        }
+
+        if (showJSON) {
+          return { options: { showJSON: false } };
+        }
+
+        if (frameNumber !== 1) {
+          return {
+            frameNumber: 1,
+            playing: false,
+          };
+        }
+
+        if (!hasDefaultZoom) {
+          return {
+            setZoom: true,
+          };
+        }
+
+        if (fullscreenSetting) {
+          fullscreen.action(update, dispatchEvent, eventKey);
+          return {};
+        }
+
+        dispatchEvent("close");
+        return {};
+      }
+    );
+  },
+};
+
 export const VIDEO = {
+  ...COMMON,
+  escape: videoEscape,
   muteUnmute,
   playPause,
   nextFrame,
@@ -602,11 +644,9 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class VideoHelpPanelElement<
-  State extends VideoState
-> extends HelpPanelElement<State> {
+export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
   createHTMLElement(update) {
-    return this.createHelpPanel(update, { ...COMMON, ...VIDEO });
+    return this.createHelpPanel(update, VIDEO);
   }
 }
 
