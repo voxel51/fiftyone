@@ -280,19 +280,17 @@ def annotate(
     return annotation_info
 
 
-def load_annotations(
-    samples, info, backend="cvat", label_field="ground_truth", **kwargs
-):
+def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
     """Loads labels from the given annotation backend.
     
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        info (None): the :class`AnnotationInfo` returned from a call to
+        info: the :class`AnnotationInfo` returned from a call to
             `annotate()`
-        backend ("cvat"): the annotation backend to load labels from.
-            Options are ("cvat")
         label_field: the label field to create or to merge the annotations
             into
+        backend ("cvat"): the annotation backend to load labels from.
+            Options are ("cvat")
         **kwargs: additional arguments to pass to the `load_annotations`
             function of the specified backend
     """
@@ -309,6 +307,10 @@ def load_annotations(
         logger.warning("Unsupported annotation backend %s" % backend)
         return
 
+    if not annotations:
+        logger.warning("No annotations found")
+        return
+
     if type(list(annotations.values())[0]) != dict:
         # Only setting top-level field, no parsing labels is required
         for sample_id, value in annotations.items():
@@ -317,10 +319,15 @@ def load_annotations(
             sample.save()
         return
 
+    # TODO: Add check to see if label_field doesn't exist, then just add all
+    # annotation labels to that new field
+
     # Setting a label field, need to parse, add, delete, and merge labels
     annotation_label_ids = []
     for sample in annotations.values():
         annotation_label_ids.extend(list(sample.keys()))
+
+    sample_ids = list(annotations.keys())
 
     id_path = samples._get_label_field_path(label_field, "id")[1]
     current_label_ids = samples.distinct(id_path)
@@ -331,50 +338,40 @@ def load_annotations(
 
     prev_ids = set(prev_label_ids)
     ann_ids = set(annotation_label_ids)
-    curr_ids = set(current_label_ids)
+    curr_ids = set(current_label_ids)  # Not currently used, remove in future
     deleted_labels = prev_ids - ann_ids
     added_labels = ann_ids - prev_ids
-    labels_to_check = curr_ids - deleted_labels
+    labels_to_merge = ann_ids - deleted_labels - added_labels
 
     # Remove deleted labels
     deleted_view = samples.select_labels(ids=list(deleted_labels))
     samples._dataset.delete_labels(view=deleted_view, fields=label_field)
 
-    # Add new labels
-    for sample_id, label_id_map in annotations.items():
-        sample = samples._dataset[sample_id]
-        labels = [
-            label
-            for l_id, label in label_id_map.items()
-            if l_id in added_labels
-        ]
-        new_sample = fo.Sample(filepath=sample.filepath)
-        new_sample[label_field] = fol.Detections(detections=labels)
-        if labels != []:
-            sample.merge(new_sample)
-            sample.save()
-
-    # Merge other labels
-    # TODO: Figure out a better way to iterate through a set of labels based on
-    # ID and merge their fields
-    sample_id_map = dict(zip(samples.values("id"), samples.values("filepath")))
-    full_samples = samples._dataset.select(list(annotations.keys()))
-    label_field_path = samples._get_label_field_path(label_field)[1].split(".")
-    for sample in full_samples:
-        sample_annot_ids = set(annotations[sample.id].keys()) & labels_to_check
-        view_to_check = samples._dataset.select_labels(
-            ids=list(sample_annot_ids)
-        )
-        for sv in view_to_check:
-            next_field = sv
-            for field in label_field_path:
-                next_field = next_field[field]
-
-            for label in next_field:
-                annot_label = annotations[sample.id][label.id]
+    # Add or merge remaining labels
+    annotated_samples = samples._dataset.select(sample_ids)
+    for sample in annotated_samples:
+        has_label_list = False
+        sample_id = sample.id
+        sample_label = sample[label_field]
+        if isinstance(sample_label, fol._HasLabelList):
+            has_label_list = True
+            list_field = sample_label._LABEL_LIST_FIELD
+            labels = sample_label[list_field]
+        else:
+            labels = [sample_label]
+        for label in labels:
+            label_id = label.id
+            if label_id in labels_to_merge:
+                annot_label = annotations[sample_id][label_id]
                 for field in annot_label._fields_ordered:
-                    if field not in info.default_fields:
+                    if annot_label[field] != label[field]:
                         label[field] = annot_label[field]
+
+        if has_label_list:
+            for annot_label_id, annot_label in annotations[sample_id].items():
+                if annot_label_id in added_labels:
+                    labels.append(annot_label)
+
         sample.save()
 
 
@@ -398,7 +395,6 @@ class AnnotationInfo(object):
         self.label_field = label_field
         self.backend = backend
         self.id_map = None
-        self.default_fields = []
 
     def store_label_ids(self, samples):
         label_id_path = samples._get_label_field_path(self.label_field, "id")[

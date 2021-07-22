@@ -574,16 +574,23 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
-    def to_detection(self, mask_size=None):
+    def to_detection(self, mask_size=None, frame_size=None):
         """Returns a :class:`Detection` representation of this instance whose
         bounding box tightly encloses the polyline.
 
         If a ``mask_size`` is provided, an instance mask of the specified size
         encoding the polyline's shape is included.
 
+        Alternatively, if a ``frame_size`` is provided, the required mask size
+            is then computed based off of the polyline points and
+            ``frame_size``
+
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
                 render an instance mask for the polyline
+            frame_size (None): used when no ``mask_size`` is provided.
+                an optional ``(width, height)`` of the frame containing this
+                polyline that is used to compute the required ``mask_size``
 
         Returns:
             a :class:`Detection`
@@ -597,6 +604,15 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
         xtl, ytl, xbr, ybr = bbox.to_coords()
         bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
+
+        if mask_size is None and frame_size:
+            w, h = frame_size
+            rel_mask_w = bounding_box[2]
+            rel_mask_h = bounding_box[3]
+            abs_mask_w = int(round(rel_mask_w * w))
+            abs_mask_h = int(round(rel_mask_h * h))
+            mask_size = (abs_mask_w, abs_mask_h)
+            _, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
 
         return Detection(
             label=self.label,
@@ -735,16 +751,24 @@ class Polylines(ImageLabel, _HasLabelList):
 
     polylines = fof.ListField(fof.EmbeddedDocumentField(Polyline))
 
-    def to_detections(self, mask_size=None):
+    def to_detections(self, mask_size=None, frame_size=None):
         """Returns a :class:`Detections` representation of this instance whose
         bounding boxes tightly enclose the polylines.
 
         If a ``mask_size`` is provided, instance masks of the specified size
         encoding the polyline's shape are included in each :class:`Detection`.
 
+        Alternatively, if a ``frame_size`` is provided, the required mask size
+        is then computed based off of the polyline points and ``frame_size``
+
+
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
                 render instance masks for the polylines
+            frame_size (None): used when no ``mask_size`` is provided.
+                an optional ``(width, height)`` of the frame containing these
+                polylines that is used to compute the required ``mask_size``
+
 
         Returns:
             a :class:`Detections`
@@ -752,7 +776,8 @@ class Polylines(ImageLabel, _HasLabelList):
         # pylint: disable=not-an-iterable
         return Detections(
             detections=[
-                p.to_detection(mask_size=mask_size) for p in self.polylines
+                p.to_detection(mask_size=mask_size, frame_size=frame_size)
+                for p in self.polylines
             ]
         )
 

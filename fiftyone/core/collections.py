@@ -5583,26 +5583,24 @@ class SampleCollection(object):
         )
         return annotation_info
 
-    def load_annotations(
-        self, info, backend="cvat", label_field="ground_truth", **kwargs,
-    ):
+    def load_annotations(self, info, label_field, backend="cvat", **kwargs):
         """Loads labels from the given annotation backend.
         
         Args:
             info: the :class`AnnotationInfo` returned from a call to
                 `annotate()`
-            backend ("cvat"): the annotation backend to load labels from.
-                Options are ("cvat")
             label_field: the label field to create or to merge the annotations
                 into
+            backend ("cvat"): the annotation backend to load labels from.
+                Options are ("cvat")
             **kwargs: additional arguments to pass to the `load_annotations`
                 function of the specified backend
         """
         return foua.load_annotations(
             samples=self,
             info=info,
-            backend=backend,
             label_field=label_field,
+            backend=backend,
             **kwargs,
         )
 
