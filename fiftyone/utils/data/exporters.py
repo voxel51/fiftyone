@@ -2609,10 +2609,9 @@ def _parse_detections(detections, labels_map_rev=None):
         if detection.confidence is not None:
             _detection["confidence"] = detection.confidence
 
-        if detection.attributes:
-            _detection["attributes"] = {
-                name: attr.value for name, attr in detection.attributes.items()
-            }
+        attributes = dict(detection.iter_attributes())
+        if attributes:
+            _detection["attributes"] = attributes
 
         _detections.append(_detection)
 
