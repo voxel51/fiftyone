@@ -77,7 +77,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       this.element.classList.remove(lookerFullscreen);
     }
 
-    if (inSelectionMode !== this.selection) {
+    if (thumbnail && inSelectionMode !== this.selection) {
       this.selection = inSelectionMode;
       this.element.title = inSelectionMode ? SELECTION_TEXT : "Click to expand";
     }

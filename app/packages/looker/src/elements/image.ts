@@ -24,7 +24,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   createHTMLElement() {
     const element = document.createElement("img");
     element.classList.add(mediaOrCanvas, invisible);
-    element.loading = "lazy";
     return element;
   }
 

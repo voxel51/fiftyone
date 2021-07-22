@@ -24,12 +24,13 @@ export class ThumbnailSelectorElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
         update(({ options: { selected } }) => ({
           options: { selected: !selected },
         }));
+        dispatchEvent("selectthumbnail");
       },
     };
   }
@@ -62,16 +63,15 @@ export class ThumbnailSelectorElement<
     }
 
     if (this.selected !== selected) {
-      this.checkbox.checked = selected;
       this.selected = selected;
+      this.checkbox.checked = selected;
     }
 
-    if (this.expand !== inSelectionMode || hovering) {
+    if (this.expand !== inSelectionMode || selected) {
+      this.expand = inSelectionMode || selected;
       this.expand
         ? this.element.classList.add(lookerThumbnailExpand)
         : this.element.classList.remove(lookerThumbnailExpand);
-
-      this.expand = inSelectionMode || hovering;
     }
 
     return this.element;

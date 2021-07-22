@@ -16,7 +16,7 @@
   opacity: 0;
   cursor: pointer;
 
-  padding: 3px;
+  padding: 3px 3px 12px 3px;
 
   background: linear-gradient(
     0deg,
@@ -31,7 +31,7 @@
 
 .lookerThumbnailSelector:hover,
 .lookerThumbnailExpand {
-  padding: 6px;
+  padding: 6px 6px 18px 6px;
 }
 
 .lookerThumbnailSelector span {

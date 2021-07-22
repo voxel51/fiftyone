@@ -131,6 +131,11 @@ export abstract class Looker<
         return;
       }
 
+      if (eventType === "selectthumbnail") {
+        this.dispatchEvent(eventType, this.sample._id);
+        return;
+      }
+
       this.dispatchEvent(eventType, detail);
     };
   }
