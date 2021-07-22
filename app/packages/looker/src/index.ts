@@ -251,33 +251,10 @@ export abstract class Looker<
 
   getSample(): Promise<Sample> {
     let sample = { ...this.sample };
-    for (const field in sample) {
-      if (this.state.options.fieldsMap.hasOwnProperty(field)) {
-        sample[this.state.options.fieldsMap[field]] = sample[field];
-        delete sample[field];
-      } else if (field.startsWith("_")) {
-        delete sample[field];
-      } else if (
-        sample[field] &&
-        sample[field]._cls &&
-        FROM_FO.hasOwnProperty(sample[field]._cls)
-      ) {
-        if (!this.state.options.activeLabels.includes(field)) {
-          delete sample[field];
-          continue;
-        }
 
-        if (LABEL_LISTS[sample[field]._cls]) {
-          sample[field] = sample[field][
-            LABEL_LISTS[sample[field]._cls]
-          ].filter((label) => this.state.options.filter[field](label));
-        } else if (!this.state.options.filter[field](sample[field])) {
-          delete sample[field];
-        }
-      }
-    }
-
-    return Promise.resolve(sample);
+    return Promise.resolve(
+      filterSample(this.state, sample, this.state.options.fieldsMap)
+    );
   }
 
   getCurrentSampleLabels(): LabelData[] {
@@ -355,6 +332,7 @@ export abstract class Looker<
       zoomToContent: false,
       setZoom: true,
       hasDefaultZoom: true,
+      SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
 
@@ -999,18 +977,27 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   getSample(): Promise<VideoSample> {
     return new Promise((resolve) => {
-      const resolver = () => {
+      const resolver = (sample) => {
         if (this.hasFrame(this.frameNumber)) {
           resolve({
-            ...this.sample,
-            frames: [this.frames.get(this.frameNumber).deref().sample],
+            ...sample,
+            frames: [
+              {
+                frame_number: this.frameNumber,
+                ...filterSample(
+                  this.state,
+                  this.frames.get(this.frameNumber).deref().sample,
+                  this.state.options.frameFieldsMap,
+                  "frames."
+                ),
+              },
+            ],
           });
           return;
         }
         setTimeout(resolver, 200);
       };
-
-      resolver();
+      super.getSample().then(resolver);
     });
   }
 
@@ -1125,4 +1112,38 @@ const toggleZoom = <State extends FrameState | ImageState | VideoState>(
   }
 
   state.zoomToContent = false;
+};
+
+const filterSample = <S extends BaseSample | FrameSample>(
+  state: Readonly<BaseState>,
+  sample: S,
+  fieldsMap: { [key: string]: string },
+  prefix = ""
+): S => {
+  for (const field in sample) {
+    if (fieldsMap.hasOwnProperty(field)) {
+      sample[fieldsMap[field]] = sample[field];
+      delete sample[field];
+    } else if (field.startsWith("_")) {
+      delete sample[field];
+    } else if (
+      sample[field] &&
+      sample[field]._cls &&
+      FROM_FO.hasOwnProperty(sample[field]._cls)
+    ) {
+      if (!state.options.activeLabels.includes(prefix + field)) {
+        delete sample[field];
+        continue;
+      }
+
+      if (LABEL_LISTS[sample[field]._cls]) {
+        sample[field] = sample[field][
+          LABEL_LISTS[sample[field]._cls]
+        ].filter((label) => state.options.filter[prefix + field](label));
+      } else if (!state.options.filter[prefix + field](sample[field])) {
+        delete sample[field];
+      }
+    }
+  }
+  return sample;
 };

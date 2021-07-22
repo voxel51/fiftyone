@@ -66,7 +66,7 @@ const SortFilterResults = ({ modal }) => {
 
   return (
     <>
-      <PopoutSectionTitle>Sort filter results by</PopoutSectionTitle>
+      <PopoutSectionTitle>Sort sidebar contents by</PopoutSectionTitle>
       <TabOption
         active={count ? "count" : "value"}
         options={[

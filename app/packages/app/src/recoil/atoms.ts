@@ -19,8 +19,8 @@ export interface SortResults {
 export const sortFilterResults = atomFamily<SortResults, boolean>({
   key: "sortFilterResults",
   default: {
-    count: false,
-    asc: true,
+    count: true,
+    asc: false,
   },
 });
 
