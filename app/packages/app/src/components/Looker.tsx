@@ -197,11 +197,19 @@ const AttrInfo = ({ label, children = null }) => {
     <ContentItem key={name} name={name} value={value} />
   );
 
+  const attributes =
+    typeof label.attributes === "object"
+      ? Object.entries(
+          label.attributes as { [key: string]: { value: string | number } }
+        ).map(([k, v]) => ["attributes." + k, v.value])
+      : null;
+
   return (
     <>
       {defaults.map(mapper)}
       {children}
       {other.map(mapper)}
+      {attributes && attributes.map(mapper)}
     </>
   );
 };
