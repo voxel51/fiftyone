@@ -110,7 +110,6 @@ export default class SectionElement implements Section {
   }
 
   hide(): void {
-    return;
     if (this.attached) {
       this.container.removeChild(this.section);
       this.attached = false;

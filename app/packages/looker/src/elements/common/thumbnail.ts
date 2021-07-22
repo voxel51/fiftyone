@@ -2,20 +2,21 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { update } from "immutable";
+import { SELECTION_TEXT } from "../../constants";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
 import {
   lookerThumbnailSelector,
   showSelector,
-  lookerThumbnailSelected,
+  lookerThumbnailExpand,
 } from "./thumbnail.module.css";
 import { makeCheckboxRow } from "./util";
 
 export class ThumbnailSelectorElement<
   State extends BaseState
 > extends BaseElement<State> {
+  private expand: boolean;
   private shown: boolean;
   private selected: boolean;
   private checkbox: HTMLInputElement;
@@ -39,6 +40,7 @@ export class ThumbnailSelectorElement<
     const element = document.createElement("div");
     element.classList.add(lookerThumbnailSelector);
     element.appendChild(this.label);
+    element.title = SELECTION_TEXT;
 
     return element;
   }
@@ -47,8 +49,11 @@ export class ThumbnailSelectorElement<
     return thumbnail;
   }
 
-  renderSelf({ hovering, options: { selected } }: Readonly<State>) {
-    const shown = hovering || selected;
+  renderSelf({
+    hovering,
+    options: { selected, inSelectionMode },
+  }: Readonly<State>) {
+    const shown = hovering || selected || inSelectionMode;
     if (this.shown !== shown) {
       shown
         ? this.element.classList.add(showSelector)
@@ -57,11 +62,16 @@ export class ThumbnailSelectorElement<
     }
 
     if (this.selected !== selected) {
-      selected
-        ? this.element.classList.add(lookerThumbnailSelected)
-        : this.element.classList.remove(lookerThumbnailSelected);
       this.checkbox.checked = selected;
       this.selected = selected;
+    }
+
+    if (this.expand !== inSelectionMode || hovering) {
+      this.expand
+        ? this.element.classList.add(lookerThumbnailExpand)
+        : this.element.classList.remove(lookerThumbnailExpand);
+
+      this.expand = inSelectionMode || hovering;
     }
 
     return this.element;

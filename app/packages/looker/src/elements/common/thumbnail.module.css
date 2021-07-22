@@ -30,7 +30,7 @@
 }
 
 .lookerThumbnailSelector:hover,
-.lookerThumbnailSelected {
+.lookerThumbnailExpand {
   padding: 6px;
 }
 

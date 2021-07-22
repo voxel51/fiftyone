@@ -27,6 +27,9 @@ export const LABEL_LISTS = {
   Polylines: "polylines",
 };
 
+export const SELECTION_TEXT =
+  "Click to select sample, Ctrl+Click to select a range";
+
 export const JSON_COLORS = {
   keyColor: "rgb(138, 138, 138)",
   numberColor: "rgb(225, 100, 40)",

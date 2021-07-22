@@ -1,5 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  atom,
+  selector,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
@@ -133,6 +139,10 @@ const stringifyObj = (obj) => {
   );
 };
 
+const useThumbnailClick = () => {
+  return useRecoilCallback(() => () => {}, []);
+};
+
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
@@ -151,6 +161,8 @@ export default React.memo(() => {
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
   const setModal = useSetModal();
+
+  const selected = useRecoilValue(atoms.selectedSamples);
 
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached()) {
@@ -174,6 +186,7 @@ export default React.memo(() => {
         options,
         onClick: (sampleId) => {
           const data = samples.get(sampleId);
+
           setModal({
             sample: data.sample,
             dimensions: [data.width, data.height],
@@ -230,10 +243,15 @@ export default React.memo(() => {
       flashlight.current.updateOptions(options);
       flashlight.current.updateItems((sampleId) => {
         const looker = lookers.get(sampleId)?.deref();
-        looker && looker.updateOptions(lookerOptions);
+        looker &&
+          looker.updateOptions({
+            ...lookerOptions,
+            selected: selected.has(sampleId),
+            inSelectionMode: selected.size > 0,
+          });
       });
     }
-  }, [id, options, lookerOptions]);
+  }, [id, options, lookerOptions, selected]);
 
   return <Container id={id}></Container>;
 });

@@ -218,7 +218,7 @@ class PageHandler(tornado.web.RequestHandler):
 
     Args:
         page: the page number
-        page_length (20): the number of items to return
+        page_length (40): the number of items to return
     """
 
     def set_default_headers(self, *args, **kwargs):
@@ -230,7 +230,7 @@ class PageHandler(tornado.web.RequestHandler):
     async def get(self):
         # pylint: disable=no-value-for-parameter
         page = int(self.get_argument("page", 1))
-        page_length = int(self.get_argument("page_length", 20))
+        page_length = int(self.get_argument("page_length", 40))
 
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:

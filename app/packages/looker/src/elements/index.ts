@@ -101,40 +101,6 @@ export const getImageElements: GetElements<ImageState> = (
       {
         node: common.ThumbnailSelectorElement,
       },
-      {
-        node: common.JSONPanelElement,
-      },
-      {
-        node: common.HelpPanelElement,
-      },
-      {
-        node: common.ControlsElement,
-        children: [
-          { node: common.PlusElement },
-          { node: common.MinusElement },
-          { node: common.CropToContentButtonElement },
-          { node: common.FullscreenButtonElement },
-          { node: common.JSONButtonElement },
-          { node: common.OptionsButtonElement },
-          { node: common.HelpButtonElement },
-        ],
-      },
-      {
-        node: common.PreviousElement,
-      },
-      {
-        node: common.NextElement,
-      },
-      {
-        node: common.OptionsPanelElement,
-        children: [
-          { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowConfidenceOptionElement },
-          { node: common.ShowIndexOptionElement },
-          { node: common.ShowLabelOptionElement },
-          { node: common.ShowTooltipOptionElement },
-        ],
-      },
     ],
   };
 

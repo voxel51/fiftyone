@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { SELECTION_TEXT } from "../../constants";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
@@ -11,6 +12,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   State,
   HTMLDivElement
 > {
+  private selection: boolean;
   getEvents(): Events<State> {
     return {
       keydown: ({ event, update, dispatchEvent }) => {
@@ -62,7 +64,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   renderSelf({
     hovering,
     config: { thumbnail },
-    options: { fullscreen },
+    options: { fullscreen, inSelectionMode },
   }: Readonly<State>) {
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
@@ -73,6 +75,11 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       this.element.classList.add(lookerFullscreen);
     } else if (!fullscreen && fullscreenClass) {
       this.element.classList.remove(lookerFullscreen);
+    }
+
+    if (inSelectionMode !== this.selection) {
+      this.selection = inSelectionMode;
+      this.element.title = inSelectionMode ? SELECTION_TEXT : "Click to expand";
     }
 
     return this.element;

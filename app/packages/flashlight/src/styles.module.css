@@ -11,6 +11,7 @@
   display: block;
   position: absolute;
   width: 100%;
+  contain: strict;
 }
 
 .flashlightSection {
@@ -18,8 +19,10 @@
   position: relative;
   width: 100%;
   height: 100%;
+  contain: strict;
 }
 
 .flashlightSection > div {
   position: absolute;
+  contain: strict;
 }
