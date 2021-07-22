@@ -58,6 +58,7 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
       update({ options: { showJSON: false } });
       dispatchEvent("options", { showJSON: false });
     };
+    close.title = "Close JSON";
     vContainer.appendChild(close);
 
     const copy = document.createElement("img");
@@ -67,6 +68,7 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
       e.stopPropagation();
       dispatchEvent("copy");
     };
+    copy.title = "Copy JSON to clipboard";
     vContainer.appendChild(copy);
 
     return container;

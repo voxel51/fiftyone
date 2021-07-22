@@ -211,6 +211,7 @@ export class FullscreenButtonElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.classList.add(lookerClickable);
+    element.style.padding = "2px";
     element.style.gridArea = "2 / 11 / 2 / 11";
     return element;
   }
