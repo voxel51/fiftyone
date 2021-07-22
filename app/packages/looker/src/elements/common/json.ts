@@ -11,8 +11,9 @@ import {
   lookerPanelVerticalContainer,
   lookerPanelClose,
 } from "./panel.module.css";
-import { lookerJSONPanel } from "./json.module.css";
+import { lookerCopyJSON, lookerJSONPanel } from "./json.module.css";
 import closeIcon from "../../icons/close.svg";
+import clipboardIcon from "../../icons/clipboard.svg";
 
 export class JSONPanelElement<State extends BaseState> extends BaseElement<
   State
@@ -58,6 +59,15 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
       dispatchEvent("options", { showJSON: false });
     };
     vContainer.appendChild(close);
+
+    const copy = document.createElement("img");
+    copy.src = clipboardIcon;
+    copy.classList.add(lookerCopyJSON);
+    copy.onclick = (e) => {
+      e.stopPropagation();
+      dispatchEvent("copy");
+    };
+    vContainer.appendChild(copy);
 
     return container;
   }

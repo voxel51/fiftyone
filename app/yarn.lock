@@ -1729,6 +1729,7 @@ __metadata:
     color-string: ^1.5.5
     copy-to-clipboard: ^3.3.1
     immutable: ^4.0.0-rc.12
+    json-format-highlight: ^1.0.4
     lru-cache: ^6.0.0
     path: ^0.12.7
     prettier: 2.2.1
@@ -4791,6 +4792,13 @@ fsevents@~2.3.2:
   version: 3.0.0
   resolution: "json-buffer@npm:3.0.0"
   checksum: 09b53ecc8ffbb1252d9ef07f37ad616eb0769325d749c87555df786dc70e9855d4ad208255bbf232c86069504756277a7efb6725a31f6e6c4ef39a7b072e75f2
+  languageName: node
+  linkType: hard
+
+"json-format-highlight@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "json-format-highlight@npm:1.0.4"
+  checksum: ace5ce066526cab2503687132f913293b0fdc7f9580f1cf6e8fbf70f190bae31c3706bf1a82eadf90d7b622b1f81ca1ac816bd9a1246cb3a937c3a12efe50d67
   languageName: node
   linkType: hard
 

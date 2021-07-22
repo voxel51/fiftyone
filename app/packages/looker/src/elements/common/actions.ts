@@ -178,7 +178,7 @@ export const help: Control = {
       }
 
       if (!showHelp) {
-        return { showHelp: true, json: false };
+        return { showHelp: true, options: { showJSON: false } };
       }
 
       return { showHelp: false };
@@ -401,7 +401,9 @@ export const nextFrame: Control<VideoState> = {
         }
         const total = getFrameNumber(duration, duration, frameRate);
 
-        return { frameNumber: Math.min(total, frameNumber + 1), json: false };
+        return {
+          frameNumber: Math.min(total, frameNumber + 1),
+        };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -419,7 +421,7 @@ export const previousFrame: Control<VideoState> = {
         if (playing || thumbnail) {
           return {};
         }
-        return { frameNumber: Math.max(1, frameNumber - 1), json: false };
+        return { frameNumber: Math.max(1, frameNumber - 1) };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -437,7 +439,7 @@ export const playPause: Control<VideoState> = {
         ? {}
         : {
             playing: !playing,
-            json: false,
+            options: { showJSON: false },
           };
     });
   },
@@ -486,7 +488,7 @@ const seekTo: Control<VideoState> = {
           1,
           Math.round((parseInt(eventKey, 10) / 10) * total)
         ),
-        json: false,
+        options: { showJSON: false },
       };
     });
   },

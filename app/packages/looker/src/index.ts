@@ -3,6 +3,8 @@
  */
 import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
+import highlightJSON from "json-format-highlight";
+import copyToClipboard from "copy-to-clipboard";
 
 import {
   FONT_SIZE,
@@ -13,6 +15,7 @@ import {
   CHUNK_SIZE,
   DASH_LENGTH,
   LABEL_LISTS,
+  JSON_COLORS,
 } from "./constants";
 import {
   getFrameElements,
@@ -118,6 +121,13 @@ export abstract class Looker<
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
+      if (eventType === "copy") {
+        this.getSample().then((sample) =>
+          copyToClipboard(JSON.stringify(sample, null, 4))
+        );
+        return;
+      }
+
       this.dispatchEvent(eventType, detail);
     };
   }
@@ -161,7 +171,7 @@ export abstract class Looker<
       if (this.state.options.showJSON) {
         const pre = this.lookerElement.element.querySelectorAll("pre")[0];
         this.getSample().then((sample) => {
-          pre.innerText = JSON.stringify(sample, null, 4);
+          pre.innerHTML = highlightJSON(sample, JSON_COLORS);
         });
       }
       const ctx = this.ctx;
@@ -978,7 +988,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   getSample(): Promise<VideoSample> {
     return new Promise((resolve) => {
       const resolver = (sample) => {
-        if (this.hasFrame(this.frameNumber)) {
+        if (this.hasFrame(this.state.frameNumber)) {
           resolve({
             ...sample,
             frames: [
@@ -986,7 +996,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
                 frame_number: this.frameNumber,
                 ...filterSample(
                   this.state,
-                  this.frames.get(this.frameNumber).deref().sample,
+                  { ...this.frames.get(this.frameNumber).deref().sample },
                   this.state.options.frameFieldsMap,
                   "frames."
                 ),

@@ -55,7 +55,8 @@
   top: 0;
   right: 0;
   cursor: pointer;
-  padding: 0.25rem;
+  margin: 3px;
+  border-radius: 3px;
 
   -webkit-transition: 0.2s ease-in-out;
   -moz-transition: 0.2s ease-in-out;
@@ -64,5 +65,6 @@
 }
 
 .lookerPanelClose:hover {
+  background-color: rgb(225, 100, 40);
   transform: translate(0, -1px);
 }

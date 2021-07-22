@@ -26,3 +26,12 @@ export const LABEL_LISTS = {
   Keypoints: "Keypoints",
   Polylines: "polylines",
 };
+
+export const JSON_COLORS = {
+  keyColor: "rgb(138, 138, 138)",
+  numberColor: "rgb(225, 100, 40)",
+  stringColor: "rgb(238, 238, 238)",
+  nullColor: "rgb(225, 100, 40)",
+  trueColor: "rgb(225, 100, 40)",
+  falseColor: "rgb(225, 100, 40)",
+};
