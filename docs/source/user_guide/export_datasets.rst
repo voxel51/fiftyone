@@ -182,7 +182,10 @@ object patches of the provided samples will be exported.
     dataset = foz.load_zoo_dataset("quickstart")
 
     # No label field is provided; only images are exported
-    dataset.export("/tmp/quickstart/images", fo.types.ImageDirectory)
+    dataset.export(
+        export_dir="/tmp/quickstart/images",
+        dataset_type=fo.types.ImageDirectory,
+    )
 
     # A detections field is provided, so the object patches are exported as a
     # directory of images

@@ -272,7 +272,11 @@ You can create a FiftyOne dataset from a directory of images as follows:
         dataset_dir = "/path/to/images-dir"
 
         # Create the dataset
-        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory, name=name)
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.ImageDirectory,
+            name=name,
+        )
 
         # View summary info about the dataset
         print(dataset)
@@ -354,7 +358,11 @@ You can create a FiftyOne dataset from a directory of videos as follows:
         dataset_dir = "/path/to/videos-dir"
 
         # Create the dataset
-        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.VideoDirectory, name=name)
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.VideoDirectory,
+            name=name,
+        )
 
         # View summary info about the dataset
         print(dataset)
@@ -464,7 +472,9 @@ in the above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.FiftyOneImageClassificationDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -556,7 +566,9 @@ stored in the above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.ImageClassificationDirectoryTree, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -648,7 +660,9 @@ stored in the above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.VideoClassificationDirectoryTree, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -752,10 +766,10 @@ as a directory of TFRecords in the above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir,
-            fo.types.TFImageClassificationDataset,
-            name=name,
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.TFImageClassificationDataset,
             images_dir=images_dir,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -780,8 +794,8 @@ as a directory of TFRecords in the above format as follows:
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.TFImageClassificationDataset
-            --images-dir $IMAGES_DIR
+            --type fiftyone.types.TFImageClassificationDataset \
+            --kwargs images_dir=$IMAGES_DIR
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -895,7 +909,9 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.FiftyOneImageDetectionDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1047,7 +1063,9 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.COCODetectionDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1189,7 +1207,9 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.VOCDetectionDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1320,7 +1340,9 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.KITTIDetectionDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1445,7 +1467,9 @@ format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.YOLOv4Dataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1579,7 +1603,9 @@ format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.YOLOv5Dataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1709,10 +1735,10 @@ directory of TFRecords in the above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir,
-            fo.types.TFObjectDetectionDataset,
-            name=name,
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.TFObjectDetectionDataset,
             images_dir=images_dir,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1737,8 +1763,8 @@ directory of TFRecords in the above format as follows:
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.TFObjectDetectionDataset
-            --images-dir $IMAGES_DIR
+            --type fiftyone.types.TFObjectDetectionDataset \
+            --kwargs images_dir=$IMAGES_DIR
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -1817,7 +1843,9 @@ the above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.ImageSegmentationDirectory, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -1997,7 +2025,9 @@ format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.CVATImageDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.CVATImageDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -2183,7 +2213,9 @@ format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.CVATVideoDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -2297,7 +2329,9 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.FiftyOneImageLabelsDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneImageLabelsDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -2411,7 +2445,9 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.FiftyOneVideoLabelsDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -2585,7 +2621,11 @@ as follows:
         dataset_dir = "/path/to/bdd-dataset"
 
         # Create the dataset
-        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.BDDDataset, name=name)
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.BDDDataset,
+            name=name,
+        )
 
         # View summary info about the dataset
         print(dataset)
@@ -2719,7 +2759,9 @@ format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.GeoJSONDataset, name=name
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.GeoJSONDataset,
+            name=name,
         )
 
         # View summary info about the dataset
@@ -2820,7 +2862,11 @@ follows:
         dataset_dir = "/path/to/fiftyone-dataset"
 
         # Create the dataset
-        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.FiftyOneDataset, name=name)
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            name=name,
+        )
 
         # View summary info about the dataset
         print(dataset)
