@@ -2301,10 +2301,10 @@ class ImageSegmentationDirectoryExporter(
             segmentation masks when exporting instances or polylines. If not
             provided, masks will be rendered to match the resolution of each
             input image
-        mask_targets (None): a dict mapping int targets to label strings
-            defining which object classes to render and which pixel values to
-            use for each class. If omitted, all objects are rendered with pixel
-            value 1
+        mask_targets (None): a dict mapping integer pixel values in
+            ``[0, 255]`` to label strings defining which object classes to
+            render and which pixel values to use for each class. If omitted,
+            all objects are rendered with pixel value 255
         thickness (1): the thickness, in pixels, at which to render
             (non-filled) polylines
     """

@@ -557,10 +557,10 @@ class Detections(ImageLabel, _HasLabelList):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping int targets to label strings
-                defining which object classes to render and which pixel values
-                to use for each class. If omitted, all objects are rendered
-                with pixel value 1
+            mask_targets (None): a dict mapping integer pixel values in
+                ``[0, 255]`` to label strings defining which object classes to
+                render and which pixel values to use for each class. If
+                omitted, all objects are rendered with pixel value 255
 
         Returns:
             a :class:`Segmentation`
@@ -581,7 +581,7 @@ class Detections(ImageLabel, _HasLabelList):
                 if target is None:
                     continue
             else:
-                target = 1
+                target = 255
 
             _render_instance(mask, detection, target)
 
@@ -869,10 +869,10 @@ class Polylines(ImageLabel, _HasLabelList):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping int targets to label strings
-                defining which object classes to render and which pixel values
-                to use for each class. If omitted, all objects are rendered
-                with pixel value 1
+            mask_targets (None): a dict mapping integer pixel values in
+                ``[0, 255]`` to label strings defining which object classes to
+                render and which pixel values to use for each class. If
+                omitted, all objects are rendered with pixel value 255
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
@@ -890,7 +890,7 @@ class Polylines(ImageLabel, _HasLabelList):
                 if target is None:
                     continue
             else:
-                target = 1
+                target = 255
 
             _render_polyline(mask, polyline, target, thickness)
 
