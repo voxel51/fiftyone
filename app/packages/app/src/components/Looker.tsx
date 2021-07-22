@@ -182,7 +182,10 @@ const AttrInfo = ({ label, children = null }) => {
     typeof label.attributes === "object"
       ? Object.entries(
           label.attributes as { [key: string]: { value: string | number } }
-        ).map(([k, v]) => ["attributes." + k, v.value])
+        ).map<[string, string | number]>(([k, v]) => [
+          "attributes." + k,
+          v.value,
+        ])
       : null;
 
   return (

@@ -6,7 +6,11 @@ import { update } from "immutable";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { lookerThumbnailSelector, showSelector } from "./thumbnail.module.css";
+import {
+  lookerThumbnailSelector,
+  showSelector,
+  lookerThumbnailSelected,
+} from "./thumbnail.module.css";
 import { makeCheckboxRow } from "./util";
 
 export class ThumbnailSelectorElement<
@@ -19,7 +23,7 @@ export class ThumbnailSelectorElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, dispatchEvent, update }) => {
+      click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();
         update(({ options: { selected } }) => ({
@@ -53,6 +57,9 @@ export class ThumbnailSelectorElement<
     }
 
     if (this.selected !== selected) {
+      selected
+        ? this.element.classList.add(lookerThumbnailSelected)
+        : this.element.classList.remove(lookerThumbnailSelected);
       this.checkbox.checked = selected;
       this.selected = selected;
     }
