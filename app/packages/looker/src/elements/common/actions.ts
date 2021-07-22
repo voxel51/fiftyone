@@ -66,6 +66,7 @@ const escape: Control = {
         }
 
         if (showJSON) {
+          dispatchEvent("options", { showJSON: false });
           return { options: { showJSON: false } };
         }
 
@@ -171,13 +172,14 @@ export const help: Control = {
   eventKeys: ["/", "?"],
   shortcut: "?",
   detail: "Display this help window",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(({ showHelp, config: { thumbnail } }) => {
       if (thumbnail) {
         return {};
       }
 
       if (!showHelp) {
+        dispatchEvent("options", { showJSON: false });
         return { showHelp: true, options: { showJSON: false } };
       }
 
@@ -433,14 +435,17 @@ export const playPause: Control<VideoState> = {
   shortcut: "Space",
   eventKeys: " ",
   detail: "Play or pause the video",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(({ playing, config: { thumbnail } }) => {
-      return thumbnail
-        ? {}
-        : {
-            playing: !playing,
-            options: { showJSON: false },
-          };
+      if (thumbnail) {
+        return {};
+      }
+
+      dispatchEvent("options", { showJSON: false });
+      return {
+        playing: !playing,
+        options: { showJSON: false },
+      };
     });
   },
 };
@@ -480,9 +485,10 @@ const seekTo: Control<VideoState> = {
   detail: "Seek to 0%, 10%, 20%... of the video",
   shortcut: "0-9",
   eventKeys: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-  action: (update, _, eventKey) => {
+  action: (update, dispatchEvent, eventKey) => {
     update(({ duration, config: { frameRate } }) => {
       const total = getFrameNumber(duration, duration, frameRate);
+      dispatchEvent("options", { showJSON: false });
       return {
         frameNumber: Math.max(
           1,
@@ -518,6 +524,7 @@ const videoEscape: Control<VideoState> = {
         }
 
         if (showJSON) {
+          dispatchEvent("options", { showJSON: false });
           return { options: { showJSON: false } };
         }
 
