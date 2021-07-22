@@ -1,11 +1,5 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  atom,
-  selector,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
@@ -23,7 +17,7 @@ import { activeFields } from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { getSampleSrc, lookerType, useSetModal } from "../recoil/utils";
+import { getSampleSrc, lookerType } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 
@@ -95,21 +89,25 @@ const flashlightLookerOptions = selector({
 
 const getLooker = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (result) => {
+    ({ snapshot }) => async ({
+      sample,
+      dimensions,
+      frameNumber,
+      frameRate,
+    }: atoms.SampleData) => {
       const getLookerConstructor = await snapshot.getPromise(lookerType);
-      const constructor = getLookerConstructor(getMimeType(result.sample));
+      const constructor = getLookerConstructor(getMimeType(sample));
       const options = await snapshot.getPromise(flashlightLookerOptions);
 
       return new constructor(
-        result.sample,
+        sample,
         {
-          src: getSampleSrc(result.sample.filepath, result.sample._id),
+          src: getSampleSrc(sample.filepath, sample._id),
           thumbnail: true,
-          dimensions: [result.width, result.height],
-          sampleId: result.sample._id,
-          frameRate: result.frame_rate,
-          frameNumber:
-            constructor === FrameLooker ? result.sample.frame_number : null,
+          dimensions,
+          sampleId: sample._id,
+          frameRate,
+          frameNumber: constructor === FrameLooker ? frameNumber : null,
         },
         options
       );
@@ -119,13 +117,16 @@ const getLooker = () => {
 };
 
 const getAspectRatio = () => {
-  return useRecoilCallback(({ snapshot }) => async (result) => {
-    const options = await snapshot.getPromise(flashlightLookerOptions);
-    const aspectRatio = result.width / result.height;
-    return options.zoom
-      ? zoomAspectRatio(result.sample, aspectRatio)
-      : aspectRatio;
-  });
+  return useRecoilCallback(
+    ({ snapshot }) => async ({
+      sample,
+      dimensions: [width, height],
+    }: atoms.SampleData) => {
+      const options = await snapshot.getPromise(flashlightLookerOptions);
+      const aspectRatio = width / height;
+      return options.zoom ? zoomAspectRatio(sample, aspectRatio) : aspectRatio;
+    }
+  );
 };
 
 const stringifyObj = (obj) => {
@@ -140,7 +141,39 @@ const stringifyObj = (obj) => {
 };
 
 const useThumbnailClick = () => {
-  return useRecoilCallback(() => () => {}, []);
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (sampleId: string) => {
+      const selected = new Set(
+        await snapshot.getPromise(atoms.selectedSamples)
+      );
+      if (selected.size) {
+        selected.has(sampleId)
+          ? selected.delete(sampleId)
+          : selected.add(sampleId);
+        set(atoms.selectedSamples, selected);
+        return;
+      } else {
+        set(atoms.modal, samples.get(sampleId));
+        set(labelFilters(true), {});
+      }
+    },
+    []
+  );
+};
+
+const useSelect = () => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (sampleId: string) => {
+      const selected = new Set(
+        await snapshot.getPromise(atoms.selectedSamples)
+      );
+      selected.has(sampleId)
+        ? selected.delete(sampleId)
+        : selected.add(sampleId);
+      set(atoms.selectedSamples, selected);
+    },
+    []
+  );
 };
 
 export default React.memo(() => {
@@ -152,17 +185,15 @@ export default React.memo(() => {
   const aspectRatioGenerator = useRef<any>();
   aspectRatioGenerator.current = getAspectRatio();
   const flashlight = useRef<Flashlight<number>>();
-  const crop =
-    useRecoilValue(selectors.isPatchesView) &&
-    useRecoilValue(atoms.cropToContent(false));
 
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const refresh = useRecoilValue(selectors.refresh);
-  const setModal = useSetModal();
 
   const selected = useRecoilValue(atoms.selectedSamples);
+  const onThumbnailClick = useThumbnailClick();
+  const onSelect = useSelect();
 
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached()) {
@@ -184,15 +215,7 @@ export default React.memo(() => {
       flashlight.current = new Flashlight<number>({
         initialRequestKey: 1,
         options,
-        onClick: (sampleId) => {
-          const data = samples.get(sampleId);
-
-          setModal({
-            sample: data.sample,
-            dimensions: [data.width, data.height],
-            frameRate: data.frame_rate,
-          });
-        },
+        onClick: onThumbnailClick,
         get: async (page) => {
           const { results, more } = await fetch(
             `${url}page=${page}`
@@ -200,16 +223,20 @@ export default React.memo(() => {
 
           const items = await Promise.all<ItemData>(
             results.map((result) => {
-              return aspectRatioGenerator
-                .current(result)
-                .then((aspectRatio) => {
-                  samples.set(result.sample._id, result);
+              const data: atoms.SampleData = {
+                sample: result.sample,
+                dimensions: [result.width, result.height],
+                frameRate: result.frame_rate,
+                frameNumber: results.frame_number,
+              };
+              samples.set(result.sample._id, data);
 
-                  return {
-                    id: result.sample._id,
-                    aspectRatio,
-                  };
-                });
+              return aspectRatioGenerator.current(data).then((aspectRatio) => {
+                return {
+                  id: result.sample._id,
+                  aspectRatio,
+                };
+              });
             })
           );
           return {
@@ -224,6 +251,10 @@ export default React.memo(() => {
 
           lookerGeneratorRef.current(result).then((item) => {
             looker = item;
+            looker.addEventListener(
+              "selectthumbnail",
+              ({ detail }: { detail: string }) => onSelect(detail)
+            );
 
             if (!destroyed) {
               lookers.set(sampleId, new WeakRef(looker));

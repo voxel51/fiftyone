@@ -33,16 +33,6 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
   },
 });
 
-export const useSetModal = () => {
-  return useRecoilCallback(
-    ({ set }) => async (data: atoms.SampleData) => {
-      set(atoms.modal, data);
-      set(labelFilters(true), {});
-    },
-    []
-  );
-};
-
 export const useClearModal = () => {
   return useRecoilCallback(
     ({ set, snapshot }) => async () => {

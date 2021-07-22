@@ -17,37 +17,8 @@ import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
-import {
-  FrameOptions,
-  ImageOptions,
-  VideoOptions,
-} from "@fiftyone/looker/src/state";
-import { Warning } from "@material-ui/icons";
 import { getSampleSrc, lookerType } from "../recoil/utils";
-
-const InfoWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 100;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 125%;
-  svg {
-    font-size: 200%;
-    color: ${({ theme }) => theme.fontDark};
-  }
-  svg.error {
-    color: ${({ theme }) => theme.error};
-  }
-  p {
-    margin: 0;
-  }
-`;
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 
 const TagBlock = styled.div`
   margin: 0;
@@ -336,21 +307,24 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
 
 type EventCallback = (event: CustomEvent) => void;
 
-const defaultLookerOptions = selectorFamily({
-  key: "defaultLookerOptions",
-  get: (modal: boolean) => ({ get }) => {
+const reverse = (obj) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
+
+const lookerOptions = selector({
+  key: "lookerOptions",
+  get: ({ get }) => {
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showIndex = get(selectors.appConfig).show_index;
     const showLabel = get(selectors.appConfig).show_label;
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const useFrameNumber = get(selectors.appConfig).use_frame_number;
     const video = get(selectors.isVideoDataset)
-      ? { loop: modal ? get(selectors.appConfig).loop_videos : true }
+      ? { loop: get(selectors.appConfig).loop_videos }
       : {};
     const zoom = get(selectors.isPatchesView)
-      ? get(atoms.cropToContent(modal))
+      ? get(atoms.cropToContent(true))
       : false;
-    const colorByLabel = get(atoms.colorByLabel(modal));
+    const colorByLabel = get(atoms.colorByLabel(true));
 
     return {
       colorByLabel,
@@ -360,37 +334,7 @@ const defaultLookerOptions = selectorFamily({
       useFrameNumber,
       showTooltip,
       ...video,
-      ...zoom,
-    };
-  },
-});
-
-const lookerOptions = selector<
-  Partial<FrameOptions | ImageOptions | VideoOptions>
->({
-  key: "lookerOptions",
-  get: ({ get }) => {
-    return {
-      colorByLabel: get(atoms.colorByLabel(false)),
-      colorMap: get(selectors.colorMap(false)),
-      filter: get(labelFilters(false)),
-      zoom: get(selectors.isPatchesView)
-        ? get(atoms.cropToContent(false))
-        : false,
-    };
-  },
-});
-
-const reverse = (obj) =>
-  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
-
-const lookerModalOptions = selector<
-  Partial<FrameOptions | ImageOptions | VideoOptions>
->({
-  key: "lookerModalOptions",
-  get: ({ get }) => {
-    return {
-      ...get(defaultLookerOptions(true)),
+      zoom,
       colorMap: get(selectors.colorMap(true)),
       filter: get(labelFilters(true)),
       ...get(atoms.savedLookerOptions),
@@ -444,7 +388,7 @@ const Looker = ({
   );
   const mimetype = getMimeType(sample);
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
-  const options = useRecoilValue(lookerModalOptions);
+  const options = useRecoilValue(lookerOptions);
   const activeLabels = useRecoilValue(labelAtoms.activeModalFields);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
