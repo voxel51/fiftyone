@@ -2806,10 +2806,17 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     label_field, "label"
                 )[1]
                 classes = samples._dataset.distinct(label_path)
-            elif label_field in samples.classes:
-                classes = samples.classes[label_field]
+
+            # CVAT crashes with more than ~450 classes
+            new_classes = []
+            if label_field in samples.classes:
+                new_classes = samples.classes[label_field]
             elif samples.default_classes:
-                classes = samples.default_classes
+                new_classes = samples.default_classes
+
+            if new_classes:
+                new_classes = new_classes[: (400 - len(classes))]
+                classes = sorted(list(set(classes) | set(new_classes)))
 
             self._classes = classes
 
