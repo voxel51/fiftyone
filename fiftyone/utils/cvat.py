@@ -3226,7 +3226,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     "logits",
                 ]
                 for cls in classifications:
-                    class_name = self.create_attributes(cls, default_fields)
+                    attributes, class_name = self.create_attributes(
+                        cls, default_fields
+                    )
 
                     shape_id = len(self._label_id_map) + 1
                     self._label_id_map[shape_id] = cls.id
@@ -3243,6 +3245,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             else:
                 value = sample[label_field]
                 formatted_value = self.update_label_attributes("value", value)
+                if formatted_value is None:
+                    continue
                 attributes = [{"spec_id": "value", "value": formatted_value}]
                 tag = {
                     "label_id": label_field,
@@ -3482,6 +3486,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 else:
                     value = label[field]
                     formatted_val = self.update_label_attributes(field, value)
+                    if formatted_val is None:
+                        continue
                     attributes.append(
                         {"spec_id": field, "value": formatted_val}
                     )
@@ -3491,6 +3497,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 formatted_val = self.update_label_attributes(
                     "attribute:" + attr, value
                 )
+                if formatted_val is None:
+                    continue
                 attributes.append(
                     {"spec_id": "attribute:" + attr, "value": formatted_val}
                 )
@@ -3498,13 +3506,54 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return attributes, class_name
 
     def update_label_attributes(self, attr_name, value):
+        # Construct attribute and decide the type of the attribute to use for
+        # CVAT input (text, select)
+        if value is None:
+            val_type = "none"
+            input_type = "select"
+            value = str(value)
+        elif isinstance(value, bool):
+            val_type = "boolean"
+            input_type = "select"
+            value = str(value)
+        elif isinstance(value, (int, float, complex, str)):
+            val_type = "string"
+            input_type = "text"
+            value = str(value)
+        else:
+            # Other attributes types are not allowed at the moment
+            return None
+
         if attr_name not in self._label_attributes:
             self._label_attributes[attr_name] = {
                 "name": attr_name,
                 "mutable": True,
-                "input_type": "text",
+                "input_type": input_type,
             }
-        return str(value)
+            if input_type == "select":
+                values = ["True", "False", "", "None"]
+                self._label_attributes[attr_name]["values"] = values
+        else:
+            new_type = False
+            delete_values = False
+            prev_type = self._label_attributes[attr_name]["input_type"]
+
+            if prev_type == "select" and val_type == "select":
+                if value not in self._label_attributes[attr_name]["values"]:
+                    self._label_attributes[attr_name]["values"].append(value)
+
+            if prev_type == "select" and val_type != "select":
+                new_type = "text"
+                delete_values = True
+
+            if new_type:
+                self._label_attributes[attr_name]["input_type"] = new_type
+
+            if delete_values:
+                if "values" in self._label_attributes[attr_name]:
+                    del self._label_attributes[attr_name]["values"]
+
+        return value
 
     def remap_ids(self, shapes_or_tags):
         for obj in shapes_or_tags:
