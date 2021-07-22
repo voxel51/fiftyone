@@ -572,7 +572,7 @@ class Detections(ImageLabel, _HasLabelList):
         # pylint: disable=not-an-iterable
         for detection in self.detections:
             if detection.mask is None:
-                msg = "Skipping detection with no instance mask"
+                msg = "Skipping detection(s) with no instance mask"
                 warnings.warn(msg)
                 continue
 
