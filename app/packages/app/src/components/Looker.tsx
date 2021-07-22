@@ -235,7 +235,11 @@ const SegmentationInfo = ({ detail }) => {
 
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
-      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
+      {targetValue ? (
+        <ContentItem key={"target-value"} name={"label"} value={targetValue} />
+      ) : (
+        <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
+      )}
       <AttrInfo label={detail.label} />
     </AttrBlock>
   );
