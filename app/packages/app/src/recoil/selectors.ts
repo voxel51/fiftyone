@@ -551,7 +551,7 @@ export const scalarsDbMap = selectorFamily<{ [key: string]: string }, string>({
         ...acc,
         [cur]: values[i].db_field,
       }),
-      {}
+      { media_type: "_media_type" }
     );
   },
 });
