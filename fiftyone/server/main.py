@@ -164,8 +164,7 @@ class StagesHandler(RequestHandler):
 
 
 class FramesHandler(tornado.web.RequestHandler):
-    """
-    """
+    """Frames stream requests"""
 
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", "*")
@@ -753,7 +752,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         if filters is not None:
-            view = get_extended_view(view, filters)
+            view = get_extended_view(
+                view, filters, count_labels_tags=False, only_matches=False
+            )
 
         view = view.select(sample_id)
 

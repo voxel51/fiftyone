@@ -45,7 +45,11 @@ export const useSetModal = () => {
 
 export const useClearModal = () => {
   return useRecoilCallback(
-    ({ set }) => async () => {
+    ({ set, snapshot }) => async () => {
+      const currentOptions = await snapshot.getPromise(
+        atoms.savedLookerOptions
+      );
+      set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
       set(atoms.modal, null);
       set(selectors.selectedLabels, {});
       set(atoms.hiddenLabels, {});

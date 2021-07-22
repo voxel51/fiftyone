@@ -3,6 +3,8 @@
  */
 import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
+import highlightJSON from "json-format-highlight";
+import copyToClipboard from "copy-to-clipboard";
 
 import {
   FONT_SIZE,
@@ -12,15 +14,21 @@ import {
   MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
   DASH_LENGTH,
+  LABEL_LISTS,
+  JSON_COLORS,
 } from "./constants";
 import {
   getFrameElements,
   getImageElements,
   getVideoElements,
 } from "./elements";
-import { LookerElement } from "./elements/common";
+import {
+  COMMON_SHORTCUTS,
+  LookerElement,
+  VIDEO_SHORTCUTS,
+} from "./elements/common";
 import processOverlays from "./processOverlays";
-import { ClassificationsOverlay, loadOverlays } from "./overlays";
+import { ClassificationsOverlay, FROM_FO, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
@@ -116,6 +124,13 @@ export abstract class Looker<
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
+      if (eventType === "copy") {
+        this.getSample().then((sample) =>
+          copyToClipboard(JSON.stringify(sample, null, 4))
+        );
+        return;
+      }
+
       this.dispatchEvent(eventType, detail);
     };
   }
@@ -159,7 +174,7 @@ export abstract class Looker<
       if (this.state.options.showJSON) {
         const pre = this.lookerElement.element.querySelectorAll("pre")[0];
         this.getSample().then((sample) => {
-          pre.innerText = JSON.stringify(sample, null, 4);
+          pre.innerHTML = highlightJSON(sample, JSON_COLORS);
         });
       }
       const ctx = this.ctx;
@@ -261,7 +276,11 @@ export abstract class Looker<
   }
 
   getSample(): Promise<Sample> {
-    return Promise.resolve(this.sample);
+    let sample = { ...this.sample };
+
+    return Promise.resolve(
+      filterSample(this.state, sample, this.state.options.fieldsMap)
+    );
   }
 
   getCurrentSampleLabels(): LabelData[] {
@@ -341,6 +360,7 @@ export abstract class Looker<
       zoomToContent: false,
       setZoom: true,
       hasDefaultZoom: true,
+      SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
 
@@ -457,6 +477,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
       ...this.getInitialBaseState(),
       config: { ...config },
       options,
+      SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
 
@@ -494,7 +515,9 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
       this.state.setZoom = this.hasResized();
     }
 
-    if (this.state.setZoom && this.pluckedOverlays.length) {
+    if (this.state.zoomToContent) {
+      toggleZoom(this.state, this.currentOverlays);
+    } else if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -503,11 +526,6 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
       }
 
       this.state.setZoom = false;
-    }
-
-    if (this.state.zoomToContent) {
-      this.state = zoomToContent(this.state, this.currentOverlays);
-      this.state.zoomToContent = false;
     }
 
     return super.postProcess();
@@ -551,6 +569,7 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
       ...this.getInitialBaseState(),
       config: { ...config },
       options,
+      SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
 
@@ -588,7 +607,9 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
       this.state.setZoom = this.hasResized();
     }
 
-    if (this.state.setZoom && this.pluckedOverlays.length) {
+    if (this.state.zoomToContent) {
+      toggleZoom(this.state, this.currentOverlays);
+    } else if (this.state.setZoom && this.pluckedOverlays.length) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -597,11 +618,6 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
       }
 
       this.state.setZoom = false;
-    }
-
-    if (this.state.zoomToContent) {
-      this.state = zoomToContent(this.state, this.currentOverlays);
-      this.state.zoomToContent = false;
     }
 
     return super.postProcess();
@@ -891,6 +907,7 @@ export class VideoLooker extends Looker<
       },
       buffers: [[1, 1]] as Buffers,
       seekBarHovering: false,
+      SHORTCUTS: VIDEO_SHORTCUTS,
     };
   }
 
@@ -1000,18 +1017,27 @@ export class VideoLooker extends Looker<
 
   getSample(): Promise<VideoSample> {
     return new Promise((resolve) => {
-      const resolver = () => {
-        if (this.hasFrame(this.frameNumber)) {
+      const resolver = (sample) => {
+        if (this.hasFrame(this.state.frameNumber)) {
           resolve({
-            ...this.sample,
-            frames: [this.frames.get(this.frameNumber).deref().sample],
+            ...sample,
+            frames: [
+              {
+                frame_number: this.frameNumber,
+                ...filterSample(
+                  this.state,
+                  { ...this.frames.get(this.frameNumber).deref().sample },
+                  this.state.options.frameFieldsMap,
+                  "frames."
+                ),
+              },
+            ],
           });
           return;
         }
         setTimeout(resolver, 200);
       };
-
-      resolver();
+      super.getSample().then(resolver);
     });
   }
 
@@ -1058,17 +1084,19 @@ export class VideoLooker extends Looker<
       this.state.setZoom = this.hasResized();
     }
 
-    if (this.state.setZoom) {
+    if (!this.state.setZoom) {
+      this.state.setZoom = this.hasResized();
+    }
+
+    if (this.state.zoomToContent) {
+      toggleZoom(this.state, this.currentOverlays);
+    } else if (this.state.setZoom) {
       this.state.pan = [0, 0];
       this.state.scale = 1;
 
       this.state.setZoom = false;
     }
 
-    if (this.state.zoomToContent) {
-      this.state = zoomToContent(this.state, this.currentOverlays);
-      this.state.zoomToContent = false;
-    }
     return super.postProcess();
   }
 
@@ -1090,3 +1118,72 @@ export class VideoLooker extends Looker<
     );
   }
 }
+
+const toggleZoom = <State extends FrameState | ImageState | VideoState>(
+  state: State,
+  overlays: Overlay<State>[]
+) => {
+  if (state.options.selectedLabels) {
+    const ids = new Set(state.options.selectedLabels);
+    const selected = overlays.filter((o) => {
+      if (o instanceof ClassificationsOverlay) {
+        return false;
+      }
+
+      return ids.has(o.getSelectData(state).id);
+    });
+
+    if (selected.length) {
+      overlays = selected;
+    }
+  }
+  const { pan, scale } = zoomToContent(state, overlays);
+
+  if (
+    state.pan[0] === pan[0] &&
+    state.pan[1] === pan[1] &&
+    state.scale === scale
+  ) {
+    state.pan = [0, 0];
+    state.scale = 1;
+  } else {
+    state.pan = pan;
+    state.scale = scale;
+  }
+
+  state.zoomToContent = false;
+};
+
+const filterSample = <S extends BaseSample | FrameSample>(
+  state: Readonly<BaseState>,
+  sample: S,
+  fieldsMap: { [key: string]: string },
+  prefix = ""
+): S => {
+  for (const field in sample) {
+    if (fieldsMap.hasOwnProperty(field)) {
+      sample[fieldsMap[field]] = sample[field];
+      delete sample[field];
+    } else if (field.startsWith("_")) {
+      delete sample[field];
+    } else if (
+      sample[field] &&
+      sample[field]._cls &&
+      FROM_FO.hasOwnProperty(sample[field]._cls)
+    ) {
+      if (!state.options.activeLabels.includes(prefix + field)) {
+        delete sample[field];
+        continue;
+      }
+
+      if (LABEL_LISTS[sample[field]._cls]) {
+        sample[field] = sample[field][
+          LABEL_LISTS[sample[field]._cls]
+        ].filter((label) => state.options.filter[prefix + field](label));
+      } else if (!state.options.filter[prefix + field](sample[field])) {
+        delete sample[field];
+      }
+    }
+  }
+  return sample;
+};

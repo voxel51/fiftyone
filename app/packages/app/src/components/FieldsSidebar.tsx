@@ -464,6 +464,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           ? filtering.filteredFrameLabels(modal)
           : filtering.filteredLabels(modal)
       )}
+      sort={false}
       entries={labels.map((name) => {
         const path = frames ? "frames." + name : name;
         return {
@@ -574,7 +575,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
               filtering.filteredScalars(modal)
             )
       }
-      sort={!modal}
+      sort={false}
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {

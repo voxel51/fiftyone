@@ -2,9 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, StateUpdate } from "../state";
-
-export type DispatchEvent = (eventType: string, details?: any) => void;
+import { BaseState, DispatchEvent, StateUpdate } from "../state";
 
 type ElementEvent<State extends BaseState, E extends Event> = (args: {
   event: E;
@@ -37,7 +35,7 @@ export abstract class BaseElement<
       return;
     }
 
-    this.element = this.createHTMLElement();
+    this.element = this.createHTMLElement(update, dispatchEvent);
     Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
       if (config.thumbnail && eventType === "wheel") {
         return;
@@ -57,7 +55,10 @@ export abstract class BaseElement<
     return {};
   }
 
-  abstract createHTMLElement(): Element;
+  abstract createHTMLElement(
+    update: StateUpdate<State>,
+    dispatchEvent: (eventType: string, details?: any) => void
+  ): Element;
 
   isShown(config: Readonly<State["config"]>): boolean {
     return true;

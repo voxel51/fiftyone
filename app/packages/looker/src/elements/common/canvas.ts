@@ -109,11 +109,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           };
         });
       },
-      dblclick: ({ update }) => {
-        update(({ config: { thumbnail } }) => {
-          return thumbnail ? {} : { scale: 1, pan: [0, 0] };
-        });
-      },
       wheel: ({ event, update, dispatchEvent }) => {
         update(
           ({

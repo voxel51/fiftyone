@@ -22,6 +22,7 @@ import jsonIcon from "../../icons/json.svg";
 import {
   lookerArrow,
   lookerClickable,
+  lookerControlActive,
   lookerControls,
 } from "./controls.module.css";
 
@@ -194,6 +195,7 @@ export class FullscreenButtonElement<
   createHTMLElement() {
     const element = document.createElement("img");
     element.classList.add(lookerClickable);
+    element.style.padding = "2px";
     element.style.gridArea = "2 / 11 / 2 / 11";
     return element;
   }
@@ -201,9 +203,13 @@ export class FullscreenButtonElement<
   renderSelf({ options: { fullscreen } }: Readonly<State>) {
     if (this.fullscreen !== fullscreen) {
       this.fullscreen = fullscreen;
+      fullscreen
+        ? this.element.classList.add(lookerControlActive)
+        : this.element.classList.remove(lookerControlActive);
       this.element.src = fullscreen ? ICONS.fullscreenExit : ICONS.fullscreen;
       this.element.title = `Toggle fullscreen (f)`;
     }
+
     return this.element;
   }
 }
@@ -269,6 +275,8 @@ export class MinusElement<State extends BaseState> extends BaseElement<
 export class HelpButtonElement<State extends BaseState> extends BaseElement<
   State
 > {
+  private active: boolean;
+
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
@@ -289,7 +297,14 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  renderSelf() {
+  renderSelf({ showHelp }) {
+    if (this.active !== showHelp) {
+      showHelp
+        ? this.element.classList.add(lookerControlActive)
+        : this.element.classList.remove(lookerControlActive);
+
+      this.active = showHelp;
+    }
     return this.element;
   }
 }
@@ -297,6 +312,8 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
 export class OptionsButtonElement<State extends BaseState> extends BaseElement<
   State
 > {
+  private active: boolean;
+
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
@@ -317,7 +334,14 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  renderSelf() {
+  renderSelf({ showOptions }) {
+    if (this.active !== showOptions) {
+      showOptions
+        ? this.element.classList.add(lookerControlActive)
+        : this.element.classList.remove(lookerControlActive);
+      this.active = showOptions;
+    }
+
     return this.element;
   }
 }
@@ -361,6 +385,7 @@ export class JSONButtonElement<State extends BaseState> extends BaseElement<
   State
 > {
   private disabled: boolean;
+  private active: boolean;
 
   getEvents(): Events<State> {
     return {
@@ -381,11 +406,18 @@ export class JSONButtonElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  renderSelf({ disableOverlays }) {
+  renderSelf({ disableOverlays, options: { showJSON } }) {
     if (this.disabled !== disableOverlays) {
       this.element.style.opacity = disableOverlays ? "0.5" : "1";
       this.element.style.cursor = disableOverlays ? "unset" : "pointer";
       this.disabled = disableOverlays;
+    }
+
+    if (this.active !== showJSON) {
+      showJSON
+        ? this.element.classList.add(lookerControlActive)
+        : this.element.classList.remove(lookerControlActive);
+      this.active = showJSON;
     }
 
     return this.element;

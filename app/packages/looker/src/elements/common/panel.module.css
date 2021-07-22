@@ -13,6 +13,7 @@
   border-radius: 3px;
   overflow: auto;
   scrollbar-width: none;
+  position: relative;
 }
 
 .lookerPanel::-webkit-scrollbar {
@@ -26,7 +27,7 @@
 }
 
 .lookerPanelContainer {
-  position: absoulte;
+  position: absolute;
   top: 0;
   left: 0;
   height: 100%;
@@ -47,4 +48,23 @@
   font-size: 18px;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid rgb(225, 100, 40);
+}
+
+.lookerPanelClose {
+  position: absolute;
+  top: 0;
+  right: 0;
+  cursor: pointer;
+  margin: 3px;
+  border-radius: 3px;
+
+  -webkit-transition: 0.2s ease-in-out;
+  -moz-transition: 0.2s ease-in-out;
+  -o-transition: 0.2s ease-in-out;
+  transition: 0.2s ease-in-out;
+}
+
+.lookerPanelClose:hover {
+  background-color: rgb(225, 100, 40);
+  transform: translate(0, -1px);
 }

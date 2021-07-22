@@ -115,7 +115,7 @@ interface WrapperProps {
   name: string;
   valueName: string;
   color: string;
-  count: number;
+  totalCount: number;
   modal: boolean;
   path: string;
 }
@@ -123,7 +123,7 @@ interface WrapperProps {
 const Wrapper = ({
   color,
   results,
-  count,
+  totalCount,
   selectedValuesAtom,
   excludeAtom,
   valueName,
@@ -140,7 +140,7 @@ const Wrapper = ({
     counts[String(value)] ?? 0,
   ]);
 
-  if (count <= CHECKBOX_LIMIT) {
+  if (totalCount <= CHECKBOX_LIMIT) {
     allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
   }
 
@@ -151,7 +151,7 @@ const Wrapper = ({
           key={String(value)}
           color={color}
           value={selectedSet.has(value) || allValues.length === 1}
-          disabled={allValues.length === 1}
+          disabled={totalCount === 1}
           name={value}
           count={count}
           subCountAtom={subCountValueAtom({ path, modal, value })}
@@ -168,7 +168,7 @@ const Wrapper = ({
       {Boolean(selectedSet.size) && (
         <>
           <PopoutSectionTitle />
-          {count > 3 && excludeAtom && (
+          {totalCount > 3 && excludeAtom && (
             <ExcludeOption
               excludeAtom={excludeAtom}
               valueName={valueName}
@@ -490,7 +490,7 @@ const CategoricalFilter = React.memo(
               excludeAtom={excludeAtom}
               valueName={valueName}
               modal={modal}
-              count={count}
+              totalCount={count}
             />
           </CategoricalFilterContainer>
         </NamedCategoricalFilterContainer>

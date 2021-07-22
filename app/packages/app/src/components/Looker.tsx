@@ -333,8 +333,8 @@ const defaultLookerOptions = selectorFamily({
       ? { loop: modal ? get(selectors.appConfig).loop_videos : true }
       : {};
     const zoom = get(selectors.isPatchesView)
-      ? { zoom: get(atoms.cropToContent(modal)) }
-      : {};
+      ? get(atoms.cropToContent(modal))
+      : false;
     const colorByLabel = get(atoms.colorByLabel(modal));
 
     return {
@@ -350,6 +350,25 @@ const defaultLookerOptions = selectorFamily({
   },
 });
 
+const lookerOptions = selector<
+  Partial<FrameOptions | ImageOptions | VideoOptions>
+>({
+  key: "lookerOptions",
+  get: ({ get }) => {
+    return {
+      colorByLabel: get(atoms.colorByLabel(false)),
+      colorMap: get(selectors.colorMap(false)),
+      filter: get(labelFilters(false)),
+      zoom: get(selectors.isPatchesView)
+        ? get(atoms.cropToContent(false))
+        : false,
+    };
+  },
+});
+
+const reverse = (obj) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
+
 const lookerModalOptions = selector<
   Partial<FrameOptions | ImageOptions | VideoOptions>
 >({
@@ -362,6 +381,8 @@ const lookerModalOptions = selector<
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
+      fieldsMap: reverse(get(selectors.scalarsDbMap("sample"))),
+      frameFieldsMap: reverse(get(selectors.scalarsDbMap("frame"))),
     };
   },
 });

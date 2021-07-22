@@ -23,6 +23,7 @@
     "color-string": "^1.5.5",
     "copy-to-clipboard": "^3.3.1",
     "immutable": "^4.0.0-rc.12",
+    "json-format-highlight": "^1.0.4",
     "lru-cache": "^6.0.0",
     "uuid": "^8.3.2"
   },

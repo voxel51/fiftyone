@@ -3,9 +3,15 @@
  */
 
 import { SCALE_FACTOR } from "../../constants";
-import { BaseState, StateUpdate, VideoState } from "../../state";
+import {
+  BaseState,
+  Control,
+  ControlMap,
+  StateUpdate,
+  VideoState,
+} from "../../state";
 import { clampScale } from "../../util";
-import { BaseElement, DispatchEvent, Events } from "../base";
+import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
 
 import {
@@ -19,26 +25,10 @@ import {
   lookerPanelContainer,
   lookerPanelHeader,
   lookerPanelVerticalContainer,
+  lookerPanelClose,
 } from "./panel.module.css";
 import { dispatchTooltipEvent } from "./util";
-
-type Action<State extends BaseState> = (
-  update: StateUpdate<State>,
-  dispatchEvent: DispatchEvent,
-  eventKey?: string
-) => void;
-
-interface Control<State extends BaseState = BaseState> {
-  eventKeys?: string | string[];
-  title: string;
-  shortcut: string;
-  detail: string;
-  action: Action<State>;
-}
-
-interface ControlMap<State extends BaseState> {
-  [key: string]: Control<State>;
-}
+import closeIcon from "../../icons/close.svg";
 
 const readActions = <State extends BaseState>(
   actions: ControlMap<State>
@@ -58,14 +48,14 @@ const escape: Control = {
   title: "Escape context",
   shortcut: "Esc",
   eventKeys: "Escape",
-  detail: "Escape help -> settings -> zoom -> fullscreen -> close",
+  detail: "Escape help -> JSON -> settings -> zoom -> fullscreen -> close",
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
         hasDefaultZoom,
         showHelp,
         showOptions,
-        options: { fullscreen: fullscreenSetting },
+        options: { fullscreen: fullscreenSetting, showJSON },
       }) => {
         if (showHelp) {
           return { showHelp: false };
@@ -73,6 +63,11 @@ const escape: Control = {
 
         if (showOptions) {
           return { showOptions: false };
+        }
+
+        if (showJSON) {
+          dispatchEvent("options", { showJSON: false });
+          return { options: { showJSON: false } };
         }
 
         if (!hasDefaultZoom) {
@@ -177,14 +172,15 @@ export const help: Control = {
   eventKeys: ["/", "?"],
   shortcut: "?",
   detail: "Display this help window",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(({ showHelp, config: { thumbnail } }) => {
       if (thumbnail) {
         return {};
       }
 
       if (!showHelp) {
-        return { showHelp: true, json: false };
+        dispatchEvent("options", { showJSON: false });
+        return { showHelp: true, options: { showJSON: false } };
       }
 
       return { showHelp: false };
@@ -407,7 +403,9 @@ export const nextFrame: Control<VideoState> = {
         }
         const total = getFrameNumber(duration, duration, frameRate);
 
-        return { frameNumber: Math.min(total, frameNumber + 1), json: false };
+        return {
+          frameNumber: Math.min(total, frameNumber + 1),
+        };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -425,7 +423,7 @@ export const previousFrame: Control<VideoState> = {
         if (playing || thumbnail) {
           return {};
         }
-        return { frameNumber: Math.max(1, frameNumber - 1), json: false };
+        return { frameNumber: Math.max(1, frameNumber - 1) };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -437,14 +435,17 @@ export const playPause: Control<VideoState> = {
   shortcut: "Space",
   eventKeys: " ",
   detail: "Play or pause the video",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(({ playing, config: { thumbnail } }) => {
-      return thumbnail
-        ? {}
-        : {
-            playing: !playing,
-            json: false,
-          };
+      if (thumbnail) {
+        return {};
+      }
+
+      dispatchEvent("options", { showJSON: false });
+      return {
+        playing: !playing,
+        options: { showJSON: false },
+      };
     });
   },
 };
@@ -484,21 +485,77 @@ const seekTo: Control<VideoState> = {
   detail: "Seek to 0%, 10%, 20%... of the video",
   shortcut: "0-9",
   eventKeys: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-  action: (update, _, eventKey) => {
+  action: (update, dispatchEvent, eventKey) => {
     update(({ duration, config: { frameRate } }) => {
       const total = getFrameNumber(duration, duration, frameRate);
+      dispatchEvent("options", { showJSON: false });
       return {
         frameNumber: Math.max(
           1,
           Math.round((parseInt(eventKey, 10) / 10) * total)
         ),
-        json: false,
+        options: { showJSON: false },
       };
     });
   },
 };
 
+const videoEscape: Control<VideoState> = {
+  title: "Escape context",
+  shortcut: "Esc",
+  eventKeys: "Escape",
+  detail:
+    "Escape help -> JSON -> settings -> zoom -> playback -> fullscreen -> close",
+  action: (update, dispatchEvent, eventKey) => {
+    update(
+      ({
+        hasDefaultZoom,
+        showHelp,
+        showOptions,
+        frameNumber,
+        options: { fullscreen: fullscreenSetting, showJSON },
+      }) => {
+        if (showHelp) {
+          return { showHelp: false };
+        }
+
+        if (showOptions) {
+          return { showOptions: false };
+        }
+
+        if (showJSON) {
+          dispatchEvent("options", { showJSON: false });
+          return { options: { showJSON: false } };
+        }
+
+        if (frameNumber !== 1) {
+          return {
+            frameNumber: 1,
+            playing: false,
+          };
+        }
+
+        if (!hasDefaultZoom) {
+          return {
+            setZoom: true,
+          };
+        }
+
+        if (fullscreenSetting) {
+          fullscreen.action(update, dispatchEvent, eventKey);
+          return {};
+        }
+
+        dispatchEvent("close");
+        return {};
+      }
+    );
+  },
+};
+
 export const VIDEO = {
+  ...COMMON,
+  escape: videoEscape,
   muteUnmute,
   playPause,
   nextFrame,
@@ -516,10 +573,9 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event }) => {
         event.stopPropagation();
         event.preventDefault();
-        update({ showHelp: false });
       },
       dblclick: ({ event }) => {
         event.stopPropagation();
@@ -528,8 +584,8 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     };
   }
 
-  createHTMLElement() {
-    return this.createHelpPanel(COMMON);
+  createHTMLElement(update) {
+    return this.createHelpPanel(update, COMMON);
   }
 
   isShown({ thumbnail }: Readonly<State["config"]>) {
@@ -551,7 +607,10 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     return this.element;
   }
 
-  protected createHelpPanel(controls: ControlMap<State>): HTMLElement {
+  protected createHelpPanel(
+    update: StateUpdate<State>,
+    controls: ControlMap<State>
+  ): HTMLElement {
     const element = document.createElement("div");
     const header = document.createElement("div");
     header.innerText = "Help";
@@ -573,6 +632,12 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     items.classList.add(lookerHelpPanelItems);
     this.items = items;
 
+    const close = document.createElement("img");
+    close.src = closeIcon;
+    close.classList.add(lookerPanelClose);
+    close.onclick = () => update({ showHelp: false });
+    element.appendChild(close);
+
     Object.values(controls)
       .sort((a, b) => (a.shortcut > b.shortcut ? 1 : -1))
       .forEach(addItem(items));
@@ -585,11 +650,9 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class VideoHelpPanelElement<
-  State extends VideoState
-> extends HelpPanelElement<State> {
-  createHTMLElement() {
-    return this.createHelpPanel({ ...COMMON, ...VIDEO });
+export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
+  createHTMLElement(update) {
+    return this.createHelpPanel(update, VIDEO);
   }
 }
 

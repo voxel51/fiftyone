@@ -19,3 +19,19 @@ export const MIN_PIXELS = 16;
 export const SCALE_FACTOR = 1.09;
 export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 20;
+
+export const LABEL_LISTS = {
+  Classifications: "classifications",
+  Detections: "detections",
+  Keypoints: "Keypoints",
+  Polylines: "polylines",
+};
+
+export const JSON_COLORS = {
+  keyColor: "rgb(138, 138, 138)",
+  numberColor: "rgb(225, 100, 40)",
+  stringColor: "rgb(238, 238, 238)",
+  nullColor: "rgb(225, 100, 40)",
+  trueColor: "rgb(225, 100, 40)",
+  falseColor: "rgb(225, 100, 40)",
+};

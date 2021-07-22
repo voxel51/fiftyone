@@ -8,10 +8,12 @@ import { BaseElement, Events } from "../base";
 import {
   lookerPanel,
   lookerPanelContainer,
-  lookerPanelHeader,
   lookerPanelVerticalContainer,
+  lookerPanelClose,
 } from "./panel.module.css";
-import { lookerJSONPanel } from "./json.module.css";
+import { lookerCopyJSON, lookerJSONPanel } from "./json.module.css";
+import closeIcon from "../../icons/close.svg";
+import clipboardIcon from "../../icons/clipboard.svg";
 
 export class JSONPanelElement<State extends BaseState> extends BaseElement<
   State
@@ -19,11 +21,10 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
   private json?: boolean;
   getEvents(): Events<State> {
     return {
-      click: ({ event, update, dispatchEvent }) => {
+      click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();
         update({ options: { showJSON: false } });
-        dispatchEvent("options", { showJSON: false });
       },
       dblclick: ({ event }) => {
         event.stopPropagation();
@@ -32,7 +33,7 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
     };
   }
 
-  createHTMLElement() {
+  createHTMLElement(update, dispatchEvent) {
     const element = document.createElement("div");
     element.classList.add(lookerPanel);
 
@@ -47,6 +48,28 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
 
     container.appendChild(vContainer);
     element.appendChild(document.createElement("pre"));
+
+    element.onclick = (e) => e.stopPropagation();
+
+    const close = document.createElement("img");
+    close.src = closeIcon;
+    close.classList.add(lookerPanelClose);
+    close.onclick = () => {
+      update({ options: { showJSON: false } });
+      dispatchEvent("options", { showJSON: false });
+    };
+    close.title = "Close JSON";
+    vContainer.appendChild(close);
+
+    const copy = document.createElement("img");
+    copy.src = clipboardIcon;
+    copy.classList.add(lookerCopyJSON);
+    copy.onclick = (e) => {
+      e.stopPropagation();
+      dispatchEvent("copy");
+    };
+    copy.title = "Copy JSON to clipboard";
+    vContainer.appendChild(copy);
 
     return container;
   }

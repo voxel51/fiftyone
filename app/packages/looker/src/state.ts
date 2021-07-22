@@ -28,6 +28,26 @@ export interface LabelData {
 export type BufferRange = [number, number];
 export type Buffers = BufferRange[];
 
+export type DispatchEvent = (eventType: string, details?: any) => void;
+
+export type Action<State extends BaseState> = (
+  update: StateUpdate<State>,
+  dispatchEvent: DispatchEvent,
+  eventKey?: string
+) => void;
+
+export interface Control<State extends BaseState = BaseState> {
+  eventKeys?: string | string[];
+  title: string;
+  shortcut: string;
+  detail: string;
+  action: Action<State>;
+}
+
+export interface ControlMap<State extends BaseState> {
+  [key: string]: Control<State>;
+}
+
 interface BaseOptions {
   activeLabels: string[];
   colorByLabel: boolean;
@@ -48,6 +68,7 @@ interface BaseOptions {
   fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
+  fieldsMap?: { [key: string]: string };
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -90,6 +111,7 @@ export interface VideoOptions extends BaseOptions {
   playbackRate: number;
   useFrameNumber: boolean;
   volume: number;
+  frameFieldsMap?: { [key: string]: string };
 }
 
 export interface TooltipOverlay {
@@ -140,17 +162,20 @@ export interface BaseState {
   zoomToContent: boolean;
   setZoom: boolean;
   hasDefaultZoom: boolean;
+  SHORTCUTS: Readonly<ControlMap<any>>; // fix me
 }
 
 export interface FrameState extends BaseState {
   config: FrameConfig;
   options: FrameOptions;
   duration: number | null;
+  SHORTCUTS: Readonly<ControlMap<FrameState>>;
 }
 
 export interface ImageState extends BaseState {
   config: ImageConfig;
   options: ImageOptions;
+  SHORTCUTS: Readonly<ControlMap<ImageState>>;
 }
 
 export interface VideoState extends BaseState {
@@ -165,6 +190,7 @@ export interface VideoState extends BaseState {
   buffering: boolean;
   buffers: Buffers;
   seekBarHovering: boolean;
+  SHORTCUTS: Readonly<ControlMap<VideoState>>;
 }
 
 export type Optional<T> = {
@@ -199,6 +225,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   fullscreen: false,
   zoomPad: 0.1,
   selected: false,
+  fieldsMap: {},
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
@@ -219,6 +246,7 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
+  frameFieldsMap: {},
 };
 
 export interface FrameSample {
