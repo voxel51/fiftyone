@@ -83,6 +83,7 @@ const flashlightLookerOptions = selector({
       activeLabels: get(activeFields),
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
+      inSelectionMode: get(atoms.selectedSamples).size > 0,
     };
   },
 });
@@ -98,6 +99,7 @@ const getLooker = () => {
       const getLookerConstructor = await snapshot.getPromise(lookerType);
       const constructor = getLookerConstructor(getMimeType(sample));
       const options = await snapshot.getPromise(flashlightLookerOptions);
+      const selected = await snapshot.getPromise(atoms.selectedSamples);
 
       return new constructor(
         sample,
@@ -109,7 +111,7 @@ const getLooker = () => {
           frameRate,
           frameNumber: constructor === FrameLooker ? frameNumber : null,
         },
-        options
+        { ...options, selected: selected.has(sample._id) }
       );
     },
     []

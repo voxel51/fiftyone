@@ -35,6 +35,7 @@ export default class Flashlight<K> {
   private intersectionObserver: IntersectionObserver;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
+  private lastScrollTop: number;
 
   constructor(config: FlashlightConfig<K>) {
     this.config = config;
@@ -42,6 +43,7 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(config);
     this.setObservers();
     this.get();
+    this.lastScrollTop = 0;
 
     let attached = false;
 
@@ -266,6 +268,8 @@ export default class Flashlight<K> {
 
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
+        const indices = new Set<number>();
+        const hide = new Set<number>();
         entries.forEach((entry) => {
           const { target } = entry;
           const section = this.state.sections[
@@ -280,13 +284,31 @@ export default class Flashlight<K> {
               this.get();
             }
             showSection(section);
+            indices.add(section.index);
 
             this.state.activeSection = section.index;
           } else if (section.isShown()) {
-            section.hide();
-            this.state.shownSections.delete(section.index);
+            hide.add(section.index);
           }
         });
+
+        const next = this.state.sections[
+          this.container.parentElement.scrollTop > this.lastScrollTop
+            ? Math.max(...indices) + 1
+            : Math.max(0, Math.min(...indices) - 1)
+        ];
+
+        if (next) {
+          showSection(next);
+          hide.has(next.index) && hide.delete(next.index);
+        }
+
+        hide.forEach((index) => {
+          this.state.sections[index].hide();
+          this.state.shownSections.delete(index);
+        });
+
+        this.lastScrollTop = this.container.parentElement.scrollTop;
       },
       {
         root: this.container.parentElement,
@@ -329,6 +351,7 @@ export default class Flashlight<K> {
 
       this.container.style.height = `${height}px`;
       activeSection.target.scrollTo();
+      this.lastScrollTop = activeSection.getTop();
     });
   }
 

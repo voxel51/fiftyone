@@ -815,7 +815,11 @@ export class VideoLooker extends Looker<
   }
 
   get waiting() {
-    return this.imageSource.seeking || this.imageSource.readyState < 2;
+    return (
+      this.imageSource.seeking ||
+      this.imageSource.readyState < 2 ||
+      !this.hasFrame(this.state.frameNumber)
+    );
   }
 
   destroy() {

@@ -4,12 +4,7 @@
 
 import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
-import {
-  muteUnmute,
-  playPause,
-  resetPlaybackRate,
-  VIDEO_SHORTCUTS,
-} from "./common/actions";
+import { muteUnmute, playPause, resetPlaybackRate } from "./common/actions";
 import { lookerClickable, lookerTime } from "./common/controls.module.css";
 import { invisible, mediaOrCanvas } from "./media.module.css";
 import {
@@ -147,10 +142,14 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     return element;
   }
 
-  renderSelf({ playing, buffering }: Readonly<VideoState>) {
-    if (playing !== this.isPlaying || this.isBuffering !== buffering) {
+  renderSelf({ playing, buffering, loaded }: Readonly<VideoState>) {
+    if (
+      playing !== this.isPlaying ||
+      this.isBuffering !== buffering ||
+      !loaded
+    ) {
       this.element.innerHTML = "";
-      if (buffering) {
+      if (buffering || !loaded) {
         this.element.appendChild(this.buffering);
         this.element.title = "Loading labels";
         this.element.style.cursor = "default";
@@ -164,7 +163,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
         this.element.style.cursor = "pointer";
       }
       this.isPlaying = playing;
-      this.isBuffering = buffering;
+      this.isBuffering = buffering || !loaded;
     }
     return this.element;
   }
