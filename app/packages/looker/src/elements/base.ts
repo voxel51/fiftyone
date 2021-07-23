@@ -21,21 +21,20 @@ export abstract class BaseElement<
   State extends BaseState,
   Element extends HTMLElement = HTMLElement
 > {
-  readonly children: BaseElement<State>[] = [];
+  children: BaseElement<State>[] = [];
   readonly element: Element;
 
   constructor(
     config: Readonly<State["config"]>,
     update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void,
-    children?: BaseElement<State>[]
+    dispatchEvent: (eventType: string, details?: any) => void
   ) {
-    this.children = children || [];
     if (!this.isShown(config)) {
       return;
     }
 
     this.element = this.createHTMLElement(update, dispatchEvent);
+
     Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
       if (config.thumbnail && eventType === "wheel") {
         return;
@@ -50,21 +49,15 @@ export abstract class BaseElement<
       );
     });
   }
-
-  protected getEvents(): Events<State> {
-    return {};
+  applyChildren(children: BaseElement<State>[]) {
+    this.children = children || [];
   }
-
-  abstract createHTMLElement(
-    update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void
-  ): Element;
 
   isShown(config: Readonly<State["config"]>): boolean {
     return true;
   }
 
-  render(state: Readonly<State>): Element {
+  render(state: Readonly<State>): Element | void {
     const self = this.renderSelf(state);
 
     this.children.forEach((child) => {
@@ -73,14 +66,23 @@ export abstract class BaseElement<
       }
 
       const element = child.render(state);
-      if (element.parentNode === this.element) {
+      if (!element || element.parentNode === this.element) {
         return;
       }
-      self.appendChild(element);
+      self && self.appendChild(element);
     });
 
     return self;
   }
 
-  abstract renderSelf(state: Readonly<State>): Element;
+  abstract createHTMLElement(
+    update: StateUpdate<State>,
+    dispatchEvent: (eventType: string, details?: any) => void
+  ): Element | void;
+
+  abstract renderSelf(state: Readonly<State>): Element | void;
+
+  protected getEvents(): Events<State> {
+    return {};
+  }
 }

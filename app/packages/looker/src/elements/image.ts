@@ -3,36 +3,24 @@
  */
 
 import { ImageState } from "../state";
-import { BaseElement, Events } from "./base";
-
-import { mediaOrCanvas, invisible } from "./media.module.css";
+import { BaseElement } from "./base";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string = "";
+  imageSource: HTMLImageElement;
 
-  getEvents(): Events<ImageState> {
-    return {
-      load: ({ update }) => {
-        update({ loaded: true });
-      },
-      error: ({ event, dispatchEvent }) => {
-        dispatchEvent("error", { event });
-      },
-    };
-  }
+  createHTMLElement(update, dispatchEvent) {
+    this.imageSource = new Image();
+    this.imageSource.onload = () => update({ loaded: true });
+    this.imageSource.onerror = (event) => dispatchEvent("error", { event });
 
-  createHTMLElement() {
-    const element = document.createElement("img");
-    element.classList.add(mediaOrCanvas, invisible);
-    return element;
+    return null;
   }
 
   renderSelf({ config: { src } }: Readonly<ImageState>) {
     if (this.src !== src) {
       this.src = src;
-      this.element.setAttribute("src", src);
+      this.imageSource.src = src;
     }
-
-    return this.element;
   }
 }

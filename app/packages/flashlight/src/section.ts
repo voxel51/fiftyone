@@ -20,7 +20,7 @@ export default class SectionElement implements Section {
   private readonly section: HTMLDivElement = document.createElement("div");
   private readonly rows: [
     { aspectRatio: number; extraMargins: number },
-    [HTMLElement, ItemData][]
+    [HTMLDivElement, ItemData][]
   ][];
   private readonly render: Render;
   private destoryCallbacks: { [id: string]: ReturnType<Render> };
@@ -126,10 +126,18 @@ export default class SectionElement implements Section {
 
   show(): void {
     if (!this.attached) {
-      this.rows.forEach(([_, items]) =>
-        items.forEach(([item, { id }]) => {
-          this.destoryCallbacks[id] = this.render(id, item);
-        })
+      this.rows.forEach(
+        ([{ aspectRatio: rowAspectRatio, extraMargins }, items]) => {
+          !extraMargins && (extraMargins = 0);
+          const height =
+            (this.width - (items.length - 1 + extraMargins) * this.margin) /
+            rowAspectRatio;
+          items.forEach(([item, { id, aspectRatio }]) => {
+            const width = height * aspectRatio;
+
+            this.destoryCallbacks[id] = this.render(id, item, [width, height]);
+          });
+        }
       );
 
       this.container.appendChild(this.section);

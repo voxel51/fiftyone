@@ -246,7 +246,7 @@ export default React.memo(() => {
             nextRequestKey: more ? page + 1 : null,
           };
         },
-        render: (sampleId, element) => {
+        render: (sampleId, element, dimensions) => {
           const result = samples.get(sampleId);
 
           let looker, destroyed;
@@ -260,7 +260,7 @@ export default React.memo(() => {
 
             if (!destroyed) {
               lookers.set(sampleId, new WeakRef(looker));
-              looker.attach(element);
+              looker.attach(element, dimensions);
             }
           });
 

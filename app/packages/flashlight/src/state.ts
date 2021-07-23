@@ -36,7 +36,11 @@ export interface Response<K> {
 
 export type Get<K> = (key: K) => Promise<Response<K>>;
 
-export type Render = (id: string, HTMLDivElement) => (() => void) | void;
+export type Render = (
+  id: string,
+  element: HTMLDivElement,
+  dimensions: [number, number]
+) => (() => void) | void;
 
 export interface Options {
   margin: number;
@@ -56,6 +60,7 @@ export interface State<K> {
   sections: Section[];
   options: Options;
   activeSection: number;
+  lastSection: number;
   clean: Set<number>;
   updater?: (id: string) => void;
   shownSections: Set<number>;

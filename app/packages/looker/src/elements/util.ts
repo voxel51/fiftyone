@@ -55,6 +55,12 @@ export function createElementsTree<
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
 ): Element {
+  const element = new root.node(config, update, dispatchEvent);
+
+  if (!element.isShown(config)) {
+    return element;
+  }
+
   let children = new Array<BaseElement<State>>();
   children = root.children
     ? root.children.map((child) =>
@@ -62,7 +68,9 @@ export function createElementsTree<
       )
     : children;
 
-  return new root.node(config, update, dispatchEvent, children);
+  element.applyChildren(children);
+
+  return element;
 }
 
 const stringifyNumber = function (

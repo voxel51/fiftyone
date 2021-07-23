@@ -48,6 +48,8 @@ import {
   Buffers,
   LabelData,
   BufferRange,
+  BoundingBox,
+  Dimensions,
 } from "./state";
 import {
   addToBuffers,
@@ -101,7 +103,8 @@ export abstract class Looker<
     this.lookerElement = this.getElements(config);
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
-    this.imageSource = this.lookerElement.children[0].element as ImageSource;
+    this.imageSource = this.lookerElement.children[0]
+      .imageSource as ImageSource;
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(
         () =>
@@ -174,7 +177,7 @@ export abstract class Looker<
 
       this.dispatchImpliedEvents(this.previousState, this.state);
 
-      this.lookerElement.render(this.state as Readonly<State>);
+      this.lookerElement.render(this.state);
 
       if (this.state.options.showJSON) {
         const pre = this.lookerElement.element.querySelectorAll("pre")[0];
@@ -183,6 +186,7 @@ export abstract class Looker<
         });
       }
       const ctx = this.ctx;
+
       if (!this.state.loaded) {
         return;
       }
@@ -238,7 +242,7 @@ export abstract class Looker<
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
-  attach(element: HTMLElement | string): void {
+  attach(element: HTMLElement | string, dimensions: Dimensions): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
     }
@@ -248,9 +252,11 @@ export abstract class Looker<
         this.lookerElement.element
       );
 
-    this.updater({ windowBBox: getElementBBox(element) });
+    this.updater({
+      windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
+    });
     element.appendChild(this.lookerElement.element);
-    this.resizeObserver.observe(this.lookerElement.element);
+    !dimensions && this.resizeObserver.observe(this.lookerElement.element);
   }
 
   detach(): void {
@@ -262,13 +268,6 @@ export abstract class Looker<
   }
 
   destroy(): void {
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.ctx.clearRect(
-      0,
-      0,
-      this.state.windowBBox[2],
-      this.state.windowBBox[3]
-    );
     this.detach();
     delete this.lookerElement;
     delete this.imageSource;
@@ -938,7 +937,9 @@ export class VideoLooker extends Looker<
       )
     );
 
-    const providedFrames = sample.frames || [{ frame_number: 1 }];
+    const providedFrames = sample.frames.length
+      ? sample.frames
+      : [{ frame_number: 1 }];
     const providedFrameOverlays = providedFrames.map((frameSample) =>
       loadOverlays(
         Object.fromEntries(
