@@ -2060,7 +2060,15 @@ def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
         return None
 
     dobj = detection.to_detected_object()
-    mask = etai.render_instance_image(dobj.mask, dobj.bounding_box, frame_size)
+
+    try:
+        mask = etai.render_instance_image(
+            dobj.mask, dobj.bounding_box, frame_size
+        )
+    except:
+        # Either mask or bounding box is too small to render
+        width, height = frame_size
+        mask = np.zeros((height, width), dtype=bool)
 
     if iscrowd:
         return _mask_to_rle(mask)

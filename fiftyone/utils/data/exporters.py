@@ -11,6 +11,7 @@ import logging
 import os
 
 from bson import json_util
+import numpy as np
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -26,7 +27,6 @@ import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.patches as foup
-import fiftyone.types as fot
 
 from .parsers import (
     FiftyOneLabeledImageSampleParser,
@@ -2311,6 +2311,16 @@ class ImageSegmentationDirectoryExporter(
             is used
         mask_format (".png"): the image format to use when writing masks to
             disk
+        mask_size (None): the ``(width, height)`` at which to render
+            segmentation masks when exporting instances or polylines. If not
+            provided, masks will be rendered to match the resolution of each
+            input image
+        mask_targets (None): a dict mapping integer pixel values in
+            ``[0, 255]`` to label strings defining which object classes to
+            render and which pixel values to use for each class. If omitted,
+            all objects are rendered with pixel value 255
+        thickness (1): the thickness, in pixels, at which to render
+            (non-filled) polylines
     """
 
     def __init__(
@@ -2321,6 +2331,9 @@ class ImageSegmentationDirectoryExporter(
         export_media=None,
         image_format=None,
         mask_format=".png",
+        mask_size=None,
+        mask_targets=None,
+        thickness=1,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -2340,6 +2353,9 @@ class ImageSegmentationDirectoryExporter(
         self.export_media = export_media
         self.image_format = image_format
         self.mask_format = mask_format
+        self.mask_size = mask_size
+        self.mask_targets = mask_targets
+        self.thickness = thickness
 
         self._media_exporter = None
 
@@ -2349,7 +2365,11 @@ class ImageSegmentationDirectoryExporter(
 
     @property
     def label_cls(self):
-        return fol.Segmentation
+        return {
+            "segmentations": fol.Segmentation,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+        }
 
     def setup(self):
         self._media_exporter = ImageExporter(
@@ -2360,10 +2380,63 @@ class ImageSegmentationDirectoryExporter(
         )
         self._media_exporter.setup()
 
-    def export_sample(self, image_or_path, segmentation, metadata=None):
+    def export_sample(self, image_or_path, labels, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
+
+        if labels is None:
+            return  # unlabeled
+
+        if not isinstance(labels, dict):
+            labels = {"labels": labels}
+
+        if all(v is None for v in labels.values()):
+            return  # unlabeled
+
+        mask = None
+
+        must_render = False
+        for label in labels.values():
+            if isinstance(label, fol.Segmentation):
+                if mask is None:
+                    mask = label.mask
+                else:
+                    logger.warning(
+                        "Found multiple segmentation masks; only the first "
+                        "mask will be used..."
+                    )
+            elif isinstance(label, (fol.Detections, fol.Polylines)):
+                must_render = True
+            elif label is not None:
+                raise ValueError("Unsupported label type '%s'" % type(label))
+
+        if must_render:
+            if mask is None:
+                if self.mask_size is not None:
+                    width, height = self.mask_size
+                else:
+                    if metadata is None:
+                        metadata = fom.ImageMetadata.build_for(image_or_path)
+
+                    width, height = metadata.width, metadata.height
+
+                mask = np.zeros((height, width), dtype=np.uint8)
+
+            for label in labels.values():
+                if isinstance(label, fol.Detections):
+                    segmentation = label.to_segmentation(
+                        mask=mask, mask_targets=self.mask_targets
+                    )
+                    mask = segmentation.mask
+                elif isinstance(label, fol.Polylines):
+                    segmentation = label.to_segmentation(
+                        mask=mask,
+                        mask_targets=self.mask_targets,
+                        thickness=self.thickness,
+                    )
+                    mask = segmentation.mask
+
         out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
-        etai.write(segmentation.mask, out_mask_path)
+        etai.write(mask, out_mask_path)
 
     def close(self, *args):
         self._media_exporter.close()
