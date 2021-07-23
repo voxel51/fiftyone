@@ -19,7 +19,7 @@ export type Events<State extends BaseState> = {
 
 export abstract class BaseElement<
   State extends BaseState,
-  Element extends HTMLElement = HTMLElement
+  Element extends HTMLElement = HTMLElement | null
 > {
   children: BaseElement<State>[] = [];
   readonly element: Element;
@@ -57,7 +57,7 @@ export abstract class BaseElement<
     return true;
   }
 
-  render(state: Readonly<State>): Element | void {
+  render(state: Readonly<State>): Element | null {
     const self = this.renderSelf(state);
 
     this.children.forEach((child) => {
@@ -78,9 +78,9 @@ export abstract class BaseElement<
   abstract createHTMLElement(
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void
-  ): Element | void;
+  ): Element;
 
-  abstract renderSelf(state: Readonly<State>): Element | void;
+  abstract renderSelf(state: Readonly<State>): Element | null;
 
   protected getEvents(): Events<State> {
     return {};

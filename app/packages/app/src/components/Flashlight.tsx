@@ -142,22 +142,66 @@ const stringifyObj = (obj) => {
   );
 };
 
+const argFact = (compareFn) => (array) =>
+  array.map((el, idx) => [el, idx]).reduce(compareFn)[1];
+
+const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
+
 const useThumbnailClick = () => {
   return useRecoilCallback(
-    ({ set, snapshot }) => async (sampleId: string) => {
+    ({ set, snapshot }) => async (
+      event: MouseEvent,
+      sampleId: string,
+      itemIndexMap: { [key: string]: number }
+    ) => {
       const selected = new Set(
         await snapshot.getPromise(atoms.selectedSamples)
       );
-      if (selected.size) {
-        selected.has(sampleId)
-          ? selected.delete(sampleId)
-          : selected.add(sampleId);
-        set(atoms.selectedSamples, selected);
-        return;
-      } else {
+
+      if (!selected.size) {
         set(atoms.modal, samples.get(sampleId));
         set(labelFilters(true), {});
+
+        return;
       }
+      if (event.ctrlKey) {
+        const clickedIndex = itemIndexMap[sampleId];
+        const reverse = Object.fromEntries(
+          Object.entries(itemIndexMap).map(([k, v]) => [v, k])
+        );
+        console.log(clickedIndex);
+        if (!selected.has(sampleId)) {
+          const array = [...selected];
+
+          const closeIndex =
+            itemIndexMap[
+              array[
+                argMin(
+                  array.map((id) => Math.abs(itemIndexMap[id] - clickedIndex))
+                )
+              ]
+            ];
+
+          const [start, end] =
+            clickedIndex < closeIndex
+              ? [clickedIndex, closeIndex]
+              : [closeIndex, clickedIndex];
+
+          const newSelection = new Array(end - start + 1)
+            .fill(0)
+            .map((_, i) => reverse[i + start]);
+
+          set(atoms.selectedSamples, new Set([...selected, ...newSelection]));
+        }
+
+        return;
+      }
+
+      selected.has(sampleId)
+        ? selected.delete(sampleId)
+        : selected.add(sampleId);
+      set(atoms.selectedSamples, selected);
+      return;
     },
     []
   );
@@ -217,7 +261,7 @@ export default React.memo(() => {
       flashlight.current = new Flashlight<number>({
         initialRequestKey: 1,
         options,
-        onClick: onThumbnailClick,
+        onItemClick: onThumbnailClick,
         get: async (page) => {
           const { results, more } = await fetch(
             `${url}page=${page}`

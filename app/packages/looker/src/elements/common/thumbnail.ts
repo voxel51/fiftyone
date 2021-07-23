@@ -25,12 +25,17 @@ export class ThumbnailSelectorElement<
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        update(({ options: { selected } }) => ({
-          options: { selected: !selected },
-        }));
-        dispatchEvent("selectthumbnail");
+        update(({ options: { selected, inSelectionMode } }) => {
+          if (inSelectionMode) {
+            return {};
+          }
+          event.stopPropagation();
+          event.preventDefault();
+
+          dispatchEvent("selectthumbnail");
+
+          return { options: { selected: !selected } };
+        });
       },
     };
   }

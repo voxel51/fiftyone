@@ -6,7 +6,6 @@ import { FrameState } from "../state";
 import { BaseElement, Events } from "./base";
 import { getFrameString, getTime, getTimeString } from "./util";
 
-import { mediaOrCanvas, invisible } from "./media.module.css";
 import { lookerTime } from "./common/controls.module.css";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
@@ -57,7 +56,6 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.classList.add(mediaOrCanvas, invisible);
     element.preload = "metadata";
     element.muted = true;
     return element;
@@ -72,6 +70,6 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
       this.element.setAttribute("src", src);
     }
 
-    return this.element;
+    return null;
   }
 }

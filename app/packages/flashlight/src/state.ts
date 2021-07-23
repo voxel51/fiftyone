@@ -36,6 +36,14 @@ export interface Response<K> {
 
 export type Get<K> = (key: K) => Promise<Response<K>>;
 
+export type ItemIndexMap = { [key: string]: number };
+
+export type onItemClick = (
+  event: MouseEvent,
+  id: string,
+  itemIndexMap: ItemIndexMap
+) => void;
+
 export type Render = (
   id: string,
   element: HTMLDivElement,
@@ -64,5 +72,7 @@ export interface State<K> {
   clean: Set<number>;
   updater?: (id: string) => void;
   shownSections: Set<number>;
-  onClick?: (id: string) => void;
+  onItemClick?: onItemClick;
+  nextItemIndex: number;
+  itemIndexMap: ItemIndexMap;
 }

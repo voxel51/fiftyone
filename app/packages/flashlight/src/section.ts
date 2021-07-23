@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { ItemData, Render, RowData, Section } from "./state";
+import { ItemData, onItemClick, Render, RowData, Section } from "./state";
 
 import {
   flashlightSection,
@@ -29,7 +29,7 @@ export default class SectionElement implements Section {
     index: number,
     rows: RowData[],
     render: Render,
-    onClick?: (id: string) => void
+    onItemClick?: (event: MouseEvent, id: string) => void
   ) {
     this.index = index;
     this.container.classList.add(flashlightSectionContainer);
@@ -43,8 +43,10 @@ export default class SectionElement implements Section {
         { aspectRatio, extraMargins },
         items.map((itemData) => {
           const itemElement = document.createElement("div");
-          onClick &&
-            itemElement.addEventListener("click", () => onClick(itemData.id));
+          onItemClick &&
+            itemElement.addEventListener("click", (event) =>
+              onItemClick(event, itemData.id)
+            );
           this.section.appendChild(itemElement);
           return [itemElement, itemData];
         }),

@@ -6,7 +6,6 @@ import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import { muteUnmute, playPause, resetPlaybackRate } from "./common/actions";
 import { lookerClickable, lookerTime } from "./common/controls.module.css";
-import { invisible, mediaOrCanvas } from "./media.module.css";
 import {
   getFrameNumber,
   getFrameString,
@@ -454,7 +453,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   createHTMLElement() {
     const element = document.createElement("video");
-    element.classList.add(mediaOrCanvas, invisible);
     element.preload = "metadata";
     element.muted = true;
     this.frameNumber = 1;
@@ -519,7 +517,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.frameNumber = frameNumber;
     }
 
-    return this.element;
+    return null;
   }
 }
 

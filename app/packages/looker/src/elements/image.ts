@@ -3,24 +3,33 @@
  */
 
 import { ImageState } from "../state";
-import { BaseElement } from "./base";
+import { BaseElement, Events } from "./base";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string = "";
-  imageSource: HTMLImageElement;
 
-  createHTMLElement(update, dispatchEvent) {
-    this.imageSource = new Image();
-    this.imageSource.onload = () => update({ loaded: true });
-    this.imageSource.onerror = (event) => dispatchEvent("error", { event });
+  getEvents(): Events<ImageState> {
+    return {
+      load: ({ update }) => {
+        update({ loaded: true });
+      },
+      error: ({ event, dispatchEvent }) => {
+        dispatchEvent("error", { event });
+      },
+    };
+  }
 
-    return null;
+  createHTMLElement() {
+    const element = document.createElement("img");
+    return element;
   }
 
   renderSelf({ config: { src } }: Readonly<ImageState>) {
     if (this.src !== src) {
       this.src = src;
-      this.imageSource.src = src;
+      this.element.setAttribute("src", src);
     }
+
+    return null;
   }
 }

@@ -7,11 +7,11 @@ import SectionElement from "./section";
 import {
   Get,
   ItemData,
+  onItemClick,
   Optional,
   Options,
   Render,
   RowData,
-  Section,
   State,
 } from "./state";
 
@@ -25,7 +25,7 @@ export interface FlashlightConfig<K> {
   render: Render;
   initialRequestKey: K;
   options: FlashlightOptions;
-  onClick?: (id: string) => void;
+  onItemClick?: onItemClick;
 }
 
 export default class Flashlight<K> {
@@ -147,7 +147,7 @@ export default class Flashlight<K> {
             this.state.sections.length,
             rows,
             this.state.render,
-            this.state.onClick
+            this.getOnItemClick()
           );
           sectionElement.set(
             this.state.height,
@@ -213,7 +213,7 @@ export default class Flashlight<K> {
             this.state.sections.length,
             rows,
             this.state.render,
-            this.state.onClick
+            this.getOnItemClick()
           );
           sectionElement.set(
             this.state.height,
@@ -407,6 +407,13 @@ export default class Flashlight<K> {
       Boolean(this.state.currentRequestKey)
     );
 
+    for (const { items: i } of rows) {
+      for (const { id } of i) {
+        this.state.itemIndexMap[id] = this.state.nextItemIndex;
+        this.state.nextItemIndex++;
+      }
+    }
+
     this.state.currentRemainder = remainder;
 
     if (useRowRemainder) {
@@ -458,7 +465,18 @@ export default class Flashlight<K> {
       },
       clean: new Set(),
       shownSections: new Set(),
-      onClick: config.onClick,
+      onItemClick: config.onItemClick,
+      itemIndexMap: {},
+      nextItemIndex: 0,
     };
+  }
+
+  private getOnItemClick(): (event: MouseEvent, id: string) => void | null {
+    if (!this.state.onItemClick) {
+      return null;
+    }
+
+    return (event, id) =>
+      this.state.onItemClick(event, id, { ...this.state.itemIndexMap });
   }
 }
