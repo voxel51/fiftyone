@@ -10,7 +10,6 @@ import csv
 import logging
 import os
 
-import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -59,11 +58,11 @@ class KITTIDetectionDatasetImporter(
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with label entries (False)
-        extra_attrs (None): whether to load extra annotation attributes onto
+        extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -78,7 +77,7 @@ class KITTIDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         include_all_data=False,
-        extra_attrs=None,
+        extra_attrs=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -329,7 +328,7 @@ class KITTIAnnotationWriter(object):
         etau.write_file("\n".join(rows), txt_path)
 
 
-def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=None):
+def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=True):
     """Loads the KITTI detection annotations from the given TXT file.
 
     See :ref:`this page <KITTIDetectionDataset-import>` for format details.
@@ -337,19 +336,17 @@ def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=None):
     Args:
         txt_path: the path to the annotations TXT file
         frame_size: the ``(width, height)`` of the image
-        extra_attrs (None): whether to load extra annotation attributes onto
+        extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
 
     Returns:
         a :class:`fiftyone.core.detections.Detections` instance
     """
-    if not extra_attrs:
-        extra_attrs = set()
-    elif extra_attrs == True:
+    if extra_attrs == True:
         extra_attrs = {
             "truncated",
             "occluded",
@@ -358,6 +355,8 @@ def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=None):
             "location",
             "rotation_y",
         }
+    elif extra_attrs == False:
+        extra_attrs = set()
     elif etau.is_str(extra_attrs):
         extra_attrs = {extra_attrs}
     else:

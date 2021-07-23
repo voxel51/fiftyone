@@ -14,10 +14,9 @@
 {% for object in objects %}
     <object>
         <name>{{ object.name }}</name>
-        <pose>{{ object.pose if object.pose is not none else "" }}</pose>
-        <truncated>{{ object.truncated if object.truncated is not none else "" }}</truncated>
-        <difficult>{{ object.difficult if object.difficult is not none else "" }}</difficult>
-        <occluded>{{ object.occluded if object.occluded is not none else "" }}</occluded>
+    {% for name, value in object.attributes.items() %}
+        <{{ name }}>{{ value if value is not none else "" }}</{{ name }}>
+    {% endfor %}
         <bndbox>
             <xmin>{{ object.bndbox.xmin }}</xmin>
             <ymin>{{ object.bndbox.ymin }}</ymin>

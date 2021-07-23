@@ -11,9 +11,8 @@ import logging
 import os
 import warnings
 
-import eta.core.image as etai
-import eta.core.utils as etau
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
@@ -61,11 +60,11 @@ class BDDDatasetImporter(
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with label entries (False)
-        extra_attrs (None): whether to load extra annotation attributes onto
+        extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -80,7 +79,7 @@ class BDDDatasetImporter(
         data_path=None,
         labels_path=None,
         include_all_data=False,
-        extra_attrs=None,
+        extra_attrs=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -135,7 +134,7 @@ class BDDDatasetImporter(
             # Labeled image
             frame_size = (image_metadata.width, image_metadata.height)
             label = _parse_bdd_annotation(
-                anno_dict, frame_size, extra_attrs=self.extra_attrs
+                anno_dict, frame_size, self.extra_attrs
             )
         else:
             # Unlabeled image
@@ -240,8 +239,12 @@ class BDDDatasetExporter(
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
-        extra_attrs (None): an optional field name or list of field names of
-            extra label attributes to include in the exported annotations
+        extra_attrs (True): whether to include extra object attributes in the
+            exported labels. Supported values are:
+
+            -   ``True``: export all extra attributes found
+            -   ``False``: do not export extra attributes
+            -   a name or list of names of specific attributes to export
     """
 
     def __init__(
@@ -251,7 +254,7 @@ class BDDDatasetExporter(
         labels_path=None,
         export_media=None,
         image_format=None,
-        extra_attrs=None,
+        extra_attrs=True,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -314,7 +317,7 @@ class BDDDatasetExporter(
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
         annotation = _make_bdd_annotation(
-            labels, metadata, uuid, extra_attrs=self.extra_attrs
+            labels, metadata, uuid, self.extra_attrs
         )
         self._annotations.append(annotation)
 
@@ -474,7 +477,7 @@ def _raise_bdd100k_error(msg):
     )
 
 
-def _parse_bdd_annotation(d, frame_size, extra_attrs=None):
+def _parse_bdd_annotation(d, frame_size, extra_attrs):
     labels = {}
 
     #
@@ -584,7 +587,7 @@ def _filter_attributes(attributes, extra_attrs):
     return {k: v for k, v in attributes.items() if k in extra_attrs}
 
 
-def _make_bdd_annotation(labels, metadata, filename, extra_attrs=None):
+def _make_bdd_annotation(labels, metadata, filename, extra_attrs):
     frame_size = (metadata.width, metadata.height)
 
     # Convert labels to BDD format
@@ -685,10 +688,15 @@ def _polyline_to_bdd(polyline, frame_size, extra_attrs):
 
 
 def _get_attributes(label, extra_attrs):
-    if not extra_attrs:
+    if extra_attrs == True:
+        return dict(label.iter_attributes())
+
+    if extra_attrs == False:
         return {}
 
     if etau.is_str(extra_attrs):
         extra_attrs = [extra_attrs]
 
-    return {label.get_attribute_value(name, None) for name in extra_attrs}
+    return {
+        name: label.get_attribute_value(name, None) for name in extra_attrs
+    }

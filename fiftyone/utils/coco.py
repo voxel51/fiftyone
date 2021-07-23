@@ -45,7 +45,7 @@ def add_coco_labels(
     label_type="detections",
     coco_id_field="coco_id",
     classes=None,
-    extra_attrs=None,
+    extra_attrs=True,
     use_polylines=False,
     tolerance=None,
 ):
@@ -129,11 +129,11 @@ def add_coco_labels(
             must be available from
             :meth:`classes <fiftyone.core.collections.SampleCollection.classes>` or
             :meth:`default_classes <fiftyone.core.collections.SampleCollection.default_classes>`
-        extra_attrs (None): whether to load extra annotation attributes onto
+        extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
         use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
@@ -279,11 +279,11 @@ class COCODetectionDatasetImporter(
             Note that the license descriptions (if available) are always loaded
             into ``dataset.info["licenses"]`` and can be used to convert
             between ID, name, and URL later
-        extra_attrs (None): whether to load extra annotation attributes onto
+        extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
 
         only_matching (False): whether to only load labels that match the
@@ -317,7 +317,7 @@ class COCODetectionDatasetImporter(
         image_ids=None,
         include_id=False,
         include_license=False,
-        extra_attrs=None,
+        extra_attrs=True,
         only_matching=False,
         use_polylines=False,
         tolerance=None,
@@ -626,8 +626,12 @@ class COCODetectionDatasetExporter(
             :meth:`load_coco_detection_annotations`. If not provided, this info
             will be extracted when :meth:`log_collection` is called, if
             possible
-        extra_attrs (None): an optional field name or list of field names of
-            extra label attributes to include in the exported annotations
+        extra_attrs (False): whether to include extra object attributes in the
+            exported labels. Supported values are:
+
+            -   ``True``: export all extra attributes found
+            -   ``False``: do not export extra attributes
+            -   a name or list of names of specific attributes to export
         iscrowd ("iscrowd"): the name of a detection attribute that indicates
             whether an object is a crowd (only used if present)
         num_decimals (None): an optional number of decimal places at which to
@@ -646,7 +650,7 @@ class COCODetectionDatasetExporter(
         image_format=None,
         classes=None,
         info=None,
-        extra_attrs=None,
+        extra_attrs=False,
         iscrowd="iscrowd",
         num_decimals=None,
         tolerance=None,
@@ -663,9 +667,6 @@ class COCODetectionDatasetExporter(
             labels_path=labels_path,
             default="labels.json",
         )
-
-        if etau.is_str(extra_attrs):
-            extra_attrs = [extra_attrs]
 
         super().__init__(export_dir=export_dir)
 
@@ -1014,7 +1015,7 @@ class COCOObject(object):
         metadata,
         keypoint=None,
         labels_map_rev=None,
-        extra_attrs=None,
+        extra_attrs=True,
         iscrowd="iscrowd",
         num_decimals=None,
         tolerance=None,
@@ -1030,7 +1031,12 @@ class COCOObject(object):
                 containing keypoints to include for the object
             labels_map_rev (None): an optional dict mapping labels to category
                 IDs
-            extra_attrs (None): an optional list of extra attributes to include
+            extra_attrs (True): whether to include extra attributes from the
+                object. Supported values are:
+
+                -   ``True``: include all extra attributes found
+                -   ``False``: do not include extra attributes
+                -   a name or list of names of specific attributes to include
             iscrowd ("iscrowd"): the name of the crowd attribute (used if
                 present)
             num_decimals (None): an optional number of decimal places at which
@@ -1071,10 +1077,7 @@ class COCOObject(object):
 
         keypoints = _make_coco_keypoints(keypoint, frame_size)
 
-        if extra_attrs:
-            attributes = {f: getattr(detection, f, None) for f in extra_attrs}
-        else:
-            attributes = {}
+        attributes = _get_attributes(detection, extra_attrs)
 
         return cls(
             id=None,
@@ -1090,16 +1093,16 @@ class COCOObject(object):
         )
 
     @classmethod
-    def from_anno_dict(cls, d, extra_attrs=None):
+    def from_anno_dict(cls, d, extra_attrs=True):
         """Creates a :class:`COCOObject` from a COCO annotation dict.
 
         Args:
             d: a COCO annotation dict
-            extra_attrs (None): whether to load extra annotation attributes.
+            extra_attrs (True): whether to load extra annotation attributes.
                 Supported values are:
 
-                -   ``None``/``False``: do not load extra attributes
                 -   ``True``: load all extra attributes
+                -   ``False``: do not load extra attributes
                 -   a name or list of names of specific attributes to load
 
         Returns:
@@ -1157,18 +1160,18 @@ class COCOObject(object):
         return label, attributes
 
 
-def load_coco_detection_annotations(json_path, extra_attrs=None):
+def load_coco_detection_annotations(json_path, extra_attrs=True):
     """Loads the COCO annotations from the given JSON file.
 
     See :ref:`this page <COCODetectionDataset-import>` for format details.
 
     Args:
         json_path: the path to the annotations JSON file
-        extra_attrs (None): whether to load extra annotation attributes.
+        extra_attrs (True): whether to load extra annotation attributes.
             Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
 
     Returns:
@@ -1969,6 +1972,21 @@ def _coco_objects_to_keypoints(coco_objects, frame_size, classes):
         keypoints.append(coco_obj.to_keypoints(frame_size, classes=classes))
 
     return fol.Keypoints(keypoints=keypoints)
+
+
+def _get_attributes(label, extra_attrs):
+    if extra_attrs == True:
+        return dict(label.iter_attributes())
+
+    if extra_attrs == False:
+        return {}
+
+    if etau.is_str(extra_attrs):
+        extra_attrs = [extra_attrs]
+
+    return {
+        name: label.get_attribute_value(name, None) for name in extra_attrs
+    }
 
 
 #
