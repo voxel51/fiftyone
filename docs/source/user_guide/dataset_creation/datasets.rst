@@ -442,7 +442,7 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
-The target value in `labels` for unlabeled images is `None`.
+The target value in `labels` for unlabeled images is `None` (or missing).
 
 The UUIDs can also be relative paths like `path/to/uuid`, in which case the
 images in `data/` should be arranged in nested subfolders with the
@@ -879,7 +879,7 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
-The target value in `labels` for unlabeled images is `None`.
+The target value in `labels` for unlabeled images is `None` (or missing).
 
 The UUIDs can also be relative paths like `path/to/uuid`, in which case the
 images in `data/` should be arranged in nested subfolders with the
@@ -1429,7 +1429,7 @@ omitted, in which case the `data/` directory is listed to determine the
 available images.
 
 The TXT files in `data/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in the following format::
+to an object in the image of the same name, in the following format:
 
 .. code-block:: text
 
