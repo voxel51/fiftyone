@@ -7,6 +7,7 @@ Utilities for working with datasets in YOLO format.
 """
 import logging
 import os
+import warnings
 
 import yaml
 
@@ -734,12 +735,27 @@ class YOLOAnnotationWriter(object):
             txt_path: the path to write the annotation TXT file
             labels_map_rev: a dictionary mapping class label strings to target
                 integers
-            dynamic_classes (False): whether to dynamically add labels to
-                labels_map_rev
+            dynamic_classes (False): whether to dynamically add new labels to
+                ``labels_map_rev``
         """
         rows = []
         for detection in detections.detections:
-            row = _make_yolo_row(detection, labels_map_rev, dynamic_classes)
+            label = detection.label
+
+            if dynamic_classes and label not in labels_map_rev:
+                target = len(labels_map_rev)
+                labels_map_rev[label] = target
+            elif label not in labels_map_rev:
+                msg = (
+                    "Ignoring detection with label '%s' not in provided "
+                    "classes" % label
+                )
+                warnings.warn(msg)
+                continue
+            else:
+                target = labels_map_rev[label]
+
+            row = _make_yolo_row(detection.bounding_box, target)
             rows.append(row)
 
         _write_file_lines(rows, txt_path)
@@ -815,18 +831,10 @@ def _parse_yolo_row(row, classes):
     return fol.Detection(label=label, bounding_box=bounding_box)
 
 
-def _make_yolo_row(detection, labels_map_rev, dynamic_classes):
-    label = detection.label
-    if dynamic_classes and label not in labels_map_rev:
-        target = len(labels_map_rev)
-        labels_map_rev[label] = target
-    else:
-        target = labels_map_rev[label]
-
-    xtl, ytl, w, h = detection.bounding_box
+def _make_yolo_row(bounding_box, target):
+    xtl, ytl, w, h = bounding_box
     xc = xtl + 0.5 * w
     yc = ytl + 0.5 * h
-
     return "%d %f %f %f %f" % (target, xc, yc, w, h)
 
 

@@ -9,6 +9,7 @@ import contextlib
 import logging
 import multiprocessing
 import os
+import warnings
 
 import eta.core.utils as etau
 
@@ -959,14 +960,22 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
             for detection in detections.detections:
                 xmin, ymin, w, h = detection.bounding_box
                 text = detection.label
-                try:
-                    label = self._labels_map_rev[text]
-                except KeyError:
-                    if not self._dynamic_classes:
-                        raise
 
-                    label = len(self._labels_map_rev)
-                    self._labels_map_rev[text] = label
+                if self._dynamic_classes:
+                    if text not in self._labels_map_rev:
+                        label = len(self._labels_map_rev)
+                        self._labels_map_rev[text] = label
+                    else:
+                        label = self._labels_map_rev[text]
+                elif text not in self._labels_map_rev:
+                    msg = (
+                        "Ignoring detection with label '%s' not in provided "
+                        "classes" % text
+                    )
+                    warnings.warn(msg)
+                    continue
+                else:
+                    label = self._labels_map_rev[text]
 
                 xmins.append(xmin)
                 xmaxs.append(xmin + w)

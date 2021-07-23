@@ -9,6 +9,7 @@ from collections import defaultdict
 import inspect
 import logging
 import os
+import warnings
 
 from bson import json_util
 import numpy as np
@@ -2659,10 +2660,18 @@ def _parse_classification(classification, labels_map_rev=None):
         return None
 
     label = classification.label
-    if labels_map_rev is not None:
-        label = labels_map_rev[label]
+    if labels_map_rev is None:
+        return label
 
-    return label
+    if label not in labels_map_rev:
+        msg = (
+            "Ignoring classification with label '%s' not in provided classes"
+            % label
+        )
+        warnings.warn(msg)
+        return None
+
+    return labels_map_rev[label]
 
 
 def _parse_detections(detections, labels_map_rev=None):
@@ -2672,7 +2681,16 @@ def _parse_detections(detections, labels_map_rev=None):
     _detections = []
     for detection in detections.detections:
         label = detection.label
+
         if labels_map_rev is not None:
+            if label not in labels_map_rev:
+                msg = (
+                    "Ignoring detection with label '%s' not in provided "
+                    "classes" % label
+                )
+                warnings.warn(msg)
+                continue
+
             label = labels_map_rev[label]
 
         _detection = {

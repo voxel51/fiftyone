@@ -752,13 +752,30 @@ class COCODetectionDatasetExporter(
             return
 
         self._has_labels = True
+
         for detection in detections.detections:
+            label = detection.label
+
+            if self._labels_map_rev is not None:
+                if label not in self._labels_map_rev:
+                    msg = (
+                        "Ignoring detection with label '%s' not in provided "
+                        "classes" % label
+                    )
+                    warnings.warn(msg)
+                    continue
+
+                category_id = self._labels_map_rev[label]
+            else:
+                category_id = label  # will be converted to int later
+
             self._anno_id += 1
-            self._classes.add(detection.label)
+            self._classes.add(label)
+
             obj = COCOObject.from_detection(
                 detection,
                 metadata,
-                labels_map_rev=self._labels_map_rev,
+                category_id=category_id,
                 extra_attrs=self.extra_attrs,
                 iscrowd=self.iscrowd,
                 num_decimals=self.num_decimals,
@@ -1013,8 +1030,8 @@ class COCOObject(object):
         cls,
         detection,
         metadata,
+        category_id=None,
         keypoint=None,
-        labels_map_rev=None,
         extra_attrs=True,
         iscrowd="iscrowd",
         num_decimals=None,
@@ -1027,10 +1044,9 @@ class COCOObject(object):
             detection: a :class:`fiftyone.core.labels.Detection`
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
                 image
+            category_id (None): the category ID for the object
             keypoint (None): an optional :class:`fiftyone.core.labels.Keypoint`
                 containing keypoints to include for the object
-            labels_map_rev (None): an optional dict mapping labels to category
-                IDs
             extra_attrs (True): whether to include extra attributes from the
                 object. Supported values are:
 
@@ -1049,11 +1065,6 @@ class COCOObject(object):
         Returns:
             a :class:`COCOObject`
         """
-        if labels_map_rev:
-            category_id = labels_map_rev[detection.label]
-        else:
-            category_id = detection.label
-
         width = metadata.width
         height = metadata.height
         x, y, w, h = detection.bounding_box
