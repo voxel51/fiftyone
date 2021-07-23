@@ -574,6 +574,182 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset2.count("predictions.detections"),
         )
 
+    @drop_datasets
+    def test_voc_detection_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
+            label_field="predictions",
+            extra_attrs=["confidence", "age", "cute", "mood"],
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
+            label_field="predictions",
+            extra_attrs=["confidence", "age", "cute", "mood"],
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+        self.assertEqual(
+            dataset.distinct("predictions.detections.confidence"),
+            dataset2.distinct("predictions.detections.confidence"),
+        )
+        self.assertEqual(
+            dataset.distinct("predictions.detections.age"),
+            dataset2.distinct("predictions.detections.age"),
+        )
+        self.assertEqual(
+            dataset.distinct("predictions.detections.cute"),
+            dataset2.distinct("predictions.detections.cute"),
+        )
+        self.assertEqual(
+            dataset.distinct("predictions.detections.mood"),
+            dataset2.distinct("predictions.detections.mood"),
+        )
+
+        # Labels-only
+
+        export_dir = self._new_dir()
+        data_path = os.path.dirname(dataset.first().filepath)
+        labels_path = os.path.join(export_dir, "labels.xml")
+
+        dataset.export(
+            dataset_type=fo.types.VOCDetectionDataset,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.VOCDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
+    @drop_datasets
+    def test_kitti_detection_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+        self.assertEqual(
+            dataset.distinct("predictions.detections.confidence"),
+            dataset2.distinct("predictions.detections.confidence"),
+        )
+
+        # Labels-only
+
+        export_dir = self._new_dir()
+        data_path = os.path.dirname(dataset.first().filepath)
+        labels_path = os.path.join(export_dir, "labels/")
+
+        dataset.export(
+            dataset_type=fo.types.KITTIDetectionDataset,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.KITTIDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
+    @drop_datasets
+    def test_yolov4_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
+    @drop_datasets
+    def test_yolov5_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+
 
 """
 class VideoTests(unittest.TestCase):
