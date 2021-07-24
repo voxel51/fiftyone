@@ -277,7 +277,7 @@ export default React.memo(() => {
                 sample: result.sample,
                 dimensions: [result.width, result.height],
                 frameRate: result.frame_rate,
-                frameNumber: results.frame_number,
+                frameNumber: result.sample.frame_number,
               };
               samples.set(result.sample._id, data);
 

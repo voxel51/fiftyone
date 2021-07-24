@@ -4,7 +4,7 @@
 
 import { FrameState } from "../state";
 import { BaseElement, Events } from "./base";
-import { getFrameString, getTime, getTimeString } from "./util";
+import { getFrameString, getTime } from "./util";
 
 import { lookerTime } from "./common/controls.module.css";
 
@@ -19,13 +19,9 @@ export class FrameNumberElement extends BaseElement<FrameState> {
   renderSelf({
     duration,
     config: { frameRate, frameNumber },
-    options: { useFrameNumber },
   }: Readonly<FrameState>) {
     if (duration) {
-      const timestamp = useFrameNumber
-        ? getFrameString(frameNumber, duration, frameRate)
-        : getTimeString(frameNumber, frameRate, duration);
-      this.element.innerHTML = timestamp;
+      this.element.innerHTML = getFrameString(frameNumber, duration, frameRate);
     }
     return this.element;
   }
