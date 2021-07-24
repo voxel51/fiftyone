@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.11.2
 ---------------
-*Released July 13, 2021*
+*Released July 26, 2021*
 
 App
 ^^^
@@ -27,11 +27,28 @@ Core
 - Added support for evaluating polygons and instance segmentations to
   :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
   See :ref:`this page <evaluation-detection-types>` for usage details
-- Greatly improved the efficiency of creating
-  :ref:`evaluation patch views <evaluation-patches>`
 - Added support for creating :ref:`patch views <frame-patches-views>` and
   :ref:`evaluation patch views <evaluating-videos>` into the frames of video
   datasets
+- Greatly improved the efficiency of creating
+  :ref:`evaluation patch views <evaluation-patches>`
+- Added support for recursively listing data directories when loading datasets
+  :ref:`from disk <oading-datasets-from-disk>`
+- Added support for controlling whether/which object attributes are
+  imported/exported in formats like :ref:`COCO <COCODetectionDataset-import>`
+  that support arbitrary object attributes
+- Updated all dataset import/export routines to support/prefer custom object
+  attributes stored directly on |Label| instances as dynamic fields rather
+  than in the `attributes` dict
+- The :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-export>`
+  format now supports exporting segmentations defined by |Detections| with
+  instance masks and |Polylines|
+- Added an
+  :meth:`objects_to_segmentations() <fiftyone.utils.labels.objects_to_segmentations>`
+  utility for converting |Detections| with instance fields and |Polylines| to
+  |Segmentation| format
+- Added graceful handling of edges cases like empty views and missing labels to
+  all :ref:`evaluation routines <evaluating-models>`
 - Added improved support for
   :meth:`creating <fiftyone.core.collections.SampleCollection.create_index>`,
   :meth:`viewing <fiftyone.core.collections.SampleCollection.get_index_information>`,
@@ -51,6 +68,9 @@ Core
   :ref:`downgrade instructions <downgrading-fiftyone>`
 - Fixed a bug that prevented FiftyOne from being imported on read-only
   filesystems
+- Fixed a bug that prevented the proper loading of the
+  :ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset after partial
+  downloads involving only a subset of the available label types
 
 Zoo
 ^^^
