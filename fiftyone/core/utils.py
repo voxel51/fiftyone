@@ -950,7 +950,7 @@ class UniqueFilenameMaker(object):
         # URL handling
         # @todo improve this, while still maintaining Unix/Windows path support
         name = name.replace("%", "-")
-        ext = ext.split("?")[0]  # URL query params
+        ext = ext.split("?")[0]
 
         if output_ext is not None:
             ext = output_ext

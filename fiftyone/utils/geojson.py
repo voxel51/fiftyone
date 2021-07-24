@@ -409,11 +409,14 @@ class GeoJSONDatasetImporter(
         fields = {}
         if self.property_parsers:
             for key, value in properties.items():
-                fields[key] = self.property_parsers[key](value)
+                if key in self.property_parsers:
+                    fields[key] = self.property_parsers[key](value)
         else:
             fields.update(properties)
 
-        if self.multi_location:
+        if not feature.get("geometry", None):
+            location = None
+        elif self.multi_location:
             location = fol.GeoLocations.from_geo_json(feature)
         else:
             location = fol.GeoLocation.from_geo_json(feature)

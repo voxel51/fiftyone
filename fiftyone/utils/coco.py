@@ -626,7 +626,7 @@ class COCODetectionDatasetExporter(
             :meth:`load_coco_detection_annotations`. If not provided, this info
             will be extracted when :meth:`log_collection` is called, if
             possible
-        extra_attrs (False): whether to include extra object attributes in the
+        extra_attrs (True): whether to include extra object attributes in the
             exported labels. Supported values are:
 
             -   ``True``: export all extra attributes found
@@ -650,7 +650,7 @@ class COCODetectionDatasetExporter(
         image_format=None,
         classes=None,
         info=None,
-        extra_attrs=False,
+        extra_attrs=True,
         iscrowd="iscrowd",
         num_decimals=None,
         tolerance=None,
@@ -1510,7 +1510,7 @@ def _download_coco_dataset_split(
         _,
         images,
         annotations,
-    ) = load_coco_detection_annotations(full_anno_path, extra_attrs=True)
+    ) = load_coco_detection_annotations(full_anno_path)
 
     #
     # Download images to `images_dir`, if necessary
