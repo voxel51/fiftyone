@@ -7,9 +7,13 @@ Loading data into FiftyOne
 
 The first step to using FiftyOne is to load your data into a
 :ref:`dataset <using-datasets>`. FiftyOne supports automatic loading of
-datasets stored in various common formats. If your dataset is stored in a
-custom format, don't worry, FiftyOne also provides support for easily loading
-datasets in custom formats.
+datasets stored in various :ref:`common formats <supported-import-formats>`.
+If your dataset is stored in a custom format, don't worry, FiftyOne also
+provides support for easily loading datasets in
+:ref:`custom formats <loading-custom-datasets>`.
+
+Check out the sections below to decide which import pattern is the best fit
+for your data and labels.
 
 .. note::
 
@@ -19,465 +23,343 @@ datasets in custom formats.
     **Important:** Samples only store the `filepath` to the media, not the
     raw media itself. FiftyOne does not create duplicate copies of your data!
 
-Loading datasets
-----------------
+.. _loading-common-datasets:
 
-Depending on the format of your data and labels, FiftyOne provides a few
-different options for loading your data into a |Dataset|. Navigate the tabs
-below to figure out which option is best for you.
+Common formats
+--------------
+
+If your data is stored on disk in one of the
+:ref:`many common formats <supported-import-formats>` supported natively by
+FiftyOne, then you can automatically load your data into a |Dataset| via the
+following simple pattern:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # A name for the dataset
+    name = "my-dataset"
+
+    # The directory containing the dataset to import
+    dataset_dir = "/path/to/dataset"
+
+    # The type of the dataset being imported
+    # Any subclass of `fiftyone.types.Dataset` is supported
+    dataset_type = fo.types.COCODetectionDataset  # for example
+
+    dataset = fo.Dataset.from_dir(
+        dataset_dir=dataset_dir,
+        dataset_type=dataset_type,
+        name=name,
+    )
+
+.. note::
+
+    Check out :ref:`this page <loading-datasets-from-disk>` for more details
+    about loading datasets from disk in common formats!
+
+.. _loading-custom-datasets:
+
+Custom formats
+--------------
+
+The simplest and most flexible approach to loading your data into FiftyOne is
+to iterate over your data in a simple Python loop, create a |Sample| for each
+data + label(s) pair, and then add those samples to a |Dataset|.
+
+FiftyOne provides :ref:`label types <using-labels>` for common tasks such as
+classification, detection, segmentation, and many more. The examples below
+give you a sense of the basic workflow for a few tasks:
 
 .. tabs::
 
-    .. tab:: I have data in a common format
+    .. tab:: Image classification
 
-        FiftyOne provides easy-to-use functions to load your datasets from
-        disk. You can automatically load your data if it is stored in one of
-        the following formats:
+      .. code:: python
+          :linenos:
 
-        - :ref:`ImageDirectory <ImageDirectory-import>`
-        - :ref:`VideoDirectory <VideoDirectory-import>`
-        - :ref:`FiftyOneImageClassificationDataset <FiftyOneImageClassificationDataset-import>`
-        - :ref:`ImageClassificationDirectoryTree <ImageClassificationDirectoryTree-import>`
-        - :ref:`VideoClassificationDirectoryTree <VideoClassificationDirectoryTree-import>`
-        - :ref:`TFImageClassificationDataset <TFImageClassificationDataset-import>`
-        - :ref:`FiftyOneImageDetectionDataset <FiftyOneImageDetectionDataset-import>`
-        - :ref:`COCODetectionDataset <COCODetectionDataset-import>`
-        - :ref:`VOCDetectionDataset <VOCDetectionDataset-import>`
-        - :ref:`YOLOv4Dataset <YOLOv4Dataset-import>`
-        - :ref:`YOLOv5Dataset <YOLOv5Dataset-import>`
-        - :ref:`KITTIDetectionDataset <KITTIDetectionDataset-import>`
-        - :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-import>`
-        - :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-import>`
-        - :ref:`CVATImageDataset <CVATImageDataset-import>`
-        - :ref:`CVATVideoDataset <CVATVideoDataset-import>`
-        - :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>`
-        - :ref:`FiftyOneVideoLabelsDataset <FiftyOneVideoLabelsDataset-import>`
-        - :ref:`BDDDataset <BDDDataset-import>`
-        - :ref:`GeoJSONDataset <GeoJSONDataset-import>`
-        - :ref:`FiftyOneDataset <FiftyOneDataset-import>`
+          import glob
+          import fiftyone as fo
 
-        If one of these formats matches your data, you can load it with the
-        following code:
+          images_patt = "/path/to/images/*"
 
-        .. code-block:: python
-            :linenos:
+          # Ex: your custom label format
+          annotations = {
+              "/path/to/images/000001.jpg": "dog",
+              ....,
+          }
 
-            import fiftyone as fo
+          # Create samples for your data
+          samples = []
+          for filepath in glob.glob(images_patt):
+              sample = fo.Sample(filepath=filepath)
 
-            # A name for the dataset
-            name = "my-dataset"
+              # Store classification in a field name of your choice
+              label = annotations[filepath]
+              sample["ground_truth"] = fo.Classification(label=label)
 
-            # The directory containing the dataset to import
-            dataset_dir = "/path/to/dataset"
+              samples.append(sample)
 
-            # The type of the dataset being imported
-            # Any subclass of `fiftyone.types.Dataset` is supported
-            dataset_type = fo.types.COCODetectionDataset  # for example
+          # Create dataset
+          dataset = fo.Dataset("my-classification-dataset")
+          dataset.add_samples(samples)
 
-            dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+    .. tab:: Object detection
 
-        .. note::
+      .. code:: python
+          :linenos:
 
-            :doc:`Learn more <datasets>` about loading common-format datasets!
+          import glob
+          import fiftyone as fo
 
-    .. tab:: I have data in a custom format
+          images_patt = "/path/to/images/*"
 
-        The simplest approach to loading your data as a |Dataset| is to iterate
-        over your data and labels and create a |Sample| for each data/label
-        pair and add those samples to a Dataset:
+          # Ex: your custom label format
+          annotations = {
+              "/path/to/images/000001.jpg": [
+                  {"bbox": ..., "label": ...},
+                  ...
+              ],
+              ...
+          }
 
-        .. tabs::
+          # Create samples for your data
+          samples = []
+          for filepath in glob.glob(images_patt):
+              sample = fo.Sample(filepath=filepath)
 
-            .. tab:: Unlabeled images
+              # Convert detections to FiftyOne format
+              detections = []
+              for obj in annotations[filepath]:
+                  label = obj["label"]
 
-              .. code:: python
-                  :linenos:
+                  # Bounding box coordinates should be relative values
+                  # in [0, 1] in the following format:
+                  # [top-left-x, top-left-y, width, height]
+                  bounding_box = obj["bbox"]
 
-                  import glob
-                  import fiftyone as fo
+                  detections.append(
+                      fo.Detection(label=label, bounding_box=bounding_box)
+                  )
 
-                  images_patt = "/path/to/images/*"
+              # Store detections in a field name of your choice
+              sample["ground_truth"] = fo.Detections(detections=detections)
 
-                  # Create samples for your images
-                  samples = []
-                  for filepath in glob.glob(images_patt):
-                      sample = fo.Sample(filepath=filepath)
-                      samples.append(sample)
+              samples.append(sample)
 
-                  # Create dataset
-                  dataset = fo.Dataset("my-image-dataset")
-                  dataset.add_samples(samples)
+          # Create dataset
+          dataset = fo.Dataset("my-detection-dataset")
+          dataset.add_samples(samples)
 
-            .. tab:: Image classification
+    .. tab:: Labeled videos
 
-              .. code:: python
-                  :linenos:
+      .. code:: python
+          :linenos:
 
-                  import glob
-                  import fiftyone as fo
+          import fiftyone as fo
 
-                  images_patt = "/path/to/images/*"
+          video_path = "/path/to/video.mp4"
 
-                  # Ex: your custom label format
-                  annotations = {
-                      "/path/to/images/000001.jpg": "dog",
-                      ....,
-                  }
-
-                  # Create samples for your data
-                  samples = []
-                  for filepath in glob.glob(images_patt):
-                      sample = fo.Sample(filepath=filepath)
-
-                      # Store classification in a field name of your choice
-                      label = annotations[filepath]
-                      sample["ground_truth"] = fo.Classification(label=label)
-
-                      samples.append(sample)
-
-                  # Create dataset
-                  dataset = fo.Dataset("my-classification-dataset")
-                  dataset.add_samples(samples)
-
-            .. tab:: Object detection
-
-              .. code:: python
-                  :linenos:
-
-                  import glob
-                  import fiftyone as fo
-
-                  images_patt = "/path/to/images/*"
-
-                  # Ex: your custom label format
-                  annotations = {
-                      "/path/to/images/000001.jpg": [
-                          {"bbox": ..., "label": ...},
-                          ...
-                      ],
-                      ...
-                  }
-
-                  # Create samples for your data
-                  samples = []
-                  for filepath in glob.glob(images_patt):
-                      sample = fo.Sample(filepath=filepath)
-
-                      # Convert detections to FiftyOne format
-                      detections = []
-                      for obj in annotations[filepath]:
-                          label = obj["label"]
-
-                          # Bounding box coordinates should be relative values
-                          # in [0, 1] in the following format:
-                          # [top-left-x, top-left-y, width, height]
-                          bounding_box = obj["bbox"]
-
-                          detections.append(
-                              fo.Detection(label=label, bounding_box=bounding_box)
-                          )
-
-                      # Store detections in a field name of your choice
-                      sample["ground_truth"] = fo.Detections(detections=detections)
-
-                      samples.append(sample)
-
-                  # Create dataset
-                  dataset = fo.Dataset("my-detection-dataset")
-                  dataset.add_samples(samples)
-
-            .. tab:: Unlabeled videos
-
-              .. code:: python
-                  :linenos:
-
-                  import glob
-                  import fiftyone as fo
-
-                  videos_patt = "/path/to/videos/*"
-
-                  # Create samples for your videos
-                  samples = []
-                  for filepath in glob.glob(videos_patt):
-                      sample = fo.Sample(filepath=filepath)
-                      samples.append(sample)
-
-                  # Create the dataset
-                  dataset = fo.Dataset("my-video-dataset")
-                  dataset.add_samples(samples)
-
-            .. tab:: Labeled videos
-
-              .. code:: python
-                  :linenos:
-
-                  import glob
-                  import fiftyone as fo
-
-                  video_path = "/path/to/video.mp4"
-
-                  # Ex: your custom label format
-                  frame_labels = {
-                      1: {
-                          "weather": "sunny",
-                          "objects": [
-                              {
-                                  "label": ...
-                                  "bbox": ...
-                              },
-                              ...
-                          ]
+          # Ex: your custom label format
+          frame_labels = {
+              1: {
+                  "weather": "sunny",
+                  "objects": [
+                      {
+                          "label": ...
+                          "bbox": ...
                       },
                       ...
-                  }
+                  ]
+              },
+              ...
+          }
 
-                  # Create video sample with frame labels
-                  sample = fo.Sample(filepath=video_path)
-                  for frame_number, labels in frame_labels.items():
-                      frame = fo.Frame()
+          # Create video sample with frame labels
+          sample = fo.Sample(filepath=video_path)
+          for frame_number, labels in frame_labels.items():
+              frame = fo.Frame()
 
-                      # Store a frame classification
-                      weather = labels["weather"]
-                      frame["weather"] = fo.Classification(label=weather)
+              # Store a frame classification
+              weather = labels["weather"]
+              frame["weather"] = fo.Classification(label=weather)
 
-                      # Convert detections to FiftyOne format
-                      detections = []
-                      for obj in labels["objects"]:
-                          label = obj["label"]
+              # Convert detections to FiftyOne format
+              detections = []
+              for obj in labels["objects"]:
+                  label = obj["label"]
 
-                          # Bounding box coordinates should be relative values
-                          # in [0, 1] in the following format:
-                          # [top-left-x, top-left-y, width, height]
-                          bounding_box = obj["bbox"]
+                  # Bounding box coordinates should be relative values
+                  # in [0, 1] in the following format:
+                  # [top-left-x, top-left-y, width, height]
+                  bounding_box = obj["bbox"]
 
-                          detections.append(
-                              fo.Detection(label=label, bounding_box=bounding_box)
-                          )
+                  detections.append(
+                      fo.Detection(label=label, bounding_box=bounding_box)
+                  )
 
-                      # Store object detections
-                      frame["objects"] = fo.Detections(detections=detections)
+              # Store object detections
+              frame["objects"] = fo.Detections(detections=detections)
 
-                      # Add frame to sample
-                      sample.frames[frame_number] = frame
+              # Add frame to sample
+              sample.frames[frame_number] = frame
 
-                  # Create dataset
-                  dataset = fo.Dataset("my-labeled-video-dataset")
-                  dataset.add_sample(sample)
+          # Create dataset
+          dataset = fo.Dataset("my-labeled-video-dataset")
+          dataset.add_sample(sample)
 
-        If your data does not fit naturally into this pattern, check out the
-        `Advanced loading options`_ section to find the best approach for your
-        use case.
+Note that using :meth:`Dataset.add_samples() <fiftyone.core.dataset.Dataset.add_samples>`
+to add batches of samples to your datasets can be significantly more efficient
+than adding samples one-by-one via
+:meth:`Dataset.add_sample() <fiftyone.core.dataset.Dataset.add_sample>`.
 
-        .. note::
+.. note::
 
-            :doc:`Learn more <samples>` about loading samples into a Dataset!
+    If you use the same custom data format frequently in your workflows, then
+    writing a :ref:`custom dataset importer <custom-dataset-importer>` is a
+    great way to abstract and streamline the loading of your data into
+    FiftyOne.
 
-    .. tab:: I don't have data
+.. _loading-images:
 
-        Check out how to automatically download and load popular public
-        datasets using the :ref:`FiftyOne Dataset Zoo <dataset-zoo>`!
+Loading images
+--------------
 
-        You can download any dataset in the zoo and load it into FiftyOne using
-        a single command:
-
-        .. code-block:: python
-            :linenos:
-
-            import fiftyone.zoo as foz
-
-            # List available datasets
-            print(foz.list_zoo_datasets())
-            # ['coco-2014', ...,  'kitti', ..., 'voc-2012', ...]
-
-            # Load a split of a zoo dataset
-            dataset = foz.load_zoo_dataset("cifar10", split="train")
-
-        .. note::
-
-            :ref:`Learn more <dataset-zoo>` about the FiftyOne Dataset Zoo!
-
-Advanced loading options
-------------------------
-
-If you have data stored in a custom format, then there are more direct ways of
-loading a |Dataset| than adding samples manually. The following techniques will
-show you how to implement your own classes that can automate the dataset
-loading process and allow you to more easily load various datasets from disk in
-your custom format.
+If you're just getting started with a project and all you have is a bunch of
+image files, you can easily load them into a FiftyOne dataset and start
+visualizing them :ref:`in the App <fiftyone-app>`:
 
 .. tabs::
 
-    .. tab:: My data is exposed by a Python iterable
+  .. group-tab:: Python
 
-        If you already have a way to efficiently parse your data into Python,
-        then the best practice is to wrap it in a FiftyOne |SampleParser|.
-        For example, a `torch.utils.data.Dataset` is a parser for various
-        datasets that has been wrapped in a FiftyOne |SampleParser|.
+    You can use the
+    :meth:`Dataset.from_images() <fiftyone.core.dataset.Dataset.from_images>`,
+    :meth:`Dataset.from_images_dir() <fiftyone.core.dataset.Dataset.from_images_dir>`, and
+    :meth:`Dataset.from_images_patt() <fiftyone.core.dataset.Dataset.from_images_patt>`
+    factory methods to load your images into FiftyOne:
 
-        :ref:`Writing a custom SampleParser <custom-sample-parser>`
-        will allow you to automatically load your samples using factory methods
-        exposed on |Dataset| objectss
+    .. code-block:: python
+        :linenos:
 
-        .. tabs::
+        import fiftyone as fo
 
-            .. tab:: Add labeled images
+        # Create a dataset from a list of images
+        dataset = fo.Dataset.from_images(
+            ["/path/to/image1.jpg", "/path/to/image2.jpg", ...]
+        )
 
-                You can use the
-                :meth:`Dataset.add_labeled_images() <fiftyone.core.dataset.Dataset.add_labeled_images>`
-                method to add labeled images to a FiftyOne dataset without
-                creating copies of the underlying images:
+        # Create a dataset from a directory of images
+        dataset = fo.Dataset.from_images_dir("/path/to/images")
 
-                .. code-block:: python
-                    :linenos:
+        # Create a dataset from a glob pattern of images
+        dataset = fo.Dataset.from_images_patt("/path/to/images/*.jpg")
 
-                    import fiftyone as fo
+        session = fo.launch_app(dataset)
 
-                    dataset = fo.Dataset()
+    You can also use
+    :meth:`Dataset.add_images() <fiftyone.core.dataset.Dataset.add_images>`,
+    :meth:`Dataset.add_images_dir() <fiftyone.core.dataset.Dataset.add_images_dir>`, and
+    :meth:`Dataset.add_images_patt() <fiftyone.core.dataset.Dataset.add_images_patt>`
+    to add images to an existing dataset.
 
-                    # An iterable of labeled images and the SampleParser that you
-                    # wrote to parse them
-                    samples = ...
-                    sample_parser = CustomLabeledImageSampleParser(...)
+  .. group-tab:: CLI
 
-                    # Add your samples to a FiftyOne dataset without copying the images
-                    dataset.add_labeled_images(samples, sample_parser)
+    You can use the :ref:`fiftyone app view <cli-fiftyone-app-view>` command
+    from the CLI to quickly browse images in the App without creating a
+    (persistent) FiftyOne dataset:
 
-            .. tab:: Ingest labeled images
+    .. code-block:: shell
 
-                You can use the
-                :meth:`Dataset.ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`
-                method to add labeled images to a FiftyOne dataset, while also
-                creating copies of the underlying images in a backing
-                directory:
+        # View a glob pattern of images in the App
+        fiftyone app view --images-patt '/path/to/images/*.jpg'
 
-                .. code-block:: python
-                    :linenos:
+        # View a directory of images in the App
+        fiftyone app view --images-dir /path/to/images
 
-                    import fiftyone as fo
+.. _loading-videos:
 
-                    dataset = fo.Dataset()
+Loading videos
+--------------
 
-                    # An iterable of labeled images and the SampleParser that you
-                    # wrote to parse them
-                    samples = ...
-                    sample_parser = CustomLabeledImageSampleParser(...)
+If you're just getting started with a project and all you have is a bunch of
+video files, you can easily load them into a FiftyOne dataset and start
+visualizing them :ref:`in the App <fiftyone-app>`:
 
-                    # A directory into which to copy the source images from `samples`
-                    dataset_dir = ...
+.. tabs::
 
-                    # Ingest the images into the dataset
-                    # The source images are copied into `dataset_dir`
-                    dataset.ingest_labeled_images(samples, sample_parser, dataset_dir=dataset_dir)
+  .. group-tab:: Python
 
-            .. tab:: Add labeled videos
+    You can use the
+    :meth:`Dataset.from_videos() <fiftyone.core.dataset.Dataset.from_videos>`,
+    :meth:`Dataset.from_videos_dir() <fiftyone.core.dataset.Dataset.from_videos_dir>`, and
+    :meth:`Dataset.from_videos_patt() <fiftyone.core.dataset.Dataset.from_videos_patt>`
+    factory methods to load your videos into FiftyOne:
 
-                You can use the
-                :meth:`Dataset.add_labeled_videos() <fiftyone.core.dataset.Dataset.add_labeled_videos>`
-                method to add labeled videos to a FiftyOne dataset without
-                creating copies of the underlying videos:
+    .. code-block:: python
+        :linenos:
 
-                .. code-block:: python
-                    :linenos:
+        import fiftyone as fo
 
-                    import fiftyone as fo
+        # Create a dataset from a list of videos
+        dataset = fo.Dataset.from_videos(
+            ["/path/to/video1.mp4", "/path/to/video2.mp4", ...]
+        )
 
-                    dataset = fo.Dataset()
+        # Create a dataset from a directory of videos
+        dataset = fo.Dataset.from_videos_dir("/path/to/videos")
 
-                    # An iterable of labeled videos and the SampleParser that you
-                    # wrote to parse them
-                    samples = ...
-                    sample_parser = CustomLabeledVideoSampleParser(...)
+        # Create a dataset from a glob pattern of videos
+        dataset = fo.Dataset.from_videos_patt("/path/to/videos/*.mp4")
 
-                    # Add your samples to a FiftyOne dataset without copying the videos
-                    dataset.add_labeled_videos(samples, sample_parser)
+        session = fo.launch_app(dataset)
 
-            .. tab:: Ingest labeled videos
+    You can also use
+    :meth:`Dataset.add_videos() <fiftyone.core.dataset.Dataset.add_videos>`,
+    :meth:`Dataset.add_videos_dir() <fiftyone.core.dataset.Dataset.add_videos_dir>`, and
+    :meth:`Dataset.add_videos_patt() <fiftyone.core.dataset.Dataset.add_videos_patt>`
+    to add videos to an existing dataset.
 
-                You can use the
-                :meth:`Dataset.ingest_labeled_videos() <fiftyone.core.dataset.Dataset.ingest_labeled_videos>`
-                method to add labeled videos to a FiftyOne dataset, while also
-                creating copies of the underlying videos in a backing
-                directory:
+  .. group-tab:: CLI
 
-                .. code-block:: python
-                    :linenos:
+    You can use the :ref:`fiftyone app view <cli-fiftyone-app-view>` command
+    from the CLI to quickly browse videos in the App without creating a
+    (persistent) FiftyOne dataset:
 
-                    import fiftyone as fo
+    .. code-block:: shell
 
-                    dataset = fo.Dataset()
+        # View a glob pattern of videos in the App
+        fiftyone app view --videos-patt '/path/to/videos/*.mp4'
 
-                    # An iterable of labeled videos and the SampleParser that you
-                    # wrote to parse them
-                    samples = ...
-                    sample_parser = CustomLabeledVideoSampleParser(...)
+        # View a directory of videos in the App
+        fiftyone app view --videos-dir /path/to/videos
 
-                    # A directory into which to copy the source videos from `samples`
-                    dataset_dir = ...
+Need data?
+----------
 
-                    # Ingest the videos into the dataset
-                    # The source videos are copied into `dataset_dir`
-                    dataset.ingest_labeled_videos(samples, sample_parser, dataset_dir=dataset_dir)
+The :ref:`FiftyOne Dataset Zoo <dataset-zoo>` contains dozens of popular public
+datasets that you can load into FiftyOne in a single line of code:
 
-        .. note::
+.. code-block:: python
+    :linenos:
 
-            :ref:`Learn more <custom-sample-parser>` about
-            implementing your own custom SampleParser!
+    import fiftyone.zoo as foz
 
-    .. tab:: My data is stored as media files on disk
+    # List available datasets
+    print(foz.list_zoo_datasets())
+    # ['coco-2014', ...,  'kitti', ..., 'voc-2012', ...]
 
-        If your raw data and annotations are stored as files on disk, then the
-        recommended option to load into FiftyOne is to create a custom
-        |DatasetImporter|.
+    # Load a split of a zoo dataset
+    dataset = foz.load_zoo_dataset("cifar10", split="train")
 
-        :ref:`Writing your own DatasetImporter <writing-a-custom-dataset-type-importer>`
-        will allow you to use
-        :meth:`Dataset.from_importer() <fiftyone.core.dataset.Dataset.from_importer>`
-        to automatically load your data:
+.. note::
 
-        .. code-block:: python
-            :linenos:
-
-            import fiftyone as fo
-
-            dataset_dir = "/path/to/your/dataset"
-
-            # Create an instance of your custom dataset importer
-            importer = CustomDatasetImporter(dataset_dir, ...)
-
-            # Import the dataset
-            dataset = fo.Dataset.from_importer(importer)
-
-        .. note::
-
-            :ref:`Learn more <writing-a-custom-dataset-importer>` about
-            implementing your own custom DatasetImporter!
-
-        You can take this a step further by writing a custom |DatasetType|
-        that encapsulates your dataset format. This will allow you to import
-        (and export) datasets in your custom format using
-        :meth:`dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
-
-        .. code-block:: python
-            :linenos:
-
-            import fiftyone as fo
-
-            dataset_dir = "/path/to/your/dataset"
-
-            # The `fiftyone.types.Dataset` subtype of your custom dataset
-            dataset_type = CustomLabeledDataset
-
-            # Import the dataset
-            dataset = fo.Dataset.from_dir(dataset_dir, dataset_type)
-
-        .. note::
-
-            :ref:`Learn more <writing-a-custom-dataset-type-importer>` about
-            implementing your own custom Dataset type!
+    Check out the :ref:`available zoo datasets <dataset-zoo-datasets>`!
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    Datasets from disk <datasets>
-   Adding samples <samples>
+   Using sample parsers <samples>

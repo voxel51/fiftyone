@@ -10,13 +10,16 @@ variety of :ref:`common formats <supported-import-formats>`, and it can be
 easily extended to import datasets in
 :ref:`custom formats <custom-dataset-importer>`.
 
-If you have individual or in-memory samples that you would like to load into a
-FiftyOne dataset, see :doc:`adding samples to datasets <samples>`.
+.. note:
+
+    If your data is in a custom format,
+    :ref:`writing a simple loop <loading-custom-datasets>` is the easiest way
+    to load your data into FiftyOne.
 
 Basic recipe
 ------------
 
-The interface for creating a FiftyOne |Dataset| from your own dataset is
+The interface for creating a FiftyOne |Dataset| for your data on disk is
 conveniently exposed via the Python library and the CLI. The basic recipe is
 that you simply specify the path(s) to the data on disk and the type of dataset
 that you're loading.

@@ -1,244 +1,33 @@
-.. _adding-samples:
+.. _sample-parsers:
 
-Adding Samples to Datasets
-==========================
+Using Sample Parsers
+====================
 
 .. default-role:: code
 
-FiftyOne datasets are composed of |Sample| instances, and FiftyOne provides a
-number of options for building datasets from individual samples.
+This page describes how to use the |SampleParser| interface to add samples to
+your FiftyOne datasets.
 
-If you have entire datasets on disk that you would like to load into a FiftyOne
-dataset, see :doc:`loading datasets from disk <datasets>`.
+The |SampleParser| interface provides native support for loading samples in a
+variety of :ref:`common formats <builtin-sample-parser>`, and it can be easily
+extended to import datasets in :ref:`custom formats <custom-sample-parser>`,
+allowing you to automate the dataset loading process.
 
-You can take a fully customized approach and
-:ref:`build your own samples <manually-building-datasets>`, or you can
-:ref:`use a built-in SampleParser <builtin-sample-parser>` to parse
-samples from a variety of common formats, or you can
-:ref:`provide your own SampleParser <custom-sample-parser>` to automatically
-load samples in your own custom formats.
+.. warning::
 
-.. _manually-building-datasets:
-
-Manually building datasets
---------------------------
-
-The most flexible way to create a FiftyOne dataset is to manually construct
-your own |Sample| instances.
-
-The following examples demonstrate how to construct datasets of various kinds
-manually.
-
-.. tabs::
-
-    .. group-tab:: Unlabeled images
-
-        .. code:: python
-            :linenos:
-
-            import fiftyone as fo
-
-            num_samples = 3
-            images_patt = "/path/to/images/%06d.jpg"
-
-            # Generate some image samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the image on disk
-                filepath = images_patt % i
-
-                sample = fo.Sample(filepath=filepath)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset("my-images-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Classification
-
-        .. code:: python
-            :linenos:
-
-            import random
-            import fiftyone as fo
-
-            num_samples = 3
-            images_patt = "/path/to/images/%06d.jpg"
-
-            # Generate some classification samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the image on disk
-                filepath = images_patt % i
-
-                # Classification label
-                label = random.choice(["cat", "dog"])
-
-                sample = fo.Sample(filepath=filepath)
-
-                # Store classification in a field with name of your choice
-                sample["ground_truth"] = fo.Classification(label=label)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset("my-classification-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Object detection
-
-        .. code:: python
-            :linenos:
-
-            import random
-            import fiftyone as fo
-
-            num_samples = 3
-            num_objects_per_sample = 4
-            images_patt = "/path/to/images/%06d.jpg"
-
-            # Generate some detection samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the image on disk
-                filepath = images_patt % i
-
-                # Object detections
-                detections = []
-                for j in range(num_objects_per_sample):
-                    label = random.choice(["cat", "dog", "bird", "rabbit"])
-
-                    # Bounding box coordinates are stored as relative numbers in [0, 1]
-                    # in the following format:
-                    # [top-left-x, top-left-y, width, height]
-                    bounding_box = [
-                        0.8 * random.random(),
-                        0.8 * random.random(),
-                        0.2,
-                        0.2,
-                    ]
-                    detections.append(fo.Detection(label=label, bounding_box=bounding_box))
-
-                sample = fo.Sample(filepath=filepath)
-
-                # Store detections in a field with name of your choice
-                sample["ground_truth"] = fo.Detections(detections=detections)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset("my-detection-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Unlabeled videos
-
-        .. code:: python
-            :linenos:
-
-            import fiftyone as fo
-
-            num_samples = 3
-            videos_patt = "/path/to/videos/%06d.mp4"
-
-            # Generate some video samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the video on disk
-                filepath = videos_patt % i
-
-                sample = fo.Sample(filepath=filepath)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset("my-videos-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Labeled videos
-
-        .. code:: python
-            :linenos:
-
-            import random
-            import fiftyone as fo
-
-            num_frames = 5
-            num_objects_per_frame = 3
-            video_path = "/path/to/video.mp4"
-
-            # Create video sample
-            sample = fo.Sample(filepath=video_path)
-
-            # Add some frame labels
-            for frame_number in range(1, num_frames + 1):
-                # Frame classification
-                weather = random.choice(["sunny", "cloudy"])
-                sample[frame_number]["weather"] = fo.Classification(label=weather)
-
-                # Object detections
-                detections = []
-                for _ in range(num_objects_per_frame):
-                    label = random.choice(["cat", "dog", "bird", "rabbit"])
-
-                    # Bounding box coordinates are stored as relative numbers in [0, 1]
-                    # in the following format:
-                    # [top-left-x, top-left-y, width, height]
-                    bounding_box = [
-                        0.8 * random.random(),
-                        0.8 * random.random(),
-                        0.2,
-                        0.2,
-                    ]
-                    detections.append(fo.Detection(label=label, bounding_box=bounding_box))
-
-                # Object detections
-                sample[frame_number]["objects"] = fo.Detections(detections=detections)
-
-            # Create dataset
-            dataset = fo.Dataset("my-labeled-video-dataset")
-            dataset.add_sample(sample)
+    The |SampleParser| interface is largely deprecated. You'll likely prefer
+    :ref:`adding samples manually <loading-custom-datasets>` or
+    :ref:`using dataset importers <loading-datasets-from-disk>` to load data
+    into FiftyOne.
 
 .. _adding-samples-to-datasets:
 
 Adding samples to datasets
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne provides native support for loading samples in a variety of
-:ref:`common formats <builtin-sample-parser>`, and it can be easily
-extended to import datasets in :ref:`custom formats <custom-sample-parser>`.
-
-Basic recipe
-~~~~~~~~~~~~
-
-The basic recipe for adding samples to a |Dataset| is to create a
-|SampleParser| of the appropriate type of sample that you're loading and then
-pass the parser along with an iterable of samples to the appropriate
-|Dataset| method.
+The basic recipe for using the |SampleParser| interface to add samples to a
+|Dataset| is to create a parser of the appropriate type and then pass the
+parser along with an iterable of samples to the appropriate |Dataset| method.
 
 .. tabs::
 
