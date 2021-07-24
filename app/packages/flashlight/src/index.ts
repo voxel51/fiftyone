@@ -7,7 +7,8 @@ import SectionElement from "./section";
 import {
   Get,
   ItemData,
-  onItemClick,
+  OnItemClick,
+  OnResize,
   Optional,
   Options,
   Render,
@@ -25,7 +26,8 @@ export interface FlashlightConfig<K> {
   render: Render;
   initialRequestKey: K;
   options: FlashlightOptions;
-  onItemClick?: onItemClick;
+  onItemClick?: OnItemClick;
+  onResize?: OnResize;
 }
 
 export default class Flashlight<K> {
@@ -58,7 +60,11 @@ export default class Flashlight<K> {
           return;
         }
 
-        this.reposition(width);
+        requestAnimationFrame(() => {
+          this.state.onResize && this.updateOptions(this.state.onResize(width));
+
+          this.reposition(width);
+        });
       }
     );
   }
@@ -355,9 +361,8 @@ export default class Flashlight<K> {
               let revealingIndex = section.index;
 
               while (
-                revealingIndex > 0 &&
                 revealing.getTop() <=
-                  currentScrollTop + this.state.containerHeight
+                currentScrollTop + this.state.containerHeight
               ) {
                 revealingIndex++;
                 revealing = this.state.sections[revealingIndex];
@@ -426,23 +431,21 @@ export default class Flashlight<K> {
   }
 
   private reposition(width: number) {
-    requestAnimationFrame(() => {
-      const activeSection = this.state.sections[this.state.activeSection];
-      if (width === this.state.width) {
-        return;
-      }
+    const activeSection = this.state.sections[this.state.activeSection];
+    if (width === this.state.width) {
+      return;
+    }
 
-      this.state.width = width;
-      let height = 0;
-      this.state.sections.forEach((section) => {
-        section.set(height, width, this.state.options.margin);
-        height += section.getHeight();
-      });
-
-      this.container.style.height = `${height}px`;
-      activeSection.target.scrollTo();
-      this.lastScrollTop = activeSection.getTop();
+    this.state.width = width;
+    let height = 0;
+    this.state.sections.forEach((section) => {
+      section.set(height, width, this.state.options.margin);
+      height += section.getHeight();
     });
+
+    this.container.style.height = `${height}px`;
+    activeSection.target.scrollTo();
+    this.lastScrollTop = activeSection.getTop();
   }
 
   private getEmptyState(config: FlashlightConfig<K>): State<K> {

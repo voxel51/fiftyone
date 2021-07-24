@@ -103,8 +103,7 @@ export abstract class Looker<
     this.lookerElement = this.getElements(config);
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
-    this.imageSource = this.lookerElement.children[0]
-      .imageSource as ImageSource;
+    this.imageSource = this.lookerElement.children[0].element as ImageSource;
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(
         () =>

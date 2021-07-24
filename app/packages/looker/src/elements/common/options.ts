@@ -266,10 +266,11 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
 
   getEvents(): Events<VideoState> {
     return {
-      click: ({ event, update }) => {
+      click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
         update(({ options: { useFrameNumber } }) => {
+          dispatchEvent("options", { useFrameNumber: !useFrameNumber });
           return {
             options: { useFrameNumber: !useFrameNumber },
           };

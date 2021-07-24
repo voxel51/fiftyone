@@ -207,6 +207,10 @@ const useThumbnailClick = () => {
   );
 };
 
+const useGridChange = () => {
+  return useRecoilCallback(({ set }) => async (width: number) => {});
+};
+
 const useSelect = () => {
   return useRecoilCallback(
     ({ set, snapshot }) => async (sampleId: string) => {
