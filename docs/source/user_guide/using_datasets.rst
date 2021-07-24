@@ -1774,11 +1774,12 @@ dictionary mapping attribute names to |Attribute| instances, which contain the
 :attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
 associated metadata.
 
-.. note:
+.. note::
 
     A typical use case for this feature, as opposed to simply storing custom
-    attributes directly on the |Label| object, is to store predictions and
-    associated confidences of a classifer applied to the object patches.
+    attributes :ref:`directly on <using-labels>` the |Label| object, is to
+    store predictions and associated confidences of a classifer applied to the
+    object patches.
 
 There are |Attribute| subclasses for various types of attributes you may want
 to store. Use the appropriate subclass when possible so that FiftyOne knows the
@@ -2087,7 +2088,7 @@ labels can be modified by updating the `frames` attribute of a |Sample|:
     order to persist changes to the database when editing video samples and/or
     their frames that are in datasets.
 
-:ref:`See this page <manually-building-datasets>` for more information about
+:ref:`See this page <loading-custom-datasets>` for more information about
 building labeled video samples.
 
 DatasetViews

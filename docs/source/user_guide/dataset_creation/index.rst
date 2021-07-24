@@ -12,8 +12,8 @@ If your dataset is stored in a custom format, don't worry, FiftyOne also
 provides support for easily loading datasets in
 :ref:`custom formats <loading-custom-datasets>`.
 
-Check out the sections below to decide which import pattern is the best fit
-for your data and labels.
+Check out the sections below to see which import pattern is the best fit for
+your data.
 
 .. note::
 
@@ -45,7 +45,6 @@ following simple pattern:
     dataset_dir = "/path/to/dataset"
 
     # The type of the dataset being imported
-    # Any subclass of `fiftyone.types.Dataset` is supported
     dataset_type = fo.types.COCODetectionDataset  # for example
 
     dataset = fo.Dataset.from_dir(
@@ -276,7 +275,7 @@ visualizing them :ref:`in the App <fiftyone-app>`:
         fiftyone app view --images-patt '/path/to/images/*.jpg'
 
         # View a directory of images in the App
-        fiftyone app view --images-dir /path/to/images
+        fiftyone app view --images-dir '/path/to/images'
 
 .. _loading-videos:
 
@@ -333,7 +332,7 @@ visualizing them :ref:`in the App <fiftyone-app>`:
         fiftyone app view --videos-patt '/path/to/videos/*.mp4'
 
         # View a directory of videos in the App
-        fiftyone app view --videos-dir /path/to/videos
+        fiftyone app view --videos-dir '/path/to/videos'
 
 Need data?
 ----------

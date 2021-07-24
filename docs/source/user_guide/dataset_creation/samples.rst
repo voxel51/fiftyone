@@ -15,7 +15,7 @@ allowing you to automate the dataset loading process.
 
 .. warning::
 
-    The |SampleParser| interface is largely deprecated. You'll likely prefer
+    Using the |SampleParser| interface is not recommended. You'll likely prefer
     :ref:`adding samples manually <loading-custom-datasets>` or
     :ref:`using dataset importers <loading-datasets-from-disk>` to load data
     into FiftyOne.

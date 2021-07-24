@@ -2155,14 +2155,14 @@ where the labels XML files are stored in the following format:
             <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
         </meta>
         <track id="0" label=car">
-            <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
+            <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
                 <attribute name="type">sedan</attribute>
                 ...
             </box>
             ...
         </track>
         <track id="1" label=car">
-            <polygon frame="0" points="561.30,916.23;561.30,842.77;...;560.20,966.67" outside="0" occluded="0", keyframe="1">
+            <polygon frame="0" points="561.30,916.23;561.30,842.77;...;560.20,966.67" outside="0" occluded="0" keyframe="1">
                 <attribute name="make">Honda</attribute>
                 ...
             </polygon>
@@ -2170,7 +2170,7 @@ where the labels XML files are stored in the following format:
         </track>
         ...
         <track id="10" label="traffic_line">
-            <polyline frame="10" points="462.10,0.00;126.80,1200.00" outside="0" occluded="0", keyframe="1">
+            <polyline frame="10" points="462.10,0.00;126.80,1200.00" outside="0" occluded="0" keyframe="1">
                 <attribute name="color">yellow</attribute>
                 ...
             </polyline>
@@ -2178,13 +2178,12 @@ where the labels XML files are stored in the following format:
         </track>
         ...
         <track id="88" label="wheel">
-            <points frame="176" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" outside="0" occluded="0", keyframe="1">
+            <points frame="176" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" outside="0" occluded="0" keyframe="1">
                 <attribute name="location">front_driver_side</attribute>
                 ...
             </points>
             ...
         </track>
-        ...
     </annotations>
 
 Unlabeled videos have no corresponding file in `labels/`.
