@@ -44,8 +44,8 @@ class DatasetView(foc.SampleCollection):
     :class:`fiftyone.core.sample.Sample` objects, since they may contain a
     subset of the sample's content.
 
-    See https://voxel51.com/docs/fiftyone/user_guide/using_views.html for an
-    overview of working with dataset views.
+    See :ref:`this page <using-views>` for an overview of working with dataset
+    views.
 
     Args:
         dataset: the underlying :class:`fiftyone.core.dataset.Dataset` for the

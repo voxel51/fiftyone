@@ -193,8 +193,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
-    See https://voxel51.com/docs/fiftyone/user_guide/basics.html for an
-    overview of working with FiftyOne datasets.
+    See :ref:`this page <using-datasets>` for an overview of working with
+    FiftyOne datasets.
 
     Args:
         name (None): the name of the dataset. By default,
