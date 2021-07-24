@@ -52,7 +52,7 @@ manually.
                 samples.append(sample)
 
             # Create the dataset
-            dataset = fo.Dataset(name="my-images-dataset")
+            dataset = fo.Dataset("my-images-dataset")
             dataset.add_samples(samples)
 
             # View summary info about the dataset
@@ -89,7 +89,7 @@ manually.
                 samples.append(sample)
 
             # Create the dataset
-            dataset = fo.Dataset(name="my-classification-dataset")
+            dataset = fo.Dataset("my-classification-dataset")
             dataset.add_samples(samples)
 
             # View summary info about the dataset
@@ -140,7 +140,7 @@ manually.
                 samples.append(sample)
 
             # Create the dataset
-            dataset = fo.Dataset(name="my-detection-dataset")
+            dataset = fo.Dataset("my-detection-dataset")
             dataset.add_samples(samples)
 
             # View summary info about the dataset
@@ -170,7 +170,7 @@ manually.
                 samples.append(sample)
 
             # Create the dataset
-            dataset = fo.Dataset(name="my-videos-dataset")
+            dataset = fo.Dataset("my-videos-dataset")
             dataset.add_samples(samples)
 
             # View summary info about the dataset
@@ -220,7 +220,7 @@ manually.
                 sample[frame_number]["objects"] = fo.Detections(detections=detections)
 
             # Create dataset
-            dataset = fo.Dataset(name="my-labeled-video-dataset")
+            dataset = fo.Dataset("my-labeled-video-dataset")
             dataset.add_sample(sample)
 
 .. _adding-samples-to-datasets:

@@ -22,8 +22,8 @@ Instantiating a |Dataset| object creates a new dataset.
 
     import fiftyone as fo
 
-    dataset1 = fo.Dataset(name="my_first_dataset")
-    dataset2 = fo.Dataset(name="my_second_dataset")
+    dataset1 = fo.Dataset("my_first_dataset")
+    dataset2 = fo.Dataset("my_second_dataset")
     dataset3 = fo.Dataset()  # generates a default unique name
 
 Check to see what datasets exist at any time via :meth:`list_datasets()
@@ -52,7 +52,7 @@ have a bad time:
 .. code-block:: python
     :linenos:
 
-    _dataset2 = fo.Dataset(name="my_second_dataset")
+    _dataset2 = fo.Dataset("my_second_dataset")
     # Dataset 'my_second_dataset' already exists; use `fiftyone.load_dataset()`
     # to load an existing dataset
 
@@ -368,7 +368,7 @@ A |Sample| can easily be added to an existing |Dataset|:
 .. code-block:: python
     :linenos:
 
-    dataset = fo.Dataset(name="example_dataset")
+    dataset = fo.Dataset("example_dataset")
     dataset.add_sample(sample)
 
 When a sample is added to a dataset, the relevant attributes of the |Sample|
@@ -753,7 +753,7 @@ dataset splits or mark low quality images:
 .. code-block:: python
     :linenos:
 
-    dataset = fo.Dataset(name="tagged_dataset")
+    dataset = fo.Dataset("tagged_dataset")
 
     dataset.add_samples(
         [

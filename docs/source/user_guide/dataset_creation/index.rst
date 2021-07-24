@@ -101,10 +101,11 @@ below to figure out which option is best for you.
                   # Create samples for your images
                   samples = []
                   for filepath in glob.glob(images_patt):
-                      samples.append(fo.Sample(filepath=filepath))
+                      sample = fo.Sample(filepath=filepath)
+                      samples.append(sample)
 
-                  # Create the dataset
-                  dataset = fo.Dataset(name="my-image-dataset")
+                  # Create dataset
+                  dataset = fo.Dataset("my-image-dataset")
                   dataset.add_samples(samples)
 
             .. tab:: Image classification
@@ -123,19 +124,20 @@ below to figure out which option is best for you.
                       ....,
                   }
 
-                  # Create dataset
-                  dataset = fo.Dataset(name="my-classification-dataset")
-
-                  # Add your samples to the dataset
+                  # Create samples for your data
+                  samples = []
                   for filepath in glob.glob(images_patt):
-                      label = annotations[filepath]
-
                       sample = fo.Sample(filepath=filepath)
 
                       # Store classification in a field name of your choice
+                      label = annotations[filepath]
                       sample["ground_truth"] = fo.Classification(label=label)
 
-                      dataset.add_sample(sample)
+                      samples.append(sample)
+
+                  # Create dataset
+                  dataset = fo.Dataset("my-classification-dataset")
+                  dataset.add_samples(samples)
 
             .. tab:: Object detection
 
@@ -156,10 +158,8 @@ below to figure out which option is best for you.
                       ...
                   }
 
-                  # Create dataset
-                  dataset = fo.Dataset(name="my-detection-dataset")
-
-                  # Add your samples to the dataset
+                  # Create samples for your data
+                  samples = []
                   for filepath in glob.glob(images_patt):
                       sample = fo.Sample(filepath=filepath)
 
@@ -180,7 +180,11 @@ below to figure out which option is best for you.
                       # Store detections in a field name of your choice
                       sample["ground_truth"] = fo.Detections(detections=detections)
 
-                      dataset.add_sample(sample)
+                      samples.append(sample)
+
+                  # Create dataset
+                  dataset = fo.Dataset("my-detection-dataset")
+                  dataset.add_samples(samples)
 
             .. tab:: Unlabeled videos
 
@@ -199,7 +203,7 @@ below to figure out which option is best for you.
                       samples.append(sample)
 
                   # Create the dataset
-                  dataset = fo.Dataset(name="my-video-dataset")
+                  dataset = fo.Dataset("my-video-dataset")
                   dataset.add_samples(samples)
 
             .. tab:: Labeled videos
@@ -227,15 +231,14 @@ below to figure out which option is best for you.
                       ...
                   }
 
-                  # Create dataset
-                  dataset = fo.Dataset(name="my-labeled-video-dataset")
-
                   # Create video sample with frame labels
                   sample = fo.Sample(filepath=video_path)
                   for frame_number, labels in frame_labels.items():
-                      # Frame classification
+                      frame = fo.Frame()
+
+                      # Store a frame classification
                       weather = labels["weather"]
-                      sample[frame_number]["weather"] = fo.Classification(label=weather)
+                      frame["weather"] = fo.Classification(label=weather)
 
                       # Convert detections to FiftyOne format
                       detections = []
@@ -251,10 +254,14 @@ below to figure out which option is best for you.
                               fo.Detection(label=label, bounding_box=bounding_box)
                           )
 
-                      # Object detections
-                      sample[frame_number]["objects"] = fo.Detections(detections=detections)
+                      # Store object detections
+                      frame["objects"] = fo.Detections(detections=detections)
 
-                  # Add sample to dataset
+                      # Add frame to sample
+                      sample.frames[frame_number] = frame
+
+                  # Create dataset
+                  dataset = fo.Dataset("my-labeled-video-dataset")
                   dataset.add_sample(sample)
 
         If your data does not fit naturally into this pattern, check out the
