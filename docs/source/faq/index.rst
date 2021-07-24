@@ -164,8 +164,8 @@ and video datasets:
 - :ref:`Semantic segmentations <semantic-segmentation>`
 - :ref:`Geolocation data <geolocation>`
 
-Check out :ref:`this guide <manually-building-datasets>` for simple recipes to
-load labels in each of these formats.
+Check out :ref:`this guide <loading-custom-datasets>` for simple recipes to
+load labels in these formats.
 
 .. _faq-dataset-persistence:
 
