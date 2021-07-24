@@ -1624,18 +1624,21 @@ def _download_coco_dataset_split(
     downloaded_filenames = etau.list_files(images_dir)
     num_samples = len(downloaded_filenames)  # total downloaded
 
-    if num_samples >= split_size:
-        logger.info("Writing annotations to '%s'", anno_path)
-        etau.copy_file(full_anno_path, anno_path)
-    else:
-        logger.info(
-            "Writing annotations for %d downloaded samples to '%s'",
-            num_samples,
-            anno_path,
-        )
-        _write_partial_annotations(
-            full_anno_path, anno_path, split, downloaded_filenames
-        )
+    # If we downloaded at least one image or the annotation file for the split
+    # doesn't yet exist, we need to (re)create it
+    if num_download > 0 or not os.path.isfile(anno_path):
+        if num_samples >= split_size:
+            logger.info("Writing annotations to '%s'", anno_path)
+            etau.copy_file(full_anno_path, anno_path)
+        else:
+            logger.info(
+                "Writing annotations for %d downloaded samples to '%s'",
+                num_samples,
+                anno_path,
+            )
+            _write_partial_annotations(
+                full_anno_path, anno_path, split, downloaded_filenames
+            )
 
     return num_samples, all_classes
 

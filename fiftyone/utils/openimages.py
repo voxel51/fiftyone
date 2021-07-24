@@ -271,7 +271,6 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             det_data,
             rel_data,
             seg_data,
-            _,
             all_label_ids,
             any_label_ids,
         ) = _get_all_label_data(
@@ -1040,8 +1039,6 @@ def _get_all_label_data(
     rel_data = {}
     seg_data = {}
 
-    seg_ids = set()
-
     all_classes_ids = set(image_ids)
     any_classes_ids = set()
 
@@ -1144,8 +1141,6 @@ def _get_all_label_data(
             download=download,
         )
 
-        seg_ids = seg_any_ids
-
         all_classes_ids &= seg_all_ids
         any_classes_ids |= seg_any_ids
 
@@ -1168,7 +1163,6 @@ def _get_all_label_data(
         det_data,
         rel_data,
         seg_data,
-        seg_ids,
         all_label_ids,
         any_label_ids,
     )
@@ -1265,25 +1259,26 @@ def _download(
     num_workers=None,
     download=True,
 ):
-    _, _, _, _, seg_ids, all_label_ids, any_label_ids = _get_all_label_data(
-        dataset_dir,
-        image_ids,
-        label_types=label_types,
-        classes=classes,
-        oi_classes=oi_classes,
-        attrs=attrs,
-        oi_attrs=oi_attrs,
-        seg_classes=seg_classes,
-        track_all_ids=max_samples is not None,
-        ids_only=True,
-        split=split,
-        download=download,
-    )
-
     downloaded_ids = set(downloaded_ids)
 
     # Make list of `target_ids`
     if classes is not None or attrs is not None:
+        # Determine which samples have specified classes/attributes
+        _, _, _, _, all_label_ids, any_label_ids = _get_all_label_data(
+            dataset_dir,
+            image_ids,
+            label_types=label_types,
+            classes=classes,
+            oi_classes=oi_classes,
+            attrs=attrs,
+            oi_attrs=oi_attrs,
+            seg_classes=seg_classes,
+            track_all_ids=max_samples is not None,
+            ids_only=True,
+            split=split,
+            download=download,
+        )
+
         if max_samples is not None:
             #
             # Bias sampling to meet user requirements per the priorities below:
@@ -1357,7 +1352,7 @@ def _download(
         label_types = _parse_label_types(label_types)
         if "segmentations" in label_types:
             _download_masks_if_necessary(
-                all_ids, seg_ids, dataset_dir, split, download=download
+                all_ids, dataset_dir, split, download=download
             )
 
     return num_samples
@@ -1587,10 +1582,8 @@ def _download_file_if_necessary(
         etau.extract_zip(filepath, outdir=unzipped_dir, delete_zip=True)
 
 
-def _download_masks_if_necessary(
-    image_ids, seg_ids, dataset_dir, split, download=True
-):
-    seg_zip_names = list({i[0].upper() for i in set(image_ids) & seg_ids})
+def _download_masks_if_necessary(image_ids, dataset_dir, split, download=True):
+    seg_zip_names = list({i[0].upper() for i in image_ids})
     mask_urls = _ANNOTATION_DOWNLOAD_URLS[split]["segmentations"]["mask_data"]
     masks_dir = os.path.join(dataset_dir, "labels", "masks")
 
