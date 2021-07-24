@@ -1516,16 +1516,17 @@ def _download_coco_dataset_split(
 
     if classes is None and image_ids is None and max_samples is None:
         # Full image download
-        num_downloaded = len(etau.list_files(images_dir))
-        if num_downloaded < split_size:
+        num_existing = len(etau.list_files(images_dir))
+        num_download = split_size - num_existing
+        if num_download > 0:
             if dry_run:
                 raise ValueError("%s is not downloaded" % images_src_path)
 
-            if num_downloaded > 0:
+            if num_existing > 0:
                 logger.info(
                     "Found %d (< %d) downloaded images; must download full "
                     "image zip",
-                    num_downloaded,
+                    num_existing,
                     split_size,
                 )
 

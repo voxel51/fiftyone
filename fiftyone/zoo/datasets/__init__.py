@@ -265,6 +265,13 @@ def load_zoo_dataset(
 
     if splits:
         for split in splits:
+            if not zoo_dataset.has_split(split):
+                raise ValueError(
+                    "Invalid split '%s'; supported values are %s"
+                    % (split, zoo_dataset.supported_splits)
+                )
+
+        for split in splits:
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
             split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
             dataset_importer, _label_field = _build_importer(
@@ -460,6 +467,9 @@ def _parse_splits(split, splits):
 
     if split:
         _splits.append(split)
+
+    if etau.is_str(splits):
+        splits = [splits]
 
     if splits:
         _splits.extend(list(splits))
@@ -861,6 +871,24 @@ class ZooDataset(object):
         """
         return self.has_splits and (split in self.supported_splits)
 
+    def get_split_dir(self, dataset_dir, split):
+        """Returns the directory for the given split of the dataset.
+
+        Args:
+            dataset_dir: the dataset directory
+            split: the dataset split
+
+        Returns:
+            the directory that will/does hold the specified split
+        """
+        if not self.has_split(split):
+            raise ValueError(
+                "Invalid split '%s'; supported values are %s"
+                % (split, self.supported_splits)
+            )
+
+        return os.path.join(dataset_dir, split)
+
     @staticmethod
     def load_info(dataset_dir, upgrade=True, warn_deprecated=False):
         """Loads the :class:`ZooDatasetInfo` from the given dataset directory.
@@ -879,19 +907,6 @@ class ZooDataset(object):
         return ZooDatasetInfo.from_json(
             info_path, upgrade=upgrade, warn_deprecated=warn_deprecated
         )
-
-    @staticmethod
-    def get_split_dir(dataset_dir, split):
-        """Returns the directory for the given split of the dataset.
-
-        Args:
-            dataset_dir: the dataset directory
-            split: the dataset split
-
-        Returns:
-            the directory that will/does hold the specified split
-        """
-        return os.path.join(dataset_dir, split)
 
     @staticmethod
     def get_info_path(dataset_dir):
