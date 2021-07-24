@@ -187,7 +187,7 @@ def add_coco_labels(
     labels = []
     for coco_id, height, width in zip(coco_ids, heights, widths):
         coco_objects = coco_objects_map[coco_id]
-        frame_size = (height, width)
+        frame_size = (width, height)
 
         if label_type == "detections":
             _labels = _coco_objects_to_detections(
@@ -2048,7 +2048,15 @@ def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
         return None
 
     dobj = detection.to_detected_object()
-    mask = etai.render_instance_image(dobj.mask, dobj.bounding_box, frame_size)
+
+    try:
+        mask = etai.render_instance_image(
+            dobj.mask, dobj.bounding_box, frame_size
+        )
+    except:
+        # Either mask or bounding box is too small to render
+        width, height = frame_size
+        mask = np.zeros((height, width), dtype=bool)
 
     if iscrowd:
         return _mask_to_rle(mask)
@@ -2091,7 +2099,7 @@ def _mask_to_polygons(mask, tolerance):
     padded_mask = np.pad(mask, pad_width=1, mode="constant", constant_values=0)
 
     contours = measure.find_contours(padded_mask, 0.5)
-    contours = np.subtract(contours, 1)  # undo padding
+    contours = [c - 1 for c in contours]  # undo padding
 
     polygons = []
     for contour in contours:
