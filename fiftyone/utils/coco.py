@@ -1090,6 +1090,12 @@ class COCOObject(object):
 
         attributes = _get_attributes(detection, extra_attrs)
 
+        if "iscrowd" in attributes:
+            del attributes["iscrowd"]
+
+        if "area" in attributes:
+            del attributes["area"]
+
         return cls(
             id=None,
             image_id=None,
