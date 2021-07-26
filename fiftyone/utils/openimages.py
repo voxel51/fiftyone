@@ -353,7 +353,6 @@ def get_attributes(version="v6", dataset_dir=None):
         dataset_dir (None): an optional root directory the in which the dataset
             is downloaded
 
-
     Returns:
         a sorted list of attribute names
     """
@@ -516,23 +515,23 @@ def download_open_images_split(
             everything was already downloaded
         -   classes: the list of all classes, or ``None`` if everything was
             already downloaded
-        -   downloaded: whether any content was downloaded (True) or if all
+        -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
     _verify_version(version)
 
-    downloaded = False
+    did_download = False
 
     if image_ids is not None:
-        image_ids, _downloaded = _parse_and_verify_image_ids(
+        image_ids, _did_download = _parse_and_verify_image_ids(
             image_ids, dataset_dir, split, download=True
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
     else:
-        image_ids, _downloaded = _load_all_image_ids(
+        image_ids, _did_download = _load_all_image_ids(
             dataset_dir, split=split, download=True
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
     downloaded_ids = _get_downloaded_image_ids(dataset_dir)
 
@@ -546,7 +545,7 @@ def download_open_images_split(
         attrs,
         oi_attrs,
         seg_classes,
-        _downloaded,
+        _did_download,
     ) = _setup(
         dataset_dir,
         label_types=label_types,
@@ -555,15 +554,15 @@ def download_open_images_split(
         seed=seed,
         download=True,
     )
-    downloaded |= _downloaded
+    did_download |= _did_download
 
     # Download class hierarchy if necessary (used in evaluation)
-    _, _downloaded = _get_hierarchy(
+    _, _did_download = _get_hierarchy(
         dataset_dir, classes_map=classes_map, download=True
     )
-    downloaded |= _downloaded
+    did_download |= _did_download
 
-    num_samples, _downloaded = _download(
+    num_samples, _did_download = _download(
         image_ids,
         downloaded_ids,
         oi_classes,
@@ -579,9 +578,9 @@ def download_open_images_split(
         num_workers=num_workers,
         download=True,
     )
-    downloaded |= _downloaded
+    did_download |= _did_download
 
-    return num_samples, all_classes, downloaded
+    return num_samples, all_classes, did_download
 
 
 def _setup(
@@ -592,7 +591,7 @@ def _setup(
     seed=None,
     download=False,
 ):
-    downloaded = False
+    did_download = False
     label_types = _parse_label_types(label_types)
 
     if etau.is_str(classes):
@@ -605,9 +604,11 @@ def _setup(
         random.seed(seed)
 
     # Map of class IDs to class names
-    classes_map, _downloaded = _get_classes_map(dataset_dir, download=download)
+    classes_map, _did_download = _get_classes_map(
+        dataset_dir, download=download
+    )
     classes_map_rev = {v: k for k, v in classes_map.items()}
-    downloaded |= _downloaded
+    did_download |= _did_download
 
     all_classes = sorted(classes_map.values())
 
@@ -634,9 +635,11 @@ def _setup(
 
     if "relationships" in label_types:
         # Map of attribute IDs to attribute names
-        attrs_map, _downloaded = _get_attrs_map(dataset_dir, download=download)
+        attrs_map, _did_download = _get_attrs_map(
+            dataset_dir, download=download
+        )
         attrs_map_rev = {v: k for k, v in attrs_map.items()}
-        downloaded |= _downloaded
+        did_download |= _did_download
 
         all_attrs = sorted(attrs_map.values())
 
@@ -668,10 +671,10 @@ def _setup(
         all_attrs = None
 
     if "segmentations" in label_types:
-        seg_classes, _downloaded = _get_seg_classes(
+        seg_classes, _did_download = _get_seg_classes(
             dataset_dir, classes_map=classes_map, download=download
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
     else:
         seg_classes = None
 
@@ -685,7 +688,7 @@ def _setup(
         attrs,
         oi_attrs,
         seg_classes,
-        downloaded,
+        did_download,
     )
 
 
@@ -699,54 +702,54 @@ def _get_general_metadata_file(dataset_dir, filename, url, download=True):
             if os.path.exists(split_filepath):
                 return split_filepath, False
 
-    downloaded = _download_file_if_necessary(
+    did_download = _download_file_if_necessary(
         filepath, url, quiet=0, download=download
     )
 
-    return filepath, downloaded
+    return filepath, did_download
 
 
 def _get_attrs_map(dataset_dir, download=True):
     url = _ANNOTATION_DOWNLOAD_URLS["general"]["attr_names"]
-    attrs_csv, downloaded = _get_general_metadata_file(
+    attrs_csv, did_download = _get_general_metadata_file(
         dataset_dir, "attributes.csv", url, download=download
     )
     attrs_data = _parse_csv(attrs_csv)
     attrs_map = {k: v for k, v in attrs_data}
-    return attrs_map, downloaded
+    return attrs_map, did_download
 
 
 def _get_classes_map(dataset_dir, download=True):
     url = _ANNOTATION_DOWNLOAD_URLS["general"]["class_names"]
-    cls_csv, downloaded = _get_general_metadata_file(
+    cls_csv, did_download = _get_general_metadata_file(
         dataset_dir, "classes.csv", url, download=download
     )
     cls_data = _parse_csv(cls_csv)
     classes_map = {k: v for k, v in cls_data}
-    return classes_map, downloaded
+    return classes_map, did_download
 
 
 def _get_seg_classes(dataset_dir, classes_map=None, download=True):
-    downloaded = False
+    did_download = False
 
     if not classes_map:
-        classes_map, _downloaded = _get_classes_map(
+        classes_map, _did_download = _get_classes_map(
             dataset_dir, download=download
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
     url = _ANNOTATION_DOWNLOAD_URLS["general"]["segmentation_classes"]
-    seg_cls_txt, _downloaded = _get_general_metadata_file(
+    seg_cls_txt, _did_download = _get_general_metadata_file(
         dataset_dir, "segmentation_classes.csv", url, download=download
     )
-    downloaded |= _downloaded
+    did_download |= _did_download
 
     with open(seg_cls_txt, "r", encoding="utf8") as f:
         seg_classes_oi = [l.rstrip("\n") for l in f]
 
     seg_classes = [classes_map[c] for c in seg_classes_oi]
 
-    return sorted(seg_classes), downloaded
+    return sorted(seg_classes), did_download
 
 
 def _get_hierarchy(dataset_dir, classes_map=None, download=True):
@@ -915,7 +918,7 @@ def _verify_image_ids(
     # Download all image IDs, verify given IDs, sort unspecified IDs into
     # current split
 
-    split_ids, downloaded = _load_all_image_ids(
+    split_ids, did_download = _load_all_image_ids(
         dataset_dir, split=split, download=download
     )
 
@@ -938,7 +941,7 @@ def _verify_image_ids(
 
     split_image_ids = list(verified_split_ids) + list(unspecified_ids_in_split)
 
-    return split_image_ids, downloaded
+    return split_image_ids, did_download
 
 
 def _get_downloaded_image_ids(dataset_dir):
@@ -977,7 +980,7 @@ def _get_all_label_data(
 
     _label_types = _parse_label_types(label_types)
 
-    downloaded = False
+    did_download = False
 
     if "classifications" in _label_types:
         if download:
@@ -985,7 +988,7 @@ def _get_all_label_data(
         else:
             url = None
 
-        cls_all_ids, cls_any_ids, cls_data, _downloaded = _get_label_data(
+        cls_all_ids, cls_any_ids, cls_data, _did_download = _get_label_data(
             dataset_dir,
             image_ids,
             "classifications",
@@ -997,7 +1000,7 @@ def _get_all_label_data(
             url=url,
             download=download,
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
         # Classifications only capture the label schema, so don't use them for
         # ID list purposes unless they were the only label type requested
@@ -1011,7 +1014,7 @@ def _get_all_label_data(
         else:
             url = None
 
-        det_all_ids, det_any_ids, det_data, _downloaded = _get_label_data(
+        det_all_ids, det_any_ids, det_data, _did_download = _get_label_data(
             dataset_dir,
             image_ids,
             "detections",
@@ -1023,7 +1026,7 @@ def _get_all_label_data(
             ids_only=ids_only,
             only_matching=only_matching,
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
         all_classes_ids &= det_all_ids
         any_classes_ids |= det_any_ids
@@ -1034,7 +1037,7 @@ def _get_all_label_data(
         else:
             url = None
 
-        rel_all_ids, rel_any_ids, rel_data, _downloaded = _get_label_data(
+        rel_all_ids, rel_any_ids, rel_data, _did_download = _get_label_data(
             dataset_dir,
             image_ids,
             "relationships",
@@ -1046,7 +1049,7 @@ def _get_all_label_data(
             url=url,
             download=download,
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
         all_attrs_ids &= rel_all_ids
         any_attrs_ids |= rel_any_ids
@@ -1067,7 +1070,7 @@ def _get_all_label_data(
         else:
             url = None
 
-        seg_all_ids, seg_any_ids, seg_data, _downloaded = _get_label_data(
+        seg_all_ids, seg_any_ids, seg_data, _did_download = _get_label_data(
             dataset_dir,
             image_ids,
             "segmentations",
@@ -1079,7 +1082,7 @@ def _get_all_label_data(
             url=url,
             download=download,
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
         all_classes_ids &= seg_all_ids
         any_classes_ids |= seg_any_ids
@@ -1105,7 +1108,7 @@ def _get_all_label_data(
         seg_data,
         all_label_ids,
         any_label_ids,
-        downloaded,
+        did_download,
     )
 
 
@@ -1122,7 +1125,7 @@ def _get_label_data(
     download=True,
 ):
     csv_path = os.path.join(dataset_dir, "labels", label_type + ".csv")
-    downloaded = _download_file_if_necessary(
+    did_download = _download_file_if_necessary(
         csv_path, url, quiet=0, download=download
     )
 
@@ -1162,7 +1165,7 @@ def _get_label_data(
         any_ids = set(df["ImageID"].unique())
 
     if ids_only:
-        return all_ids, any_ids, {}, downloaded
+        return all_ids, any_ids, {}, did_download
 
     if classes is not None:
         if only_matching:
@@ -1182,7 +1185,7 @@ def _get_label_data(
         "df": relevant_df,
     }
 
-    return all_ids, any_ids, data, downloaded
+    return all_ids, any_ids, data, did_download
 
 
 def _download(
@@ -1201,7 +1204,7 @@ def _download(
     num_workers=None,
     download=True,
 ):
-    downloaded = False
+    did_download = False
     downloaded_ids = set(downloaded_ids)
 
     # Make list of `target_ids`
@@ -1214,7 +1217,7 @@ def _download(
             _,
             all_label_ids,
             any_label_ids,
-            _downloaded,
+            _did_download,
         ) = _get_all_label_data(
             dataset_dir,
             image_ids,
@@ -1229,7 +1232,7 @@ def _download(
             split=split,
             download=download,
         )
-        _downloaded |= downloaded
+        did_download |= _did_download
 
         if max_samples is not None:
             #
@@ -1292,10 +1295,10 @@ def _download(
         )
 
     if "segmentations" in _parse_label_types(label_types):
-        _downloaded = _download_masks_if_necessary(
+        _did_download = _download_masks_if_necessary(
             all_ids, dataset_dir, split, download=download
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
     num_downloaded = _download_images_if_necessary(
         target_ids,
@@ -1306,9 +1309,9 @@ def _download(
     )
 
     if num_downloaded > 0:
-        downloaded = True
+        did_download = True
 
-    return num_samples, downloaded
+    return num_samples, did_download
 
 
 def _get_dataframe_rows(df, image_id):
@@ -1504,26 +1507,26 @@ def _load_all_image_ids(dataset_dir, split=None, download=True):
     url = _ANNOTATION_DOWNLOAD_URLS[split]["image_ids"]
 
     quiet = -1 if split == "train" else 0
-    downloaded = _download_file_if_necessary(
+    did_download = _download_file_if_necessary(
         csv_filepath, url, quiet=quiet, download=download
     )
 
     csv_data = _parse_csv(csv_filepath)
     image_ids = [i[0].strip() for i in csv_data[1:]]
 
-    return image_ids, downloaded
+    return image_ids, did_download
 
 
 def _download_file_if_necessary(
     filepath, url, is_zip=False, quiet=-1, download=True
 ):
-    downloaded = False
+    did_download = False
 
     if is_zip:
         # Check if unzipped directory exists
         unzipped_dir = os.path.splitext(filepath)[0]
         if os.path.isdir(unzipped_dir):
-            return downloaded
+            return did_download
 
     if not os.path.isfile(filepath):
         if not download:
@@ -1534,12 +1537,12 @@ def _download_file_if_necessary(
 
         etau.ensure_basedir(filepath)
         etaw.download_file(url, path=filepath, quiet=quiet != -1)
-        downloaded = True
+        did_download = True
 
     if is_zip:
         etau.extract_zip(filepath, outdir=unzipped_dir, delete_zip=True)
 
-    return downloaded
+    return did_download
 
 
 def _download_masks_if_necessary(image_ids, dataset_dir, split, download=True):
@@ -1548,16 +1551,16 @@ def _download_masks_if_necessary(image_ids, dataset_dir, split, download=True):
     masks_dir = os.path.join(dataset_dir, "labels", "masks")
 
     quiet = 1 if split == "validation" else 0
-    downloaded = False
+    did_download = False
     for zip_name in seg_zip_names:
         url = mask_urls[zip_name]
         zip_path = os.path.join(masks_dir, zip_name + ".zip")
-        _downloaded = _download_file_if_necessary(
+        _did_download = _download_file_if_necessary(
             zip_path, url, is_zip=True, quiet=quiet, download=download
         )
-        downloaded |= _downloaded
+        did_download |= _did_download
 
-    return downloaded
+    return did_download
 
 
 def _download_images_if_necessary(

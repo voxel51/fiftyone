@@ -1339,7 +1339,7 @@ def download_coco_dataset_split(
 
         -   num_samples: the total number of downloaded images
         -   classes: the list of all classes
-        -   downloaded: whether any content was downloaded (True) or if all
+        -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
     if year not in _IMAGE_DOWNLOAD_LINKS:
@@ -1367,7 +1367,7 @@ def download_coco_dataset_split(
 
     etau.ensure_dir(images_dir)
 
-    downloaded = False
+    did_download = False
 
     #
     # Download annotations to `raw_dir`, if necessary
@@ -1401,7 +1401,7 @@ def download_coco_dataset_split(
         logger.info("Extracting %s to '%s'", anno_type, full_anno_path)
         etau.extract_zip(zip_path, outdir=unzip_dir, delete_zip=False)
         _merge_dir(content_dir, raw_dir)
-        downloaded = True
+        did_download = True
     else:
         logger.info("Found %s at '%s'", anno_type, full_anno_path)
 
@@ -1437,7 +1437,7 @@ def download_coco_dataset_split(
             logger.info("Extracting images to '%s'", images_dir)
             etau.extract_zip(images_zip_path, delete_zip=False)
             etau.move_dir(unzip_images_dir, images_dir)
-            downloaded = True
+            did_download = True
         else:
             logger.info("Images already downloaded")
     else:
@@ -1523,7 +1523,7 @@ def download_coco_dataset_split(
 
         if num_download > 0:
             _download_images(images_dir, download_ids, images, num_workers)
-            downloaded = True
+            did_download = True
 
     downloaded_filenames = etau.list_files(images_dir)
     num_samples = len(downloaded_filenames)  # total downloaded
@@ -1533,9 +1533,9 @@ def download_coco_dataset_split(
     #
 
     if not os.path.isfile(anno_path):
-        downloaded = True
+        did_download = True
 
-    if downloaded:
+    if did_download:
         if d is None:
             d = etas.load_json(full_anno_path)
 
@@ -1558,7 +1558,7 @@ def download_coco_dataset_split(
                 d, anno_path, split, downloaded_filenames
             )
 
-    return num_samples, all_classes, downloaded
+    return num_samples, all_classes, did_download
 
 
 def _merge_dir(indir, outdir):
