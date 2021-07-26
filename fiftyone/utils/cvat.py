@@ -740,7 +740,10 @@ class CVATTaskLabels(object):
                 schema.add_object_label(_label)
 
                 if anno.occluded is not None:
-                    schema.add_object_attribute("occluded", anno.occluded)
+                    _occluded_attr = etad.BooleanAttribute(
+                        "occluded", anno.occluded
+                    )
+                    schema.add_object_attribute(_label, _occluded_attr)
 
                 for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
@@ -766,13 +769,22 @@ class CVATTaskLabels(object):
                 schema.add_object_label(_label)
 
                 if anno.outside is not None:
-                    schema.add_object_attribute("outside", anno.outside)
+                    _outside_attr = etad.BooleanAttribute(
+                        "outside", anno.outside
+                    )
+                    schema.add_object_attribute(_label, _outside_attr)
 
                 if anno.occluded is not None:
-                    schema.add_object_attribute("occluded", anno.occluded)
+                    _occluded_attr = etad.BooleanAttribute(
+                        "occluded", anno.occluded
+                    )
+                    schema.add_object_attribute(_label, _occluded_attr)
 
                 if anno.keyframe is not None:
-                    schema.add_object_attribute("keyframe", anno.keyframe)
+                    _keyframe_attr = etad.BooleanAttribute(
+                        "keyframe", anno.keyframe
+                    )
+                    schema.add_object_attribute(_label, _keyframe_attr)
 
                 for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
