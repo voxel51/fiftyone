@@ -1776,10 +1776,11 @@ associated metadata.
 
 .. note::
 
-    A typical use case for this feature, as opposed to simply storing custom
-    attributes :ref:`directly on <using-labels>` the |Label| object, is to
-    store predictions and associated confidences of a classifer applied to the
-    object patches.
+    In most cases, it is recommended to :ref:`add custom attributes as fields
+    directly on<using-labels>` the |Label| object. However, a typical use case
+    for this feature, as opposed to simply storing custom attributes directly
+    on the |Label| object, is to store predictions and associated
+    confidences of a classifer applied to the object patches.
 
 There are |Attribute| subclasses for various types of attributes you may want
 to store. Use the appropriate subclass when possible so that FiftyOne knows the

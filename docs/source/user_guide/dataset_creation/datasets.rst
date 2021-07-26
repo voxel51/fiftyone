@@ -2912,7 +2912,11 @@ follows:
 Custom formats
 --------------
 
-The |Dataset| class provides a
+If your data does not follow one of the previous formats, then the simplest and
+most flexible approach to loading your data into FiftyOne is :ref:`to iterate over
+your data in a Python loop<loading-custom-datasets>` and add it to a |Dataset|.
+
+Alternatively, the |Dataset| class provides a
 :meth:`Dataset.from_importer() <fiftyone.core.dataset.Dataset.from_importer>`
 factory method that can be used to import a dataset using any |DatasetImporter|
 instance.
