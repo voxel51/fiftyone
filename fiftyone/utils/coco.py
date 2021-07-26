@@ -1089,12 +1089,8 @@ class COCOObject(object):
         keypoints = _make_coco_keypoints(keypoint, frame_size)
 
         attributes = _get_attributes(detection, extra_attrs)
-
-        if "iscrowd" in attributes:
-            del attributes["iscrowd"]
-
-        if "area" in attributes:
-            del attributes["area"]
+        attributes.pop("iscrowd", None)
+        attributes.pop("area", None)
 
         return cls(
             id=None,
