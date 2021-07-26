@@ -6,8 +6,11 @@ Labels stored in dataset samples.
 |
 """
 import itertools
+import warnings
 
 from bson import ObjectId
+import cv2
+import numpy as np
 
 import eta.core.data as etad
 import eta.core.geometry as etag
@@ -376,6 +379,35 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         )
         return Polyline.from_eta_polyline(polyline)
 
+    def to_segmentation(self, mask=None, frame_size=None, target=255):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        The detection must have an instance mask, i.e., its :attr:`mask`
+        attribute must be populated.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add this object
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            target (255): the pixel value to use to render the object
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        if self.mask is None:
+            raise ValueError(
+                "Only detections with their `mask` attributes populated can "
+                "be converted to segmentations"
+            )
+
+        mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
+        _render_instance(mask, self, target)
+        return Segmentation(mask=mask)
+
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
 
@@ -511,6 +543,50 @@ class Detections(ImageLabel, _HasLabelList):
             ]
         )
 
+    def to_segmentation(self, mask=None, frame_size=None, mask_targets=None):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        Only detections with instance masks (i.e., their :attr:`mask`
+        attributes populated) will be rendered.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            mask_targets (None): a dict mapping integer pixel values in
+                ``[0, 255]`` to label strings defining which object classes to
+                render and which pixel values to use for each class. If
+                omitted, all objects are rendered with pixel value 255
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        mask, labels_to_targets = _parse_to_segmentation_inputs(
+            mask, frame_size, mask_targets
+        )
+
+        # pylint: disable=not-an-iterable
+        for detection in self.detections:
+            if detection.mask is None:
+                msg = "Skipping detection(s) with no instance mask"
+                warnings.warn(msg)
+                continue
+
+            if labels_to_targets is not None:
+                target = labels_to_targets.get(detection.label, None)
+                if target is None:
+                    continue
+            else:
+                target = 255
+
+            _render_instance(mask, detection, target)
+
+        return Segmentation(mask=mask)
+
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
         instance.
@@ -607,6 +683,30 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             attributes=self.attributes,
             tags=self.tags,
         )
+
+    def to_segmentation(
+        self, mask=None, frame_size=None, target=255, thickness=1
+    ):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            target (255): the pixel value to use to render the object
+            thickness (1): the thickness, in pixels, at which to render
+                (non-filled) polylines
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
+        _render_polyline(mask, self, target, thickness)
+        return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -755,6 +855,46 @@ class Polylines(ImageLabel, _HasLabelList):
                 p.to_detection(mask_size=mask_size) for p in self.polylines
             ]
         )
+
+    def to_segmentation(
+        self, mask=None, frame_size=None, mask_targets=None, thickness=1
+    ):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            mask_targets (None): a dict mapping integer pixel values in
+                ``[0, 255]`` to label strings defining which object classes to
+                render and which pixel values to use for each class. If
+                omitted, all objects are rendered with pixel value 255
+            thickness (1): the thickness, in pixels, at which to render
+                (non-filled) polylines
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        mask, labels_to_targets = _parse_to_segmentation_inputs(
+            mask, frame_size, mask_targets
+        )
+
+        # pylint: disable=not-an-iterable
+        for polyline in self.polylines:
+            if labels_to_targets is not None:
+                target = labels_to_targets.get(polyline.label, None)
+                if target is None:
+                    continue
+            else:
+                target = 255
+
+            _render_polyline(mask, polyline, target, thickness)
+
+        return Segmentation(mask=mask)
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -1092,6 +1232,51 @@ _LABEL_LIST_TO_SINGLE_MAP = {
     Keypoints: Keypoint,
     Polylines: Polyline,
 }
+
+
+def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
+    if mask is None:
+        if frame_size is None:
+            raise ValueError("Either `mask` or `frame_size` must be provided")
+
+        width, height = frame_size
+        mask = np.zeros((height, width), dtype=np.uint8)
+    else:
+        height, width = mask.shape[:2]
+
+    if mask_targets is not None:
+        labels_to_targets = {label: idx for idx, label in mask_targets.items()}
+    else:
+        labels_to_targets = None
+
+    return mask, labels_to_targets
+
+
+def _render_instance(mask, detection, target):
+    dobj = detection.to_detected_object()
+    obj_mask, offset = etai.render_instance_mask(
+        dobj.mask, dobj.bounding_box, img=mask
+    )
+
+    x0, y0 = offset
+    dh, dw = obj_mask.shape
+
+    patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
+    patch[obj_mask] = target
+    mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
+
+
+def _render_polyline(mask, polyline, target, thickness):
+    points = polyline.to_eta_polyline().coords_in(img=mask)
+    points = [np.array(shape, dtype=np.int32) for shape in points]
+
+    if polyline.filled:
+        # pylint: disable=no-member
+        mask = cv2.fillPoly(mask, points, target)
+    else:
+        mask = cv2.polylines(  # pylint: disable=no-member
+            mask, points, polyline.closed, target, thickness=thickness
+        )
 
 
 def _from_geo_json_single(d):
