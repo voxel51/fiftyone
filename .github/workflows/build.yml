@@ -124,6 +124,7 @@ jobs:
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets torch torchvision
+          sudo apt install ffmpeg
       - name: Install fiftyone
         run: |
           pip install scikit-learn scikit-image
@@ -147,6 +148,13 @@ jobs:
         run: |
           pip install pytest tensorflow tensorflow-datasets
           pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
+
+          # install ffmpeg
+          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -Outfile ffmpeg.zip
+          Expand-Archive -LiteralPath ffmpeg.zip ffmpeg
+          $ffmpeg = (Get-Item .\ffmpeg\bin\ffmpeg.exe).FullName
+          $path = [Environment]::GetEnvironmentVariable('Path', 'User').TrimEnd([Char]';')
+          [Environment]::SetEnvironmentVariable("Path", "$path;$ffmpeg", 'User')
       - name: Configure fiftyone for tests
         id: test_config
         run: |
