@@ -150,8 +150,10 @@ jobs:
           pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
           # install ffmpeg
-          curl https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -O ffmpeg.zip
+          curl https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-4.4-essentials_build.zip -o ffmpeg.zip
           unzip ffmpeg.zip ffmpeg
+          $path = [Environment]::GetEnvironmentVariable('Path', 'User').TrimEnd([Char]';')
+          [Environment]::SetEnvironmentVariable("Path", "$path;$ffmpeg", 'User')
       - name: Configure fiftyone for tests
         id: test_config
         run: |
