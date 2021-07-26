@@ -4637,9 +4637,8 @@ def _merge_samples_python(
     else:
         id_map = {}
         logger.info("Indexing dataset...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(dataset):
-                id_map[key_fcn(sample)] = sample.id
+        for sample in dataset.iter_samples(progress=True):
+            id_map[key_fcn(sample)] = sample.id
 
     _samples = _make_merge_samples_generator(
         dataset,

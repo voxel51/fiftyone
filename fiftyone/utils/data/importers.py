@@ -656,25 +656,27 @@ class ImportPathsMixin(object):
         if not data_path:
             data_map = {}
         elif data_path.endswith(".json"):
-            if os.path.isfile(data_path):
-                data_map = etas.load_json(data_path)
-            else:
-                logger.warning("Data manifest '%s' does not exist", data_path)
-                data_map = {}
-        else:
-            if os.path.isdir(data_path):
-                if ignore_exts:
-                    to_uuid = lambda p: os.path.splitext(p)[0]
-                else:
-                    to_uuid = lambda p: p
+            if not os.path.isfile(data_path):
+                raise ValueError(
+                    "Data manifest '%s' does not exist" % data_path
+                )
 
-                data_map = {
-                    to_uuid(p): os.path.join(data_path, p)
-                    for p in etau.list_files(data_path, recursive=recursive)
-                }
+            data_map = etas.load_json(data_path)
+        else:
+            if not os.path.isdir(data_path):
+                raise ValueError(
+                    "Data directory '%s' does not exist" % data_path
+                )
+
+            if ignore_exts:
+                to_uuid = lambda p: os.path.splitext(p)[0]
             else:
-                logger.warning("Data directory '%s' does not exist", data_path)
-                data_map = {}
+                to_uuid = lambda p: p
+
+            data_map = {
+                to_uuid(p): os.path.join(data_path, p)
+                for p in etau.list_files(data_path, recursive=recursive)
+            }
 
         return data_map
 
