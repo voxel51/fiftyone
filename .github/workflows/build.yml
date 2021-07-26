@@ -154,6 +154,7 @@ jobs:
           unzip ffmpeg.zip
 
           export PATH="$PWD/ffmpeg-4.4-essentials_build/bin:$PATH"
+          ffmpeg -h
       - name: Configure fiftyone for tests
         id: test_config
         run: |
