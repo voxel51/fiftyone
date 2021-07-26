@@ -601,7 +601,7 @@ const TeamsButton = ({ addNotification }) => {
   const text = (
     <span>
       FiftyOne is and will always be open source software that is freely
-      available to individual users, all 20,000 and counting. However, if you’re
+      available to individual users, all 35,000 and counting. However, if you’re
       part of a team, you may need more. That’s why we’ve begun deploying
       team-based versions of FiftyOne with multi-user collaboration features to
       early adopters.
