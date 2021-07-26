@@ -12,6 +12,7 @@ import { useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
+import { samples } from "./Flashlight";
 
 const Container = styled.div`
   position: relative;
@@ -200,11 +201,18 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const fullscreen = useRecoilValue(atoms.fullscreen);
   const {
     sample: { filepath, _id, _media_type, metadata },
+    index,
+    getIndex,
   } = useRecoilValue(atoms.modal);
 
   const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
+  let count = useRecoilValue(selectors.filteredCount);
+  const total = useRecoilValue(selectors.totalCount);
+  if (count === null) {
+    count = total;
+  }
 
   const theme = useTheme();
   return (
@@ -215,6 +223,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
           lookerRef={lookerRef}
           onSelectLabel={onSelectLabel}
           onClose={onClose}
+          onPrevious={index > 0 ? () => getIndex(index - 1) : null}
+          onNext={index < count - 1 ? () => getIndex(index + 1) : null}
         />
       </div>
       {!fullscreen && (

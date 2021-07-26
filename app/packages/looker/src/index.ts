@@ -241,7 +241,7 @@ export abstract class Looker<
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
-  attach(element: HTMLElement | string, dimensions: Dimensions): void {
+  attach(element: HTMLElement | string, dimensions?: Dimensions): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
     }

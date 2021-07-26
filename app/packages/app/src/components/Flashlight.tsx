@@ -1,4 +1,10 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, {
+  useLayoutEffect,
+  useEffect,
+  useRef,
+  useState,
+  MutableRefObject,
+} from "react";
 import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
@@ -35,7 +41,8 @@ const gridRowAspectRatio = selector<number>({
 
 const MARGIN = 3;
 
-let samples = new Map<string, atoms.SampleData>();
+export let samples = new Map<string, atoms.SampleData>();
+export let sampleIndices = new Map<number, string>();
 let lookers = new Map<
   string,
   WeakRef<FrameLooker | ImageLooker | VideoLooker>
@@ -147,7 +154,9 @@ const argFact = (compareFn) => (array) =>
 
 const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
 
-const useThumbnailClick = () => {
+const useThumbnailClick = (
+  flashlight: MutableRefObject<Flashlight<number>>
+) => {
   return useRecoilCallback(
     ({ set, snapshot }) => async (
       event: MouseEvent,
@@ -157,19 +166,34 @@ const useThumbnailClick = () => {
       const selected = new Set(
         await snapshot.getPromise(atoms.selectedSamples)
       );
+      const reverse = Object.fromEntries(
+        Object.entries(itemIndexMap).map(([k, v]) => [v, k])
+      );
+      const clickedIndex = itemIndexMap[sampleId];
+
+      const getIndex = (index) => {
+        const promise = sampleIndices.has(index)
+          ? Promise.resolve(samples.get(sampleIndices.get(index)))
+          : flashlight.current.get().then(() => {
+              return samples.get(sampleIndices.get(index));
+            });
+
+        promise.then((sample) => {
+          set(atoms.modal, { ...sample, index, getIndex });
+        });
+      };
 
       if (!selected.size) {
-        set(atoms.modal, samples.get(sampleId));
+        set(atoms.modal, {
+          ...samples.get(sampleId),
+          index: clickedIndex,
+          getIndex,
+        });
         set(labelFilters(true), {});
 
         return;
       }
       if (event.ctrlKey) {
-        const clickedIndex = itemIndexMap[sampleId];
-        const reverse = Object.fromEntries(
-          Object.entries(itemIndexMap).map(([k, v]) => [v, k])
-        );
-        console.log(clickedIndex);
         if (!selected.has(sampleId)) {
           const array = [...selected];
 
@@ -192,6 +216,32 @@ const useThumbnailClick = () => {
             .map((_, i) => reverse[i + start]);
 
           set(atoms.selectedSamples, new Set([...selected, ...newSelection]));
+        } else {
+          let before = clickedIndex;
+          while (selected.has(reverse[before])) {
+            before--;
+          }
+          before += 1;
+
+          let after = clickedIndex;
+          while (selected.has(reverse[after])) {
+            after++;
+          }
+          after -= 1;
+
+          const [start, end] =
+            clickedIndex - before <= after - clickedIndex
+              ? [before, clickedIndex]
+              : [clickedIndex, after];
+
+          set(
+            atoms.selectedSamples,
+            new Set(
+              [...selected].filter(
+                (s) => itemIndexMap[s] < start && itemIndexMap[s] > end
+              )
+            )
+          );
         }
 
         return;
@@ -205,10 +255,6 @@ const useThumbnailClick = () => {
     },
     []
   );
-};
-
-const useGridChange = () => {
-  return useRecoilCallback(({ set }) => async (width: number) => {});
 };
 
 const useSelect = () => {
@@ -242,7 +288,7 @@ export default React.memo(() => {
   const refresh = useRecoilValue(selectors.refresh);
 
   const selected = useRecoilValue(atoms.selectedSamples);
-  const onThumbnailClick = useThumbnailClick();
+  const onThumbnailClick = useThumbnailClick(flashlight);
   const onSelect = useSelect();
 
   useLayoutEffect(() => {
@@ -251,6 +297,7 @@ export default React.memo(() => {
     }
 
     samples = new Map();
+    sampleIndices = new Map();
     flashlight.current.reset();
   }, [
     flashlight,
@@ -260,30 +307,36 @@ export default React.memo(() => {
     refresh,
   ]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({
         initialRequestKey: 1,
         options,
         onItemClick: onThumbnailClick,
-        get: async (page) => {
+        get: async (index, page) => {
           const { results, more } = await fetch(
             `${url}page=${page}`
           ).then((response) => response.json());
 
-          const items = await Promise.all<ItemData>(
-            results.map((result) => {
-              const data: atoms.SampleData = {
-                sample: result.sample,
-                dimensions: [result.width, result.height],
-                frameRate: result.frame_rate,
-                frameNumber: result.sample.frame_number,
-              };
-              samples.set(result.sample._id, data);
+          const itemData = results.map((result) => {
+            const data: atoms.SampleData = {
+              sample: result.sample,
+              dimensions: [result.width, result.height],
+              frameRate: result.frame_rate,
+              frameNumber: result.sample.frame_number,
+            };
+            samples.set(result.sample._id, data);
+            sampleIndices.set(index, result.sample._id);
+            index++;
 
+            return data;
+          });
+
+          const items = await Promise.all<ItemData>(
+            itemData.map((data) => {
               return aspectRatioGenerator.current(data).then((aspectRatio) => {
                 return {
-                  id: result.sample._id,
+                  id: data.sample._id,
                   aspectRatio,
                 };
               });

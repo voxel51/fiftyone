@@ -44,9 +44,10 @@ export default class SectionElement implements Section {
         items.map((itemData) => {
           const itemElement = document.createElement("div");
           onItemClick &&
-            itemElement.addEventListener("click", (event) =>
-              onItemClick(event, itemData.id)
-            );
+            itemElement.addEventListener("click", (event) => {
+              event.preventDefault();
+              onItemClick(event, itemData.id);
+            });
           this.section.appendChild(itemElement);
           return [itemElement, itemData];
         }),

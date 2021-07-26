@@ -30,7 +30,7 @@ export class NextElement<State extends BaseState> extends BaseElement<
   State,
   HTMLImageElement
 > {
-  private showControls: boolean = false;
+  private showControls: boolean;
   getEvents(): Events<State> {
     return {
       click: ({ update, event, dispatchEvent }) => {
@@ -71,9 +71,11 @@ export class NextElement<State extends BaseState> extends BaseElement<
     if (showControls) {
       this.element.style.opacity = "0.9";
       this.element.style.height = "unset";
+      this.element.style.display = "block";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
+      this.element.style.display = "none";
     }
     this.showControls = showControls;
     return this.element;
@@ -84,7 +86,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   State,
   HTMLImageElement
 > {
-  private showControls: boolean = false;
+  private showControls: boolean;
   getEvents(): Events<State> {
     return {
       click: ({ update, event, dispatchEvent }) => {
@@ -125,9 +127,11 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
     if (showControls) {
       this.element.style.opacity = "0.9";
       this.element.style.height = "unset";
+      this.element.style.display = "block";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
+      this.element.style.display = "none";
     }
     this.showControls = showControls;
     return this.element;

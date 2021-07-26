@@ -3,11 +3,10 @@ import { selector, useRecoilCallback } from "recoil";
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
 
-import { labelFilters } from "../components/Filters/LabelFieldFilters.state";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { http } from "../shared/connection";
 
-type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
+type LookerTypes = typeof FrameLooker & typeof ImageLooker & typeof VideoLooker;
 
 export const getSampleSrc = (filepath: string, id: string) => {
   return `${http}/filepath/${encodeURI(filepath)}?id=${id}`;

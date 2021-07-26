@@ -8,7 +8,12 @@ export interface SampleData {
   frameNumber?: number;
 }
 
-export const modal = atom<SampleData | null>({
+interface ModalSample extends SampleData {
+  index: number;
+  getIndex: (index: number) => void;
+}
+
+export const modal = atom<ModalSample | null>({
   key: "modal",
   default: null,
 });

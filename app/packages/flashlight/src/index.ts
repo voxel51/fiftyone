@@ -186,14 +186,14 @@ export default class Flashlight<K> {
     });
   }
 
-  private get() {
+  get(): Promise<void> | null {
     if (this.loading || this.state.currentRequestKey === null) {
-      return;
+      return null;
     }
 
     this.loading = true;
-    this.state
-      .get(this.state.currentRequestKey)
+    return this.state
+      .get(this.state.nextItemIndex, this.state.currentRequestKey)
       .then(({ items, nextRequestKey }) => {
         this.state.currentRequestKey = nextRequestKey;
 
