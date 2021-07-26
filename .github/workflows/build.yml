@@ -151,7 +151,9 @@ jobs:
 
           # install ffmpeg
           curl https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-4.4-essentials_build.zip -o ffmpeg.zip
-          unzip ffmpeg.zip ffmpeg
+          unzip ffmpeg.zip
+
+          $ffmpeg = .\ffmpeg-4.4-essentials_build\bin\ffmpeg.exe
           $path = [Environment]::GetEnvironmentVariable('Path', 'User').TrimEnd([Char]';')
           [Environment]::SetEnvironmentVariable("Path", "$path;$ffmpeg", 'User')
       - name: Configure fiftyone for tests
