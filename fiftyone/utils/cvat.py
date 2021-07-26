@@ -2800,7 +2800,11 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         # label_field can either contain a FiftyOne Label type or a primitive
         # field type. Primitive fields will be uploaded as sample-level tags
         # with a single value that can be edited
-        self._field_type = samples.get_field_schema()[label_field]
+        if samples.media_type == "image":
+            self._field_type = samples.get_field_schema()[label_field]
+        else:
+            self._field_type = samples.get_frame_field_schema()[label_field]
+            label_field = "frames." + label_field
         self._field_label_type = None
         if isinstance(self._field_type, fof.EmbeddedDocumentField):
             if self._field_type.document_type in _SUPPORTED_LABEL_TYPES:
