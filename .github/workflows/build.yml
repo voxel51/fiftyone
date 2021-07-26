@@ -146,20 +146,15 @@ jobs:
       - name: Install test dependencies (Windows)
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets shapely
+          pip install pytest tensorflow tensorflow-datasets
           pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
-
-          # install ffmpeg
-          curl https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-4.4-essentials_build.zip -o ffmpeg.zip
-          unzip ffmpeg.zip
-
-          export PATH="$PWD/ffmpeg-4.4-essentials_build/bin:$PATH"
-          ffmpeg -h
       - name: Configure fiftyone for tests
         id: test_config
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
+      - name: Setup FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v1
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
       # this workflow
