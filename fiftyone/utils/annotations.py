@@ -241,7 +241,7 @@ def annotate(
     samples,
     config=None,
     backend="cvat",
-    label_field="ground_truth",
+    label_field=None,
     extra_attrs=None,
     **kwargs
 ):
@@ -254,7 +254,7 @@ def annotate(
             information needed to upload samples for  annotations
         backend ("cvat"): the name of the annotation backend to which to
             export the samples. Options are ("cvat")
-        label_field: a string indicating the label field to export to the
+        label_field (None): a string indicating the label field to export to the
             annotation backend. A value of `None` indicates exporting only
             the media.
         extra_attrs (None): a list of attribute field names or dictionary of

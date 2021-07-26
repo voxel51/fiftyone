@@ -2800,30 +2800,32 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         # label_field can either contain a FiftyOne Label type or a primitive
         # field type. Primitive fields will be uploaded as sample-level tags
         # with a single value that can be edited
-        if samples.media_type == "image":
-            self._field_type = samples.get_field_schema()[label_field]
-        else:
-            self._field_type = samples.get_frame_field_schema()[label_field]
-            label_field = "frames." + label_field
         self._field_label_type = None
-        if isinstance(self._field_type, fof.EmbeddedDocumentField):
-            if self._field_type.document_type in _SUPPORTED_LABEL_TYPES:
-                is_supported_label = True
-                self._field_label_type = self._field_type.document_type
+        is_supported_label = False
+        if label_field is not None:
+            if samples.media_type == "image":
+                self._field_type = samples.get_field_schema()[label_field]
             else:
-                raise TypeError(
-                    "Label field %s of type %s is not supported"
-                    % (label_field, str(self._field_type.document_type))
-                )
+                self._field_type = samples.get_frame_field_schema()[
+                    label_field
+                ]
+                label_field = "frames." + label_field
+            if isinstance(self._field_type, fof.EmbeddedDocumentField):
+                if self._field_type.document_type in _SUPPORTED_LABEL_TYPES:
+                    # label_field is a non-primitive Label field
+                    is_supported_label = True
+                    self._field_label_type = self._field_type.document_type
+                else:
+                    raise TypeError(
+                        "Label field %s of type %s is not supported"
+                        % (label_field, str(self._field_type.document_type))
+                    )
 
-        elif self._field_type not in _SUPPORTED_FIELD_TYPES:
-            raise TypeError(
-                "Field %s of type %s is not supported"
-                % (label_field, str(self._field_type))
-            )
-        else:
-            # label_field is a primitive non-Label field
-            is_supported_label = False
+            elif self._field_type not in _SUPPORTED_FIELD_TYPES:
+                raise TypeError(
+                    "Field %s of type %s is not supported"
+                    % (label_field, str(self._field_type))
+                )
 
         if classes is None:
             # Note classes can be populated even if label_field is a primitive
@@ -2837,7 +2839,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
             # CVAT crashes with more than ~450 classes
             new_classes = []
-            if label_field in samples.classes:
+            if label_field in samples.classes and label_field is not None:
                 new_classes = samples.classes[label_field]
             elif samples.default_classes:
                 new_classes = samples.default_classes
@@ -2860,19 +2862,20 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         # Parse label field into format expected by CVAT
         # At the same time parse attribute fields and populate
         # self._label_attributes
-        if not is_supported_label or self._field_label_type in (
-            fol.Classification,
-            fol.Classifications,
-        ):
-            annot_shapes = []
-            annot_tags = self.create_tags(
-                samples, label_field, self._field_label_type
-            )
-        else:
-            annot_tags = []
-            annot_shapes = self.create_shapes(
-                samples, label_field, self._field_label_type
-            )
+        annot_tags = []
+        annot_shapes = []
+        if label_field is not None:
+            if not is_supported_label or self._field_label_type in (
+                fol.Classification,
+                fol.Classifications,
+            ):
+                annot_tags = self.create_tags(
+                    samples, label_field, self._field_label_type
+                )
+            else:
+                annot_shapes = self.create_shapes(
+                    samples, label_field, self._field_label_type
+                )
 
         attributes = list(self._label_attributes.values())
 
@@ -3595,7 +3598,7 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
 
 def annotate(
     samples,
-    label_field="ground_truth",
+    label_field=None,
     url="cvat.org",
     port=None,
     https=True,

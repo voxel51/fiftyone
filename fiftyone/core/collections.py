@@ -5552,11 +5552,7 @@ class SampleCollection(object):
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
     def annotate(
-        self,
-        backend="cvat",
-        label_field="ground_truth",
-        extra_attrs=None,
-        **kwargs,
+        self, backend="cvat", label_field=None, extra_attrs=None, **kwargs,
     ):
         """Exports the samples and a label field to the given annotation
         backend.
@@ -5564,7 +5560,7 @@ class SampleCollection(object):
         Args:
             backend ("cvat"): the name of the annotation backend to which to
                 export the samples. Options are ("cvat")
-            label_field: a string indicating the label field to export to the
+            label_field (None): a string indicating the label field to export to the
                 annotation backend. A value of `None` indicates exporting only
                 the media.
             extra_attrs (None): a list of attribute field names or dictionary of
