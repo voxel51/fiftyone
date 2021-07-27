@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.11.2
 ---------------
-*Released July 26, 2021*
+*Released July 27, 2021*
 
 App
 ^^^
