@@ -6,7 +6,6 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import distutils
 import logging
 import os
 
@@ -774,9 +773,6 @@ def _get_attributes(label, extra_attrs):
 
 
 def _parse_attribute(value):
-    if not value or value == "None":
-        return None
-
     try:
         return int(value)
     except:
@@ -787,9 +783,13 @@ def _parse_attribute(value):
     except:
         pass
 
-    try:
-        return bool(distutils.util.strtobool(value))
-    except:
-        pass
+    if value in {"True", "true"}:
+        return True
+
+    if value in {"False", "false"}:
+        return False
+
+    if value == "None":
+        return None
 
     return value
