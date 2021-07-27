@@ -1524,6 +1524,9 @@ class VideoClassificationDatasetTests(VideoDatasetTests):
         )
 
 
+@pytest.mark.skipif(
+    os.name == "nt", reason="Windows hangs in workflows, fix me"
+)
 class MultitaskVideoDatasetTests(VideoDatasetTests):
     def _make_dataset(self):
         sample1 = fo.Sample(filepath=self._new_video())
