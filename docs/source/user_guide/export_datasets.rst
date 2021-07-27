@@ -58,7 +58,7 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
     The :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     method also provides additional parameters that you can use to configure
-    the export. For example, you can use the ``data_path`` and ``labels_path``
+    the export. For example, you can use the `data_path` and `labels_path`
     parameters to independently customize the location of the exported media
     and labels, including labels-only exports:
 
@@ -124,7 +124,7 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
     You can use the :ref:`kwargs option <cli-fiftyone-datasets-export>` to
     provide additional parameters to configure the export. For example, you can
-    use the ``data_path`` and ``labels_path`` parameters to independently
+    use the `data_path` and `labels_path` parameters to independently
     customize the location of the exported media and labels, including
     labels-only exports:
 
@@ -182,21 +182,24 @@ object patches of the provided samples will be exported.
     dataset = foz.load_zoo_dataset("quickstart")
 
     # No label field is provided; only images are exported
-    dataset.export("/tmp/quickstart/images", fo.types.ImageDirectory)
+    dataset.export(
+        export_dir="/tmp/quickstart/images",
+        dataset_type=fo.types.ImageDirectory,
+    )
 
     # A detections field is provided, so the object patches are exported as a
     # directory of images
     dataset.export(
-        "/tmp/quickstart/patches",
-        fo.types.ImageDirectory,
+        export_dir="/tmp/quickstart/patches",
+        dataset_type=fo.types.ImageDirectory,
         label_field="ground_truth",
     )
 
     # A detections field is provided, so the object patches are exported as an
     # image classification directory tree
     dataset.export(
-        "/tmp/quickstart/objects",
-        fo.types.ImageClassificationDirectoryTree,
+        export_dir="/tmp/quickstart/objects",
+        dataset_type=fo.types.ImageClassificationDirectoryTree,
         label_field="ground_truth",
     )
 
@@ -223,8 +226,8 @@ lists to match the export type's expectations.
     # The `ground_truth` field has type `Detection`, but COCO format expects
     # `Detections`, so the labels are automatically coerced to single-label lists
     patches.export(
-        "/tmp/quickstart/detections",
-        fo.types.COCODetectionDataset,
+        export_dir="/tmp/quickstart/detections",
+        dataset_type=fo.types.COCODetectionDataset,
         label_field="ground_truth",
     )
 
@@ -251,8 +254,8 @@ to detections that span the entire images.
 
     # Exports the `attribute` classifications as detections that span entire images
     dataset.export(
-        "/tmp/quickstart/attributes",
-        fo.types.COCODetectionDataset,
+        export_dir="/tmp/quickstart/attributes",
+        dataset_type=fo.types.COCODetectionDataset,
         label_field="attribute",
     )
 
@@ -357,6 +360,13 @@ Datasets of this type are exported in the following format:
         <filename2>.<ext>
         ...
 
+.. note::
+
+    See :class:`ImageDirectoryExporter <fiftyone.utils.data.exporters.ImageDirectoryExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export the images in a FiftyOne dataset as a directory of images on
 disk as follows:
 
@@ -407,6 +417,13 @@ Datasets of this type are exported in the following format:
         <filename1>.<ext>
         <filename2>.<ext>
         ...
+
+.. note::
+
+    See :class:`VideoDirectoryExporter <fiftyone.utils.data.exporters.VideoDirectoryExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export the videos in a FiftyOne dataset as a directory of videos on
 disk as follows:
@@ -485,6 +502,13 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
+.. note::
+
+    See :class:`FiftyOneImageClassificationDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageClassificationDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export a FiftyOne dataset as an image classification dataset stored on
 disk in the above format as follows:
 
@@ -550,6 +574,13 @@ Datasets of this type are exported in the following format:
 
 Unlabeled images are stored in a subdirectory named `_unlabeled`.
 
+.. note::
+
+    See :class:`ImageClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export a FiftyOne dataset as an image classification directory tree
 stored on disk in the above format as follows:
 
@@ -614,6 +645,13 @@ Datasets of this type are exported in the following format:
         ...
 
 Unlabeled videos are stored in a subdirectory named `_unlabeled`.
+
+.. note::
+
+    See :class:`VideoClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a video classification directory tree
 stored on disk in the above format as follows:
@@ -692,6 +730,13 @@ following format:
     }
 
 For unlabeled samples, the TFRecords do not contain `label` features.
+
+.. note::
+
+    See :class:`TFImageClassificationDatasetExporter <fiftyone.utils.tf.TFImageClassificationDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
 format as follows:
@@ -793,6 +838,13 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
+.. note::
+
+    See :class:`FiftyOneImageDetectionDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export a FiftyOne dataset as an image detection dataset in the above
 format as follows:
 
@@ -872,7 +924,9 @@ where `labels.json` is a JSON file in the following format:
             {
                 "id": 2,
                 "name": "cat",
-                "supercategory": "animal"
+                "supercategory": "animal",
+                "keypoints": ["nose", "head", ...],
+                "skeleton": [[12, 14], [14, 16], ...]
             },
             ...
         ],
@@ -908,6 +962,21 @@ See `this page <https://cocodataset.org/#format-data>`_ for a full
 specification of the `segmentation` field.
 
 For unlabeled datasets, `labels.json` does not contain an `annotations` field.
+
+The `file_name` attribute of the labels file encodes the location of the
+corresponding images, which can be any of the following:
+
+-   The filename of an image in the `data/` folder
+-   A relative path like `data/sub/folder/filename.ext` specifying the relative
+    path to the image in a nested subfolder of `data/`
+-   An absolute path to an image, which may or may not be in the `data/` folder
+
+.. note::
+
+    See :class:`COCODetectionDatasetExporter <fiftyone.utils.coco.COCODetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a COCO detection dataset in the above
 format as follows:
@@ -977,7 +1046,7 @@ where the labels XML files are in the following format:
 .. code-block:: xml
 
     <annotation>
-        <folder>data</folder>
+        <folder></folder>
         <filename>image.ext</filename>
         <path>/path/to/dataset-dir/data/image.ext</path>
         <source>
@@ -1022,6 +1091,13 @@ Samples with no values for certain attributes (like `pose` in the above
 example) are left empty.
 
 Unlabeled images have no corresponding file in `labels/`.
+
+.. note::
+
+    See :class:`VOCDetectionDatasetExporter <fiftyone.utils.voc.VOCDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a VOC detection dataset in the above
 format as follows:
@@ -1096,29 +1172,29 @@ meanings:
 +==========+=============+=============================================================+=========+
 | 1        | type        | The object label                                            |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | truncated   | A float in ``[0, 1]``, where 0 is non-truncated and         | 0       |
+| 1        | truncated   | A float in `[0, 1]`, where 0 is non-truncated and           | 0       |
 |          |             | 1 is fully truncated. Here, truncation refers to the object |         |
 |          |             | leaving image boundaries                                    |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | occluded    | An int in ``(0, 1, 2, 3)`` indicating occlusion state,      | 0       |
+| 1        | occluded    | An int in `(0, 1, 2, 3)` indicating occlusion state,        | 0       |
 |          |             | where:- 0 = fully visible- 1 = partly occluded- 2 =         |         |
 |          |             | largely occluded- 3 = unknown                               |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | alpha       | Observation angle of the object, in ``[-pi, pi]``           | 0       |
+| 1        | alpha       | Observation angle of the object, in `[-pi, pi]`             | 0       |
 +----------+-------------+-------------------------------------------------------------+---------+
 | 4        | bbox        | 2D bounding box of object in the image in pixels, in the    |         |
-|          |             | format ``[xtl, ytl, xbr, ybr]``                             |         |
+|          |             | format `[xtl, ytl, xbr, ybr]`                               |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 | 1        | dimensions  | 3D object dimensions, in meters, in the format              | 0       |
-|          |             | ``[height, width, length]``                                 |         |
+|          |             | `[height, width, length]`                                   |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | location    | 3D object location ``(x, y, z)`` in camera coordinates      | 0       |
+| 1        | location    | 3D object location `(x, y, z)` in camera coordinates        | 0       |
 |          |             | (in meters)                                                 |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 | 1        | rotation\_y | Rotation around the y-axis in camera coordinates, in        | 0       |
-|          |             | ``[-pi, pi]``                                               |         |
+|          |             | `[-pi, pi]`                                                 |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-| 1        | score       | ``(optional)`` A float confidence for the detection         |         |
+| 1        | score       | `(optional)` A float confidence for the detection           |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 
 The `default` column above indicates the default value that will be used when
@@ -1126,6 +1202,13 @@ writing datasets in this type whose samples do not contain the necessary
 field(s).
 
 Unlabeled images have no corresponding file in `labels/`.
+
+.. note::
+
+    See :class:`KITTIDetectionDatasetExporter <fiftyone.utils.kitti.KITTIDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a KITTI detection dataset in the above
 format as follows:
@@ -1220,6 +1303,13 @@ relative coordinates in `[0, 1] x [0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
+.. note::
+
+    See :class:`YOLOv4DatasetExporter <fiftyone.utils.yolo.YOLOv4DatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export a FiftyOne dataset as a YOLOv4 dataset in the above format as
 follows:
 
@@ -1307,9 +1397,14 @@ where `dataset.yaml` contains the following information:
     # class names
     names: ["list", "of", "classes", ...]
 
-and the TXT files in `labels/` are space-delimited files where each row
-corresponds to an object in the image of the same name, in the following
-format:
+See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
+for a full description of the possible format of `dataset.yaml`. In particular,
+the dataset may contain one or more splits with arbitrary names, as the
+specific split being imported or exported is specified by the `split` argument
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`.
+
+The TXT files in `labels/` are space-delimited files where each row corresponds
+to an object in the image of the same name, in the following format:
 
 .. code-block:: text
 
@@ -1320,6 +1415,13 @@ where `<target>` is the zero-based integer index of the object class label from
 relative coordinates in `[0, 1] x [0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `labels/`.
+
+.. note::
+
+    See :class:`YOLOv5DatasetExporter <fiftyone.utils.yolo.YOLOv5DatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a YOLOv5 dataset in the above format as
 follows:
@@ -1387,13 +1489,17 @@ following format:
         # Image dimensions
         "image/height": tf.io.FixedLenFeature([], tf.int64),
         "image/width": tf.io.FixedLenFeature([], tf.int64),
+
         # Image filename is used for both of these when writing
         "image/filename": tf.io.FixedLenFeature([], tf.string),
         "image/source_id": tf.io.FixedLenFeature([], tf.string),
+
         # Encoded image bytes
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
+
         # Image format, either `jpeg` or `png`
         "image/format": tf.io.FixedLenFeature([], tf.string),
+
         # Normalized bounding box coordinates in `[0, 1]`
         "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
@@ -1407,10 +1513,12 @@ following format:
         "image/object/bbox/ymax": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
         ),
+
         # Class label string
         "image/object/class/text": tf.io.FixedLenSequenceFeature(
             [], tf.string, allow_missing=True
         ),
+
         # Integer class ID
         "image/object/class/label": tf.io.FixedLenSequenceFeature(
             [], tf.int64, allow_missing=True
@@ -1418,6 +1526,13 @@ following format:
     }
 
 The TFRecords for unlabeled samples do not contain `image/object/*` features.
+
+.. note::
+
+    See :class:`TFObjectDetectionDatasetExporter <fiftyone.utils.tf.TFObjectDetectionDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
 format as follows:
@@ -1481,9 +1596,16 @@ Datasets of this type are exported in the following format:
             <filename2>.<ext>
             ...
 
-where ``labels/`` contains the semantic segmentations stored as images.
+where `labels/` contains the semantic segmentations stored as images.
 
-Unlabeled images have no corresponding file in ``labels/``.
+Unlabeled images have no corresponding file in `labels/`.
+
+.. note::
+
+    See :class:`ImageSegmentationDirectoryExporter <fiftyone.utils.data.exporters.ImageSegmentationDirectoryExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as an image segmentation dataset in the above
 format as follows:
@@ -1554,25 +1676,32 @@ where `labels.xml` is an XML file in the following format:
         <version>1.1</version>
         <meta>
             <task>
+                <id>0</id>
+                <name>task-name</name>
                 <size>51</size>
                 <mode>annotation</mode>
+                <overlap></overlap>
+                <bugtracker></bugtracker>
+                <flipped>False</flipped>
+                <created>2017-11-20 11:51:51.000000+00:00</created>
+                <updated>2017-11-20 11:51:51.000000+00:00</updated>
                 <labels>
                     <label>
                         <name>car</name>
                         <attributes>
                             <attribute>
                                 <name>type</name>
-                                <values>coupe\nsedan\ntruck</values>
+                                <values>coupe\\nsedan\\ntruck</values>
                             </attribute>
                             ...
                         </attributes>
                     </label>
                     <label>
-                        <name>person</name>
+                        <name>traffic_line</name>
                         <attributes>
                             <attribute>
-                                <name>gender</name>
-                                <values>male\nfemale</values>
+                                <name>color</name>
+                                <values>white\\nyellow</values>
                             </attribute>
                             ...
                         </attributes>
@@ -1580,20 +1709,64 @@ where `labels.xml` is an XML file in the following format:
                     ...
                 </labels>
             </task>
+            <segments>
+                <segment>
+                    <id>0</id>
+                    <start>0</start>
+                    <stop>50</stop>
+                    <url></url>
+                </segment>
+            </segments>
+            <owner>
+                <username></username>
+                <email></email>
+            </owner>
             <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
         </meta>
-        <image id="1" name="<uuid1>.<ext>" width="640" height="480">
-            <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" type="sedan"></box>
+        <image id="0" name="<uuid1>.<ext>" width="640" height="480">
+            <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" occluded="0">
+                <attribute name="type">sedan</attribute>
+                ...
+            </box>
+            ...
+            <polygon label="car" points="561.30,916.23;561.30,842.77;...;560.20,966.67" occluded="0">
+                <attribute name="make">Honda</attribute>
+                ...
+            </polygon>
+            ...
+            <polyline label="traffic_line" points="462.10,0.00;126.80,1200.00" occluded="0">
+                <attribute name="color">yellow</attribute>
+                ...
+            </polyline>
+            ...
+            <points label="wheel" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" occluded="0">
+                <attribute name="location">front_driver_side</attribute>
+                ...
+            </points>
             ...
         </image>
         ...
-        <image id="51" name="<uuid51>.<ext>" width="640" height="480">
-            <box label="person" xtl="300" ytl="25" xbr="375" ybr="400" gender="female"></box>
+        <image id="50" name="<uuid51>.<ext>" width="640" height="480">
             ...
         </image>
     </annotations>
 
 Unlabeled images have no corresponding `image` tag in `labels.xml`.
+
+The `name` field of the `<image>` tags in the labels file encodes the location
+of the corresponding images, which can be any of the following:
+
+-   The filename of an image in the `data/` folder
+-   A relative path like `data/sub/folder/filename.ext` specifying the relative
+    path to the image in a nested subfolder of `data/`
+-   An absolute path to an image, which may or may not be in the `data/` folder
+
+.. note::
+
+    See :class:`CVATImageDatasetExporter <fiftyone.utils.cvat.CVATImageDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a CVAT image dataset in the above format
 as follows:
@@ -1663,79 +1836,102 @@ where the labels XML files are stored in the following format:
 .. code-block:: xml
 
     <?xml version="1.0" encoding="utf-8"?>
-        <annotations>
-            <version>1.1</version>
-            <meta>
-                <task>
-                    <id>task-id</id>
-                    <name>task-name</name>
-                    <size>51</size>
-                    <mode>interpolation</mode>
-                    <overlap></overlap>
-                    <bugtracker></bugtracker>
-                    <flipped>False</flipped>
-                    <created>2017-11-20 11:51:51.000000+00:00</created>
-                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
-                    <labels>
-                        <label>
-                            <name>car</name>
-                            <attributes>
-                                <attribute>
-                                    <name>type</name>
-                                    <values>coupe\\nsedan\\ntruck</values>
-                                </attribute>
-                                ...
-                            </attributes>
-                        </label>
-                        <label>
-                            <name>person</name>
-                            <attributes>
-                                <attribute>
-                                    <name>gender</name>
-                                    <values>male\\nfemale</values>
-                                </attribute>
-                                ...
-                            </attributes>
-                        </label>
-                        ...
-                    </labels>
-                </task>
-                <segments>
-                    <segment>
-                        <id>0</id>
-                        <start>0</start>
-                        <stop>50</stop>
-                        <url></url>
-                    </segment>
-                </segments>
-                <owner>
-                    <username></username>
-                    <email></email>
-                </owner>
-                <original_size>
-                    <width>640</width>
-                    <height>480</height>
-                </original_size>
-                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
-            </meta>
-            <track id="0" label="car">
-                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
-                    <attribute name="type">sedan</attribute>
+    <annotations>
+        <version>1.1</version>
+        <meta>
+            <task>
+                <id>task-id</id>
+                <name>task-name</name>
+                <size>51</size>
+                <mode>interpolation</mode>
+                <overlap></overlap>
+                <bugtracker></bugtracker>
+                <flipped>False</flipped>
+                <created>2017-11-20 11:51:51.000000+00:00</created>
+                <updated>2017-11-20 11:51:51.000000+00:00</updated>
+                <labels>
+                    <label>
+                        <name>car</name>
+                        <attributes>
+                            <attribute>
+                                <name>type</name>
+                                <values>coupe\\nsedan\\ntruck</values>
+                            </attribute>
+                            ...
+                        </attributes>
+                    </label>
+                    <label>
+                        <name>traffic_line</name>
+                        <attributes>
+                            <attribute>
+                                <name>color</name>
+                                <values>white\\nyellow</values>
+                            </attribute>
+                            ...
+                        </attributes>
+                    </label>
                     ...
-                </box>
+                </labels>
+            </task>
+            <segments>
+                <segment>
+                    <id>0</id>
+                    <start>0</start>
+                    <stop>50</stop>
+                    <url></url>
+                </segment>
+            </segments>
+            <owner>
+                <username></username>
+                <email></email>
+            </owner>
+            <original_size>
+                <width>640</width>
+                <height>480</height>
+            </original_size>
+            <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+        </meta>
+        <track id="0" label=car">
+            <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
+                <attribute name="type">sedan</attribute>
                 ...
-            </track>
+            </box>
             ...
-            <track id="10" label="person">
-                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0" keyframe="1">
-                    <attribute name="gender">female</attribute>
-                    ...
-                </box>
+        </track>
+        <track id="1" label=car">
+            <polygon frame="0" points="561.30,916.23;561.30,842.77;...;560.20,966.67" outside="0" occluded="0", keyframe="1">
+                <attribute name="make">Honda</attribute>
                 ...
-            </track>
-        </annotations>
+            </polygon>
+            ...
+        </track>
+        ...
+        <track id="10" label="traffic_line">
+            <polyline frame="10" points="462.10,0.00;126.80,1200.00" outside="0" occluded="0", keyframe="1">
+                <attribute name="color">yellow</attribute>
+                ...
+            </polyline>
+            ...
+        </track>
+        ...
+        <track id="88" label="wheel">
+            <points frame="176" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" outside="0" occluded="0", keyframe="1">
+                <attribute name="location">front_driver_side</attribute>
+                ...
+            </points>
+            ...
+        </track>
+        ...
+    </annotations>
 
 Unlabeled videos have no corresponding file in `labels/`.
+
+.. note::
+
+    See :class:`CVATVideoDatasetExporter <fiftyone.utils.cvat.CVATVideoDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a CVAT video dataset in the above format
 as follows:
@@ -1826,6 +2022,13 @@ and where each labels JSON file is stored in
 
 For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
+.. note::
+
+    See :class:`FiftyOneImageLabelsDatasetExporter <fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export a FiftyOne dataset as an image labels dataset in the above
 format as follows:
 
@@ -1914,6 +2117,13 @@ and where each labels JSON file is stored in
 `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
 For unlabeled videos, an empty `eta.core.video.VideoLabels` file is stored.
+
+.. note::
+
+    See :class:`FiftyOneVideoLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a video labels dataset in the above format
 as follows:
@@ -2057,6 +2267,21 @@ where `labels.json` is a JSON file in the following format:
 
 Unlabeled images have no corresponding entry in `labels.json`.
 
+The `name` attribute of the labels file encodes the location of the
+corresponding images, which can be any of the following:
+
+-   The filename of an image in the `data/` folder
+-   A relative path like `data/sub/folder/filename.ext` specifying the relative
+    path to the image in a nested subfolder of `data/`
+-   An absolute path to an image, which may or may not be in the `data/` folder
+
+.. note::
+
+    See :class:`BDDDatasetExporter <fiftyone.utils.bdd.BDDDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export a FiftyOne dataset as a BDD dataset in the above format as
 follows:
 
@@ -2117,7 +2342,7 @@ Datasets of this type are exported in the following format:
             ...
         labels.json
 
-where ``labels.json`` is a GeoJSON file containing a ``FeatureCollection`` in
+where `labels.json` is a GeoJSON file containing a `FeatureCollection` in
 the following format:
 
 .. code-block:: text
@@ -2157,18 +2382,25 @@ the following format:
         ]
     }
 
-where the ``geometry`` field may contain any valid GeoJSON geometry object, and
-the ``filename`` property encodes the name of the corresponding media in the
-``data/`` folder. The ``filename`` property can also be an absolute path, which
-may or may not be in the ``data/`` folder.
+where the `geometry` field may contain any valid GeoJSON geometry object, and
+the `filename` property encodes the name of the corresponding media in the
+`data/` folder. The `filename` property can also be an absolute path, which
+may or may not be in the `data/` folder.
 
-Samples with no location data will have a null ``geometry`` field.
+Samples with no location data will have a null `geometry` field.
 
-The ``properties`` field of each feature can contain additional labels for
+The `properties` field of each feature can contain additional labels for
 each sample.
 
-You can export a FiftyOne dataset as a GeoJSON image dataset in the above
-format as follows:
+.. note::
+
+    See :class:`GeoJSONDatasetExporter <fiftyone.utils.geojson.GeoJSONDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a GeoJSON dataset in the above format as
+follows:
 
 .. tabs::
 
@@ -2240,6 +2472,13 @@ of the samples in the dataset, `evaluations/` contains any serialized
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.
 
+.. note::
+
+    See :class:`FiftyOneDatasetExporter <fiftyone.utils.data.exporters.FiftyOneDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
 You can export a FiftyOne dataset to disk in the above format as follows:
 
 .. tabs::
@@ -2291,69 +2530,31 @@ a |Dataset| or |DatasetView| in your custom format using the following recipe:
 
     import fiftyone as fo
 
-    export_dir = "/path/for/custom-dataset"
-    label_field = "ground_truth"  # for example
-
     # The Dataset or DatasetView to export
     dataset_or_view = fo.Dataset(...)
 
     # Create an instance of your custom dataset exporter
-    exporter = CustomDatasetExporter(export_dir, ...)
+    exporter = CustomDatasetExporter(...)
 
     # Export the dataset
-    dataset_or_view.export(
-        dataset_exporter=exporter, label_field=label_field,
-    )
+    dataset_or_view.export(dataset_exporter=exporter, ...)
 
 You can also define a custom |DatasetType| type, which enables you to export
 datasets in your custom format using the following recipe:
 
-.. tabs::
+.. code-block:: python
+    :linenos:
 
-  .. group-tab:: Python
+    import fiftyone as fo
 
-    Export your |Dataset| or |DatasetView| in your custom format by passing
-    your |DatasetType| to the `dataset_type` argument of
-    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`:
+    # The `fiftyone.types.Dataset` subclass for your custom dataset
+    dataset_type = CustomDataset
 
-    .. code-block:: python
-        :linenos:
+    # The Dataset or DatasetView to export
+    dataset_or_view = fo.Dataset(...)
 
-        import fiftyone as fo
-
-        export_dir = "/path/for/custom-dataset"
-        label_field = "ground_truth"  # for example
-
-        # The `fiftyone.types.Dataset` subclass for your custom dataset
-        dataset_type = CustomDataset
-
-        # The Dataset or DatasetView to export
-        dataset_or_view = fo.Dataset(...)
-
-        # Export the dataset!
-        dataset_or_view.export(
-            export_dir=export_dir, dataset_type=dataset_type, label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    Export your |Dataset| in your custom format by passing your |DatasetType|
-    in the `--type` flag of the `fiftyone datasets export` method of the CLI:
-
-    .. code-block:: shell
-
-        NAME=custom-dataset
-        EXPORT_DIR=/path/for/custom-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # The `fiftyone.types.Dataset` subclass for your custom dataset
-        DATASET_TYPE = CustomDataset
-
-        # Export the dataset!
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type $DATASET_TYPE
+    # Export the dataset!
+    dataset_or_view.export(dataset_type=dataset_type, ...)
 
 .. _writing-a-custom-dataset-exporter:
 
@@ -2382,13 +2583,14 @@ should implement is determined by the type of dataset that you are exporting.
                 """Custom exporter for unlabeled image datasets.
 
                 Args:
-                    export_dir: the directory to write the export
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
                     *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir, *args, **kwargs):
-                    super().__init__(export_dir)
+                def __init__(self, export_dir=None, *args, **kwargs):
+                    super().__init__(export_dir=export_dir)
                     # Your initialization here
 
                 @property
@@ -2472,7 +2674,8 @@ should implement is determined by the type of dataset that you are exporting.
 
             samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
-            exporter = CustomUnlabeledImageDatasetExporter(dataset_dir, ...)
+            exporter = CustomUnlabeledImageDatasetExporter(...)
+
             with exporter:
                 exporter.log_collection(samples)
 
@@ -2531,13 +2734,14 @@ should implement is determined by the type of dataset that you are exporting.
                 """Custom exporter for labeled image datasets.
 
                 Args:
-                    export_dir: the directory to write the export
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
                     *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir, *args, **kwargs):
-                    super().__init__(export_dir)
+                def __init__(self, export_dir=None, *args, **kwargs):
+                    super().__init__(export_dir=export_dir)
                     # Your initialization here
 
                 @property
@@ -2644,7 +2848,8 @@ should implement is determined by the type of dataset that you are exporting.
             samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
             label_field = ...
 
-            exporter = CustomLabeledImageDatasetExporter(dataset_dir, ...)
+            exporter = CustomLabeledImageDatasetExporter(...)
+
             with exporter:
                 exporter.log_collection(samples)
 
@@ -2712,13 +2917,14 @@ should implement is determined by the type of dataset that you are exporting.
                 """Custom exporter for unlabeled video datasets.
 
                 Args:
-                    export_dir: the directory to write the export
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
                     *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir, *args, **kwargs):
-                    super().__init__(export_dir)
+                def __init__(self, export_dir=None, *args, **kwargs):
+                    super().__init__(export_dir=export_dir)
                     # Your initialization here
 
                 @property
@@ -2802,7 +3008,8 @@ should implement is determined by the type of dataset that you are exporting.
 
             samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
-            exporter = CustomUnlabeledVideoDatasetExporter(dataset_dir, ...)
+            exporter = CustomUnlabeledVideoDatasetExporter(...)
+
             with exporter:
                 exporter.log_collection(samples)
 
@@ -2861,13 +3068,14 @@ should implement is determined by the type of dataset that you are exporting.
                 """Custom exporter for labeled video datasets.
 
                 Args:
-                    export_dir: the directory to write the export
+                    export_dir (None): the directory to write the export. This may be
+                        optional for some exporters
                     *args: additional positional arguments for your exporter
                     **kwargs: additional keyword arguments for your exporter
                 """
 
-                def __init__(self, export_dir, *args, **kwargs):
-                    super().__init__(export_dir)
+                def __init__(self, export_dir=None, *args, **kwargs):
+                    super().__init__(export_dir=export_dir)
                     # Your initialization here
 
                 @property
@@ -2995,7 +3203,8 @@ should implement is determined by the type of dataset that you are exporting.
 
             samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
-            exporter = CustomLabeledVideoDatasetExporter(dataset_dir, ...)
+            exporter = CustomLabeledVideoDatasetExporter(...)
+
             with exporter:
                 exporter.log_collection(samples)
 

@@ -447,8 +447,7 @@ class COCO2014Dataset(FiftyOneDataset):
     -   COCO defines 91 classes but the data only uses 80 classes
     -   Some images from the train and validation sets don't have annotations
     -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
+    -   COCO 2014 and 2017 use the same images, but the splits are different
 
     Example usage::
 
@@ -579,24 +578,8 @@ class COCO2014Dataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
-    @property
-    def size(self):
-        return {"train": 82783, "test": 40775, "validation": 40504}
-
-    def _is_download_required(self, dataset_dir, split):
-        return fouc.is_download_required(
-            dataset_dir,
-            split,
-            year="2014",
-            label_types=self.label_types,
-            classes=self.classes,
-            image_ids=self.image_ids,
-            max_samples=self.max_samples,
-            raw_dir=self._get_raw_dir(dataset_dir),
-        )
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        num_samples, classes = fouc.download_coco_dataset_split(
+        num_samples, classes, downloaded = fouc.download_coco_dataset_split(
             dataset_dir,
             split,
             year="2014",
@@ -612,6 +595,9 @@ class COCO2014Dataset(FiftyOneDataset):
         )
 
         dataset_type = fot.COCODetectionDataset()
+
+        if not downloaded:
+            num_samples = None
 
         return dataset_type, num_samples, classes
 
@@ -649,8 +635,7 @@ class COCO2017Dataset(FiftyOneDataset):
     -   COCO defines 91 classes but the data only uses 80 classes
     -   Some images from the train and validation sets don't have annotations
     -   The test set does not have annotations
-    -   COCO 2014 and 2017 uses the same images, but different train/val/test
-        splits
+    -   COCO 2014 and 2017 use the same images, but the splits are different
 
     Example usage::
 
@@ -778,27 +763,11 @@ class COCO2017Dataset(FiftyOneDataset):
         return ("train", "validation", "test")
 
     @property
-    def size(self):
-        return {"train": 118287, "test": 40670, "validation": 5000}
-
-    @property
     def supports_partial_downloads(self):
         return True
 
-    def _is_download_required(self, dataset_dir, split):
-        return fouc.is_download_required(
-            dataset_dir,
-            split,
-            year="2017",
-            label_types=self.label_types,
-            classes=self.classes,
-            image_ids=self.image_ids,
-            max_samples=self.max_samples,
-            raw_dir=self._get_raw_dir(dataset_dir),
-        )
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        num_samples, classes = fouc.download_coco_dataset_split(
+        num_samples, classes, downloaded = fouc.download_coco_dataset_split(
             dataset_dir,
             split,
             year="2017",
@@ -814,6 +783,9 @@ class COCO2017Dataset(FiftyOneDataset):
         )
 
         dataset_type = fot.COCODetectionDataset()
+
+        if not downloaded:
+            num_samples = None
 
         return dataset_type, num_samples, classes
 
@@ -1282,24 +1254,8 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
-    @property
-    def size(self):
-        return {"train": 1743042, "test": 125436, "validation": 41620}
-
-    def _is_download_required(self, dataset_dir, split):
-        return fouo.is_download_required(
-            dataset_dir,
-            split,
-            version="v6",
-            label_types=self.label_types,
-            classes=self.classes,
-            attrs=self.attrs,
-            image_ids=self.image_ids,
-            max_samples=self.max_samples,
-        )
-
     def _download_and_prepare(self, dataset_dir, _, split):
-        num_samples, classes = fouo.download_open_images_split(
+        num_samples, classes, downloaded = fouo.download_open_images_split(
             dataset_dir,
             split,
             version="v6",
@@ -1314,6 +1270,9 @@ class OpenImagesV6Dataset(FiftyOneDataset):
         )
 
         dataset_type = fot.OpenImagesV6Dataset()
+
+        if not downloaded:
+            num_samples = None
 
         return dataset_type, num_samples, classes
 

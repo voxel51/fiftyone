@@ -257,7 +257,9 @@ def _run_custom_imports(
         # Some formats require `include_all_data` in order to load unlabeled
         # samples. If the format doesn't support this flag, it will be ignored
         _dataset = fo.Dataset.from_dir(
-            export_dir, dataset_type, include_all_data=True
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+            include_all_data=True,
         )
 
         schema = _dataset.get_field_schema()
@@ -271,7 +273,10 @@ def _run_custom_imports(
     # Test `shuffle` and `max_samples` when importing
     if max_samples is not None:
         _dataset = fo.Dataset.from_dir(
-            export_dir, dataset_type, shuffle=True, max_samples=max_samples
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+            max_samples=max_samples,
+            shuffle=True,
         )
         assert len(_dataset) == max_samples
         for s in _dataset:
@@ -286,22 +291,28 @@ def test_classification_datasets(basedir, img):
     # FiftyOneImageClassificationDataset
     export_dir = os.path.join(basedir, "fiftyone-image-classification")
     dataset_type = fo.types.FiftyOneImageClassificationDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # ImageClassificationDirectoryTree
     export_dir = os.path.join(basedir, "image-classification-dir-tree")
     dataset_type = fo.types.ImageClassificationDirectoryTree
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # TFImageClassificationDataset
     export_dir = os.path.join(basedir, "tf-image-classification")
     dataset_type = fo.types.TFImageClassificationDataset
     tmp_dir = os.path.join(basedir, "tf-image-classification-tmp-images")
-    dataset.export(export_dir, dataset_type=dataset_type, num_shards=2)
+    dataset.export(
+        export_dir=export_dir, dataset_type=dataset_type, num_shards=2
+    )
     dataset2 = fo.Dataset.from_dir(
-        export_dir, dataset_type, images_dir=tmp_dir
+        dataset_dir=export_dir, dataset_type=dataset_type, images_dir=tmp_dir
     )
 
     # JSON
@@ -320,53 +331,69 @@ def test_detection_datasets(basedir, img):
     # FiftyOneImageDetectionDataset
     export_dir = os.path.join(basedir, "fiftyone-image-detection")
     dataset_type = fo.types.FiftyOneImageDetectionDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # COCODetectionDataset
     export_dir = os.path.join(basedir, "coco-detection")
     dataset_type = fo.types.COCODetectionDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # VOCDetectionDataset
     export_dir = os.path.join(basedir, "voc-detection")
     dataset_type = fo.types.VOCDetectionDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # KITTIDetectionDataset
     export_dir = os.path.join(basedir, "kitti-detection")
     dataset_type = fo.types.KITTIDetectionDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # YOLOv4Dataset
     export_dir = os.path.join(basedir, "yolov4")
     dataset_type = fo.types.YOLOv4Dataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # YOLOv5Dataset
     export_dir = os.path.join(basedir, "yolov5")
     dataset_type = fo.types.YOLOv5Dataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # TFObjectDetectionDataset
     export_dir = os.path.join(basedir, "tf-object-detection")
     dataset_type = fo.types.TFObjectDetectionDataset
     tmp_dir = os.path.join(basedir, "tf-object-detection-tmp-images")
-    dataset.export(export_dir, dataset_type=dataset_type, num_shards=2)
+    dataset.export(
+        export_dir=export_dir, dataset_type=dataset_type, num_shards=2
+    )
     dataset2 = fo.Dataset.from_dir(
-        export_dir, dataset_type, images_dir=tmp_dir
+        dataset_dir=export_dir, dataset_type=dataset_type, images_dir=tmp_dir
     )
 
     # CVATImageDataset
     export_dir = os.path.join(basedir, "cvat-image")
     dataset_type = fo.types.CVATImageDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # JSON
     json_path = os.path.join(basedir, "dataset.json")
@@ -384,14 +411,18 @@ def test_image_labels_datasets(basedir, img):
     # FiftyOneImageLabelsDataset
     export_dir = os.path.join(basedir, "fiftyone-image-labels")
     dataset_type = fo.types.FiftyOneImageLabelsDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # BDDDataset
     export_dir = os.path.join(basedir, "bdd")
     dataset_type = fo.types.BDDDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     # JSON
     json_path = os.path.join(basedir, "dataset.json")
@@ -412,8 +443,10 @@ def test_generic_sample_dataset(basedir, img):
     # FiftyOneDataset
     export_dir = os.path.join(basedir, "fo-dataset1")
     dataset_type = fo.types.FiftyOneDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     #
     # Detection dataset
@@ -425,8 +458,10 @@ def test_generic_sample_dataset(basedir, img):
     # FiftyOneDataset
     export_dir = os.path.join(basedir, "fo-dataset2")
     dataset_type = fo.types.FiftyOneDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
     #
     # ImageLabels dataset
@@ -438,8 +473,10 @@ def test_generic_sample_dataset(basedir, img):
     # FiftyOneDataset
     export_dir = os.path.join(basedir, "fo-dataset3")
     dataset_type = fo.types.FiftyOneDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    dataset2 = fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=dataset_type
+    )
 
 
 def test_multilabel_dataset(basedir, multilabel_img):
@@ -455,7 +492,9 @@ def test_multilabel_dataset(basedir, multilabel_img):
         label_prefix="gt_",
     )
     dataset2 = fo.Dataset.from_dir(
-        export_dir, fo.types.BDDDataset, label_field="gt"
+        dataset_dir=export_dir,
+        dataset_type=fo.types.BDDDataset,
+        label_field="gt",
     )
 
     # Multilabel FiftyOneImageLabelsDataset
@@ -466,7 +505,9 @@ def test_multilabel_dataset(basedir, multilabel_img):
         label_prefix="gt_",
     )
     dataset3 = fo.Dataset.from_dir(
-        export_dir, fo.types.FiftyOneImageLabelsDataset, label_field="gt",
+        dataset_dir=export_dir,
+        dataset_type=fo.types.FiftyOneImageLabelsDataset,
+        label_field="gt",
     )
 
 
@@ -500,17 +541,21 @@ def test_labeled_datasets_with_no_labels(basedir, img):
     export_dir = os.path.join(basedir, "FiftyOneImageClassificationDataset")
     dataset_type = fo.types.FiftyOneImageClassificationDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # ImageClassificationDirectoryTree
     export_dir = os.path.join(basedir, "ImageClassificationDirectoryTree")
     dataset_type = fo.types.ImageClassificationDirectoryTree
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # TFImageClassificationDataset
     export_dir = os.path.join(basedir, "TFImageClassificationDataset")
@@ -519,57 +564,75 @@ def test_labeled_datasets_with_no_labels(basedir, img):
     )
     dataset_type = fo.types.TFImageClassificationDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type, images_dir=images_dir)
+    fo.Dataset.from_dir(
+        dataset_dir=export_dir,
+        dataset_type=dataset_type,
+        images_dir=images_dir,
+    )
 
     # FiftyOneImageDetectionDataset
     export_dir = os.path.join(basedir, "FiftyOneImageDetectionDataset")
     dataset_type = fo.types.FiftyOneImageDetectionDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # COCODetectionDataset
     export_dir = os.path.join(basedir, "COCODetectionDataset")
     dataset_type = fo.types.COCODetectionDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # VOCDetectionDataset
     export_dir = os.path.join(basedir, "VOCDetectionDataset")
     dataset_type = fo.types.VOCDetectionDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # KITTIDetectionDataset
     export_dir = os.path.join(basedir, "KITTIDetectionDataset")
     dataset_type = fo.types.KITTIDetectionDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # YOLOv4Dataset
     export_dir = os.path.join(basedir, "YOLOv4Dataset")
     dataset_type = fo.types.YOLOv4Dataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # YOLOv5Dataset
     export_dir = os.path.join(basedir, "YOLOv5Dataset")
     dataset_type = fo.types.YOLOv5Dataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # TFObjectDetectionDataset
     export_dir = os.path.join(basedir, "TFObjectDetectionDataset")
@@ -578,39 +641,51 @@ def test_labeled_datasets_with_no_labels(basedir, img):
     )
     dataset_type = fo.types.TFObjectDetectionDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type, images_dir=images_dir)
+    fo.Dataset.from_dir(
+        dataset_dir=export_dir,
+        dataset_type=dataset_type,
+        images_dir=images_dir,
+    )
 
     # CVATImageDataset
     export_dir = os.path.join(basedir, "CVATImageDataset")
     dataset_type = fo.types.CVATImageDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # FiftyOneImageLabelsDataset
     export_dir = os.path.join(basedir, "FiftyOneImageLabelsDataset")
     dataset_type = fo.types.FiftyOneImageLabelsDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # BDDDataset
     export_dir = os.path.join(basedir, "BDDDataset")
     dataset_type = fo.types.BDDDataset
     dataset.export(
-        export_dir, label_field="ground_truth", dataset_type=dataset_type
+        export_dir=export_dir,
+        dataset_type=dataset_type,
+        label_field="ground_truth",
     )
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
     # FiftyOneDataset
     export_dir = os.path.join(basedir, "FiftyOneDataset")
     dataset_type = fo.types.FiftyOneDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
-    fo.Dataset.from_dir(export_dir, dataset_type)
+    dataset.export(export_dir=export_dir, dataset_type=dataset_type)
+    fo.Dataset.from_dir(dataset_dir=export_dir, dataset_type=dataset_type)
 
 
 def test_custom_unlabeled_image_dataset_imports(basedir):
@@ -690,7 +765,7 @@ def test_custom_detection_dataset_imports(basedir):
         split="validation",
         dataset_name="detection-dataset",
         shuffle=True,
-        max_samples=100,
+        max_samples=20,
         num_workers=1,  # pytest crashes without this
     )
 
@@ -762,8 +837,8 @@ def test_custom_multitask_image_dataset_imports(basedir):
 def test_custom_generic_dataset_imports(basedir):
     # Types of generic datasets to test
     dataset_types = [
-        fo.types.dataset_types.LegacyFiftyOneDataset,
-        fo.types.dataset_types.FiftyOneDataset,
+        fo.types.LegacyFiftyOneDataset,
+        fo.types.FiftyOneDataset,
     ]
 
     # Load a small generic dataset
@@ -790,8 +865,12 @@ def test_fiftyone_dataset_with_run_results(basedir):
 
     export_dir = os.path.join(basedir, "fiftyone-dataset")
 
-    dataset.export(export_dir, fo.types.FiftyOneDataset)
-    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.FiftyOneDataset)
+    dataset.export(
+        export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+    )
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+    )
 
     print(dataset)
     print(dataset.get_evaluation_info("eval"))
@@ -814,8 +893,10 @@ def test_fiftyone_dataset_with_filtered_video(basedir):
 
     export_dir = os.path.join(basedir, "fiftyone-dataset-video")
 
-    view.export(export_dir, fo.types.FiftyOneDataset)
-    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.FiftyOneDataset)
+    view.export(export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset)
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+    )
 
     print(view)
     print(view.count_values("frames.ground_truth_detections.detections.label"))
@@ -836,8 +917,12 @@ def test_legacy_fiftyone_dataset_with_run_results(basedir):
 
     export_dir = os.path.join(basedir, "legacy-fiftyone-dataset")
 
-    dataset.export(export_dir, fo.types.LegacyFiftyOneDataset)
-    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.LegacyFiftyOneDataset)
+    dataset.export(
+        export_dir=export_dir, dataset_type=fo.types.LegacyFiftyOneDataset
+    )
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=fo.types.LegacyFiftyOneDataset
+    )
 
     print(dataset)
     print(dataset.get_evaluation_info("eval"))
@@ -860,8 +945,12 @@ def test_legacy_fiftyone_dataset_with_filtered_video(basedir):
 
     export_dir = os.path.join(basedir, "legacy-fiftyone-dataset-video")
 
-    view.export(export_dir, fo.types.dataset_types.LegacyFiftyOneDataset)
-    dataset2 = fo.Dataset.from_dir(export_dir, fo.types.LegacyFiftyOneDataset)
+    view.export(
+        export_dir=export_dir, dataset_type=fo.types.LegacyFiftyOneDataset
+    )
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir=export_dir, dataset_type=fo.types.LegacyFiftyOneDataset
+    )
 
     print(view)
     print(view.count_values("frames.ground_truth_detections.detections.label"))

@@ -235,7 +235,7 @@ adding custom tags, model predictions and more.
 
     import fiftyone as fo
 
-    dataset = fo.Dataset(name="my_dataset")
+    dataset = fo.Dataset("my_dataset")
 
     sample = fo.Sample(filepath="/path/to/image.png")
     sample.tags.append("train")

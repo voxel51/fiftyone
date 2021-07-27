@@ -9,6 +9,7 @@ import contextlib
 import logging
 import multiprocessing
 import os
+import warnings
 
 import eta.core.utils as etau
 
@@ -177,7 +178,7 @@ def write_tf_records(examples, tf_records_path, num_shards=None):
     Args:
         examples: an iterable that emits ``tf.train.Example`` protos
         tf_records_path: the path to write the ``.tfrecords`` file. If sharding
-            is requested ``-%%05d-%%05d`` is automatically appended to the path
+            is requested ``-%%05d-of-%%05d`` is appended to the path
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
     """
@@ -197,7 +198,7 @@ class TFRecordsWriter(object):
 
     Args:
         tf_records_path: the path to write the ``.tfrecords`` file. If sharding
-            is requested ``-%%05d-%%05d`` is automatically appended to the path
+            is requested ``-%%05d-of-%%05d`` is appended to the path
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy). If omitted, no sharding is
             used
@@ -218,7 +219,7 @@ class TFRecordsWriter(object):
 
         if self.num_shards:
             self._num_shards = self.num_shards
-            tf_records_patt = self.tf_records_path + "-%05d-%05d"
+            tf_records_patt = self.tf_records_path + "-%05d-of-%05d"
             tf_records_paths = [
                 tf_records_patt % (i, self.num_shards)
                 for i in range(1, self.num_shards + 1)
@@ -299,7 +300,7 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
 
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
-    :class:`fiftyone.types.dataset_types.TFImageClassificationDataset`.
+    :ref:`this page <TFImageClassificationDataset-import>`.
     """
 
     _FEATURES = {
@@ -355,7 +356,7 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
 
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
-    :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset`.
+    :ref:`this page <TFObjectDetectionDataset-import>`.
     """
 
     _FEATURES = {
@@ -439,7 +440,9 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         return fol.Detections(detections=detections)
 
 
-class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
+class TFRecordsLabeledImageDatasetImporter(
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
+):
     """Base class for
     :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
     instances that import ``tf.train.Example`` protos containing labeled
@@ -447,11 +450,24 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
-    in-memory and written to a provided ``images_dir`` during import.
+    in-memory and written to the provided ``images_dir`` during import.
 
     Args:
-        dataset_dir: the dataset directory
-        images_dir: the directory in which the images will be written
+        dataset_dir (None): the dataset directory
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` or glob pattern like
+                ``"*.records-*-of-*"`` specifying the location of the records
+                in ``dataset_dir``
+            -   an absolute filepath or glob pattern for the records. In this
+                case, ``dataset_dir`` has no effect on the location of the
+                records
+
+            If None, the parameter will default to ``*record*``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
         max_samples (None): a maximum number of samples to import. By default,
@@ -459,10 +475,29 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
     """
 
     def __init__(
-        self, dataset_dir, images_dir, image_format=None, max_samples=None,
+        self,
+        dataset_dir=None,
+        images_dir=None,
+        tf_records_path=None,
+        image_format=None,
+        max_samples=None,
     ):
+        tf_records_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=tf_records_path,
+            default="*record*",
+        )
+
+        if images_dir is None:
+            images_dir = os.path.abspath(os.path.dirname(tf_records_path))
+            logger.warning(
+                "No `images_dir` provided. Images will be unpacked to '%s'",
+                images_dir,
+            )
+
         super().__init__(dataset_dir=dataset_dir, max_samples=max_samples)
 
+        self.tf_records_path = tf_records_path
         self.images_dir = images_dir
         self.image_format = image_format
 
@@ -486,12 +521,9 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         return self._sample_parser.has_image_metadata
 
     def setup(self):
-        tf_records_patt = os.path.join(self.dataset_dir, "*record*")
-        tf_dataset = from_tf_records(tf_records_patt)
-
         self._dataset_ingestor = foud.LabeledImageDatasetIngestor(
             self.images_dir,
-            tf_dataset,
+            from_tf_records(self.tf_records_path),
             self._sample_parser,
             image_format=self.image_format,
             max_samples=self.max_samples,
@@ -515,16 +547,29 @@ class TFImageClassificationDatasetImporter(
 ):
     """Importer for TF image classification datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
-    format details.
-
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
-    in-memory and written to a provided ``images_dir`` during import.
+    in-memory and written to the provided ``images_dir`` during import.
+
+    See :ref:`this page <TFImageClassificationDataset-import>` for format
+    details.
 
     Args:
-        dataset_dir: the dataset directory
-        images_dir: the directory in which the images will be written
+        dataset_dir (None): the dataset directory
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` or glob pattern like
+                ``"*.records-*-of-*"`` specifying the location of the records
+                in ``dataset_dir``
+            -   an absolute filepath or glob pattern for the records. In this
+                case, ``dataset_dir`` has no effect on the location of the
+                records
+
+            If None, the parameter will default to ``*record*``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
         max_samples (None): a maximum number of samples to import. By default,
@@ -542,16 +587,29 @@ class TFImageClassificationDatasetImporter(
 class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
     """Importer for TF detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
-    format details.
-
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
-    in-memory and written to a provided ``images_dir`` during import.
+    in-memory and written to the provided ``images_dir`` during import.
+
+    See :ref:`this page <TFObjectDetectionDataset-import>` for format
+    details.
 
     Args:
-        dataset_dir: the dataset directory
-        images_dir: the directory in which the images will be written
+        dataset_dir (None): the dataset directory
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` or glob pattern like
+                ``"*.records-*-of-*"`` specifying the location of the records
+                in ``dataset_dir``
+            -   an absolute filepath or glob pattern for the records. In this
+                case, ``dataset_dir`` has no effect on the location of the
+                records
+
+            If None, the parameter will default to ``*record*``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
         max_samples (None): a maximum number of samples to import. By default,
@@ -566,26 +624,53 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
         return TFObjectDetectionSampleParser()
 
 
-class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
+class TFRecordsDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
+):
     """Base class for
     :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
     instances that export labeled images as TFRecords datasets on disk.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``tf_records_path`` is an absolute path
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` specifying the location of
+                the records in ``export_dir``
+            -   an absolute filepath for the records. In this case,
+                ``export_dir`` has no effect on the location of the records
+
+            If None, the parameter will default to ``tf.records``
         num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
+            into (using a round robin strategy). If specified,
+            ``-%%05d-of-%%05d`` is appended to the records path
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, num_shards=None, image_format=None):
+    def __init__(
+        self,
+        export_dir=None,
+        tf_records_path=None,
+        num_shards=None,
+        image_format=None,
+    ):
+        tf_records_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=tf_records_path,
+            default="tf.records",
+        )
+
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir=export_dir)
 
+        self.tf_records_path = tf_records_path
         self.num_shards = num_shards
         self.image_format = image_format
 
@@ -598,14 +683,12 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         return False
 
     def setup(self):
-        tf_records_path = os.path.join(self.export_dir, "tf.records")
-
         self._example_generator = self._make_example_generator()
         self._filename_maker = fou.UniqueFilenameMaker(
             default_ext=self.image_format
         )
         self._tf_records_writer = TFRecordsWriter(
-            tf_records_path, num_shards=self.num_shards
+            self.tf_records_path, num_shards=self.num_shards
         )
         self._tf_records_writer.__enter__()
 
@@ -636,13 +719,25 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an image classification dataset to disk as
     TFRecords.
 
-    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
-    format details.
+    See :ref:`this page <TFImageClassificationDataset-export>` for format
+    details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. Can be omitted if
+            ``tf_records_path`` is provided
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` specifying the location of
+                the records in ``export_dir``
+            -   an absolute filepath for the records. In this case,
+                ``export_dir`` has no effect on the location of the records
+
+            If None, the parameter will default to ``tf.records``
         num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
+            into (using a round robin strategy). If specified,
+            ``-%%05d-of-%%05d`` is appended to the records path
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -660,13 +755,24 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an object detection dataset to disk as TFRecords
     in the TF Object Detection API format.
 
-    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
-    format details.
+    See :ref:`this page <TFObjectDetectionDataset-export>` for format details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. Can be omitted if
+            ``tf_records_path`` is provided
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` specifying the location of
+                the records in ``export_dir``
+            -   an absolute filepath for the records. In this case,
+                ``export_dir`` has no effect on the location of the records
+
+            If None, the parameter will default to ``tf.records``
         num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
+            into (using a round robin strategy). If specified,
+            ``-%%05d-of-%%05d`` is appended to the records path
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -675,10 +781,18 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
     """
 
     def __init__(
-        self, export_dir, num_shards=None, image_format=None, classes=None
+        self,
+        export_dir=None,
+        tf_records_path=None,
+        num_shards=None,
+        image_format=None,
+        classes=None,
     ):
         super().__init__(
-            export_dir, num_shards=num_shards, image_format=image_format
+            export_dir=export_dir,
+            tf_records_path=tf_records_path,
+            num_shards=num_shards,
+            image_format=image_format,
         )
 
         self.classes = classes
@@ -748,8 +862,8 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     image classification format.
 
-    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
-    format details.
+    See :ref:`this page <TFImageClassificationDataset-export>` for format
+    details.
     """
 
     def make_tf_example(self, image_or_path, classification, filename=None):
@@ -793,8 +907,7 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     Object Detection API format.
 
-    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
-    format details.
+    See :ref:`this page <TFObjectDetectionDataset-export>` for format details.
 
     Args:
         classes (None): the list of possible class labels. If omitted, the
@@ -847,14 +960,22 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
             for detection in detections.detections:
                 xmin, ymin, w, h = detection.bounding_box
                 text = detection.label
-                try:
-                    label = self._labels_map_rev[text]
-                except KeyError:
-                    if not self._dynamic_classes:
-                        raise
 
-                    label = len(self._labels_map_rev)
-                    self._labels_map_rev[text] = label
+                if self._dynamic_classes:
+                    if text not in self._labels_map_rev:
+                        label = len(self._labels_map_rev)
+                        self._labels_map_rev[text] = label
+                    else:
+                        label = self._labels_map_rev[text]
+                elif text not in self._labels_map_rev:
+                    msg = (
+                        "Ignoring detection with label '%s' not in provided "
+                        "classes" % text
+                    )
+                    warnings.warn(msg)
+                    continue
+                else:
+                    label = self._labels_map_rev[text]
 
                 xmins.append(xmin)
                 xmaxs.append(xmin + w)

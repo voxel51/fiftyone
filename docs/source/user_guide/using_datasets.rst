@@ -22,8 +22,8 @@ Instantiating a |Dataset| object creates a new dataset.
 
     import fiftyone as fo
 
-    dataset1 = fo.Dataset(name="my_first_dataset")
-    dataset2 = fo.Dataset(name="my_second_dataset")
+    dataset1 = fo.Dataset("my_first_dataset")
+    dataset2 = fo.Dataset("my_second_dataset")
     dataset3 = fo.Dataset()  # generates a default unique name
 
 Check to see what datasets exist at any time via :meth:`list_datasets()
@@ -52,7 +52,7 @@ have a bad time:
 .. code-block:: python
     :linenos:
 
-    _dataset2 = fo.Dataset(name="my_second_dataset")
+    _dataset2 = fo.Dataset("my_second_dataset")
     # Dataset 'my_second_dataset' already exists; use `fiftyone.load_dataset()`
     # to load an existing dataset
 
@@ -209,10 +209,10 @@ single class list in the store a single target dictionary in the
 property of your dataset.
 
 These class lists are automatically used, if available, by methods such as
-:meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
-and
-:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-that require knowledge of the possible classes in a field.
+:meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`,
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
+and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
+require knowledge of the possible classes in a dataset or field(s).
 
 .. code-block:: python
     :linenos:
@@ -270,6 +270,11 @@ property of your dataset.
 When you load datasets with |Segmentation| fields in the App that have
 corresponding mask targets, the label strings will appear in the App's tooltip
 when you hover over pixels.
+
+Mask targets are also automatically used, if available, by methods such as
+:meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
+and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
+require knowledge of the mask targets for a dataset or field(s).
 
 .. code-block:: python
     :linenos:
@@ -363,7 +368,7 @@ A |Sample| can easily be added to an existing |Dataset|:
 .. code-block:: python
     :linenos:
 
-    dataset = fo.Dataset(name="example_dataset")
+    dataset = fo.Dataset("example_dataset")
     dataset.add_sample(sample)
 
 When a sample is added to a dataset, the relevant attributes of the |Sample|
@@ -748,7 +753,7 @@ dataset splits or mark low quality images:
 .. code-block:: python
     :linenos:
 
-    dataset = fo.Dataset(name="tagged_dataset")
+    dataset = fo.Dataset("tagged_dataset")
 
     dataset.add_samples(
         [
@@ -785,28 +790,37 @@ about the raw data in the sample. The :ref:`FiftyOne App <fiftyone-app>` and
 the :ref:`FiftyOne Brain <fiftyone-brain>` will use this provided metadata in
 some workflows when it is available.
 
-You can automically compute metadata for all samples in a dataset via
-:meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`.
-
 .. tabs::
 
     .. group-tab:: Images
 
-        For image samples, use the |ImageMetadata| class to store information
-        about your image.
-
-        |ImageMetadata| instances can also store arbitrary custom fields, but,
-        by default, they provide
+        For image samples, the |ImageMetadata| class is used to store
+        information about images, including their
         :attr:`size_bytes <fiftyone.core.metadata.ImageMetadata.size_bytes>`,
         :attr:`mime_type <fiftyone.core.metadata.ImageMetadata.mime_type>`,
         :attr:`width <fiftyone.core.metadata.ImageMetadata.width>`,
         :attr:`height <fiftyone.core.metadata.ImageMetadata.height>`, and
-        :attr:`num_channels <fiftyone.core.metadata.ImageMetadata.num_channels>`
-        attributes, which are `None` by default.
+        :attr:`num_channels <fiftyone.core.metadata.ImageMetadata.num_channels>`.
 
-        FiftyOne provides a convenient
+        You can populate the `metadata` field of an existing dataset by calling
+        :meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Populate metadata fields (if necessary)
+            dataset.compute_metadata()
+
+            print(dataset.first())
+
+        Alternatively, FiftyOne provides a
         :meth:`ImageMetadata.build_for() <fiftyone.core.metadata.ImageMetadata.build_for>`
-        factory method that you can use to populate metdata for your images:
+        factory method that you can use to compute the metadata for your images
+        when constructing |Sample| instances:
 
         .. code-block:: python
             :linenos:
@@ -837,11 +851,8 @@ You can automically compute metadata for all samples in a dataset via
 
     .. group-tab:: Videos
 
-        For video samples, use the |VideoMetadata| class to store information
-        about your video.
-
-        |VideoMetadata| instances can also store arbitrary custom fields, but,
-        by default, they provide
+        For video samples, the |VideoMetadata| class is used to store
+        information about videos, including their
         :attr:`size_bytes <fiftyone.core.metadata.VideoMetadata.size_bytes>`,
         :attr:`mime_type <fiftyone.core.metadata.VideoMetadata.mime_type>`,
         :attr:`frame_width <fiftyone.core.metadata.VideoMetadata.frame_width>`,
@@ -849,12 +860,27 @@ You can automically compute metadata for all samples in a dataset via
         :attr:`frame_rate <fiftyone.core.metadata.VideoMetadata.frame_rate>`,
         :attr:`total_frame_count <fiftyone.core.metadata.VideoMetadata.total_frame_count>`,
         :attr:`duration <fiftyone.core.metadata.VideoMetadata.duration>`, and
-        :attr:`encoding_str <fiftyone.core.metadata.VideoMetadata.encoding_str>`
-        attributes, which are `None` by default.
+        :attr:`encoding_str <fiftyone.core.metadata.VideoMetadata.encoding_str>`.
 
-        FiftyOne provides a convenient
+        You can populate the `metadata` field of an existing dataset by calling
+        :meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Populate metadata fields (if necessary)
+            dataset.compute_metadata()
+
+            print(dataset.first())
+
+        Alternatively, FiftyOne provides a
         :meth:`VideoMetadata.build_for() <fiftyone.core.metadata.VideoMetadata.build_for>`
-        factory method that you can use to populate metdata for your videos:
+        factory method that you can use to compute the metadata for your videos
+        when constructing |Sample| instances:
 
         .. code-block:: python
             :linenos:
@@ -887,45 +913,6 @@ You can automically compute metadata for all samples in a dataset via
                 'frames': <Frames: 0>,
             }>
 
-    .. group-tab:: Generic data
-
-        For generic data, use the |Metadata| class to store information about
-        your sample.
-
-        |Metadata| instances can store arbitrary custom fields as desired, but,
-        by default, they provide
-        :attr:`size_bytes <fiftyone.core.metadata.Metadata.size_bytes>` and
-        :attr:`mime_type <fiftyone.core.metadata.Metadata.mime_type>`
-        attributes, which are `None` by default.
-
-        FiftyOne provides a convenient
-        :meth:`Metadata.build_for() <fiftyone.core.metadata.Metadata.build_for>`
-        factory method that you can use to populate metdata for your samples:
-
-        .. code-block:: python
-            :linenos:
-
-            data_path = "/path/to/data.zip"
-
-            metadata = fo.Metadata.build_for(data_path)
-
-            sample = fo.Sample(filepath=data_path, metadata=metadata)
-
-            print(sample)
-
-        .. code-block:: text
-
-            <Sample: {
-                'id': None,
-                'media_type': '-',
-                'filepath': '/path/to/data.zip',
-                'tags': [],
-                'metadata': <Metadata: {
-                    'size_bytes': 544559,
-                    'mime_type': 'application/zip',
-                }>,
-            }>
-
 .. _using-labels:
 
 Labels
@@ -956,6 +943,9 @@ labels.
         label["list"] = [1, 2, 3]
         label["bool"] = True
         label["dict"] = {"key": ["list", "of", "values"]}
+
+    You can view custom attributes in the :ref:`App tooltip <app-sample-view>`
+    by hovering over the objects.
 
 FiftyOne provides a dedicated |Label| subclass for many common tasks. The
 subsections below describe them.
@@ -1212,10 +1202,50 @@ detection can be stored in the
     Did you know? You can :ref:`store class lists <storing-classes>` for your
     models on your datasets.
 
-.. _objects-with-instance-segmentations:
+Like all |Label| types, you can also add custom attributes to your detections
+by dynamically adding new fields to each |Detection| instance:
 
-Objects with instance segmentations
------------------------------------
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    detection = fo.Detection(
+        label="cat",
+        bounding_box=[0.5, 0.5, 0.4, 0.3],
+        age=51,  # custom attribute
+        mood="salty",  # custom attribute
+    )
+
+    print(detection)
+
+.. code-block:: text
+
+    <Detection: {
+        'id': '60f7458c467d81f41c200551',
+        'attributes': BaseDict({}),
+        'tags': BaseList([]),
+        'label': 'cat',
+        'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+        'mask': None,
+        'confidence': None,
+        'index': None,
+        'age': 51,
+        'mood': 'salty',
+    }>
+
+You can also use :ref:`label attributes <label-attributes>` to store custom
+attributes with additional metadata such as prediction confidences.
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _instance-segmentation:
+
+Instance segmentations
+----------------------
 
 Object detections stored in |Detections| may also have instance segmentation
 masks, which should be stored in the
@@ -1282,116 +1312,53 @@ object's bounding box when visualizing in the App.
         }>,
     }>
 
-.. _objects-with-attributes:
-
-Objects with attributes
------------------------
-
-Object detections stored in |Detections| may also be given attributes, which
-can be stored in the
-:attr:`attributes <fiftyone.core.labels.Detection.attributes>` attribute of
-each |Detection|; this field is a dictionary mapping attribute names to
-|Attribute| instances, which contain the
-:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
-associated metadata.
-
-There are |Attribute| subclasses for various types of attributes you may want
-to store. Use the appropriate subclass when possible so that FiftyOne knows the
-schema of the attributes that you're storing.
-
-.. table::
-    :widths: 25 25 50
-
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | Attribute class                                                           | Value type | Description                     |
-    +===========================================================================+============+=================================+
-    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
+Like all |Label| types, you can also add custom attributes to your detections
+by dynamically adding new fields to each |Detection| instance:
 
 .. code-block:: python
     :linenos:
 
+    import numpy as np
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="/path/to/image.png")
-
-    sample["ground_truth"] = fo.Detections(
-        detections=[
-            fo.Detection(
-                label="cat",
-                bounding_box=[0.5, 0.5, 0.4, 0.3],
-                attributes={
-                    "age": fo.NumericAttribute(value=51),
-                    "mood": fo.CategoricalAttribute(value="salty"),
-                },
-            ),
-        ]
-    )
-    sample["prediction"] = fo.Detections(
-        detections=[
-            fo.Detection(
-                label="cat",
-                bounding_box=[0.480, 0.513, 0.397, 0.288],
-                confidence=0.96,
-                attributes={
-                    "age": fo.NumericAttribute(value=51),
-                    "mood": fo.CategoricalAttribute(
-                        value="surly", confidence=0.95
-                    ),
-                },
-            ),
-        ]
+    detection = fo.Detection(
+        label="cat",
+        bounding_box=[0.5, 0.5, 0.4, 0.3],
+        mask=np.random.randn(32, 32) > 0,
+        age=51,  # custom attribute
+        mood="salty",  # custom attribute
     )
 
-    print(sample)
+    print(detection)
 
 .. code-block:: text
 
-    <Sample: {
-        'id': None,
-        'media_type': 'image',
-        'filepath': '/path/to/image.png',
-        'tags': [],
-        'metadata': None,
-        'ground_truth': <Detections: {
-            'detections': BaseList([
-                <Detection: {
-                    'id': '5f87093a2018186b6ef6682c',
-                    'attributes': BaseDict({
-                        'age': <NumericAttribute: {'value': 51}>,
-                        'mood': <CategoricalAttribute: {'value': 'salty', 'confidence': None, 'logits': None}>,
-                    }),
-                    'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
-                    'mask': None,
-                    'confidence': None,
-                    'index': None,
-                }>,
-            ]),
-        }>,
-        'prediction': <Detections: {
-            'detections': BaseList([
-                <Detection: {
-                    'id': '5f87093a2018186b6ef6682d',
-                    'attributes': BaseDict({
-                        'age': <NumericAttribute: {'value': 51}>,
-                        'mood': <CategoricalAttribute: {'value': 'surly', 'confidence': 0.95, 'logits': None}>,
-                    }),
-                    'label': 'cat',
-                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
-                    'mask': None,
-                    'confidence': 0.96,
-                    'index': None,
-                }>,
-            ]),
-        }>,
+    <Detection: {
+        'id': '60f74568467d81f41c200550',
+        'attributes': BaseDict({}),
+        'tags': BaseList([]),
+        'label': 'cat',
+        'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+        'mask': array([[False, False,  True, ...,  True,  True, False],
+               [ True,  True, False, ...,  True, False,  True],
+               [False, False,  True, ..., False, False, False],
+               ...,
+               [False, False,  True, ...,  True,  True, False],
+               [ True, False,  True, ...,  True, False,  True],
+               [False,  True, False, ...,  True,  True,  True]]),
+        'confidence': None,
+        'index': None,
+        'age': 51,
+        'mood': 'salty',
     }>
+
+You can also use :ref:`label attributes <label-attributes>` to store custom
+attributes with additional metadata such as prediction confidences.
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
 .. _polylines:
 
@@ -1480,85 +1447,46 @@ Polylines can also have string labels, which are stored in their
         }>,
     }>
 
-.. _polylines-with-attributes:
-
-Polylines with attributes
--------------------------
-
-Polylines stored in |Polylines| may also be given attributes, which can be
-stored in the
-:attr:`attributes <fiftyone.core.labels.Polyline.attributes>` attribute of
-each |Polyline|; this field is a dictionary mapping attribute names to
-|Attribute| instances, which contain the
-:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
-associated metadata.
-
-There are |Attribute| subclasses for various types of attributes you may want
-to store. Use the appropriate subclass when possible so that FiftyOne knows the
-schema of the attributes that you're storing.
-
-.. table::
-    :widths: 25 25 50
-
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | Attribute class                                                           | Value type | Description                     |
-    +===========================================================================+============+=================================+
-    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
+Like all |Label| types, you can also add custom attributes to your polylines by
+dynamically adding new fields to each |Polyline| instance:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="/path/to/image.png")
-
-    # A simple polyline
     polyline = fo.Polyline(
-        points=[[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]],
-        closed=False,
-        filled=False,
-        attributes={
-            "length": fo.NumericAttribute(value=3),
-            "shape": fo.CategoricalAttribute(value="L"),
-        },
+        label="triangle",
+        points=[[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
+        closed=True,
+        filled=True,
+        kind="right",  # custom attribute
     )
 
-    sample["polylines"] = fo.Polylines(polylines=[polyline])
-
-    print(sample)
+    print(polyline)
 
 .. code-block:: text
 
-    <Sample: {
-        'id': None,
-        'media_type': 'image',
-        'filepath': '/path/to/image.png',
-        'tags': [],
-        'metadata': None,
-        'polylines': <Polylines: {
-            'polylines': BaseList([
-                <Polyline: {
-                    'id': '5f8709602018186b6ef66830',
-                    'attributes': BaseDict({
-                        'length': <NumericAttribute: {'value': 3}>,
-                        'shape': <CategoricalAttribute: {'value': 'L', 'confidence': None, 'logits': None}>,
-                    }),
-                    'label': None,
-                    'points': BaseList([BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)])]),
-                    'index': None,
-                    'closed': False,
-                    'filled': False,
-                }>,
-            ]),
-        }>,
+    <Polyline: {
+        'id': '60f746b4467d81f41c200555',
+        'attributes': BaseDict({}),
+        'tags': BaseList([]),
+        'label': 'triangle',
+        'points': BaseList([BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)])]),
+        'confidence': None,
+        'index': None,
+        'closed': True,
+        'filled': True,
+        'kind': 'right',
     }>
+
+You can also use :ref:`label attributes <label-attributes>` to store custom
+attributes with additional metadata such as prediction confidences.
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
 .. _keypoints:
 
@@ -1619,81 +1547,42 @@ list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
         }>,
     }>
 
-.. _keypoints-with-attributes:
-
-Keypoints with attributes
--------------------------
-
-Keypoints stored in |Keypoints| may also be given attributes, which can be
-stored in the
-:attr:`attributes <fiftyone.core.labels.Keypoint.attributes>` attribute of
-each |Keypoint|; this field is a dictionary mapping attribute names to
-|Attribute| instances, which contain the
-:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
-associated metadata.
-
-There are |Attribute| subclasses for various types of attributes you may want
-to store. Use the appropriate subclass when possible so that FiftyOne knows the
-schema of the attributes that you're storing.
-
-.. table::
-    :widths: 25 25 50
-
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | Attribute class                                                           | Value type | Description                     |
-    +===========================================================================+============+=================================+
-    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
-    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
+Like all |Label| types, you can also add custom attributes to your keypoints by
+dynamically adding new fields to each |Keypoint| instance:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="/path/to/image.png")
-
     keypoint = fo.Keypoint(
-        label="square",
+        label="rectangle",
         points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
-        attributes={
-            "corners": fo.NumericAttribute(value=4),
-            "convex": fo.BooleanAttribute(value=True),
-        },
+        kind="square",  # custom attribute
     )
 
-    sample["keypoints"] = fo.Keypoints(keypoints=[keypoint])
-
-    print(sample)
+    print(keypoint)
 
 .. code-block:: text
 
-    <Sample: {
-        'id': None,
-        'media_type': 'image',
-        'filepath': '/path/to/image.png',
-        'tags': [],
-        'metadata': None,
-        'keypoints': <Keypoints: {
-            'keypoints': BaseList([
-                <Keypoint: {
-                    'id': '5f87097e2018186b6ef66832',
-                    'attributes': BaseDict({
-                        'corners': <NumericAttribute: {'value': 4}>,
-                        'convex': <BooleanAttribute: {'value': True}>,
-                    }),
-                    'label': 'square',
-                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
-                    'index': None,
-                }>,
-            ]),
-        }>,
+    <Keypoint: {
+        'id': '60f74723467d81f41c200556',
+        'attributes': BaseDict({}),
+        'tags': BaseList([]),
+        'label': 'rectangle',
+        'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+        'confidence': None,
+        'index': None,
+        'kind': 'square',
     }>
+
+You can also use :ref:`label attributes <label-attributes>` to store custom
+attributes with additional metadata such as prediction confidences.
+
+.. note::
+
+    Did you know? You can view custom attributes in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
 .. _semantic-segmentation:
 
@@ -1870,6 +1759,139 @@ can easily retrieve the raw GeoJSON data for a slice of your dataset using the
      {'type': 'Point', 'coordinates': [-73.9508690871987, 40.766631164626]},
      {'type': 'Point', 'coordinates': [-73.96569416502996, 40.75449283200206]},
      {'type': 'Point', 'coordinates': [-73.97397106211423, 40.67925541341504]}]
+
+.. _label-attributes:
+
+Label attributes
+----------------
+
+The |Detection|, |Polyline|, and |Keypoint| label types have an optional
+:attr:`attributes <fiftyone.core.labels.Detection.attributes>` field that you
+can use to store custom attributes on the object.
+
+The :attr:`attributes <fiftyone.core.labels.Detection.attributes>` field is a
+dictionary mapping attribute names to |Attribute| instances, which contain the
+:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
+associated metadata.
+
+.. note::
+
+    In most cases, it is recommended to :ref:`add custom attributes as fields
+    directly on<using-labels>` the |Label| object. However, a typical use case
+    for this feature, as opposed to simply storing custom attributes directly
+    on the |Label| object, is to store predictions and associated
+    confidences of a classifer applied to the object patches.
+
+There are |Attribute| subclasses for various types of attributes you may want
+to store. Use the appropriate subclass when possible so that FiftyOne knows the
+schema of the attributes that you're storing.
+
+.. table::
+    :widths: 25 25 50
+
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | Attribute class                                                           | Value type | Description                     |
+    +===========================================================================+============+=================================+
+    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`ListAttribute <fiftyone.core.labels.ListAttribute>`               | `list`     | A list attribute                |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["ground_truth"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="cat",
+                bounding_box=[0.5, 0.5, 0.4, 0.3],
+                attributes={
+                    "age": fo.NumericAttribute(value=51),
+                    "mood": fo.CategoricalAttribute(value="salty"),
+                },
+            ),
+        ]
+    )
+    sample["prediction"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="cat",
+                bounding_box=[0.480, 0.513, 0.397, 0.288],
+                confidence=0.96,
+                attributes={
+                    "age": fo.NumericAttribute(value=51),
+                    "mood": fo.CategoricalAttribute(
+                        value="surly", confidence=0.95
+                    ),
+                },
+            ),
+        ]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'id': '60f738e7467d81f41c20054c',
+                    'attributes': BaseDict({
+                        'age': <NumericAttribute: {'value': 51}>,
+                        'mood': <CategoricalAttribute: {
+                            'value': 'salty', 'confidence': None, 'logits': None
+                        }>,
+                    }),
+                    'tags': BaseList([]),
+                    'label': 'cat',
+                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'mask': None,
+                    'confidence': None,
+                    'index': None,
+                }>,
+            ]),
+        }>,
+        'prediction': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'id': '60f738e7467d81f41c20054d',
+                    'attributes': BaseDict({
+                        'age': <NumericAttribute: {'value': 51}>,
+                        'mood': <CategoricalAttribute: {
+                            'value': 'surly', 'confidence': 0.95, 'logits': None
+                        }>,
+                    }),
+                    'tags': BaseList([]),
+                    'label': 'cat',
+                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'mask': None,
+                    'confidence': 0.96,
+                    'index': None,
+                }>,
+            ]),
+        }>,
+    }>
+
+.. note::
+
+    Did you know? You can view attribute values in the
+    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
 .. _video-frame-labels:
 
@@ -2067,7 +2089,7 @@ labels can be modified by updating the `frames` attribute of a |Sample|:
     order to persist changes to the database when editing video samples and/or
     their frames that are in datasets.
 
-:ref:`See this page <manually-building-datasets>` for more information about
+:ref:`See this page <loading-custom-datasets>` for more information about
 building labeled video samples.
 
 DatasetViews

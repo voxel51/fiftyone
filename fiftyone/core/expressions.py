@@ -3409,9 +3409,9 @@ class ViewExpression(object):
             such views would produce different outputs each time they are used.
 
             A typical usage for this expression is in conjunction with
-            :meth:`fiftyone.core.collections.SampleCollection.set_field` and
-            :meth:`fiftyone.core.collections.SampleCollection.save` to populate
-            a randomized field on a dataset.
+            :meth:`fiftyone.core.view.DatasetView.set_field` and
+            :meth:`fiftyone.core.view.DatasetView.save` to populate a
+            randomized field on a dataset.
 
         Examples::
 
@@ -3457,9 +3457,9 @@ class ViewExpression(object):
             such views would produce different outputs each time they are used.
 
             A typical usage for this expression is in conjunction with
-            :meth:`fiftyone.core.collections.SampleCollection.set_field` and
-            :meth:`fiftyone.core.collections.SampleCollection.save` to populate
-            a randomized field on a dataset.
+            :meth:`fiftyone.core.view.DatasetView.set_field` and
+            :meth:`fiftyone.core.view.DatasetView.save` to populate a
+            randomized field on a dataset.
 
         Examples::
 

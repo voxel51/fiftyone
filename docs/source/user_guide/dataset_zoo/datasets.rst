@@ -488,15 +488,14 @@ version of the dataset.
 -   COCO defines 91 classes but the data only uses 80 classes
 -   Some images from the train and validation sets don't have annotations
 -   The test set does not have annotations
--   COCO 2014 and 2017 uses the same images, but different train/val/test
-    splits
+-   COCO 2014 and 2017 use the same images, but the splits are different
 
 **Details**
 
 -   Dataset name: ``coco-2014``
 -   Dataset source: http://cocodataset.org/#home
 -   Dataset size: 37.57 GB
--   Tags: ``image, detection``
+-   Tags: ``image, detection, segmentation``
 -   Supported splits: ``train, validation, test``
 -   ZooDataset class:
     :class:`COCO2014Dataset <fiftyone.zoo.datasets.base.COCO2014Dataset>`
@@ -724,15 +723,14 @@ version of the dataset.
 -   COCO defines 91 classes but the data only uses 80 classes
 -   Some images from the train and validation sets don't have annotations
 -   The test set does not have annotations
--   COCO 2014 and 2017 uses the same images, but different train/val/test
-    splits
+-   COCO 2014 and 2017 use the same images, but the splits are different
 
 **Details**
 
 -   Dataset name: ``coco-2017``
 -   Dataset source: http://cocodataset.org/#home
 -   Dataset size: 25.20 GB
--   Tags: ``image, detection``
+-   Tags: ``image, detection, segmentation``
 -   Supported splits: ``train, validation, test``
 -   ZooDataset class:
     :class:`COCO2017Dataset <fiftyone.zoo.datasets.base.COCO2017Dataset>`
@@ -1925,7 +1923,8 @@ contain annotations.
 -   Dataset size: 3.59 GB
 -   Tags: ``image, detection``
 -   Supported splits: ``train, validation, test``
--   ZooDataset classes
+-   ZooDataset classes:
+
     -   :class:`VOC2012Dataset <fiftyone.zoo.datasets.tf.VOC2012Dataset>` (TF backend)
     -   :class:`VOC2012Dataset <fiftyone.zoo.datasets.torch.VOC2012Dataset>` (Torch backend)
 
