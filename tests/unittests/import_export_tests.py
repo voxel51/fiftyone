@@ -1411,9 +1411,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         )
 
 
-@pytest.mark.skipif(
-    os.name == "nt", reason="Windows hangs in workflows, fix me"
-)
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
         temp_dir = etau.TempDir()
@@ -1455,6 +1452,9 @@ class VideoDatasetTests(unittest.TestCase):
         return os.path.join(self._tmp_dir, self._new_name())
 
 
+@pytest.mark.skipif(
+    os.name == "nt", reason="Windows hangs in workflows, fix me"
+)
 class UnlabeledVideoDatasetTests(VideoDatasetTests):
     def _make_dataset(self):
         samples = [fo.Sample(filepath=self._new_video()) for _ in range(5)]
@@ -1480,6 +1480,9 @@ class UnlabeledVideoDatasetTests(VideoDatasetTests):
         self.assertEqual(len(dataset), len(dataset2))
 
 
+@pytest.mark.skipif(
+    os.name == "nt", reason="Windows hangs in workflows, fix me"
+)
 class VideoClassificationDatasetTests(VideoDatasetTests):
     def _make_dataset(self):
         samples = [
