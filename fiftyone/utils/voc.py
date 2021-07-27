@@ -527,8 +527,8 @@ class VOCObject(object):
         name = d["name"]
         bndbox = VOCBoundingBox.from_bndbox_dict(d["bndbox"])
         attributes = {
-            name: _parse_attribute(d[name])
-            for name in set(d.keys()) - {"name", "bndbox"}
+            k: _parse_attribute(d[k])
+            for k in set(d.keys()) - {"name", "bndbox"}
         }
         return cls(name, bndbox, **attributes)
 
