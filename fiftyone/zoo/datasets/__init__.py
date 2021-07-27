@@ -265,6 +265,13 @@ def load_zoo_dataset(
 
     if splits:
         for split in splits:
+            if not zoo_dataset.has_split(split):
+                raise ValueError(
+                    "Invalid split '%s'; supported values are %s"
+                    % (split, zoo_dataset.supported_splits)
+                )
+
+        for split in splits:
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
             split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
             dataset_importer, _label_field = _build_importer(
@@ -460,6 +467,9 @@ def _parse_splits(split, splits):
 
     if split:
         _splits.append(split)
+
+    if etau.is_str(splits):
+        splits = [splits]
 
     if splits:
         _splits.extend(list(splits))
@@ -826,13 +836,6 @@ class ZooDataset(object):
         return self.supported_splits is not None
 
     @property
-    def size(self):
-        """The number of samples in the dataset, or, if the dataset has splits,
-        a dict mapping split names to sample counts, or None if unknown.
-        """
-        return None
-
-    @property
     def supports_partial_downloads(self):
         """Whether the dataset supports downloading partial subsets of its
         splits.
@@ -868,6 +871,24 @@ class ZooDataset(object):
         """
         return self.has_splits and (split in self.supported_splits)
 
+    def get_split_dir(self, dataset_dir, split):
+        """Returns the directory for the given split of the dataset.
+
+        Args:
+            dataset_dir: the dataset directory
+            split: the dataset split
+
+        Returns:
+            the directory that will/does hold the specified split
+        """
+        if not self.has_split(split):
+            raise ValueError(
+                "Invalid split '%s'; supported values are %s"
+                % (split, self.supported_splits)
+            )
+
+        return os.path.join(dataset_dir, split)
+
     @staticmethod
     def load_info(dataset_dir, upgrade=True, warn_deprecated=False):
         """Loads the :class:`ZooDatasetInfo` from the given dataset directory.
@@ -886,19 +907,6 @@ class ZooDataset(object):
         return ZooDatasetInfo.from_json(
             info_path, upgrade=upgrade, warn_deprecated=warn_deprecated
         )
-
-    @staticmethod
-    def get_split_dir(dataset_dir, split):
-        """Returns the directory for the given split of the dataset.
-
-        Args:
-            dataset_dir: the dataset directory
-            split: the dataset split
-
-        Returns:
-            the directory that will/does hold the specified split
-        """
-        return os.path.join(dataset_dir, split)
 
     @staticmethod
     def get_info_path(dataset_dir):
@@ -986,13 +994,25 @@ class ZooDataset(object):
             # Download necessary splits
             for split in download_splits:
                 split_dir = self.get_split_dir(dataset_dir, split)
+
+                if self.supports_partial_downloads:
+                    suffix = " if necessary"
+                else:
+                    suffix = ""
+
                 if self.requires_manual_download:
                     logger.info(
-                        "Preparing split '%s' in '%s'", split, split_dir
+                        "Preparing split '%s' in '%s'%s",
+                        split,
+                        split_dir,
+                        suffix,
                     )
                 else:
                     logger.info(
-                        "Downloading split '%s' to '%s'", split, split_dir
+                        "Downloading split '%s' to '%s'%s",
+                        split,
+                        split_dir,
+                        suffix,
                     )
 
                 (
@@ -1010,19 +1030,33 @@ class ZooDataset(object):
                 if classes and not info.classes:
                     info.classes = classes
 
-                split_info = ZooDatasetSplitInfo(split, num_samples)
-                info.add_split(split_info)
-
-                write_info = True
+                if self.supports_partial_downloads and num_samples is None:
+                    logger.info(
+                        "Existing download of split '%s' is sufficient", split
+                    )
+                    write_info = False
+                else:
+                    split_info = ZooDatasetSplitInfo(split, num_samples)
+                    info.add_split(split_info)
+                    write_info = True
         else:
             # Handle overwrites/already downloaded datasets
             if not self._is_dataset_ready(
                 dataset_dir, info, overwrite=overwrite
             ):
-                if self.requires_manual_download:
-                    logger.info("Preparing dataset in '%s'", dataset_dir)
+                if self.supports_partial_downloads:
+                    suffix = " if necessary"
                 else:
-                    logger.info("Downloading dataset to '%s'", dataset_dir)
+                    suffix = ""
+
+                if self.requires_manual_download:
+                    logger.info(
+                        "Preparing dataset in '%s'%s", dataset_dir, suffix
+                    )
+                else:
+                    logger.info(
+                        "Downloading dataset to '%s'%s", dataset_dir, suffix
+                    )
 
                 (
                     dataset_type,
@@ -1030,10 +1064,14 @@ class ZooDataset(object):
                     classes,
                 ) = self._download_and_prepare(dataset_dir, scratch_dir, None)
 
-                info = ZooDatasetInfo(
-                    self, dataset_type, num_samples, classes=classes
-                )
-                write_info = True
+                if self.supports_partial_downloads and num_samples is None:
+                    logger.info("Existing download is sufficient")
+                    write_info = False
+                else:
+                    info = ZooDatasetInfo(
+                        self, dataset_type, num_samples, classes=classes
+                    )
+                    write_info = True
 
         if write_info:
             info.write_json(info_path, pretty_print=True)
@@ -1043,25 +1081,6 @@ class ZooDataset(object):
             etau.delete_dir(scratch_dir)
 
         return info, dataset_dir
-
-    def _is_download_required(self, dataset_dir, split):
-        """Internal method that allows zoo datasets that support partial
-        downloads to check if an existing dataset or split directory contains
-        sufficient contents such that :meth:`_download_and_prepare` does not
-        need to be called.
-
-        Note that :meth:`download_and_prepare` will first use the
-        :class:`ZooDatasetInfo` to check if the split is fully downloaded and
-        only call this method if the download status remains unclear.
-
-        Args:
-            dataset_dir: the dataset or split directory
-            split: the split, or None if the dataset does not have splits
-
-        Returns:
-            True/False
-        """
-        return True
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         """Internal implementation of downloading the dataset and preparing it
@@ -1078,8 +1097,10 @@ class ZooDataset(object):
             tuple of
 
             -   dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                    type of the dataset
-            -   num_samples: the number of samples in the split
+                type of the dataset
+            -   num_samples: the number of samples in the split. For datasets
+                that support partial downloads, this can be ``None``, which
+                indicates that all content was already downloaded
             -   classes: an optional list of class label strings
         """
         raise NotImplementedError(
@@ -1112,30 +1133,13 @@ class ZooDataset(object):
         if split not in info.downloaded_splits:
             return False
 
-        if not self.supports_partial_downloads:
-            if self.requires_manual_download:
-                logger.info("Split '%s' already prepared", split)
-            else:
-                logger.info("Split '%s' already downloaded", split)
-
-            return True
-
-        try:
-            # try-except because `size` may not be available
-            if info.downloaded_splits[split].num_samples >= self.size[split]:
-                if self.requires_manual_download:
-                    logger.info("Split '%s' already prepared", split)
-                else:
-                    logger.info("Split '%s' already downloaded", split)
-
-                return True
-        except:
-            pass
-
-        if self._is_download_required(split_dir, split):
+        if self.supports_partial_downloads:
             return False
 
-        logger.info("Existing download of split '%s' is sufficient", split)
+        if self.requires_manual_download:
+            logger.info("Split '%s' already prepared", split)
+        else:
+            logger.info("Split '%s' already downloaded", split)
 
         return True
 
@@ -1151,33 +1155,13 @@ class ZooDataset(object):
         if info is None:
             return False
 
-        if not self.supports_partial_downloads:
-            if self.requires_manual_download:
-                logger.info("Dataset already prepared")
-            else:
-                logger.info("Dataset already downloaded")
-
-            return True
-
-        if self.size is None or info.num_samples is None:
+        if self.supports_partial_downloads:
             return False
 
-        try:
-            # try-except because `size` may not be available
-            if info.num_samples >= self.size:
-                if self.requires_manual_download:
-                    logger.info("Dataset already prepared")
-                else:
-                    logger.info("Dataset already downloaded")
-
-                return True
-        except:
-            pass
-
-        if self._is_download_required(dataset_dir, None):
-            return False
-
-        logger.info("Existing download is sufficient")
+        if self.requires_manual_download:
+            logger.info("Dataset already prepared")
+        else:
+            logger.info("Dataset already downloaded")
 
         return True
 

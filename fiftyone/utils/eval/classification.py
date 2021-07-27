@@ -37,8 +37,7 @@ def evaluate_classifications(
     top-k matching can be configured via the ``method`` parameter.
 
     You can customize the evaluation method by passing additional
-    parameters for the method's :class:`ClassificationEvaluationConfig` class
-    as ``kwargs``.
+    parameters for the method's config class as ``kwargs``.
 
     The supported ``method`` values and their associated configs are:
 
@@ -228,6 +227,8 @@ class SimpleEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        # note: fields are manually declared so they'll exist even when
+        # `samples` is empty
         dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
@@ -298,7 +299,7 @@ class TopKEvaluation(ClassificationEvaluation):
         k = self.config.k
 
         # This extracts a potentially huge number of logits
-        # @todo consider sample iteration for very large datasets
+        # @todo consider sample iteration for very large datasets?
         ytrue, ytrue_ids, ypred, ypred_ids, logits = samples.values(
             [
                 gt_field + ".label",
@@ -347,16 +348,23 @@ class TopKEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        # note: fields are manually declared so they'll exist even when
+        # `samples` is empty
+        dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level accuracies
-            samples.set_values(eval_key, [np.mean(c) for c in correct])
+            avg_accuracies = [np.mean(c) if c else None for c in correct]
+            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
+            samples.set_values(eval_key, avg_accuracies)
 
             # Per-frame accuracies
+            dataset._add_frame_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_values(eval_frame, correct)
         else:
             # Per-sample accuracies
+            dataset._add_sample_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_values(eval_key, correct)
 
         return results
@@ -376,19 +384,46 @@ def _evaluate_top_k(ytrue, ypred, logits, k, targets_map):
                 + "compute top-k accuracy"
             )
             warnings.warn(msg)
+        elif _ytrue is None:
+            # Missing ground truth
+            _correct = ypred[idx] is None
+            _conf = None
         else:
-            target = targets_map[_ytrue]
-            top_k = np.argpartition(_logits, -k)[-k:]
-            if target in top_k:
+            try:
+                target = targets_map[_ytrue]
+            except KeyError:
+                raise ValueError(
+                    "Found ground truth label '%s' not in provided classes"
+                    % _ytrue
+                )
+
+            if k >= len(_logits):
+                found = True
+            else:
+                top_k = np.argpartition(_logits, -k)[-k:]
+                found = target in top_k
+
+            if found:
                 # Truth is in top-k; use it
                 ypred[idx] = _ytrue
                 logit = _logits[target]
                 _correct = True
             elif ypred[idx] is not None:
                 # Truth is not in top-k; retain actual prediction
-                logit = _logits[targets_map[ypred[idx]]]
+                _ypred = ypred[idx]
+
+                try:
+                    _pred_idx = targets_map[_ypred]
+                except KeyError:
+                    raise ValueError(
+                        "Found predicted label '%s' not in provided classes"
+                        % _ypred
+                    )
+
+                logit = _logits[_pred_idx]
                 _correct = False
             else:
+                # Missing prediction
                 logit = -np.inf
                 _correct = False
 
@@ -447,7 +482,7 @@ class BinaryEvaluation(ClassificationEvaluation):
         gt_field = self.config.gt_field
         is_frame_field = samples._is_frame_field(gt_field)
 
-        pos_label = classes[-1]
+        neg_label, pos_label = classes
 
         gt = gt_field + ".label"
         gt_id = gt_field + ".id"
@@ -481,20 +516,25 @@ class BinaryEvaluation(ClassificationEvaluation):
         if eval_key is None:
             return results
 
+        # note: fields are manually declared so they'll exist even when
+        # `samples` is empty
         dataset = samples._dataset
         if is_frame_field:
             eval_frame = samples._FRAMES_PREFIX + eval_key
             gt = gt[len(samples._FRAMES_PREFIX) :]
             pred = pred[len(samples._FRAMES_PREFIX) :]
 
+            Fgt = (F(gt) != None).if_else(F(gt), neg_label)
+            Fpred = (F(pred) != None).if_else(F(pred), neg_label)
+
             # Sample-level accuracies
             dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_field(
-                eval_key,
-                F("frames").map((F(gt) == F(pred)).to_double()).mean(),
+                eval_key, F("frames").map((Fgt == Fpred).to_double()).mean(),
             ).save(eval_key)
 
             # Per-frame accuracies
+            # This implementation implicitly treats missing data as `neg_label`
             dataset._add_frame_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_frame,
@@ -509,6 +549,7 @@ class BinaryEvaluation(ClassificationEvaluation):
             ).save(eval_frame)
         else:
             # Per-sample accuracies
+            # This implementation implicitly treats missing data as `neg_label`
             dataset._add_sample_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_key,
@@ -581,25 +622,44 @@ class ClassificationResults(foe.EvaluationResults):
 
     def _get_labels(self, classes, include_missing=False):
         if classes is not None:
-            return classes
+            return np.asarray(classes)
 
         if include_missing:
             return self.classes
 
-        return [c for c in self.classes if c != self.missing]
+        return np.array([c for c in self.classes if c != self.missing])
 
     def report(self, classes=None):
         """Generates a classification report for the results via
-        ``sklearn.metrics.classification_report``.
+        :func:`sklearn:sklearn.metrics.classification_report`.
 
         Args:
-            classes (None): an optional list of ground truth classes to include
-                in the report
+            classes (None): an optional list of classes to include in the
+                report
 
         Returns:
             a dict
         """
         labels = self._get_labels(classes, include_missing=False)
+
+        if self.ytrue.size == 0 or labels.size == 0:
+            d = {}
+            empty = {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1-score": 0.0,
+                "support": 0,
+            }
+
+            if labels.size > 0:
+                for label in labels:
+                    d[label] = empty.copy()
+
+            d["micro avg"] = empty.copy()
+            d["macro avg"] = empty.copy()
+            d["weighted avg"] = empty.copy()
+            return d
+
         return skm.classification_report(
             self.ytrue,
             self.ypred,
@@ -613,12 +673,12 @@ class ClassificationResults(foe.EvaluationResults):
         """Computes classification metrics for the results, including accuracy,
         precision, recall, and F-beta score.
 
-        See ``sklearn.metrics.accuracy_score`` and
-        ``sklearn.metrics.precision_recall_fscore_support`` for details.
+        See :func:`sklearn:sklearn.metrics.precision_recall_fscore_support` for
+        details.
 
         Args:
-            classes (None): an optional list of ground truth classes to include
-                in the calculations
+            classes (None): an optional list of classes to include in the
+                calculations
             average ("micro"): the averaging strategy to use
             beta (1.0): the F-beta value to use
 
@@ -627,15 +687,9 @@ class ClassificationResults(foe.EvaluationResults):
         """
         labels = self._get_labels(classes, include_missing=False)
 
-        try:
-            accuracy = skm.accuracy_score(
-                self.ytrue,
-                self.ypred,
-                normalize=True,
-                sample_weight=self.weights,
-            )
-        except ZeroDivisionError:
-            accuracy = 0.0
+        accuracy = _compute_accuracy(
+            self.ytrue, self.ypred, labels=labels, weights=self.weights
+        )
 
         precision, recall, fscore, _ = skm.precision_recall_fscore_support(
             self.ytrue,
@@ -647,23 +701,33 @@ class ClassificationResults(foe.EvaluationResults):
             zero_division=0,
         )
 
+        support = _compute_support(
+            self.ytrue, labels=labels, weights=self.weights
+        )
+
         return {
             "accuracy": accuracy,
             "precision": precision,
             "recall": recall,
             "fscore": fscore,
+            "support": support,
         }
 
     def print_report(self, classes=None, digits=2):
         """Prints a classification report for the results via
-        ``sklearn.metrics.classification_report``.
+        :func:`sklearn:sklearn.metrics.classification_report`.
 
         Args:
-            classes (None): an optional list of ground truth classes to include
-                in the report
+            classes (None): an optional list of classes to include in the
+                report
             digits (2): the number of digits of precision to print
         """
         labels = self._get_labels(classes, include_missing=False)
+
+        if labels.size == 0:
+            print("No classes to analyze")
+            return
+
         report_str = skm.classification_report(
             self.ytrue,
             self.ypred,
@@ -676,7 +740,7 @@ class ClassificationResults(foe.EvaluationResults):
 
     def confusion_matrix(self, classes=None, include_other=False):
         """Generates a confusion matrix for the results via
-        ``sklearn.metrics.confusion_matrix``.
+        :func:`sklearn:sklearn.metrics.confusion_matrix`.
 
         The rows of the confusion matrix represent ground truth and the columns
         represent predictions.
@@ -907,7 +971,7 @@ class BinaryClassificationResults(ClassificationResults):
 
     def average_precision(self, average="micro"):
         """Computes the average precision for the results via
-        ``sklearn.metrics.average_precision_score``.
+        :func:`sklearn:sklearn.metrics.average_precision_score`.
 
         Args:
             average ("micro"): the averaging strategy to use
@@ -1073,6 +1137,46 @@ def _to_binary_scores(y, confs, pos_label):
         scores.append(score)
 
     return scores
+
+
+def _compute_accuracy(ytrue, ypred, labels=None, weights=None):
+    if labels is not None:
+        labels = set(labels)
+        found = np.array(
+            [yt in labels or yp in labels for yt, yp in zip(ytrue, ypred)],
+            dtype=bool,
+        )
+        ytrue = ytrue[found]
+        ypred = ypred[found]
+        if weights is not None:
+            weights = weights[found]
+
+    if ytrue.size > 0:
+        scores = ytrue == ypred
+        if weights is not None:
+            scores = weights * scores
+
+        accuracy = np.mean(scores)
+    else:
+        accuracy = 0.0
+
+    return accuracy
+
+
+def _compute_support(ytrue, labels=None, weights=None):
+    if labels is not None:
+        labels = set(labels)
+        found = np.array([y in labels for y in ytrue], dtype=bool)
+        ytrue = ytrue[found]
+        if weights is not None:
+            weights = weights[found]
+
+    if weights is not None:
+        support = np.sum(weights)
+    else:
+        support = ytrue.size
+
+    return support
 
 
 def _compute_confusion_matrix(

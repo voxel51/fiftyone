@@ -11,7 +11,6 @@ from collections import defaultdict
 import numpy as np
 
 import fiftyone.core.plots as fop
-import fiftyone.core.utils as fou
 
 from .detection import (
     DetectionEvaluation,
@@ -206,59 +205,67 @@ class COCOEvaluation(DetectionEvaluation):
                 samples=samples,
             )
 
-        iter_samples = samples.select_fields([gt_field, pred_field])
+        _samples = samples.select_fields([gt_field, pred_field])
         processing_frames = samples._is_frame_field(pred_field)
 
         iou_threshs = self.config.iou_threshs
         thresh_matches = {t: {} for t in iou_threshs}
+
         if classes is None:
-            classes = []
+            _classes = set()
+        else:
+            _classes = None
 
         # IoU sweep
         logger.info("Performing IoU sweep...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(iter_samples):
-                if processing_frames:
-                    images = sample.frames.values()
-                else:
-                    images = [sample]
+        for sample in _samples.iter_samples(progress=True):
+            if processing_frames:
+                images = sample.frames.values()
+            else:
+                images = [sample]
 
-                for image in images:
-                    # Don't mess with the user's data
-                    gts = _copy_labels(image[self.gt_field])
-                    preds = _copy_labels(image[self.pred_field])
+            for image in images:
+                # Don't edit user's data during sweep
+                gts = _copy_labels(image[self.gt_field])
+                preds = _copy_labels(image[self.pred_field])
 
-                    image_matches = _coco_evaluation_iou_sweep(
-                        gts, preds, self.config
-                    )
+                image_matches = _coco_evaluation_iou_sweep(
+                    gts, preds, self.config
+                )
 
-                    for t, t_matches in image_matches.items():
-                        for match in t_matches:
-                            gt_label = match[0]
-                            pred_label = match[1]
-                            iscrowd = match[-1]
+                for t, t_matches in image_matches.items():
+                    for match in t_matches:
+                        gt_label = match[0]
+                        pred_label = match[1]
+                        iscrowd = match[-1]
 
-                            if iscrowd:
-                                continue
+                        if _classes is not None:
+                            _classes.add(gt_label)
+                            _classes.add(pred_label)
 
-                            c = gt_label if gt_label != None else pred_label
-                            if c not in classes:
-                                classes.append(c)
+                        if iscrowd:
+                            continue
 
-                            if c not in thresh_matches[t]:
-                                thresh_matches[t][c] = {
-                                    "tp": [],
-                                    "fp": [],
-                                    "num_gt": 0,
-                                }
+                        c = gt_label if gt_label is not None else pred_label
 
-                            if gt_label == pred_label:
-                                thresh_matches[t][c]["tp"].append(match)
-                            elif pred_label:
-                                thresh_matches[t][c]["fp"].append(match)
+                        if c not in thresh_matches[t]:
+                            thresh_matches[t][c] = {
+                                "tp": [],
+                                "fp": [],
+                                "num_gt": 0,
+                            }
 
-                            if gt_label:
-                                thresh_matches[t][c]["num_gt"] += 1
+                        if gt_label == pred_label:
+                            thresh_matches[t][c]["tp"].append(match)
+                        elif pred_label:
+                            thresh_matches[t][c]["fp"].append(match)
+
+                        if gt_label:
+                            thresh_matches[t][c]["num_gt"] += 1
+
+        if _classes is not None:
+            _classes.discard(None)
+            classes = sorted(_classes)
 
         # Compute precision-recall array
         # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
@@ -495,8 +502,6 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
 def _coco_evaluation_setup(
     gts, preds, id_keys, iou_key, config, max_preds=None
 ):
-    field = gts._LABEL_LIST_FIELD
-
     iscrowd = make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
 
@@ -508,23 +513,27 @@ def _coco_evaluation_setup(
     if config.use_boxes:
         iou_kwargs.update(use_boxes=True)
 
-    # Organize preds and GT by category
+    # Organize ground truth and predictions by category
+
     cats = defaultdict(lambda: defaultdict(list))
-    for obj in preds[field]:
-        obj[iou_key] = _NO_MATCH_IOU
-        for id_key in id_keys:
-            obj[id_key] = _NO_MATCH_ID
 
-        label = obj.label if classwise else "all"
-        cats[label]["preds"].append(obj)
+    if gts is not None:
+        for obj in gts[gts._LABEL_LIST_FIELD]:
+            obj[iou_key] = _NO_MATCH_IOU
+            for id_key in id_keys:
+                obj[id_key] = _NO_MATCH_ID
 
-    for obj in gts[field]:
-        obj[iou_key] = _NO_MATCH_IOU
-        for id_key in id_keys:
-            obj[id_key] = _NO_MATCH_ID
+            label = obj.label if classwise else "all"
+            cats[label]["gts"].append(obj)
 
-        label = obj.label if classwise else "all"
-        cats[label]["gts"].append(obj)
+    if preds is not None:
+        for obj in preds[preds._LABEL_LIST_FIELD]:
+            obj[iou_key] = _NO_MATCH_IOU
+            for id_key in id_keys:
+                obj[id_key] = _NO_MATCH_ID
+
+            label = obj.label if classwise else "all"
+            cats[label]["preds"].append(obj)
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -580,7 +589,7 @@ def _compute_matches(
                     if gt_iscrowd and gt.label != pred.label:
                         continue
 
-                    # Crowds are last in order of gts
+                    # Crowds are last in order of GTs
                     # If we already matched a non-crowd and are on a crowd,
                     # then break
                     if (
@@ -598,13 +607,18 @@ def _compute_matches(
 
                 if best_match:
                     gt = gt_map[best_match]
-                    tag = "tp" if gt.label == pred.label else "fp"
-                    gt[eval_key] = tag
-                    gt[id_key] = pred.id
-                    gt[iou_key] = best_match_iou
-                    pred[eval_key] = tag
+
+                    # For crowd GTs, record info for first (highest confidence)
+                    # matching prediction on the GT object
+                    if gt[id_key] == _NO_MATCH_ID:
+                        gt[eval_key] = "tp" if gt.label == pred.label else "fn"
+                        gt[id_key] = pred.id
+                        gt[iou_key] = best_match_iou
+
+                    pred[eval_key] = "tp" if gt.label == pred.label else "fp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
+
                     matches.append(
                         (
                             gt.label,
@@ -656,6 +670,9 @@ def _compute_matches(
 
 
 def _copy_labels(labels):
+    if labels is None:
+        return None
+
     field = labels._LABEL_LIST_FIELD
     _labels = labels.copy()
 

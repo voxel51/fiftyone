@@ -182,10 +182,10 @@ def add_coco_labels(
     )
     view.compute_metadata()
 
-    heights, widths = view.values(["metadata.height", "metadata.width"])
+    widths, heights = view.values(["metadata.width", "metadata.height"])
 
     labels = []
-    for coco_id, height, width in zip(coco_ids, heights, widths):
+    for coco_id, width, height in zip(coco_ids, widths, heights):
         coco_objects = coco_objects_map[coco_id]
         frame_size = (width, height)
 
@@ -1188,7 +1188,10 @@ def load_coco_detection_annotations(json_path, extra_attrs=None):
             :class:`COCOObject` instances, or ``None`` for unlabeled datasets
     """
     d = etas.load_json(json_path)
+    return _parse_coco_detection_annotations(d, extra_attrs=extra_attrs)
 
+
+def _parse_coco_detection_annotations(d, extra_attrs=True):
     # Load info
     info = d.get("info", {})
     licenses = d.get("licenses", None)
@@ -1270,70 +1273,6 @@ def parse_coco_categories(categories):
     return classes, supercategory_map
 
 
-def is_download_required(
-    dataset_dir,
-    split,
-    year="2017",
-    label_types=None,
-    classes=None,
-    image_ids=None,
-    max_samples=None,
-    raw_dir=None,
-):
-    """Checks whether :meth:`download_coco_dataset_split` must be called in
-    order for the given directory to contain enough samples to satisfy the
-    given requirements.
-
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for the
-    format in which ``dataset_dir`` must be arranged.
-
-    Args:
-        dataset_dir: the directory to download the dataset
-        split: the split to download. Supported values are
-            ``("train", "validation", "test")``
-        year ("2017"): the dataset year to download. Supported values are
-            ``("2014", "2017")``
-        label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "segmentations")``. By
-            default, only "detections" are loaded
-        classes (None): a string or list of strings specifying required classes
-            to load. Only samples containing at least one instance of a
-            specified class will be loaded
-        image_ids (None): an optional list of specific image IDs to load. Can
-            be provided in any of the following formats:
-
-            -   a list of ``<image-id>`` ints or strings
-            -   a list of ``<split>/<image-id>`` strings
-            -   the path to a text (newline-separated), JSON, or CSV file
-                containing the list of image IDs to load in either of the first
-                two formats
-        max_samples (None): the maximum number of samples desired
-        raw_dir (None): a directory in which full annotations files may be
-            stored to avoid re-downloads in the future
-
-    Returns:
-        True/False
-    """
-    logging.disable(logging.CRITICAL)
-    try:
-        _download_coco_dataset_split(
-            dataset_dir,
-            split,
-            year=year,
-            label_types=label_types,
-            classes=classes,
-            image_ids=image_ids,
-            max_samples=max_samples,
-            raw_dir=raw_dir,
-            dry_run=True,
-        )
-        return False  # everything was downloaded
-    except:
-        return True  # something needs to be downloaded
-    finally:
-        logging.disable(logging.NOTSET)
-
-
 def download_coco_dataset_split(
     dataset_dir,
     split,
@@ -1400,39 +1339,9 @@ def download_coco_dataset_split(
 
         -   num_samples: the total number of downloaded images
         -   classes: the list of all classes
+        -   did_download: whether any content was downloaded (True) or if all
+            necessary files were already downloaded (False)
     """
-    return _download_coco_dataset_split(
-        dataset_dir,
-        split,
-        year=year,
-        label_types=label_types,
-        classes=classes,
-        image_ids=image_ids,
-        num_workers=num_workers,
-        shuffle=shuffle,
-        seed=seed,
-        max_samples=max_samples,
-        raw_dir=raw_dir,
-        scratch_dir=scratch_dir,
-        dry_run=False,
-    )
-
-
-def _download_coco_dataset_split(
-    dataset_dir,
-    split,
-    year="2017",
-    label_types=None,
-    classes=None,
-    image_ids=None,
-    num_workers=None,
-    shuffle=None,
-    seed=None,
-    max_samples=None,
-    raw_dir=None,
-    scratch_dir=None,
-    dry_run=False,
-):
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported year '%s'; supported values are %s"
@@ -1457,6 +1366,8 @@ def _download_coco_dataset_split(
     split_size = _SPLIT_SIZES[year][split]
 
     etau.ensure_dir(images_dir)
+
+    did_download = False
 
     #
     # Download annotations to `raw_dir`, if necessary
@@ -1484,25 +1395,19 @@ def _download_coco_dataset_split(
     full_anno_path = os.path.join(raw_dir, os.path.basename(rel_path))
 
     if not os.path.isfile(full_anno_path):
-        if dry_run:
-            raise ValueError("%s is not downloaded" % src_path)
-
         logger.info("Downloading %s to '%s'", anno_type, zip_path)
         etaw.download_file(src_path, path=zip_path)
 
         logger.info("Extracting %s to '%s'", anno_type, full_anno_path)
         etau.extract_zip(zip_path, outdir=unzip_dir, delete_zip=False)
         _merge_dir(content_dir, raw_dir)
+        did_download = True
     else:
         logger.info("Found %s at '%s'", anno_type, full_anno_path)
 
-    (
-        _,
-        all_classes,
-        _,
-        images,
-        annotations,
-    ) = load_coco_detection_annotations(full_anno_path, extra_attrs=True)
+    # This will store the loaded annotations, if they were necessary
+    d = None
+    all_classes = None
 
     #
     # Download images to `images_dir`, if necessary
@@ -1516,16 +1421,14 @@ def _download_coco_dataset_split(
 
     if classes is None and image_ids is None and max_samples is None:
         # Full image download
-        num_downloaded = len(etau.list_files(images_dir))
-        if num_downloaded < split_size:
-            if dry_run:
-                raise ValueError("%s is not downloaded" % images_src_path)
-
-            if num_downloaded > 0:
+        num_existing = len(etau.list_files(images_dir))
+        num_download = split_size - num_existing
+        if num_download > 0:
+            if num_existing > 0:
                 logger.info(
                     "Found %d (< %d) downloaded images; must download full "
                     "image zip",
-                    num_downloaded,
+                    num_existing,
                     split_size,
                 )
 
@@ -1534,10 +1437,21 @@ def _download_coco_dataset_split(
             logger.info("Extracting images to '%s'", images_dir)
             etau.extract_zip(images_zip_path, delete_zip=False)
             etau.move_dir(unzip_images_dir, images_dir)
+            did_download = True
         else:
             logger.info("Images already downloaded")
     else:
         # Partial image download
+
+        # Load annotations to use to determine what images to use
+        d = etas.load_json(full_anno_path)
+        (
+            _,
+            all_classes,
+            _,
+            images,
+            annotations,
+        ) = _parse_coco_detection_annotations(d, extra_attrs=True)
 
         if image_ids is not None:
             # Start with specific images
@@ -1608,35 +1522,43 @@ def _download_coco_dataset_split(
             logger.info("Downloading %d images", num_download)
 
         if num_download > 0:
-            if dry_run:
-                raise ValueError("%d images must be downloaded" % num_download)
-
             _download_images(images_dir, download_ids, images, num_workers)
-
-    if dry_run:
-        return None, None
-
-    #
-    # Write usable annotations file to `anno_path`
-    #
+            did_download = True
 
     downloaded_filenames = etau.list_files(images_dir)
     num_samples = len(downloaded_filenames)  # total downloaded
 
-    if num_samples >= split_size:
-        logger.info("Writing annotations to '%s'", anno_path)
-        etau.copy_file(full_anno_path, anno_path)
-    else:
-        logger.info(
-            "Writing annotations for %d downloaded samples to '%s'",
-            num_samples,
-            anno_path,
-        )
-        _write_partial_annotations(
-            full_anno_path, anno_path, split, downloaded_filenames
-        )
+    #
+    # Write usable annotations file to `anno_path`, if necesary
+    #
 
-    return num_samples, all_classes
+    if not os.path.isfile(anno_path):
+        did_download = True
+
+    if did_download:
+        if d is None:
+            d = etas.load_json(full_anno_path)
+
+            categories = d.get("categories", None)
+            if categories is not None:
+                all_classes, _ = parse_coco_categories(categories)
+            else:
+                all_classes = None
+
+        if num_samples >= split_size:
+            logger.info("Writing annotations to '%s'", anno_path)
+            etau.copy_file(full_anno_path, anno_path)
+        else:
+            logger.info(
+                "Writing annotations for %d downloaded samples to '%s'",
+                num_samples,
+                anno_path,
+            )
+            _write_partial_annotations(
+                d, anno_path, split, downloaded_filenames
+            )
+
+    return num_samples, all_classes, did_download
 
 
 def _merge_dir(indir, outdir):
@@ -1647,9 +1569,7 @@ def _merge_dir(indir, outdir):
         shutil.move(inpath, outpath)
 
 
-def _write_partial_annotations(inpath, outpath, split, filenames):
-    d = etas.load_json(inpath)
-
+def _write_partial_annotations(d, outpath, split, filenames):
     id_map = {i["file_name"]: i["id"] for i in d["images"]}
     filenames = set(filenames)
     image_ids = {id_map[f] for f in filenames}
@@ -1776,11 +1696,11 @@ def _download_images(images_dir, image_ids, images, num_workers):
         return
 
     if num_workers == 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(iters_str="images") as pb:
             for task in pb(tasks):
                 _do_download(task)
     else:
-        with fou.ProgressBar(total=len(tasks)) as pb:
+        with fou.ProgressBar(total=len(tasks), iters_str="images") as pb:
             with multiprocessing.Pool(num_workers) as pool:
                 for _ in pool.imap_unordered(_do_download, tasks):
                     pb.update()

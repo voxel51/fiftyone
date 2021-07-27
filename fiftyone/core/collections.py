@@ -1002,6 +1002,20 @@ class SampleCollection(object):
                 )
 
             value = _get_non_none_value(itertools.chain.from_iterable(values))
+
+            if value is None:
+                if list(values):
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new frame "
+                        "field '%s' because all provided values are None"
+                        % field_name
+                    )
+                else:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new frame "
+                        "field '%s' from empty values" % field_name
+                    )
+
             self._dataset._add_implied_frame_field(field_name, value)
         else:
             schema = self._dataset.get_field_schema(include_private=True)
@@ -1017,6 +1031,20 @@ class SampleCollection(object):
                 )
 
             value = _get_non_none_value(values)
+
+            if value is None:
+                if list(values):
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new sample "
+                        "field '%s' because all provided values are None"
+                        % field_name
+                    )
+                else:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new sample "
+                        "field '%s' from empty values" % field_name
+                    )
+
             self._dataset._add_implied_sample_field(field_name, value)
 
     def _set_sample_values(
@@ -1473,9 +1501,7 @@ class SampleCollection(object):
         top-k matching can be configured via the ``method`` parameter.
 
         You can customize the evaluation method by passing additional
-        parameters for the method's
-        :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
-        class as ``kwargs``.
+        parameters for the method's config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
@@ -1560,9 +1586,7 @@ class SampleCollection(object):
         By default, this method uses COCO-style evaluation, but you can use the
         ``method`` parameter to select a different method, and you can
         optionally customize the method by passing additional parameters for
-        the method's
-        :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig` class
-        as ``kwargs``.
+        the method's config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
@@ -1663,8 +1687,7 @@ class SampleCollection(object):
         By default, this method simply performs pixelwise evaluation of the
         full masks, but other strategies such as boundary-only evaluation can
         be configured by passing additional parameters for the method's
-        :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
-        class as ``kwargs``.
+        config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
@@ -5805,23 +5828,20 @@ class SampleCollection(object):
 
         # Serialize samples
         samples = []
-        with fou.ProgressBar() as pb:
-            for sample in pb(self):
-                sd = sample.to_dict(include_frames=True)
+        for sample in self.iter_samples(progress=True):
+            sd = sample.to_dict(include_frames=True)
 
-                if write_frame_labels:
-                    frames = {"frames": sd.pop("frames", {})}
-                    filename = sample.id + ".json"
-                    sd["frames"] = filename
-                    frames_path = os.path.join(frame_labels_dir, filename)
-                    etas.write_json(
-                        frames, frames_path, pretty_print=pretty_print
-                    )
+            if write_frame_labels:
+                frames = {"frames": sd.pop("frames", {})}
+                filename = sample.id + ".json"
+                sd["frames"] = filename
+                frames_path = os.path.join(frame_labels_dir, filename)
+                etas.write_json(frames, frames_path, pretty_print=pretty_print)
 
-                if rel_dir and sd["filepath"].startswith(rel_dir):
-                    sd["filepath"] = sd["filepath"][len_rel_dir:]
+            if rel_dir and sd["filepath"].startswith(rel_dir):
+                sd["filepath"] = sd["filepath"][len_rel_dir:]
 
-                samples.append(sd)
+            samples.append(sd)
 
         d["samples"] = samples
 

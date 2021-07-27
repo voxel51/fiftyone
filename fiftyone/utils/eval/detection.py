@@ -11,8 +11,8 @@ import logging
 import numpy as np
 
 import fiftyone.core.evaluation as foe
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .classification import ClassificationResults
@@ -48,7 +48,7 @@ def evaluate_detections(
     By default, this method uses COCO-style evaluation, but you can use the
     ``method`` parameter to select a different method, and you can optionally
     customize the method by passing additional parameters for the method's
-    :class:`DetectionEvaluationConfig` class as ``kwargs``.
+    config class as ``kwargs``.
 
     The supported ``method`` values and their associated configs are:
 
@@ -142,45 +142,60 @@ def evaluate_detections(
     eval_method.register_run(samples, eval_key)
     eval_method.register_samples(samples)
 
+    if not config.requires_additional_fields:
+        _samples = samples.select_fields([gt_field, pred_field])
+    else:
+        _samples = samples
+
     processing_frames = samples._is_frame_field(pred_field)
 
-    if not config.requires_additional_fields:
-        iter_samples = samples.select_fields([gt_field, pred_field])
-    else:
-        iter_samples = samples
+    if eval_key is not None:
+        tp_field = "%s_tp" % eval_key
+        fp_field = "%s_fp" % eval_key
+        fn_field = "%s_fn" % eval_key
+
+        # note: fields are manually declared so they'll exist even when
+        # `samples` is empty
+        dataset = samples._dataset
+        dataset._add_sample_field_if_necessary(tp_field, fof.IntField)
+        dataset._add_sample_field_if_necessary(fp_field, fof.IntField)
+        dataset._add_sample_field_if_necessary(fn_field, fof.IntField)
+        if processing_frames:
+            dataset._add_frame_field_if_necessary(tp_field, fof.IntField)
+            dataset._add_frame_field_if_necessary(fp_field, fof.IntField)
+            dataset._add_frame_field_if_necessary(fn_field, fof.IntField)
 
     matches = []
     logger.info("Evaluating detections...")
-    with fou.ProgressBar() as pb:
-        for sample in pb(iter_samples):
-            if processing_frames:
-                images = sample.frames.values()
-            else:
-                images = [sample]
+    for sample in _samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
 
-            sample_tp = 0
-            sample_fp = 0
-            sample_fn = 0
-            for image in images:
-                image_matches = eval_method.evaluate_image(
-                    image, eval_key=eval_key
-                )
-                matches.extend(image_matches)
-                tp, fp, fn = _tally_matches(image_matches)
-                sample_tp += tp
-                sample_fp += fp
-                sample_fn += fn
+        sample_tp = 0
+        sample_fp = 0
+        sample_fn = 0
+        for image in images:
+            image_matches = eval_method.evaluate_image(
+                image, eval_key=eval_key
+            )
+            matches.extend(image_matches)
+            tp, fp, fn = _tally_matches(image_matches)
+            sample_tp += tp
+            sample_fp += fp
+            sample_fn += fn
 
-                if processing_frames and eval_key is not None:
-                    image["%s_tp" % eval_key] = tp
-                    image["%s_fp" % eval_key] = fp
-                    image["%s_fn" % eval_key] = fn
+            if processing_frames and eval_key is not None:
+                image[tp_field] = tp
+                image[fp_field] = fp
+                image[fn_field] = fn
 
-            if eval_key is not None:
-                sample["%s_tp" % eval_key] = sample_tp
-                sample["%s_fp" % eval_key] = sample_fp
-                sample["%s_fn" % eval_key] = sample_fn
-                sample.save()
+        if eval_key is not None:
+            sample[tp_field] = sample_tp
+            sample[fp_field] = sample_fp
+            sample[fn_field] = sample_fn
+            sample.save()
 
     results = eval_method.generate_results(
         samples, matches, eval_key=eval_key, classes=classes, missing=missing
@@ -327,12 +342,9 @@ class DetectionEvaluation(foe.EvaluationMethod):
         ]
 
         if samples._is_frame_field(gt_field):
+            prefix = samples._FRAMES_PREFIX + eval_key
             fields.extend(
-                [
-                    "frames.%s_tp" % eval_key,
-                    "frames.%s_fp" % eval_key,
-                    "frames.%s_fn" % eval_key,
-                ]
+                ["%s_tp" % prefix, "%s_fp" % prefix, "%s_fn" % prefix]
             )
 
         return fields
@@ -411,7 +423,18 @@ class DetectionResults(ClassificationResults):
         missing=None,
         samples=None,
     ):
-        ytrue, ypred, ious, confs, ytrue_ids, ypred_ids = zip(*matches)
+        if matches:
+            ytrue, ypred, ious, confs, ytrue_ids, ypred_ids = zip(*matches)
+        else:
+            ytrue, ypred, ious, confs, ytrue_ids, ypred_ids = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
+
         super().__init__(
             ytrue,
             ypred,
@@ -491,6 +514,7 @@ def _tally_matches(matches):
             fn += 1
         elif gt_label != pred_label:
             fp += 1
+            fn += 1
         else:
             tp += 1
 
