@@ -17,7 +17,7 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.6,<0.7",
+            "fiftyone-brain>=0.6.2,<0.7",
             "fiftyone-db>=0.2.1,<0.3",
         ]
 
@@ -95,7 +95,7 @@ setup(
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
-        "voxel51-eta>=0.5.1,<0.6",
+        "voxel51-eta>=0.5.2,<0.6",
         # ETA dependency - restricted to a maximum version known to provide
         # wheels here because it tends to publish sdists several hours before
         # wheels. When users install FiftyOne in this window, they will need to
