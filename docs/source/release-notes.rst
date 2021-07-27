@@ -3,6 +3,101 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.11.2:
+
+FiftyOne 0.11.2
+---------------
+*Released July 27, 2021*
+
+App
+^^^
+- Added support for calling
+  :meth:`Session.open_tab() <fiftyone.core.session.Session.open_tab>` from
+  :ref:`remote Jupyter notebooks <remote-notebooks>`
+- Fixed a bug that could cause
+  :meth:`Session.wait() <fiftyone.core.session.Session.wait>` to exit when the
+  App's tab is refreshed in the browser
+
+Core
+^^^^
+- Added a ``plotly<5`` requirement, which prevents an issue that may cause
+  callbacks for selection events in
+  :ref:`interactive plots <interactive-plots>` to not trigger as expected when
+  using Plotly V5
+- Added support for evaluating polygons and instance segmentations to
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
+  See :ref:`this page <evaluation-detection-types>` for usage details
+- Added support for creating :ref:`patch views <frame-patches-views>` and
+  :ref:`evaluation patch views <evaluating-videos>` into the frames of video
+  datasets
+- Greatly improved the efficiency of creating
+  :ref:`evaluation patch views <evaluation-patches>`
+- Added support for recursively listing data directories when loading datasets
+  :ref:`from disk <oading-datasets-from-disk>`
+- Added support for controlling whether/which object attributes are
+  imported/exported in formats like :ref:`COCO <COCODetectionDataset-import>`
+  that support arbitrary object attributes
+- Updated all dataset import/export routines to support/prefer custom object
+  attributes stored directly on |Label| instances as dynamic fields rather
+  than in the `attributes` dict
+- The :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-export>`
+  format now supports exporting segmentations defined by |Detections| with
+  instance masks and |Polylines|
+- Added an
+  :meth:`objects_to_segmentations() <fiftyone.utils.labels.objects_to_segmentations>`
+  utility for converting |Detections| with instance fields and |Polylines| to
+  |Segmentation| format
+- Added graceful handling of edges cases like empty views and missing labels to
+  all :ref:`evaluation routines <evaluating-models>`
+- Added improved support for
+  :meth:`creating <fiftyone.core.collections.SampleCollection.create_index>`,
+  :meth:`viewing <fiftyone.core.collections.SampleCollection.get_index_information>`,
+  and :meth:`dropping <fiftyone.core.collections.SampleCollection.drop_index>`
+  dropping sample- and frame-level indexes on datasets
+- Added additional indexes on patch and frames views to enable efficient
+  ID-based queries
+- Added support for gracefully loading and deleting evaluations and brain
+  methods executed in future versions of FiftyOne (e.g., after
+  :ref:`downgrading <downgrading-fiftyone>` your FiftyOne package version)
+- Added an optional ``progress`` flag to
+  :meth:`iter_samples() <fiftyone.core.collections.SampleCollection.iter_samples>`
+  that renders a progress bar tracking the progress of the iteration
+- Added support for installing FiftyOne on RHEL7 (Red Hat Enterprise Linux)
+- A helpful error message is now raised when a user tries to load a dataset
+  from a future version of FiftyOne without following the
+  :ref:`downgrade instructions <downgrading-fiftyone>`
+- Fixed a bug that prevented FiftyOne from being imported on read-only
+  filesystems
+- Fixed a bug that prevented the proper loading of the
+  :ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset after partial
+  downloads involving only a subset of the available label types
+
+Zoo
+^^^
+- Added support for importing license data when loading the
+  :ref:`COCO-2014 <dataset-zoo-coco-2014>` and
+  :ref:`COCO-2017 <dataset-zoo-coco-2017>` datasets from the zoo
+- The inapplicable ``classes`` flag will now be ignored when loading the
+  unlabeled test split of :ref:`COCO-2014 <dataset-zoo-coco-2014>` and
+  :ref:`COCO-2017 <dataset-zoo-coco-2017>`
+- Improved the partial download behavior of the
+  :ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset when the optional
+  ``classes`` and ``attrs`` parameters are provided
+- Fixed a bug that prevented Windows users from downloading the
+  :ref:`Open Images V6 <dataset-zoo-open-images-v6>` dataset
+
+.. _release-notes-v0.11.1:
+
+FiftyOne 0.11.1
+---------------
+*Released June 29, 2021*
+
+App
+^^^
+- Updated the expired
+  `Slack community link <https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ>`_
+  in the App menu bar
+
 .. _release-notes-v0.11.0:
 
 FiftyOne 0.11.0

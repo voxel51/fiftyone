@@ -158,15 +158,14 @@ and video datasets:
 - :ref:`Classifications <classification>`
 - :ref:`Multilabel classifications <multilabel-classification>`
 - :ref:`Object detections <object-detection>`
-- :ref:`Instance segmentations <objects-with-instance-segmentations>`
-- :ref:`Object attributes <objects-with-attributes>`
+- :ref:`Instance segmentations <instance-segmentation>`
 - :ref:`Polylines and polygons <polylines>`
 - :ref:`Keypoints <keypoints>`
 - :ref:`Semantic segmentations <semantic-segmentation>`
 - :ref:`Geolocation data <geolocation>`
 
-Check out :ref:`this guide <manually-building-datasets>` for simple recipes to
-load labels in each of these formats.
+Check out :ref:`this guide <loading-custom-datasets>` for simple recipes to
+load labels in these formats.
 
 .. _faq-dataset-persistence:
 

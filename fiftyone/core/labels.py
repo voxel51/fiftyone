@@ -6,8 +6,11 @@ Labels stored in dataset samples.
 |
 """
 import itertools
+import warnings
 
 from bson import ObjectId
+import cv2
+import numpy as np
 
 import eta.core.data as etad
 import eta.core.geometry as etag
@@ -110,17 +113,33 @@ class ListAttribute(Attribute):
 
 
 class _HasAttributes(Label):
-    """Mixin for :class:`Label` classes that have an ``attributes`` field that
-    contains a dict of of :class:`Attribute` instances.
+    """Mixin for :class:`Label` classes that have an :attr:`attributes` field
+    that contains a dict of of :class:`Attribute` instances.
     """
 
     meta = {"allow_inheritance": True}
 
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
+    def iter_attributes(self):
+        """Returns an iterator over the custom attributes of the label.
+
+        Returns:
+            a generator that emits ``(name, value)`` tuples
+        """
+        # pylint: disable=no-member
+        custom_fields = set(self._fields_ordered) - set(self._fields.keys())
+        custom_fields.update(self.attributes.keys())
+
+        for field in custom_fields:
+            yield field, self.get_attribute_value(field)
+
     def has_attribute(self, name):
         """Determines whether the detection has an attribute with the given
         name.
+
+        The specified attribute may either exist in the :attr:`attributes` dict
+        or as a dynamic instance attribute.
 
         Args:
             name: the attribute name
@@ -129,33 +148,43 @@ class _HasAttributes(Label):
             True/False
         """
         # pylint: disable=unsupported-membership-test
-        return name in self.attributes
+        return name in self.attributes or hasattr(self, name)
 
     def get_attribute_value(self, name, default=no_default):
         """Gets the value of the attribute with the given name.
 
+        The specified attribute may either exist in the :attr:`attributes` dict
+        or as a dynamic instance attribute.
+
         Args:
             name: the attribute name
             default (no_default): the default value to return if the attribute
-                does not exist. Can be ``None``. If no default value is
-                provided, an exception is raised if the attribute does not
-                exist
+                does not exist. Can be ``None``
 
         Returns:
             the attribute value
 
         Raises:
-            KeyError: if the attribute does not exist and no default value was
-                provided
+            AttributeError: if the attribute does not exist and no default
+                value was provided
         """
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            pass
+
         try:
             # pylint: disable=unsubscriptable-object
             return self.attributes[name].value
         except KeyError:
-            if default is not no_default:
-                return default
+            pass
 
-            raise
+        if default is not no_default:
+            return default
+
+        raise AttributeError(
+            "%s has no attribute '%s'" % (self.__class__.__name__, name)
+        )
 
 
 class _HasID(Label):
@@ -376,6 +405,35 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         )
         return Polyline.from_eta_polyline(polyline)
 
+    def to_segmentation(self, mask=None, frame_size=None, target=255):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        The detection must have an instance mask, i.e., its :attr:`mask`
+        attribute must be populated.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add this object
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            target (255): the pixel value to use to render the object
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        if self.mask is None:
+            raise ValueError(
+                "Only detections with their `mask` attributes populated can "
+                "be converted to segmentations"
+            )
+
+        mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
+        _render_instance(mask, self, target)
+        return Segmentation(mask=mask)
+
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
 
@@ -420,8 +478,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         mask = self.mask
         confidence = self.confidence
 
-        # pylint: disable=no-member
-        attrs = _to_eta_attributes(self.attributes)
+        attrs = _to_eta_attributes(self)
 
         return etao.DetectedObject(
             label=label,
@@ -470,8 +527,8 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             confidence=dobj.confidence,
             index=dobj.index,
             mask=dobj.mask,
-            attributes=attributes,
             tags=dobj.tags,
+            **attributes,
         )
 
 
@@ -510,6 +567,50 @@ class Detections(ImageLabel, _HasLabelList):
                 for d in self.detections
             ]
         )
+
+    def to_segmentation(self, mask=None, frame_size=None, mask_targets=None):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        Only detections with instance masks (i.e., their :attr:`mask`
+        attributes populated) will be rendered.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            mask_targets (None): a dict mapping integer pixel values in
+                ``[0, 255]`` to label strings defining which object classes to
+                render and which pixel values to use for each class. If
+                omitted, all objects are rendered with pixel value 255
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        mask, labels_to_targets = _parse_to_segmentation_inputs(
+            mask, frame_size, mask_targets
+        )
+
+        # pylint: disable=not-an-iterable
+        for detection in self.detections:
+            if detection.mask is None:
+                msg = "Skipping detection(s) with no instance mask"
+                warnings.warn(msg)
+                continue
+
+            if labels_to_targets is not None:
+                target = labels_to_targets.get(detection.label, None)
+                if target is None:
+                    continue
+            else:
+                target = 255
+
+            _render_instance(mask, detection, target)
+
+        return Segmentation(mask=mask)
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -598,15 +699,41 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         xtl, ytl, xbr, ybr = bbox.to_coords()
         bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
 
+        attributes = dict(self.iter_attributes())
+
         return Detection(
             label=self.label,
             bounding_box=bounding_box,
             confidence=self.confidence,
             mask=mask,
             index=self.index,
-            attributes=self.attributes,
             tags=self.tags,
+            **attributes,
         )
+
+    def to_segmentation(
+        self, mask=None, frame_size=None, target=255, thickness=1
+    ):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            target (255): the pixel value to use to render the object
+            thickness (1): the thickness, in pixels, at which to render
+                (non-filled) polylines
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
+        _render_polyline(mask, self, target, thickness)
+        return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -668,8 +795,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         Returns:
             an ``eta.core.polylines.Polyline``
         """
-        # pylint: disable=no-member
-        attrs = _to_eta_attributes(self.attributes)
+        attrs = _to_eta_attributes(self)
 
         return etap.Polyline(
             label=self.label,
@@ -717,8 +843,8 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             index=polyline.index,
             closed=polyline.closed,
             filled=polyline.filled,
-            attributes=attributes,
             tags=polyline.tags,
+            **attributes,
         )
 
 
@@ -755,6 +881,46 @@ class Polylines(ImageLabel, _HasLabelList):
                 p.to_detection(mask_size=mask_size) for p in self.polylines
             ]
         )
+
+    def to_segmentation(
+        self, mask=None, frame_size=None, mask_targets=None, thickness=1
+    ):
+        """Returns a :class:`Segmentation` representation of this instance.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional 2D integer numpy array to use as an
+                initial mask to which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            mask_targets (None): a dict mapping integer pixel values in
+                ``[0, 255]`` to label strings defining which object classes to
+                render and which pixel values to use for each class. If
+                omitted, all objects are rendered with pixel value 255
+            thickness (1): the thickness, in pixels, at which to render
+                (non-filled) polylines
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        mask, labels_to_targets = _parse_to_segmentation_inputs(
+            mask, frame_size, mask_targets
+        )
+
+        # pylint: disable=not-an-iterable
+        for polyline in self.polylines:
+            if labels_to_targets is not None:
+                target = labels_to_targets.get(polyline.label, None)
+                if target is None:
+                    continue
+            else:
+                target = 255
+
+            _render_polyline(mask, polyline, target, thickness)
+
+        return Segmentation(mask=mask)
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -838,8 +1004,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         Returns:
             an ``eta.core.keypoints.Keypoints``
         """
-        # pylint: disable=no-member
-        attrs = _to_eta_attributes(self.attributes)
+        attrs = _to_eta_attributes(self)
 
         return etak.Keypoints(
             name=name,
@@ -883,8 +1048,8 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
             points=keypoints.points,
             confidence=keypoints.confidence,
             index=keypoints.index,
-            attributes=attributes,
             tags=keypoints.tags,
+            **attributes,
         )
 
 
@@ -1094,6 +1259,51 @@ _LABEL_LIST_TO_SINGLE_MAP = {
 }
 
 
+def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
+    if mask is None:
+        if frame_size is None:
+            raise ValueError("Either `mask` or `frame_size` must be provided")
+
+        width, height = frame_size
+        mask = np.zeros((height, width), dtype=np.uint8)
+    else:
+        height, width = mask.shape[:2]
+
+    if mask_targets is not None:
+        labels_to_targets = {label: idx for idx, label in mask_targets.items()}
+    else:
+        labels_to_targets = None
+
+    return mask, labels_to_targets
+
+
+def _render_instance(mask, detection, target):
+    dobj = detection.to_detected_object()
+    obj_mask, offset = etai.render_instance_mask(
+        dobj.mask, dobj.bounding_box, img=mask
+    )
+
+    x0, y0 = offset
+    dh, dw = obj_mask.shape
+
+    patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
+    patch[obj_mask] = target
+    mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
+
+
+def _render_polyline(mask, polyline, target, thickness):
+    points = polyline.to_eta_polyline().coords_in(img=mask)
+    points = [np.array(shape, dtype=np.int32) for shape in points]
+
+    if polyline.filled:
+        # pylint: disable=no-member
+        mask = cv2.fillPoly(mask, points, target)
+    else:
+        mask = cv2.polylines(  # pylint: disable=no-member
+            mask, points, polyline.closed, target, thickness=thickness
+        )
+
+
 def _from_geo_json_single(d):
     points, lines, polygons = _from_geo_json(d)
 
@@ -1146,33 +1356,22 @@ def _from_geo_json(d):
 
 
 def _from_eta_attributes(attrs):
-    attributes = {}
-    for attr in attrs:
-        if isinstance(attr, etad.NumericAttribute):
-            _attr = NumericAttribute(value=attr.value)
-        elif isinstance(attr, etad.BooleanAttribute):
-            _attr = BooleanAttribute(value=attr.value)
-        else:
-            _attr = CategoricalAttribute(value=str(attr.value))
-
-        if attr.confidence is not None:
-            _attr.confidence = attr.confidence
-
-        attributes[attr.name] = _attr
-
-    return attributes
+    return {a.name: a.value for a in attrs}
 
 
-def _to_eta_attributes(attributes):
+def _to_eta_attributes(label):
     attrs = etad.AttributeContainer()
-    for attr_name, attr in attributes.items():
-        attr_value = attr.value
-        if isinstance(attr_value, bool):
-            _attr = etad.BooleanAttribute(attr_name, attr_value)
-        elif etau.is_numeric(attr_value):
-            _attr = etad.NumericAttribute(attr_name, attr_value)
+    for name, value in label.iter_attributes():
+        if etau.is_str(value):
+            _attr = etad.CategoricalAttribute(name, value)
+        elif etau.is_numeric(value):
+            _attr = etad.NumericAttribute(name, value)
+        elif isinstance(value, bool):
+            _attr = etad.BooleanAttribute(name, value)
         else:
-            _attr = etad.CategoricalAttribute(attr_name, str(attr_value))
+            msg = "Ignoring unsupported attribute type '%s'" % type(value)
+            warnings.warn(msg)
+            continue
 
         attrs.add(_attr)
 
