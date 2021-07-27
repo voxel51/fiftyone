@@ -774,7 +774,7 @@ def _get_attributes(label, extra_attrs):
 
 
 def _parse_attribute(value):
-    if not value:
+    if not value or value == "None":
         return None
 
     try:

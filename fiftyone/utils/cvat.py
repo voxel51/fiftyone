@@ -9,6 +9,7 @@ Utilities for working with datasets in
 from collections import defaultdict
 from copy import copy
 from datetime import datetime
+import distutils
 import itertools
 import logging
 import os
@@ -740,10 +741,8 @@ class CVATTaskLabels(object):
                 schema.add_object_label(_label)
 
                 if anno.occluded is not None:
-                    _occluded_attr = etad.BooleanAttribute(
-                        "occluded", anno.occluded
-                    )
-                    schema.add_object_attribute(_label, _occluded_attr)
+                    _attr = etad.BooleanAttribute("occluded", anno.occluded)
+                    schema.add_object_attribute(_label, _attr)
 
                 for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
@@ -769,22 +768,16 @@ class CVATTaskLabels(object):
                 schema.add_object_label(_label)
 
                 if anno.outside is not None:
-                    _outside_attr = etad.BooleanAttribute(
-                        "outside", anno.outside
-                    )
-                    schema.add_object_attribute(_label, _outside_attr)
+                    _attr = etad.BooleanAttribute("outside", anno.outside)
+                    schema.add_object_attribute(_label, _attr)
 
                 if anno.occluded is not None:
-                    _occluded_attr = etad.BooleanAttribute(
-                        "occluded", anno.occluded
-                    )
-                    schema.add_object_attribute(_label, _occluded_attr)
+                    _attr = etad.BooleanAttribute("occluded", anno.occluded)
+                    schema.add_object_attribute(_label, _attr)
 
                 if anno.keyframe is not None:
-                    _keyframe_attr = etad.BooleanAttribute(
-                        "keyframe", anno.keyframe
-                    )
-                    schema.add_object_attribute(_label, _keyframe_attr)
+                    _attr = etad.BooleanAttribute("keyframe", anno.keyframe)
+                    schema.add_object_attribute(_label, _attr)
 
                 for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
@@ -1141,19 +1134,12 @@ class CVATImageAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        occluded = d.get("@occluded", None)
-        if occluded is not None:
-            occluded = bool(int(occluded))
+        occluded = _parse_attribute(d.get("@occluded", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             name = attr["@name"].lstrip("@")
-            value = attr["#text"]
-            try:
-                value = float(value)
-            except:
-                pass
-
+            value = _parse_attribute(attr["#text"])
             attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
@@ -1777,27 +1763,14 @@ class CVATVideoAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        outside = d.get("@outside", None)
-        if outside is not None:
-            outside = bool(int(outside))
-
-        occluded = d.get("@occluded", None)
-        if occluded is not None:
-            occluded = bool(int(occluded))
-
-        keyframe = d.get("@keyframe", None)
-        if keyframe is not None:
-            keyframe = bool(int(keyframe))
+        outside = _parse_attribute(d.get("@outside", None))
+        occluded = _parse_attribute(d.get("@occluded", None))
+        keyframe = _parse_attribute(d.get("@keyframe", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             name = attr["@name"].lstrip("@")
-            value = attr["#text"]
-            try:
-                value = float(value)
-            except:
-                pass
-
+            value = _parse_attribute(attr["#text"])
             attributes.append(CVATAttribute(name, value))
 
         return outside, occluded, keyframe, attributes
@@ -2639,3 +2612,25 @@ def _ensure_list(value):
         return value
 
     return [value]
+
+
+def _parse_attribute(value):
+    if not value or value == "None":
+        return None
+
+    try:
+        return int(value)
+    except:
+        pass
+
+    try:
+        return float(value)
+    except:
+        pass
+
+    try:
+        return bool(distutils.util.strtobool(value))
+    except:
+        pass
+
+    return value
