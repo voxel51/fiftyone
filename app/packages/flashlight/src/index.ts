@@ -193,7 +193,7 @@ export default class Flashlight<K> {
 
     this.loading = true;
     return this.state
-      .get(this.state.nextItemIndex, this.state.currentRequestKey)
+      .get(this.state.currentRequestKey)
       .then(({ items, nextRequestKey }) => {
         this.state.currentRequestKey = nextRequestKey;
 
@@ -209,8 +209,6 @@ export default class Flashlight<K> {
         ) {
           this.state.currentRowRemainder = lastSection;
           sections = sections.slice(0, -1);
-
-          sections.length === 0 && this.get();
         } else {
           this.state.currentRowRemainder = [];
         }
@@ -238,11 +236,10 @@ export default class Flashlight<K> {
           this.container.style.height = `${this.state.height}px`;
         }
 
-        this.state.currentRequestKey = nextRequestKey;
-        this.loading = false;
-
         const headSection = this.state.sections[this.state.sections.length - 1];
 
+        this.state.currentRequestKey = nextRequestKey;
+        this.loading = false;
         if (
           this.state.height <= this.state.containerHeight ||
           (!sections.length && nextRequestKey) ||

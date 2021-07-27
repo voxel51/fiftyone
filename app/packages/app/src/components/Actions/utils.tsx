@@ -113,7 +113,8 @@ export const tagStatistics = selectorFamily<
 >({
   key: "tagStatistics",
   get: ({ modal, labels }) => async ({ get }) => {
-    const state = get(atoms.stateDescription);
+    get(atoms.stateDescription);
+    get(atoms.selectedSamples);
     const activeLabels = get(activeLabelPaths(false));
 
     const id = uuid();

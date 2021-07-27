@@ -34,7 +34,7 @@ export interface Response<K> {
   nextRequestKey?: K;
 }
 
-export type Get<K> = (currentIndex: number, key: K) => Promise<Response<K>>;
+export type Get<K> = (key: K) => Promise<Response<K>>;
 
 export type ItemIndexMap = { [key: string]: number };
 

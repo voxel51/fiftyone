@@ -1,6 +1,5 @@
 import React, {
   useLayoutEffect,
-  useEffect,
   useRef,
   useState,
   MutableRefObject,
@@ -26,6 +25,8 @@ import * as selectors from "../recoil/selectors";
 import { getSampleSrc, lookerType } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
+import { packageMessage } from "../utils/socket";
+import socket from "../shared/connection";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -43,6 +44,7 @@ const MARGIN = 3;
 
 export let samples = new Map<string, atoms.SampleData>();
 export let sampleIndices = new Map<number, string>();
+let nextIndex = 0;
 let lookers = new Map<
   string,
   WeakRef<FrameLooker | ImageLooker | VideoLooker>
@@ -163,95 +165,99 @@ const useThumbnailClick = (
       sampleId: string,
       itemIndexMap: { [key: string]: number }
     ) => {
-      const selected = new Set(
-        await snapshot.getPromise(atoms.selectedSamples)
-      );
+      const clickedIndex = itemIndexMap[sampleId];
       const reverse = Object.fromEntries(
         Object.entries(itemIndexMap).map(([k, v]) => [v, k])
       );
-      const clickedIndex = itemIndexMap[sampleId];
+      let selected = new Set(await snapshot.getPromise(atoms.selectedSamples));
 
-      const getIndex = (index) => {
-        const promise = sampleIndices.has(index)
-          ? Promise.resolve(samples.get(sampleIndices.get(index)))
-          : flashlight.current.get().then(() => {
-              return samples.get(sampleIndices.get(index));
-            });
+      const openModal = () => {
+        const getIndex = (index) => {
+          const promise = sampleIndices.has(index)
+            ? Promise.resolve(samples.get(sampleIndices.get(index)))
+            : flashlight.current.get().then(() => {
+                return samples.get(sampleIndices.get(index));
+              });
 
-        promise.then((sample) => {
-          set(atoms.modal, { ...sample, index, getIndex });
-        });
-      };
+          promise.then((sample) => {
+            set(atoms.modal, { ...sample, index, getIndex });
+          });
+        };
 
-      if (!selected.size) {
         set(atoms.modal, {
           ...samples.get(sampleId),
           index: clickedIndex,
           getIndex,
         });
         set(labelFilters(true), {});
+      };
 
-        return;
-      }
-      if (event.ctrlKey) {
-        if (!selected.has(sampleId)) {
-          const array = [...selected];
-
-          const closeIndex =
-            itemIndexMap[
-              array[
-                argMin(
-                  array.map((id) => Math.abs(itemIndexMap[id] - clickedIndex))
-                )
-              ]
-            ];
-
-          const [start, end] =
-            clickedIndex < closeIndex
-              ? [clickedIndex, closeIndex]
-              : [closeIndex, clickedIndex];
-
-          const newSelection = new Array(end - start + 1)
-            .fill(0)
-            .map((_, i) => reverse[i + start]);
-
-          set(atoms.selectedSamples, new Set([...selected, ...newSelection]));
-        } else {
-          let before = clickedIndex;
-          while (selected.has(reverse[before])) {
-            before--;
-          }
-          before += 1;
-
-          let after = clickedIndex;
-          while (selected.has(reverse[after])) {
-            after++;
-          }
-          after -= 1;
-
-          const [start, end] =
-            clickedIndex - before <= after - clickedIndex
-              ? [before, clickedIndex]
-              : [clickedIndex, after];
-
-          set(
-            atoms.selectedSamples,
-            new Set(
-              [...selected].filter(
-                (s) => itemIndexMap[s] < start && itemIndexMap[s] > end
+      const addRange = () => {
+        const closeIndex =
+          itemIndexMap[
+            array[
+              argMin(
+                array.map((id) => Math.abs(itemIndexMap[id] - clickedIndex))
               )
-            )
-          );
-        }
+            ]
+          ];
 
+        const [start, end] =
+          clickedIndex < closeIndex
+            ? [clickedIndex, closeIndex]
+            : [closeIndex, clickedIndex];
+
+        const added = new Array(end - start + 1)
+          .fill(0)
+          .map((_, i) => reverse[i + start]);
+
+        selected = new Set([...array, ...added]);
+      };
+
+      const removeRange = () => {
+        let before = clickedIndex;
+        while (selected.has(reverse[before])) {
+          before--;
+        }
+        before += 1;
+
+        let after = clickedIndex;
+        while (selected.has(reverse[after])) {
+          after++;
+        }
+        after -= 1;
+
+        const [start, end] =
+          clickedIndex - before <= after - clickedIndex
+            ? [before, clickedIndex]
+            : [clickedIndex, after];
+
+        selected = new Set(
+          array.filter((s) => itemIndexMap[s] < start && itemIndexMap[s] > end)
+        );
+      };
+
+      if (!selected.size) {
+        openModal();
         return;
       }
 
-      selected.has(sampleId)
-        ? selected.delete(sampleId)
-        : selected.add(sampleId);
+      const array = [...selected];
+      if (event.ctrlKey && !selected.has(sampleId)) {
+        addRange();
+      } else if (event.ctrlKey) {
+        removeRange();
+      } else {
+        selected.has(sampleId)
+          ? selected.delete(sampleId)
+          : selected.add(sampleId);
+      }
+
+      alert("E");
       set(atoms.selectedSamples, selected);
-      return;
+      socket.send(
+        packageMessage("set_selection", { _ids: Array.from(selected) })
+      );
     },
     []
   );
@@ -267,6 +273,9 @@ const useSelect = () => {
         ? selected.delete(sampleId)
         : selected.add(sampleId);
       set(atoms.selectedSamples, selected);
+      socket.send(
+        packageMessage("set_selection", { _ids: Array.from(selected) })
+      );
     },
     []
   );
@@ -298,6 +307,7 @@ export default React.memo(() => {
 
     samples = new Map();
     sampleIndices = new Map();
+    nextIndex = 0;
     flashlight.current.reset();
   }, [
     flashlight,
@@ -307,17 +317,16 @@ export default React.memo(() => {
     refresh,
   ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({
         initialRequestKey: 1,
         options,
         onItemClick: onThumbnailClick,
-        get: async (index, page) => {
+        get: async (page) => {
           const { results, more } = await fetch(
             `${url}page=${page}`
           ).then((response) => response.json());
-
           const itemData = results.map((result) => {
             const data: atoms.SampleData = {
               sample: result.sample,
@@ -326,8 +335,8 @@ export default React.memo(() => {
               frameNumber: result.sample.frame_number,
             };
             samples.set(result.sample._id, data);
-            sampleIndices.set(index, result.sample._id);
-            index++;
+            sampleIndices.set(nextIndex, result.sample._id);
+            nextIndex++;
 
             return data;
           });
