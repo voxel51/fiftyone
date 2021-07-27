@@ -41,7 +41,7 @@ can directly :ref:`load a dataset <loading-datasets>` and then
     # On local machine
     import fiftyone as fo
 
-    dataset = fo.Dataset(name="my_dataset")
+    dataset = fo.Dataset("my-dataset")
 
     session = fo.launch_app(dataset)  # (optional) port=XXXX
 
@@ -162,7 +162,7 @@ window will be opened in the output of your current cell.
 
     import fiftyone as fo
 
-    dataset = fo.Dataset(name="my_dataset")
+    dataset = fo.Dataset("my-dataset")
 
     # Creates a session and opens the App in the output of the cell
     session = fo.launch_app(dataset)

@@ -1941,11 +1941,12 @@ class EmbeddingsMixin(object):
 
 class TorchModelMixin(object):
     """Mixin for :class:`Model` classes that support feeding data for inference
-    via a ``torch.utils.data.DataLoader``.
+    via a :class:`torch:torch.utils.data.DataLoader`.
 
     Models implementing this mixin must expose via their
-    :meth:`Model.transforms` property the ``torchvision.transforms`` function
-    that will/must be applied to each input before prediction.
+    :meth:`Model.transforms` property the
+    :mod:`torchvision:torchvision.transforms` function that will/must be
+    applied to each input before prediction.
     """
 
     pass

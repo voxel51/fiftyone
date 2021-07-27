@@ -45,7 +45,7 @@ def add_coco_labels(
     label_type="detections",
     coco_id_field="coco_id",
     classes=None,
-    extra_attrs=None,
+    extra_attrs=True,
     use_polylines=False,
     tolerance=None,
 ):
@@ -129,11 +129,11 @@ def add_coco_labels(
             must be available from
             :meth:`classes <fiftyone.core.collections.SampleCollection.classes>` or
             :meth:`default_classes <fiftyone.core.collections.SampleCollection.default_classes>`
-        extra_attrs (None): whether to load extra annotation attributes onto
+        extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
         use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
@@ -182,10 +182,10 @@ def add_coco_labels(
     )
     view.compute_metadata()
 
-    heights, widths = view.values(["metadata.height", "metadata.width"])
+    widths, heights = view.values(["metadata.width", "metadata.height"])
 
     labels = []
-    for coco_id, height, width in zip(coco_ids, heights, widths):
+    for coco_id, width, height in zip(coco_ids, widths, heights):
         coco_objects = coco_objects_map[coco_id]
         frame_size = (width, height)
 
@@ -222,8 +222,7 @@ class COCODetectionDatasetImporter(
 ):
     """Importer for COCO detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
-    details.
+    See :ref:`this page <COCODetectionDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -280,11 +279,11 @@ class COCODetectionDatasetImporter(
             Note that the license descriptions (if available) are always loaded
             into ``dataset.info["licenses"]`` and can be used to convert
             between ID, name, and URL later
-        extra_attrs (None): whether to load extra annotation attributes onto
+        extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
 
         only_matching (False): whether to only load labels that match the
@@ -318,7 +317,7 @@ class COCODetectionDatasetImporter(
         image_ids=None,
         include_id=False,
         include_license=False,
-        extra_attrs=None,
+        extra_attrs=True,
         only_matching=False,
         use_polylines=False,
         tolerance=None,
@@ -495,7 +494,9 @@ class COCODetectionDatasetImporter(
         return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(self.data_path)
+        self._image_paths_map = self._load_data_map(
+            self.data_path, recursive=True
+        )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             (
@@ -566,8 +567,7 @@ class COCODetectionDatasetExporter(
     This class currently only supports exporting detections and instance
     segmentations.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
-    details.
+    See :ref:`this page <COCODetectionDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -626,8 +626,12 @@ class COCODetectionDatasetExporter(
             :meth:`load_coco_detection_annotations`. If not provided, this info
             will be extracted when :meth:`log_collection` is called, if
             possible
-        extra_attrs (None): an optional field name or list of field names of
-            extra label attributes to include in the exported annotations
+        extra_attrs (True): whether to include extra object attributes in the
+            exported labels. Supported values are:
+
+            -   ``True``: export all extra attributes found
+            -   ``False``: do not export extra attributes
+            -   a name or list of names of specific attributes to export
         iscrowd ("iscrowd"): the name of a detection attribute that indicates
             whether an object is a crowd (only used if present)
         num_decimals (None): an optional number of decimal places at which to
@@ -646,7 +650,7 @@ class COCODetectionDatasetExporter(
         image_format=None,
         classes=None,
         info=None,
-        extra_attrs=None,
+        extra_attrs=True,
         iscrowd="iscrowd",
         num_decimals=None,
         tolerance=None,
@@ -663,9 +667,6 @@ class COCODetectionDatasetExporter(
             labels_path=labels_path,
             default="labels.json",
         )
-
-        if etau.is_str(extra_attrs):
-            extra_attrs = [extra_attrs]
 
         super().__init__(export_dir=export_dir)
 
@@ -730,16 +731,16 @@ class COCODetectionDatasetExporter(
             self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path, _ = self._media_exporter.export(image_or_path)
+        _, uuid = self._media_exporter.export(image_or_path)
 
         if metadata is None:
-            metadata = fom.ImageMetadata.build_for(out_image_path)
+            metadata = fom.ImageMetadata.build_for(image_or_path)
 
         self._image_id += 1
         self._images.append(
             {
                 "id": self._image_id,
-                "file_name": os.path.basename(out_image_path),
+                "file_name": uuid,
                 "height": metadata.height,
                 "width": metadata.width,
                 "license": None,
@@ -751,13 +752,30 @@ class COCODetectionDatasetExporter(
             return
 
         self._has_labels = True
+
         for detection in detections.detections:
+            label = detection.label
+
+            if self._labels_map_rev is not None:
+                if label not in self._labels_map_rev:
+                    msg = (
+                        "Ignoring detection with label '%s' not in provided "
+                        "classes" % label
+                    )
+                    warnings.warn(msg)
+                    continue
+
+                category_id = self._labels_map_rev[label]
+            else:
+                category_id = label  # will be converted to int later
+
             self._anno_id += 1
-            self._classes.add(detection.label)
+            self._classes.add(label)
+
             obj = COCOObject.from_detection(
                 detection,
                 metadata,
-                labels_map_rev=self._labels_map_rev,
+                category_id=category_id,
                 extra_attrs=self.extra_attrs,
                 iscrowd=self.iscrowd,
                 num_decimals=self.num_decimals,
@@ -1012,9 +1030,9 @@ class COCOObject(object):
         cls,
         detection,
         metadata,
+        category_id=None,
         keypoint=None,
-        labels_map_rev=None,
-        extra_attrs=None,
+        extra_attrs=True,
         iscrowd="iscrowd",
         num_decimals=None,
         tolerance=None,
@@ -1026,11 +1044,15 @@ class COCOObject(object):
             detection: a :class:`fiftyone.core.labels.Detection`
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
                 image
+            category_id (None): the category ID for the object
             keypoint (None): an optional :class:`fiftyone.core.labels.Keypoint`
                 containing keypoints to include for the object
-            labels_map_rev (None): an optional dict mapping labels to category
-                IDs
-            extra_attrs (None): an optional list of extra attributes to include
+            extra_attrs (True): whether to include extra attributes from the
+                object. Supported values are:
+
+                -   ``True``: include all extra attributes found
+                -   ``False``: do not include extra attributes
+                -   a name or list of names of specific attributes to include
             iscrowd ("iscrowd"): the name of the crowd attribute (used if
                 present)
             num_decimals (None): an optional number of decimal places at which
@@ -1043,11 +1065,6 @@ class COCOObject(object):
         Returns:
             a :class:`COCOObject`
         """
-        if labels_map_rev:
-            category_id = labels_map_rev[detection.label]
-        else:
-            category_id = detection.label
-
         width = metadata.width
         height = metadata.height
         x, y, w, h = detection.bounding_box
@@ -1059,14 +1076,9 @@ class COCOObject(object):
 
         area = bbox[2] * bbox[3]
 
-        try:
-            _iscrowd = int(detection[iscrowd])
-        except KeyError:
-            # @todo remove Attribute usage
-            if detection.has_attribute(iscrowd):
-                _iscrowd = int(detection.get_attribute_value(iscrowd))
-            else:
-                _iscrowd = None
+        _iscrowd = detection.get_attribute_value(iscrowd, None)
+        if _iscrowd is not None:
+            _iscrowd = int(_iscrowd)
 
         frame_size = (width, height)
 
@@ -1076,10 +1088,9 @@ class COCOObject(object):
 
         keypoints = _make_coco_keypoints(keypoint, frame_size)
 
-        if extra_attrs:
-            attributes = {f: getattr(detection, f, None) for f in extra_attrs}
-        else:
-            attributes = {}
+        attributes = _get_attributes(detection, extra_attrs)
+        attributes.pop("iscrowd", None)
+        attributes.pop("area", None)
 
         return cls(
             id=None,
@@ -1095,16 +1106,16 @@ class COCOObject(object):
         )
 
     @classmethod
-    def from_anno_dict(cls, d, extra_attrs=None):
+    def from_anno_dict(cls, d, extra_attrs=True):
         """Creates a :class:`COCOObject` from a COCO annotation dict.
 
         Args:
             d: a COCO annotation dict
-            extra_attrs (None): whether to load extra annotation attributes.
+            extra_attrs (True): whether to load extra annotation attributes.
                 Supported values are:
 
-                -   ``None``/``False``: do not load extra attributes
                 -   ``True``: load all extra attributes
+                -   ``False``: do not load extra attributes
                 -   a name or list of names of specific attributes to load
 
         Returns:
@@ -1162,19 +1173,18 @@ class COCOObject(object):
         return label, attributes
 
 
-def load_coco_detection_annotations(json_path, extra_attrs=None):
+def load_coco_detection_annotations(json_path, extra_attrs=True):
     """Loads the COCO annotations from the given JSON file.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
-    details.
+    See :ref:`this page <COCODetectionDataset-import>` for format details.
 
     Args:
         json_path: the path to the annotations JSON file
-        extra_attrs (None): whether to load extra annotation attributes.
+        extra_attrs (True): whether to load extra annotation attributes.
             Supported values are:
 
-            -   ``None``/``False``: do not load extra attributes
             -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
             -   a name or list of names of specific attributes to load
 
     Returns:
@@ -1188,7 +1198,10 @@ def load_coco_detection_annotations(json_path, extra_attrs=None):
             :class:`COCOObject` instances, or ``None`` for unlabeled datasets
     """
     d = etas.load_json(json_path)
+    return _parse_coco_detection_annotations(d, extra_attrs=extra_attrs)
 
+
+def _parse_coco_detection_annotations(d, extra_attrs=True):
     # Load info
     info = d.get("info", {})
     licenses = d.get("licenses", None)
@@ -1284,8 +1297,8 @@ def is_download_required(
     order for the given directory to contain enough samples to satisfy the
     given requirements.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for the
-    format in which ``dataset_dir`` must be arranged.
+    See :ref:`this page <COCODetectionDataset-import>` for the format in which
+    ``dataset_dir`` must be arranged.
 
     Args:
         dataset_dir: the directory to download the dataset
@@ -1351,8 +1364,8 @@ def download_coco_dataset_split(
     """Utility that downloads full or partial splits of the
     `COCO dataset <https://cocodataset.org>`_.
 
-    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for the
-    format in which ``dataset_dir`` will be arranged.
+    See :ref:`this page <COCODetectionDataset-export>` for the format in which
+    ``dataset_dir`` will be arranged.
 
     Any existing files are not re-downloaded.
 
@@ -1400,39 +1413,9 @@ def download_coco_dataset_split(
 
         -   num_samples: the total number of downloaded images
         -   classes: the list of all classes
+        -   did_download: whether any content was downloaded (True) or if all
+            necessary files were already downloaded (False)
     """
-    return _download_coco_dataset_split(
-        dataset_dir,
-        split,
-        year=year,
-        label_types=label_types,
-        classes=classes,
-        image_ids=image_ids,
-        num_workers=num_workers,
-        shuffle=shuffle,
-        seed=seed,
-        max_samples=max_samples,
-        raw_dir=raw_dir,
-        scratch_dir=scratch_dir,
-        dry_run=False,
-    )
-
-
-def _download_coco_dataset_split(
-    dataset_dir,
-    split,
-    year="2017",
-    label_types=None,
-    classes=None,
-    image_ids=None,
-    num_workers=None,
-    shuffle=None,
-    seed=None,
-    max_samples=None,
-    raw_dir=None,
-    scratch_dir=None,
-    dry_run=False,
-):
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported year '%s'; supported values are %s"
@@ -1457,6 +1440,8 @@ def _download_coco_dataset_split(
     split_size = _SPLIT_SIZES[year][split]
 
     etau.ensure_dir(images_dir)
+
+    did_download = False
 
     #
     # Download annotations to `raw_dir`, if necessary
@@ -1484,15 +1469,13 @@ def _download_coco_dataset_split(
     full_anno_path = os.path.join(raw_dir, os.path.basename(rel_path))
 
     if not os.path.isfile(full_anno_path):
-        if dry_run:
-            raise ValueError("%s is not downloaded" % src_path)
-
         logger.info("Downloading %s to '%s'", anno_type, zip_path)
         etaw.download_file(src_path, path=zip_path)
 
         logger.info("Extracting %s to '%s'", anno_type, full_anno_path)
         etau.extract_zip(zip_path, outdir=unzip_dir, delete_zip=False)
         _merge_dir(content_dir, raw_dir)
+        did_download = True
     else:
         logger.info("Found %s at '%s'", anno_type, full_anno_path)
 
@@ -1502,7 +1485,7 @@ def _download_coco_dataset_split(
         _,
         images,
         annotations,
-    ) = load_coco_detection_annotations(full_anno_path, extra_attrs=True)
+    ) = load_coco_detection_annotations(full_anno_path)
 
     #
     # Download images to `images_dir`, if necessary
@@ -1516,16 +1499,14 @@ def _download_coco_dataset_split(
 
     if classes is None and image_ids is None and max_samples is None:
         # Full image download
-        num_downloaded = len(etau.list_files(images_dir))
-        if num_downloaded < split_size:
-            if dry_run:
-                raise ValueError("%s is not downloaded" % images_src_path)
-
-            if num_downloaded > 0:
+        num_existing = len(etau.list_files(images_dir))
+        num_download = split_size - num_existing
+        if num_download > 0:
+            if num_existing > 0:
                 logger.info(
                     "Found %d (< %d) downloaded images; must download full "
                     "image zip",
-                    num_downloaded,
+                    num_existing,
                     split_size,
                 )
 
@@ -1534,10 +1515,21 @@ def _download_coco_dataset_split(
             logger.info("Extracting images to '%s'", images_dir)
             etau.extract_zip(images_zip_path, delete_zip=False)
             etau.move_dir(unzip_images_dir, images_dir)
+            did_download = True
         else:
             logger.info("Images already downloaded")
     else:
         # Partial image download
+
+        # Load annotations to use to determine what images to use
+        d = etas.load_json(full_anno_path)
+        (
+            _,
+            all_classes,
+            _,
+            images,
+            annotations,
+        ) = _parse_coco_detection_annotations(d, extra_attrs=True)
 
         if image_ids is not None:
             # Start with specific images
@@ -1608,35 +1600,43 @@ def _download_coco_dataset_split(
             logger.info("Downloading %d images", num_download)
 
         if num_download > 0:
-            if dry_run:
-                raise ValueError("%d images must be downloaded" % num_download)
-
             _download_images(images_dir, download_ids, images, num_workers)
-
-    if dry_run:
-        return None, None
-
-    #
-    # Write usable annotations file to `anno_path`
-    #
+            did_download = True
 
     downloaded_filenames = etau.list_files(images_dir)
     num_samples = len(downloaded_filenames)  # total downloaded
 
-    if num_samples >= split_size:
-        logger.info("Writing annotations to '%s'", anno_path)
-        etau.copy_file(full_anno_path, anno_path)
-    else:
-        logger.info(
-            "Writing annotations for %d downloaded samples to '%s'",
-            num_samples,
-            anno_path,
-        )
-        _write_partial_annotations(
-            full_anno_path, anno_path, split, downloaded_filenames
-        )
+    #
+    # Write usable annotations file to `anno_path`, if necesary
+    #
 
-    return num_samples, all_classes
+    if not os.path.isfile(anno_path):
+        did_download = True
+
+    if did_download:
+        if d is None:
+            d = etas.load_json(full_anno_path)
+
+            categories = d.get("categories", None)
+            if categories is not None:
+                all_classes, _ = parse_coco_categories(categories)
+            else:
+                all_classes = None
+
+        if num_samples >= split_size:
+            logger.info("Writing annotations to '%s'", anno_path)
+            etau.copy_file(full_anno_path, anno_path)
+        else:
+            logger.info(
+                "Writing annotations for %d downloaded samples to '%s'",
+                num_samples,
+                anno_path,
+            )
+            _write_partial_annotations(
+                d, anno_path, split, downloaded_filenames
+            )
+
+    return num_samples, all_classes, did_download
 
 
 def _merge_dir(indir, outdir):
@@ -1647,9 +1647,7 @@ def _merge_dir(indir, outdir):
         shutil.move(inpath, outpath)
 
 
-def _write_partial_annotations(inpath, outpath, split, filenames):
-    d = etas.load_json(inpath)
-
+def _write_partial_annotations(d, outpath, split, filenames):
     id_map = {i["file_name"]: i["id"] for i in d["images"]}
     filenames = set(filenames)
     image_ids = {id_map[f] for f in filenames}
@@ -1776,11 +1774,11 @@ def _download_images(images_dir, image_ids, images, num_workers):
         return
 
     if num_workers == 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(iters_str="images") as pb:
             for task in pb(tasks):
                 _do_download(task)
     else:
-        with fou.ProgressBar(total=len(tasks)) as pb:
+        with fou.ProgressBar(total=len(tasks), iters_str="images") as pb:
             with multiprocessing.Pool(num_workers) as pool:
                 for _ in pool.imap_unordered(_do_download, tasks):
                     pb.update()
@@ -1977,6 +1975,21 @@ def _coco_objects_to_keypoints(coco_objects, frame_size, classes):
     return fol.Keypoints(keypoints=keypoints)
 
 
+def _get_attributes(label, extra_attrs):
+    if extra_attrs == True:
+        return dict(label.iter_attributes())
+
+    if extra_attrs == False:
+        return {}
+
+    if etau.is_str(extra_attrs):
+        extra_attrs = [extra_attrs]
+
+    return {
+        name: label.get_attribute_value(name, None) for name in extra_attrs
+    }
+
+
 #
 # The methods below are taken, in part, from:
 # https://github.com/waspinator/pycococreator/blob/207b4fa8bbaae22ebcdeb3bbf00b724498e026a7/pycococreatortools/pycococreatortools.py
@@ -2048,7 +2061,15 @@ def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
         return None
 
     dobj = detection.to_detected_object()
-    mask = etai.render_instance_image(dobj.mask, dobj.bounding_box, frame_size)
+
+    try:
+        mask = etai.render_instance_image(
+            dobj.mask, dobj.bounding_box, frame_size
+        )
+    except:
+        # Either mask or bounding box is too small to render
+        width, height = frame_size
+        mask = np.zeros((height, width), dtype=bool)
 
     if iscrowd:
         return _mask_to_rle(mask)

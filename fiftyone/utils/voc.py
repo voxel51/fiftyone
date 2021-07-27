@@ -28,8 +28,7 @@ class VOCDetectionDatasetImporter(
 ):
     """Importer for VOC detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -61,6 +60,12 @@ class VOCDetectionDatasetImporter(
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with label entries (False)
+        extra_attrs (True): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
+            -   a name or list of names of specific attributes to load
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -74,6 +79,7 @@ class VOCDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         include_all_data=False,
+        extra_attrs=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -98,6 +104,7 @@ class VOCDetectionDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.include_all_data = include_all_data
+        self.extra_attrs = extra_attrs
 
         self._image_paths_map = None
         self._labels_paths_map = None
@@ -144,7 +151,7 @@ class VOCDetectionDatasetImporter(
 
             image_metadata = annotation.metadata
 
-            detections = annotation.to_detections()
+            detections = annotation.to_detections(extra_attrs=self.extra_attrs)
         else:
             # Unlabeled image
             image_path = self._image_paths_map[uuid]
@@ -167,13 +174,13 @@ class VOCDetectionDatasetImporter(
 
     def setup(self):
         self._image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True
+            self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
             self._labels_paths_map = {
-                os.path.splitext(os.path.basename(p))[0]: p
-                for p in etau.list_files(self.labels_path, abs_paths=True)
+                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
+                for p in etau.list_files(self.labels_path, recursive=True)
             }
         else:
             self._labels_paths_map = {}
@@ -192,8 +199,7 @@ class VOCDetectionDatasetExporter(
 ):
     """Exporter that writes VOC detection datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -242,9 +248,17 @@ class VOCDetectionDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        include_paths (True): whether to include the absolute paths to the
+            images in the ``<path>`` elements of the exported XML
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        extra_attrs (True): whether to include extra object attributes in the
+            exported labels. Supported values are:
+
+            -   ``True``: export all extra attributes found
+            -   ``False``: do not export extra attributes
+            -   a name or list of names of specific attributes to export
     """
 
     def __init__(
@@ -253,7 +267,9 @@ class VOCDetectionDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        include_paths=True,
         image_format=None,
+        extra_attrs=True,
     ):
         data_path, export_media = self._parse_data_path(
             export_dir=export_dir,
@@ -271,7 +287,9 @@ class VOCDetectionDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.include_paths = include_paths
         self.image_format = image_format
+        self.extra_attrs = extra_attrs
 
         self._writer = None
         self._media_exporter = None
@@ -290,25 +308,37 @@ class VOCDetectionDatasetExporter(
             self.export_media,
             export_path=self.data_path,
             default_ext=self.image_format,
-            ignore_exts=True,
         )
         self._media_exporter.setup()
 
         etau.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        if metadata is None and detections is not None:
-            metadata = fom.ImageMetadata.build_for(image_or_path)
-
-        out_image_path, uuid = self._media_exporter.export(image_or_path)
+        out_image_path, filename = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
 
-        out_anno_path = os.path.join(self.labels_path, uuid + ".xml")
+        out_anno_path = os.path.join(
+            self.labels_path, os.path.splitext(filename)[0] + ".xml"
+        )
+
+        if metadata is None:
+            metadata = fom.ImageMetadata.build_for(image_or_path)
+
+        path = None
+        if self.include_paths:
+            if out_image_path is not None:
+                path = out_image_path
+            elif etau.is_str(image_or_path):
+                path = image_or_path
 
         annotation = VOCAnnotation.from_labeled_image(
-            out_image_path, metadata, detections
+            metadata,
+            detections,
+            path=path,
+            filename=filename,
+            extra_attrs=self.extra_attrs,
         )
         self._writer.write(annotation, out_anno_path)
 
@@ -320,7 +350,7 @@ class VOCAnnotation(object):
     """Class representing a VOC annotations file.
 
     Args:
-        path (None): the path to the image on disk
+        path (None): the path to the image
         folder (None): the name of the folder containing the image
         filename (None): the image filename
         segmented (None): whether the objects are segmented
@@ -338,9 +368,6 @@ class VOCAnnotation(object):
         metadata=None,
         objects=None,
     ):
-        if folder is None and path:
-            folder = os.path.basename(os.path.dirname(path))
-
         if filename is None and path:
             filename = os.path.basename(path)
 
@@ -351,9 +378,17 @@ class VOCAnnotation(object):
         self.metadata = metadata
         self.objects = objects or []
 
-    def to_detections(self):
+    def to_detections(self, extra_attrs=True):
         """Returns a :class:`fiftyone.core.labels.Detections` representation of
         the objects in the annotation.
+
+        Args:
+            extra_attrs (True): whether to load extra annotation attributes
+                onto the imported labels. Supported values are:
+
+                -   ``True``: load all extra attributes found
+                -   ``False``: do not load extra attributes
+                -   a name or list of names of specific attributes to load
 
         Returns:
             a :class:`fiftyone.core.labels.Detections`
@@ -364,29 +399,46 @@ class VOCAnnotation(object):
             )
 
         frame_size = (self.metadata.width, self.metadata.height)
-        detections = [obj.to_detection(frame_size) for obj in self.objects]
-        return fol.Detections(detections=detections)
+        return fol.Detections(
+            detections=[
+                obj.to_detection(frame_size, extra_attrs=extra_attrs)
+                for obj in self.objects
+            ]
+        )
 
     @classmethod
-    def from_labeled_image(cls, image_path, metadata, detections):
+    def from_labeled_image(
+        cls, metadata, detections, path=None, filename=None, extra_attrs=True
+    ):
         """Creates a :class:`VOCAnnotation` instance for the given labeled
         image data.
 
         Args:
-            image_path: the path to the image on disk
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` instance
                 for the image
             detections: a :class:`fiftyone.core.labels.Detections`
+            path (None): the absolute path to the image
+            filename (None): the filename of the image
+            extra_attrs (True): whether to include extra object attributes.
+                Supported values are:
+
+                -   ``True``: include all extra attributes found
+                -   ``False``: do not include extra attributes
+                -   a name or list of names of specific attributes to include
 
         Returns:
             a :class:`VOCAnnotation`
         """
         objects = []
         for detection in detections.detections:
-            obj = VOCObject.from_detection(detection, metadata)
+            obj = VOCObject.from_detection(
+                detection, metadata, extra_attrs=extra_attrs
+            )
             objects.append(obj)
 
-        return cls(path=image_path, metadata=metadata, objects=objects)
+        return cls(
+            path=path, filename=filename, metadata=metadata, objects=objects
+        )
 
     @classmethod
     def from_xml(cls, xml_path):
@@ -453,27 +505,13 @@ class VOCObject(object):
     Args:
         name: the object label
         bndbox: a :class:`VOCBoundingBox`
-        pose (None): the pose of the object
-        truncated (None): whether the object is truncated
-        difficult (None): whether the object is difficult
-        occluded (None): whether the object is occluded
+        **attributes: additional custom attributes
     """
 
-    def __init__(
-        self,
-        name,
-        bndbox,
-        pose=None,
-        truncated=None,
-        difficult=None,
-        occluded=None,
-    ):
+    def __init__(self, name, bndbox, **attributes):
         self.name = name
         self.bndbox = bndbox
-        self.pose = pose
-        self.truncated = truncated
-        self.difficult = difficult
-        self.occluded = occluded
+        self.attributes = attributes
 
     @classmethod
     def from_annotation_dict(cls, d):
@@ -487,21 +525,14 @@ class VOCObject(object):
         """
         name = d["name"]
         bndbox = VOCBoundingBox.from_bndbox_dict(d["bndbox"])
-        pose = d.get("pose", None)
-        truncated = d.get("truncated", None)
-        difficult = d.get("difficult", None)
-        occluded = d.get("occluded", None)
-        return cls(
-            name,
-            bndbox,
-            pose=pose,
-            truncated=truncated,
-            difficult=difficult,
-            occluded=occluded,
-        )
+        attributes = {
+            k: _parse_attribute(d[k])
+            for k in set(d.keys()) - {"name", "bndbox"}
+        }
+        return cls(name, bndbox, **attributes)
 
     @classmethod
-    def from_detection(cls, detection, metadata):
+    def from_detection(cls, detection, metadata, extra_attrs=True):
         """Creates a :class:`VOCObject` from a
         :class:`fiftyone.core.labels.Detection`.
 
@@ -509,6 +540,12 @@ class VOCObject(object):
             detection: a :class:`fiftyone.core.labels.Detection`
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` instance
                 for the image
+            extra_attrs (True): whether to include extra object attributes.
+                Supported values are:
+
+                -   ``True``: include all extra attributes found
+                -   ``False``: do not include extra attributes
+                -   a name or list of names of specific attributes to include
 
         Returns:
             a :class:`VOCObject`
@@ -520,59 +557,44 @@ class VOCObject(object):
             detection.bounding_box, frame_size
         )
 
-        pose = detection.get_attribute_value("pose", None)
-        truncated = detection.get_attribute_value("truncated", None)
-        difficult = detection.get_attribute_value("difficult", None)
-        occluded = detection.get_attribute_value("occluded", None)
+        attributes = _get_attributes(detection, extra_attrs)
 
-        return cls(
-            name,
-            bndbox,
-            pose=pose,
-            truncated=truncated,
-            difficult=difficult,
-            occluded=occluded,
-        )
+        return cls(name, bndbox, **attributes)
 
-    def to_detection(self, frame_size):
+    def to_detection(self, frame_size, extra_attrs=True):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
         the object.
 
         Args:
             frame_size: the ``(width, height)`` of the image
+            extra_attrs (True): whether to include extra annotation attributes
+                on the object. Supported values are:
+
+                -   ``True``: include all extra attributes found
+                -   ``False``: do not include extra attributes
+                -   a name or list of names of specific attributes to include
 
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
         label = self.name
         bounding_box = self.bndbox.to_detection_format(frame_size)
-        detection = fol.Detection(label=label, bounding_box=bounding_box)
 
-        if self.pose is not None:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["pose"] = fol.CategoricalAttribute(
-                value=self.pose
-            )
+        if extra_attrs == True:
+            attributes = self.attributes
+        elif extra_attrs == False:
+            attributes = {}
+        else:
+            if etau.is_str(extra_attrs):
+                extra_attrs = [extra_attrs]
 
-        if self.truncated is not None:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["truncated"] = fol.CategoricalAttribute(
-                value=self.truncated
-            )
+            attributes = {
+                name: self.attributes.get(name, None) for name in extra_attrs
+            }
 
-        if self.difficult is not None:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["difficult"] = fol.CategoricalAttribute(
-                value=self.difficult
-            )
-
-        if self.occluded is not None:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["occluded"] = fol.CategoricalAttribute(
-                value=self.occluded
-            )
-
-        return detection
+        return fol.Detection(
+            label=label, bounding_box=bounding_box, **attributes
+        )
 
 
 class VOCBoundingBox(object):
@@ -648,8 +670,7 @@ class VOCBoundingBox(object):
 class VOCAnnotationWriter(object):
     """Class for writing annotations in VOC format.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-export>` for format details.
     """
 
     def __init__(self):
@@ -691,8 +712,7 @@ class VOCAnnotationWriter(object):
 def load_voc_detection_annotations(xml_path):
     """Loads the VOC detection annotations from the given XML file.
 
-    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
-    details.
+    See :ref:`this page <VOCDetectionDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file
@@ -735,3 +755,41 @@ def _ensure_list(value):
         return value
 
     return [value]
+
+
+def _get_attributes(label, extra_attrs):
+    if extra_attrs == True:
+        return dict(label.iter_attributes())
+
+    if extra_attrs == False:
+        return {}
+
+    if etau.is_str(extra_attrs):
+        extra_attrs = [extra_attrs]
+
+    return {
+        name: label.get_attribute_value(name, None) for name in extra_attrs
+    }
+
+
+def _parse_attribute(value):
+    try:
+        return int(value)
+    except:
+        pass
+
+    try:
+        return float(value)
+    except:
+        pass
+
+    if value in {"True", "true"}:
+        return True
+
+    if value in {"False", "false"}:
+        return False
+
+    if value == "None":
+        return None
+
+    return value

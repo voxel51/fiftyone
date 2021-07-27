@@ -3,8 +3,8 @@
     <version>1.1</version>
     <meta>
         <task>
-            <id>{{ id }}</id>
-            <name>{{ name }}</name>
+            <id>{{ id if id is not none else "" }}</id>
+            <name>{{ name if name is not none else "" }}</name>
             <size>{{ size }}</size>
             <mode>annotation</mode>
             <overlap></overlap>
@@ -29,7 +29,7 @@
             </labels>
             <segments>
                     <segment>
-                        <id>{{ id }}</id>
+                        <id>{{ id if id is not none else "" }}</id>
                         <start>{{ 0 }}</start>
                         <stop>{{ [size - 1, 0]|max }}</stop>
                         <url></url>

@@ -233,6 +233,8 @@ session by either manually configuring port forwarding or via the FiftyOne CLI:
     and run multiple remote sessions
     :ref:`from one machine <faq-serve-multiple-remote-sessions>`.
 
+.. _app-fields-sidebar:
+
 Fields
 ______
 
@@ -241,17 +243,6 @@ by toggling the corresponding display options on the lefthand side of the App.
 
 .. image:: /images/app/app-fields.gif
     :alt: app-fields
-    :align: center
-
-Viewing a sample
-________________
-
-Click a sample to open an expanded view of the sample. This modal also
-contains information about the fields of the |Sample| and allows you to access
-the raw JSON description of the sample.
-
-.. image:: /images/app/app-expanded.gif
-    :alt: app-expanded
     :align: center
 
 .. _app-filtering:
@@ -295,6 +286,19 @@ the App.
 
 .. image:: /images/app/app-views2.gif
     :alt: app-views2
+    :align: center
+
+.. _app-sample-view:
+
+Viewing a sample
+________________
+
+Click a sample to open an expanded view of the sample. This modal also
+contains information about the fields of the |Sample| and allows you to access
+the raw JSON description of the sample.
+
+.. image:: /images/app/app-expanded.gif
+    :alt: app-expanded
     :align: center
 
 .. _app-stats-tabs:

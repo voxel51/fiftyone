@@ -10,7 +10,6 @@ import csv
 import logging
 import os
 
-import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -27,8 +26,7 @@ class KITTIDetectionDatasetImporter(
 ):
     """Importer for KITTI detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
-    details.
+    See :ref:`this page <KITTIDetectionDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -60,6 +58,12 @@ class KITTIDetectionDatasetImporter(
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with label entries (False)
+        extra_attrs (True): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
+            -   a name or list of names of specific attributes to load
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -73,6 +77,7 @@ class KITTIDetectionDatasetImporter(
         data_path=None,
         labels_path=None,
         include_all_data=False,
+        extra_attrs=True,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -97,6 +102,7 @@ class KITTIDetectionDatasetImporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.include_all_data = include_all_data
+        self.extra_attrs = extra_attrs
 
         self._image_paths_map = None
         self._labels_paths_map = None
@@ -126,7 +132,7 @@ class KITTIDetectionDatasetImporter(
             # Labeled image
             frame_size = (image_metadata.width, image_metadata.height)
             detections = load_kitti_detection_annotations(
-                labels_path, frame_size
+                labels_path, frame_size, extra_attrs=self.extra_attrs
             )
         else:
             # Unlabeled image
@@ -148,13 +154,13 @@ class KITTIDetectionDatasetImporter(
 
     def setup(self):
         self._image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True
+            self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
             self._labels_paths_map = {
-                os.path.splitext(os.path.basename(p))[0]: p
-                for p in etau.list_files(self.labels_path, abs_paths=True)
+                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
+                for p in etau.list_files(self.labels_path, recursive=True)
             }
         else:
             self._labels_paths_map = {}
@@ -178,8 +184,7 @@ class KITTIDetectionDatasetExporter(
 ):
     """Exporter that writes KITTI detection datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
-    details.
+    See :ref:`this page <KITTIDetectionDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -283,7 +288,7 @@ class KITTIDetectionDatasetExporter(
         etau.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        out_image_path, uuid = self._media_exporter.export(image_or_path)
+        _, uuid = self._media_exporter.export(image_or_path)
 
         if detections is None:
             return
@@ -291,7 +296,7 @@ class KITTIDetectionDatasetExporter(
         out_anno_path = os.path.join(self.labels_path, uuid + ".txt")
 
         if metadata is None:
-            metadata = fom.ImageMetadata.build_for(out_image_path)
+            metadata = fom.ImageMetadata.build_for(image_or_path)
 
         self._writer.write(detections, metadata, out_anno_path)
 
@@ -302,8 +307,7 @@ class KITTIDetectionDatasetExporter(
 class KITTIAnnotationWriter(object):
     """Class for writing annotations in KITTI detection format.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for more
-    format details.
+    See :ref:`this page <KITTIDetectionDataset-export>` for format details.
     """
 
     def write(self, detections, metadata, txt_path):
@@ -324,25 +328,47 @@ class KITTIAnnotationWriter(object):
         etau.write_file("\n".join(rows), txt_path)
 
 
-def load_kitti_detection_annotations(txt_path, frame_size):
+def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=True):
     """Loads the KITTI detection annotations from the given TXT file.
 
-    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
-    details.
+    See :ref:`this page <KITTIDetectionDataset-import>` for format details.
 
     Args:
         txt_path: the path to the annotations TXT file
         frame_size: the ``(width, height)`` of the image
+        extra_attrs (True): whether to load extra annotation attributes onto
+            the imported labels. Supported values are:
+
+            -   ``True``: load all extra attributes found
+            -   ``False``: do not load extra attributes
+            -   a name or list of names of specific attributes to load
 
     Returns:
         a :class:`fiftyone.core.detections.Detections` instance
     """
+    if extra_attrs == True:
+        extra_attrs = {
+            "truncated",
+            "occluded",
+            "alpha",
+            "dimensions",
+            "location",
+            "rotation_y",
+        }
+    elif extra_attrs == False:
+        extra_attrs = set()
+    elif etau.is_str(extra_attrs):
+        extra_attrs = {extra_attrs}
+    else:
+        extra_attrs = set(extra_attrs)
+
     detections = []
     with open(txt_path) as f:
         reader = csv.reader(f, delimiter=" ")
         for row in reader:
-            detection = _parse_kitti_detection_row(row, frame_size)
-            detections.append(detection)
+            detections.append(
+                _parse_kitti_detection_row(row, frame_size, extra_attrs)
+            )
 
     return fol.Detections(detections=detections)
 
@@ -368,9 +394,7 @@ def download_kitti_detection_dataset(
 ):
     """Downloads the KITTI object detection dataset from the web.
 
-    The dataset will be organized on disk in
-    :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` format as
-    follows::
+    The dataset will be organized on disk in as follows::
 
         dataset_dir/
             train/
@@ -426,14 +450,19 @@ def download_kitti_detection_dataset(
     etau.delete_dir(scratch_dir)
 
 
-def _parse_kitti_detection_row(row, frame_size):
-    attributes = {}
-
+def _parse_kitti_detection_row(row, frame_size, extra_attrs):
     label = row[0]
 
-    attributes["truncated"] = fol.NumericAttribute(value=float(row[1]))
-    attributes["occluded"] = fol.NumericAttribute(value=int(row[2]))
-    attributes["alpha"] = fol.NumericAttribute(value=float(row[3]))
+    attributes = {}
+
+    if "truncated" in extra_attrs:
+        attributes["truncated"] = float(row[1])
+
+    if "occluded" in extra_attrs:
+        attributes["occluded"] = int(row[2])
+
+    if "alpha" in extra_attrs:
+        attributes["alpha"] = float(row[3])
 
     width, height = frame_size
     xtl, ytl, xbr, ybr = tuple(map(float, row[4:8]))
@@ -444,24 +473,23 @@ def _parse_kitti_detection_row(row, frame_size):
         (ybr - ytl) / height,
     ]
 
-    try:
-        attributes["dimensions"] = fol.ListAttribute(
-            value=list(map(float, row[8:11]))
-        )
-    except IndexError:
-        pass
+    if "dimensions" in extra_attrs:
+        try:
+            attributes["dimensions"] = list(map(float, row[8:11]))
+        except IndexError:
+            pass
 
-    try:
-        attributes["location"] = fol.ListAttribute(
-            value=list(map(float, row[11:14]))
-        )
-    except IndexError:
-        pass
+    if "location" in extra_attrs:
+        try:
+            attributes["location"] = list(map(float, row[11:14]))
+        except IndexError:
+            pass
 
-    try:
-        attributes["rotation_y"] = fol.NumericAttribute(value=float(row[14]))
-    except IndexError:
-        pass
+    if "rotation_y" in extra_attrs:
+        try:
+            attributes["rotation_y"] = float(row[14])
+        except IndexError:
+            pass
 
     try:
         confidence = float(row[15])
@@ -472,7 +500,7 @@ def _parse_kitti_detection_row(row, frame_size):
         label=label,
         bounding_box=bounding_box,
         confidence=confidence,
-        attributes=attributes,
+        **attributes,
     )
 
 

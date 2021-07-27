@@ -235,8 +235,8 @@ class SampleDocument(SerializableDocument):
 
 
 class MongoEngineBaseDocument(SerializableDocument):
-    """Mixin for all ``mongoengine.base.BaseDocument`` subclasses that
-    implements the :class:`SerializableDocument` interface.
+    """Mixin for all :class:`mongoengine:mongoengine.base.BaseDocument`
+    subclasses that implements the :class:`SerializableDocument` interface.
     """
 
     def __delattr__(self, field_name):
