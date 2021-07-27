@@ -89,7 +89,7 @@ const flashlightLookerOptions = selector({
       colorByLabel: get(atoms.colorByLabel(false)),
       colorMap: get(selectors.colorMap(false)),
       filter: get(labelFilters(false)),
-      activeLabels: get(activeFields),
+      activePaths: get(activeFields),
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
@@ -253,7 +253,6 @@ const useThumbnailClick = (
           : selected.add(sampleId);
       }
 
-      alert("E");
       set(atoms.selectedSamples, selected);
       socket.send(
         packageMessage("set_selection", { _ids: Array.from(selected) })

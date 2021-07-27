@@ -4,17 +4,16 @@
 
 import { Overlay } from "./overlays/base";
 
-export interface BaseSample {
+export interface Sample {
   metadata: {
     width: number;
     height: number;
   };
   _id: string;
   _media_type: "image" | "image";
-}
-
-export interface Sample extends BaseSample {
   filepath: string;
+  tags: string[];
+  _label_tags: string[];
 }
 
 export interface LabelData {
@@ -49,7 +48,7 @@ export interface ControlMap<State extends BaseState> {
 }
 
 interface BaseOptions {
-  activeLabels: string[];
+  activePaths: string[];
   colorByLabel: boolean;
   filter: {
     [key: string]: (label: { label?: string; confidence?: number }) => boolean;
@@ -209,7 +208,7 @@ export type StateUpdate<State extends BaseState> = (
 ) => void;
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
-  activeLabels: [],
+  activePaths: [],
   colorByLabel: false,
   selectedLabels: [],
   showConfidence: false,
@@ -256,7 +255,7 @@ export interface FrameSample {
   frame_number: number;
 }
 
-export interface VideoSample extends BaseSample {
+export interface VideoSample extends Sample {
   frames: [FrameSample];
 }
 

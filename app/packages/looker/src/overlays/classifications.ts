@@ -157,7 +157,7 @@ export default class ClassificationsOverlay<State extends BaseState>
 
     if (sort) {
       const store = Object.fromEntries(
-        state.options.activeLabels.map<[string, ClassificationLabel[]]>((a) => [
+        state.options.activePaths.map<[string, ClassificationLabel[]]>((a) => [
           a,
           [],
         ])
@@ -165,7 +165,7 @@ export default class ClassificationsOverlay<State extends BaseState>
       result.forEach(([field, label]) => {
         store[field].push(label);
       });
-      result = state.options.activeLabels.reduce<
+      result = state.options.activePaths.reduce<
         [string, ClassificationLabel][]
       >((acc, field) => {
         return [

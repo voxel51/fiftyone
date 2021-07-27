@@ -41,15 +41,14 @@ import {
   DEFAULT_VIDEO_OPTIONS,
   Coordinates,
   Optional,
-  BaseSample,
   FrameChunkResponse,
   VideoSample,
   FrameSample,
   Buffers,
   LabelData,
   BufferRange,
-  BoundingBox,
   Dimensions,
+  Sample,
 } from "./state";
 import {
   addToBuffers,
@@ -71,8 +70,7 @@ const labelsWorker = createWorker();
 
 export abstract class Looker<
   ImageSource extends CanvasImageSource,
-  State extends BaseState = BaseState,
-  Sample extends BaseSample = BaseSample
+  State extends BaseState = BaseState
 > {
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
@@ -176,7 +174,7 @@ export abstract class Looker<
 
       this.dispatchImpliedEvents(this.previousState, this.state);
 
-      this.lookerElement.render(this.state);
+      this.lookerElement.render(this.state, this.sample);
 
       if (this.state.options.showJSON) {
         const pre = this.lookerElement.element.querySelectorAll("pre")[0];
@@ -186,7 +184,7 @@ export abstract class Looker<
       }
       const ctx = this.ctx;
 
-      if (!this.state.loaded) {
+      if (!this.state.loaded || !this.state.overlaysPrepared) {
         return;
       }
 
@@ -319,7 +317,7 @@ export abstract class Looker<
     config: Readonly<State["config"]>
   ): LookerElement<State>;
 
-  protected abstract loadOverlays(sample: BaseSample): void;
+  protected abstract loadOverlays(sample: Sample): void;
 
   protected abstract pluckOverlays(state: State): Overlay<State>[];
 
@@ -455,7 +453,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
   private overlays: Overlay<FrameState>[];
 
   constructor(
-    sample: BaseSample,
+    sample: Sample,
     config: FrameState["config"],
     options: Optional<FrameState["options"]> = {}
   ) {
@@ -505,7 +503,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
     );
   }
 
-  loadOverlays(sample: BaseSample) {
+  loadOverlays(sample: Sample) {
     this.overlays = loadOverlays(sample);
   }
 
@@ -547,7 +545,7 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
   private overlays: Overlay<ImageState>[];
 
   constructor(
-    sample: BaseSample,
+    sample: Sample,
     config: ImageState["config"],
     options: Optional<ImageState["options"]> = {}
   ) {
@@ -597,7 +595,7 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
     );
   }
 
-  loadOverlays(sample: BaseSample) {
+  loadOverlays(sample: Sample) {
     this.overlays = loadOverlays(sample);
   }
 
@@ -787,11 +785,7 @@ const { aquireReader, addFrame } = (() => {
 
 let lookerWithReader: VideoLooker | null = null;
 
-export class VideoLooker extends Looker<
-  HTMLVideoElement,
-  VideoState,
-  VideoSample
-> {
+export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number, force?: boolean) => void;
@@ -1163,7 +1157,7 @@ const toggleZoom = <State extends FrameState | ImageState | VideoState>(
   state.zoomToContent = false;
 };
 
-const filterSample = <S extends BaseSample | FrameSample>(
+const filterSample = <S extends Sample | FrameSample>(
   state: Readonly<BaseState>,
   sample: S,
   fieldsMap: { [key: string]: string },
@@ -1180,7 +1174,7 @@ const filterSample = <S extends BaseSample | FrameSample>(
       sample[field]._cls &&
       FROM_FO.hasOwnProperty(sample[field]._cls)
     ) {
-      if (!state.options.activeLabels.includes(prefix + field)) {
+      if (!state.options.activePaths.includes(prefix + field)) {
         delete sample[field];
         continue;
       }

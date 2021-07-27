@@ -111,7 +111,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   isShown(state: Readonly<State>): boolean {
-    return state.options.activeLabels.includes(this.field);
+    return state.options.activePaths.includes(this.field);
   }
 
   getPoints(): Coordinates[] {

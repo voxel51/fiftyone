@@ -384,7 +384,7 @@ const Looker = ({
   const mimetype = getMimeType(sample);
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
-  const activeLabels = useRecoilValue(labelAtoms.activeModalFields);
+  const activePaths = useRecoilValue(labelAtoms.activeModalFields);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
@@ -403,7 +403,7 @@ const Looker = ({
         thumbnail: false,
       },
       {
-        activeLabels,
+        activePaths,
         ...options,
         hasNext: Boolean(onNext),
         hasPrevious: Boolean(onPrevious),
@@ -412,8 +412,8 @@ const Looker = ({
   });
 
   useEffect(() => {
-    !initialRef.current && looker.updateOptions({ ...options, activeLabels });
-  }, [options, activeLabels]);
+    !initialRef.current && looker.updateOptions({ ...options, activePaths });
+  }, [options, activePaths]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);

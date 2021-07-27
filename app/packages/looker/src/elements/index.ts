@@ -38,6 +38,7 @@ export const getFrameElements: GetElements<FrameState> = (
       {
         node: common.ThumbnailSelectorElement,
       },
+      { node: common.TagsElement },
       {
         node: common.JSONPanelElement,
       },
@@ -101,6 +102,7 @@ export const getImageElements: GetElements<ImageState> = (
       {
         node: common.ThumbnailSelectorElement,
       },
+      { node: common.TagsElement },
       {
         node: common.JSONPanelElement,
       },
@@ -164,6 +166,7 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.ThumbnailSelectorElement,
       },
+      { node: common.TagsElement },
       {
         node: common.JSONPanelElement,
       },

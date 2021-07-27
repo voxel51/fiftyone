@@ -13,4 +13,5 @@ export {
 } from "./actions";
 export { LookerElement } from "./looker";
 export * from "./options";
+export { TagsElement } from "./tags";
 export { ThumbnailSelectorElement } from "./thumbnail";

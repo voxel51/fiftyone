@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, DispatchEvent, StateUpdate } from "../state";
+import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
 
 type ElementEvent<State extends BaseState, E extends Event> = (args: {
   event: E;
@@ -22,7 +22,7 @@ export abstract class BaseElement<
   Element extends HTMLElement = HTMLElement | null
 > {
   children: BaseElement<State>[] = [];
-  readonly element: Element;
+  element: Element;
 
   constructor(
     config: Readonly<State["config"]>,
@@ -57,15 +57,15 @@ export abstract class BaseElement<
     return true;
   }
 
-  render(state: Readonly<State>): Element | null {
-    const self = this.renderSelf(state);
+  render(state: Readonly<State>, sample: Readonly<Sample>): Element | null {
+    const self = this.renderSelf(state, sample);
 
     this.children.forEach((child) => {
       if (!child.isShown(state.config)) {
         return;
       }
 
-      const element = child.render(state);
+      const element = child.render(state, sample);
       if (!element || element.parentNode === this.element) {
         return;
       }
@@ -80,7 +80,10 @@ export abstract class BaseElement<
     dispatchEvent: (eventType: string, details?: any) => void
   ): Element;
 
-  abstract renderSelf(state: Readonly<State>): Element | null;
+  abstract renderSelf(
+    state: Readonly<State>,
+    sample: Readonly<Sample>
+  ): Element | null;
 
   protected getEvents(): Events<State> {
     return {};
