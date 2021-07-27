@@ -61,8 +61,8 @@ You can access specific information about a view in the natural ways:
 .. note::
 
     |DatasetView| does not hold its contents in-memory; it contains a pipeline
-    of operations that define what samples to will be loaded when the contents
-    of the view are accessed.
+    of operations that define what samples will be loaded when the contents of
+    the view are accessed.
 
 Like datasets, you access the samples in a view by iterating over it:
 
@@ -1299,7 +1299,7 @@ of a |DatasetView| using
     high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.3)
     high_conf_dataset = high_conf_view.clone()
 
-Tips & Tricks
+Tips & tricks
 _____________
 
 .. _chaining-views:

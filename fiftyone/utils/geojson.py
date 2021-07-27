@@ -294,8 +294,7 @@ class GeoJSONDatasetImporter(
     """Importer for image or video datasets whose location data and labels are
     stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
-    details.
+    See :ref:`this page <GeoJSONDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -410,11 +409,14 @@ class GeoJSONDatasetImporter(
         fields = {}
         if self.property_parsers:
             for key, value in properties.items():
-                fields[key] = self.property_parsers[key](value)
+                if key in self.property_parsers:
+                    fields[key] = self.property_parsers[key](value)
         else:
             fields.update(properties)
 
-        if self.multi_location:
+        if not feature.get("geometry", None):
+            location = None
+        elif self.multi_location:
             location = fol.GeoLocations.from_geo_json(feature)
         else:
             location = fol.GeoLocation.from_geo_json(feature)
@@ -432,7 +434,9 @@ class GeoJSONDatasetImporter(
         return False
 
     def setup(self):
-        self._media_paths_map = self._load_data_map(self.data_path)
+        self._media_paths_map = self._load_data_map(
+            self.data_path, recursive=True
+        )
 
         features_map = {}
 
@@ -483,8 +487,7 @@ class GeoJSONDatasetExporter(
     """Exporter for image or video datasets whose location data and labels are
     stored in GeoJSON format.
 
-    See :class:`fiftyone.types.dataset_types.GeoJSONDataset` for format
-    details.
+    See :ref:`this page <GeoJSONDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -616,12 +619,9 @@ class GeoJSONDatasetExporter(
                 if value is not None or not self.omit_none_fields:
                     properties[key] = fn(value)
 
-        out_filepath, _ = self._media_exporter.export(sample.filepath)
+        _, uuid = self._media_exporter.export(sample.filepath)
 
-        if self.export_media == False:
-            properties["filename"] = sample.filepath
-        else:
-            properties["filename"] = os.path.basename(out_filepath)
+        properties["filename"] = uuid
 
         location = sample[self.location_field]
         if location is not None:

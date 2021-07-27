@@ -1,5 +1,5 @@
 """
-FiftyOne Zoo models provided by ``torchvision.models``.
+FiftyOne Zoo models provided by :mod:`torchvision:torchvision.models`.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -64,7 +64,7 @@ class TorchvisionImageModelConfig(
 
 
 class TorchvisionImageModel(fout.TorchImageModel):
-    """Wrapper for evaluating a ``torchvision.models`` model on images.
+    """Wrapper for evaluating a :mod:`torchvision:torchvision.models` model on images.
 
     Args:
         config: an :class:`TorchvisionImageModelConfig`
@@ -91,8 +91,8 @@ class TorchvisionImageModel(fout.TorchImageModel):
 def _make_load_state_dict_from_url_monkey_patcher(entrypoint, model_dir):
     """Monkey patches all instances of ``load_state_dict_from_url()`` that are
     reachable from the given ``entrypoint`` function in the
-    ``torchvision.models`` namespace so that models will be loaded from
-    ``model_dir`` and not from the Torch Hub cache directory.
+    :mod:`torchvision:torchvision.models` namespace so that models will be
+    loaded from ``model_dir`` and not from the Torch Hub cache directory.
     """
     entrypoint_module = inspect.getmodule(entrypoint)
     load_state_dict_from_url = entrypoint_module.load_state_dict_from_url

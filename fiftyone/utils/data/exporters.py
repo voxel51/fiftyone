@@ -9,6 +9,7 @@ from collections import defaultdict
 import inspect
 import logging
 import os
+import warnings
 
 from bson import json_util
 import numpy as np
@@ -780,11 +781,12 @@ class MediaExporter(object):
     for populating a directory or manifest of media files.
 
     This class is designed for populating a single, flat directory or manifest
-    of media files, and automatically takes care of things like name clashes.
+    of media files, and automatically takes care of things like name clashes
+    as necessary.
 
     The export strategy used is defined by the ``export_mode`` parameter, and
-    users can restrict the available options via the ``supported_modes``
-    parameter.
+    users of this class can restrict the available options via the
+    ``supported_modes`` parameter.
 
     Args:
         export_mode: the export mode to use. The supported values are:
@@ -806,7 +808,10 @@ class MediaExporter(object):
                 directory in which to export the media
             -   When ``export_mode`` is "manifest", the path to write a JSON
                 file mapping UUIDs to input filepaths
-            -   When ``export_media`` is False, this parameter has no effect
+            -   When ``export_media`` is False, this parameter can optionally
+                be a root directory to strip from each exported image's path to
+                yield a UUID for each image. If no path is provided, only the
+                filename of each image is used for UUID generation
         supported_modes (None): an optional tuple specifying a subset of the
             ``export_mode`` values that are allowed
         default_ext (None): the file extension to use when generating default
@@ -838,6 +843,9 @@ class MediaExporter(object):
                 % export_mode
             )
 
+        if export_path is not None:
+            export_path = os.path.abspath(os.path.expanduser(export_path))
+
         self.export_mode = export_mode
         self.export_path = export_path
         self.supported_modes = supported_modes
@@ -852,11 +860,16 @@ class MediaExporter(object):
         raise NotImplementedError("subclass must implement _write_media()")
 
     def _get_uuid(self, media_path):
-        filename = os.path.basename(media_path)
-        if self.ignore_exts:
-            return os.path.splitext(filename)[0]
+        if self.export_mode == False and self.export_path is not None:
+            media_path = os.path.abspath(media_path)
+            uuid = os.path.relpath(media_path, self.export_path)
+        else:
+            uuid = os.path.basename(media_path)
 
-        return filename
+        if self.ignore_exts:
+            return os.path.splitext(uuid)[0]
+
+        return uuid
 
     def setup(self):
         """Performs necessary setup to begin exporting media.
@@ -868,7 +881,7 @@ class MediaExporter(object):
         manifest_path = None
         manifest = None
 
-        if self.export_mode in {True, False, "move", "symlink"}:
+        if self.export_mode in {True, "move", "symlink"}:
             output_dir = self.export_path
         elif self.export_mode == "manifest":
             manifest_path = self.export_path
@@ -896,8 +909,13 @@ class MediaExporter(object):
         """
         if etau.is_str(media_or_path):
             media_path = media_or_path
-            outpath = self._filename_maker.get_output_path(media_path)
-            uuid = self._get_uuid(outpath)
+
+            if self.export_mode != False:
+                outpath = self._filename_maker.get_output_path(media_path)
+                uuid = self._get_uuid(outpath)
+            else:
+                outpath = None
+                uuid = self._get_uuid(media_path)
 
             if self.export_mode == True:
                 etau.copy_file(media_path, outpath)
@@ -968,8 +986,8 @@ class VideoExporter(MediaExporter):
 class DatasetExporter(object):
     """Base interface for exporting datsets.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
-    for information about implementing/using dataset exporters.
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1078,8 +1096,8 @@ class GenericSampleDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of arbitrary
     :class:`fiftyone.core.sample.Sample` instances.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
-    for information about implementing/using dataset exporters.
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1098,8 +1116,8 @@ class GenericSampleDatasetExporter(DatasetExporter):
 class UnlabeledImageDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of unlabeled image samples.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
-    for information about implementing/using dataset exporters.
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1131,8 +1149,8 @@ class UnlabeledImageDatasetExporter(DatasetExporter):
 class UnlabeledVideoDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of unlabeled video samples.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
-    for information about implementing/using dataset exporters.
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1164,8 +1182,8 @@ class UnlabeledVideoDatasetExporter(DatasetExporter):
 class LabeledImageDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of labeled image samples.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
-    for information about implementing/using dataset exporters.
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1218,8 +1236,8 @@ class LabeledImageDatasetExporter(DatasetExporter):
 class LabeledVideoDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of labeled video samples.
 
-    See `this page <https://voxel51.com/docs/fiftyone/user_guide/export_datasets.html#writing-a-custom-datasetexporter>`_
-    for information about implementing/using dataset exporters.
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1462,8 +1480,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
     """Exporter that writes an entire FiftyOne dataset to disk in a serialized
     JSON format along with its source media.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
-    details.
+    See :ref:`this page <FiftyOneDataset-export>` for format details.
 
     Args:
         export_dir: the directory to write the export
@@ -1622,8 +1639,7 @@ def _export_brain_results(sample_collection, brain_dir):
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     """Exporter that writes a directory of images to disk.
 
-    See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-    details.
+    See :ref:`this page <ImageDirectory-export>` for format details.
 
     The filenames of input image paths will be maintained in the export
     directory, unless a name conflict would occur, in which case an index of
@@ -1678,8 +1694,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
 class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
     """Exporter that writes a directory of videos to disk.
 
-    See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-    details.
+    See :ref:`this page <VideoDirectory-export>` for format details.
 
     The filenames of the input videos will be maintained in the export
     directory, unless a name conflict would occur, in which case an index of
@@ -1732,8 +1747,8 @@ class FiftyOneImageClassificationDatasetExporter(
     """Exporter that writes an image classification dataset to disk in
     FiftyOne's default format.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
-    for format details.
+    See :ref:`this page <FiftyOneImageClassificationDataset-export>` for format
+    details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -1889,8 +1904,8 @@ class FiftyOneImageClassificationDatasetExporter(
 class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image classification directory tree to disk.
 
-    See :class:`fiftyone.types.dataset_types.ImageClassificationDirectoryTree`
-    for format details.
+    See :ref:`this page <ImageClassificationDirectoryTree-export>` for format
+    details.
 
     The filenames of the input images are maintained, unless a name conflict
     would occur, in which case an index of the form ``"-%d" % count`` is
@@ -1991,8 +2006,8 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
 class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
     """Exporter that writes a video classification directory tree to disk.
 
-    See :class:`fiftyone.types.dataset_types.VideoClassificationDirectoryTree`
-    for format details.
+    See :ref:`this page <VideoClassificationDirectoryTree-export>` for format
+    details.
 
     The filenames of the input images are maintained, unless a name conflict
     would occur, in which case an index of the form ``"-%d" % count`` is
@@ -2078,8 +2093,8 @@ class FiftyOneImageDetectionDatasetExporter(
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageDetectionDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageDetectionDataset-export>` for format
+    details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -2237,8 +2252,8 @@ class ImageSegmentationDirectoryExporter(
 ):
     """Exporter that writes an image segmentation dataset to disk.
 
-    See :class:`fiftyone.types.dataset_types.ImageSegmentationDirectory` for
-    format details.
+    See :ref:`this page <ImageSegmentationDirectory-export>` for format
+    details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -2432,8 +2447,8 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes a labeled image dataset to disk with labels stored
     in `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageLabelsDataset-export>` for format
+    details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -2547,8 +2562,8 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     """Exporter that writes a labeled video dataset with labels stored in
     `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneVideoLabelsDataset-export>` for format
+    details.
 
     If the path to a video is provided, the video is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -2645,10 +2660,18 @@ def _parse_classification(classification, labels_map_rev=None):
         return None
 
     label = classification.label
-    if labels_map_rev is not None:
-        label = labels_map_rev[label]
+    if labels_map_rev is None:
+        return label
 
-    return label
+    if label not in labels_map_rev:
+        msg = (
+            "Ignoring classification with label '%s' not in provided classes"
+            % label
+        )
+        warnings.warn(msg)
+        return None
+
+    return labels_map_rev[label]
 
 
 def _parse_detections(detections, labels_map_rev=None):
@@ -2658,7 +2681,16 @@ def _parse_detections(detections, labels_map_rev=None):
     _detections = []
     for detection in detections.detections:
         label = detection.label
+
         if labels_map_rev is not None:
+            if label not in labels_map_rev:
+                msg = (
+                    "Ignoring detection with label '%s' not in provided "
+                    "classes" % label
+                )
+                warnings.warn(msg)
+                continue
+
             label = labels_map_rev[label]
 
         _detection = {
@@ -2668,10 +2700,9 @@ def _parse_detections(detections, labels_map_rev=None):
         if detection.confidence is not None:
             _detection["confidence"] = detection.confidence
 
-        if detection.attributes:
-            _detection["attributes"] = {
-                name: attr.value for name, attr in detection.attributes.items()
-            }
+        attributes = dict(detection.iter_attributes())
+        if attributes:
+            _detection["attributes"] = attributes
 
         _detections.append(_detection)
 

@@ -419,69 +419,58 @@ def export_to_scale(
                 "when exporting labels for video samples"
             )
 
+    # Compute metadata if necessary
+    sample_collection.compute_metadata()
+
     # Export the labels
     labels = {}
-    with fou.ProgressBar() as pb:
-        for sample in pb(sample_collection):
-            # Compute metadata if necessary
-            if sample.metadata is None:
-                if is_video:
-                    metadata = fom.VideoMetadata.build_for(sample.filepath)
-                else:
-                    metadata = fom.ImageMetadata.build_for(sample.filepath)
+    for sample in sample_collection.iter_samples(progress=True):
+        metadata = sample.metadata
 
-                sample.metadata = metadata
-                sample.save()
+        # Get frame size
+        if is_video:
+            frame_size = (metadata.frame_width, metadata.frame_height)
+        else:
+            frame_size = (metadata.width, metadata.height)
 
-            # Get frame size
-            if is_video:
-                frame_size = (
-                    sample.metadata.frame_width,
-                    sample.metadata.frame_height,
+        # Export sample-level labels
+        if label_fields:
+            labels_dict = _get_labels(sample, label_fields)
+            anno_dict = _to_scale_image_labels(labels_dict, frame_size)
+
+        # Export frame-level labels
+        if is_video and frame_label_fields:
+            frames = _get_frame_labels(sample, frame_label_fields)
+            make_events = video_events_dir is not None
+            if video_playback:
+                annotations, events = _to_scale_video_playback_labels(
+                    frames, frame_size, make_events=make_events
                 )
             else:
-                frame_size = (sample.metadata.width, sample.metadata.height)
+                annotations, events = _to_scale_video_annotation_labels(
+                    frames, frame_size, make_events=make_events
+                )
 
-            # Export sample-level labels
-            if label_fields:
-                labels_dict = _get_labels(sample, label_fields)
-                anno_dict = _to_scale_image_labels(labels_dict, frame_size)
+            anno_dict = {}
 
-            # Export frame-level labels
-            if is_video and frame_label_fields:
-                frames = _get_frame_labels(sample, frame_label_fields)
-                make_events = video_events_dir is not None
-                if video_playback:
-                    annotations, events = _to_scale_video_playback_labels(
-                        frames, frame_size, make_events=make_events
-                    )
-                else:
-                    annotations, events = _to_scale_video_annotation_labels(
-                        frames, frame_size, make_events=make_events
-                    )
+            # Write annotations
+            if video_labels_dir:
+                anno_path = os.path.join(video_labels_dir, sample.id + ".json")
+                etas.write_json(annotations, anno_path)
+                anno_dict["annotations"] = {"url": anno_path}
 
-                anno_dict = {}
+            # Write events
+            if video_events_dir:
+                events_path = os.path.join(
+                    video_events_dir, sample.id + ".json"
+                )
+                etas.write_json(events, events_path)
+                anno_dict["events"] = {"url": events_path}
 
-                # Write annotations
-                if video_labels_dir:
-                    anno_path = os.path.join(
-                        video_labels_dir, sample.id + ".json"
-                    )
-                    etas.write_json(annotations, anno_path)
-                    anno_dict["annotations"] = {"url": anno_path}
-
-                # Write events
-                if video_events_dir:
-                    events_path = os.path.join(
-                        video_events_dir, sample.id + ".json"
-                    )
-                    etas.write_json(events, events_path)
-                    anno_dict["events"] = {"url": events_path}
-
-            labels[sample.id] = {
-                "filepath": sample.filepath,
-                "hypothesis": anno_dict,
-            }
+        labels[sample.id] = {
+            "filepath": sample.filepath,
+            "hypothesis": anno_dict,
+        }
 
     etas.write_json(labels, json_path)
 
@@ -742,8 +731,10 @@ def _make_video_box_frame(detection, frame_number, frame_size):
         "width": round(w * width, 1),
         "height": round(h * height, 1),
     }
-    if detection.attributes:
-        frame_dict["attributes"] = _to_attributes(detection.attributes)
+
+    attributes = _get_attributes(detection)
+    if attributes:
+        frame_dict["attributes"] = attributes
 
     return frame_dict
 
@@ -754,17 +745,14 @@ def _to_classification(name, label):
 
 
 # https://docs.scale.com/reference#attributes-overview
-def _to_attributes(attributes):
+def _get_attributes(label):
     attrs = {}
-    for name, attr in attributes.items():
-        if not isinstance(
-            attr, (fol.CategoricalAttribute, fol.NumericAttribute)
-        ):
-            msg = "Ignoring unsupported attribute type '%s'" % attr.__class__
+    for name, value in label.iter_attributes():
+        if etau.is_str(value) or etau.is_numeric(value):
+            attrs[name] = value
+        else:
+            msg = "Ignoring unsupported attribute type '%s'" % type(value)
             warnings.warn(msg)
-            continue
-
-        attrs[name] = attr.value
 
     return attrs
 
@@ -780,8 +768,10 @@ def _to_detections(label, frame_size):
     for detection in detections:
         anno = _make_base_anno("box", detection.label)
         anno.update(_make_bbox(detection.bounding_box, frame_size))
-        if detection.attributes:
-            anno["attributes"] = _to_attributes(detection.attributes)
+
+        attributes = _get_attributes(detection)
+        if attributes:
+            anno["attributes"] = attributes
 
         annos.append(anno)
 
@@ -799,15 +789,11 @@ def _to_polylines(label, frame_size):
     annos = []
     for polyline in polylines:
         type_ = "polygon" if polyline.filled else "line"
-        if polyline.attributes:
-            attributes = _to_attributes(polyline.attributes)
-        else:
-            attributes = None
-
+        attributes = _get_attributes(polyline)
         for points in polyline.points:
             anno = _make_base_anno(type_, polyline.label)
             anno["vertices"] = [_make_point(p, frame_size) for p in points]
-            if attributes is not None:
+            if attributes:
                 anno["attributes"] = attributes
 
             annos.append(anno)
@@ -824,15 +810,11 @@ def _to_points(label, frame_size):
 
     annos = []
     for keypoint in keypoints:
-        if keypoint.attributes:
-            attributes = _to_attributes(keypoint.attributes)
-        else:
-            attributes = None
-
+        attributes = _get_attributes(keypoint)
         for point in keypoint.points:
             anno = _make_base_anno("point", keypoint.label)
             anno.update(_make_point(point, frame_size))
-            if attributes is not None:
+            if attributes:
                 anno["attributes"] = attributes
 
             annos.append(anno)
@@ -1013,13 +995,13 @@ def _parse_video_playback_objects(frames, annotations, metadata):
 
         for frame_dict in video_obj["frames"]:
             frame_number = frame_dict["key"]
-            attributes = _parse_attributes(frame_dict.get("attributes", {}))
+            attributes = frame_dict.get("attributes", {})
             bounding_box = _parse_video_bbox(frame_dict, frame_size)
             detection = fol.Detection(
                 label=label,
                 index=index,
                 bounding_box=bounding_box,
-                attributes=attributes,
+                **attributes,
             )
             detections_map[frame_number].append(detection)
 
@@ -1049,10 +1031,6 @@ def _parse_classifications(attrs):
     return {k: fol.Classification(label=v) for k, v in attrs.items()}
 
 
-def _parse_attributes(attrs):
-    return {k: fol.CategoricalAttribute(value=v) for k, v in attrs.items()}
-
-
 def _parse_objects(anno_dict, frame_size):
     annos = anno_dict.get("annotations", [])
 
@@ -1066,16 +1044,14 @@ def _parse_objects(anno_dict, frame_size):
         type_ = anno["type"]
         label = anno.get("label", None)  # Scale supports unlabeled tasks
 
-        attributes = _parse_attributes(anno.get("attributes", {}))
+        attributes = anno.get("attributes", {})
 
         if type_ == "box":
             # Detection
             bounding_box = _parse_bbox(anno, frame_size)
             detections.append(
                 fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    attributes=attributes,
+                    label=label, bounding_box=bounding_box, **attributes
                 )
             )
         elif type_ == "polygon":
@@ -1087,7 +1063,7 @@ def _parse_objects(anno_dict, frame_size):
                     points=[points],
                     closed=True,
                     filled=True,
-                    attributes=attributes,
+                    **attributes,
                 )
             )
         elif type_ == "line":
@@ -1099,16 +1075,14 @@ def _parse_objects(anno_dict, frame_size):
                     points=[points],
                     closed=True,
                     filled=False,
-                    attributes=attributes,
+                    **attributes,
                 )
             )
         elif type_ == "point":
             # Polyline
             point = _parse_point(anno, frame_size)
             keypoints.append(
-                fol.Keypoint(
-                    label=label, points=[point], attributes=attributes,
-                )
+                fol.Keypoint(label=label, points=[point], **attributes)
             )
         else:
             msg = "Ignoring unsupported label type '%s'" % type_
