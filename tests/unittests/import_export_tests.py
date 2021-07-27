@@ -1416,6 +1416,7 @@ skipwindows = pytest.mark.skipif(
 )
 
 
+@skipwindows
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
         temp_dir = etau.TempDir()
