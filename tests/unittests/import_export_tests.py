@@ -8,7 +8,6 @@ FiftyOne import/export-related unit tests.
 import os
 import random
 import string
-import sys
 import unittest
 
 import numpy as np
@@ -1413,7 +1412,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
 
 @pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="Windows hangs in workflows, fix me"
+    os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
