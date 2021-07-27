@@ -1160,6 +1160,11 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         )
 
 
+skipwindows = pytest.mark.skipif(
+    os.name == "nt", reason="Windows hangs in workflows, fix me"
+)
+
+
 class MultitaskImageDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [
@@ -1673,11 +1678,6 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
             dataset.count("frames.predictions.detections"),
             dataset2.count("frames.detections.detections"),
         )
-
-
-skipwindows = pytest.mark.skipif(
-    os.name == "nt", reason="Windows hangs in workflows, fix me"
-)
 
 
 if __name__ == "__main__":
