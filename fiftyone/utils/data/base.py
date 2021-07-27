@@ -27,10 +27,6 @@ logger = logging.getLogger(__name__)
 def parse_images_dir(dataset_dir, recursive=True):
     """Parses the contents of the given directory of images.
 
-    See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-    details. In particular, note that files with non-image MIME types are
-    omitted.
-
     Args:
         dataset_dir: the dataset directory
         recursive (True): whether to recursively traverse subdirectories
@@ -46,10 +42,6 @@ def parse_images_dir(dataset_dir, recursive=True):
 
 def parse_videos_dir(dataset_dir, recursive=True):
     """Parses the contents of the given directory of videos.
-
-    See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-    details. In particular, note that files with non-video MIME types are
-    omitted.
 
     Args:
         dataset_dir: the dataset directory

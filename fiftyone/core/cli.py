@@ -7,7 +7,6 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
-import distutils
 import json
 import os
 import subprocess
@@ -2672,26 +2671,30 @@ class _ParseKwargsAction(argparse.Action):
         setattr(namespace, self.dest, kwargs)
 
 
-def _parse_kwargs_value(val):
+def _parse_kwargs_value(value):
     try:
-        return bool(distutils.util.strtobool(val))
+        return int(value)
     except:
         pass
 
     try:
-        return int(val)
+        return float(value)
     except:
         pass
 
-    try:
-        return float(val)
-    except:
-        pass
+    if value in {"True", "true"}:
+        return True
 
-    if "," in val:
-        return [_parse_kwargs_value(v) for v in val.split(",")]
+    if value in {"False", "false"}:
+        return False
 
-    return val
+    if value == "None":
+        return None
+
+    if "," in value:
+        return [_parse_kwargs_value(v) for v in value.split(",")]
+
+    return value
 
 
 class _StoreSizeTupleAction(argparse.Action):

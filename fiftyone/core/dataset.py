@@ -9,7 +9,6 @@ from collections import defaultdict
 from copy import deepcopy
 import datetime
 import fnmatch
-import inspect
 import logging
 import numbers
 import os
@@ -43,7 +42,6 @@ import fiftyone.core.stages as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 
 foud = fou.lazy_import("fiftyone.utils.data")
 
@@ -93,9 +91,6 @@ def load_dataset(name):
 
     Returns:
         a :class:`Dataset`
-
-    Raises:
-        ValueError: if no dataset exists with the given name
     """
     return Dataset(name, _create=False)
 
@@ -154,9 +149,6 @@ def delete_dataset(name, verbose=False):
     Args:
         name: the name of the dataset
         verbose (False): whether to log the name of the deleted dataset
-
-    Raises:
-        ValueError: if the dataset is not found
     """
     dataset = load_dataset(name)
     dataset.delete()
@@ -201,8 +193,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
-    See https://voxel51.com/docs/fiftyone/user_guide/basics.html for an
-    overview of working with FiftyOne datasets.
+    See :ref:`this page <using-datasets>` for an overview of working with
+    FiftyOne datasets.
 
     Args:
         name (None): the name of the dataset. By default,
@@ -622,9 +614,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
-
-        Raises:
-            ValueError: if the dataset is empty
         """
         return super().first()
 
@@ -633,9 +622,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
-
-        Raises:
-            ValueError: if the dataset is empty
         """
         try:
             sample_view = self[-1:].first()
@@ -1312,12 +1298,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             the ID of the sample in the dataset
-
-        Raises:
-            ValueError: if ``expand_schema`` is False and a new field is
-                encountered
-            ``mongoengine.errors.ValidationError``: if a sample field has a
-                type that is inconsistent with the dataset schema
         """
         return self._add_samples_batch([sample], expand_schema, validate)[0]
 
@@ -1345,12 +1325,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a list of IDs of the samples in the dataset
-
-        Raises:
-            ValueError: if ``expand_schema`` is False and a new field is
-                encountered
-            ``mongoengine.errors.ValidationError``: if a sample field has a
-                type that is inconsistent with the dataset schema
         """
         if num_samples is None:
             try:
@@ -2203,30 +2177,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        # If the input dataset contains TFRecords, they must be unpacked into a
-        # directory during import
-        if (
-            isinstance(
-                dataset_type,
-                (
-                    fot.TFImageClassificationDataset,
-                    fot.TFObjectDetectionDataset,
-                ),
-            )
-            and "images_dir" not in kwargs
-        ):
-            images_dir = get_default_dataset_dir(self.name)
-            logger.info("Unpacking images to '%s'", images_dir)
-            kwargs["images_dir"] = images_dir
-
         dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,
             data_path=data_path,
             labels_path=labels_path,
+            name=self.name,
             **kwargs,
         )
 
@@ -2397,30 +2353,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
         """
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        # If the input dataset contains TFRecords, they must be unpacked into a
-        # directory during import
-        if (
-            isinstance(
-                dataset_type,
-                (
-                    fot.TFImageClassificationDataset,
-                    fot.TFObjectDetectionDataset,
-                ),
-            )
-            and "images_dir" not in kwargs
-        ):
-            images_dir = get_default_dataset_dir(self.name)
-            logger.info("Unpacking images to '%s'", images_dir)
-            kwargs["images_dir"] = images_dir
-
         dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,
             data_path=data_path,
             labels_path=labels_path,
+            name=self.name,
             **kwargs,
         )
 

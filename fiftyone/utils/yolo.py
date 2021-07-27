@@ -7,6 +7,7 @@ Utilities for working with datasets in YOLO format.
 """
 import logging
 import os
+import warnings
 
 import yaml
 
@@ -24,7 +25,7 @@ class YOLOv4DatasetImporter(
 ):
     """Importer for YOLOv4 datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv4Dataset` for format details.
+    See :ref:`this page <YOLOv4Dataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -103,38 +104,32 @@ class YOLOv4DatasetImporter(
         self.images_path = images_path
         self.objects_path = objects_path
 
-        self._classes = None
         self._info = None
-        self._image_paths_map = None
+        self._classes = None
+        self._filepaths = None
         self._labels_paths_map = None
-        self._uuids = None
-        self._iter_uuids = None
+        self._iter_filepaths = None
         self._num_samples = None
 
     def __iter__(self):
-        self._iter_uuids = iter(self._uuids)
+        self._iter_filepaths = iter(self._filepaths)
         return self
 
     def __len__(self):
         return self._num_samples
 
     def __next__(self):
-        uuid = next(self._iter_uuids)
+        filepath = next(self._iter_filepaths)
 
-        try:
-            image_path = self._image_paths_map[uuid]
-        except KeyError:
-            raise ValueError("No image found for sample '%s'" % uuid)
-
-        labels_path = self._labels_paths_map.get(uuid, None)
+        labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
-            detections = load_yolo_annotations(labels_path, self._classes)
+            label = load_yolo_annotations(labels_path, self._classes)
         else:
             # Unlabeled image
-            detections = None
+            label = None
 
-        return image_path, None, detections
+        return filepath, None, label
 
     @property
     def has_dataset_info(self):
@@ -152,13 +147,12 @@ class YOLOv4DatasetImporter(
         if self.images_path is not None and os.path.exists(self.images_path):
             root_dir = os.path.dirname(self.images_path)
 
-            image_paths_map = {}
+            image_paths = []
             for path in _read_file_lines(self.images_path):
-                uuid = os.path.splitext(os.path.basename(path))[0]
-                if os.path.isabs(path):
-                    image_paths_map[uuid] = path
-                else:
-                    image_paths_map[uuid] = os.path.join(root_dir, path)
+                if not os.path.isabs(path):
+                    path = os.path.join(root_dir, path)
+
+                image_paths.append(path)
         else:
             logger.warning(
                 "Images file '%s' not found. Listing data directory '%s' "
@@ -167,22 +161,19 @@ class YOLOv4DatasetImporter(
                 self.data_path,
             )
 
-            image_paths_map = {
-                os.path.splitext(os.path.basename(path))[0]: path
-                for path in etau.list_files(self.data_path, abs_paths=True)
-                if not path.endswith(".txt")
-            }
-
-        uuids = sorted(image_paths_map.keys())
+            image_paths = [
+                p
+                for p in etau.list_files(
+                    self.data_path, abs_paths=True, recursive=True
+                )
+                if not p.endswith(".txt")
+            ]
 
         labels_paths_map = {}
-        for uuid, image_path in image_paths_map.items():
+        for image_path in image_paths:
             labels_path = os.path.splitext(image_path)[0] + ".txt"
             if os.path.exists(labels_path):
-                labels_paths_map[uuid] = labels_path
-
-        self._image_paths_map = image_paths_map
-        self._labels_paths_map = labels_paths_map
+                labels_paths_map[image_path] = labels_path
 
         if self.objects_path is not None and os.path.exists(self.objects_path):
             classes = _read_file_lines(self.objects_path)
@@ -193,10 +184,11 @@ class YOLOv4DatasetImporter(
         if classes is not None:
             info["classes"] = classes
 
-        self._classes = classes
         self._info = info
-        self._uuids = self._preprocess_list(uuids)
-        self._num_samples = len(self._uuids)
+        self._classes = classes
+        self._filepaths = self._preprocess_list(sorted(image_paths))
+        self._labels_paths_map = labels_paths_map
+        self._num_samples = len(self._filepaths)
 
     def get_dataset_info(self):
         return self._info
@@ -207,7 +199,7 @@ class YOLOv5DatasetImporter(
 ):
     """Importer for YOLOv5 datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv5Dataset` for format details.
+    See :ref:`this page <YOLOv5Dataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -255,38 +247,32 @@ class YOLOv5DatasetImporter(
         self.yaml_path = yaml_path
         self.split = split
 
-        self._classes = None
         self._info = None
-        self._image_paths_map = None
+        self._classes = None
+        self._filepaths = None
         self._labels_paths_map = None
-        self._uuids = None
-        self._iter_uuids = None
+        self._iter_filepaths = None
         self._num_samples = None
 
     def __iter__(self):
-        self._iter_uuids = iter(self._uuids)
+        self._iter_filepaths = iter(self._filepaths)
         return self
 
     def __len__(self):
         return self._num_samples
 
     def __next__(self):
-        uuid = next(self._iter_uuids)
+        filepath = next(self._iter_filepaths)
 
-        try:
-            image_path = self._image_paths_map[uuid]
-        except KeyError:
-            raise ValueError("No image found for sample '%s'" % uuid)
-
-        labels_path = self._labels_paths_map.get(uuid, None)
+        labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
-            detections = load_yolo_annotations(labels_path, self._classes)
+            label = load_yolo_annotations(labels_path, self._classes)
         else:
             # Unlabeled image
-            detections = None
+            label = None
 
-        return image_path, None, detections
+        return filepath, None, label
 
     @property
     def has_dataset_info(self):
@@ -324,31 +310,25 @@ class YOLOv5DatasetImporter(
             image_paths = []
             for data_dir in data_dirs:
                 data_dir = _parse_yolo_v5_data_path(data_dir, self.yaml_path)
-                image_paths.extend(etau.list_files(data_dir, abs_paths=True))
-
-        image_paths_map = {
-            os.path.splitext(os.path.basename(p))[0]: p for p in image_paths
-        }
-
-        uuids = sorted(image_paths_map.keys())
+                image_paths.extend(
+                    etau.list_files(data_dir, abs_paths=True, recursive=True)
+                )
 
         labels_paths_map = {}
-        for uuid, image_path in image_paths_map.items():
+        for image_path in image_paths:
             labels_path = _get_yolo_v5_labels_path(image_path)
             if os.path.exists(labels_path):
-                labels_paths_map[uuid] = labels_path
-
-        self._image_paths_map = image_paths_map
-        self._labels_paths_map = labels_paths_map
+                labels_paths_map[image_path] = labels_path
 
         info = {}
         if classes is not None:
             info["classes"] = classes
 
-        self._classes = classes
         self._info = info
-        self._uuids = self._preprocess_list(uuids)
-        self._num_samples = len(self._uuids)
+        self._classes = classes
+        self._labels_paths_map = labels_paths_map
+        self._filepaths = self._preprocess_list(sorted(image_paths))
+        self._num_samples = len(self._filepaths)
 
     def get_dataset_info(self):
         return self._info
@@ -359,7 +339,7 @@ class YOLOv4DatasetExporter(
 ):
     """Exporter that writes YOLOv4 datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv4Dataset` for format details.
+    See :ref:`this page <YOLOv4Dataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -552,7 +532,7 @@ class YOLOv5DatasetExporter(
 ):
     """Exporter that writes YOLOv5 datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.YOLOv5Dataset` for format details.
+    See :ref:`this page <YOLOv5Dataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -755,12 +735,27 @@ class YOLOAnnotationWriter(object):
             txt_path: the path to write the annotation TXT file
             labels_map_rev: a dictionary mapping class label strings to target
                 integers
-            dynamic_classes (False): whether to dynamically add labels to
-                labels_map_rev
+            dynamic_classes (False): whether to dynamically add new labels to
+                ``labels_map_rev``
         """
         rows = []
         for detection in detections.detections:
-            row = _make_yolo_row(detection, labels_map_rev, dynamic_classes)
+            label = detection.label
+
+            if dynamic_classes and label not in labels_map_rev:
+                target = len(labels_map_rev)
+                labels_map_rev[label] = target
+            elif label not in labels_map_rev:
+                msg = (
+                    "Ignoring detection with label '%s' not in provided "
+                    "classes" % label
+                )
+                warnings.warn(msg)
+                continue
+            else:
+                target = labels_map_rev[label]
+
+            row = _make_yolo_row(detection.bounding_box, target)
             rows.append(row)
 
         _write_file_lines(rows, txt_path)
@@ -836,18 +831,10 @@ def _parse_yolo_row(row, classes):
     return fol.Detection(label=label, bounding_box=bounding_box)
 
 
-def _make_yolo_row(detection, labels_map_rev, dynamic_classes):
-    label = detection.label
-    if dynamic_classes and label not in labels_map_rev:
-        target = len(labels_map_rev)
-        labels_map_rev[label] = target
-    else:
-        target = labels_map_rev[label]
-
-    xtl, ytl, w, h = detection.bounding_box
+def _make_yolo_row(bounding_box, target):
+    xtl, ytl, w, h = bounding_box
     xc = xtl + 0.5 * w
     yc = ytl + 0.5 * h
-
     return "%d %f %f %f %f" % (target, xc, yc, w, h)
 
 

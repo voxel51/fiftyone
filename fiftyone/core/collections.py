@@ -225,9 +225,6 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
-
-        Raises:
-            ValueError: if the collection is empty
         """
         try:
             return next(iter(self))
@@ -240,9 +237,6 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
-
-        Raises:
-            ValueError: if the collection is empty
         """
         return self[-1:].first()
 
@@ -5501,7 +5495,7 @@ class SampleCollection(object):
         # If no dataset exporter was provided, construct one
         if dataset_exporter is None:
             _handle_existing_dirs(
-                export_dir, data_path, labels_path, overwrite
+                export_dir, data_path, labels_path, export_media, overwrite
             )
 
             dataset_exporter, kwargs = foud.build_dataset_exporter(
@@ -5926,10 +5920,6 @@ class SampleCollection(object):
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
-
-        Raises:
-            :class:`fiftyone.core.stages.ViewStageError`: if the stage was not
-                a valid stage for this collection
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
@@ -7072,7 +7062,9 @@ def _get_non_none_value(values):
     return None
 
 
-def _handle_existing_dirs(export_dir, data_path, labels_path, overwrite):
+def _handle_existing_dirs(
+    export_dir, data_path, labels_path, export_media, overwrite
+):
     if export_dir is not None and os.path.isdir(export_dir):
         if overwrite:
             etau.delete_dir(export_dir)
@@ -7083,7 +7075,9 @@ def _handle_existing_dirs(export_dir, data_path, labels_path, overwrite):
                 export_dir,
             )
 
-    if data_path is not None:
+    # When `export_media=False`, `data_path` is used as a relative directory
+    # for filename purposes, not a sink for writing data
+    if data_path is not None and export_media != False:
         if os.path.isabs(data_path) or export_dir is None:
             _data_path = data_path
         else:

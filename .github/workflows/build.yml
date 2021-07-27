@@ -123,10 +123,11 @@ jobs:
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets torch torchvision shapely
+          pip install pytest tensorflow tensorflow-datasets torch torchvision
+          sudo apt install ffmpeg
       - name: Install fiftyone
         run: |
-          pip install scikit-learn scikit-image
+          pip install scikit-learn scikit-image shapely
           pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
           pip install -e .
       - name: Install ETA from source
@@ -145,13 +146,15 @@ jobs:
       - name: Install test dependencies (Windows)
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets shapely
+          pip install pytest tensorflow tensorflow-datasets
           pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Configure fiftyone for tests
         id: test_config
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
+      - name: Setup FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v1
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
       # this workflow

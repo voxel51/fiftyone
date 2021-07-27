@@ -33,7 +33,7 @@ def objects_to_segmentations(
             field to populate
         frame_size (None): the ``(width, height)`` at which to render the
             segmentation masks. If not provided, masks will be rendered to
-                match the resolution of each input image
+            match the resolution of each input image
         mask_targets (None): a dict mapping integer pixel values in
             ``[0, 255]`` to label strings defining which object classes to
             render and which pixel values to use for each class. If omitted,
