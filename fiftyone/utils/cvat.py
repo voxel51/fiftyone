@@ -28,7 +28,8 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
+import fiftyone.core.media as fom
+import fiftyone.core.metadata as fomt
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
@@ -283,7 +284,7 @@ class CVATImageDatasetImporter(
             labels = cvat_image.to_labels()
         else:
             # Unlabeled image
-            image_metadata = fom.ImageMetadata.build_for(image_path)
+            image_metadata = fomt.ImageMetadata.build_for(image_path)
             labels = None
 
         return image_path, image_metadata, labels
@@ -622,7 +623,7 @@ class CVATImageDatasetExporter(
             return  # unlabeled
 
         if metadata is None:
-            metadata = fom.ImageMetadata.build_for(out_image_path)
+            metadata = fomt.ImageMetadata.build_for(out_image_path)
 
         cvat_image = CVATImage.from_labels(labels, metadata)
 
@@ -774,7 +775,7 @@ class CVATVideoDatasetExporter(
             return  # unlabeled
 
         if metadata is None:
-            metadata = fom.VideoMetadata.build_for(out_video_path)
+            metadata = fomt.VideoMetadata.build_for(out_video_path)
 
         name_with_ext = os.path.basename(out_video_path)
         name = os.path.splitext(name_with_ext)[0]
@@ -1055,7 +1056,7 @@ class CVATImage(object):
         Returns:
             a :class:`fiftyone.core.metadata.ImageMetadata`
         """
-        return fom.ImageMetadata(width=self.width, height=self.height)
+        return fomt.ImageMetadata(width=self.width, height=self.height)
 
     def to_labels(self):
         """Returns :class:`fiftyone.core.labels.ImageLabel` representations of
@@ -2620,8 +2621,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         # Note: attribute ids change for every class label
         self._attribute_id_map = {}
 
-        # Mapping of CVAT frame id to FiftyOne Sample UUID, assigned when
+        # Mapping of CVAT frame/task id to FiftyOne Sample UUID, assigned when
         # parsing samples
+        # Frame id is used for image datasets and task id for video datasets
+        # since only one video can be uploaded per task
         # Referenced when downloading annotations
         self._frame_id_map = {}
 
@@ -2729,6 +2732,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def job_url(self, task_id, job_id):
         return "%s/%d" % (self.jobs_url(task_id), job_id)
 
+    def base_task_url(self, task_id):
+        return "%s/tasks/%d" % (self.base_url, task_id)
+
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
@@ -2803,13 +2809,16 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self._field_label_type = None
         is_supported_label = False
         if label_field is not None:
-            if samples.media_type == "image":
-                self._field_type = samples.get_field_schema()[label_field]
+            if label_field.startswith("frames."):
+                formatted_label_field = label_field[len("frames.") :]
             else:
+                formatted_label_field = label_field
+            if samples._is_frame_field(label_field):
                 self._field_type = samples.get_frame_field_schema()[
-                    label_field
+                    formatted_label_field
                 ]
-                label_field = "frames." + label_field
+            else:
+                self._field_type = samples.get_field_schema()[label_field]
             if isinstance(self._field_type, fof.EmbeddedDocumentField):
                 if self._field_type.document_type in _SUPPORTED_LABEL_TYPES:
                     # label_field is a non-primitive Label field
@@ -2831,7 +2840,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             # Note classes can be populated even if label_field is a primitive
             # field in the case we want to support new annotations
             classes = []
-            if is_supported_label:
+            if is_supported_label and label_field is not None:
                 label_path = samples._get_label_field_path(
                     label_field, "label"
                 )[1]
@@ -2885,7 +2894,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         labels = []
         label_names = classes
         if not is_supported_label:
-            label_names = [label_field]
+            if label_field is not None:
+                label_names = [label_field]
+            else:
+                label_names = ["Label"]
         for ln in label_names:
             labels.append({"name": ln, "attributes": attributes})
 
@@ -2898,18 +2910,31 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         # Remap annotations to these ids before uploading
         annot_shapes = self.remap_ids(annot_shapes)
         annot_tags = self.remap_ids(annot_tags)
+        annot_tracks = []
 
         annot_json = {
             "version": 0,
             "tags": annot_tags,
             "shapes": annot_shapes,
-            "tracks": [],
+            "tracks": annot_tracks,
         }
 
-        # Upload annotations
-        resp = self._session.put(
-            self.task_annotation_url(task_id), json=annot_json
-        )
+        len_shapes = 0
+        len_tags = 0
+        len_tracks = 0
+        while (
+            len(annot_shapes) != len_shapes
+            or len(annot_tags) != len_tags
+            or len(annot_tracks) != len_tracks
+        ):
+            # Upload annotations
+            resp = self._session.put(
+                self.task_annotation_url(task_id), json=annot_json
+            )
+            resp_json = resp.json()
+            len_shapes = len(resp_json["shapes"])
+            len_tags = len(resp_json["tags"])
+            len_tracks = len(resp_json["tracks"])
 
         return task_id, job_ids
 
@@ -2929,6 +2954,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         resp_json = response.json()
         shapes = resp_json["shapes"]
         tags = resp_json["tags"]
+        tracks = resp_json["tracks"]
 
         data_resp = self._session.get(self.task_data_meta_url(task_id))
         frames = data_resp.json()["frames"]
@@ -3285,54 +3311,71 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         shapes = []
         for sample in samples:
             metadata = sample.metadata
-            frame_id = len(self._frame_id_map)
-            self._frame_id_map[frame_id] = sample.id
 
-            if label_type == fol.Detections:
-                detections = sample[label_field].detections
-                shapes.extend(
-                    self.create_detection_shapes(
-                        detections, metadata, frame_id
-                    )
-                )
-
-            elif label_type == fol.Detection:
-                detection = sample[label_field]
-                shapes.extend(
-                    self.create_detection_shapes(
-                        [detection], metadata, frame_id
-                    )
-                )
-            elif label_type == fol.Polylines:
-                polylines = sample[label_field].polylines
-                shapes.extend(
-                    self.create_polyline_shapes(polylines, metadata, frame_id)
-                )
-
-            elif label_type == fol.Polyline:
-                polyline = sample[label_field]
-                shapes.extend(
-                    self.create_polyline_shapes([polyline], metadata, frame_id)
-                )
-
-            elif label_type == fol.Keypoints:
-                keypoints = sample[label_field].keypoints
-                shapes.extend(
-                    self.create_keypoint_shapes(keypoints, metadata, frame_id)
-                )
-
+            if samples.media_type == fom.VIDEO:
+                images = sample.frames.values()
+                width = metadata.frame_width
+                height = metadata.frame_height
+                if label_field.startswith("frames."):
+                    label_field = label_field[len("frames.") :]
             else:
-                raise ValueError(
-                    "Label type %s of field %s is not supported"
-                    % (str(label_type), label_field)
-                )
+                images = [sample]
+                width = metadata.width
+                height = metadata.height
+
+            for image in images:
+                frame_id = len(self._frame_id_map)
+                self._frame_id_map[frame_id] = image.id
+
+                if label_type == fol.Detections:
+                    detections = image[label_field].detections
+                    shapes.extend(
+                        self.create_detection_shapes(
+                            detections, width, height, frame_id
+                        )
+                    )
+
+                elif label_type == fol.Detection:
+                    detection = image[label_field]
+                    shapes.extend(
+                        self.create_detection_shapes(
+                            [detection], width, height, frame_id
+                        )
+                    )
+                elif label_type == fol.Polylines:
+                    polylines = image[label_field].polylines
+                    shapes.extend(
+                        self.create_polyline_shapes(
+                            polylines, width, height, frame_id
+                        )
+                    )
+
+                elif label_type == fol.Polyline:
+                    polyline = image[label_field]
+                    shapes.extend(
+                        self.create_polyline_shapes(
+                            [polyline], width, height, frame_id
+                        )
+                    )
+
+                elif label_type == fol.Keypoints:
+                    keypoints = image[label_field].keypoints
+                    shapes.extend(
+                        self.create_keypoint_shapes(
+                            keypoints, width, height, frame_id
+                        )
+                    )
+
+                else:
+                    raise ValueError(
+                        "Label type %s of field %s is not supported"
+                        % (str(label_type), label_field)
+                    )
 
         return shapes
 
-    def create_keypoint_shapes(self, keypoints, metadata, frame_id=0):
+    def create_keypoint_shapes(self, keypoints, width, height, frame_id=0):
         shapes = []
-        width = metadata.width
-        height = metadata.height
         default_fields = [
             "attributes",
             "_id",
@@ -3370,10 +3413,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes
 
-    def create_polyline_shapes(self, polylines, metadata, frame_id=0):
+    def create_polyline_shapes(self, polylines, width, height, frame_id=0):
         shapes = []
-        width = metadata.width
-        height = metadata.height
         default_fields = [
             "attributes",
             "_id",
@@ -3428,10 +3469,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes
 
-    def create_detection_shapes(self, detections, metadata, frame_id=0):
+    def create_detection_shapes(self, detections, width, height, frame_id=0):
         shapes = []
-        width = metadata.width
-        height = metadata.height
         default_fields = [
             "attributes",
             "_id",
@@ -3619,7 +3658,11 @@ def annotate(
     task_id, job_ids = api.upload_samples(samples, label_field=label_field)
     info = CVATAnnotationInfo(label_field, api, task_id, job_ids)
     info.store_label_ids(samples)
-    api.launch_annotator(url=api.base_job_url(task_id, job_ids[0]))
+    if job_ids:
+        annotator_url = api.base_job_url(task_id, job_ids[0])
+    else:
+        annotator_url = api.base_task_url(task_id)
+    api.launch_annotator(url=annotator_url)
     return info
 
 

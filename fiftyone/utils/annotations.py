@@ -397,9 +397,10 @@ class AnnotationInfo(object):
         self.id_map = None
 
     def store_label_ids(self, samples):
-        label_id_path = samples._get_label_field_path(self.label_field, "id")[
-            1
-        ]
-        label_ids = samples.values(label_id_path)
-        sample_ids = samples.values("id")
-        self.id_map = dict(zip(sample_ids, label_ids))
+        if self.label_field is not None:
+            label_id_path = samples._get_label_field_path(
+                self.label_field, "id"
+            )[1]
+            label_ids = samples.values(label_id_path)
+            sample_ids = samples.values("id")
+            self.id_map = dict(zip(sample_ids, label_ids))
