@@ -266,7 +266,7 @@ def _export_split(
     uuids = sorted(images_map.keys())
 
     logger.info("Finalizing split '%s'...", split)
-    exporter = foud.FiftyOneDatasetExporter(split_dir, move_media=False)
+    exporter = foud.FiftyOneDatasetExporter(split_dir)
     pb = fou.ProgressBar()
     with exporter, pb:
         exporter.log_collection(dataset)
