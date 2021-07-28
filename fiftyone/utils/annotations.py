@@ -16,6 +16,7 @@ import eta.core.video as etav
 import fiftyone as fo
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 fouc = fou.lazy_import("fiftyone.utils.cvat")
@@ -311,8 +312,10 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
         logger.warning("No annotations found")
         return
 
+    is_video = True if samples.media_type == fom.VIDEO else False
+
     if type(list(annotations.values())[0]) != dict:
-        # Only setting top-level field, no parsing labels is required
+        # Only setting top-level field, label parsing is not required
         for sample_id, value in annotations.items():
             sample = samples[sample_id]
             sample[label_field] = value
@@ -325,7 +328,11 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
     # Setting a label field, need to parse, add, delete, and merge labels
     annotation_label_ids = []
     for sample in annotations.values():
-        annotation_label_ids.extend(list(sample.keys()))
+        if is_video:
+            for frame in sample.values():
+                annotation_label_ids.extend(list(frame.keys()))
+        else:
+            annotation_label_ids.extend(list(sample.keys()))
 
     sample_ids = list(annotations.keys())
 
@@ -334,7 +341,11 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
 
     prev_label_ids = []
     for ids in info.id_map.values():
-        prev_label_ids.extend(ids)
+        if len(ids) > 0 and type(ids[0]) == list:
+            for frame_ids in ids:
+                prev_label_ids.extend(frame_ids)
+        else:
+            prev_label_ids.extend(ids)
 
     prev_ids = set(prev_label_ids)
     ann_ids = set(annotation_label_ids)
@@ -350,27 +361,40 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
     # Add or merge remaining labels
     annotated_samples = samples._dataset.select(sample_ids)
     for sample in annotated_samples:
-        has_label_list = False
         sample_id = sample.id
-        sample_label = sample[label_field]
-        if isinstance(sample_label, fol._HasLabelList):
-            has_label_list = True
-            list_field = sample_label._LABEL_LIST_FIELD
-            labels = sample_label[list_field]
+        formatted_label_field = label_field
+        if is_video:
+            images = sample.frames.values()
+            if label_field.startswith("frames."):
+                formatted_label_field = label_field[len("frames.") :]
         else:
-            labels = [sample_label]
-        for label in labels:
-            label_id = label.id
-            if label_id in labels_to_merge:
-                annot_label = annotations[sample_id][label_id]
-                for field in annot_label._fields_ordered:
-                    if annot_label[field] != label[field]:
-                        label[field] = annot_label[field]
+            images = [sample]
+        sample_annots = annotations[sample_id]
+        for image in images:
+            if is_video:
+                image_annots = sample_annots[image.id]
+            else:
+                image_annots = sample_annots
+            has_label_list = False
+            image_label = image[formatted_label_field]
+            if isinstance(image_label, fol._HasLabelList):
+                has_label_list = True
+                list_field = image_label._LABEL_LIST_FIELD
+                labels = image_label[list_field]
+            else:
+                labels = [image_label]
+            for label in labels:
+                label_id = label.id
+                if label_id in labels_to_merge:
+                    annot_label = image_annots[label_id]
+                    for field in annot_label._fields_ordered:
+                        if annot_label[field] != label[field]:
+                            label[field] = annot_label[field]
 
-        if has_label_list:
-            for annot_label_id, annot_label in annotations[sample_id].items():
-                if annot_label_id in added_labels:
-                    labels.append(annot_label)
+            if has_label_list:
+                for annot_label_id, annot_label in image_annots.items():
+                    if annot_label_id in added_labels:
+                        labels.append(annot_label)
 
         sample.save()
 
