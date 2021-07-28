@@ -91,6 +91,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     set(filterAtoms.modalFilterStages, get(filterAtoms.filterStages));
     set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
+    console.log("SEED", get(atoms.colorSeed(false)));
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
   },
 });

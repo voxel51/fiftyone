@@ -6,7 +6,7 @@ import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
 import * as selectors from "../recoil/selectors";
-import { gridZoom } from "./Flashlight";
+import { gridZoom, gridZoomRange } from "./Flashlight";
 import { useTheme } from "./../utils/hooks";
 import { Slider } from "./Filters/RangeSlider";
 
@@ -47,6 +47,7 @@ const CountDiv = styled.div`
   border-right-width: 1px;
   margin: 0 0.25rem;
   padding-right: 1rem;
+  font-weight: bold;
 `;
 
 const RightContainer = styled.div`
@@ -90,20 +91,14 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
         <RightContainer>
           {countStr !== null ? (
             <CountDiv>
-              <div>
-                Viewing{" "}
-                <strong>
-                  {countStr}{" "}
-                  {totalCount === 1 ? element.singular : element.plural}
-                </strong>
-              </div>
+              {countStr} {totalCount === 1 ? element.singular : element.plural}
             </CountDiv>
           ) : null}
           <SliderContainer>
             <div style={{ flexGrow: 1 }} title={"Zoom"}>
               <Slider
                 valueAtom={gridZoom}
-                boundsAtom={constSelector([0, 10])}
+                boundsAtom={gridZoomRange}
                 color={theme.brand}
                 showBounds={false}
                 persistValue={false}

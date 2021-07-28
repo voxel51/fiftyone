@@ -244,7 +244,6 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
   ];
 
   const { singular: element } = useRecoilValue(selectors.elementNames);
-  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
   return (
@@ -257,7 +256,7 @@ const SampleTagsCell = ({ modal }: TagsCellProps) => {
       entries={tags
         .filter((t) => count[t])
         .map((name) => {
-          const color = colorByLabel ? theme.brand : colorMap("tags." + name);
+          const color = colorMap("tags." + name);
           return {
             name,
             disabled: false,
@@ -363,7 +362,6 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
     setMatchedTags,
   } = useLabelTags(modal, count);
 
-  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
   return (
@@ -372,9 +370,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
       icon={<LocalOffer />}
       pills={makeClearMatchTags(theme.font, matchedTags, setMatchedTags)}
       entries={tags.map((name) => {
-        const color = colorByLabel
-          ? theme.brand
-          : colorMap("_label_tags." + name);
+        const color = colorMap("_label_tags." + name);
         return {
           canFilter: true,
           name,

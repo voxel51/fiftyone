@@ -4,7 +4,14 @@ import React, {
   useState,
   MutableRefObject,
 } from "react";
-import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  atom,
+  selector,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
@@ -34,6 +41,11 @@ export const gridZoom = atom<number | null>({
   default: selectors.defaultGridZoom,
 });
 
+export const gridZoomRange = atom<[number, number]>({
+  key: "gridZoomRange",
+  default: [0, 10],
+});
+
 const gridRowAspectRatio = selector<number>({
   key: "gridRowAspectRatio",
   get: ({ get }) => {
@@ -41,15 +53,10 @@ const gridRowAspectRatio = selector<number>({
   },
 });
 
-const MARGIN = 3;
-
 export let samples = new Map<string, atoms.SampleData>();
 export let sampleIndices = new Map<number, string>();
 let nextIndex = 0;
-let lookers = new Map<
-  string,
-  WeakRef<FrameLooker | ImageLooker | VideoLooker>
->();
+let lookers = new Map<string, FrameLooker | ImageLooker | VideoLooker>();
 
 const url = (() => {
   let origin = window.location.origin;
@@ -78,7 +85,6 @@ const flashlightOptions = selector<FlashlightOptions>({
   get: ({ get }) => {
     return {
       rowAspectRatioThreshold: get(gridRowAspectRatio),
-      margin: MARGIN,
     };
   },
 });
@@ -94,6 +100,8 @@ const flashlightLookerOptions = selector({
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
+      fieldsMap: get(selectors.scalarsDbMap("sample")),
+      frameFieldsMap: get(selectors.scalarsDbMap("frame")),
     };
   },
 });
@@ -286,8 +294,7 @@ export const useSampleUpdate = () => {
     ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
       updatedSamples.forEach(({ sample }) => {
         samples.set(sample._id, { ...samples.get(sample._id), sample });
-        lookers.has(sample._id) &&
-          lookers.get(sample._id).deref()?.updateSample(sample);
+        lookers.has(sample._id) && lookers.get(sample._id).updateSample(sample);
       });
       set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
       set(selectors.anyTagging, false);
@@ -315,7 +322,11 @@ export default React.memo(() => {
   const selected = useRecoilValue(atoms.selectedSamples);
   const onThumbnailClick = useThumbnailClick(flashlight);
   const onSelect = useSelect();
+  const setGridZoomRange = useSetRecoilState(gridZoomRange);
   useSampleUpdate();
+  const gridZoomRef = useRef<number>();
+  const [gridZoomValue, setGridZoom] = useRecoilState(gridZoom);
+  gridZoomRef.current = gridZoomValue;
 
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached()) {
@@ -340,6 +351,26 @@ export default React.memo(() => {
         initialRequestKey: 1,
         options,
         onItemClick: onThumbnailClick,
+        onResize: (width) => {
+          let min = 7;
+
+          if (width >= 1200) {
+            min = 0;
+          } else if (width >= 1000) {
+            min = 3;
+          } else if (width >= 800) {
+            min = 6;
+          }
+          const newZoom = Math.max(min, gridZoomRef.current);
+          setGridZoom(newZoom);
+          setGridZoomRange([min, 10]);
+          return {
+            rowAspectRatioThreshold: 11 - newZoom,
+          };
+        },
+        onItemResize: (id, dimensions) => {
+          lookers.has(id) && lookers.get(id).resize(dimensions);
+        },
         get: async (page) => {
           const { results, more } = await fetch(
             `${url}page=${page}`
@@ -376,33 +407,28 @@ export default React.memo(() => {
         render: (sampleId, element, dimensions) => {
           const result = samples.get(sampleId);
 
-          let looker, destroyed;
+          if (lookers.has(sampleId)) {
+            return null;
+          }
 
-          lookerGeneratorRef.current(result).then((item) => {
-            looker = item;
+          lookerGeneratorRef.current(result).then((looker) => {
             looker.addEventListener(
               "selectthumbnail",
               ({ detail }: { detail: string }) => onSelect(detail)
             );
 
-            if (!destroyed) {
-              lookers.set(sampleId, new WeakRef(looker));
-              looker.attach(element, dimensions);
-            }
+            lookers.set(sampleId, looker);
+            looker.attach(element, dimensions);
           });
 
-          return () => {
-            looker && looker.destroy();
-            destroyed = true;
-            looker = null;
-          };
+          return null;
         },
       });
       flashlight.current.attach(id);
     } else {
       flashlight.current.updateOptions(options);
       flashlight.current.updateItems((sampleId) => {
-        const looker = lookers.get(sampleId)?.deref();
+        const looker = lookers.get(sampleId);
         looker &&
           looker.updateOptions({
             ...lookerOptions,
@@ -411,7 +437,7 @@ export default React.memo(() => {
           });
       });
     }
-  }, [id, options, lookerOptions, selected]);
+  }, [id, options, lookerOptions, selected, gridZoomRef]);
 
   return <Container id={id}></Container>;
 });

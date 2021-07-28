@@ -20,6 +20,7 @@ interface TagData {
 
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
+  private colorByValue: boolean;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -37,7 +38,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
-    if (arraysAreEqual(activePaths, this.activePaths)) {
+    if (
+      arraysAreEqual(activePaths, this.activePaths) &&
+      this.colorByValue === colorByLabel
+    ) {
       return this.element;
     }
 
@@ -87,7 +91,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             .filter((label) => filter[path](label))
             .map((label) => label.label)
             .map((label) => ({
-              color: colorByLabel ? colorMap(label) : colorMap(path),
+              color: colorMap(colorByLabel ? label : path),
               title: `${path}: ${label}`,
               value: label,
             })),
@@ -99,13 +103,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           elements = [
             ...elements,
             {
-              color: colorMap(value),
+              color: colorMap(colorByLabel ? value : path),
               title: value,
               value: pretty,
             },
           ];
         }
       }
+      this.colorByValue = colorByLabel;
       return elements;
     }, []);
 

@@ -8,14 +8,16 @@ export type Optional<T> = {
 
 export interface Section {
   getTop: () => number;
+  getBottom: () => number;
   getHeight: () => number;
   index: number;
-  set: (margin: number, top: number, width: number) => void;
+  set: (top: number, width: number) => void;
   show: () => void;
   hide: () => void;
   target: HTMLDivElement;
   isShown: () => boolean;
   getItems: () => ItemData[];
+  resizeItems: (resizer: OnItemResize) => void;
 }
 
 export interface ItemData {
@@ -50,8 +52,9 @@ export type Render = (
   dimensions: [number, number]
 ) => (() => void) | void;
 
+export type OnItemResize = (id: string, dimensions: [number, number]) => void;
+
 export interface Options {
-  margin: number;
   rowAspectRatioThreshold: number;
 }
 
@@ -70,12 +73,15 @@ export interface State<K> {
   sections: Section[];
   options: Options;
   activeSection: number;
+  firstSection: number;
   lastSection: number;
   clean: Set<number>;
   updater?: (id: string) => void;
   shownSections: Set<number>;
   onItemClick?: OnItemClick;
+  onItemResize?: OnItemResize;
   onResize?: OnResize;
   nextItemIndex: number;
   itemIndexMap: ItemIndexMap;
+  resized?: Set<number>;
 }

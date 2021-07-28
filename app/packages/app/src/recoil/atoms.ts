@@ -135,14 +135,6 @@ export const sidebarVisible = atom({
   default: true,
 });
 
-export const gridRows = atom({
-  key: "gridRows",
-  default: {
-    rows: [],
-    remainder: [],
-  },
-});
-
 export const viewCounter = atom({
   key: "viewCounter",
   default: 0,

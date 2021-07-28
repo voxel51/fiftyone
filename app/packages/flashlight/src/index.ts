@@ -9,6 +9,7 @@ import {
   ItemData,
   OnItemClick,
   OnResize,
+  OnItemResize,
   Optional,
   Options,
   Render,
@@ -28,6 +29,7 @@ export interface FlashlightConfig<K> {
   options: FlashlightOptions;
   onItemClick?: OnItemClick;
   onResize?: OnResize;
+  onItemResize?: OnItemResize;
 }
 
 export default class Flashlight<K> {
@@ -43,8 +45,6 @@ export default class Flashlight<K> {
     this.config = config;
     this.container.classList.add(flashlight);
     this.state = this.getEmptyState(config);
-    this.setObservers();
-    this.get();
     this.lastScrollTop = 0;
 
     let attached = false;
@@ -52,18 +52,26 @@ export default class Flashlight<K> {
     this.resizeObserver = new ResizeObserver(
       ([
         {
-          contentRect: { width },
+          contentRect: { width, height },
         },
       ]: ResizeObserverEntry[]) => {
+        this.state.containerHeight = height;
         if (!attached) {
+          this.setObservers();
+          this.get();
           attached = true;
           return;
         }
 
-        requestAnimationFrame(() => {
-          this.state.onResize && this.updateOptions(this.state.onResize(width));
+        if (this.state.width === width) {
+          return;
+        }
 
-          this.reposition(width);
+        requestAnimationFrame(() => {
+          this.state.width = width;
+
+          const options = this.state.onResize ? this.state.onResize(width) : {};
+          this.updateOptions(options, true);
         });
       }
     );
@@ -106,7 +114,7 @@ export default class Flashlight<K> {
     this.resizeObserver.observe(element);
   }
 
-  updateOptions(options: Optional<Options>) {
+  updateOptions(options: Optional<Options>, force: boolean = false) {
     const retile = Object.entries(options).some(
       ([k, v]) => this.state.options[k] != v
     );
@@ -116,74 +124,82 @@ export default class Flashlight<K> {
       ...options,
     };
 
-    if (retile) {
-      requestAnimationFrame(() => {
-        this.intersectionObserver && this.intersectionObserver.disconnect();
-        this.setObservers();
-        const newContainer = document.createElement("div");
-        newContainer.classList.add(flashlight);
-        this.container.replaceWith(newContainer);
-        this.container = newContainer;
-        const items = [
-          ...this.state.sections.map((section) => section.getItems()).flat(),
-          ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
-        ];
-        let sections = this.tile(items);
+    if (retile || force) {
+      this.intersectionObserver && this.intersectionObserver.disconnect();
+      this.setObservers();
+      this.state.resized = new Set();
+      const newContainer = document.createElement("div");
+      newContainer.classList.add(flashlight);
+      this.container.replaceWith(newContainer);
+      this.container = newContainer;
+      const items = [
+        ...this.state.sections.map((section) => section.getItems()).flat(),
+        ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
+      ];
+      let sections = this.tile(items);
 
-        const lastSection = sections[sections.length - 1];
-        if (
-          Boolean(this.state.currentRequestKey) &&
-          lastSection.length !== NUM_ROWS_PER_SECTION
-        ) {
-          this.state.currentRowRemainder = lastSection;
-          sections = sections.slice(0, -1);
+      const lastSection = sections[sections.length - 1];
+      if (
+        Boolean(this.state.currentRequestKey) &&
+        lastSection.length !== NUM_ROWS_PER_SECTION
+      ) {
+        this.state.currentRowRemainder = lastSection;
+        sections = sections.slice(0, -1);
 
-          sections.length === 0 && this.get();
-        } else {
-          this.state.currentRowRemainder = [];
-        }
+        sections.length === 0 && this.get();
+      } else {
+        this.state.currentRowRemainder = [];
+      }
 
-        this.state.height = 0;
-        this.state.sections = [];
-        this.state.shownSections = new Set();
-        this.state.clean = new Set();
+      this.state.height = 0;
+      this.state.sections = [];
+      this.state.shownSections = new Set();
+      this.state.clean = new Set();
 
-        sections.forEach((rows) => {
-          const sectionElement = new SectionElement(
-            this.state.sections.length,
-            rows,
-            this.state.render,
-            this.getOnItemClick()
-          );
-          sectionElement.set(
-            this.state.height,
-            this.state.width,
-            this.state.options.margin
-          );
-          this.state.sections.push(sectionElement);
-          this.intersectionObserver.observe(sectionElement.target);
-          newContainer.appendChild(sectionElement.target);
+      const elements = sections.map((rows) => {
+        const sectionElement = new SectionElement(
+          this.state.sections.length,
+          rows,
+          this.state.render,
+          this.getOnItemClick()
+        );
+        sectionElement.set(this.state.height, this.state.width);
+        this.state.sections.push(sectionElement);
+        newContainer.appendChild(sectionElement.target);
 
-          this.state.height += sectionElement.getHeight();
-        });
-
-        newContainer.style.height = `${this.state.height}px`;
+        this.state.height += sectionElement.getHeight();
+        return sectionElement.target;
       });
+      newContainer.style.height = `${this.state.height}px`;
+
+      if (this.state.onItemResize) {
+        let i = this.state.firstSection;
+        while (i <= this.state.lastSection) {
+          this.state.sections[i].resizeItems(this.state.onItemResize);
+          this.state.resized.add(i);
+          i++;
+        }
+      }
+
+      this.container.parentElement.scrollTo(
+        0,
+        this.state.sections[this.state.activeSection].getTop()
+      );
+
+      elements.forEach((e) => this.intersectionObserver.observe(e));
     }
   }
 
   updateItems(updater: (id: string) => void) {
-    requestAnimationFrame(() => {
-      this.state.clean = new Set();
-      this.state.shownSections.forEach((index) => {
-        const section = this.state.sections[index];
-        section
-          .getItems()
-          .map(({ id }) => id)
-          .forEach((id) => updater(id));
-      });
-      this.state.updater = updater;
+    this.state.clean = new Set();
+    this.state.shownSections.forEach((index) => {
+      const section = this.state.sections[index];
+      section
+        .getItems()
+        .map(({ id }) => id)
+        .forEach((id) => updater(id));
     });
+    this.state.updater = updater;
   }
 
   get(): Promise<void> | null {
@@ -219,11 +235,7 @@ export default class Flashlight<K> {
             this.state.render,
             this.getOnItemClick()
           );
-          sectionElement.set(
-            this.state.height,
-            this.state.width,
-            this.state.options.margin
-          );
+          sectionElement.set(this.state.height, this.state.width);
           this.state.sections.push(sectionElement);
           this.intersectionObserver.observe(sectionElement.target);
           this.container.appendChild(sectionElement.target);
@@ -257,6 +269,13 @@ export default class Flashlight<K> {
         return;
       }
 
+      if (this.state.resized && !this.state.resized.has(section.index)) {
+        this.state.onItemResize &&
+          this.state.onItemResize &&
+          section.resizeItems(this.state.onItemResize);
+        this.state.resized.add(section.index);
+      }
+
       if (!this.state.clean.has(section.index)) {
         this.state.updater &&
           section
@@ -280,10 +299,7 @@ export default class Flashlight<K> {
 
     const clearOutsideSections = () => {
       [...this.state.shownSections].forEach((index) => {
-        if (
-          index < this.state.activeSection ||
-          index > this.state.lastSection
-        ) {
+        if (index < this.state.firstSection || index > this.state.lastSection) {
           hideSection(index);
         }
       });
@@ -305,95 +321,112 @@ export default class Flashlight<K> {
 
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
-        requestAnimationFrame(() => {
-          const currentScrollTop = this.container.parentElement.scrollTop;
+        const currentScrollTop = this.container.parentElement.scrollTop;
+        let noop = true;
+        const down = this.lastScrollTop <= currentScrollTop;
 
-          const down = this.lastScrollTop <= currentScrollTop;
-
-          for (const { target, intersectionRatio } of entries) {
-            const section = this.state.sections[
-              parseInt((target as HTMLDivElement).dataset.index, 10)
-            ];
-            if (intersectionRatio) {
-              showSection(section.index);
-              this.state.shownSections.add(section.index);
-            }
-
-            if (down && this.state.shownSections.has(section.index)) {
-              let revealing = section;
-              let revealingIndex = section.index;
-
-              while (
-                revealingIndex > 0 &&
-                revealing.getTop() >= currentScrollTop
-              ) {
-                revealingIndex--;
-                revealing = this.state.sections[revealingIndex];
-              }
-
-              revealingIndex = Math.max(0, revealingIndex - 1);
-              revealing = this.state.sections[revealingIndex];
-
-              this.state.activeSection = revealingIndex;
-
-              do {
-                showSection(revealingIndex);
-                revealingIndex = revealing.index + 1;
-                revealing = this.state.sections[revealingIndex];
-              } while (
-                revealing &&
-                revealing.getTop() <=
-                  currentScrollTop + this.state.containerHeight
-              );
-
-              this.state.lastSection = !revealing
-                ? revealingIndex - 1
-                : revealingIndex;
-              showSection(this.state.lastSection);
-
-              finalize();
-              break;
-            } else if (!down && this.state.shownSections.has(section.index)) {
-              let revealing = section;
-              let revealingIndex = section.index;
-
-              while (
-                revealing.getTop() <=
-                currentScrollTop + this.state.containerHeight
-              ) {
-                revealingIndex++;
-                revealing = this.state.sections[revealingIndex];
-              }
-
-              revealingIndex = Math.min(
-                this.state.sections.length - 1,
-                revealingIndex + 1
-              );
-              revealing = this.state.sections[revealingIndex];
-
-              this.state.lastSection = revealingIndex;
-
-              do {
-                showSection(revealingIndex);
-                revealingIndex = revealing.index - 1;
-                revealing = this.state.sections[revealingIndex];
-              } while (
-                revealing &&
-                revealing.getTop() + revealing.getHeight() >= currentScrollTop
-              );
-
-              this.state.activeSection = !revealing
-                ? revealingIndex + 1
-                : revealingIndex;
-              showSection(this.state.activeSection);
-
-              finalize();
-              break;
+        for (const { target, intersectionRatio } of entries) {
+          let section = this.state.sections[
+            parseInt((target as HTMLDivElement).dataset.index, 10)
+          ];
+          if (intersectionRatio) {
+            showSection(section.index);
+            this.state.shownSections.add(section.index);
+          } else {
+            const prev = this.state.sections[section.index - 1];
+            if (down && prev && prev.getTop() >= currentScrollTop) {
+              section = prev;
             }
           }
 
+          if (down && this.state.shownSections.has(section.index)) {
+            noop = false;
+            let revealing = section;
+            let revealingIndex = section.index;
+
+            while (
+              revealingIndex > 0 &&
+              revealing.getTop() >= currentScrollTop
+            ) {
+              revealingIndex--;
+              revealing = this.state.sections[revealingIndex];
+            }
+
+            revealingIndex = Math.max(0, revealingIndex - 1);
+            revealing = this.state.sections[revealingIndex];
+
+            this.state.firstSection = revealingIndex;
+
+            do {
+              showSection(revealingIndex);
+              revealingIndex = revealing.index + 1;
+              revealing = this.state.sections[revealingIndex];
+            } while (
+              revealing &&
+              revealing.getTop() <=
+                currentScrollTop + this.state.containerHeight
+            );
+
+            this.state.lastSection = !revealing
+              ? revealingIndex - 1
+              : revealingIndex;
+            showSection(this.state.lastSection);
+
+            finalize();
+            break;
+          } else if (!down && this.state.shownSections.has(section.index)) {
+            noop = false;
+            let revealing = section;
+            let revealingIndex = section.index;
+
+            while (
+              revealing.getTop() <=
+              currentScrollTop + this.state.containerHeight
+            ) {
+              revealingIndex++;
+              revealing = this.state.sections[revealingIndex];
+            }
+
+            revealingIndex = Math.min(
+              this.state.sections.length - 1,
+              revealingIndex
+            );
+            revealing = this.state.sections[revealingIndex];
+
+            this.state.lastSection = revealingIndex;
+
+            do {
+              showSection(revealingIndex);
+              revealingIndex = revealing.index - 1;
+              revealing = this.state.sections[revealingIndex];
+            } while (
+              revealing &&
+              revealing.getTop() + revealing.getHeight() >= currentScrollTop
+            );
+
+            this.state.firstSection = !revealing
+              ? revealingIndex + 1
+              : revealingIndex;
+            showSection(this.state.firstSection);
+
+            finalize();
+            break;
+          }
+        }
+
+        if (!noop) {
+          this.state.activeSection = this.state.firstSection;
+          while (
+            this.state.sections[this.state.activeSection].getTop() <=
+            currentScrollTop
+          ) {
+            if (this.state.sections[this.state.activeSection + 1]) {
+              this.state.activeSection += 1;
+            } else break;
+          }
+
           this.lastScrollTop = currentScrollTop;
-        });
+        }
       },
       {
         root: this.container.parentElement,
@@ -427,24 +460,6 @@ export default class Flashlight<K> {
       .map((_) => rows.splice(0, NUM_ROWS_PER_SECTION));
   }
 
-  private reposition(width: number) {
-    const activeSection = this.state.sections[this.state.activeSection];
-    if (width === this.state.width) {
-      return;
-    }
-
-    this.state.width = width;
-    let height = 0;
-    this.state.sections.forEach((section) => {
-      section.set(height, width, this.state.options.margin);
-      height += section.getHeight();
-    });
-
-    this.container.style.height = `${height}px`;
-    activeSection.target.scrollTo();
-    this.lastScrollTop = activeSection.getTop();
-  }
-
   private getEmptyState(config: FlashlightConfig<K>): State<K> {
     return {
       currentRequestKey: config.initialRequestKey,
@@ -457,17 +472,20 @@ export default class Flashlight<K> {
       items: [],
       sections: [],
       activeSection: 0,
+      firstSection: 0,
       lastSection: 0,
       options: {
         rowAspectRatioThreshold: 5,
-        margin: 3,
         ...config.options,
       },
       clean: new Set(),
       shownSections: new Set(),
       onItemClick: config.onItemClick,
+      onItemResize: config.onItemResize,
+      onResize: config.onResize,
       itemIndexMap: {},
       nextItemIndex: 0,
+      resized: null,
     };
   }
 

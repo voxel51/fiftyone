@@ -68,7 +68,7 @@ interface BaseOptions {
   zoomPad: number;
   selected: boolean;
   fieldsMap?: { [key: string]: string };
-  inSelectionMode: false;
+  inSelectionMode: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];

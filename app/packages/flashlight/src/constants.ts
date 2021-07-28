@@ -3,3 +3,4 @@
  */
 
 export const NUM_ROWS_PER_SECTION = 2;
+export const MARGIN = 3;

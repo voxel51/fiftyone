@@ -256,6 +256,12 @@ export abstract class Looker<
     !dimensions && this.resizeObserver.observe(this.lookerElement.element);
   }
 
+  resize(dimensions: Dimensions): void {
+    this.updater({
+      windowBBox: [0, 0, ...dimensions],
+    });
+  }
+
   detach(): void {
     this.resizeObserver.unobserve(this.lookerElement.element);
     this.lookerElement.element.parentNode &&

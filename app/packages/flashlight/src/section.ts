@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { ItemData, onItemClick, Render, RowData, Section } from "./state";
+import { MARGIN } from "./constants";
+import { ItemData, OnItemResize, Render, RowData, Section } from "./state";
 
 import {
   flashlightSection,
@@ -13,7 +14,6 @@ export default class SectionElement implements Section {
   private attached: boolean = false;
   private top: number;
   private width: number;
-  private margin: number;
   private height: number;
   readonly index: number;
   private readonly container: HTMLDivElement = document.createElement("div");
@@ -23,7 +23,7 @@ export default class SectionElement implements Section {
     [HTMLDivElement, ItemData][]
   ][];
   private readonly render: Render;
-  private destoryCallbacks: { [id: string]: ReturnType<Render> };
+  private hideCallbacks: { [id: string]: ReturnType<Render> };
 
   constructor(
     index: number,
@@ -35,7 +35,7 @@ export default class SectionElement implements Section {
     this.container.classList.add(flashlightSectionContainer);
     this.container.dataset.index = String(index);
     this.render = render;
-    this.destoryCallbacks = {};
+    this.hideCallbacks = {};
 
     this.section.classList.add(flashlightSection);
     this.rows = rows.map(({ aspectRatio, extraMargins, items }) => {
@@ -59,21 +59,20 @@ export default class SectionElement implements Section {
     return this.rows.map(([_, row]) => row.map(([_, data]) => data)).flat();
   }
 
-  set(top: number, width: number, margin: number) {
+  set(top: number, width: number) {
     if (this.top !== top) {
       this.container.style.top = `${top}px`;
 
       this.top = top;
     }
 
-    const layout = this.width !== width || this.margin !== margin;
-    if (layout) {
+    if (this.width !== width) {
       let localTop = 0;
       this.rows.forEach(
         ([{ extraMargins, aspectRatio: rowAspectRatio }, items]) => {
           extraMargins = extraMargins ? extraMargins : 0;
           const height =
-            (width - (items.length - 1 + extraMargins) * margin) /
+            (width - (items.length - 1 + extraMargins) * MARGIN) /
             rowAspectRatio;
           let left = 0;
           items.forEach(([item, { aspectRatio }]) => {
@@ -83,10 +82,10 @@ export default class SectionElement implements Section {
             item.style.left = `${left}px`;
             item.style.top = `${localTop}px`;
 
-            left += itemWidth + margin;
+            left += itemWidth + MARGIN;
           });
 
-          localTop += height + margin;
+          localTop += height + MARGIN;
         }
       );
 
@@ -94,10 +93,8 @@ export default class SectionElement implements Section {
         this.container.style.height = `${localTop}px`;
       }
 
-      this.margin = margin;
       this.width = width;
       this.height = localTop;
-      this.margin = margin;
     }
   }
 
@@ -108,6 +105,11 @@ export default class SectionElement implements Section {
   getHeight() {
     return this.height;
   }
+
+  getBottom() {
+    return this.top + this.height;
+  }
+
   getTop() {
     return this.top;
   }
@@ -116,10 +118,7 @@ export default class SectionElement implements Section {
     if (this.attached) {
       this.container.removeChild(this.section);
       this.attached = false;
-      Object.values(this.destoryCallbacks).forEach(
-        (callback) => callback && callback()
-      );
-      this.destoryCallbacks = {};
+      this.hideCallbacks = {};
     }
   }
 
@@ -133,12 +132,12 @@ export default class SectionElement implements Section {
         ([{ aspectRatio: rowAspectRatio, extraMargins }, items]) => {
           !extraMargins && (extraMargins = 0);
           const height =
-            (this.width - (items.length - 1 + extraMargins) * this.margin) /
+            (this.width - (items.length - 1 + extraMargins) * MARGIN) /
             rowAspectRatio;
           items.forEach(([item, { id, aspectRatio }]) => {
             const width = height * aspectRatio;
 
-            this.destoryCallbacks[id] = this.render(id, item, [width, height]);
+            this.render(id, item, [width, height]);
           });
         }
       );
@@ -146,5 +145,21 @@ export default class SectionElement implements Section {
       this.container.appendChild(this.section);
       this.attached = true;
     }
+  }
+
+  resizeItems(resizer: OnItemResize) {
+    this.rows.forEach(
+      ([{ extraMargins, aspectRatio: rowAspectRatio }, items]) => {
+        extraMargins = extraMargins ? extraMargins : 0;
+        const height =
+          (this.width - (items.length - 1 + extraMargins) * MARGIN) /
+          rowAspectRatio;
+        items.forEach(([_, { aspectRatio, id }]) => {
+          const itemWidth = height * aspectRatio;
+
+          resizer(id, [itemWidth, height]);
+        });
+      }
+    );
   }
 }

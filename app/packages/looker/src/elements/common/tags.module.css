@@ -41,4 +41,7 @@
   white-space: nowrap;
   pointer-events: auto;
   max-width: calc(100% - 32px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
