@@ -106,11 +106,6 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export const isSelectedSample = atomFamily<boolean, string>({
-  key: "isSelectedSample",
-  default: false,
-});
-
 export interface SelectedLabelData {
   sample_id: string;
   field: string;

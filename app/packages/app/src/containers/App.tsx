@@ -1,5 +1,5 @@
 import React, { useState, useRef, Suspense } from "react";
-import { useRecoilValue, useRecoilCallback } from "recoil";
+import { useRecoilCallback } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 
@@ -25,15 +25,8 @@ import { useClearModal } from "../recoil/utils";
 
 const useStateUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set, reset }) => async ({ state }) => {
+    ({ snapshot, set }) => async ({ state }) => {
       const newSamples = new Set<string>(state.selected);
-      const oldSamples = await snapshot.getPromise(atoms.selectedSamples);
-      oldSamples.forEach(
-        (s) => !newSamples.has(s) && reset(atoms.isSelectedSample(s))
-      );
-      newSamples.forEach(
-        (s) => !oldSamples.has(s) && set(atoms.isSelectedSample(s), true)
-      );
       const counter = await snapshot.getPromise(atoms.viewCounter);
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
@@ -43,6 +36,7 @@ const useStateUpdate = () => {
       set(patching, false);
       set(similaritySorting, false);
       set(savingFilters, false);
+
       const colorPool = await snapshot.getPromise(atoms.colorPool);
       if (
         JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)

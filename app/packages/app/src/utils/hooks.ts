@@ -121,20 +121,6 @@ export const useFollow = (leaderRef, followerRef, set) => {
   useObserve(followerRef ? followerRef.current : null, follow);
 };
 
-export const useSampleUpdate = () => {
-  const handler = useRecoilCallback(
-    ({ set, snapshot }) => async ({ samples }) => {
-      samples.forEach(({ sample }) => {
-        set(atoms.sample(sample._id), sample);
-      });
-      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
-      set(selectors.anyTagging, false);
-    },
-    []
-  );
-  useMessageHandler("samples_update", handler);
-};
-
 export const useWindowSize = () => {
   const [windowSize, setWindowSize] = useState({
     width: 0,

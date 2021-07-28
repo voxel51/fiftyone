@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import React, { useEffect, useRef } from "react";
+import { useRecoilCallback, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
@@ -10,14 +10,14 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import {
   useOutsideClick,
-  useSendMessage,
   useScreenshot,
-  useSampleUpdate,
   useGA,
   useTheme,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 import { useClearModal } from "../recoil/utils";
+import { filterView } from "../utils/view";
+import { activeFields } from "../components/Filters/utils";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Scalars"];
 
@@ -36,7 +36,21 @@ const Body = styled.div`
   overflow: hidden;
 `;
 
+const useResetPaths = () => {
+  const dataset = useRecoilValue(selectors.datasetName);
+  const fieldPaths = useRecoilValue(selectors.fieldPaths);
+  const resetPaths = useResetRecoilState(activeFields);
+  useEffect(() => {
+    resetPaths();
+  }, [dataset]);
+
+  useEffect(() => {
+    console.log(fieldPaths);
+  }, [fieldPaths]);
+};
+
 function Dataset() {
+  const ref = useRef();
   const isModalActive = useRecoilValue(selectors.isModalActive);
   const theme = useTheme();
 
@@ -44,17 +58,18 @@ function Dataset() {
     ? { background: theme.backgroundDark }
     : {};
   const hasDataset = useRecoilValue(selectors.hasDataset);
-  const clearModal = useClearModal();
+
   useGA();
-  useSampleUpdate();
   useScreenshot();
+  useResetPaths();
+
+  const clearModal = useClearModal();
+  useOutsideClick(ref, clearModal);
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);
   }, [isModalActive]);
-  const ref = useRef();
 
-  useOutsideClick(ref, clearModal);
   return (
     <>
       {isModalActive ? (

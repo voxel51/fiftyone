@@ -277,9 +277,6 @@ export const filterStages = selector<object>({
       ...get(atoms.stateDescription),
       filters,
     };
-    state.selected.forEach((id) => {
-      set(atoms.isSelectedSample(id), false);
-    });
     state.selected = [];
     set(atoms.selectedSamples, new Set());
     socket.send(packageMessage("filters_update", { filters }));

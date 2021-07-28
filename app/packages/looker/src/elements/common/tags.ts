@@ -2,7 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { LABEL_LISTS } from "../../constants";
+import {
+  CLASSIFICATIONS,
+  LABEL_LISTS,
+  LABEL_TAGS_CLASSES,
+} from "../../constants";
 import { BaseState, Sample } from "../../state";
 import { BaseElement } from "../base";
 
@@ -28,7 +32,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   }
 
   renderSelf(
-    { options: { filter, activePaths, colorMap } }: Readonly<State>,
+    {
+      options: { filter, activePaths, colorMap, colorByLabel, fieldsMap },
+    }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
     if (arraysAreEqual(activePaths, this.activePaths)) {
@@ -64,10 +70,40 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             },
           ];
         }
-      } else if (sample[path] && sample[path]._cls) {
+      } else if (
+        sample[path] &&
+        LABEL_TAGS_CLASSES.includes(sample[path]._cls)
+      ) {
         const cls = sample[path]._cls;
 
-        if (cls in LABEL_LISTS) {
+        const labels =
+          cls === CLASSIFICATIONS
+            ? sample[path][LABEL_LISTS[cls]]
+            : [sample[path]];
+
+        elements = [
+          ...elements,
+          ...labels
+            .filter((label) => filter[path](label))
+            .map((label) => label.label)
+            .map((label) => ({
+              color: colorByLabel ? colorMap(label) : colorMap(path),
+              title: `${path}: ${label}`,
+              value: label,
+            })),
+        ];
+      } else if (fieldsMap && sample[fieldsMap[path] || path]) {
+        const value = sample[fieldsMap[path] || path];
+        if (["boolean", "number", "string"].includes(typeof value)) {
+          const pretty = prettify(value);
+          elements = [
+            ...elements,
+            {
+              color: colorMap(value),
+              title: value,
+              value: pretty,
+            },
+          ];
         }
       }
       return elements;
@@ -90,7 +126,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   }
 }
 
-const arraysAreEqual = (a, b) => {
+const arraysAreEqual = (a: any[], b: any[]): boolean => {
   if (a === b) return true;
   if (a == null || b == null) return false;
   if (a.length !== b.length) return false;
@@ -99,4 +135,19 @@ const arraysAreEqual = (a, b) => {
     if (a[i] !== b[i]) return false;
   }
   return true;
+};
+
+const prettify = (v: boolean | string | null | undefined | number): string => {
+  if (typeof v === "string") {
+    return v;
+  } else if (typeof v === "number") {
+    return Number(v.toFixed(3)).toLocaleString();
+  } else if (v === true) {
+    return "True";
+  } else if (v === false) {
+    return "False";
+  } else if ([undefined, null].includes(v)) {
+    return "None";
+  }
+  return null;
 };

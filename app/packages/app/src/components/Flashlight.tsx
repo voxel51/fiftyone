@@ -27,6 +27,7 @@ import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket from "../shared/connection";
+import { useMessageHandler } from "../utils/hooks";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -280,6 +281,22 @@ const useSelect = () => {
   );
 };
 
+export const useSampleUpdate = () => {
+  const handler = useRecoilCallback(
+    ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
+      updatedSamples.forEach(({ sample }) => {
+        samples.set(sample._id, { ...samples.get(sample._id), sample });
+        lookers.has(sample._id) &&
+          lookers.get(sample._id).deref()?.updateSample(sample);
+      });
+      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
+      set(selectors.anyTagging, false);
+    },
+    []
+  );
+  useMessageHandler("samples_update", handler);
+};
+
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
@@ -298,6 +315,7 @@ export default React.memo(() => {
   const selected = useRecoilValue(atoms.selectedSamples);
   const onThumbnailClick = useThumbnailClick(flashlight);
   const onSelect = useSelect();
+  useSampleUpdate();
 
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached()) {
