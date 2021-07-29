@@ -81,7 +81,6 @@ export abstract class Looker<
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
-  protected imageSource: ImageSource;
   protected sample: Sample;
   protected state: State;
   protected readonly updater: StateUpdate<State>;
@@ -101,7 +100,6 @@ export abstract class Looker<
     this.lookerElement = this.getElements(config);
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
-    this.imageSource = this.lookerElement.children[0].element as ImageSource;
     this.resizeObserver = new ResizeObserver(() =>
       requestAnimationFrame(
         () =>
@@ -205,7 +203,7 @@ export abstract class Looker<
 
       const [tlx, tly, w, h] = this.state.canvasBBox;
       ctx.drawImage(
-        this.imageSource,
+        this.getImageSource(),
         0,
         0,
         this.state.config.dimensions[0],
@@ -270,12 +268,6 @@ export abstract class Looker<
       );
   }
 
-  destroy(): void {
-    this.detach();
-    delete this.lookerElement;
-    delete this.imageSource;
-  }
-
   abstract updateOptions(options: Optional<State["options"]>): void;
 
   updateSample(sample: Sample) {
@@ -333,6 +325,10 @@ export abstract class Looker<
     config: State["config"],
     options: Optional<State["options"]>
   ): State;
+
+  protected getImageSource(): CanvasImageSource {
+    return this.lookerElement.children[0].imageSource;
+  }
 
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
     return {
@@ -813,19 +809,13 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
   }
 
   get waiting() {
+    const video = this.lookerElement.children[0].element as HTMLVideoElement;
     return (
-      this.imageSource.seeking ||
-      this.imageSource.readyState < 2 ||
+      !video ||
+      video.seeking ||
+      video.readyState < 2 ||
       !this.hasFrame(this.state.frameNumber)
     );
-  }
-
-  destroy() {
-    this.imageSource.pause();
-    this.imageSource.removeAttribute("src");
-    this.imageSource.load();
-
-    super.destroy();
   }
 
   dispatchImpliedEvents(
@@ -915,6 +905,7 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
       buffers: [[1, 1]] as Buffers,
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
+      hasPoster: false,
     };
   }
 

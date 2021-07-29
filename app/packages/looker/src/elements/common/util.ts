@@ -5,7 +5,6 @@
 import { Overlay } from "../../overlays/base";
 import { BaseState } from "../../state";
 import { DispatchEvent } from "../../state";
-import { ICONS } from "../util";
 
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
 

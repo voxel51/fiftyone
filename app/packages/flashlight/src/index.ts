@@ -19,6 +19,7 @@ import {
 
 import { flashlight } from "./styles.module.css";
 import tile from "./tile";
+import zooming from "./zooming.svg";
 
 export interface FlashlightOptions extends Optional<Options> {}
 
@@ -263,28 +264,31 @@ export default class Flashlight<K> {
   }
 
   private setObservers() {
-    const showSection = (index: number) => {
-      const section = this.state.sections[index];
-      if (!section || section.isShown()) {
-        return;
-      }
+    const showSections = () => {
+      this.state.shownSections.forEach((index) => {
+        const section = this.state.sections[index];
+        if (!section || section.isShown()) {
+          return;
+        }
 
-      if (this.state.resized && !this.state.resized.has(section.index)) {
-        this.state.onItemResize &&
+        if (this.state.resized && !this.state.resized.has(section.index)) {
           this.state.onItemResize &&
-          section.resizeItems(this.state.onItemResize);
-        this.state.resized.add(section.index);
-      }
+            this.state.onItemResize &&
+            section.resizeItems(this.state.onItemResize);
+          this.state.resized.add(section.index);
+        }
 
-      if (!this.state.clean.has(section.index)) {
-        this.state.updater &&
-          section
-            .getItems()
-            .map(({ id }) => id)
-            .forEach((id) => this.state.updater(id));
-      }
-      section.show();
-      this.state.shownSections.add(section.index);
+        if (!this.state.clean.has(section.index)) {
+          this.state.updater &&
+            section
+              .getItems()
+              .map(({ id }) => id)
+              .forEach((id) => this.state.updater(id));
+          this.state.clean.add(section.index);
+        }
+        section.show();
+        this.state.shownSections.add(section.index);
+      });
     };
 
     const hideSection = (index: number) => {
@@ -297,7 +301,13 @@ export default class Flashlight<K> {
       this.state.shownSections.delete(section.index);
     };
 
-    const clearOutsideSections = () => {
+    const updateSections = () => {
+      let i = this.state.firstSection;
+      while (i <= this.state.lastSection) {
+        this.state.shownSections.add(i);
+        i++;
+      }
+
       [...this.state.shownSections].forEach((index) => {
         if (index < this.state.firstSection || index > this.state.lastSection) {
           hideSection(index);
@@ -314,11 +324,6 @@ export default class Flashlight<K> {
       }
     };
 
-    const finalize = () => {
-      clearOutsideSections();
-      requestMore();
-    };
-
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
         const currentScrollTop = this.container.parentElement.scrollTop;
@@ -330,7 +335,6 @@ export default class Flashlight<K> {
             parseInt((target as HTMLDivElement).dataset.index, 10)
           ];
           if (intersectionRatio) {
-            showSection(section.index);
             this.state.shownSections.add(section.index);
           } else {
             const prev = this.state.sections[section.index - 1];
@@ -358,7 +362,6 @@ export default class Flashlight<K> {
             this.state.firstSection = revealingIndex;
 
             do {
-              showSection(revealingIndex);
               revealingIndex = revealing.index + 1;
               revealing = this.state.sections[revealingIndex];
             } while (
@@ -370,9 +373,7 @@ export default class Flashlight<K> {
             this.state.lastSection = !revealing
               ? revealingIndex - 1
               : revealingIndex;
-            showSection(this.state.lastSection);
 
-            finalize();
             break;
           } else if (!down && this.state.shownSections.has(section.index)) {
             noop = false;
@@ -383,8 +384,10 @@ export default class Flashlight<K> {
               revealing.getTop() <=
               currentScrollTop + this.state.containerHeight
             ) {
-              revealingIndex++;
-              revealing = this.state.sections[revealingIndex];
+              if (this.state.sections[revealingIndex + 1]) {
+                revealingIndex++;
+                revealing = this.state.sections[revealingIndex];
+              } else break;
             }
 
             revealingIndex = Math.min(
@@ -396,7 +399,6 @@ export default class Flashlight<K> {
             this.state.lastSection = revealingIndex;
 
             do {
-              showSection(revealingIndex);
               revealingIndex = revealing.index - 1;
               revealing = this.state.sections[revealingIndex];
             } while (
@@ -407,9 +409,6 @@ export default class Flashlight<K> {
             this.state.firstSection = !revealing
               ? revealingIndex + 1
               : revealingIndex;
-            showSection(this.state.firstSection);
-
-            finalize();
             break;
           }
         }
@@ -424,9 +423,27 @@ export default class Flashlight<K> {
               this.state.activeSection += 1;
             } else break;
           }
-
-          this.lastScrollTop = currentScrollTop;
         }
+
+        this.lastScrollTop = currentScrollTop;
+
+        updateSections();
+
+        if (
+          Math.abs(currentScrollTop - this.lastScrollTop) >
+          this.state.containerHeight * 3
+        ) {
+          !this.state.zooming &&
+            (this.container.style.backgroundImage = `url(${zooming})`);
+          this.state.zooming = true;
+        } else {
+          this.state.zooming &&
+            (this.container.style.backgroundImage = "unset");
+          this.state.zooming = false;
+        }
+
+        !this.state.zooming && showSections();
+        requestMore();
       },
       {
         root: this.container.parentElement,
@@ -486,6 +503,7 @@ export default class Flashlight<K> {
       itemIndexMap: {},
       nextItemIndex: 0,
       resized: null,
+      zooming: false,
     };
   }
 

@@ -2,7 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
+import {
+  BaseState,
+  DispatchEvent,
+  Optional,
+  Sample,
+  StateUpdate,
+} from "../state";
 
 type ElementEvent<State extends BaseState, E extends Event> = (args: {
   event: E;
@@ -17,12 +23,17 @@ export type Events<State extends BaseState> = {
   >;
 };
 
+type LoadedEvents = {
+  [K in keyof HTMLElementEventMap]?: HTMLElementEventMap[K];
+};
+
 export abstract class BaseElement<
   State extends BaseState,
   Element extends HTMLElement = HTMLElement | null
 > {
   children: BaseElement<State>[] = [];
   element: Element;
+  protected events: LoadedEvents = {};
 
   constructor(
     config: Readonly<State["config"]>,
@@ -35,19 +46,13 @@ export abstract class BaseElement<
 
     this.element = this.createHTMLElement(update, dispatchEvent);
 
-    Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
-      if (config.thumbnail && eventType === "wheel") {
-        return;
-      }
-
-      this.element.addEventListener(
-        eventType,
-        (event) =>
-          // @ts-ignore
-          handler({ event, update, dispatchEvent }),
-        { passive: eventType === "wheel" }
-      );
-    });
+    for (const [eventType, handler] of Object.entries(this.getEvents())) {
+      this.events[eventType] = (event) =>
+        handler({ event, update, dispatchEvent });
+      this.element.addEventListener(eventType, this.events[eventType], {
+        passive: eventType === "wheel",
+      });
+    }
   }
   applyChildren(children: BaseElement<State>[]) {
     this.children = children || [];
@@ -87,5 +92,19 @@ export abstract class BaseElement<
 
   protected getEvents(): Events<State> {
     return {};
+  }
+
+  protected removeEvents() {
+    for (const [eventType, handler] of Object.entries(this.events)) {
+      // @ts-ignore
+      this.element.removeEventListener(eventType, handler);
+    }
+  }
+
+  protected attachEvents() {
+    for (const [eventType, handler] of Object.entries(this.events)) {
+      // @ts-ignore
+      this.element.addEventListener(eventType, handler);
+    }
   }
 }

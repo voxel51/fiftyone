@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { VideoState } from "../state";
+import { StateUpdate, VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import { muteUnmute, playPause, resetPlaybackRate } from "./common/actions";
 import { lookerClickable, lookerTime } from "./common/controls.module.css";
@@ -330,6 +330,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private loop: boolean = false;
   private playbackRate: number = 1;
   private volume: number = 0;
+  private canvas: HTMLCanvasElement = document.createElement("canvas");
+  private imageSource: HTMLCanvasElement | HTMLVideoElement;
+  private update: StateUpdate<VideoState>;
 
   private requestCallback: (callback: (frameNumber: number) => void) => void;
 
@@ -352,15 +355,34 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           this.duration = this.element.duration;
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              update(({ loaded, playing, options: { autoplay } }) => {
-                if (!loaded) {
-                  return {
-                    loaded: true,
-                    playing: autoplay || playing,
-                  };
+              update(
+                ({
+                  loaded,
+                  playing,
+                  options: { autoplay },
+                  hasPoster,
+                  frameNumber,
+                  config: { dimensions },
+                }) => {
+                  if (!hasPoster && frameNumber === 1) {
+                    this.canvas.width = dimensions[0];
+                    this.canvas.height = dimensions[1];
+                    this.canvas.getContext("2d").drawImage(this.element, 0, 0);
+                    hasPoster = true;
+
+                    this.imageSource = this.canvas;
+                  }
+
+                  if (!loaded) {
+                    return {
+                      loaded: true,
+                      playing: autoplay || playing,
+                      hasPoster,
+                    };
+                  }
+                  return {};
                 }
-                return {};
-              });
+              );
               dispatchEvent("load");
             });
           });
@@ -451,8 +473,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement() {
-    const element = document.createElement("video");
+  createHTMLElement(update) {
+    this.update = update;
+    const element = this.getVideo();
     element.preload = "metadata";
     element.muted = true;
     this.frameNumber = 1;
@@ -484,7 +507,20 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       playing,
       loaded,
       buffering,
+      hasPoster,
     } = state;
+
+    if (!this.element) {
+      this.element = this.getVideo(true);
+      return null;
+    }
+
+    if (frameNumber === 1 && hasPoster) {
+      this.imageSource = this.canvas;
+    } else {
+      this.imageSource = this.element;
+    }
+
     if (this.loop !== loop) {
       this.element.loop = loop;
       this.loop = loop;
@@ -518,6 +554,27 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     }
 
     return null;
+  }
+
+  private getVideo(attachEvents: boolean = false) {
+    this.element = getVideo(() => {
+      this.removeEvents();
+      this.element.pause();
+      this.element.src = "";
+      this.element = null;
+      this.update({
+        frameNumber: 1,
+        playing: false,
+      });
+    });
+
+    this.element.src = this.src;
+
+    if (attachEvents) {
+      this.attachEvents();
+    }
+
+    return this.element;
   }
 }
 
@@ -798,3 +855,21 @@ export const PLAYBACK_RATE = {
     { node: PlaybackRateBarElement },
   ],
 };
+
+const getVideo = (() => {
+  const VIDEOS: [HTMLVideoElement, () => void][] = [];
+  const MAX_VIDEOS = 50;
+
+  return (cleanup: () => void): HTMLVideoElement => {
+    if (VIDEOS.length < MAX_VIDEOS) {
+      const video = document.createElement("video");
+      VIDEOS.push([video, cleanup]);
+      return video;
+    }
+
+    const [video, disown] = VIDEOS.shift();
+    disown();
+    VIDEOS.push([video, cleanup]);
+    return video;
+  };
+})();

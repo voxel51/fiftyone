@@ -6,13 +6,14 @@
   position: relative;
   width: 100%;
   contain: strict;
+  background-repeat: repeat-y;
+  background-size: contain;
 }
 
 .flashlightSectionContainer {
   display: block;
   position: absolute;
   width: 100%;
-  contain: strict;
 }
 
 .flashlightSection {
