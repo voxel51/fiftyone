@@ -118,6 +118,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             windowBBox: [tlx, tly, width, height],
             options: { zoomPad },
           }) => {
+            if (thumbnail) {
+              return {};
+            }
+
             const x = event.x - tlx;
             const y = event.y - tly;
 

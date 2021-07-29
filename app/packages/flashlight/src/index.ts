@@ -106,6 +106,26 @@ export default class Flashlight<K> {
       element = document.getElementById(element);
     }
 
+    let timeout = null;
+
+    const container = element;
+    container.addEventListener("scroll", () => {
+      const currentScrollTop = container.scrollTop;
+
+      if (
+        this.lastScrollTop - currentScrollTop <= this.state.containerHeight &&
+        this.state.zooming
+      ) {
+        requestAnimationFrame(() => this.render());
+      }
+
+      timeout && clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = null;
+        this.render();
+      }, 60);
+    });
+
     const { width, height } = element.getBoundingClientRect();
     this.state.width = width - 16;
     this.state.containerHeight = height;
@@ -263,73 +283,167 @@ export default class Flashlight<K> {
       });
   }
 
-  private setObservers() {
-    const showSections = () => {
-      this.state.shownSections.forEach((index) => {
-        const section = this.state.sections[index];
-        if (!section || section.isShown()) {
-          return;
-        }
+  private requestMore() {
+    if (
+      this.state.currentRequestKey &&
+      this.state.lastSection >= this.state.sections.length - 2
+    ) {
+      this.get();
+    }
+  }
 
-        if (this.state.resized && !this.state.resized.has(section.index)) {
-          this.state.onItemResize &&
-            this.state.onItemResize &&
-            section.resizeItems(this.state.onItemResize);
-          this.state.resized.add(section.index);
-        }
+  private hideSection(index: number) {
+    const section = this.state.sections[index];
+    if (!section || !section.isShown()) {
+      return;
+    }
 
-        if (!this.state.clean.has(section.index)) {
-          this.state.updater &&
-            section
-              .getItems()
-              .map(({ id }) => id)
-              .forEach((id) => this.state.updater(id));
-          this.state.clean.add(section.index);
-        }
-        section.show();
-        this.state.shownSections.add(section.index);
-      });
-    };
+    section.hide();
+    this.state.shownSections.delete(section.index);
+  }
 
-    const hideSection = (index: number) => {
+  private updateSections() {
+    let i = this.state.firstSection;
+    while (i <= this.state.lastSection) {
+      this.state.shownSections.add(i);
+      i++;
+    }
+
+    [...this.state.shownSections].forEach((index) => {
+      if (index < this.state.firstSection || index > this.state.lastSection) {
+        this.hideSection(index);
+      }
+    });
+  }
+
+  private showSections() {
+    this.state.shownSections.forEach((index) => {
       const section = this.state.sections[index];
-      if (!section || !section.isShown()) {
+      if (!section || section.isShown() || this.state.zooming) {
         return;
       }
 
-      section.hide();
-      this.state.shownSections.delete(section.index);
-    };
-
-    const updateSections = () => {
-      let i = this.state.firstSection;
-      while (i <= this.state.lastSection) {
-        this.state.shownSections.add(i);
-        i++;
+      if (this.state.resized && !this.state.resized.has(section.index)) {
+        this.state.onItemResize &&
+          this.state.onItemResize &&
+          section.resizeItems(this.state.onItemResize);
+        this.state.resized.add(section.index);
       }
 
-      [...this.state.shownSections].forEach((index) => {
-        if (index < this.state.firstSection || index > this.state.lastSection) {
-          hideSection(index);
-        }
-      });
-    };
+      if (!this.state.clean.has(section.index)) {
+        this.state.updater &&
+          section
+            .getItems()
+            .map(({ id }) => id)
+            .forEach((id) => this.state.updater(id));
+        this.state.clean.add(section.index);
+      }
+      section.show();
+      this.state.shownSections.add(section.index);
+    });
+  }
 
-    const requestMore = () => {
-      if (
-        this.state.currentRequestKey &&
-        this.state.lastSection >= this.state.sections.length - 2
+  private render(sectionIndex?: number) {
+    sectionIndex =
+      typeof sectionIndex === "number" ? sectionIndex : this.state.firstSection;
+    const currentScrollTop = this.container.parentElement.scrollTop;
+    let noop = true;
+    const down = this.lastScrollTop <= currentScrollTop;
+    const section = this.state.sections[sectionIndex];
+
+    if (down) {
+      noop = false;
+      let revealing = section;
+      let revealingIndex = section.index;
+
+      while (revealingIndex > 0 && revealing.getTop() >= currentScrollTop) {
+        revealingIndex--;
+        revealing = this.state.sections[revealingIndex];
+      }
+
+      revealingIndex = Math.max(0, revealingIndex - 1);
+      revealing = this.state.sections[revealingIndex];
+
+      this.state.firstSection = revealingIndex;
+
+      do {
+        revealingIndex = revealing.index + 1;
+        revealing = this.state.sections[revealingIndex];
+      } while (
+        revealing &&
+        revealing.getTop() <= currentScrollTop + this.state.containerHeight
+      );
+
+      this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
+    } else if (!down) {
+      noop = false;
+      let revealing = section;
+      let revealingIndex = section.index;
+
+      while (
+        revealing.getTop() <=
+        currentScrollTop + this.state.containerHeight
       ) {
-        this.get();
+        if (this.state.sections[revealingIndex + 1]) {
+          revealingIndex++;
+          revealing = this.state.sections[revealingIndex];
+        } else break;
       }
-    };
 
+      revealingIndex = Math.min(this.state.sections.length - 1, revealingIndex);
+      revealing = this.state.sections[revealingIndex];
+
+      this.state.lastSection = revealingIndex;
+
+      do {
+        revealingIndex = revealing.index - 1;
+        revealing = this.state.sections[revealingIndex];
+      } while (
+        revealing &&
+        revealing.getTop() + revealing.getHeight() >= currentScrollTop
+      );
+
+      this.state.firstSection = !revealing
+        ? revealingIndex + 1
+        : revealingIndex;
+    }
+
+    if (!noop) {
+      this.state.activeSection = this.state.firstSection;
+      while (
+        this.state.sections[this.state.activeSection].getTop() <=
+        currentScrollTop
+      ) {
+        if (this.state.sections[this.state.activeSection + 1]) {
+          this.state.activeSection += 1;
+        } else break;
+      }
+    }
+    this.updateSections();
+
+    if (
+      Math.abs(currentScrollTop - this.lastScrollTop) >
+      this.state.containerHeight
+    ) {
+      !this.state.zooming &&
+        (this.container.style.backgroundImage = `url(${zooming})`);
+      this.state.zooming = true;
+    } else {
+      this.state.zooming && (this.container.style.backgroundImage = "unset");
+      this.state.zooming = false;
+    }
+
+    this.lastScrollTop = currentScrollTop;
+
+    !this.state.zooming && this.showSections();
+    this.requestMore();
+  }
+
+  private setObservers() {
     this.intersectionObserver = new IntersectionObserver(
       (entries) => {
         const currentScrollTop = this.container.parentElement.scrollTop;
-        let noop = true;
         const down = this.lastScrollTop <= currentScrollTop;
-
         for (const { target, intersectionRatio } of entries) {
           let section = this.state.sections[
             parseInt((target as HTMLDivElement).dataset.index, 10)
@@ -343,107 +457,11 @@ export default class Flashlight<K> {
             }
           }
 
-          if (down && this.state.shownSections.has(section.index)) {
-            noop = false;
-            let revealing = section;
-            let revealingIndex = section.index;
-
-            while (
-              revealingIndex > 0 &&
-              revealing.getTop() >= currentScrollTop
-            ) {
-              revealingIndex--;
-              revealing = this.state.sections[revealingIndex];
-            }
-
-            revealingIndex = Math.max(0, revealingIndex - 1);
-            revealing = this.state.sections[revealingIndex];
-
-            this.state.firstSection = revealingIndex;
-
-            do {
-              revealingIndex = revealing.index + 1;
-              revealing = this.state.sections[revealingIndex];
-            } while (
-              revealing &&
-              revealing.getTop() <=
-                currentScrollTop + this.state.containerHeight
-            );
-
-            this.state.lastSection = !revealing
-              ? revealingIndex - 1
-              : revealingIndex;
-
-            break;
-          } else if (!down && this.state.shownSections.has(section.index)) {
-            noop = false;
-            let revealing = section;
-            let revealingIndex = section.index;
-
-            while (
-              revealing.getTop() <=
-              currentScrollTop + this.state.containerHeight
-            ) {
-              if (this.state.sections[revealingIndex + 1]) {
-                revealingIndex++;
-                revealing = this.state.sections[revealingIndex];
-              } else break;
-            }
-
-            revealingIndex = Math.min(
-              this.state.sections.length - 1,
-              revealingIndex
-            );
-            revealing = this.state.sections[revealingIndex];
-
-            this.state.lastSection = revealingIndex;
-
-            do {
-              revealingIndex = revealing.index - 1;
-              revealing = this.state.sections[revealingIndex];
-            } while (
-              revealing &&
-              revealing.getTop() + revealing.getHeight() >= currentScrollTop
-            );
-
-            this.state.firstSection = !revealing
-              ? revealingIndex + 1
-              : revealingIndex;
+          if (this.state.shownSections.has(section.index)) {
+            this.render(section.index);
             break;
           }
         }
-
-        if (!noop) {
-          this.state.activeSection = this.state.firstSection;
-          while (
-            this.state.sections[this.state.activeSection].getTop() <=
-            currentScrollTop
-          ) {
-            if (this.state.sections[this.state.activeSection + 1]) {
-              this.state.activeSection += 1;
-            } else break;
-          }
-        }
-
-        this.lastScrollTop = currentScrollTop;
-
-        updateSections();
-
-        if (
-          Math.abs(currentScrollTop - this.lastScrollTop) >
-          this.state.containerHeight * 3
-        ) {
-          !this.state.zooming &&
-            (this.container.style.backgroundImage = `url(${zooming})`);
-          this.state.zooming = true;
-        } else {
-          this.state.zooming &&
-            (this.container.style.backgroundImage = "unset");
-          this.state.zooming = false;
-        }
-
-        !this.state.zooming && showSections();
-        requestMore();
       },
       {
         root: this.container.parentElement,

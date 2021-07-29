@@ -858,7 +858,7 @@ export const PLAYBACK_RATE = {
 
 const getVideo = (() => {
   const VIDEOS: [HTMLVideoElement, () => void][] = [];
-  const MAX_VIDEOS = 50;
+  const MAX_VIDEOS = 20;
 
   return (cleanup: () => void): HTMLVideoElement => {
     if (VIDEOS.length < MAX_VIDEOS) {

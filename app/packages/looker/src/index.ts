@@ -242,6 +242,10 @@ export abstract class Looker<
       element = document.getElementById(element);
     }
 
+    if (element === this.lookerElement.element.parentElement) {
+      return;
+    }
+
     this.lookerElement.element.parentElement &&
       this.lookerElement.element.parentElement.removeChild(
         this.lookerElement.element

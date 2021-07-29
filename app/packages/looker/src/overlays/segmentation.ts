@@ -15,20 +15,26 @@ interface SegmentationLabel extends BaseLabel {
 
 export default class SegmentationOverlay<State extends BaseState>
   implements Overlay<State> {
-  private static readonly intermediateCanvas: HTMLCanvasElement =
-    typeof document !== "undefined" ? document.createElement("canvas") : null;
   readonly field: string;
   private readonly label: SegmentationLabel;
   private targets?: Uint32Array;
   private imageColors?: Uint32Array;
   private colorMap?: (key: string | number) => string;
   private selected?: boolean;
+  private canvas: HTMLCanvasElement;
+  private imageData: ImageData;
 
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
     this.label = label;
     if (this.label.mask) {
       this.targets = new Uint32Array(this.label.mask.buffer);
+
+      const [height, width] = this.label.mask.shape;
+      this.canvas = document.createElement("canvas");
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.imageData = new ImageData(width, height);
     }
   }
 
@@ -40,40 +46,34 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const [maskHeight, maskWidth] = this.label.mask.shape;
-
-    const maskContext = SegmentationOverlay.intermediateCanvas.getContext("2d");
-    ensureCanvasSize(SegmentationOverlay.intermediateCanvas, [
-      maskWidth,
-      maskHeight,
-    ]);
-    const maskImage = maskContext.createImageData(maskWidth, maskHeight);
-    const maskImageRaw = new Uint32Array(maskImage.data.buffer);
-    const imageColors = new Uint32Array(maskImage.data.buffer);
-
     const selected = this.isSelected(state);
     if (
-      this.colorMap === state.options.colorMap &&
-      this.selected === selected
+      this.targets &&
+      (this.colorMap !== state.options.colorMap || this.selected !== selected)
     ) {
-      this.imageColors && imageColors.set(this.imageColors);
-    } else if (this.targets) {
       this.colorMap = state.options.colorMap;
       this.selected = selected;
       const colors = getSegmentationColorArray(this.colorMap, selected);
+      const imageMask = new Uint32Array(this.imageData.data.buffer);
 
       for (let i = 0; i < this.targets.length; i++) {
         if (this.targets[i]) {
-          maskImageRaw[i] = colors[this.targets[i]];
+          imageMask[i] = colors[this.targets[i]];
         }
       }
-      this.imageColors = imageColors;
-    }
 
-    maskContext.putImageData(maskImage, 0, 0);
+      const maskCtx = this.canvas.getContext("2d");
+      maskCtx.clearRect(
+        0,
+        0,
+        this.label.mask.shape[1],
+        this.label.mask.shape[0]
+      );
+      maskCtx.putImageData(this.imageData, 0, 0);
+    }
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
-    ctx.drawImage(maskContext.canvas, tlx, tly, brx - tlx, bry - tly);
+    ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
   }
 
   getMouseDistance(state: Readonly<State>): number {

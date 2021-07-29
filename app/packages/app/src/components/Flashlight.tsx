@@ -16,7 +16,6 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
-import { ItemData } from "@fiftyone/flashlight/src/state";
 
 import {
   FrameLooker,
@@ -105,49 +104,6 @@ const flashlightLookerOptions = selector({
     };
   },
 });
-
-const getLooker = () => {
-  return useRecoilCallback(
-    ({ snapshot }) => async ({
-      sample,
-      dimensions,
-      frameNumber,
-      frameRate,
-    }: atoms.SampleData) => {
-      const getLookerConstructor = await snapshot.getPromise(lookerType);
-      const constructor = getLookerConstructor(getMimeType(sample));
-      const options = await snapshot.getPromise(flashlightLookerOptions);
-      const selected = await snapshot.getPromise(atoms.selectedSamples);
-
-      return new constructor(
-        sample,
-        {
-          src: getSampleSrc(sample.filepath, sample._id),
-          thumbnail: true,
-          dimensions,
-          sampleId: sample._id,
-          frameRate,
-          frameNumber: constructor === FrameLooker ? frameNumber : null,
-        },
-        { ...options, selected: selected.has(sample._id) }
-      );
-    },
-    []
-  );
-};
-
-const getAspectRatio = () => {
-  return useRecoilCallback(
-    ({ snapshot }) => async ({
-      sample,
-      dimensions: [width, height],
-    }: atoms.SampleData) => {
-      const options = await snapshot.getPromise(flashlightLookerOptions);
-      const aspectRatio = width / height;
-      return options.zoom ? zoomAspectRatio(sample, aspectRatio) : aspectRatio;
-    }
-  );
-};
 
 const stringifyObj = (obj) => {
   if (typeof obj !== "object" || Array.isArray(obj)) return obj;
@@ -308,10 +264,39 @@ export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
+  const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
-  lookerGeneratorRef.current = getLooker();
+  lookerGeneratorRef.current = ({
+    sample,
+    dimensions,
+    frameNumber,
+    frameRate,
+  }: atoms.SampleData) => {
+    const constructor = getLookerType(getMimeType(sample));
+
+    return new constructor(
+      sample,
+      {
+        src: getSampleSrc(sample.filepath, sample._id),
+        thumbnail: true,
+        dimensions,
+        sampleId: sample._id,
+        frameRate,
+        frameNumber: constructor === FrameLooker ? frameNumber : null,
+      },
+      { ...lookerOptions, selected: selected.has(sample._id) }
+    );
+  };
   const aspectRatioGenerator = useRef<any>();
-  aspectRatioGenerator.current = getAspectRatio();
+  aspectRatioGenerator.current = ({
+    sample,
+    dimensions: [width, height],
+  }: atoms.SampleData) => {
+    const aspectRatio = width / height;
+    return lookerOptions.zoom
+      ? zoomAspectRatio(sample, aspectRatio)
+      : aspectRatio;
+  };
   const flashlight = useRef<Flashlight<number>>();
 
   const filters = useRecoilValue(selectors.filterStages);
@@ -389,16 +374,13 @@ export default React.memo(() => {
             return data;
           });
 
-          const items = await Promise.all<ItemData>(
-            itemData.map((data) => {
-              return aspectRatioGenerator.current(data).then((aspectRatio) => {
-                return {
-                  id: data.sample._id,
-                  aspectRatio,
-                };
-              });
-            })
-          );
+          const items = itemData.map((data) => {
+            return {
+              id: data.sample._id,
+              aspectRatio: aspectRatioGenerator.current(data),
+            };
+          });
+
           return {
             items,
             nextRequestKey: more ? page + 1 : null,
@@ -408,18 +390,18 @@ export default React.memo(() => {
           const result = samples.get(sampleId);
 
           if (lookers.has(sampleId)) {
+            lookers.get(sampleId).attach(element, dimensions);
             return null;
           }
 
-          lookerGeneratorRef.current(result).then((looker) => {
-            looker.addEventListener(
-              "selectthumbnail",
-              ({ detail }: { detail: string }) => onSelect(detail)
-            );
+          const looker = lookerGeneratorRef.current(result);
+          looker.addEventListener(
+            "selectthumbnail",
+            ({ detail }: { detail: string }) => onSelect(detail)
+          );
 
-            lookers.set(sampleId, looker);
-            looker.attach(element, dimensions);
-          });
+          lookers.set(sampleId, looker);
+          looker.attach(element, dimensions);
 
           return null;
         },
