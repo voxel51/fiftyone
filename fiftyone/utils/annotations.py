@@ -286,8 +286,8 @@ def annotate(
     return annotation_info
 
 
-def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
-    """Loads labels from the given annotation backend.
+def load_annotations(samples, info, label_field, **kwargs):
+    """Loads labels from the given annotation information.
     
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -295,12 +295,10 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
             `annotate()`
         label_field: the label field to create or to merge the annotations
             into
-        backend ("cvat"): the annotation backend to load labels from.
-            Options are ("cvat", "labelbox")
         **kwargs: additional arguments to pass to the `load_annotations`
             function of the specified backend
     """
-    if backend == "cvat":
+    if info.backend == "cvat":
         if not isinstance(info, fouc.CVATAnnotationInfo):
             raise ValueError(
                 "Expected info to be of type"
@@ -309,7 +307,7 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
             )
 
         annotations = fouc.load_annotations(info, **kwargs)
-    elif backend == "labelbox":
+    elif info.backend == "labelbox":
         if not isinstance(info, foul.LabelboxAnnotationInfo):
             raise ValueError(
                 "Expected info to be of type"
@@ -319,7 +317,7 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
 
         annotations = fouc.load_annotations(info, **kwargs)
     else:
-        logger.warning("Unsupported annotation backend %s" % backend)
+        logger.warning("Unsupported annotation backend %s" % info.backend)
         return
 
     if not annotations:

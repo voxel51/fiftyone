@@ -280,7 +280,6 @@ class LabelboxAnnotationAPI(foua.BaseAnnotationAPI):
             raise ValueError("Labelbox project failed to be created")
 
         return project.uid
-        return self.project_url(project.uid)
 
     def download_annotations(self, project_id):
         # TODO enable loading annotations
