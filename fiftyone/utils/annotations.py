@@ -20,6 +20,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 fouc = fou.lazy_import("fiftyone.utils.cvat")
+foul = fou.lazy_import("fiftyone.utils.labelbox")
 
 
 logger = logging.getLogger(__name__)
@@ -254,7 +255,7 @@ def annotate(
         config (None): the :class:`AnnotationProviderConfig` containing the
             information needed to upload samples for  annotations
         backend ("cvat"): the name of the annotation backend to which to
-            export the samples. Options are ("cvat")
+            export the samples. Options are ("cvat", "labelbox")
         label_field (None): a string indicating the label field to export to the
             annotation backend. A value of `None` indicates exporting only
             the media.
@@ -274,6 +275,10 @@ def annotate(
         annotation_info = fouc.annotate(
             samples, label_field=label_field, extra_attrs=extra_attrs, **kwargs
         )
+    elif backend == "labelbox":
+        annotation_info = foul.annotate(
+            samples, label_field=label_field, extra_attrs=extra_attrs, **kwargs
+        )
     else:
         logger.warning("Unsupported annotation backend %s" % backend)
         return
@@ -291,7 +296,7 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
         label_field: the label field to create or to merge the annotations
             into
         backend ("cvat"): the annotation backend to load labels from.
-            Options are ("cvat")
+            Options are ("cvat", "labelbox")
         **kwargs: additional arguments to pass to the `load_annotations`
             function of the specified backend
     """
@@ -301,6 +306,15 @@ def load_annotations(samples, info, label_field, backend="cvat", **kwargs):
                 "Expected info to be of type"
                 " `fiftyone.utils.cvat.CVATAnnotationInfo` when"
                 " using the CVAT backend. Found %s" % str(type(info))
+            )
+
+        annotations = fouc.load_annotations(info, **kwargs)
+    elif backend == "labelbox":
+        if not isinstance(info, foul.LabelboxAnnotationInfo):
+            raise ValueError(
+                "Expected info to be of type"
+                " `fiftyone.utils.labelbox.LabelboxAnnotationInfo` when"
+                " using the Labelbox backend. Found %s" % str(type(info))
             )
 
         annotations = fouc.load_annotations(info, **kwargs)
@@ -407,6 +421,11 @@ class BaseAnnotationAPI(object):
     def prompt_username_password(self, host=""):
         username = input("%s Username: " % host)
         password = getpass.getpass(prompt="%s Password: " % host)
+        return {"username": username, "password": password}
+
+    def prompt_api_key(self, host=""):
+        api_key = getpass.getpass(prompt="%s API Key: " % host)
+        return api_key
 
     def get_api_key(self, host=""):
         pass

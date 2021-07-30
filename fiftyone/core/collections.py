@@ -5559,7 +5559,7 @@ class SampleCollection(object):
 
         Args:
             backend ("cvat"): the name of the annotation backend to which to
-                export the samples. Options are ("cvat")
+                export the samples. Options are ("cvat", "labelbox")
             label_field (None): a string indicating the label field to export to the
                 annotation backend. A value of `None` indicates exporting only
                 the media.

@@ -3711,6 +3711,7 @@ def annotate(
     auth=None,
     segment_size=None,
     image_quality=75,
+    classes=None,
     **kwargs,
 ):
     api = CVATAnnotationAPI(
@@ -3722,7 +3723,9 @@ def annotate(
         image_quality=image_quality,
     )
     logger.info("Uploading samples to CVAT...")
-    task_ids, job_ids = api.upload_samples(samples, label_field=label_field)
+    task_ids, job_ids = api.upload_samples(
+        samples, label_field=label_field, classes=classes
+    )
     info = CVATAnnotationInfo(label_field, api, task_ids, job_ids)
     info.store_label_ids(samples)
     if job_ids and job_ids[task_ids[0]]:
