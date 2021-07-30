@@ -192,6 +192,7 @@ export interface VideoState extends BaseState {
   seekBarHovering: boolean;
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
+  waitingForVideo: boolean;
 }
 
 export type Optional<T> = {

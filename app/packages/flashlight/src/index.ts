@@ -52,7 +52,7 @@ export default class Flashlight<K> {
 
     let attached = false;
 
-    let timeout = null;
+    let animation = null;
 
     this.resizeObserver = new ResizeObserver(
       ([
@@ -66,17 +66,20 @@ export default class Flashlight<K> {
           return;
         }
 
-        timeout && clearTimeout(timeout);
-        timeout = setTimeout(() => {
+        typeof animation === "number" && cancelAnimationFrame(animation);
+        animation = requestAnimationFrame(() => {
           const options =
             this.state.width !== width && this.state.onResize
               ? this.state.onResize(width)
               : {};
 
+          const force = this.state.width !== width;
+
           this.state.width = width;
 
-          this.updateOptions(options, true);
-        }, 1000);
+          this.updateOptions(options, force);
+          animation = null;
+        });
       }
     );
   }
@@ -129,7 +132,8 @@ export default class Flashlight<K> {
       timeout && clearTimeout(timeout);
       timeout = setTimeout(() => {
         this.render(true);
-      }, 60);
+        timeout = null;
+      }, 100);
     });
 
     element.appendChild(this.container);
@@ -158,6 +162,8 @@ export default class Flashlight<K> {
         ...this.state.sections.map((section) => section.getItems()).flat(),
         ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
       ];
+      const activeItemIndex = this.state.sections[this.state.activeSection]
+        .itemIndex;
       let sections = this.tile(items);
 
       const lastSection = sections[sections.length - 1];
@@ -177,9 +183,10 @@ export default class Flashlight<K> {
       this.state.shownSections = new Set();
       this.state.clean = new Set();
 
-      sections.forEach((rows) => {
+      sections.forEach((rows, index) => {
         const sectionElement = new SectionElement(
-          this.state.sections.length,
+          index,
+          this.state.itemIndexMap[rows[0].items[0].id],
           rows,
           this.state.render,
           this.getOnItemClick()
@@ -191,12 +198,13 @@ export default class Flashlight<K> {
       });
       newContainer.style.height = `${this.state.height}px`;
 
-      this.state.sections.length &&
-        this.container.parentElement.scrollTo(
-          0,
-          this.state.sections[this.state.activeSection].getTop()
-        );
-      this.showSections();
+      for (const section of this.state.sections) {
+        if (section.itemIndex >= activeItemIndex) {
+          this.container.parentElement.scrollTo(0, section.getTop());
+          this.render(true);
+          break;
+        }
+      }
     }
   }
 
@@ -223,6 +231,11 @@ export default class Flashlight<K> {
       .then(({ items, nextRequestKey }) => {
         this.state.currentRequestKey = nextRequestKey;
 
+        for (const { id } of items) {
+          this.state.itemIndexMap[id] = this.state.nextItemIndex;
+          this.state.nextItemIndex++;
+        }
+
         items = [...this.state.currentRemainder, ...items];
 
         let sections = this.tile(items, true);
@@ -241,6 +254,7 @@ export default class Flashlight<K> {
         sections.forEach((rows) => {
           const sectionElement = new SectionElement(
             this.state.sections.length,
+            this.state.itemIndexMap[rows[0].items[0].id],
             rows,
             this.state.render,
             this.getOnItemClick()
@@ -261,10 +275,6 @@ export default class Flashlight<K> {
         this.state.currentRequestKey = nextRequestKey;
         this.loading = false;
 
-        if (this.state.height >= this.state.containerHeight) {
-          this.hidePixels();
-        }
-
         if (
           this.state.height <= this.state.containerHeight ||
           (!sections.length && nextRequestKey) ||
@@ -273,7 +283,13 @@ export default class Flashlight<K> {
           this.requestMore();
         }
 
-        this.render();
+        if (
+          this.state.height >= this.state.containerHeight ||
+          nextRequestKey === null
+        ) {
+          this.hidePixels();
+          this.render();
+        }
       });
   }
 
@@ -324,71 +340,79 @@ export default class Flashlight<K> {
   }
 
   private render(force = false) {
-    const top = this.container.parentElement.scrollTop;
-    const time = performance.now();
+    requestAnimationFrame(() => {
+      const top = this.container.parentElement.scrollTop;
+      const time = performance.now();
 
-    const timeDelta = this.lastRender ? time - this.lastRender : 1000;
-    const pixelDelta = Math.abs(top - this.lastScrollTop);
+      const timeDelta = this.lastRender ? time - this.lastRender : 1000;
+      const pixelDelta = Math.abs(top - this.lastScrollTop);
 
-    if (!force && this.lastScrollTop !== null && pixelDelta / timeDelta > 16) {
-      !this.state.zooming && this.showPixels();
+      if (
+        !force &&
+        this.lastScrollTop !== null &&
+        pixelDelta / timeDelta > 25
+      ) {
+        this.showPixels();
+        this.state.zooming = true;
 
-      this.state.zooming = true;
+        [...this.state.shownSections].forEach((index) =>
+          this.hideSection(index)
+        );
 
-      [...this.state.shownSections].forEach((index) => this.hideSection(index));
-
-      return;
-    }
-    this.lastRender = time;
-    this.lastScrollTop = top;
-    this.state.zooming && this.hidePixels();
-    this.state.zooming = false;
-
-    const index = argMin(
-      this.state.sections.map((section) => Math.abs(section.getTop() - top))
-    );
-
-    this.state.firstSection = Math.max(index - 2, 0);
-    let revealing = this.state.sections[this.state.firstSection];
-    let revealingIndex = this.state.firstSection;
-
-    do {
-      revealingIndex = revealing.index + 1;
-      revealing = this.state.sections[revealingIndex];
-    } while (
-      revealing &&
-      revealing.getTop() <= top + this.state.containerHeight
-    );
-
-    this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
-    this.state.sections[this.state.lastSection + 1] && this.state.lastSection++;
-
-    this.state.activeSection = this.state.firstSection;
-    while (this.state.sections[this.state.activeSection].getTop() <= top) {
-      if (this.state.sections[this.state.activeSection + 1]) {
-        this.state.activeSection += 1;
-      } else break;
-    }
-
-    let i = this.state.firstSection;
-    while (i <= this.state.lastSection) {
-      this.state.shownSections.add(i);
-      i++;
-    }
-
-    [...this.state.shownSections].forEach((index) => {
-      if (index < this.state.firstSection || index > this.state.lastSection) {
-        this.hideSection(index);
+        return;
       }
-    });
+      this.lastRender = time;
+      this.lastScrollTop = top;
+      this.hidePixels();
+      this.state.zooming = false;
 
-    this.state.zooming
-      ? [...this.state.shownSections].forEach((s) => {
-          this.state.sections[s].hide();
-          this.state.shownSections.delete(s);
-        })
-      : this.showSections();
-    this.requestMore();
+      const index = argMin(
+        this.state.sections.map((section) => Math.abs(section.getTop() - top))
+      );
+
+      this.state.firstSection = Math.max(index - 2, 0);
+      let revealing = this.state.sections[this.state.firstSection];
+      let revealingIndex = this.state.firstSection;
+
+      do {
+        revealingIndex = revealing.index + 1;
+        revealing = this.state.sections[revealingIndex];
+      } while (
+        revealing &&
+        revealing.getTop() <= top + this.state.containerHeight
+      );
+
+      this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
+      this.state.sections[this.state.lastSection + 1] &&
+        this.state.lastSection++;
+
+      this.state.activeSection = this.state.firstSection;
+      while (this.state.sections[this.state.activeSection].getBottom() < top) {
+        if (this.state.sections[this.state.activeSection + 1]) {
+          this.state.activeSection += 1;
+        } else break;
+      }
+
+      let i = this.state.firstSection;
+      while (i <= this.state.lastSection) {
+        this.state.shownSections.add(i);
+        i++;
+      }
+
+      [...this.state.shownSections].forEach((index) => {
+        if (index < this.state.firstSection || index > this.state.lastSection) {
+          this.hideSection(index);
+        }
+      });
+
+      this.state.zooming
+        ? [...this.state.shownSections].forEach((s) => {
+            this.state.sections[s].hide();
+            this.state.shownSections.delete(s);
+          })
+        : this.showSections();
+      this.requestMore();
+    });
   }
 
   private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
@@ -397,13 +421,6 @@ export default class Flashlight<K> {
       this.state.options.rowAspectRatioThreshold,
       Boolean(this.state.currentRequestKey)
     );
-
-    for (const { items: i } of rows) {
-      for (const { id } of i) {
-        this.state.itemIndexMap[id] = this.state.nextItemIndex;
-        this.state.nextItemIndex++;
-      }
-    }
 
     this.state.currentRemainder = remainder;
 

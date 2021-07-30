@@ -2,13 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import {
-  BaseState,
-  DispatchEvent,
-  Optional,
-  Sample,
-  StateUpdate,
-} from "../state";
+import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
 
 type ElementEvent<State extends BaseState, E extends Event> = (args: {
   event: E;
@@ -46,16 +40,13 @@ export abstract class BaseElement<
 
     this.element = this.createHTMLElement(update, dispatchEvent);
 
-    if (!this.element) {
-      return;
-    }
-
     for (const [eventType, handler] of Object.entries(this.getEvents())) {
       this.events[eventType] = (event) =>
         handler({ event, update, dispatchEvent });
-      this.element.addEventListener(eventType, this.events[eventType], {
-        passive: eventType === "wheel",
-      });
+      this.element &&
+        this.element.addEventListener(eventType, this.events[eventType], {
+          passive: eventType === "wheel",
+        });
     }
   }
   applyChildren(children: BaseElement<State>[]) {

@@ -52,11 +52,11 @@ export class LoaderBar extends BaseElement<VideoState> {
     return element;
   }
 
-  renderSelf({ buffering, hovering }: Readonly<VideoState>) {
-    if (buffering && hovering === this.buffering) {
+  renderSelf({ buffering, hovering, waitingForVideo }: Readonly<VideoState>) {
+    if ((buffering || waitingForVideo) && hovering === this.buffering) {
       return this.element;
     }
-    this.buffering = buffering && hovering;
+    this.buffering = (buffering || waitingForVideo) && hovering;
 
     if (this.buffering) {
       this.element.style.display = "block";
@@ -322,19 +322,23 @@ export class TimeElement extends BaseElement<VideoState> {
 }
 
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
-  private src: string = "";
+  private canvas: HTMLCanvasElement;
   private duration: number = null;
   private frameCount: number;
-  private frameRate: number = 0;
   private frameNumber: number = 1;
+  private frameRate: number = 0;
   private loop: boolean = false;
   private playbackRate: number = 1;
-  private volume: number = 0;
-  private canvas: HTMLCanvasElement = document.createElement("canvas");
-  private imageSource: HTMLCanvasElement | HTMLVideoElement;
-  private update: StateUpdate<VideoState>;
-
   private requestCallback: (callback: (frameNumber: number) => void) => void;
+  private release: () => void;
+  private src: string;
+  private update: StateUpdate<VideoState>;
+  private volume: number = 0;
+  private waitingToPause: boolean = false;
+  private waitingToPlay: boolean = false;
+  private waitingToRelease: boolean = false;
+
+  imageSource: HTMLCanvasElement | HTMLVideoElement;
 
   getEvents(): Events<VideoState> {
     return {
@@ -362,15 +366,13 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                   options: { autoplay },
                   hasPoster,
                   frameNumber,
-                  config: { dimensions },
+                  hovering,
+                  config: { thumbnail },
                 }) => {
-                  if (!hasPoster && frameNumber === 1) {
-                    this.canvas.width = dimensions[0];
-                    this.canvas.height = dimensions[1];
+                  if (!hasPoster && frameNumber === 1 && thumbnail) {
                     this.canvas.getContext("2d").drawImage(this.element, 0, 0);
                     hasPoster = true;
-
-                    this.imageSource = this.canvas;
+                    !hovering && thumbnail && this.releaseVideo();
                   }
 
                   if (!loaded) {
@@ -378,8 +380,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                       loaded: true,
                       playing: autoplay || playing,
                       hasPoster,
+                      waitingForVideo: false,
                     };
                   }
+
                   return {};
                 }
               );
@@ -388,7 +392,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           });
         } else {
           requestAnimationFrame(() => {
-            update(({ frameNumber }) => ({ frameNumber }));
+            update(({ frameNumber }) => ({
+              frameNumber,
+              waitingForVideo: false,
+            }));
           });
         }
       },
@@ -473,43 +480,118 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement(update) {
+  createHTMLElement(update: StateUpdate<VideoState>) {
     this.update = update;
-    const element = this.getVideo();
+    this.element = null;
     this.frameNumber = 1;
+    update(({ config: { thumbnail, dimensions, src } }) => {
+      this.src = src;
+      if (thumbnail) {
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = dimensions[0];
+        this.canvas.height = dimensions[1];
+        this.acquireVideo();
+      } else {
+        this.element = document.createElement("video");
+        this.element.preload = "metadata";
+        this.element.src = src;
+      }
+
+      return {};
+    });
 
     this.requestCallback = (callback: (frameNumber: number) => void) => {
       requestAnimationFrame(() => {
-        callback(
-          Math.min(
-            getFrameNumber(
-              this.element.currentTime,
-              this.duration,
-              this.frameRate
-            ),
-            this.frameCount
-          )
-        );
+        this.element &&
+          callback(
+            Math.min(
+              getFrameNumber(
+                this.element.currentTime,
+                this.duration,
+                this.frameRate
+              ),
+              this.frameCount
+            )
+          );
       });
     };
 
-    return element;
+    return this.element;
   }
 
-  renderSelf(state: Readonly<VideoState>) {
-    const {
-      options: { loop, volume, playbackRate },
-      config: { src, frameRate },
-      frameNumber,
-      seeking,
-      playing,
-      loaded,
-      buffering,
-      hasPoster,
-    } = state;
+  private acquireVideo() {
+    let called = false;
 
+    this.update(({ waitingForVideo }) => {
+      if (!waitingForVideo) {
+        acquireVideo().then(([video, release]) => {
+          this.update(({ hovering, config: { thumbnail }, hasPoster }) => {
+            this.element = video;
+            this.release = release;
+            if (!hovering && thumbnail && hasPoster) {
+              this.releaseVideo();
+            } else {
+              this.attachEvents();
+              this.element.src = this.src;
+            }
+
+            return {};
+          });
+        });
+
+        called = true;
+
+        return { waitingForVideo: true };
+      }
+
+      return {};
+    });
+
+    return called;
+  }
+
+  private releaseVideo() {
+    if (this.waitingToPause || this.waitingToPlay || !this.element) {
+      this.waitingToRelease = true;
+      this.update(({ waitingForVideo }) =>
+        waitingForVideo ? { waitingForVideo: false } : {}
+      );
+      return;
+    }
+
+    !this.element.paused && this.element.pause();
+
+    this.waitingToRelease = false;
+
+    this.removeEvents();
+    this.element = null;
+    this.release && this.release();
+    this.release = null;
+
+    this.update({ waitingForVideo: false, frameNumber: 1, playing: false });
+  }
+
+  renderSelf({
+    options: { loop, volume, playbackRate },
+    config: { frameRate, thumbnail },
+    frameNumber,
+    seeking,
+    playing,
+    loaded,
+    buffering,
+    hovering,
+    hasPoster,
+  }: Readonly<VideoState>) {
     if (!this.element) {
-      this.element = this.getVideo(true);
+      if (hovering) {
+        const result = this.acquireVideo();
+
+        if (result) {
+          return;
+        }
+      }
+    } else if (!hovering && thumbnail && hasPoster) {
+      this.releaseVideo();
       return null;
     }
 
@@ -518,17 +600,24 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     } else {
       this.imageSource = this.element;
     }
-
-    if (this.src !== src) {
-      this.src = src;
-      this.element.setAttribute("src", src);
+    if (!this.element) {
+      return null;
     }
 
     if (loaded && playing && !seeking && !buffering && this.element.paused) {
-      this.element.play();
+      this.waitingToPlay = true;
+      this.element.play().then(() => {
+        this.waitingToPlay = false;
+        this.waitingToPause && this.element && this.element.pause();
+        this.waitingToPause = false;
+
+        if (this.waitingToRelease) {
+          this.releaseVideo();
+        }
+      });
     }
     if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
-      this.element.pause();
+      !this.waitingToPlay ? this.element.pause() : (this.waitingToPause = true);
     }
 
     if (this.loop !== loop) {
@@ -552,24 +641,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     }
 
     return null;
-  }
-
-  private getVideo(attachEvents: boolean = false) {
-    this.element = getVideo(() => {
-      this.removeEvents();
-      this.element = null;
-      this.update({
-        frameNumber: 1,
-        playing: false,
-      });
-    });
-    this.element.src = this.src;
-
-    if (attachEvents) {
-      this.attachEvents();
-    }
-
-    return this.element;
   }
 }
 
@@ -851,27 +922,50 @@ export const PLAYBACK_RATE = {
   ],
 };
 
-const getVideo = (() => {
-  const VIDEOS: [HTMLVideoElement, () => void][] = [];
-  const MAX_VIDEOS = 30;
+const acquireVideo = (() => {
+  const VIDEOS: HTMLVideoElement[] = [];
+  const MAX_VIDEOS = 8;
+  const QUEUE = [];
+  const FREE = [];
 
-  return (cleanup: () => void): HTMLVideoElement => {
+  const release = (video: HTMLVideoElement) => {
+    return () => {
+      if (!video.paused) {
+        throw new Error("Release playing video");
+      }
+
+      video.pause();
+      video.muted = true;
+      video.preload = "metadata";
+      video.loop = false;
+      video.src = "";
+      if (QUEUE.length) {
+        const resolve = QUEUE.shift();
+        resolve([video, release(video)]);
+      } else {
+        FREE.push(video);
+      }
+    };
+  };
+
+  return (): Promise<[HTMLVideoElement, () => void]> => {
+    if (FREE.length) {
+      const video = FREE.shift();
+      return Promise.resolve([video, release(video)]);
+    }
+
     if (VIDEOS.length < MAX_VIDEOS) {
       const video = document.createElement("video");
       video.preload = "metadata";
+      video.muted = true;
       video.loop = false;
 
-      VIDEOS.push([video, cleanup]);
-      return video;
+      VIDEOS.push(video);
+      return Promise.resolve([video, release(video)]);
     }
 
-    const [video, disown] = VIDEOS.shift();
-    disown();
-    video.muted = true;
-    video.autoplay = false;
-    video.loop = false;
-    video.pause();
-    VIDEOS.push([video, cleanup]);
-    return video;
+    return new Promise<[HTMLVideoElement, () => void]>((resolve) => {
+      QUEUE.push(resolve);
+    });
   };
 })();

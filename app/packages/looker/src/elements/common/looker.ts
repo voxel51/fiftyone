@@ -13,6 +13,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
   HTMLDivElement
 > {
   private selection: boolean;
+
   getEvents(): Events<State> {
     return {
       keydown: ({ event, update, dispatchEvent }) => {

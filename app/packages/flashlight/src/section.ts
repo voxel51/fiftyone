@@ -13,6 +13,7 @@ export default class SectionElement implements Section {
   private width: number;
   private height: number;
   readonly index: number;
+  readonly itemIndex: number;
   private readonly section: HTMLDivElement = document.createElement("div");
   private readonly rows: [
     { aspectRatio: number; extraMargins: number },
@@ -22,11 +23,13 @@ export default class SectionElement implements Section {
 
   constructor(
     index: number,
+    itemIndex: number,
     rows: RowData[],
     render: Render,
     onItemClick?: (event: MouseEvent, id: string) => void
   ) {
     this.index = index;
+    this.itemIndex = itemIndex;
     this.render = render;
 
     this.section.classList.add(flashlightSection);
@@ -115,9 +118,6 @@ export default class SectionElement implements Section {
 
   show(element: HTMLDivElement): void {
     if (!this.attached) {
-      element.appendChild(this.section);
-      this.attached = true;
-
       this.rows.forEach(
         ([{ aspectRatio: rowAspectRatio, extraMargins }, items]) => {
           !extraMargins && (extraMargins = 0);
@@ -131,6 +131,9 @@ export default class SectionElement implements Section {
           });
         }
       );
+
+      element.appendChild(this.section);
+      this.attached = true;
     }
   }
 

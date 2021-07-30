@@ -310,6 +310,13 @@ export abstract class Looker<
     return false;
   }
 
+  destory() {
+    this.lookerElement.element.parentElement &&
+      this.lookerElement.element.parentElement.removeChild(
+        this.lookerElement.element
+      );
+  }
+
   protected abstract hasDefaultZoom(
     state: State,
     overlays: Overlay<State>[]
@@ -815,10 +822,10 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
   get waiting() {
     const video = this.lookerElement.children[0].element as HTMLVideoElement;
     return (
-      !video ||
-      video.seeking ||
-      video.readyState < 2 ||
-      !this.hasFrame(this.state.frameNumber)
+      video &&
+      (video.seeking ||
+        video.readyState < 2 ||
+        !this.hasFrame(this.state.frameNumber))
     );
   }
 
@@ -910,6 +917,7 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
+      waitingForVideo: false,
     };
   }
 

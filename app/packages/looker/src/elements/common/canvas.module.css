@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-.mediaOrCanvas {
+.lookerCanvas {
   position: absolute;
   margin: auto;
   top: 0;
@@ -19,7 +19,9 @@
   image-rendering: optimize-contrast; /* CSS3 Proposed                  */
   -ms-interpolation-mode: nearest-neighbor; /* IE8+                           */
   opacity: 1;
+}
 
+.lookerCanvas.lookerCanvasThumbnail {
   transition: opacity 0.15s linear;
 }
 

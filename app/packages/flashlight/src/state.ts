@@ -11,6 +11,7 @@ export interface Section {
   getBottom: () => number;
   getHeight: () => number;
   index: number;
+  itemIndex: number;
   set: (top: number, width: number) => void;
   show: (element: HTMLDivElement) => void;
   hide: () => void;
