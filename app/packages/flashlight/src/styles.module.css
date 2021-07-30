@@ -2,30 +2,69 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+@keyframes animatedBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
+}
+@-moz-keyframes animatedBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
+}
+@-webkit-keyframes animatedBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
+}
+@-ms-keyframes animatedBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
+}
+@-o-keyframes animatedBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 20000px;
+  }
+}
+
 .flashlight {
   position: relative;
   width: 100%;
-  contain: strict;
+  contain: strict style;
   background-repeat: repeat-y;
-  background-size: contain;
-}
+  background-size: 100% auto;
+  min-height: 100%;
 
-.flashlightSectionContainer {
-  display: block;
-  position: absolute;
-  width: 100%;
-  contain: strict;
+  animation: animatedBackground 60s linear infinite;
+  -moz-animation: animatedBackground 60s linear infinite;
+  -webkit-animation: animatedBackground 60s linear infinite;
+  -ms-animation: animatedBackground 60s linear infinite;
+  -o-animation: animatedBackground 60s linear infinite;
 }
 
 .flashlightSection {
   display: block;
-  position: relative;
-  width: 100%;
-  height: 100%;
-  contain: strict;
+  position: absolute;
+  contain: strict style;
 }
 
 .flashlightSection > div {
   position: absolute;
-  contain: strict;
+  contain: strict style;
 }

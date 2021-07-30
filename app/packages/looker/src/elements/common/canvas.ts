@@ -21,7 +21,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
-  private loaded: boolean = true;
+  private loaded: boolean = false;
   private cursor: string;
 
   getEvents(): Events<State> {

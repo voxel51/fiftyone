@@ -12,9 +12,8 @@ export interface Section {
   getHeight: () => number;
   index: number;
   set: (top: number, width: number) => void;
-  show: () => void;
+  show: (element: HTMLDivElement) => void;
   hide: () => void;
-  target: HTMLDivElement;
   isShown: () => boolean;
   getItems: () => ItemData[];
   resizeItems: (resizer: OnItemResize) => void;

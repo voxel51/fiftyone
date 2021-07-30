@@ -5,10 +5,7 @@
 import { MARGIN } from "./constants";
 import { ItemData, OnItemResize, Render, RowData, Section } from "./state";
 
-import {
-  flashlightSection,
-  flashlightSectionContainer,
-} from "./styles.module.css";
+import { flashlightSection } from "./styles.module.css";
 
 export default class SectionElement implements Section {
   private attached: boolean = false;
@@ -16,14 +13,12 @@ export default class SectionElement implements Section {
   private width: number;
   private height: number;
   readonly index: number;
-  private readonly container: HTMLDivElement = document.createElement("div");
   private readonly section: HTMLDivElement = document.createElement("div");
   private readonly rows: [
     { aspectRatio: number; extraMargins: number },
     [HTMLDivElement, ItemData][]
   ][];
   private readonly render: Render;
-  private hideCallbacks: { [id: string]: ReturnType<Render> };
 
   constructor(
     index: number,
@@ -32,10 +27,7 @@ export default class SectionElement implements Section {
     onItemClick?: (event: MouseEvent, id: string) => void
   ) {
     this.index = index;
-    this.container.classList.add(flashlightSectionContainer);
-    this.container.dataset.index = String(index);
     this.render = render;
-    this.hideCallbacks = {};
 
     this.section.classList.add(flashlightSection);
     this.rows = rows.map(({ aspectRatio, extraMargins, items }) => {
@@ -61,7 +53,7 @@ export default class SectionElement implements Section {
 
   set(top: number, width: number) {
     if (this.top !== top) {
-      this.container.style.top = `${top}px`;
+      this.section.style.top = `${top}px`;
 
       this.top = top;
     }
@@ -90,16 +82,12 @@ export default class SectionElement implements Section {
       );
 
       if (this.width !== width) {
-        this.container.style.height = `${localTop}px`;
+        this.section.style.height = `${localTop}px`;
       }
 
       this.width = width;
       this.height = localTop;
     }
-  }
-
-  get target() {
-    return this.container;
   }
 
   getHeight() {
@@ -116,9 +104,8 @@ export default class SectionElement implements Section {
 
   hide(): void {
     if (this.attached) {
-      this.container.removeChild(this.section);
+      this.section.remove();
       this.attached = false;
-      this.hideCallbacks = {};
     }
   }
 
@@ -126,9 +113,9 @@ export default class SectionElement implements Section {
     return this.attached;
   }
 
-  show(): void {
+  show(element: HTMLDivElement): void {
     if (!this.attached) {
-      this.container.appendChild(this.section);
+      element.appendChild(this.section);
       this.attached = true;
 
       this.rows.forEach(

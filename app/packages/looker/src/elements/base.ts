@@ -46,6 +46,10 @@ export abstract class BaseElement<
 
     this.element = this.createHTMLElement(update, dispatchEvent);
 
+    if (!this.element) {
+      return;
+    }
+
     for (const [eventType, handler] of Object.entries(this.getEvents())) {
       this.events[eventType] = (event) =>
         handler({ event, update, dispatchEvent });
@@ -83,7 +87,7 @@ export abstract class BaseElement<
   abstract createHTMLElement(
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void
-  ): Element;
+  ): Element | null;
 
   abstract renderSelf(
     state: Readonly<State>,

@@ -18,6 +18,9 @@
   image-rendering: pixelated; /* Chrome */
   image-rendering: optimize-contrast; /* CSS3 Proposed                  */
   -ms-interpolation-mode: nearest-neighbor; /* IE8+                           */
+  opacity: 1;
+
+  transition: opacity 0.15s linear;
 }
 
 .invisible {

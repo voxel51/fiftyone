@@ -476,8 +476,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   createHTMLElement(update) {
     this.update = update;
     const element = this.getVideo();
-    element.preload = "metadata";
-    element.muted = true;
     this.frameNumber = 1;
 
     this.requestCallback = (callback: (frameNumber: number) => void) => {
@@ -521,11 +519,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.imageSource = this.element;
     }
 
-    if (this.loop !== loop) {
-      this.element.loop = loop;
-      this.loop = loop;
-    }
-
     if (this.src !== src) {
       this.src = src;
       this.element.setAttribute("src", src);
@@ -536,6 +529,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     }
     if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
       this.element.pause();
+    }
+
+    if (this.loop !== loop) {
+      this.element.loop = loop;
+      this.loop = loop;
     }
 
     if (this.playbackRate !== playbackRate) {
@@ -559,15 +557,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private getVideo(attachEvents: boolean = false) {
     this.element = getVideo(() => {
       this.removeEvents();
-      this.element.pause();
-      this.element.src = "";
       this.element = null;
       this.update({
         frameNumber: 1,
         playing: false,
       });
     });
-
     this.element.src = this.src;
 
     if (attachEvents) {
@@ -858,17 +853,24 @@ export const PLAYBACK_RATE = {
 
 const getVideo = (() => {
   const VIDEOS: [HTMLVideoElement, () => void][] = [];
-  const MAX_VIDEOS = 20;
+  const MAX_VIDEOS = 30;
 
   return (cleanup: () => void): HTMLVideoElement => {
     if (VIDEOS.length < MAX_VIDEOS) {
       const video = document.createElement("video");
+      video.preload = "metadata";
+      video.loop = false;
+
       VIDEOS.push([video, cleanup]);
       return video;
     }
 
     const [video, disown] = VIDEOS.shift();
     disown();
+    video.muted = true;
+    video.autoplay = false;
+    video.loop = false;
+    video.pause();
     VIDEOS.push([video, cleanup]);
     return video;
   };
