@@ -241,7 +241,6 @@ def _to_video_labels(sample, label_fields=None):
 
 def annotate(
     samples,
-    config=None,
     backend="cvat",
     label_field=None,
     launch_editor=False,
@@ -253,8 +252,6 @@ def annotate(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        config (None): the :class:`AnnotationProviderConfig` containing the
-            information needed to upload samples for  annotations
         backend ("cvat"): the name of the annotation backend to which to
             export the samples. Options are ("cvat", "labelbox")
         label_field (None): a string indicating the label field to export to the

@@ -2628,20 +2628,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self._session = None
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.setup()
-
-    def __enter__(self):
-        self.setup()
-        return self
-
-    def __exit__(self, *args):
-        self.close(*args)
+        self._user_id_map = self.get_user_id_map()
 
     def setup(self):
-        """Performs any necessary setup for the API.
-
-        This method is called when the API's context manager interface is
-        entered, :func:`CVATAnnotationAPI.__enter__`.
-        """
+        """Performs any necessary setup for the API."""
         if self._auth is None:
             self._auth = self.get_username_password("CVAT")
         self._session = requests.Session()
@@ -2650,18 +2640,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
             ]
-
-    def close(self, *args):
-        """Performs any necessary actions after the user is finished with the
-        API.
-
-        This method is called when the API's context manager interface is
-        exited, :func:`CVATAnnotationAPI.__exit__`.
-
-        Args:
-            *args: the arguments to :func:`CVATAnnotationAPI.__exit__`
-        """
-        self._session = None
 
     def get_username_password(self, host=""):
         username = fo.annotation_config.cvat_username
@@ -2694,6 +2672,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return "%s/auth/login" % self.base_api_url
 
     @property
+    def users_url(self):
+        return "%s/users" % self.base_api_url
+
+    @property
     def tasks_url(self):
         return "%s/tasks" % self.base_api_url
 
@@ -2724,13 +2706,31 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def job_url(self, task_id, job_id):
         return "%s/%d" % (self.jobs_url(task_id), job_id)
 
+    def taskless_job_url(self, job_id):
+        return "%s/jobs/%d" % (self.base_api_url, job_id)
+
     def base_task_url(self, task_id):
         return "%s/tasks/%d" % (self.base_url, task_id)
 
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
-    def create_task(self, labels=[], segment_size=None, image_quality=75):
+    def get_user_id_map(self):
+        user_response = self._session.get(self.users_url)
+        resp_json = user_response.json()
+        user_id_map = {}
+        for user_info in resp_json["results"]:
+            user_id_map[user_info["username"]] = user_info["id"]
+
+        return user_id_map
+
+    def create_task(
+        self,
+        labels=[],
+        segment_size=None,
+        image_quality=75,
+        task_assignee=None,
+    ):
         data_task_create = {
             "name": "FiftyOne_annotation",
             "image_quality": image_quality,
@@ -2764,23 +2764,35 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 attr_id = attr["id"]
                 self._attribute_id_map[task_id][class_id][attr_name] = attr_id
 
+        if task_assignee is not None:
+            task_patch = {"assignee_id": self._user_id_map[task_assignee]}
+            resp = self._session.patch(self.task_url(task_id), json=task_patch)
+
         return task_id
 
-    def upload_data(self, task_id, paths, image_quality):
-        data_files = {"image_quality": image_quality}
+    def upload_data(self, task_id, paths, image_quality, job_assignees=None):
+        data = {"image_quality": image_quality}
 
         files = {
             "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
         }
         files_resp = self._session.post(
-            self.task_data_url(task_id),
-            verify=False,
-            data=data_files,
-            files=files,
+            self.task_data_url(task_id), verify=False, data=data, files=files,
         )
 
-        job_resp = self._session.get(self.jobs_url(task_id))
-        job_ids = [j["id"] for j in job_resp.json()]
+        job_ids = []
+        while job_ids == []:
+            job_resp = self._session.get(self.jobs_url(task_id))
+            job_ids = [j["id"] for j in job_resp.json()]
+
+        if job_assignees is not None:
+            for ind, job_id in enumerate(job_ids):
+                assignee_ind = min(ind, len(job_assignees) - 1)
+                assignee = job_assignees[assignee_ind]
+                job_patch = {"assignee_id": self._user_id_map[assignee]}
+                resp = self._session.patch(
+                    self.taskless_job_url(job_id), json=job_patch
+                )
 
         return job_ids
 
@@ -2791,6 +2803,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         classes=None,
         segment_size=None,
         image_quality=75,
+        job_assignees=None,
+        task_assignee=None,
+        job_sample_map=None,
     ):
         """Upload samples into annotation tool.
         
@@ -2800,7 +2815,18 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             label_field: the string name of the field to be uploaded for
                 annotation
             classes: list of class strings to use for annotation
+            segment_size (None): maximum number of images to load into a job. Not
+                applicable to videos, only used if `job_sample_map` is `None`
+            image_quality (75): an integer ranging from 0 to 100 indicating the 
+                quality of images after uploading to CVAT
+            job_assignees (None): a list containing usernames to which to assign jobs
+                sequentially 
+            task_assignee (None): the username of the user assigned to the
+                created task
+            job_sample_map (None): a list of lists containing sample ids to be grouped
+                into jobs. Not applicable to videos, overrides `segment_size`
         """
+        samples = samples.sort_by("filepath")
         task_ids = []
         job_ids = {}
 
@@ -2862,11 +2888,15 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         # CVAT only allows for one video per task
         if samples.media_type == fom.VIDEO:
+            is_video = True
             task_batch_size = 1
         else:
+            is_video = False
             task_batch_size = len(samples)
 
-        for task_batch_ind in range(0, len(samples), task_batch_size):
+        for task_index, task_batch_ind in enumerate(
+            range(0, len(samples), task_batch_size)
+        ):
             self._label_attributes = {}
             batch_samples = samples.skip(task_batch_ind).limit(task_batch_size)
             # Only relevant for non-primitive Label fields
@@ -2912,11 +2942,27 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             for ln in label_names:
                 labels.append({"name": ln, "attributes": attributes})
 
+            if is_video:
+                if job_assignees is not None:
+                    job_assignee_ind = min(task_index, len(job_assignees) - 1)
+                    task_assignee = job_assignees[job_assignee_ind]
+                if task_assignee is not None:
+                    current_job_assignees = [task_assignee]
+            else:
+                current_job_assignees = job_assignees
+
             # Create task and upload raw data
-            task_id = self.create_task(labels, segment_size, image_quality)
+            task_id = self.create_task(
+                labels, segment_size, image_quality, task_assignee
+            )
             task_ids.append(task_id)
             paths = batch_samples.values("filepath")
-            current_job_ids = self.upload_data(task_id, paths, image_quality)
+            current_job_ids = self.upload_data(
+                task_id,
+                paths,
+                image_quality,
+                job_assignees=current_job_assignees,
+            )
             job_ids[task_id] = current_job_ids
             self._frame_id_map[task_id] = id_mapping
 
@@ -3712,9 +3758,54 @@ def annotate(
     segment_size=None,
     image_quality=75,
     classes=None,
+    job_assignees=None,
+    task_assignee=None,
+    job_sample_map=None,
+    extra_attrs=None,
     **kwargs,
 ):
-    api = CVATAnnotationAPI(url=url, port=port, https=https, auth=auth,)
+    """Exports the samples and a label field to the given annotation
+    backend.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        label_field (None): a string indicating the label field to export to the
+            annotation backend. A value of `None` indicates exporting only
+            the media.
+        launch_editor (False): whether to launch the backend editor in a
+            browser window after uploading samples
+        url ("cvat.org"): URL of the CVAT server to which to upload samples 
+        port (None): four digit port to append to url when connecting to server
+        https (True): boolean indicating whether to connect to https (True) or
+            http (False) server
+        auth (None): an optional dictionary mapping the strings "username" and
+            "password" to the CVAT username and password to use to connect to
+            the CVAT server
+        segment_size (None): maximum number of images to load into a job. Not
+            applicable to videos, only used if `job_sample_map` is `None`
+        image_quality (75): an integer ranging from 0 to 100 indicating the 
+            quality of images after uploading to CVAT
+        classes (None): a list of classes used to define the options in the
+            labelling schema
+        job_assignees (None): a list containing usernames to which to assign jobs
+            sequentially for images or tasks for videos
+        task_assignee (None): the username of the user assigned to the
+            created task
+        job_sample_map (None): a list of lists containing sample ids to be grouped
+            into jobs. Not applicable to videos, overrides `segment_size`
+        extra_attrs (None): a list of attribute field names or dictionary of
+            attribute field names to `AnnotationWidgetType` specifying the
+            attribute field names on the `label_field` to annotate. By
+            default, no extra attributes are sent for annotation, only the
+            label
+        **kwargs: additional arguments to send to the annotation backend
+
+    Returns:
+        annotation_info: the
+            :class:`fiftyone.utils.annotations.AnnotationInfo` used to
+            upload and annotate the given samples
+    """
+    api = CVATAnnotationAPI(url=url, port=port, https=https, auth=auth)
     logger.info("Uploading samples to CVAT...")
     task_ids, job_ids = api.upload_samples(
         samples,
@@ -3722,6 +3813,9 @@ def annotate(
         classes=classes,
         segment_size=segment_size,
         image_quality=image_quality,
+        job_assignees=job_assignees,
+        task_assignee=task_assignee,
+        job_sample_map=job_sample_map,
     )
     info = CVATAnnotationInfo(label_field, api, task_ids, job_ids)
     info.store_label_ids(samples)

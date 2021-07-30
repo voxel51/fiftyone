@@ -74,7 +74,9 @@ and password. This can be done in three ways:
 2) Entering login credentials whenever :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
    is called
 
-3) Storing login credentials in the FiftyOne config
+3) Passing the `auth` keyword argument to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+
+4) Storing login credentials in the FiftyOne config
 
 
 Environment variables
@@ -105,6 +107,30 @@ environment variables. These are automatically accessed by FiftyOne when calling
         TODO
 
 
+Keyword argument
+----------------
+
+The `auth` keyword argument can be pass to the 
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` call 
+during runtime. This argument accepts a dictionary mapping the strings 
+`username` and `password` to your CVAT username and password.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    auth = {
+        "username": MY_USERNAME,
+        "password": MY_PASSWORD,
+    }
+
+    info = view.annotate(label_field="ground_truth", auth=auth) 
+
 Command line prompt
 -------------------
 
@@ -115,7 +141,7 @@ call to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 .. code:: python
     :linenos:
 
-    view.annotate(label_field="ground_truth")
+    info = view.annotate(label_field="ground_truth")
 
     
 .. code-block:: text
