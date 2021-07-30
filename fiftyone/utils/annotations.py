@@ -244,6 +244,7 @@ def annotate(
     config=None,
     backend="cvat",
     label_field=None,
+    launch_editor=False,
     extra_attrs=None,
     **kwargs
 ):
@@ -259,6 +260,8 @@ def annotate(
         label_field (None): a string indicating the label field to export to the
             annotation backend. A value of `None` indicates exporting only
             the media.
+        launch_editor (False): whether to launch the backend editor in a
+            browser window after uploading samples
         extra_attrs (None): a list of attribute field names or dictionary of
             attribute field names to `AnnotationWidgetType` specifying the
             attribute field names on the `label_field` to annotate. By
@@ -273,11 +276,19 @@ def annotate(
     """
     if backend == "cvat":
         annotation_info = fouc.annotate(
-            samples, label_field=label_field, extra_attrs=extra_attrs, **kwargs
+            samples,
+            label_field=label_field,
+            launch_editor=launch_editor,
+            extra_attrs=extra_attrs,
+            **kwargs
         )
     elif backend == "labelbox":
         annotation_info = foul.annotate(
-            samples, label_field=label_field, extra_attrs=extra_attrs, **kwargs
+            samples,
+            label_field=label_field,
+            launch_editor=launch_editor,
+            extra_attrs=extra_attrs,
+            **kwargs
         )
     else:
         logger.warning("Unsupported annotation backend %s" % backend)

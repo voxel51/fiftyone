@@ -2589,20 +2589,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     """
 
     def __init__(
-        self,
-        url="cvat.org",
-        https=True,
-        port=None,
-        auth=None,
-        segment_size=None,
-        image_quality=75,
+        self, url="cvat.org", https=True, port=None, auth=None,
     ):
         self._url = url
-        self._segment_size = segment_size
         self._port = "" if port is None else ":%d" % port
         self._protocol = "https" if https else "http"
         self._auth = auth
-        self._image_quality = image_quality
         self._field_type = None
         self._field_label_type = None
 
@@ -2738,15 +2730,15 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
-    def create_task(self, labels=[]):
+    def create_task(self, labels=[], segment_size=None, image_quality=75):
         data_task_create = {
             "name": "FiftyOne_annotation",
-            "image_quality": self._image_quality,
+            "image_quality": image_quality,
             "labels": labels,
         }
 
-        if self._segment_size is not None:
-            data_task_create["segment_size"] = self._segment_size
+        if segment_size is not None:
+            data_task_create["segment_size"] = segment_size
 
         task_creation_resp = self._session.post(
             self.tasks_url, verify=False, json=data_task_create,
@@ -2774,8 +2766,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return task_id
 
-    def upload_data(self, task_id, paths):
-        data_files = {"image_quality": self._image_quality}
+    def upload_data(self, task_id, paths, image_quality):
+        data_files = {"image_quality": image_quality}
 
         files = {
             "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
@@ -2792,7 +2784,14 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return job_ids
 
-    def upload_samples(self, samples, label_field, classes=None):
+    def upload_samples(
+        self,
+        samples,
+        label_field,
+        classes=None,
+        segment_size=None,
+        image_quality=75,
+    ):
         """Upload samples into annotation tool.
         
         Args:
@@ -2914,10 +2913,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 labels.append({"name": ln, "attributes": attributes})
 
             # Create task and upload raw data
-            task_id = self.create_task(labels)
+            task_id = self.create_task(labels, segment_size, image_quality)
             task_ids.append(task_id)
             paths = batch_samples.values("filepath")
-            current_job_ids = self.upload_data(task_id, paths)
+            current_job_ids = self.upload_data(task_id, paths, image_quality)
             job_ids[task_id] = current_job_ids
             self._frame_id_map[task_id] = id_mapping
 
@@ -3705,6 +3704,7 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
 def annotate(
     samples,
     label_field=None,
+    launch_editor=False,
     url="cvat.org",
     port=None,
     https=True,
@@ -3714,17 +3714,14 @@ def annotate(
     classes=None,
     **kwargs,
 ):
-    api = CVATAnnotationAPI(
-        url=url,
-        port=port,
-        https=https,
-        auth=auth,
-        segment_size=segment_size,
-        image_quality=image_quality,
-    )
+    api = CVATAnnotationAPI(url=url, port=port, https=https, auth=auth,)
     logger.info("Uploading samples to CVAT...")
     task_ids, job_ids = api.upload_samples(
-        samples, label_field=label_field, classes=classes
+        samples,
+        label_field=label_field,
+        classes=classes,
+        segment_size=segment_size,
+        image_quality=image_quality,
     )
     info = CVATAnnotationInfo(label_field, api, task_ids, job_ids)
     info.store_label_ids(samples)
@@ -3732,7 +3729,9 @@ def annotate(
         annotator_url = api.base_job_url(task_ids[0], job_ids[task_ids[0]][0])
     else:
         annotator_url = api.base_task_url(task_ids[0])
-    api.launch_annotator(url=annotator_url)
+    logger.info("Samples uploaded to %s" % annotator_url)
+    if launch_editor:
+        api.launch_annotator(url=annotator_url)
     return info
 
 

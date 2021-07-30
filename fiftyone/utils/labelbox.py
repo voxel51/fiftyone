@@ -56,6 +56,7 @@ _SUPPORTED_FIELD_TYPES = (
 def annotate(
     samples,
     label_field=None,
+    launch_editor=False,
     auth=None,
     url="labelbox.com",
     https=True,
@@ -71,7 +72,9 @@ def annotate(
     info = LabelboxAnnotationInfo(label_field, api, project_id)
     info.store_label_ids(samples)
     annotator_url = api.editor_url(project_id)
-    api.launch_annotator(url=annotator_url)
+    logger.info("Samples uploaded to %s" % annotator_url)
+    if launch_editor:
+        api.launch_annotator(url=annotator_url)
     return info
 
 
