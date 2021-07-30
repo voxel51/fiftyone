@@ -53,12 +53,13 @@ export default function tile(
 
   let remainder = [];
   if (!hasMore) {
-    rows.push(
-      lastRow(
-        { items: currentRow, aspectRatio: currentAR },
-        rowAspectRatioThreshold
-      )
-    );
+    currentRow.length &&
+      rows.push(
+        lastRow(
+          { items: currentRow, aspectRatio: currentAR },
+          rowAspectRatioThreshold
+        )
+      );
   } else remainder = currentRow;
 
   return { rows, remainder };

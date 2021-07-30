@@ -359,34 +359,17 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           this.duration = this.element.duration;
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              update(
-                ({
-                  loaded,
-                  playing,
-                  options: { autoplay },
-                  hasPoster,
-                  frameNumber,
-                  hovering,
-                  config: { thumbnail },
-                }) => {
-                  if (!hasPoster && frameNumber === 1 && thumbnail) {
-                    this.canvas.getContext("2d").drawImage(this.element, 0, 0);
-                    hasPoster = true;
-                    !hovering && thumbnail && this.releaseVideo();
-                  }
-
-                  if (!loaded) {
-                    return {
-                      loaded: true,
-                      playing: autoplay || playing,
-                      hasPoster,
-                      waitingForVideo: false,
-                    };
-                  }
-
-                  return {};
+              update(({ loaded, playing, options: { autoplay } }) => {
+                if (!loaded) {
+                  return {
+                    loaded: true,
+                    playing: autoplay || playing,
+                    waitingForVideo: false,
+                  };
                 }
-              );
+
+                return {};
+              });
               dispatchEvent("load");
             });
           });
@@ -484,13 +467,43 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.update = update;
     this.element = null;
     this.frameNumber = 1;
-    update(({ config: { thumbnail, dimensions, src } }) => {
+    update(({ config: { thumbnail, dimensions, src, frameRate } }) => {
       this.src = src;
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
         this.canvas.width = dimensions[0];
         this.canvas.height = dimensions[1];
-        this.acquireVideo();
+        acquireThumbnailer().then(([video, release]) => {
+          const listener = () => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                this.canvas.getContext("2d").drawImage(video, 0, 0);
+                release();
+                video.removeEventListener("seeked", listener);
+                this.update({
+                  hasPoster: true,
+                  duration: this.duration,
+                  loaded: true,
+                });
+              });
+            });
+          };
+          video.addEventListener("seeked", listener);
+          video.src = src;
+
+          const load = () => {
+            this.duration = video.duration;
+            this.frameCount = getFrameNumber(
+              this.duration,
+              this.duration,
+              frameRate
+            );
+            video.currentTime = 0;
+            video.removeEventListener("loadedmetadata", load);
+          };
+
+          video.addEventListener("loadedmetadata", load);
+        });
       } else {
         this.element = document.createElement("video");
         this.element.preload = "metadata";
@@ -524,11 +537,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
     this.update(({ waitingForVideo }) => {
       if (!waitingForVideo) {
-        acquireVideo().then(([video, release]) => {
-          this.update(({ hovering, config: { thumbnail }, hasPoster }) => {
+        acquirePlayer().then(([video, release]) => {
+          this.update(({ hovering, config: { thumbnail } }) => {
             this.element = video;
             this.release = release;
-            if (!hovering && thumbnail && hasPoster) {
+            if ((!hovering && thumbnail) || this.waitingToRelease) {
               this.releaseVideo();
             } else {
               this.attachEvents();
@@ -587,10 +600,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         const result = this.acquireVideo();
 
         if (result) {
-          return;
+          return null;
         }
       }
-    } else if (!hovering && thumbnail && hasPoster) {
+    } else if (thumbnail && !hovering) {
       this.releaseVideo();
       return null;
     }
@@ -600,6 +613,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     } else {
       this.imageSource = this.element;
     }
+
     if (!this.element) {
       return null;
     }
@@ -613,6 +627,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
         if (this.waitingToRelease) {
           this.releaseVideo();
+          return null;
         }
       });
     }
@@ -922,9 +937,8 @@ export const PLAYBACK_RATE = {
   ],
 };
 
-const acquireVideo = (() => {
+const makeAcquirer = (maxVideos: number) => {
   const VIDEOS: HTMLVideoElement[] = [];
-  const MAX_VIDEOS = 8;
   const QUEUE = [];
   const FREE = [];
 
@@ -954,7 +968,7 @@ const acquireVideo = (() => {
       return Promise.resolve([video, release(video)]);
     }
 
-    if (VIDEOS.length < MAX_VIDEOS) {
+    if (VIDEOS.length < maxVideos) {
       const video = document.createElement("video");
       video.preload = "metadata";
       video.muted = true;
@@ -968,4 +982,8 @@ const acquireVideo = (() => {
       QUEUE.push(resolve);
     });
   };
-})();
+};
+
+const acquirePlayer = makeAcquirer(1);
+
+const acquireThumbnailer = makeAcquirer(6);

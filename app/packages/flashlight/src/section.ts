@@ -118,6 +118,9 @@ export default class SectionElement implements Section {
 
   show(element: HTMLDivElement): void {
     if (!this.attached) {
+      element.appendChild(this.section);
+      this.attached = true;
+
       this.rows.forEach(
         ([{ aspectRatio: rowAspectRatio, extraMargins }, items]) => {
           !extraMargins && (extraMargins = 0);
@@ -131,9 +134,6 @@ export default class SectionElement implements Section {
           });
         }
       );
-
-      element.appendChild(this.section);
-      this.attached = true;
     }
   }
 
