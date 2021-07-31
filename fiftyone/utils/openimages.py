@@ -283,8 +283,8 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             attrs=attrs,
             oi_attrs=oi_attrs,
             seg_classes=seg_classes,
-            track_all_ids=max_samples is not None,
             ids_only=False,
+            track_all_ids=max_samples is not None,
             only_matching=self.only_matching,
             download=False,
         )
@@ -592,7 +592,7 @@ def _setup(
     download=False,
 ):
     did_download = False
-    label_types = _parse_label_types(label_types)
+    _label_types = _parse_label_types(label_types)
 
     if etau.is_str(classes):
         classes = [classes]
@@ -633,7 +633,7 @@ def _setup(
     else:
         oi_classes = None
 
-    if "relationships" in label_types:
+    if "relationships" in _label_types:
         # Map of attribute IDs to attribute names
         attrs_map, _did_download = _get_attrs_map(
             dataset_dir, download=download
@@ -670,7 +670,7 @@ def _setup(
         oi_attrs = None
         all_attrs = None
 
-    if "segmentations" in label_types:
+    if "segmentations" in _label_types:
         seg_classes, _did_download = _get_seg_classes(
             dataset_dir, classes_map=classes_map, download=download
         )
@@ -961,8 +961,9 @@ def _get_all_label_data(
     attrs=None,
     oi_attrs=None,
     seg_classes=None,
-    track_all_ids=True,
+    download_only=False,
     ids_only=False,
+    track_all_ids=True,
     only_matching=False,
     split=None,
     download=False,
@@ -994,8 +995,9 @@ def _get_all_label_data(
             "classifications",
             classes=classes,
             oi_classes=oi_classes,
-            track_all_ids=track_all_ids,
+            download_only=download_only,
             ids_only=ids_only,
+            track_all_ids=track_all_ids,
             only_matching=only_matching,
             url=url,
             download=download,
@@ -1022,8 +1024,9 @@ def _get_all_label_data(
             oi_classes=oi_classes,
             url=url,
             download=download,
-            track_all_ids=track_all_ids,
+            download_only=download_only,
             ids_only=ids_only,
+            track_all_ids=track_all_ids,
             only_matching=only_matching,
         )
         did_download |= _did_download
@@ -1043,8 +1046,9 @@ def _get_all_label_data(
             "relationships",
             classes=attrs,
             oi_classes=oi_attrs,
-            track_all_ids=track_all_ids,
+            download_only=download_only,
             ids_only=ids_only,
+            track_all_ids=track_all_ids,
             only_matching=only_matching,
             url=url,
             download=download,
@@ -1076,8 +1080,9 @@ def _get_all_label_data(
             "segmentations",
             classes=classes,
             oi_classes=oi_classes,
-            track_all_ids=track_all_ids,
+            download_only=download_only,
             ids_only=ids_only,
+            track_all_ids=track_all_ids,
             only_matching=only_matching,
             url=url,
             download=download,
@@ -1118,8 +1123,9 @@ def _get_label_data(
     label_type,
     classes=None,
     oi_classes=None,
-    track_all_ids=True,
+    download_only=False,
     ids_only=False,
+    track_all_ids=True,
     only_matching=False,
     url=None,
     download=True,
@@ -1128,6 +1134,9 @@ def _get_label_data(
     did_download = _download_file_if_necessary(
         csv_path, url, quiet=0, download=download
     )
+
+    if download_only:
+        return set(), set(), {}, did_download
 
     df = _parse_csv(csv_path, dataframe=True)
     df.set_index("ImageID", drop=False, inplace=True)
@@ -1204,36 +1213,36 @@ def _download(
     num_workers=None,
     download=True,
 ):
-    did_download = False
+    # Download any necessary labels, and, if specific classes/attributes are
+    # requested, determine which image IDs have the specified labels
+    (
+        _,
+        _,
+        _,
+        _,
+        all_label_ids,
+        any_label_ids,
+        did_download,
+    ) = _get_all_label_data(
+        dataset_dir,
+        image_ids,
+        label_types=label_types,
+        classes=classes,
+        oi_classes=oi_classes,
+        attrs=attrs,
+        oi_attrs=oi_attrs,
+        seg_classes=seg_classes,
+        download_only=classes is None and attrs is None,
+        ids_only=True,
+        track_all_ids=max_samples is not None,
+        split=split,
+        download=download,
+    )
+
     downloaded_ids = set(downloaded_ids)
 
     # Make list of `target_ids`
     if classes is not None or attrs is not None:
-        # Determine which samples have specified classes/attributes
-        (
-            _,
-            _,
-            _,
-            _,
-            all_label_ids,
-            any_label_ids,
-            _did_download,
-        ) = _get_all_label_data(
-            dataset_dir,
-            image_ids,
-            label_types=label_types,
-            classes=classes,
-            oi_classes=oi_classes,
-            attrs=attrs,
-            oi_attrs=oi_attrs,
-            seg_classes=seg_classes,
-            track_all_ids=max_samples is not None,
-            ids_only=True,
-            split=split,
-            download=download,
-        )
-        did_download |= _did_download
-
         if max_samples is not None:
             #
             # Bias sampling to meet user requirements per the priorities below:
