@@ -19,6 +19,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
@@ -266,7 +267,7 @@ def _export_split(
     uuids = sorted(images_map.keys())
 
     logger.info("Finalizing split '%s'...", split)
-    exporter = foud.FiftyOneDatasetExporter(split_dir, move_media=False)
+    exporter = foud.LegacyFiftyOneDatasetExporter(split_dir)
     pb = fou.ProgressBar()
     with exporter, pb:
         exporter.log_collection(dataset)

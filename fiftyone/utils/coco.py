@@ -1479,13 +1479,9 @@ def download_coco_dataset_split(
     else:
         logger.info("Found %s at '%s'", anno_type, full_anno_path)
 
-    (
-        _,
-        all_classes,
-        _,
-        images,
-        annotations,
-    ) = load_coco_detection_annotations(full_anno_path)
+    # This will store the loaded annotations, if they were necessary
+    d = None
+    all_classes = None
 
     #
     # Download images to `images_dir`, if necessary

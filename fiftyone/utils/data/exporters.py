@@ -1329,7 +1329,6 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             -   ``"move"``: move media files into the export directory
             -   ``"symlink"``: create symlinks to each media file in the export
                 directory
-
         relative_filepaths (True): whether to store relative (True) or absolute
             (False) filepaths to media files on disk in the output dataset
         pretty_print (False): whether to render the JSON in human readable
@@ -1493,7 +1492,6 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             -   ``"move"``: move media files into the export directory
             -   ``"symlink"``: create symlinks to each media file in the export
                 directory
-
         rel_dir (None): a relative directory to remove from the ``filepath`` of
             each sample, if possible. The path is converted to an absolute path
             (if necessary) via ``os.path.abspath(os.path.expanduser(rel_dir))``.
