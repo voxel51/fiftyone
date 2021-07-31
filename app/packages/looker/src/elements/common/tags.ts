@@ -45,9 +45,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       return this.element;
     }
 
-    const container = document.createElement("div");
-    container.classList.add(lookerTags);
-
     const elements = activePaths.reduce<TagData[]>((elements, path) => {
       if (
         path.startsWith("tags.") &&
@@ -115,19 +112,17 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     }, []);
 
     this.activePaths = [...activePaths];
+    this.element.innerHTML = "";
 
     elements.forEach(({ value, color, title }) => {
       const div = document.createElement("div");
       div.innerHTML = value;
       div.title = title;
       div.style.backgroundColor = color;
-      container.appendChild(div);
+      this.element.appendChild(div);
     });
 
-    this.element.isConnected && this.element.remove();
-    this.element = container;
-
-    return container;
+    return this.element;
   }
 }
 

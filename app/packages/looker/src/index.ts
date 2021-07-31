@@ -310,7 +310,7 @@ export abstract class Looker<
     return false;
   }
 
-  destory() {
+  destroy() {
     this.lookerElement.element.parentElement &&
       this.lookerElement.element.parentElement.removeChild(
         this.lookerElement.element

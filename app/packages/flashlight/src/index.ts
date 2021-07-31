@@ -74,7 +74,6 @@ export default class Flashlight<K> {
               : {};
 
           const force = this.state.width !== width;
-
           this.state.width = width;
 
           this.updateOptions(options, force);
@@ -154,7 +153,7 @@ export default class Flashlight<K> {
       ...options,
     };
 
-    if (retile || force) {
+    if ((retile || force) && this.state.sections.length) {
       this.state.resized = new Set();
       const newContainer = document.createElement("div");
       newContainer.classList.add(flashlight);

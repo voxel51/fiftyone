@@ -574,7 +574,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
 
-    return generateColorMap(pool, seed, colorByLabel);
+    return generateColorMap(pool, seed);
   },
 });
 
