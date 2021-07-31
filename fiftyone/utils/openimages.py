@@ -592,7 +592,7 @@ def _setup(
     download=False,
 ):
     did_download = False
-    label_types = _parse_label_types(label_types)
+    _label_types = _parse_label_types(label_types)
 
     if etau.is_str(classes):
         classes = [classes]
@@ -633,7 +633,7 @@ def _setup(
     else:
         oi_classes = None
 
-    if "relationships" in label_types:
+    if "relationships" in _label_types:
         # Map of attribute IDs to attribute names
         attrs_map, _did_download = _get_attrs_map(
             dataset_dir, download=download
@@ -670,7 +670,7 @@ def _setup(
         oi_attrs = None
         all_attrs = None
 
-    if "segmentations" in label_types:
+    if "segmentations" in _label_types:
         seg_classes, _did_download = _get_seg_classes(
             dataset_dir, classes_map=classes_map, download=download
         )
