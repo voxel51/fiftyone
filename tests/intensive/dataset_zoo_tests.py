@@ -208,36 +208,6 @@ def test_coco_2017():
 
 def test_open_images_v6():
     dataset = foz.load_zoo_dataset(
-        "open-images-v6", split="validation", max_samples=5,
-    )
-    schema = dataset.get_field_schema()
-
-    assert "positive_labels" in schema
-    assert "negative_labels" in schema
-    assert "detections" in schema
-    assert "relationships" in schema
-    assert "segmentations" in schema
-    assert "open_images_id" in schema
-    assert len(dataset) == 5
-    assert len(dataset.match_tags("validation")) == 5
-    dataset.delete()
-
-    dataset = foz.load_zoo_dataset(
-        "open-images-v6", split="validation", max_samples=5, label_field="gt",
-    )
-    schema = dataset.get_field_schema()
-
-    assert "gt_positive_labels" in schema
-    assert "gt_negative_labels" in schema
-    assert "gt_detections" in schema
-    assert "gt_relationships" in schema
-    assert "gt_segmentations" in schema
-    assert "gt_open_images_id" in schema
-    assert len(dataset) == 5
-    assert len(dataset.match_tags("validation")) == 5
-    dataset.delete()
-
-    dataset = foz.load_zoo_dataset(
         "open-images-v6",
         split="validation",
         label_types=["segmentations"],
@@ -297,6 +267,36 @@ def test_open_images_v6():
 
     assert "ground_truth" in schema
     assert "open_images_id" not in schema
+    dataset.delete()
+
+    dataset = foz.load_zoo_dataset(
+        "open-images-v6", split="validation", max_samples=5,
+    )
+    schema = dataset.get_field_schema()
+
+    assert "positive_labels" in schema
+    assert "negative_labels" in schema
+    assert "detections" in schema
+    assert "relationships" in schema
+    assert "segmentations" in schema
+    assert "open_images_id" in schema
+    assert len(dataset) == 5
+    assert len(dataset.match_tags("validation")) == 5
+    dataset.delete()
+
+    dataset = foz.load_zoo_dataset(
+        "open-images-v6", split="validation", max_samples=5, label_field="gt",
+    )
+    schema = dataset.get_field_schema()
+
+    assert "gt_positive_labels" in schema
+    assert "gt_negative_labels" in schema
+    assert "gt_detections" in schema
+    assert "gt_relationships" in schema
+    assert "gt_segmentations" in schema
+    assert "gt_open_images_id" in schema
+    assert len(dataset) == 5
+    assert len(dataset.match_tags("validation")) == 5
     dataset.delete()
 
     dataset = foz.load_zoo_dataset(
