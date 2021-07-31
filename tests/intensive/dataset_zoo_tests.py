@@ -205,6 +205,9 @@ def test_coco_2017():
     assert counts["person"] >= 25
     dataset.delete()
 
+    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+    dataset.delete()
+
 
 def test_open_images_v6():
     dataset = foz.load_zoo_dataset(
