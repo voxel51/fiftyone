@@ -311,7 +311,12 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             valid_ids = all_label_ids + not_all_ids + extra_ids
             valid_ids = valid_ids[:max_samples]
         else:
-            valid_ids = sorted(image_ids)
+            if self.classes is None and self.attrs is None:
+                # No requirements were provided, so always make all samples
+                # available
+                valid_ids = sorted(image_ids)
+            else:
+                valid_ids = sorted(any_label_ids)
 
             if shuffle:
                 random.shuffle(valid_ids)
