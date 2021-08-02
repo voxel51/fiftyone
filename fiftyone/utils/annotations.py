@@ -408,7 +408,12 @@ def load_annotations(samples, info, label_field, **kwargs):
                 if label_id in labels_to_merge:
                     annot_label = image_annots[label_id]
                     for field in annot_label._fields_ordered:
-                        if annot_label[field] != label[field]:
+                        if (
+                            field in label._fields_ordered
+                            and label[field] == annot_label[field]
+                        ):
+                            pass
+                        else:
                             label[field] = annot_label[field]
 
             if has_label_list:
