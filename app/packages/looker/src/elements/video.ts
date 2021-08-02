@@ -7,6 +7,7 @@ import { BaseElement, Events } from "./base";
 import { muteUnmute, playPause, resetPlaybackRate } from "./common/actions";
 import { lookerClickable, lookerTime } from "./common/controls.module.css";
 import {
+  acquireThumbnailer,
   getFrameNumber,
   getFrameString,
   getFullTimeString,
@@ -936,54 +937,3 @@ export const PLAYBACK_RATE = {
     { node: PlaybackRateBarElement },
   ],
 };
-
-const makeAcquirer = (maxVideos: number) => {
-  const VIDEOS: HTMLVideoElement[] = [];
-  const QUEUE = [];
-  const FREE = [];
-
-  const release = (video: HTMLVideoElement) => {
-    return () => {
-      if (!video.paused) {
-        throw new Error("Release playing video");
-      }
-
-      video.pause();
-      video.muted = true;
-      video.preload = "metadata";
-      video.loop = false;
-      video.src = "";
-      if (QUEUE.length) {
-        const resolve = QUEUE.shift();
-        resolve([video, release(video)]);
-      } else {
-        FREE.push(video);
-      }
-    };
-  };
-
-  return (): Promise<[HTMLVideoElement, () => void]> => {
-    if (FREE.length) {
-      const video = FREE.shift();
-      return Promise.resolve([video, release(video)]);
-    }
-
-    if (VIDEOS.length < maxVideos) {
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.muted = true;
-      video.loop = false;
-
-      VIDEOS.push(video);
-      return Promise.resolve([video, release(video)]);
-    }
-
-    return new Promise<[HTMLVideoElement, () => void]>((resolve) => {
-      QUEUE.push(resolve);
-    });
-  };
-};
-
-const acquirePlayer = makeAcquirer(1);
-
-const acquireThumbnailer = makeAcquirer(6);

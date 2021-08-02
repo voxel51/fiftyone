@@ -214,8 +214,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
     count = total;
   }
 
-  console.log(index, count);
-
   const theme = useTheme();
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>

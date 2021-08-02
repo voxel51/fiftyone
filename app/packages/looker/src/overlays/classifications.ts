@@ -137,9 +137,10 @@ export default class ClassificationsOverlay<State extends BaseState>
   }
 
   private getFiltered(state: Readonly<State>): ClassificationLabels {
+    console.log(this.labels);
     return this.labels.map(([field, labels]) => [
       field,
-      labels.filter((label) => isShown(state, field, label)),
+      labels.filter((label) => isShown(state, field, label) && label.label),
     ]);
   }
 

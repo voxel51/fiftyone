@@ -2,9 +2,14 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { FrameState } from "../state";
+import { DispatchEvent, FrameState, StateUpdate } from "../state";
 import { BaseElement, Events } from "./base";
-import { getFrameString, getTime } from "./util";
+import {
+  acquirePlayer,
+  acquireThumbnailer,
+  getFrameString,
+  getTime,
+} from "./util";
 
 import { lookerTime } from "./common/controls.module.css";
 
@@ -29,6 +34,7 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 
 export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
   private src: string = "";
+  imageSource: HTMLCanvasElement;
 
   getEvents(): Events<FrameState> {
     return {
@@ -50,22 +56,55 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement() {
-    const element = document.createElement("video");
-    element.preload = "metadata";
-    element.muted = true;
-    return element;
+  createHTMLElement(
+    update: StateUpdate<FrameState>,
+    dispatchEvent: DispatchEvent
+  ) {
+    this.imageSource = document.createElement("canvas");
+
+    update(
+      ({ config: { thumbnail, dimensions, src, frameRate, frameNumber } }) => {
+        this.imageSource.width = dimensions[0];
+        this.imageSource.height = dimensions[1];
+        this.src = src;
+
+        const acquirer = thumbnail ? acquireThumbnailer : acquirePlayer;
+
+        acquirer().then(([video, release]) => {
+          const seeked = () => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                this.imageSource.getContext("2d").drawImage(video, 0, 0);
+                release();
+                video.removeEventListener("seeked", seeked);
+                update({
+                  loaded: true,
+                  duration: video.duration,
+                });
+              });
+            });
+          };
+          video.addEventListener("seeked", seeked);
+
+          const loaded = () => {
+            video.currentTime = getTime(frameNumber, frameRate);
+            update({ duration: video.duration });
+            video.removeEventListener("loadedmetadata", loaded);
+          };
+
+          video.addEventListener("loadedmetadata", loaded);
+
+          video.src = src;
+        });
+
+        return {};
+      }
+    );
+
+    return null;
   }
 
-  renderSelf(state: Readonly<FrameState>) {
-    const {
-      config: { src },
-    } = state;
-    if (this.src !== src) {
-      this.src = src;
-      this.element.setAttribute("src", src);
-    }
-
+  renderSelf() {
     return null;
   }
 }
