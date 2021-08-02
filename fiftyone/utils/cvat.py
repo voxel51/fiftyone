@@ -2600,7 +2600,14 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             url = self.base_url
         webbrowser.open(url, new=2)
 
-    def upload_data(self, task_id, paths, image_quality, job_assignees=None):
+    def upload_data(
+        self,
+        task_id,
+        paths,
+        image_quality,
+        job_assignees=None,
+        job_reviewers=None,
+    ):
         data = {"image_quality": image_quality}
 
         files = {
@@ -2625,6 +2632,16 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         self.taskless_job_url(job_id), json=job_patch
                     )
 
+        if job_reviewers is not None:
+            for ind, job_id in enumerate(job_ids):
+                reviewer_ind = min(ind, len(job_reviewers) - 1)
+                reviewer = job_reviewers[reviewer_ind]
+                if reviewer is not None:
+                    job_patch = {"reviewer_id": self._user_id_map[reviewer]}
+                    resp = self._session.patch(
+                        self.taskless_job_url(job_id), json=job_patch
+                    )
+
         return job_ids
 
     def upload_samples(
@@ -2634,6 +2651,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         classes=None,
         segment_size=None,
         image_quality=75,
+        job_reviewers=None,
         job_assignees=None,
         task_assignee=None,
         job_sample_map=None,
@@ -2651,6 +2669,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 applicable to videos, only used if `job_sample_map` is `None`
             image_quality (75): an integer ranging from 0 to 100 indicating the 
                 quality of images after uploading to CVAT
+            job_reviewers (None): a list containing usernames to which to assign
+                job reviews sequentially 
             job_assignees (None): a list containing usernames to which to assign jobs
                 sequentially 
             task_assignee (None): the username of the user assigned to the
@@ -2782,14 +2802,18 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             for ln in label_names:
                 labels.append({"name": ln, "attributes": attributes})
 
+            current_job_assignees = job_assignees
+            current_job_reviewers = job_reviewers
             if is_video:
+                # Videos are uploaded in multiple tasks with one job per task
+                # Assign the correct users for the current task
                 if job_assignees is not None:
                     job_assignee_ind = min(task_index, len(job_assignees) - 1)
-                    task_assignee = job_assignees[job_assignee_ind]
-                if task_assignee is not None:
-                    current_job_assignees = [task_assignee]
-            else:
-                current_job_assignees = job_assignees
+                    current_job_assignees = [job_assignees[job_assignee_ind]]
+
+                if job_reviewers is not None:
+                    job_reviewer_ind = min(task_index, len(job_reviewers) - 1)
+                    currnet_job_reviewers = [job_reviewers[job_reviewer_ind]]
 
             # Create task and upload raw data
             task_id = self.create_task(
@@ -2802,6 +2826,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 paths,
                 image_quality,
                 job_assignees=current_job_assignees,
+                job_reviewers=current_job_reviewers,
             )
             job_ids[task_id] = current_job_ids
             self._frame_id_map[task_id] = id_mapping
@@ -3501,6 +3526,7 @@ def annotate(
     segment_size=None,
     image_quality=75,
     classes=None,
+    job_reviewers=None,
     job_assignees=None,
     task_assignee=None,
     job_sample_map=None,
@@ -3528,6 +3554,8 @@ def annotate(
             quality of images after uploading to CVAT
         classes (None): a list of classes used to define the options in the
             labelling schema
+        job_reviewers (None): a list containing usernames to which to assign
+            job reviews sequentially 
         job_assignees (None): a list containing usernames to which to assign jobs
             sequentially for images or tasks for videos
         task_assignee (None): the username of the user assigned to the
@@ -3553,6 +3581,7 @@ def annotate(
         classes=classes,
         segment_size=segment_size,
         image_quality=image_quality,
+        job_reviewers=job_reviewers,
         job_assignees=job_assignees,
         task_assignee=task_assignee,
         job_sample_map=job_sample_map,
