@@ -56,136 +56,12 @@ _SUPPORTED_FIELD_TYPES = (
 )
 
 
-class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
-    """Parser for samples in
-    `CVAT image format <https://github.com/opencv/cvat>`_.
-
-    This implementation supports samples that are
-    ``(image_or_path, image_tag_dict)`` tuples, where:
-
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
-
-        - ``image_tag_dict`` is a JSON dictionary representation of an
-          ``<image>`` tag of a CVAT image annotations file which has been
-          loaded via :meth:`fiftyone.core.utils.load_xml_as_json_dict`, or
-          ``None`` for unlabeled images.
-
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for more format
-    details.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._cvat_image_cache = None
-
-    @property
-    def has_image_metadata(self):
-        return True
-
-    @property
-    def label_cls(self):
-        return {
-            "detections": fol.Detections,
-            "polylines": fol.Polylines,
-            "keypoints": fol.Keypoints,
-        }
-
-    def get_image_metadata(self):
-        cvat_image = self._cvat_image
-        if cvat_image is None:
-            return None
-
-        return cvat_image.get_image_metadata()
-
-    def get_label(self):
-        """Returns the label for the current sample.
-
-        Args:
-            sample: the sample
-
-        Returns:
-            a dictionary mapping field names to
-            :class:`fiftyone.core.labels.ImageLabel` instances, or ``None`` if
-            the sample is unlabeled
-        """
-        cvat_image = self._cvat_image
-        if cvat_image is None:
-            return None
-
-        return cvat_image.to_labels()
-
-    def clear_sample(self):
-        super().clear_sample()
-        self._cvat_image_cache = None
-
-    @property
-    def _cvat_image(self):
-        if self._cvat_image_cache is None:
-            self._cvat_image_cache = self._parse_cvat_image()
-
-        return self._cvat_image_cache
-
-    def _parse_cvat_image(self):
-        d = self.current_sample[1]
-        return CVATImage.from_image_dict(d) if d is not None else None
-
-
-class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
-    """Parser for samples in
-    `CVAT video format <https://github.com/opencv/cvat>`_.
-
-    This implementation supports samples that are
-    ``(video_path, image_tag_dict)`` tuples, where:
-
-        - ``video_path`` is the path to a video on disk
-
-        - ``anno_path`` is the path to a CVAT video labels XML file on disk,
-          or ``None`` for unlabeled videos.
-
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for more format
-    details.
-    """
-
-    @property
-    def has_video_metadata(self):
-        return False
-
-    @property
-    def label_cls(self):
-        return None
-
-    @property
-    def frame_labels_cls(self):
-        return {
-            "detections": fol.Detections,
-            "polylines": fol.Polylines,
-            "keypoints": fol.Keypoints,
-        }
-
-    def get_video_path(self):
-        return self.current_sample[0]
-
-    def get_label(self):
-        return None
-
-    def get_frame_labels(self):
-        labels_path = self.current_sample[1]
-
-        if not labels_path:
-            return None
-
-        _, _, cvat_tracks = load_cvat_video_annotations(labels_path)
-        return _cvat_tracks_to_frames_dict(cvat_tracks)
-
-
 class CVATImageDatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
     """Importer for CVAT image datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -306,7 +182,9 @@ class CVATImageDatasetImporter(
         }
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(self.data_path)
+        self._image_paths_map = self._load_data_map(
+            self.data_path, recursive=True
+        )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             info, _, cvat_images = load_cvat_image_annotations(
@@ -336,8 +214,7 @@ class CVATVideoDatasetImporter(
 ):
     """Importer for CVAT video datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-import>` for format details.
 
     Args:
         dataset_dir (None): the dataset directory
@@ -468,12 +345,14 @@ class CVATVideoDatasetImporter(
         }
 
     def setup(self):
-        self._video_paths_map = self._load_data_map(self.data_path)
+        self._video_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True, recursive=True
+        )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
             self._labels_paths_map = {
-                os.path.splitext(os.path.basename(p))[0]: p
-                for p in etau.list_files(self.labels_path, abs_paths=True)
+                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
+                for p in etau.list_files(self.labels_path, recursive=True)
             }
         else:
             self._labels_paths_map = {}
@@ -497,8 +376,7 @@ class CVATImageDatasetExporter(
 ):
     """Exporter that writes CVAT image datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -611,7 +489,7 @@ class CVATImageDatasetExporter(
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
-        out_image_path, _ = self._media_exporter.export(image_or_path)
+        _, uuid = self._media_exporter.export(image_or_path)
 
         if labels is None:
             return  # unlabeled
@@ -623,12 +501,12 @@ class CVATImageDatasetExporter(
             return  # unlabeled
 
         if metadata is None:
-            metadata = fomt.ImageMetadata.build_for(out_image_path)
+            metadata = fomt.ImageMetadata.build_for(image_or_path)
 
         cvat_image = CVATImage.from_labels(labels, metadata)
 
         cvat_image.id = len(self._cvat_images)
-        cvat_image.name = os.path.basename(out_image_path)
+        cvat_image.name = uuid
 
         self._cvat_images.append(cvat_image)
 
@@ -661,8 +539,7 @@ class CVATVideoDatasetExporter(
 ):
     """Exporter that writes CVAT video datasets to disk.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-export>` for format details.
 
     Args:
         export_dir (None): the directory to write the export. This has no
@@ -769,17 +646,17 @@ class CVATVideoDatasetExporter(
         self._task_labels = sample_collection.info.get("task_labels", None)
 
     def export_sample(self, video_path, _, frames, metadata=None):
-        out_video_path, _ = self._media_exporter.export(video_path)
+        _, filename = self._media_exporter.export(video_path)
 
         if frames is None:
             return  # unlabeled
 
         if metadata is None:
-            metadata = fomt.VideoMetadata.build_for(out_video_path)
+            metadata = fomt.VideoMetadata.build_for(video_path)
 
-        name_with_ext = os.path.basename(out_video_path)
-        name = os.path.splitext(name_with_ext)[0]
-        out_anno_path = os.path.join(self.labels_path, name + ".xml")
+        out_anno_path = os.path.join(
+            self.labels_path, os.path.splitext(filename)[0] + ".xml"
+        )
 
         # Generate object tracks
         frame_size = (metadata.frame_width, metadata.frame_height)
@@ -804,7 +681,7 @@ class CVATVideoDatasetExporter(
             metadata,
             out_anno_path,
             id=self._num_samples - 1,
-            name=name_with_ext,
+            name=filename,
         )
 
     def close(self, *args):
@@ -889,7 +766,8 @@ class CVATTaskLabels(object):
                 schema.add_object_label(_label)
 
                 if anno.occluded is not None:
-                    schema.add_object_attribute("occluded", anno.occluded)
+                    _attr = etad.BooleanAttribute("occluded", anno.occluded)
+                    schema.add_object_attribute(_label, _attr)
 
                 for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
@@ -915,13 +793,16 @@ class CVATTaskLabels(object):
                 schema.add_object_label(_label)
 
                 if anno.outside is not None:
-                    schema.add_object_attribute("outside", anno.outside)
+                    _attr = etad.BooleanAttribute("outside", anno.outside)
+                    schema.add_object_attribute(_label, _attr)
 
                 if anno.occluded is not None:
-                    schema.add_object_attribute("occluded", anno.occluded)
+                    _attr = etad.BooleanAttribute("occluded", anno.occluded)
+                    schema.add_object_attribute(_label, _attr)
 
                 if anno.keyframe is not None:
-                    schema.add_object_attribute("keyframe", anno.keyframe)
+                    _attr = etad.BooleanAttribute("keyframe", anno.keyframe)
+                    schema.add_object_attribute(_label, _attr)
 
                 for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
@@ -1257,50 +1138,33 @@ class CVATImageAnno(object):
         self.attributes = attributes or []
 
     def _to_attributes(self):
-        attributes = {a.name: a.to_attribute() for a in self.attributes}
+        attributes = {a.name: a.value for a in self.attributes}
 
         if self.occluded is not None:
-            attributes["occluded"] = fol.BooleanAttribute(value=self.occluded)
+            attributes["occluded"] = self.occluded
 
         return attributes
 
     @staticmethod
     def _parse_attributes(label):
-        occluded = None
-
-        if label.attributes:
-            supported_attrs = (
-                fol.BooleanAttribute,
-                fol.CategoricalAttribute,
-                fol.NumericAttribute,
-            )
-
-            attributes = []
-            for name, attr in label.attributes.items():
-                if name == "occluded":
-                    occluded = attr.value
-                elif isinstance(attr, supported_attrs):
-                    attributes.append(CVATAttribute(name, attr.value))
-        else:
-            attributes = None
+        attrs = dict(label.iter_attributes())
+        occluded = attrs.pop("occluded", None)
+        attributes = [
+            CVATAttribute(k, v)
+            for k, v in attrs.items()
+            if _is_supported_attribute_type(v)
+        ]
 
         return occluded, attributes
 
     @staticmethod
     def _parse_anno_dict(d):
-        occluded = d.get("@occluded", None)
-        if occluded is not None:
-            occluded = bool(int(occluded))
+        occluded = _parse_attribute(d.get("@occluded", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             name = attr["@name"].lstrip("@")
-            value = attr["#text"]
-            try:
-                value = float(value)
-            except:
-                pass
-
+            value = _parse_attribute(attr["#text"])
             attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
@@ -1352,7 +1216,7 @@ class CVATImageBox(CVATImageAnno):
         attributes = self._to_attributes()
 
         return fol.Detection(
-            label=label, bounding_box=bounding_box, attributes=attributes,
+            label=label, bounding_box=bounding_box, **attributes
         )
 
     @classmethod
@@ -1443,7 +1307,7 @@ class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
             points=[points],
             closed=True,
             filled=True,
-            attributes=attributes,
+            **attributes,
         )
 
     @classmethod
@@ -1537,7 +1401,7 @@ class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
             points=[points],
             closed=False,
             filled=False,
-            attributes=attributes,
+            **attributes,
         )
 
     @classmethod
@@ -1629,7 +1493,7 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
         attributes = self._to_attributes()
-        return fol.Keypoint(label=label, points=points, attributes=attributes)
+        return fol.Keypoint(label=label, points=points, **attributes)
 
     @classmethod
     def from_keypoint(cls, keypoint, metadata):
@@ -1895,70 +1759,43 @@ class CVATVideoAnno(object):
         self.attributes = attributes or []
 
     def _to_attributes(self):
-        attributes = {a.name: a.to_attribute() for a in self.attributes}
+        attributes = {a.name: a.value for a in self.attributes}
 
         if self.outside is not None:
-            attributes["outside"] = fol.BooleanAttribute(value=self.outside)
+            attributes["outside"] = self.outside
 
         if self.occluded is not None:
-            attributes["occluded"] = fol.BooleanAttribute(value=self.occluded)
+            attributes["occluded"] = self.occluded
 
         if self.keyframe is not None:
-            attributes["keyframe"] = fol.BooleanAttribute(value=self.keyframe)
+            attributes["keyframe"] = self.keyframe
 
         return attributes
 
     @staticmethod
     def _parse_attributes(label):
-        outside = None
-        occluded = None
-        keyframe = None
-
-        if label.attributes:
-            supported_attrs = (
-                fol.BooleanAttribute,
-                fol.CategoricalAttribute,
-                fol.NumericAttribute,
-            )
-
-            attributes = []
-            for name, attr in label.attributes.items():
-                if name == "outside":
-                    outside = attr.value
-                elif name == "occluded":
-                    occluded = attr.value
-                elif name == "keyframe":
-                    keyframe = attr.value
-                elif isinstance(attr, supported_attrs):
-                    attributes.append(CVATAttribute(name, attr.value))
-        else:
-            attributes = None
+        attrs = dict(label.iter_attributes())
+        occluded = attrs.pop("occluded", None)
+        outside = attrs.pop("outside", None)
+        keyframe = attrs.pop("keyframe", None)
+        attributes = [
+            CVATAttribute(k, v)
+            for k, v in attrs.items()
+            if _is_supported_attribute_type(v)
+        ]
 
         return outside, occluded, keyframe, attributes
 
     @staticmethod
     def _parse_anno_dict(d):
-        outside = d.get("@outside", None)
-        if outside is not None:
-            outside = bool(int(outside))
-
-        occluded = d.get("@occluded", None)
-        if occluded is not None:
-            occluded = bool(int(occluded))
-
-        keyframe = d.get("@keyframe", None)
-        if keyframe is not None:
-            keyframe = bool(int(keyframe))
+        outside = _parse_attribute(d.get("@outside", None))
+        occluded = _parse_attribute(d.get("@occluded", None))
+        keyframe = _parse_attribute(d.get("@keyframe", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             name = attr["@name"].lstrip("@")
-            value = attr["#text"]
-            try:
-                value = float(value)
-            except:
-                pass
-
+            value = _parse_attribute(attr["#text"])
             attributes.append(CVATAttribute(name, value))
 
         return outside, occluded, keyframe, attributes
@@ -2030,7 +1867,7 @@ class CVATVideoBox(CVATVideoAnno):
         attributes = self._to_attributes()
 
         return fol.Detection(
-            label=label, bounding_box=bounding_box, attributes=attributes,
+            label=label, bounding_box=bounding_box, **attributes
         )
 
     @classmethod
@@ -2160,7 +1997,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
             points=[points],
             closed=True,
             filled=True,
-            attributes=attributes,
+            **attributes,
         )
 
     @classmethod
@@ -2274,7 +2111,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
             points=[points],
             closed=False,
             filled=False,
-            attributes=attributes,
+            **attributes,
         )
 
     @classmethod
@@ -2384,7 +2221,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
         attributes = self._to_attributes()
-        return fol.Keypoint(label=label, points=points, attributes=attributes)
+        return fol.Keypoint(label=label, points=points, **attributes)
 
     @classmethod
     def from_keypoint(cls, frame_number, keypoint, frame_size):
@@ -2467,27 +2304,11 @@ class CVATAttribute(object):
 
         return etad.CategoricalAttribute(self.name, self.value)
 
-    def to_attribute(self):
-        """Returns a :class:`fiftyone.core.labels.Attribute` representation of
-        the attribute.
-
-        Returns:
-            a :class:`fiftyone.core.labels.Attribute`
-        """
-        if isinstance(self.value, bool):
-            return fol.BooleanAttribute(value=self.value)
-
-        if etau.is_numeric(self.value):
-            return fol.NumericAttribute(value=self.value)
-
-        return fol.CategoricalAttribute(value=self.value)
-
 
 class CVATImageAnnotationWriter(object):
     """Class for writing annotations in CVAT image format.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-export>` for format details.
     """
 
     def __init__(self):
@@ -2515,8 +2336,8 @@ class CVATImageAnnotationWriter(object):
         now = datetime.now().isoformat()
         xml_str = self.template.render(
             {
-                "id": id if id is not None else "",
-                "name": name if name is not None else "",
+                "id": id,
+                "name": name,
                 "size": len(cvat_images),
                 "created": now,
                 "updated": now,
@@ -2531,8 +2352,7 @@ class CVATImageAnnotationWriter(object):
 class CVATVideoAnnotationWriter(object):
     """Class for writing annotations in CVAT video format.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-export>` for format details.
     """
 
     def __init__(self):
@@ -2568,8 +2388,8 @@ class CVATVideoAnnotationWriter(object):
         now = datetime.now().isoformat()
         xml_str = self.template.render(
             {
-                "id": id if id is not None else "",
-                "name": name if name is not None else "",
+                "id": id,
+                "name": name,
                 "size": metadata.total_frame_count,
                 "created": now,
                 "updated": now,
@@ -3759,8 +3579,7 @@ def load_annotations(info, delete_task=True):
 def load_cvat_image_annotations(xml_path):
     """Loads the CVAT image annotations from the given XML file.
 
-    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
-    details.
+    See :ref:`this page <CVATImageDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file
@@ -3815,8 +3634,7 @@ def load_cvat_image_annotations(xml_path):
 def load_cvat_video_annotations(xml_path):
     """Loads the CVAT video annotations from the given XML file.
 
-    See :class:`fiftyone.types.dataset_types.CVATVideoDataset` for format
-    details.
+    See :ref:`this page <CVATVideoDataset-import>` for format details.
 
     Args:
         xml_path: the path to the annotations XML file
@@ -3876,6 +3694,12 @@ def load_cvat_video_annotations(xml_path):
         info["dumped"] = meta["dumped"]
 
     return info, cvat_task_labels, cvat_tracks
+
+
+def _is_supported_attribute_type(value):
+    return (
+        isinstance(value, bool) or etau.is_str(value) or etau.is_numeric(value)
+    )
 
 
 def _cvat_tracks_to_frames_dict(cvat_tracks):
@@ -3986,3 +3810,26 @@ def _ensure_list(value):
         return value
 
     return [value]
+
+
+def _parse_attribute(value):
+    try:
+        return int(value)
+    except:
+        pass
+
+    try:
+        return float(value)
+    except:
+        pass
+
+    if value in {"True", "true"}:
+        return True
+
+    if value in {"False", "false"}:
+        return False
+
+    if value == "None":
+        return None
+
+    return value

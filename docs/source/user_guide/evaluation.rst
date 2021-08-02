@@ -560,7 +560,7 @@ The :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.eva
 method supports all of the following task types:
 
 -   :ref:`Object detection <object-detection>`
--   :ref:`Instance segmentations <objects-with-instance-segmentations>`
+-   :ref:`Instance segmentations <instance-segmentation>`
 -   :ref:`Polygon detection <polylines>`
 
 The only difference between each task type is in how the IoU between objects is

@@ -37,7 +37,7 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
     """Mixin for Torch models that can generate embeddings.
 
     Args:
-        model: the Torch model, a ``torch.nn.Module``
+        model: the Torch model, a :class:`torch:torch.nn.Module`
         layer_name (None): the name of the embeddings layer whose output to
             save, or ``None`` if this model instance should not expose
             embeddings. Prepend ``"<"`` to save the input tensor instead
@@ -127,7 +127,8 @@ class TorchImageModelConfig(foc.Config):
         use_half_precision (None): whether to use half precision (only
             supported when using GPU)
         cudnn_benchmark (None): a value to use for
-            ``torch.backends.cudnn.benchmark`` while the model is running
+            :attr:`torch:torch.backends.cudnn.benchmark` while the model is
+            running
     """
 
     def __init__(self, d):
@@ -175,8 +176,8 @@ class TorchImageModel(
     """Wrapper for evaluating a Torch model on images.
 
     This wrapper assumes that ``config.entrypoint_fcn`` returns a
-    ``torch.nn.Module`` whose ``__call__()`` method directly accepts Torch
-    tensors (NCHW) as input.
+    :class:`torch:torch.nn.Module` whose ``__call__()`` method directly accepts
+    Torch tensors (NCHW) as input.
 
     Args:
         config: an :class:`TorchImageModelConfig`
@@ -250,8 +251,8 @@ class TorchImageModel(
 
     @property
     def transforms(self):
-        """The ``torchvision.transforms`` function that will/must be applied to
-        each input before prediction.
+        """The `torchvision.transforms <https://pytorch.org/vision/stable/transforms.html>`
+        function that will/must be applied to each input before prediction.
         """
         return self._transforms
 
@@ -271,7 +272,7 @@ class TorchImageModel(
 
     @property
     def device(self):
-        """The ``torch.device`` that the model is using."""
+        """The :class:`torch:torch.torch.device` that the model is using."""
         return self._device
 
     @property
@@ -453,7 +454,7 @@ class MinResize(object):
         min_output_size: Desired minimum output dimensions. Can either be a
             ``(min_height, min_width)`` tuple or a single ``min_dim``
         interpolation (None): Optional interpolation mode. Passed directly to
-            ``torchvision.transforms.functional.resize``
+            :func:`torchvision:torchvision.transforms.functional.resize`
     """
 
     def __init__(self, min_output_size, interpolation=None):
@@ -488,7 +489,7 @@ class SaveLayerTensor(object):
     Torch model during each ``forward()`` call.
 
     Args:
-        model: the Torch model, a ``torch.nn.Module``
+        model: the Torch model, a :class:`torch:torch.nn.Module`
         layer_name: the name of the layer whose output to save. Prepend ``"<"``
             to save the input tensor instead
     """
@@ -873,7 +874,7 @@ class SegmenterOutputProcessor(OutputProcessor):
 
 def recommend_num_workers():
     """Recommend a number of workers for running a
-    ``torch.utils.data.DataLoader``.
+    :class:`torch:torch.utils.data.DataLoader`.
 
     Returns:
         the recommended ``num_workers``
@@ -892,7 +893,7 @@ def recommend_num_workers():
 
 
 class TorchImageDataset(Dataset):
-    """A ``torch.utils.data.Dataset`` of images.
+    """A :class:`torch:torch.utils.data.Dataset` of images.
 
     Instances of this dataset emit images for each sample, or
     ``(img, sample_id)`` pairs if ``sample_ids`` are provided.
@@ -961,7 +962,7 @@ class TorchImageDataset(Dataset):
 
 
 class TorchImageClassificationDataset(Dataset):
-    """A ``torch.utils.data.Dataset`` for image classification.
+    """A :class:`torch:torch.utils.data.Dataset` for image classification.
 
     Instances of this dataset emit images and their associated targets for each
     sample, either directly as ``(img, target)`` pairs or as
@@ -1035,8 +1036,8 @@ class TorchImageClassificationDataset(Dataset):
 
 
 class TorchImagePatchesDataset(Dataset):
-    """A ``torch.utils.data.Dataset`` of image patch tensors extracted from a
-    list of images.
+    """A :class:`torch:torch.utils.data.Dataset` of image patch tensors
+    extracted from a list of images.
 
     Instances of this dataset emit image patches for each sample, or
     ``(patches, sample_id)`` tuples if ``sample_ids`` are provided.
@@ -1164,7 +1165,7 @@ class TorchImagePatchesDataset(Dataset):
 
 
 def from_image_classification_dir_tree(dataset_dir):
-    """Creates a ``torch.utils.data.Dataset`` for the given image
+    """Creates a :class:`torch:torch.utils.data.Dataset` for the given image
     classification dataset directory tree.
 
     The directory should have the following format::
@@ -1183,7 +1184,7 @@ def from_image_classification_dir_tree(dataset_dir):
         dataset_dir: the dataset directory
 
     Returns:
-        a ``torchvision.datasets.ImageFolder``
+        a :class:`torchvision:torchvision.datasets.ImageFolder`
     """
     return torchvision.datasets.ImageFolder(dataset_dir)
 

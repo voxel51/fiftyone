@@ -1,5 +1,5 @@
 """
-FiftyOne Zoo Datasets provided by ``torchvision.datasets``.
+FiftyOne Zoo Datasets provided by :mod:`torchvision:torchvision.datasets`.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -35,7 +35,7 @@ torchvision = fou.lazy_import("torchvision", callback=_callback)
 
 class TorchVisionDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided via the
-    ``torchvision.datasets`` package.
+    :mod:`torchvision:torchvision.datasets` package.
     """
 
     pass

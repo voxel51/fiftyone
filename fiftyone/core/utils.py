@@ -968,9 +968,11 @@ class UniqueFilenameMaker(object):
         if not input_path:
             input_path = self._default_filename_patt % self._idx
 
-        # @todo improve translation of urls with params, %, etc.
         filename = os.path.basename(input_path)
         name, ext = os.path.splitext(filename)
+
+        # URL handling
+        # @todo improve this, while still maintaining Unix/Windows path support
         name = name.replace("%", "-")
         ext = ext.split("?")[0]
 

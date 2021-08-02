@@ -241,8 +241,8 @@ like.
 Metadata
 --------
 
-All |Sample| instances have a `metadata` attribute, which can store
-type-specific metadata about the source data in the sample.
+All |Sample| instances have a `metadata` attribute that stores type-specific
+metadata about the source media of the sample.
 
 .. custombutton::
     :button_text: Learn more about adding metadata to your samples
@@ -290,7 +290,8 @@ FiftyOne provides a |Label| subclass for many common tasks:
 - :ref:`Classification <classification>`: a classification label
 - :ref:`Classifications <multilabel-classification>`: a list of classifications
   (typically for multilabel tasks)
-- :ref:`Detections <object-detection>`: a list of object detections
+- :ref:`Detections <object-detection>`: a list of object detections (with
+  optional instance masks)
 - :ref:`Polylines <polylines>`: a list of polylines or polygons in an image
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for

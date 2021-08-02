@@ -1041,36 +1041,19 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
             confidence = None
 
         if self.attributes_field:
-            _attrs = obj.get(self.attributes_field, {})
-            attributes = {
-                k: self._parse_attribute(v) for k, v in _attrs.items()
-            }
+            attributes = obj.get(self.attributes_field, {})
         else:
-            attributes = None
+            attributes = {}
 
-        detection = fol.Detection(
+        return fol.Detection(
             label=label,
             bounding_box=bounding_box,
             confidence=confidence,
-            attributes=attributes,
+            **attributes,
         )
-
-        return detection
 
     def _parse_bbox(self, obj):
         return obj[self.bounding_box_field]
-
-    def _parse_attribute(self, value):
-        if etau.is_str(value):
-            return fol.CategoricalAttribute(value=value)
-
-        if isinstance(value, bool):
-            return fol.BooleanAttribute(value=value)
-
-        if etau.is_numeric(value):
-            return fol.NumericAttribute(value=value)
-
-        return fol.Attribute(value=value)
 
 
 class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
@@ -1137,8 +1120,8 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
 class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
     """Parser for samples in FiftyOne image classification datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
-    for format details.
+    See :ref:`this page <FiftyOneImageClassificationDataset-import>` for format
+    details.
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -1153,8 +1136,8 @@ class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
 class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
     """Parser for samples in FiftyOne image detection datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageDetectionDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageDetectionDataset-import>` for format
+    details.
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -1176,8 +1159,8 @@ class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
 class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
     """Parser for samples in FiftyOne image labels datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneImageLabelsDataset-import>` for format
+    details.
 
     Args:
         prefix (None): a string prefix to prepend to each label name in the
@@ -1265,8 +1248,8 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
 class FiftyOneVideoLabelsSampleParser(VideoLabelsSampleParser):
     """Parser for samples in FiftyOne video labels datasets.
 
-    See :class:`fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset` for
-    format details.
+    See :ref:`this page <FiftyOneVideoLabelsDataset-import>` for format
+    details.
 
     Args:
         expand (True): whether to expand the labels for each frame into

@@ -871,17 +871,17 @@ def _to_global_classification(name, label, data_row_id):
 
 
 # https://labelbox.com/docs/exporting-data/export-format-detail#nested_classification
-def _to_nested_classifications(attributes):
+def _get_nested_classifications(label):
     classifications = []
-    for name, attr in attributes.items():
-        if not isinstance(attr, (fol.CategoricalAttribute, fol.ListAttribute)):
-            msg = "Ignoring unsupported attribute type '%s'" % attr.__class__
+    for name, value in label.iter_attributes():
+        if etau.is_str(value) or isinstance(value, (list, tuple)):
+            anno = _make_base_anno(name)
+            anno.update(_make_classification_answer(value))
+            classifications.append(anno)
+        else:
+            msg = "Ignoring unsupported attribute type '%s'" % type(value)
             warnings.warn(msg)
             continue
-
-        anno = _make_base_anno(name)
-        anno.update(_make_classification_answer(attr))
-        classifications.append(anno)
 
     return classifications
 
@@ -925,10 +925,10 @@ def _to_detections(label, frame_size, data_row_id):
     for detection in detections:
         anno = _make_base_anno(detection.label, data_row_id=data_row_id)
         anno["bbox"] = _make_bbox(detection.bounding_box, frame_size)
-        if detection.attributes:
-            anno["classifications"] = _to_nested_classifications(
-                detection.attributes
-            )
+
+        classifications = _get_nested_classifications(detection)
+        if classifications:
+            anno["classifications"] = classifications
 
         annos.append(anno)
 
@@ -946,15 +946,11 @@ def _to_polylines(label, frame_size, data_row_id):
     annos = []
     for polyline in polylines:
         field = "polygon" if polyline.filled else "line"
-        if polyline.attributes:
-            classifications = _to_nested_classifications(polyline.attributes)
-        else:
-            classifications = None
-
+        classifications = _get_nested_classifications(polyline)
         for points in polyline.points:
             anno = _make_base_anno(polyline.label, data_row_id=data_row_id)
             anno[field] = [_make_point(point, frame_size) for point in points]
-            if classifications is not None:
+            if classifications:
                 anno["classifications"] = classifications
 
             annos.append(anno)
@@ -971,15 +967,11 @@ def _to_points(label, frame_size, data_row_id):
 
     annos = []
     for keypoint in keypoints:
-        if keypoint.attributes:
-            classifications = _to_nested_classifications(keypoint.attributes)
-        else:
-            classifications = None
-
+        classifications = _get_nested_classifications(keypoint)
         for point in keypoint.points:
             anno = _make_base_anno(keypoint.label, data_row_id=data_row_id)
             anno["point"] = _make_point(point, frame_size)
-            if classifications is not None:
+            if classifications:
                 anno["classifications"] = classifications
 
             annos.append(anno)
@@ -1020,23 +1012,15 @@ def _make_classification_answer(label):
 
     if isinstance(label, fol.Classifications):
         # Assume checklist
-        answers = []
-        for classification in label.classifications:
-            answers.append({"value": classification.label})
+        return {"answers": [{"value": c.label} for c in label.classifications]}
 
-        return {"answers": answers}
-
-    if isinstance(label, fol.CategoricalAttribute):
+    if etau.is_str(label):
         # Assume free text
-        return {"answer": label.value}
+        return {"answer": label}
 
-    if isinstance(label, fol.ListAttribute):
+    if isinstance(label, (list, tuple)):
         # Assume checklist
-        answers = []
-        for value in label.value:
-            answers.append({"value": value})
-
-        return {"answers": answers}
+        return {"answers": [{"value": value} for value in label]}
 
     raise ValueError("Cannot convert %s to a classification" % label.__class__)
 
@@ -1138,24 +1122,18 @@ def _parse_attributes(cd_list):
             answer = cd["answer"]
             if isinstance(answer, list):
                 # Dropdown
-                attributes[name] = fol.ListAttribute(
-                    value=[a["value"] for a in answer]
-                )
+                attributes[name] = [a["value"] for a in answer]
             elif isinstance(answer, dict):
                 # Radio question
-                attributes[name] = fol.CategoricalAttribute(
-                    value=answer["value"]
-                )
+                attributes[name] = answer["value"]
             else:
                 # Free text
-                attributes[name] = fol.CategoricalAttribute(value=answer)
+                attributes[name] = answer
 
         if "answers" in cd:
             # Checklist
-            answers = cd["answers"]
-            attributes[name] = fol.ListAttribute(
-                value=[a["value"] for a in answers]
-            )
+            answer = cd["answers"]
+            attributes[name] = [a["value"] for a in answer]
 
     return attributes
 
@@ -1175,9 +1153,7 @@ def _parse_objects(od_list, frame_size):
             bounding_box = _parse_bbox(od["bbox"], frame_size)
             detections.append(
                 fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    attributes=attributes,
+                    label=label, bounding_box=bounding_box, **attributes
                 )
             )
         elif "polygon" in od:
@@ -1189,7 +1165,7 @@ def _parse_objects(od_list, frame_size):
                     points=[points],
                     closed=True,
                     filled=True,
-                    attributes=attributes,
+                    **attributes,
                 )
             )
         elif "line" in od:
@@ -1201,16 +1177,14 @@ def _parse_objects(od_list, frame_size):
                     points=[points],
                     closed=True,
                     filled=False,
-                    attributes=attributes,
+                    **attributes,
                 )
             )
         elif "point" in od:
             # Polyline
             point = _parse_point(od["point"], frame_size)
             keypoints.append(
-                fol.Keypoint(
-                    label=label, points=[point], attributes=attributes,
-                )
+                fol.Keypoint(label=label, points=[point], **attributes)
             )
         elif "instanceURI" in od:
             # Segmentation mask

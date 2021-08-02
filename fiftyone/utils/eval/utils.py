@@ -30,18 +30,7 @@ def make_iscrowd_fcn(iscrowd_attr):
     Returns:
         a boolean function
     """
-
-    def _iscrowd(label):
-        try:
-            return bool(label[iscrowd_attr])
-        except KeyError:
-            # @todo remove Attribute usage
-            if iscrowd_attr in label.attributes:
-                return bool(label.attributes[iscrowd_attr].value)
-
-            return False
-
-    return _iscrowd
+    return lambda label: bool(label.get_attribute_value(iscrowd_attr, False))
 
 
 def compute_ious(
