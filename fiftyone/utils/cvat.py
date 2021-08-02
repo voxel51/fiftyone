@@ -2591,6 +2591,15 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return task_id
 
+    def delete_task(self, task_id):
+        response = self._session.delete(self.task_url(task_id))
+
+    def launch_annotator(self, url=None):
+        """Open the uploaded annotations in the annotation tool"""
+        if url is None:
+            url = self.base_url
+        webbrowser.open(url, new=2)
+
     def upload_data(self, task_id, paths, image_quality, job_assignees=None):
         data = {"image_quality": image_quality}
 
@@ -2657,6 +2666,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         samples = samples.sort_by("filepath")
         task_ids = []
         job_ids = {}
+        if type(extra_attrs) == str:
+            extra_attrs = [extra_attrs]
         self._extra_attrs = extra_attrs
 
         # label_field can either contain a FiftyOne Label type or a primitive
@@ -2945,15 +2956,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     results[sample_id][label.id] = label
 
             return results
-
-    def delete_task(self, task_id):
-        response = self._session.delete(self.task_url(task_id))
-
-    def launch_annotator(self, url=None):
-        """Open the uploaded annotations in the annotation tool"""
-        if url is None:
-            url = self.base_url
-        webbrowser.open(url, new=2)
 
     def create_tags(self, samples, label_field, label_type):
         tags = []
@@ -3249,17 +3251,21 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         attributes = [{"spec_id": "label_id", "value": label.id}]
         class_name = None
         for field in fields:
-            if field not in default_fields:
-                if field == "label":
-                    class_name = label[field]
-                elif self._extra_attrs is None or field in self._extra_attrs:
-                    value = label[field]
-                    formatted_val = self.update_label_attributes(field, value)
-                    if formatted_val is None:
-                        continue
-                    attributes.append(
-                        {"spec_id": field, "value": formatted_val}
-                    )
+            # If no extra attributes are given, save all non-default attributes
+            # Otherwise save only specified attributes
+            save_field = (
+                self._extra_attrs is None and field not in default_fields
+            ) or (self._extra_attrs is not None and field in self._extra_attrs)
+
+            if field == "label":
+                class_name = label[field]
+            elif save_field:
+                value = label[field]
+                formatted_val = self.update_label_attributes(field, value)
+                if formatted_val is None:
+                    continue
+                attributes.append({"spec_id": field, "value": formatted_val})
+
         if hasattr(label, "attributes"):
             for attr in label.attributes.keys():
                 if self._extra_attrs is None or attr in self._extra_attrs:

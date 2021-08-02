@@ -445,9 +445,10 @@ class BaseAnnotationAPI(object):
 class AnnotationInfo(object):
     """Basic interface for results returned from `annotate()` call"""
 
-    def __init__(self, label_field, backend):
+    def __init__(self, label_field, backend, extra_attrs=None):
         self.label_field = label_field
         self.backend = backend
+        self.extra_attrs = extra_attrs
         self.id_map = None
 
     def store_label_ids(self, samples):
