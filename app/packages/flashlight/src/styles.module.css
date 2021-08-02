@@ -66,6 +66,7 @@
   display: block;
   position: absolute;
   contain: strict style;
+  will-change: transform;
 }
 
 .flashlightSection > div {

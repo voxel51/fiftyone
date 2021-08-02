@@ -298,13 +298,8 @@ export default class Flashlight<K> {
           this.requestMore();
         }
 
-        if (
-          this.state.height >= this.state.containerHeight ||
-          nextRequestKey === null
-        ) {
-          this.hidePixels();
-          this.render();
-        }
+        this.hidePixels();
+        this.render();
       });
   }
 
@@ -387,13 +382,13 @@ export default class Flashlight<K> {
     let revealing = this.state.sections[this.state.firstSection];
     let revealingIndex = this.state.firstSection;
 
-    do {
-      revealingIndex = revealing.index + 1;
-      revealing = this.state.sections[revealingIndex];
-    } while (
+    while (
       revealing &&
       revealing.getTop() <= top + this.state.containerHeight
-    );
+    ) {
+      revealingIndex = revealing.index + 1;
+      revealing = this.state.sections[revealingIndex];
+    }
 
     this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
     this.state.sections[this.state.lastSection + 1] && this.state.lastSection++;
