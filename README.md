@@ -86,9 +86,14 @@ dataset = foz.load_zoo_dataset("quickstart")
 session = fo.launch_app(dataset)
 ```
 
-You can also check out
+Then check out
 [this Colab notebook](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb)
 to see some common workflows on the quickstart dataset.
+
+Note that if you are running the above code in a script, you must include
+`session.wait()` to block execution until you close the App. See
+[this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
+for more information.
 
 ## Documentation
 

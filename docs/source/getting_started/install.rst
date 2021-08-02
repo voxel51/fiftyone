@@ -80,6 +80,11 @@ the :ref:`FiftyOne App <fiftyone-app>` so you can explore it!
     dataset = foz.load_zoo_dataset("quickstart")
     session = fo.launch_app(dataset)
 
+Note that if you are running this code in a script, you must include
+:meth:`session.wait() <fiftyone.core.session.Session.wait>` to block execution
+until you close the App. See :ref:`this page <creating-an-app-session>` for
+more information.
+
 .. _installing-fiftyone-desktop:
 
 FiftyOne Desktop App
