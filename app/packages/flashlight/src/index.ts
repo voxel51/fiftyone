@@ -35,7 +35,7 @@ export interface FlashlightConfig<K> {
 
 export default class Flashlight<K> {
   private loading: boolean = false;
-  private container: HTMLDivElement = document.createElement("div");
+  private container: HTMLDivElement;
   private state: State<K>;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
@@ -46,7 +46,7 @@ export default class Flashlight<K> {
 
   constructor(config: FlashlightConfig<K>) {
     this.config = config;
-    this.container.classList.add(flashlight);
+    this.container = this.createContainer();
     this.showPixels();
     this.state = this.getEmptyState(config);
 
@@ -86,8 +86,7 @@ export default class Flashlight<K> {
   reset() {
     this.ctx++;
     this.loading = false;
-    const newContainer = document.createElement("div");
-    newContainer.classList.add(flashlight);
+    const newContainer = this.createContainer();
     this.container.replaceWith(newContainer);
     this.container = newContainer;
     this.state = this.getEmptyState(this.config);
@@ -163,8 +162,7 @@ export default class Flashlight<K> {
 
     if ((retile || force) && this.state.sections.length) {
       this.state.resized = new Set();
-      const newContainer = document.createElement("div");
-      newContainer.classList.add(flashlight);
+      const newContainer = this.createContainer();
       this.container.replaceWith(newContainer);
       this.container = newContainer;
       const items = [
@@ -366,7 +364,7 @@ export default class Flashlight<K> {
     const timeDelta = this.lastRender ? time - this.lastRender : 1000;
     const pixelDelta = Math.abs(top - this.lastScrollTop);
 
-    if (!force && this.lastScrollTop !== null && pixelDelta / timeDelta > 25) {
+    if (!force && this.lastScrollTop !== null && pixelDelta / timeDelta > 20) {
       this.showPixels();
       this.state.zooming = true;
 
@@ -484,5 +482,15 @@ export default class Flashlight<K> {
 
     return (event, id) =>
       this.state.onItemClick(event, id, { ...this.state.itemIndexMap });
+  }
+
+  private createContainer(): HTMLDivElement {
+    const container = document.createElement("div");
+    container.classList.add(flashlight);
+    container.tabIndex = -1;
+    container.addEventListener("mouseenter", () => container.focus());
+    container.removeEventListener("mouseleaver", () => container.blur());
+
+    return container;
   }
 }
