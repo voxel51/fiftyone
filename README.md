@@ -72,11 +72,12 @@ FiftyOne.
 
 ## Quickstart
 
-Dive right into FiftyOne by running the snippet below, which downloads a
+Dive right into FiftyOne by opening a Python shell and running the snippet
+below, which downloads a
 [small dataset](https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/datasets.html#quickstart)
 and launches the
 [FiftyOne App](https://voxel51.com/docs/fiftyone/user_guide/app.html) so you
-can explore it!
+can explore it:
 
 ```py
 import fiftyone as fo

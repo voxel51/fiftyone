@@ -30,8 +30,7 @@ note that `tensorflow` does not yet support 3.9.
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
 downloaded `from python.org <https://www.python.org/downloads>`_. To verify that
-a suitable Python version is installed and accessible, run `python3 --version`
-or `python --version`.
+a suitable Python version is installed and accessible, run `python --version`.
 
 We encourage installing FiftyOne in a virtual environment. See
 :doc:`setting up a virtual environment <virtualenv>` for more details.
@@ -48,9 +47,9 @@ are using, then run:
 
    pip install fiftyone
 
-This will install FiftyOne and all of its dependencies, which may take some
-time. Once this has completed, you can verify that FiftyOne is installed in
-your virtual environment by importing the `fiftyone` package:
+This will install FiftyOne and all of its dependencies. Once this has
+completed, you can verify that FiftyOne is installed in your virtual
+environment by importing the `fiftyone` package:
 
 .. code-block:: text
 
@@ -67,9 +66,9 @@ A successful installation of FiftyOne should result in no output when
 Quickstart
 ----------
 
-Dive right into FiftyOne by launching Python and running the snippet below,
-which downloads a :ref:`small dataset <dataset-zoo-quickstart>` and launches
-the :ref:`FiftyOne App <fiftyone-app>` so you can explore it!
+Dive right into FiftyOne by opening a Python shell and running the snippet
+below, which downloads a :ref:`small dataset <dataset-zoo-quickstart>` and
+launches the :ref:`FiftyOne App <fiftyone-app>` so you can explore it!
 
 .. code-block:: python
     :linenos:
