@@ -2989,11 +2989,15 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             frame_id = len(id_mapping)
             id_mapping[frame_id] = {"sample_id": sample.id}
 
+            sample_label = sample[label_field]
             if label_type in (fol.Classifications, fol.Classification):
+                if sample_label is None:
+                    continue
+
                 if label_type == fol.Classifications:
-                    classifications = sample[label_field].classifications
+                    classifications = sample_label.classifications
                 else:
-                    classifications = [sample[label_field]]
+                    classifications = [sample_label]
 
                 default_fields = [
                     "attributes",
@@ -3021,7 +3025,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     tags.append(tag)
 
             else:
-                value = sample[label_field]
+                value = sample_label
                 formatted_value = self.update_label_attributes("value", value)
                 if formatted_value is None:
                     continue
@@ -3063,8 +3067,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 if is_video:
                     id_mapping[frame_id]["frame_id"] = image.id
 
+                image_label = image[label_field]
+                if image_label is None:
+                    continue
+
                 if label_type == fol.Detections:
-                    detections = image[label_field].detections
+                    detections = image_label.detections
                     shapes.extend(
                         self.create_detection_shapes(
                             detections, width, height, frame_id
@@ -3072,14 +3080,14 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     )
 
                 elif label_type == fol.Detection:
-                    detection = image[label_field]
+                    detection = image_label
                     shapes.extend(
                         self.create_detection_shapes(
                             [detection], width, height, frame_id
                         )
                     )
                 elif label_type == fol.Polylines:
-                    polylines = image[label_field].polylines
+                    polylines = image_label.polylines
                     shapes.extend(
                         self.create_polyline_shapes(
                             polylines, width, height, frame_id
@@ -3087,7 +3095,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     )
 
                 elif label_type == fol.Polyline:
-                    polyline = image[label_field]
+                    polyline = image_label
                     shapes.extend(
                         self.create_polyline_shapes(
                             [polyline], width, height, frame_id
@@ -3095,7 +3103,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     )
 
                 elif label_type == fol.Keypoints:
-                    keypoints = image[label_field].keypoints
+                    keypoints = image_label.keypoints
                     shapes.extend(
                         self.create_keypoint_shapes(
                             keypoints, width, height, frame_id
@@ -3408,10 +3416,11 @@ class CVATLabel(object):
             return attribute
 
     def update_attrs(self, label):
-        label_id = self.attributes["label_id"].value
+        if "label_id" in self.attributes:
+            label_id = self.attributes["label_id"].value
 
-        if label_id is not None:
-            label._id = label_id
+            if label_id is not None:
+                label._id = label_id
 
         for attr_name, attribute in self.attributes.items():
             if attr_name != "label_id" and not attr_name.startswith(
@@ -3508,11 +3517,49 @@ class CVATTag(CVATLabel):
 
 
 class CVATAnnotationInfo(foua.AnnotationInfo):
-    def __init__(self, label_field, api, task_ids, job_ids):
-        super().__init__(label_field=label_field, backend="cvat")
-        self.api = api
+    def __init__(
+        self,
+        label_field=None,
+        launch_editor=False,
+        url="cvat.org",
+        port=None,
+        https=True,
+        auth=None,
+        segment_size=None,
+        image_quality=75,
+        classes=None,
+        job_reviewers=None,
+        job_assignees=None,
+        task_assignee=None,
+        job_sample_map=None,
+        extra_attrs=None,
+        task_ids=None,
+        job_ids=None,
+    ):
+        super().__init__(
+            label_field=label_field, backend="cvat", extra_attrs=extra_attrs
+        )
         self.task_ids = task_ids
         self.job_ids = job_ids
+        self.launch_editor = launch_editor
+        self.url = url
+        self.port = port
+        self.https = https
+        self.auth = auth
+        self.segment_size = segment_size
+        self.image_quality = image_quality
+        self.classes = classes
+        self.job_reviewers = job_reviewers
+        self.job_assignees = job_assignees
+        self.task_assignee = task_assignee
+        self.job_sample_map = job_sample_map
+        self.api = None
+
+    def connect_to_api(self, auth=None):
+        self.api = CVATAnnotationAPI(
+            url=self.url, port=self.port, https=self.https, auth=auth
+        )
+        return self.api
 
 
 def annotate(
@@ -3573,7 +3620,23 @@ def annotate(
             :class:`fiftyone.utils.annotations.AnnotationInfo` used to
             upload and annotate the given samples
     """
-    api = CVATAnnotationAPI(url=url, port=port, https=https, auth=auth)
+    info = CVATAnnotationInfo(
+        label_field=label_field,
+        launch_editor=launch_editor,
+        url=url,
+        port=port,
+        https=https,
+        auth=auth,
+        segment_size=segment_size,
+        image_quality=image_quality,
+        classes=classes,
+        job_reviewers=job_reviewers,
+        job_assignees=job_assignees,
+        task_assignee=task_assignee,
+        job_sample_map=job_sample_map,
+        extra_attrs=extra_attrs,
+    )
+    api = info.connect_to_api(auth=auth)
     logger.info("Uploading samples to CVAT...")
     task_ids, job_ids = api.upload_samples(
         samples,
@@ -3587,7 +3650,8 @@ def annotate(
         job_sample_map=job_sample_map,
         extra_attrs=extra_attrs,
     )
-    info = CVATAnnotationInfo(label_field, api, task_ids, job_ids)
+    info.task_ids = task_ids
+    info.job_ids = job_ids
     info.store_label_ids(samples)
     if job_ids and job_ids[task_ids[0]]:
         annotator_url = api.base_job_url(task_ids[0], job_ids[task_ids[0]][0])
@@ -3599,7 +3663,7 @@ def annotate(
     return info
 
 
-def load_annotations(info, delete_task=True):
+def load_annotations(info, delete_task=True, auth=None):
     api = info.api
     task_ids = info.task_ids
     job_ids = info.job_ids
