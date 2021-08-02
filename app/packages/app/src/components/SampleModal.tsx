@@ -214,6 +214,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
     count = total;
   }
 
+  console.log(index, count);
+
   const theme = useTheme();
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>
@@ -224,7 +226,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
           onSelectLabel={onSelectLabel}
           onClose={onClose}
           onPrevious={index > 0 ? () => getIndex(index - 1) : null}
-          onNext={index < count - 1 ? () => getIndex(index + 1) : null}
+          onNext={() => getIndex(index + 1)}
         />
       </div>
       {!fullscreen && (
@@ -253,7 +255,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
             <Suspense
               fallback={
                 <h2>
-                  Fields...
+                  Fields
                   <span className="push-right" />
                 </h2>
               }

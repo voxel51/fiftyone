@@ -21,10 +21,6 @@
   opacity: 1;
 }
 
-.lookerCanvas.lookerCanvasThumbnail {
-  transition: opacity 0.15s linear;
-}
-
 .invisible {
   opacity: 0;
 }

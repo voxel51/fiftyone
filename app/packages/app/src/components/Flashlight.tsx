@@ -28,7 +28,7 @@ import { activeFields } from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { getSampleSrc, lookerType } from "../recoil/utils";
+import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
@@ -124,6 +124,8 @@ const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
 const useThumbnailClick = (
   flashlight: MutableRefObject<Flashlight<number>>
 ) => {
+  const clearModal = useClearModal();
+
   return useRecoilCallback(
     ({ set, snapshot }) => async (
       event: MouseEvent,
@@ -140,13 +142,19 @@ const useThumbnailClick = (
         const getIndex = (index) => {
           const promise = sampleIndices.has(index)
             ? Promise.resolve(samples.get(sampleIndices.get(index)))
-            : flashlight.current.get().then(() => {
-                return samples.get(sampleIndices.get(index));
+            : flashlight.current.get()?.then(() => {
+                return sampleIndices.has(index)
+                  ? samples.get(sampleIndices.get(index))
+                  : null;
               });
 
-          promise.then((sample) => {
-            set(atoms.modal, { ...sample, index, getIndex });
-          });
+          promise
+            ? promise.then((sample) => {
+                sample
+                  ? set(atoms.modal, { ...sample, index, getIndex })
+                  : clearModal();
+              })
+            : clearModal();
         };
 
         set(atoms.modal, {

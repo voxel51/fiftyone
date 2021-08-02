@@ -144,6 +144,21 @@ const Wrapper = ({
     allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
   }
 
+  if (allValues.length === 0) {
+    return (
+      <>
+        <Checkbox
+          key={"No results"}
+          color={color}
+          value={false}
+          disabled={true}
+          name={"No results"}
+          setValue={() => {}}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       {[...new Set(allValues)].sort(nullSort(sorting)).map(([value, count]) => (

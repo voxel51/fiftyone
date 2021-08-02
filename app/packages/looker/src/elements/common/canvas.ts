@@ -8,11 +8,7 @@ import { clampScale } from "../../util";
 import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
-import {
-  invisible,
-  lookerCanvas,
-  lookerCanvasThumbnail,
-} from "./canvas.module.css";
+import { invisible, lookerCanvas } from "./canvas.module.css";
 
 export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
@@ -27,7 +23,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
   private loaded: boolean = false;
   private cursor: string;
-  private thumbnailClass: boolean;
 
   getEvents(): Events<State> {
     return {
@@ -189,10 +184,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     if (this.height !== height) {
       this.element.height = height;
       this.height = height;
-    }
-
-    if (this.thumbnailClass !== thumbnail) {
-      thumbnail && this.element.classList.add(lookerCanvasThumbnail);
     }
 
     const cursor = this.cursor;

@@ -140,6 +140,14 @@ export default class Flashlight<K> {
     element.appendChild(this.container);
 
     this.resizeObserver.observe(element);
+
+    const options =
+      this.state.width !== width && this.state.onResize
+        ? this.state.onResize(width)
+        : {};
+
+    this.updateOptions(options);
+
     this.get();
   }
 
@@ -163,8 +171,8 @@ export default class Flashlight<K> {
         ...this.state.sections.map((section) => section.getItems()).flat(),
         ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
       ];
-      const activeItemIndex = this.state.sections[this.state.activeSection]
-        .itemIndex;
+      const active = Math.min(this.state.activeSection);
+      const activeItemIndex = this.state.sections[active].itemIndex;
       let sections = this.tile(items);
 
       const lastSection = sections[sections.length - 1];
@@ -301,10 +309,7 @@ export default class Flashlight<K> {
   }
 
   private requestMore() {
-    if (
-      this.state.currentRequestKey &&
-      this.state.lastSection === this.state.sections.length - 1
-    ) {
+    if (this.state.currentRequestKey) {
       this.get();
     }
   }
@@ -418,7 +423,10 @@ export default class Flashlight<K> {
           this.state.shownSections.delete(s);
         })
       : this.showSections();
-    this.requestMore();
+
+    if (this.state.lastSection === this.state.sections.length - 1) {
+      this.requestMore();
+    }
   }
 
   private tile(items: ItemData[], useRowRemainder = false): RowData[][] {

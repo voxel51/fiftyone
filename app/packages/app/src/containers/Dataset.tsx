@@ -43,10 +43,6 @@ const useResetPaths = () => {
   useEffect(() => {
     resetPaths();
   }, [dataset]);
-
-  useEffect(() => {
-    console.log(fieldPaths);
-  }, [fieldPaths]);
 };
 
 function Dataset() {

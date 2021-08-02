@@ -9,6 +9,7 @@ import * as selectors from "../recoil/selectors";
 import { gridZoom, gridZoomRange } from "./Flashlight";
 import { useTheme } from "./../utils/hooks";
 import { Slider } from "./Filters/RangeSlider";
+import { CircularProgress } from "@material-ui/core";
 
 type Props = {
   showSidebar: boolean;
@@ -93,7 +94,18 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
             <CountDiv>
               {countStr} {totalCount === 1 ? element.singular : element.plural}
             </CountDiv>
-          ) : null}
+          ) : (
+            <CountDiv>
+              <CircularProgress
+                style={{
+                  color: theme.font,
+                  height: 16,
+                  width: 16,
+                  minWidth: 16,
+                }}
+              />
+            </CountDiv>
+          )}
           <SliderContainer>
             <div style={{ flexGrow: 1 }} title={"Zoom"}>
               <Slider

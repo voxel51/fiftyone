@@ -1,7 +1,4 @@
-let seedCache = 0;
-let mapCache = {};
 let poolCache: string[] = null;
-let colorByLabelCache = false;
 
 function shuffle(array: string[], seed: number) {
   let m = array.length,
@@ -33,6 +30,7 @@ export function generateColorMap(
 ): (value) => string {
   if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
     colorMaps = {};
+    poolCache = colorPool;
   }
 
   colorPool = [...colorPool];
