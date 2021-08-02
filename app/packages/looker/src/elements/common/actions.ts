@@ -49,14 +49,14 @@ const escape: Control = {
   title: "Escape context",
   shortcut: "Esc",
   eventKeys: "Escape",
-  detail: "Escape help -> JSON -> settings -> zoom -> fullscreen -> close",
+  detail: "Escape help > JSON > settings > zoom > fullscreen > clear > close",
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
         hasDefaultZoom,
         showHelp,
         showOptions,
-        options: { fullscreen: fullscreenSetting, showJSON },
+        options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
       }) => {
         if (showHelp) {
           return { showHelp: false };
@@ -79,6 +79,11 @@ const escape: Control = {
 
         if (fullscreenSetting) {
           fullscreen.action(update, dispatchEvent, eventKey);
+          return {};
+        }
+
+        if (selectedLabels.length) {
+          dispatchEvent("clear");
           return {};
         }
 
@@ -506,7 +511,7 @@ const videoEscape: Control<VideoState> = {
   shortcut: "Esc",
   eventKeys: "Escape",
   detail:
-    "Escape help -> JSON -> settings -> zoom -> playback -> fullscreen -> close",
+    "Escape help > JSON > settings > zoom > playback > fullscreen > clear > close",
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
@@ -514,7 +519,7 @@ const videoEscape: Control<VideoState> = {
         showHelp,
         showOptions,
         frameNumber,
-        options: { fullscreen: fullscreenSetting, showJSON },
+        options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
       }) => {
         if (showHelp) {
           return { showHelp: false };
@@ -544,6 +549,11 @@ const videoEscape: Control<VideoState> = {
 
         if (fullscreenSetting) {
           fullscreen.action(update, dispatchEvent, eventKey);
+          return {};
+        }
+
+        if (selectedLabels.length) {
+          dispatchEvent("clear");
           return {};
         }
 

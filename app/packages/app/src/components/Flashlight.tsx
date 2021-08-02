@@ -33,7 +33,7 @@ import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket from "../shared/connection";
-import { useMessageHandler } from "../utils/hooks";
+import { useEventHandler, useMessageHandler } from "../utils/hooks";
 
 export const gridZoom = atom<number | null>({
   key: "gridZoom",
@@ -320,6 +320,26 @@ export default React.memo(() => {
   const gridZoomRef = useRef<number>();
   const [gridZoomValue, setGridZoom] = useRecoilState(gridZoom);
   gridZoomRef.current = gridZoomValue;
+
+  useEventHandler(
+    document,
+    "keydown",
+    useRecoilCallback(
+      ({ snapshot, set }) => async (event: KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+
+        const modal = await snapshot.getPromise(atoms.modal);
+
+        if (!modal) {
+          set(atoms.selectedSamples, new Set());
+          socket.send(packageMessage("set_selection", { _ids: [] }));
+        }
+      },
+      []
+    )
+  );
 
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached()) {

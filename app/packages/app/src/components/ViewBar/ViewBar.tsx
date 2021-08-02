@@ -70,7 +70,6 @@ const IconsContainer = styled.div`
 `;
 
 const viewBarKeyMap = {
-  VIEW_BAR_TOGGLE_FOCUS: "esc",
   VIEW_BAR_NEXT: "right",
   VIEW_BAR_PREVIOUS: "left",
   VIEW_BAR_NEXT_STAGE: "shift+right",
@@ -98,7 +97,6 @@ const ViewBar = React.memo(() => {
   const barRef = useRef(null);
 
   const handlers = {
-    VIEW_BAR_TOGGLE_FOCUS: useCallback(() => send("TOGGLE_FOCUS"), []),
     VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
     VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),

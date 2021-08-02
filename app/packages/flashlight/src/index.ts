@@ -171,7 +171,7 @@ export default class Flashlight<K> {
         ...this.state.sections.map((section) => section.getItems()).flat(),
         ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
       ];
-      const active = Math.min(this.state.activeSection);
+      const active = this.state.activeSection;
       const activeItemIndex = this.state.sections[active].itemIndex;
       let sections = this.tile(items);
 
@@ -298,8 +298,13 @@ export default class Flashlight<K> {
           this.requestMore();
         }
 
-        this.hidePixels();
-        this.render();
+        if (
+          this.state.height >= this.state.containerHeight ||
+          nextRequestKey === null
+        ) {
+          this.hidePixels();
+          this.render();
+        }
       });
   }
 

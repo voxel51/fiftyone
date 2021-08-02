@@ -358,6 +358,13 @@ const useFullscreen = () => {
   });
 };
 
+const useClearSelectedLabels = () => {
+  return useRecoilCallback(
+    ({ set }) => async () => set(selectors.selectedLabels, {}),
+    []
+  );
+};
+
 interface LookerProps {
   lookerRef?: MutableRefObject<any>;
   onClose?: EventCallback;
@@ -436,6 +443,8 @@ const Looker = ({
   }, []);
 
   useEffect(() => looker.attach(id), [id]);
+
+  useEventHandler(looker, "clear", useClearSelectedLabels());
 
   return (
     <div
