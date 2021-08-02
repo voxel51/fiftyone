@@ -38,7 +38,6 @@ const Body = styled.div`
 
 const useResetPaths = () => {
   const dataset = useRecoilValue(selectors.datasetName);
-  const fieldPaths = useRecoilValue(selectors.fieldPaths);
   const resetPaths = useResetRecoilState(activeFields);
   useEffect(() => {
     resetPaths();

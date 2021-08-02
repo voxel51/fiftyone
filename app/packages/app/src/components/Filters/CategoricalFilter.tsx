@@ -144,7 +144,7 @@ const Wrapper = ({
     allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
   }
 
-  if (allValues.length === 0) {
+  if (totalCount === 0) {
     return (
       <>
         <Checkbox

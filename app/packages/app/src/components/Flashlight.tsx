@@ -327,6 +327,7 @@ export default React.memo(() => {
     }
 
     samples = new Map();
+    lookers = new Map();
     sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();
