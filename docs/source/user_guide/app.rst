@@ -710,9 +710,14 @@ __________________________
 
 The image visualizer is made for pixel perfect inspection of images and the
 labels asscoiated with an image. To zoom in and out on image, the `+` and `-`
-icons can be used. Or simply use your mousewheel or scroll with your touchpad.
-To crop and zoom to only the visible or selected labels, simply click the
-`Crop`, or use the `z` shortcut.
+icons can be used. Or, simply use your mousewheel or scroll with your touchpad.
+And to crop and zoom to only the visible or selected labels, click the
+`Crop` icon, or use the `z` shortcut. And to pan when zoomed in on an image,
+click and drag in any direction.
+
+When multiple labels are overlayed on top of each other, the up and down
+arrows offer a convenient way to rotate the z-order of the labels that are
+hovered on, so every label and it's tooltip can viewed.
 
 The settings icon in the controls HUD offers the label rendering options 
 `Only show hovered label`, `Show confidence`, `Show label`, and `Show tooltip`.
@@ -720,7 +725,8 @@ Default setting for `Show confidence`, `Show label` and `Show tooltip` can be
 configured in the :ref:`App config <app-config>`.
 
 Shortcut keys are availble for almost every action. Clicking `?` icon or using
-the `?` outlines the available actions and mapping.
+the `?` shortcut will display a list of available actions and their key
+mappings.
 
 
 .. _app-video-visualizer:
@@ -731,14 +737,19 @@ __________________________
 The video visualizer offers all of the same functionality as the image
 visualizer, as well as some convenient actions and shortcuts for navigating
 through a video. The spacebar pauses and plays the video, and `0`, `1`,... `9`
-are shortcuts to seek to  0%, 10%,... 90% of the video. `>`
+are shortcuts to seek to  0%, 10%,... 90% of the video. When the video is
+paused, `>` and `<` are available shortcuts for seeking to the next and
+previous frame, respectively.
 
-All of the same options in the image settings are available in video, as well as
-the `Use frame number` option to show frame stamp instead of the time stamp.
+All of the same options in the image settings are available in video, as well
+as the `Use frame number` option to show frame stamp instead of the time stamp.
+Th default setting for `Use frame number` can also configured in the
+:ref:`App config <app-config>`.
 
-Playback rate and volume are available in the video controls HUD to right of
-the play/pause button. Clicking on one of the icons resets the setting to the
-default. And when hovering, a slider appears to adjust the setting manually.
+Playback rate and volume are also available in the video controls HUD to right
+of the play/pause button. Clicking on one of the icons resets the setting to
+the default. And when hovering, a slider appears to adjust the setting
+manually.
 
 .. note::
 
