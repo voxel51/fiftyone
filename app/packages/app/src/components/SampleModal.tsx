@@ -8,7 +8,7 @@ import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useTheme } from "../utils/hooks";
+import { useMessageHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
@@ -197,6 +197,23 @@ const useOnSelectLabel = () => {
   );
 };
 
+export const useSampleUpdate = (lookerRef) => {
+  const handler = useRecoilCallback(
+    ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
+      const modal = await snapshot.getPromise(atoms.modal);
+      updatedSamples.forEach(({ sample }) => {
+        modal.sample._id === sample._id &&
+          lookerRef.current &&
+          lookerRef.current.updateSample(sample);
+      });
+      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
+      set(selectors.anyTagging, false);
+    },
+    []
+  );
+  useMessageHandler("samples_update", handler);
+};
+
 const SampleModal = ({ onClose }: Props, ref) => {
   const fullscreen = useRecoilValue(atoms.fullscreen);
   const {
@@ -213,6 +230,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
   if (count === null) {
     count = total;
   }
+
+  useSampleUpdate(lookerRef);
 
   const theme = useTheme();
   return (
