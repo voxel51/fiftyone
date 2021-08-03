@@ -294,15 +294,13 @@ def annotate(
     return annotation_info
 
 
-def load_annotations(samples, info, label_field, **kwargs):
+def load_annotations(samples, info, **kwargs):
     """Loads labels from the given annotation information.
     
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         info: the :class`AnnotationInfo` returned from a call to
             `annotate()`
-        label_field: the label field to create or to merge the annotations
-            into
         **kwargs: additional arguments to pass to the `load_annotations`
             function of the specified backend
     """
@@ -331,6 +329,8 @@ def load_annotations(samples, info, label_field, **kwargs):
     if not annotations:
         logger.warning("No annotations found")
         return
+
+    label_field = info.label_field
 
     is_video = True if samples.media_type == fom.VIDEO else False
 

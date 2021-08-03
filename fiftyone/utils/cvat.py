@@ -2304,6 +2304,20 @@ class CVATAttribute(object):
 
         return etad.CategoricalAttribute(self.name, self.value)
 
+    def to_attribute(self):
+        """Returns a :class:`fiftyone.core.labels.Attribute` representation of
+        the attribute.
+        Returns:
+            a :class:`fiftyone.core.labels.Attribute`
+        """
+        if isinstance(self.value, bool):
+            return fol.BooleanAttribute(value=self.value)
+
+        if etau.is_numeric(self.value):
+            return fol.NumericAttribute(value=self.value)
+
+        return fol.CategoricalAttribute(value=self.value)
+
 
 class CVATImageAnnotationWriter(object):
     """Class for writing annotations in CVAT image format.
@@ -2744,7 +2758,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 new_classes = new_classes[: (400 - len(classes))]
                 classes = sorted(list(set(classes) | set(new_classes)))
 
-            self._classes = classes
+        self._classes = classes
 
         # CVAT only allows for one video per task
         if samples.media_type == fom.VIDEO:
