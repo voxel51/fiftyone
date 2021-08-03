@@ -306,6 +306,7 @@ export default React.memo(() => {
       : aspectRatio;
   };
   const flashlight = useRef<Flashlight<number>>();
+  const cropToContent = useRecoilValue(atoms.cropToContent(false));
 
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
@@ -357,6 +358,7 @@ export default React.memo(() => {
     datasetName,
     filterView(view),
     refresh,
+    cropToContent,
   ]);
 
   useLayoutEffect(() => {
