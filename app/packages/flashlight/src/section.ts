@@ -120,7 +120,7 @@ export default class SectionElement implements Section {
     return this.attached;
   }
 
-  show(element: HTMLDivElement, hidden = false): void {
+  show(element: HTMLDivElement, hidden: boolean, soft: boolean): void {
     if (hidden !== this.hidden) {
       this.section.classList.toggle(flashlightSectionHidden);
       this.hidden = hidden;
@@ -129,7 +129,9 @@ export default class SectionElement implements Section {
     if (!this.attached) {
       element.appendChild(this.section);
       this.attached = true;
+    }
 
+    !this.hidden &&
       this.rows.forEach(
         ([{ aspectRatio: rowAspectRatio, extraMargins }, items]) => {
           !extraMargins && (extraMargins = 0);
@@ -139,11 +141,10 @@ export default class SectionElement implements Section {
           items.forEach(([item, { id, aspectRatio }]) => {
             const width = height * aspectRatio;
 
-            this.render(id, item, [width, height]);
+            this.render(id, item, [width, height], soft);
           });
         }
       );
-    }
   }
 
   resizeItems(resizer: OnItemResize) {

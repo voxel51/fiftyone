@@ -347,7 +347,7 @@ export default class Flashlight<K> {
             .forEach((id) => this.state.updater(id));
         this.state.clean.add(section.index);
       }
-      section.show(this.container, hidden);
+      section.show(this.container, hidden, this.state.zooming);
       this.state.shownSections.add(section.index);
     });
   }

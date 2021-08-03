@@ -1118,6 +1118,12 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
     this.requestFrames(this.frameNumber, true);
   }
 
+  destroy() {
+    this.lookerElement.children[0].releaseVideo &&
+      this.lookerElement.children[0].releaseVideo();
+    super.destroy();
+  }
+
   private hasFrame(frameNumber: number) {
     return (
       this.frames.has(frameNumber) &&

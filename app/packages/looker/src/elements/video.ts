@@ -622,7 +622,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     hasPoster,
   }: Readonly<VideoState>) {
     if (!this.element) {
-      if (hovering) {
+      if (hovering && thumbnail) {
         const result = this.acquireVideo();
 
         if (result) {

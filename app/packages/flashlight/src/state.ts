@@ -13,7 +13,7 @@ export interface Section {
   index: number;
   itemIndex: number;
   set: (top: number, width: number) => void;
-  show: (element: HTMLDivElement, hidden?: boolean) => void;
+  show: (element: HTMLDivElement, hidden: boolean, soft: boolean) => void;
   hide: () => void;
   isShown: () => boolean;
   getItems: () => ItemData[];
@@ -49,7 +49,8 @@ export type OnItemClick = (
 export type Render = (
   id: string,
   element: HTMLDivElement,
-  dimensions: [number, number]
+  dimensions: [number, number],
+  soft: boolean
 ) => (() => void) | void;
 
 export type OnItemResize = (id: string, dimensions: [number, number]) => void;

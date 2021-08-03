@@ -358,7 +358,7 @@ export default React.memo(() => {
     }
 
     samples = new Map();
-    lookers = createLookerCache();
+    lookers.reset();
     sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();
@@ -427,7 +427,7 @@ export default React.memo(() => {
             nextRequestKey: more ? page + 1 : null,
           };
         },
-        render: (sampleId, element, dimensions) => {
+        render: (sampleId, element, dimensions, soft) => {
           const result = samples.get(sampleId);
 
           if (lookers.has(sampleId)) {
@@ -435,14 +435,16 @@ export default React.memo(() => {
             return null;
           }
 
-          const looker = lookerGeneratorRef.current(result);
-          looker.addEventListener(
-            "selectthumbnail",
-            ({ detail }: { detail: string }) => onSelect(detail)
-          );
+          if (!soft) {
+            const looker = lookerGeneratorRef.current(result);
+            looker.addEventListener(
+              "selectthumbnail",
+              ({ detail }: { detail: string }) => onSelect(detail)
+            );
 
-          lookers.set(sampleId, looker);
-          looker.attach(element, dimensions);
+            lookers.set(sampleId, looker);
+            looker.attach(element, dimensions);
+          }
 
           return null;
         },
