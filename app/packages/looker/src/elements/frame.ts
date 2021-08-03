@@ -86,15 +86,30 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
           };
           video.addEventListener("seeked", seeked);
 
+          const error = (event) => {
+            // Chrome v60
+            if (event.path && event.path[0]) {
+              event = event.path[0].error;
+            }
+
+            // Firefox v55
+            if (event.originalTarget) {
+              event = error.originalTarget.error;
+            }
+            video.removeEventListener("error", error);
+            update({ error: true });
+          };
+
           const loaded = () => {
             video.currentTime = getTime(frameNumber, frameRate);
             update({ duration: video.duration });
+            video.removeEventListener("error", error);
             video.removeEventListener("loadedmetadata", loaded);
           };
 
-          video.addEventListener("loadedmetadata", loaded);
-
           video.src = src;
+          video.addEventListener("error", error);
+          video.addEventListener("loadedmetadata", loaded);
         });
 
         return {};
