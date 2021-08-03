@@ -330,9 +330,7 @@ export default class Flashlight<K> {
       }
 
       if (this.state.resized && !this.state.resized.has(section.index)) {
-        this.state.onItemResize &&
-          this.state.onItemResize &&
-          section.resizeItems(this.state.onItemResize);
+        this.state.onItemResize && section.resizeItems(this.state.onItemResize);
         this.state.resized.add(section.index);
       }
 
@@ -360,22 +358,6 @@ export default class Flashlight<K> {
 
     const top = this.container.parentElement.scrollTop;
     const time = performance.now();
-
-    const timeDelta = this.lastRender ? time - this.lastRender : 1000;
-    const pixelDelta = Math.abs(top - this.lastScrollTop);
-
-    if (!force && this.lastScrollTop !== null && pixelDelta / timeDelta > 20) {
-      this.showPixels();
-      this.state.zooming = true;
-
-      [...this.state.shownSections].forEach((index) => this.hideSection(index));
-
-      return;
-    }
-    this.lastRender = time;
-    this.lastScrollTop = top;
-    this.hidePixels();
-    this.state.zooming = false;
 
     const index = argMin(
       this.state.sections.map((section) => Math.abs(section.getTop() - top))
@@ -407,23 +389,47 @@ export default class Flashlight<K> {
       this.state.shownSections.add(i);
       i++;
     }
-
     [...this.state.shownSections].forEach((index) => {
       if (index < this.state.firstSection || index > this.state.lastSection) {
         this.hideSection(index);
       }
     });
 
-    this.state.zooming
-      ? [...this.state.shownSections].forEach((s) => {
-          this.state.sections[s].hide();
-          this.state.shownSections.delete(s);
-        })
-      : this.showSections();
+    const timeDelta = this.lastRender ? time - this.lastRender : 1000;
+    const pixelDelta = Math.abs(top - this.lastScrollTop);
+
+    this.lastRender = time;
+    this.lastScrollTop = top;
+    this.state.zooming =
+      !force && this.lastScrollTop !== null && pixelDelta / timeDelta > 20;
+
+    if (this.state.zooming && this.shownSectionsNeedUpdate()) {
+      this.showPixels();
+      [...this.state.shownSections].forEach((index) => this.hideSection(index));
+    } else {
+      this.hidePixels();
+      this.showSections();
+    }
 
     if (this.state.lastSection === this.state.sections.length - 1) {
       this.requestMore();
     }
+  }
+
+  private shownSectionsNeedUpdate() {
+    let needsUpdate = false;
+    this.state.shownSections.forEach((index) => {
+      const section = this.state.sections[index];
+      if (this.state.resized && !this.state.resized.has(section.index)) {
+        needsUpdate = true;
+      }
+
+      if (this.state.updater && !this.state.clean.has(section.index)) {
+        needsUpdate = true;
+      }
+    });
+
+    return needsUpdate;
   }
 
   private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
