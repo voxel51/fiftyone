@@ -144,7 +144,15 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
             this.wheelTimeout = setTimeout(() => {
               this.wheelTimeout = null;
-              update({ wheeling: false });
+              update(
+                (state) => ({
+                  wheeling: false,
+                  disableOverlays: !state.disableControls,
+                }),
+                (state, overlays) =>
+                  !state.disableControls &&
+                  dispatchTooltipEvent(dispatchEvent)(state, overlays)
+              );
             }, 200);
 
             return {
@@ -155,9 +163,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 (<MouseEvent>event).pageY,
               ],
               wheeling: true,
+              disableOverlays: true,
             };
           },
-          dispatchTooltipEvent(dispatchEvent)
+          dispatchTooltipEvent(dispatchEvent, true)
         );
       },
     };
