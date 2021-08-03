@@ -354,7 +354,6 @@ the sample grid records the number of samples that you have currently selected.
 You can also take actions such as updating the view to only show (or exclude)
 the currently selected samples.
 
-Once sample
 Tagging also automatically applies to selected samples or their labels when any
 samples are selected. See :ref:`tagging <app-tagging>` for more details.
 
@@ -525,6 +524,11 @@ object patches you want to view.
 After you make a selection, a new |ToPatches| view stage will be appended to the
 view bar and your view will be updated to show the patches.
 
+By default, patches are cropped so only the label patch is visible. To view the
+entire image when in a patches view, you click on the settings icon and uncheck
+the `Crop to patch` setting. The setting is available in both the grid and
+expanded sample view.
+
 .. note::
 
     Switching to patches view will create patches for **only** the contents of
@@ -569,6 +573,11 @@ view.
 After you make a selection, a new |ToEvaluationPatches| view stage will be
 appended to the view bar and your view will be updated to show the evaluation
 patches!
+
+By default, patches are cropped so only the label(s) that make up the patch are
+visible. To view the entire image when in a patches view, you click on the
+settings icon and uncheck the `Crop to patch` setting. The setting is available
+in both the grid and expanded sample view.
 
 .. note::
 
@@ -693,6 +702,49 @@ appears in the upper-right corner of the modal:
     For large datasets, you may notice longer load times the first time you use
     a similarity index in a session. Subsequent similarity searches will use
     cached results and will be faster!
+
+.. _app-image-visualizer:
+
+Using the image visualizer
+__________________________
+
+The image visualizer is made for pixel perfect inspection of images and the
+labels asscoiated with an image. To zoom in and out on image, the `+` and `-`
+icons can be used. Or simply use your mousewheel or scroll with your touchpad.
+To crop and zoom to only the visible or selected labels, simply click the
+`Crop`, or use the `z` shortcut.
+
+The settings icon in the controls HUD offers the label rendering options 
+`Only show hovered label`, `Show confidence`, `Show label`, and `Show tooltip`.
+Default setting for `Show confidence`, `Show label` and `Show tooltip` can be
+configured in the :ref:`App config <app-config>`.
+
+Shortcut keys are availble for almost every action. Clicking `?` icon or using
+the `?` outlines the available actions and mapping.
+
+
+.. _app-video-visualizer:
+
+Using the video visualizer
+__________________________
+
+The video visualizer offers all of the same functionality as the image
+visualizer, as well as some convenient actions and shortcuts for navigating
+through a video. The spacebar pauses and plays the video, and `0`, `1`,... `9`
+are shortcuts to seek to  0%, 10%,... 90% of the video. `>`
+
+All of the same options in the image settings are available in video, as well as
+the `Use frame number` option to show frame stamp instead of the time stamp.
+
+Playback rate and volume are available in the video controls HUD to right of
+the play/pause button. Clicking on one of the icons resets the setting to the
+default. And when hovering, a slider appears to adjust the setting manually.
+
+.. note::
+
+    Did you know? The video visualizer streams label data, which means playback
+    begins as soon as possible and even heavy-weight labels like segmentations
+    are supported. 
 
 .. _app-config:
 
