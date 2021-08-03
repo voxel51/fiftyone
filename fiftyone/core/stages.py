@@ -6,6 +6,7 @@ View stages.
 |
 """
 from collections import defaultdict
+import contextlib
 from copy import deepcopy
 import random
 import reprlib
@@ -4858,13 +4859,14 @@ class SortBySimilarity(ViewStage):
 
         results = sample_collection.load_brain_results(brain_key)
 
-        return results.sort_by_similarity(
-            self._query_ids,
-            k=self._k,
-            reverse=self._reverse,
-            samples=sample_collection,
-            mongo=True,
-        )
+        with contextlib.ExitStack() as context:
+            if sample_collection != results.view:
+                results.use_view(sample_collection)
+                context.enter_context(results)  # pylint: disable=no-member
+
+            return results.sort_by_similarity(
+                self._query_ids, k=self._k, reverse=self._reverse, _mongo=True
+            )
 
 
 class Take(ViewStage):
