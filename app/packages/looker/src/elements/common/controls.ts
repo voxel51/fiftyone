@@ -164,8 +164,13 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
     return !thumbnail;
   }
 
-  renderSelf({ showControls, disableControls }: Readonly<State>) {
-    showControls = showControls && !disableControls;
+  renderSelf({
+    showControls,
+    disableControls,
+    error,
+    loaded,
+  }: Readonly<State>) {
+    showControls = showControls && !disableControls && !error && loaded;
     if (this.showControls === showControls) {
       return this.element;
     }

@@ -36,6 +36,9 @@ export const getFrameElements: GetElements<FrameState> = (
         node: common.CanvasElement,
       },
       {
+        node: common.ErrorElement,
+      },
+      {
         node: common.ThumbnailSelectorElement,
       },
       { node: common.TagsElement },
@@ -57,9 +60,6 @@ export const getFrameElements: GetElements<FrameState> = (
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
-      },
-      {
-        node: common.ErrorElement,
       },
       {
         node: common.PreviousElement,
@@ -103,6 +103,9 @@ export const getImageElements: GetElements<ImageState> = (
         node: common.CanvasElement,
       },
       {
+        node: common.ErrorElement,
+      },
+      {
         node: common.ThumbnailSelectorElement,
       },
       { node: common.TagsElement },
@@ -124,9 +127,6 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
         ],
-      },
-      {
-        node: common.ErrorElement,
       },
       {
         node: common.PreviousElement,
@@ -170,6 +170,9 @@ export const getVideoElements: GetElements<VideoState> = (
         node: common.CanvasElement,
       },
       {
+        node: common.ErrorElement,
+      },
+      {
         node: common.ThumbnailSelectorElement,
       },
       { node: common.TagsElement },
@@ -181,9 +184,6 @@ export const getVideoElements: GetElements<VideoState> = (
       },
       {
         node: common.VideoHelpPanelElement,
-      },
-      {
-        node: common.ErrorElement,
       },
       {
         node: common.ControlsElement,

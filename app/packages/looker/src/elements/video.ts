@@ -54,11 +54,20 @@ export class LoaderBar extends BaseElement<VideoState> {
     return element;
   }
 
-  renderSelf({ buffering, hovering, waitingForVideo }: Readonly<VideoState>) {
-    if ((buffering || waitingForVideo) && hovering === this.buffering) {
+  renderSelf({
+    buffering,
+    hovering,
+    waitingForVideo,
+    error,
+  }: Readonly<VideoState>) {
+    if (
+      (buffering || waitingForVideo) &&
+      hovering &&
+      !error === this.buffering
+    ) {
       return this.element;
     }
-    this.buffering = (buffering || waitingForVideo) && hovering;
+    this.buffering = (buffering || waitingForVideo) && hovering && !error;
 
     if (this.buffering) {
       this.element.style.display = "block";
@@ -491,6 +500,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             });
           };
           video.addEventListener("seeked", listener);
+          video.addEventListener("error", () => update({ error: true }));
           video.src = src;
 
           const load = () => {

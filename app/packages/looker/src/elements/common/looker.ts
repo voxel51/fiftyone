@@ -22,8 +22,8 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         }
 
         const e = event as KeyboardEvent;
-        update(({ SHORTCUTS }) => {
-          if (e.key in SHORTCUTS) {
+        update(({ SHORTCUTS, error }) => {
+          if (!error && e.key in SHORTCUTS) {
             SHORTCUTS[e.key].action(update, dispatchEvent, e.key);
           }
 
