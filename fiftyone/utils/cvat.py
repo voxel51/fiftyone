@@ -2423,9 +2423,11 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     """
 
     def __init__(
-        self, url="cvat.org", https=True, port=None, auth=None,
+        self, url=None, https=None, port=None, auth=None,
     ):
-        self._url = url
+        self._url = fo.annotation_config.cvat_url if url is None else url
+        port = fo.annotation_config.cvat_port if port is None else port
+        https = fo.annotation_config.cvat_https if https is None else https
         self._port = "" if port is None else ":%d" % port
         self._protocol = "https" if https else "http"
         self._auth = auth
@@ -2465,34 +2467,11 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self.setup()
         self._user_id_map = self.get_user_id_map()
 
-    def setup(self):
-        """Performs any necessary setup for the API."""
-        if self._auth is None:
-            self._auth = self.get_username_password("CVAT")
-        self._session = requests.Session()
-        response = self._session.post(self.login_url, self._auth, verify=False)
-        if "csrftoken" in response.cookies:
-            self._session.headers["X-CSRFToken"] = response.cookies[
-                "csrftoken"
-            ]
-
-    def get_username_password(self, host=""):
-        username = fo.annotation_config.cvat_username
-        password = fo.annotation_config.cvat_password
-
-        if username is None or password is None:
-            logger.info(
-                "No config or environment variables found for "
-                "authentication. Please enter CVAT login information. Set the "
-                "environment variables `FIFTYONE_CVAT_USERNAME` and "
-                "`FIFTYONE_CVAT_PASSWORD` to avoid this in the future."
-            )
-            self.prompt_username_password(host="CVAT")
-
-        return {
-            "username": username,
-            "password": password,
-        }
+    def _parse_arg(self, arg, config_arg):
+        if arg == None:
+            return config_arg
+        else:
+            return arg
 
     @property
     def base_url(self):
@@ -2550,8 +2529,108 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
+    def _raise_response_errors(self, response):
+        try:
+            response.raise_for_status()
+        except:
+            d = response.__dict__
+            raise Exception(
+                "%d error for request %s to url %s with the reason %s. Error content: %s"
+                % (
+                    d["status_code"],
+                    d["request"],
+                    d["url"],
+                    d["reason"],
+                    d["_content"],
+                )
+            )
+
+    def _session_delete(self, url):
+        response = self._session.delete(url, verify=False)
+        self._raise_response_errors(response)
+        return response
+
+    def _session_get(self, url):
+        response = self._session.get(url, verify=False)
+        self._raise_response_errors(response)
+        return response
+
+    def _session_patch(self, url, auth=None, data=None, files=None, json=None):
+        kwargs = {"url": url, "verify": False}
+        if auth is not None:
+            kwargs["auth"] = auth
+        if data is not None:
+            kwargs["data"] = data
+        if files is not None:
+            kwargs["files"] = files
+        if json is not None:
+            kwargs["json"] = json
+
+        response = self._session.patch(**kwargs)
+        self._raise_response_errors(response)
+        return response
+
+    def _session_post(self, url, auth=None, data=None, files=None, json=None):
+        kwargs = {"url": url, "verify": False}
+        if auth is not None:
+            kwargs["auth"] = auth
+        if data is not None:
+            kwargs["data"] = data
+        if files is not None:
+            kwargs["files"] = files
+        if json is not None:
+            kwargs["json"] = json
+
+        response = self._session.post(**kwargs)
+        self._raise_response_errors(response)
+        return response
+
+    def _session_put(self, url, auth=None, data=None, files=None, json=None):
+        kwargs = {"url": url, "verify": False}
+        if auth is not None:
+            kwargs["auth"] = auth
+        if data is not None:
+            kwargs["data"] = data
+        if files is not None:
+            kwargs["files"] = files
+        if json is not None:
+            kwargs["json"] = json
+
+        response = self._session.put(**kwargs)
+        self._raise_response_errors(response)
+        return response
+
+    def setup(self):
+        """Performs any necessary setup for the API."""
+        if self._auth is None:
+            self._auth = self.get_username_password("CVAT")
+        self._session = requests.Session()
+        response = self._session_post(self.login_url, data=self._auth)
+        if "csrftoken" in response.cookies:
+            self._session.headers["X-CSRFToken"] = response.cookies[
+                "csrftoken"
+            ]
+
+    def get_username_password(self, host=""):
+        username = fo.annotation_config.cvat_username
+        password = fo.annotation_config.cvat_password
+
+        if username is None or password is None:
+            logger.info(
+                "No config or environment variables found for "
+                "authentication. Please enter CVAT login information. Set the "
+                "environment variables `FIFTYONE_CVAT_USERNAME` and "
+                "`FIFTYONE_CVAT_PASSWORD` to avoid this in the future."
+            )
+            self.prompt_username_password(host="CVAT")
+
+        return {
+            "username": username,
+            "password": password,
+        }
+
     def get_user_id_map(self):
-        user_response = self._session.get(self.users_url)
+        user_response = self._session_get(self.users_url)
         resp_json = user_response.json()
         user_id_map = {}
         for user_info in resp_json["results"]:
@@ -2575,17 +2654,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         if segment_size is not None:
             data_task_create["segment_size"] = segment_size
 
-        task_creation_resp = self._session.post(
-            self.tasks_url, verify=False, json=data_task_create,
+        task_creation_resp = self._session_post(
+            self.tasks_url, json=data_task_create,
         )
-
         task_json = task_creation_resp.json()
-        if _MAX_TASKS_MESSAGE in task_json:
-            raise ValueError(
-                "You have reached the maximum number of tasks in "
-                "CVAT, please delete a task to create a new one"
-            )
-
         task_id = task_json["id"]
 
         self._attribute_id_map[task_id] = {}
@@ -2601,12 +2673,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         if task_assignee is not None:
             task_patch = {"assignee_id": self._user_id_map[task_assignee]}
-            resp = self._session.patch(self.task_url(task_id), json=task_patch)
+            resp = self._session_patch(self.task_url(task_id), json=task_patch)
 
         return task_id
 
     def delete_task(self, task_id):
-        response = self._session.delete(self.task_url(task_id))
+        response = self._session_delete(self.task_url(task_id))
 
     def launch_annotator(self, url=None):
         """Open the uploaded annotations in the annotation tool"""
@@ -2627,13 +2699,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         files = {
             "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
         }
-        files_resp = self._session.post(
-            self.task_data_url(task_id), verify=False, data=data, files=files,
+        files_resp = self._session_post(
+            self.task_data_url(task_id), data=data, files=files,
         )
 
         job_ids = []
         while job_ids == []:
-            job_resp = self._session.get(self.jobs_url(task_id))
+            job_resp = self._session_get(self.jobs_url(task_id))
             job_ids = [j["id"] for j in job_resp.json()]
 
         if job_assignees is not None:
@@ -2642,7 +2714,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 assignee = job_assignees[assignee_ind]
                 if assignee is not None:
                     job_patch = {"assignee_id": self._user_id_map[assignee]}
-                    resp = self._session.patch(
+                    resp = self._session_patch(
                         self.taskless_job_url(job_id), json=job_patch
                     )
 
@@ -2652,7 +2724,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 reviewer = job_reviewers[reviewer_ind]
                 if reviewer is not None:
                     job_patch = {"reviewer_id": self._user_id_map[reviewer]}
-                    resp = self._session.patch(
+                    resp = self._session_patch(
                         self.taskless_job_url(job_id), json=job_patch
                     )
 
@@ -2867,7 +2939,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 or len(annot_tracks) != len_tracks
             ):
                 # Upload annotations
-                resp = self._session.put(
+                resp = self._session_put(
                     self.task_annotation_url(task_id), json=annot_json
                 )
                 resp_json = resp.json()
@@ -2881,7 +2953,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         """Download annotations from the annotation tool"""
         results = {}
         for task_id in task_ids:
-            task_resp = self._session.get(self.task_url(task_id), verify=False)
+            task_resp = self._session_get(self.task_url(task_id))
             task_json = task_resp.json()
             if task_id not in self._attribute_id_map:
                 labels = task_json["labels"]
@@ -2897,14 +2969,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             else:
                 media_type = "image"
 
-            response = self._session.get(self.task_annotation_url(task_id))
-
+            response = self._session_get(self.task_annotation_url(task_id))
             resp_json = response.json()
             shapes = resp_json["shapes"]
             tags = resp_json["tags"]
             tracks = resp_json["tracks"]
 
-            data_resp = self._session.get(self.task_data_meta_url(task_id))
+            data_resp = self._session_get(self.task_data_meta_url(task_id))
             frames = data_resp.json()["frames"]
 
             class_map = {v: k for k, v in self._class_id_map[task_id].items()}
@@ -3053,7 +3124,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 }
                 tags.append(tag)
 
-        return tags
+        return tags, id_mapping
 
     def create_shapes(self, samples, label_field, label_type):
         samples.compute_metadata()
@@ -3580,9 +3651,9 @@ def annotate(
     samples,
     label_field=None,
     launch_editor=False,
-    url="cvat.org",
+    url=None,
     port=None,
-    https=True,
+    https=None,
     auth=None,
     segment_size=None,
     image_quality=75,

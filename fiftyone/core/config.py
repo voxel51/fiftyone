@@ -212,14 +212,15 @@ class AnnotationConfig(EnvConfig):
             d, "cvat_password", env_var="FIFTYONE_CVAT_PASSWORD", default=None,
         )
         self.cvat_url = self.parse_string(
-            d,
-            "cvat_url",
-            env_var="FIFTYONE_CVAT_URL",
-            default="https://cvat.org",
+            d, "cvat_url", env_var="FIFTYONE_CVAT_URL", default="cvat.org",
         )
-        self.cvat_port = self.parse_string(
+        self.cvat_port = self.parse_int(
             d, "cvat_port", env_var="FIFTYONE_CVAT_PORT", default=None,
         )
+        self.cvat_https = self.parse_bool(
+            d, "cvat_https", env_var="FIFTYONE_CVAT_HTTPS", default=True,
+        )
+
         self.labelbox_api_key = self.parse_string(
             d,
             "labelbox_api_key",
