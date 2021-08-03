@@ -394,7 +394,6 @@ export default class Flashlight<K> {
     }
 
     this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
-    this.state.sections[this.state.lastSection + 1] && this.state.lastSection++;
 
     this.state.activeSection = this.state.firstSection;
     while (this.state.sections[this.state.activeSection].getBottom() < top) {

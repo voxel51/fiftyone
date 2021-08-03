@@ -6,7 +6,7 @@ import { SELECTION_TEXT } from "../../constants";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { looker, lookerFullscreen } from "./looker.module.css";
+import { looker, lookerError, lookerFullscreen } from "./looker.module.css";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
@@ -64,11 +64,16 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   renderSelf({
     hovering,
+    error,
     config: { thumbnail },
     options: { fullscreen, inSelectionMode },
   }: Readonly<State>) {
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
+    }
+
+    if (error && !thumbnail) {
+      this.element.classList.add(lookerError);
     }
 
     const fullscreenClass = this.element.classList.contains(lookerFullscreen);

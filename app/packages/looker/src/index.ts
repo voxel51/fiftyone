@@ -113,6 +113,10 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
+    if (eventType === "error") {
+      this.updater({ error: true });
+    }
+
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
@@ -376,6 +380,7 @@ export abstract class Looker<
       setZoom: true,
       hasDefaultZoom: true,
       SHORTCUTS: COMMON_SHORTCUTS,
+      error: null,
     };
   }
 
@@ -1073,17 +1078,6 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
         return { playing: false };
       }
       return {};
-    });
-  }
-
-  resetToFragment(): void {
-    this.updater(({ fragment }) => {
-      if (!fragment) {
-        this.dispatchEvent("error", new Error("No fragment set"));
-        return {};
-      } else {
-        return { locked: true, frameNumber: fragment[0] };
-      }
     });
   }
 

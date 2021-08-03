@@ -1744,6 +1744,7 @@ __metadata:
     immutable: ^4.0.0-rc.12
     json-format-highlight: ^1.0.4
     lru-cache: ^6.0.0
+    mime: ^2.5.2
     path: ^0.12.7
     prettier: 2.2.1
     typescript: 4.2.4

@@ -7,6 +7,7 @@ import { BaseElement, Events } from "./base";
 import { muteUnmute, playPause, resetPlaybackRate } from "./common/actions";
 import { lookerClickable, lookerTime } from "./common/controls.module.css";
 import {
+  acquirePlayer,
   acquireThumbnailer,
   getFrameNumber,
   getFrameString,

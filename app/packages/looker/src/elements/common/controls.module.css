@@ -29,6 +29,10 @@
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
 }
 
+.lookerError > .lookerControls {
+  display: none;
+}
+
 .lookerControls * {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -151,4 +155,8 @@
   height: 100%;
   margin-top: 2px;
   font-size: 20px;
+}
+
+.lookerError .lookerControls {
+  display: none;
 }

@@ -162,7 +162,8 @@ export interface BaseState {
   zoomToContent: boolean;
   setZoom: boolean;
   hasDefaultZoom: boolean;
-  SHORTCUTS: Readonly<ControlMap<any>>; // fix me
+  SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
+  error: boolean;
 }
 
 export interface FrameState extends BaseState {

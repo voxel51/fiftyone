@@ -24,3 +24,7 @@
 .invisible {
   opacity: 0;
 }
+
+.lookerError .lookerCanvas {
+  display: none;
+}

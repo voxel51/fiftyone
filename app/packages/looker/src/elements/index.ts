@@ -59,6 +59,9 @@ export const getFrameElements: GetElements<FrameState> = (
         ],
       },
       {
+        node: common.ErrorElement,
+      },
+      {
         node: common.PreviousElement,
       },
       {
@@ -123,6 +126,9 @@ export const getImageElements: GetElements<ImageState> = (
         ],
       },
       {
+        node: common.ErrorElement,
+      },
+      {
         node: common.PreviousElement,
       },
       {
@@ -175,6 +181,9 @@ export const getVideoElements: GetElements<VideoState> = (
       },
       {
         node: common.VideoHelpPanelElement,
+      },
+      {
+        node: common.ErrorElement,
       },
       {
         node: common.ControlsElement,
