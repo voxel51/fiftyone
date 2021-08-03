@@ -330,12 +330,16 @@ export default class Flashlight<K> {
         return;
       }
 
-      if (this.state.resized && !this.state.resized.has(section.index)) {
+      if (
+        this.state.resized &&
+        !this.state.resized.has(section.index) &&
+        !hidden
+      ) {
         this.state.onItemResize && section.resizeItems(this.state.onItemResize);
         this.state.resized.add(section.index);
       }
 
-      if (!this.state.clean.has(section.index)) {
+      if (!this.state.clean.has(section.index) && !hidden) {
         this.state.updater &&
           section
             .getItems()
