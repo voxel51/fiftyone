@@ -213,13 +213,21 @@ export interface Timeouts {
  */
 export const rescaleCoordates = (
   [x, y]: [number, number],
-  fromDim: [number, number],
-  toDim: [number, number]
+  from: [number, number],
+  to: [number, number]
 ): [number, number] => {
   return [
-    Math.round(rescale(x, 0, fromDim[0], 0, toDim[0])),
-    Math.round(rescale(y, 0, fromDim[1], 0, toDim[1])),
+    rescaleCoordate(x, from[0], to[0]),
+    rescaleCoordate(y, from[1], to[1]),
   ];
+};
+
+export const rescaleCoordate = (
+  x: number,
+  from: number,
+  to: number
+): number => {
+  return Math.round(rescale(x, 0, from, 0, to));
 };
 
 export const ensureCanvasSize = (

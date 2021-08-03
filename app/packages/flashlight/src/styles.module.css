@@ -51,6 +51,7 @@
   background-repeat: repeat-y;
   background-size: 100% auto;
   min-height: 100%;
+  overflow-x: hidden;
 
   animation: animatedBackground 60s linear infinite;
   -moz-animation: animatedBackground 60s linear infinite;
