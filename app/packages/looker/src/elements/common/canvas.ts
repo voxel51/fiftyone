@@ -145,13 +145,17 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             this.wheelTimeout = setTimeout(() => {
               this.wheelTimeout = null;
               update(
-                (state) => ({
-                  wheeling: false,
-                  disableOverlays: !state.disableControls,
-                }),
+                (state) => {
+                  return {
+                    wheeling: false,
+                    disableOverlays: Boolean(state.playing || state.seeking),
+                  };
+                },
                 (state, overlays) =>
-                  !state.disableControls &&
-                  dispatchTooltipEvent(dispatchEvent)(state, overlays)
+                  dispatchTooltipEvent(dispatchEvent, state.disableOverlays)(
+                    state,
+                    overlays
+                  )
               );
             }, 200);
 
