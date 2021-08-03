@@ -5,13 +5,17 @@
 import { MARGIN } from "./constants";
 import { ItemData, OnItemResize, Render, RowData, Section } from "./state";
 
-import { flashlightSection } from "./styles.module.css";
+import {
+  flashlightSection,
+  flashlightSectionHidden,
+} from "./styles.module.css";
 
 export default class SectionElement implements Section {
   private attached: boolean = false;
   private top: number;
   private width: number;
   private height: number;
+  private hidden: boolean = false;
   readonly index: number;
   readonly itemIndex: number;
   private readonly section: HTMLDivElement = document.createElement("div");
@@ -116,7 +120,12 @@ export default class SectionElement implements Section {
     return this.attached;
   }
 
-  show(element: HTMLDivElement): void {
+  show(element: HTMLDivElement, hidden = false): void {
+    if (hidden !== this.hidden) {
+      this.section.classList.toggle(flashlightSectionHidden);
+      this.hidden = hidden;
+    }
+
     if (!this.attached) {
       element.appendChild(this.section);
       this.attached = true;

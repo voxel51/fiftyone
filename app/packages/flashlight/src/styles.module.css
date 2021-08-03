@@ -77,4 +77,9 @@
 .flashlightSection > div {
   position: absolute;
   contain: size layout paint style;
+  background-color: hsl(210, 11%, 15%);
+}
+
+.flashlightSection.flashlightSectionHidden > div > div {
+  display: none;
 }

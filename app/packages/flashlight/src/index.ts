@@ -323,9 +323,10 @@ export default class Flashlight<K> {
   }
 
   private showSections() {
+    const hidden = this.state.zooming && this.shownSectionsNeedUpdate();
     this.state.shownSections.forEach((index) => {
       const section = this.state.sections[index];
-      if (!section || section.isShown()) {
+      if (!section) {
         return;
       }
 
@@ -342,7 +343,7 @@ export default class Flashlight<K> {
             .forEach((id) => this.state.updater(id));
         this.state.clean.add(section.index);
       }
-      section.show(this.container);
+      section.show(this.container, hidden);
       this.state.shownSections.add(section.index);
     });
   }
@@ -403,13 +404,7 @@ export default class Flashlight<K> {
     this.state.zooming =
       !force && this.lastScrollTop !== null && pixelDelta / timeDelta > 20;
 
-    if (this.state.zooming && this.shownSectionsNeedUpdate()) {
-      this.showPixels();
-      [...this.state.shownSections].forEach((index) => this.hideSection(index));
-    } else {
-      this.hidePixels();
-      this.showSections();
-    }
+    this.showSections();
 
     if (this.state.lastSection === this.state.sections.length - 1) {
       this.requestMore();
