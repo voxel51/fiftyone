@@ -1,3 +1,4 @@
+import LRU from "lru-cache";
 import React, {
   useLayoutEffect,
   useRef,
@@ -52,10 +53,19 @@ const gridRowAspectRatio = selector<number>({
   },
 });
 
+const createLookerCache = () => {
+  return new LRU<string, FrameLooker | ImageLooker | VideoLooker>({
+    max: 500,
+    dispose: (id, looker) => {
+      looker.destroy();
+    },
+  });
+};
+
 export let samples = new Map<string, atoms.SampleData>();
 export let sampleIndices = new Map<number, string>();
 let nextIndex = 0;
-let lookers = new Map<string, FrameLooker | ImageLooker | VideoLooker>();
+let lookers = createLookerCache();
 
 const url = (() => {
   let origin = window.location.origin;
@@ -348,7 +358,7 @@ export default React.memo(() => {
     }
 
     samples = new Map();
-    lookers = new Map();
+    lookers = createLookerCache();
     sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();
