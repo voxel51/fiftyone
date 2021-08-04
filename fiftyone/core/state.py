@@ -243,6 +243,7 @@ class DatasetStatistics(object):
         return count_aggs, tag_aggs
 
     def _build(self, view):
+        F = fo.ViewField
         aggregations = [foa.Count()]
         exists_aggregations = []
 
@@ -251,7 +252,16 @@ class DatasetStatistics(object):
 
         aggregations.append(foa.CountValues("tags"))
 
-        exists_expr = (~(fo.ViewField().exists())).if_else(True, None)
+        def get_exists(path):
+            keys = path.split(".")
+            if len(keys) > 1:
+                keys = keys[0:-1]
+
+            path = ".".join(keys)
+
+            return (
+                (F("$%s" % path).type() != "missing") & (F() == None)
+            ).if_else(True, None)
 
         for field_name, field in self.fields(view):
             if _is_label(field):
@@ -269,15 +279,17 @@ class DatasetStatistics(object):
                     ]
                 )
                 exists_aggregations.append(
-                    foa.Count(label_path, expr=exists_expr)
+                    foa.Count(label_path, expr=get_exists(label_path))
                 )
                 exists_aggregations.append(
-                    foa.Count(confidence_path, expr=exists_expr)
+                    foa.Count(
+                        confidence_path, expr=get_exists(confidence_path)
+                    )
                 )
             else:
                 aggregations.append(foa.Count(field_name))
                 exists_aggregations.append(
-                    foa.Count(field_name, expr=exists_expr)
+                    foa.Count(field_name, expr=get_exists(field_name))
                 )
 
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
