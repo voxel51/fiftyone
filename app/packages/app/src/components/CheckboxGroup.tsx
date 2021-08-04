@@ -180,7 +180,7 @@ const CheckboxText = ({
           : count.toLocaleString()}
       </span>
 
-      {hasDropdown && (
+      {hasDropdown && count > 0 && (
         <ArrowType
           onClick={(e) => {
             e.preventDefault();
