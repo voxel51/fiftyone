@@ -61,6 +61,13 @@ export default class Flashlight<K> {
 
     let animation = null;
 
+    document.addEventListener(
+      "visibilitychange",
+      () =>
+        document.visibilityState === "hidden" &&
+        requestAnimationFrame(() => this.render())
+    );
+
     this.resizeObserver = new ResizeObserver(
       ([
         {
@@ -417,7 +424,9 @@ export default class Flashlight<K> {
     this.lastRender = time;
     this.lastScrollTop = top;
     this.state.zooming =
-      !force && this.lastScrollTop !== null && pixelDelta / timeDelta > 20;
+      !force &&
+      this.lastScrollTop !== null &&
+      pixelDelta / timeDelta > 100 / this.state.options.rowAspectRatioThreshold;
 
     this.showSections();
 

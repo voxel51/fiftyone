@@ -367,6 +367,10 @@ export default React.memo(() => {
     cropToContent,
   ]);
 
+  useEventHandler(document, "visibilitychange", () => {
+    document.visibilityState === "hidden" && lookers.reset();
+  });
+
   useLayoutEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({

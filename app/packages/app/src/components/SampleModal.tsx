@@ -215,7 +215,6 @@ export const useSampleUpdate = (lookerRef) => {
 };
 
 const SampleModal = ({ onClose }: Props, ref) => {
-  const fullscreen = useRecoilValue(atoms.fullscreen);
   const {
     sample: { filepath, _id, _media_type, metadata },
     index,
@@ -246,53 +245,51 @@ const SampleModal = ({ onClose }: Props, ref) => {
           onNext={() => getIndex(index + 1)}
         />
       </div>
-      {!fullscreen && (
-        <div className={`sidebar`}>
-          <ModalFooter
-            style={{
-              width: "100%",
-              borderTop: "none",
-              borderBottom: `2px solid ${theme.border}`,
-              position: "relative",
-            }}
-          >
-            <Actions modal={true} lookerRef={lookerRef} />
-          </ModalFooter>
-          <div className="sidebar-content">
-            <h2>
-              Metadata
-              <span className="push-right" />
-            </h2>
-            <Row name="id" value={_id} />
-            <Row name="filepath" value={filepath} />
-            <Row name="media type" value={_media_type} />
-            {formatMetadata(metadata).map(({ name, value }) => (
-              <Row key={"metadata-" + name} name={name} value={value} />
-            ))}
-            <Suspense
-              fallback={
-                <h2>
-                  Fields
-                  <span className="push-right" />
-                </h2>
-              }
-            >
+      <div className={`sidebar`}>
+        <ModalFooter
+          style={{
+            width: "100%",
+            borderTop: "none",
+            borderBottom: `2px solid ${theme.border}`,
+            position: "relative",
+          }}
+        >
+          <Actions modal={true} lookerRef={lookerRef} />
+        </ModalFooter>
+        <div className="sidebar-content">
+          <h2>
+            Metadata
+            <span className="push-right" />
+          </h2>
+          <Row name="id" value={_id} />
+          <Row name="filepath" value={filepath} />
+          <Row name="media type" value={_media_type} />
+          {formatMetadata(metadata).map(({ name, value }) => (
+            <Row key={"metadata-" + name} name={name} value={value} />
+          ))}
+          <Suspense
+            fallback={
               <h2>
                 Fields
                 <span className="push-right" />
               </h2>
-              <FieldsSidebar
-                modal={true}
-                style={{
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                  height: "auto",
-                }}
-              />
-            </Suspense>
-          </div>
+            }
+          >
+            <h2>
+              Fields
+              <span className="push-right" />
+            </h2>
+            <FieldsSidebar
+              modal={true}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+            />
+          </Suspense>
         </div>
-      )}
+      </div>
     </Container>
   );
 };
