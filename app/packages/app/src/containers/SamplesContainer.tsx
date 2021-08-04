@@ -17,12 +17,14 @@ const SidebarContainer = styled.div`
 `;
 
 const SidebarColumn = styled.div`
-  ${scrollbarStyles}
-  z-index: 400;
   max-height: 100%;
   height: 100%;
   overflow-y: scroll;
   overflow-x: hidden;
+  scrollbar-color: ${({ theme }) => theme.fontDarkest}
+    ${({ theme }) => theme.background};
+
+  ${scrollbarStyles}
 `;
 
 const ContentColumn = styled.div`
@@ -52,12 +54,7 @@ const SamplesContainer = React.memo(() => {
         {showSidebar ? (
           <SidebarContainer>
             <SidebarColumn>
-              <FieldsSidebar
-                modal={false}
-                style={{
-                  scrollbarWidth: "thin",
-                }}
-              />
+              <FieldsSidebar modal={false} />
             </SidebarColumn>
           </SidebarContainer>
         ) : null}

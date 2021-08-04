@@ -70,8 +70,7 @@ export const scrollbarStyles = ({ theme }) => `
 }
 
 scrollbar-color: ${({ theme }) => theme.fontDarkest} ${({ theme }) =>
-  theme.backgroundLight};
-scrollbar-width: 16px;
+  theme.background};
 
 ::-webkit-scrollbar-track {
   border: solid 4px transparent ${theme.fontDarkest};

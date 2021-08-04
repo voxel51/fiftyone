@@ -127,7 +127,9 @@ export default class SectionElement implements Section {
     }
 
     if (!this.attached) {
-      element.appendChild(this.section);
+      requestAnimationFrame(() => {
+        element.appendChild(this.section);
+      });
       this.attached = true;
     }
 

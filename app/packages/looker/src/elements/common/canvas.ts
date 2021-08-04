@@ -110,68 +110,70 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         });
       },
       wheel: ({ event, update, dispatchEvent }) => {
-        update(
-          ({
-            config: { thumbnail, dimensions },
-            pan: [px, py],
-            scale,
-            windowBBox: [tlx, tly, width, height],
-            options: { zoomPad },
-          }) => {
-            if (thumbnail) {
-              return {};
-            }
+        requestAnimationFrame(() => {
+          update(
+            ({
+              config: { thumbnail, dimensions },
+              pan: [px, py],
+              scale,
+              windowBBox: [tlx, tly, width, height],
+              options: { zoomPad },
+            }) => {
+              if (thumbnail) {
+                return {};
+              }
 
-            const x = event.x - tlx;
-            const y = event.y - tly;
+              const x = event.x - tlx;
+              const y = event.y - tly;
 
-            const xs = (x - px) / scale;
-            const ys = (y - py) / scale;
-            const newScale = clampScale(
-              [width, height],
-              dimensions,
-              event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR,
-              zoomPad
-            );
-
-            if (scale === newScale) {
-              return {};
-            }
-
-            if (this.wheelTimeout) {
-              clearTimeout(this.wheelTimeout);
-            }
-
-            this.wheelTimeout = setTimeout(() => {
-              this.wheelTimeout = null;
-              update(
-                (state) => {
-                  return {
-                    wheeling: false,
-                    disableOverlays: Boolean(state.playing || state.seeking),
-                  };
-                },
-                (state, overlays) =>
-                  dispatchTooltipEvent(dispatchEvent, state.disableOverlays)(
-                    state,
-                    overlays
-                  )
+              const xs = (x - px) / scale;
+              const ys = (y - py) / scale;
+              const newScale = clampScale(
+                [width, height],
+                dimensions,
+                event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR,
+                zoomPad
               );
-            }, 200);
 
-            return {
-              pan: [x - xs * newScale, y - ys * newScale],
-              scale: newScale,
-              cursorCoordinates: [
-                (<MouseEvent>event).pageX,
-                (<MouseEvent>event).pageY,
-              ],
-              wheeling: true,
-              disableOverlays: true,
-            };
-          },
-          dispatchTooltipEvent(dispatchEvent, true)
-        );
+              if (scale === newScale) {
+                return {};
+              }
+
+              if (this.wheelTimeout) {
+                clearTimeout(this.wheelTimeout);
+              }
+
+              this.wheelTimeout = setTimeout(() => {
+                this.wheelTimeout = null;
+                update(
+                  (state) => {
+                    return {
+                      wheeling: false,
+                      disableOverlays: Boolean(state.playing || state.seeking),
+                    };
+                  },
+                  (state, overlays) =>
+                    dispatchTooltipEvent(dispatchEvent, state.disableOverlays)(
+                      state,
+                      overlays
+                    )
+                );
+              }, 200);
+
+              return {
+                pan: [x - xs * newScale, y - ys * newScale],
+                scale: newScale,
+                cursorCoordinates: [
+                  (<MouseEvent>event).pageX,
+                  (<MouseEvent>event).pageY,
+                ],
+                wheeling: true,
+                disableOverlays: true,
+              };
+            },
+            dispatchTooltipEvent(dispatchEvent, true)
+          );
+        });
       },
     };
   }

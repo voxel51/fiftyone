@@ -83,10 +83,6 @@ const Container = styled.div`
   height: 100%;
   display: block;
   position: relative;
-
-  overflow-y: scroll;
-
-  ${scrollbarStyles}
 `;
 
 const flashlightOptions = selector<FlashlightOptions>({
