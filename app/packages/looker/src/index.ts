@@ -191,11 +191,12 @@ export abstract class Looker<
       }
       const ctx = this.ctx;
 
-      if (!this.state.loaded || !this.state.overlaysPrepared) {
-        return;
-      }
-
-      if (this.waiting) {
+      if (
+        !this.state.loaded ||
+        !this.state.overlaysPrepared ||
+        this.state.destroyed ||
+        this.waiting
+      ) {
         return;
       }
 
@@ -842,11 +843,6 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
         video.readyState < 2 ||
         !this.hasFrame(this.state.frameNumber))
     );
-  }
-
-  destroy() {
-    this.lookerElement.children[0].releaseVideo();
-    super.destroy();
   }
 
   dispatchImpliedEvents(

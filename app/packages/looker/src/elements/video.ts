@@ -624,7 +624,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     buffering,
     hovering,
     hasPoster,
+    destroyed,
   }: Readonly<VideoState>) {
+    if (destroyed) {
+      this.releaseVideo();
+    }
+
     if (!this.element) {
       if (hovering && thumbnail) {
         const result = this.acquireVideo();
