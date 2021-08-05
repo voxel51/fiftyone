@@ -3347,6 +3347,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
     def create_attributes(self, label, attributes):
         label_attrs = []
+        label_attrs.append({"spec_id": "label_id", "value": label.id})
         for attribute in attributes:
             value = None
             if attribute.startswith("attribute:"):

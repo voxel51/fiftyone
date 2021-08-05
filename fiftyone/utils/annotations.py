@@ -546,6 +546,7 @@ class AnnotationLabelSchema(object):
     def default_label_types(self):
         return [
             "classifications",
+            "classification",
             "detections",
             "keypoints",
             "polylines",
@@ -844,7 +845,7 @@ class AnnotationLabelSchema(object):
 
             if hasattr(label, "attributes"):
                 for attr in label.attributes.keys():
-                    attr_name = "attributes:" + attr
+                    attr_name = "attribute:" + attr
                     if attr_name not in attributes:
                         attributes[attr_name] = {
                             "type": self.base_backend_attr_type()
