@@ -252,16 +252,18 @@ export abstract class Looker<
       return;
     }
 
-    this.lookerElement.element.parentElement &&
+    if (this.lookerElement.element.parentElement) {
+      this.resizeObserver.disconnect();
       this.lookerElement.element.parentElement.removeChild(
         this.lookerElement.element
       );
+    }
 
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
     });
     element.appendChild(this.lookerElement.element);
-    !dimensions && this.resizeObserver.observe(this.lookerElement.element);
+    !dimensions && this.resizeObserver.observe(element);
   }
 
   resize(dimensions: Dimensions): void {
@@ -271,7 +273,7 @@ export abstract class Looker<
   }
 
   detach(): void {
-    this.resizeObserver.unobserve(this.lookerElement.element);
+    this.resizeObserver.disconnect();
     this.lookerElement.element.parentNode &&
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
@@ -317,6 +319,7 @@ export abstract class Looker<
   }
 
   destroy() {
+    this.resizeObserver.disconnect();
     this.lookerElement.element.parentElement &&
       this.lookerElement.element.parentElement.removeChild(
         this.lookerElement.element
