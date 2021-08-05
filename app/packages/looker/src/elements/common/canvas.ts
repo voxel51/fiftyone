@@ -4,7 +4,7 @@
 
 import { SCALE_FACTOR } from "../../constants";
 import { BaseState, Coordinates, Optional } from "../../state";
-import { clampScale } from "../../util";
+import { clampScale, getDPR } from "../../util";
 import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
@@ -247,7 +247,3 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     return [x - sx, y - sy];
   }
 }
-
-const getDPR = () => {
-  return window.devicePixelRatio ? window.devicePixelRatio : 1;
-};

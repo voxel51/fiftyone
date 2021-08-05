@@ -53,6 +53,7 @@ import {
 import {
   addToBuffers,
   createWorker,
+  getDPR,
   getElementBBox,
   getFitRect,
   mergeUpdates,
@@ -206,10 +207,16 @@ export abstract class Looker<
       ctx.textBaseline = "bottom";
       ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, this.state.windowBBox[2], this.state.windowBBox[3]);
+      ctx.clearRect(
+        0,
+        0,
+        this.state.windowBBox[2] * getDPR(),
+        this.state.windowBBox[3] * getDPR()
+      );
 
-      ctx.translate(...this.state.pan);
-      ctx.scale(this.state.scale, this.state.scale);
+      const p = this.state.pan.map((p) => p * getDPR());
+      ctx.translate(p[0], p[1]);
+      ctx.scale(this.state.scale * getDPR(), this.state.scale * getDPR());
 
       const [tlx, tly, w, h] = this.state.canvasBBox;
       ctx.drawImage(
