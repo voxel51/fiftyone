@@ -508,7 +508,7 @@ A |Field| is an attribute of a |Sample| that stores information about the
 sample.
 
 Fields can be dynamically created, modified, and deleted from samples on a
-per-sample basiss. When a new |Field| is assigned to a |Sample| in a |Dataset|,
+per-sample basis. When a new |Field| is assigned to a |Sample| in a |Dataset|,
 it is automatically added to the dataset's schema and thus accessible on all
 other samples in the dataset.
 
@@ -1780,7 +1780,7 @@ associated metadata.
     directly on<using-labels>` the |Label| object. However, a typical use case
     for this feature, as opposed to simply storing custom attributes directly
     on the |Label| object, is to store predictions and associated
-    confidences of a classifer applied to the object patches.
+    confidences of a classifier applied to the object patches.
 
 There are |Attribute| subclasses for various types of attributes you may want
 to store. Use the appropriate subclass when possible so that FiftyOne knows the
