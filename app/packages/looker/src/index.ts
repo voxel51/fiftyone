@@ -102,15 +102,13 @@ export abstract class Looker<
     this.ctx = this.canvas.getContext("2d");
 
     this.resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
-        const box = getElementBBox(this.lookerElement.element);
-        box[2] &&
-          box[3] &&
-          this.lookerElement &&
-          this.updater({
-            windowBBox: box,
-          });
-      });
+      const box = getElementBBox(this.lookerElement.element);
+      box[2] &&
+        box[3] &&
+        this.lookerElement &&
+        this.updater({
+          windowBBox: box,
+        });
     });
   }
 
@@ -160,6 +158,10 @@ export abstract class Looker<
 
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
+
+      if (!this.state.windowBBox) {
+        return;
+      }
 
       this.state = this.postProcess();
 
