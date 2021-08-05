@@ -2680,7 +2680,7 @@ stored in `DICOM format <https://en.wikipedia.org/wiki/DICOM>`_.
 
 .. note::
 
-    You must have `pydicom <https://github.com/pydicom/pydicom>` installed in
+    You must have `pydicom <https://github.com/pydicom/pydicom>`_ installed in
     order to load DICOM datasets.
 
 The standard format for datasets of this type is the following:
@@ -2692,15 +2692,13 @@ The standard format for datasets of this type is the following:
         <filename2>.dcm
 
 where each `.dcm` file is a DICOM file that can be read via
-:func:`pydicom:pydicom.dcmread`.
+:func:`pydicom.dcmread <pydicom:pydicom.filereader.dcmread>`.
 
-.. note::
-
-    Alternatively, rather than providing a ``dataset_dir``, you can provide the
-    ``dicom_path`` argument, which can directly specify a glob pattern of DICOM
-    files to load or the path to a
-    `DICOMDIR <https://pydicom.github.io/pydicom/stable/tutorials/filesets.html>`_
-    file.
+Alternatively, rather than providing a ``dataset_dir``, you can provide the
+``dicom_path`` argument, which can directly specify a glob pattern of DICOM
+files to load or the path to a
+`DICOMDIR <https://pydicom.github.io/pydicom/stable/tutorials/filesets.html>`_
+file.
 
 By default, all attribute values in the DICOM files discoverable via
 :meth:`pydicom:pydicom.dataset.Dataset.dir` with supported types are loaded

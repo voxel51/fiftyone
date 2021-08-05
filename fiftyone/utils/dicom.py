@@ -120,9 +120,6 @@ class DICOMDatasetImporter(
 ):
     """Importer for DICOM datasets datasets stored on disk.
 
-    During import, the images are read in-memory and written to the provided
-    ``images_dir``.
-
     See :ref:`this page <DICOMDataset-import>` for format details.
 
     Args:
