@@ -2716,6 +2716,9 @@ passing the optional ``keywords`` argument.
     passing the ``images_dir`` argument. By default, the images are written to
     ``dataset_dir``.
 
+    Currently, only single frame images are supported, but a community
+    contribution to support 3D or 4D image types (e.g., CT scans) is welcomed!
+
 .. note::
 
     See :class:`DICOMDatasetImporter <fiftyone.utils.dicom.DICOMDatasetImporter>`
