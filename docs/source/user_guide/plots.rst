@@ -860,7 +860,7 @@ Plotting backend
 ----------------
 
 Most plotting methods in the
-:meth:`fiftyone.core.plots <fiftyone.core.plots.base>` module provides an
+:meth:`fiftyone.core.plots <fiftyone.core.plots.base>` module provide an
 optional ``backend`` parameter that you can use to control the plotting backend
 used to render plots.
 
