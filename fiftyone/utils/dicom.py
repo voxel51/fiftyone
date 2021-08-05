@@ -290,7 +290,7 @@ def _to_python(value):
 
 
 _PRIMITIVE_TYPES = (int, float, str, list)
-_LIST_TYPES = (pydicom.valuerep.MultiValue,)
+_LIST_TYPES = (pydicom.multival.MultiValue,)
 
 _SCALAR_FIELD_TYPES_MAP = {
     # pydicom.valuerep.DA: datetime.date,
@@ -300,5 +300,5 @@ _SCALAR_FIELD_TYPES_MAP = {
     pydicom.valuerep.IS: int,
     pydicom.valuerep.PersonName: str,
     pydicom.valuerep.PersonNameUnicode: str,
-    pydicom.valuerep.UID: str,
+    pydicom.uid.UID: str,
 }
