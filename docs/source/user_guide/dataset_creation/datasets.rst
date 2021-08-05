@@ -2696,11 +2696,11 @@ where each `.dcm` file is a DICOM file that can be read via
 
 Alternatively, rather than providing a ``dataset_dir``, you can provide the
 ``dicom_path`` argument, which can directly specify a glob pattern of DICOM
-files to load or the path to a
+files or the path to a
 `DICOMDIR <https://pydicom.github.io/pydicom/stable/tutorials/filesets.html>`_
 file.
 
-By default, all attribute values in the DICOM files discoverable via
+By default, all attributes in the DICOM files discoverable via
 :meth:`pydicom:pydicom.dataset.Dataset.dir` with supported types are loaded
 into sample-level fields, but you can select only specific attributes by
 passing the optional ``keywords`` argument.
@@ -2770,8 +2770,8 @@ format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-Or, for example, you can create a FiftyOne dataset from a glob pattern of
-DICOM files or the path to a DICOMDIR file as follows:
+You can create a FiftyOne dataset from a glob pattern of DICOM files or the
+path to a DICOMDIR file as follows:
 
 .. tabs::
 
@@ -2812,7 +2812,7 @@ DICOM files or the path to a DICOMDIR file as follows:
         # Create the dataset
         fiftyone datasets create \
             --name $NAME \
-            --type fiftyone.types.DICOMDataset
+            --type fiftyone.types.DICOMDataset \
             --kwargs dicom_path=$DICOM_PATH
 
         # View summary info about the dataset
