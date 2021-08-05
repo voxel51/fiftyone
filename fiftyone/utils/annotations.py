@@ -353,7 +353,9 @@ def load_annotations(samples, info, **kwargs):
                 " using the CVAT backend. Found %s" % str(type(info))
             )
 
-        annotations_results = fouc.load_annotations(info, **kwargs)
+        annotations_results, additional_results = fouc.load_annotations(
+            info, **kwargs
+        )
     elif info.backend == "labelbox":
         if not isinstance(info, foul.LabelboxAnnotationInfo):
             raise ValueError(
@@ -362,7 +364,9 @@ def load_annotations(samples, info, **kwargs):
                 " using the Labelbox backend. Found %s" % str(type(info))
             )
 
-        annotations_results = fouc.load_annotations(info, **kwargs)
+        annotations_results, additional_results = fouc.load_annotations(
+            info, **kwargs
+        )
     else:
         logger.warning("Unsupported annotation backend %s" % info.backend)
         return
@@ -375,8 +379,54 @@ def load_annotations(samples, info, **kwargs):
         v: k for k, v in AnnotationLabelSchema.default_label_types_dict.items()
     }
 
+    is_video = True if samples.media_type == fom.VIDEO else False
+
     label_schema = info.label_schema
     for label_field in label_schema.keys():
+        if label_field in additional_results:
+            for new_field, annotations in additional_results[
+                label_field
+            ].items():
+                new_field_name = input(
+                    "\nLabels of type '%s' found when loading annotations for field '%s'.\nPlease enter a name for the field in which to store these addtional annotations: "
+                    % (new_field, label_field)
+                )
+                # Add new field
+                fo_label_type = default_label_types_map[new_field]
+                is_list = False
+                if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+                    is_list = True
+                    list_field = fo_label_type._LABEL_LIST_FIELD
+                for sample in samples:
+                    sample_id = sample.id
+                    if sample_id in annotations:
+                        sample_annots = annotations[sample_id]
+                        if is_video:
+                            images = sample.frames.values()
+                        else:
+                            images = [sample]
+                        for image in images:
+                            if is_video:
+                                if image.id not in sample_annots:
+                                    continue
+
+                                image_annots = sample_annots[image.id]
+                            else:
+                                image_annots = sample_annots
+
+                            if is_list:
+                                new_label = fo_label_type()
+                                annot_list = list(image_annots.values())
+                                new_label[list_field] = annot_list
+                            else:
+                                if len(image_annots) == 0:
+                                    continue
+                                else:
+                                    new_label = list(image_annots.values())[0]
+
+                            image[new_field_name] = new_label
+                        sample.save()
+
         if label_field not in annotations_results:
             logger.info("No annotations found for field '%s'" % label_field)
             continue
@@ -390,7 +440,6 @@ def load_annotations(samples, info, **kwargs):
         label_type = label_info["type"]
         existing_field = label_info["existing_field"]
 
-        is_video = True if samples.media_type == fom.VIDEO else False
         formatted_label_field = label_field
         is_frame_label = False
         if is_video and label_field.startswith("frames."):
@@ -417,6 +466,7 @@ def load_annotations(samples, info, **kwargs):
             continue
 
         if not existing_field:
+            # Add new field
             fo_label_type = default_label_types_map[label_type]
             is_list = False
             if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
@@ -451,7 +501,6 @@ def load_annotations(samples, info, **kwargs):
 
                         image[formatted_label_field] = new_label
                     sample.save()
-
             continue
 
         # Setting a label field, need to parse, add, delete, and merge labels
