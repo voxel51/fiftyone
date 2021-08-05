@@ -1404,16 +1404,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if validate:
             self._validate_samples(samples)
 
-        dicts = []
-        for sample in samples:
-            d = sample.to_mongo_dict()
-
-            # We omit None here to allow samples with None-valued new fields to
-            # be added without raising nonexistent field errors. This is valid
-            # because None and missing are equivalent in our data model
-            d = {k: v for k, v in d.items() if v is not None}
-
-            dicts.append(d)
+        dicts = [self._make_dict(sample) for sample in samples]
 
         try:
             # adds `_id` to each dict
@@ -1444,7 +1435,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dicts = []
         ops = []
         for sample in samples:
-            d = sample.to_mongo_dict(include_id=True)
+            d = self._make_dict(sample, include_id=True)
             dicts.append(d)
 
             if sample.id:
@@ -1461,6 +1452,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
+
+    def _make_dict(self, sample, include_id=False):
+        d = sample.to_mongo_dict(include_id=include_id)
+
+        # We omit None here to allow samples with None-valued new fields to
+        # be added without raising nonexistent field errors. This is safe
+        # because None and missing are equivalent in our data model
+        return {k: v for k, v in d.items() if v is not None}
 
     def _bulk_write(self, ops, frames=False, ordered=False):
         if frames:

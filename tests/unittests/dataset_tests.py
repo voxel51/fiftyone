@@ -6,10 +6,10 @@ FiftyOne dataset-related unit tests.
 |
 """
 import gc
-import unittest
 import os
 
 import numpy as np
+import unittest
 
 import eta.core.utils as etau
 
