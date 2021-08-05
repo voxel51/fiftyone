@@ -31,6 +31,10 @@ import {
 import { dispatchTooltipEvent } from "./util";
 import closeIcon from "../../icons/close.svg";
 
+export const IS_NOTEBOOK = new URLSearchParams(window.location.search).get(
+  "notebook"
+);
+
 const readActions = <State extends BaseState>(
   actions: ControlMap<State>
 ): ControlMap<State> => {
@@ -113,35 +117,43 @@ export const controls: Control = {
   },
 };
 
+export const wheel: Control = {
+  title: "Zoom",
+  shortcut: IS_NOTEBOOK ? "Shift+Wheel" : "Wheel",
+  eventKeys: null,
+  detail: "Zoom in and out",
+  action: () => null,
+};
+
 export const next: Control = {
   title: "Next sample",
-  shortcut: "&#8594;",
+  shortcut: IS_NOTEBOOK ? "Shift+&#8594;" : "&#8594;",
   eventKeys: "ArrowRight",
   detail: "Go to the next sample",
-  action: (_, dispatchEvent) => {
-    dispatchEvent("next");
+  action: (_, dispatchEvent, eventKey, shiftKey) => {
+    (!IS_NOTEBOOK || shiftKey) && dispatchEvent("next");
   },
 };
 
 export const previous: Control = {
   title: "Previous sample",
-  shortcut: "&#8592;",
+  shortcut: IS_NOTEBOOK ? "Shift+&#8592;" : "&#8592;",
   eventKeys: "ArrowLeft",
   detail: "Go to the previous sample",
-  action: (_, dispatchEvent) => {
-    dispatchEvent("previous");
+  action: (_, dispatchEvent, eventKey, shiftKey) => {
+    (!IS_NOTEBOOK || shiftKey) && dispatchEvent("previous");
   },
 };
 
 export const rotatePrevious: Control = {
   title: "Rotate label forward",
-  shortcut: "&#8595;",
+  shortcut: IS_NOTEBOOK ? "Shift+&#8595;" : "&#8595;",
   eventKeys: "ArrowUp",
   detail: "Rotate the bottom label to the back",
-  action: (update, dispatchEvent) =>
+  action: (update, dispatchEvent, eventKey, shiftKey) =>
     update(
       ({ disableOverlays, rotate }) => {
-        if (!disableOverlays) {
+        if (!disableOverlays && (!IS_NOTEBOOK || shiftKey)) {
           return { rotate: Math.max(0, rotate - 1) };
         }
         return {};
@@ -154,13 +166,13 @@ export const rotatePrevious: Control = {
 
 export const rotateNext: Control = {
   title: "Rotate label backward",
-  shortcut: "&#8593;",
+  shortcut: IS_NOTEBOOK ? "Shift+&#8593;" : "&#8593;",
   eventKeys: "ArrowDown",
   detail: "Rotate the current label to the back",
-  action: (update, dispatchEvent) =>
+  action: (update, dispatchEvent, eventKey, shiftKey) =>
     update(
       ({ disableOverlays, rotate }) => {
-        if (!disableOverlays) {
+        if (!disableOverlays && (!IS_NOTEBOOK || shiftKey)) {
           return {
             rotate: rotate + 1,
           };
@@ -386,6 +398,7 @@ export const COMMON = {
   settings,
   fullscreen,
   json,
+  wheel,
 };
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
@@ -651,7 +664,15 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     element.appendChild(close);
 
     Object.values(controls)
-      .sort((a, b) => (a.shortcut > b.shortcut ? 1 : -1))
+      .sort((a, b) =>
+        a.shortcut.length === b.shortcut.length && a.shortcut.length === 1
+          ? a.shortcut > b.shortcut
+            ? 1
+            : -1
+          : a.shortcut.length > b.shortcut.length
+          ? 1
+          : -1
+      )
       .forEach(addItem(items));
 
     scroll.appendChild(header);

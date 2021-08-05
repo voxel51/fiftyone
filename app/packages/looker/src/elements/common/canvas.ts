@@ -9,6 +9,7 @@ import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
 import { invisible, lookerCanvas } from "./canvas.module.css";
+import { IS_NOTEBOOK } from "./actions";
 
 export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
@@ -120,6 +121,10 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
               options: { zoomPad },
             }) => {
               if (thumbnail) {
+                return {};
+              }
+
+              if (IS_NOTEBOOK && !event.shiftKey) {
                 return {};
               }
 

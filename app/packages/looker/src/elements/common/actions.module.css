@@ -6,7 +6,7 @@
   padding: 1rem 0;
   margin: 0;
   display: grid;
-  grid-template-columns: 20px auto auto 20px auto auto;
+  grid-template-columns: auto auto auto auto auto auto;
   grid-row-gap: 2rem;
   grid-column-gap: 2rem;
   font-size: 1rem;
@@ -26,7 +26,6 @@
 .lookerShortcutValue {
   font-weight: normal;
   color: rgb(225, 100, 40);
-  width: 40px !important;
 }
 
 .lookerShortcutTitle {
