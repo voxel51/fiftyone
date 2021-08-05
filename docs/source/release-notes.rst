@@ -32,7 +32,9 @@ App
 
 Docs
 ^^^^
-- Added sections
+- Added :ref:`Using the image visualizer <app-image-visualizer>` and
+  :ref:`Using the video visualizer <app-video-visualizer>` sections to the 
+  :ref:`Using the FiftyOne App <fiftyone-app>` user guide
 
 Zoo
 ^^^
@@ -43,6 +45,7 @@ Zoo
 
 FiftyOne 0.11.2.1
 -----------------
+*Released July 31, 2021*
 
 Zoo
 ^^^
@@ -50,7 +53,7 @@ Zoo
   when running a :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>`
   call that does not include `classes` or `attrs` options in an environment
   where Open Images has never been downloaded
-- Patched loading of Cityscape datasets
+- Patched loading of Cityscapes datasets
 - Patched loading of COCO datasets
 
 .. _release-notes-v0.11.2:
