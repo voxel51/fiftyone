@@ -383,6 +383,8 @@ def load_annotations(samples, info, **kwargs):
 
     label_schema = info.label_schema
     for label_field in label_schema.keys():
+
+        # First add unexpected labels to new fields
         if label_field in additional_results:
             for new_field, annotations in additional_results[
                 label_field
@@ -441,9 +443,7 @@ def load_annotations(samples, info, **kwargs):
         existing_field = label_info["existing_field"]
 
         formatted_label_field = label_field
-        is_frame_label = False
         if is_video and label_field.startswith("frames."):
-            is_frame_label = True
             formatted_label_field = label_field[len("frames.") :]
 
         if type(list(annotations.values())[0]) != dict:
@@ -476,12 +476,12 @@ def load_annotations(samples, info, **kwargs):
                 sample_id = sample.id
                 if sample_id in annotations:
                     sample_annots = annotations[sample_id]
-                    if is_video and is_frame_label:
+                    if is_video:
                         images = sample.frames.values()
                     else:
                         images = [sample]
                     for image in images:
-                        if is_video and is_frame_label:
+                        if is_video:
                             if image.id not in sample_annots:
                                 continue
 
@@ -500,6 +500,7 @@ def load_annotations(samples, info, **kwargs):
                                 new_label = list(image_annots.values())[0]
 
                         image[formatted_label_field] = new_label
+
                     sample.save()
             continue
 
@@ -519,6 +520,9 @@ def load_annotations(samples, info, **kwargs):
 
         prev_label_ids = []
         for ids in info.id_map[label_field].values():
+            if ids is None:
+                continue
+
             if len(ids) > 0 and type(ids[0]) == list:
                 for frame_ids in ids:
                     prev_label_ids.extend(frame_ids)
@@ -540,18 +544,19 @@ def load_annotations(samples, info, **kwargs):
         for sample in annotated_samples:
             sample_id = sample.id
             formatted_label_field = label_field
-            if is_video and is_frame_label:
+            if is_video:
                 images = sample.frames.values()
             else:
                 images = [sample]
             sample_annots = annotations[sample_id]
             for image in images:
-                if is_video and is_frame_label:
+                if is_video:
                     image_annots = sample_annots[image.id]
                 else:
                     image_annots = sample_annots
                 has_label_list = False
                 image_label = image[formatted_label_field]
+
                 if isinstance(image_label, fol._HasLabelList):
                     has_label_list = True
                     list_field = image_label._LABEL_LIST_FIELD

@@ -3004,6 +3004,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             for tag in tags:
                 frame = tag["frame"]
                 sample_id = frame_id_map[task_id][frame]["sample_id"]
+                if sample_id not in results[label_field]:
+                    results[label_field][sample_id] = {}
 
                 store_frame = False
                 if "frame_id" in frame_id_map[task_id][frame]:
@@ -3027,8 +3029,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     label = cvat_tag.to_classification()
 
                     if label_type in ["classification", "classifications"]:
-                        if sample_id not in results[label_field]:
-                            results[label_field][sample_id] = {}
+
                         if store_frame:
                             if frame_id not in results[label_field][sample_id]:
                                 results[label_field][sample_id][
@@ -3201,14 +3202,14 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     height = metadata.height
 
             for image in images:
-                image_label = image[label_field]
+                try:
+                    image_label = image[label_field]
+                except:
+                    continue
                 if image_label is None:
                     continue
 
                 if label_type in ("classifications", "classification"):
-                    if image_label is None:
-                        continue
-
                     if label_type == "classifications":
                         classifications = image_label.classifications
                     else:
