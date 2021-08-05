@@ -101,15 +101,17 @@ export abstract class Looker<
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
 
-    this.resizeObserver = new ResizeObserver(() =>
-      requestAnimationFrame(
-        () =>
+    this.resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        const box = getElementBBox(this.lookerElement.element);
+        box[2] &&
+          box[3] &&
           this.lookerElement &&
           this.updater({
-            windowBBox: getElementBBox(this.lookerElement.element),
-          })
-      )
-    );
+            windowBBox: box,
+          });
+      });
+    });
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -159,9 +161,7 @@ export abstract class Looker<
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
 
-      if (!this.state.windowBBox) {
-        return;
-      }
+      this.state = this.postProcess();
 
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
@@ -169,7 +169,6 @@ export abstract class Looker<
         this.pluckedOverlays
       );
 
-      this.state = this.postProcess();
       this.state.mouseIsOnOverlay =
         Boolean(this.currentOverlays.length) &&
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
