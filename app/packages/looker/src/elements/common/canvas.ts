@@ -209,11 +209,13 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     disableOverlays,
   }: Readonly<State>) {
     if (this.width !== width) {
-      this.element.width = width;
+      const dpr = getDPR();
+      this.element.width = width * dpr;
       this.width = width;
     }
     if (this.height !== height) {
-      this.element.height = height;
+      const dpr = getDPR();
+      this.element.height = height * dpr;
       this.height = height;
     }
 
@@ -245,3 +247,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     return [x - sx, y - sy];
   }
 }
+
+const getDPR = () => {
+  return window.devicePixelRatio ? window.devicePixelRatio : 1;
+};
