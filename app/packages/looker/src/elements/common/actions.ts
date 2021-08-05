@@ -597,9 +597,10 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event }) => {
+      click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();
+        update({ showHelp: false });
       },
       dblclick: ({ event }) => {
         event.stopPropagation();

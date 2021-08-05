@@ -17,6 +17,12 @@
   overflow-y: auto;
 }
 
+@media only screen and (max-width: 1000px) {
+  .lookerHelpPanelItems {
+    grid-template-columns: auto auto auto;
+  }
+}
+
 .lookerHelpPanelItems::-webkit-scrollbar {
   width: 0px;
   background: transparent;
