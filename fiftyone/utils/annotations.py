@@ -282,7 +282,7 @@ def annotate(
             or the name of a new label field to create. Required if `label_schema` is not provided.
         label_type (None): a string indicating the type of labels to expect 
             when creating a new `label_field`. 
-            Options: ("detections", "classifications", "polylines", "keypoints", "scalar")
+            Options: ("detections", "classifications", "classification", "polylines", "keypoints", "scalar")
         classes (None): a list of strings indicating the class options. These
             classes will be used as the default for all fields without classes
             specified in the `label_schema`. This is required for new label fields
@@ -393,6 +393,9 @@ def load_annotations(samples, info, **kwargs):
                     "\nLabels of type '%s' found when loading annotations for field '%s'.\nPlease enter a name for the field in which to store these addtional annotations: "
                     % (new_field, label_field)
                 )
+                if is_video and not new_field_name.startswith("frames."):
+                    new_field_name = "frames." + new_field_name
+
                 # Add new field
                 fo_label_type = default_label_types_map[new_field]
                 is_list = False
@@ -614,18 +617,21 @@ class AnnotationInfo(object):
     def store_label_ids(self, samples):
         if self.label_schema is not None:
             for label_field in self.label_schema.keys():
-                field_schema = samples.get_field_schema() or []
-                frame_field_schema = samples.get_frame_field_schema() or []
-                if (
-                    label_field in field_schema
-                    or label_field in frame_field_schema
-                ):
-                    label_id_path = samples._get_label_field_path(
-                        label_field, "id"
-                    )[1]
-                    label_ids = samples.values(label_id_path)
-                    sample_ids = samples.values("id")
-                    self.id_map[label_field] = dict(zip(sample_ids, label_ids))
+                if self.label_schema[label_field]["type"] != "scalar":
+                    field_schema = samples.get_field_schema() or []
+                    frame_field_schema = samples.get_frame_field_schema() or []
+                    if (
+                        label_field in field_schema
+                        or label_field in frame_field_schema
+                    ):
+                        label_id_path = samples._get_label_field_path(
+                            label_field, "id"
+                        )[1]
+                        label_ids = samples.values(label_id_path)
+                        sample_ids = samples.values("id")
+                        self.id_map[label_field] = dict(
+                            zip(sample_ids, label_ids)
+                        )
 
 
 class AnnotationLabelSchema(object):
@@ -771,7 +777,7 @@ class AnnotationLabelSchema(object):
                             % (label_field, str(field_type.document_type))
                         )
 
-                elif field_type not in _SUPPORTED_FIELD_TYPES:
+                elif type(field_type) not in _SUPPORTED_FIELD_TYPES:
                     raise TypeError(
                         "Field %s of type %s is not supported as a `scalar` type"
                         % (label_field, str(field_type))
@@ -889,6 +895,8 @@ class AnnotationLabelSchema(object):
 
     def format_attributes(self, attributes):
         output_attrs = {}
+        if isinstance(attributes, list):
+            attributes = {a: {} for a in attributes}
         for attr, attr_info in attributes.items():
             formatted_info = {}
 

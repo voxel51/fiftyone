@@ -2438,6 +2438,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self._protocol = "https" if https else "http"
         self._auth = auth
 
+        self.expected_type_map = {
+            "rectangle": ["detection", "detections"],
+            "polygon": ["polylines", "polyline", "detection", "detections"],
+            "polyline": ["polylines", "polyline"],
+            "points": ["keypoints", "keypoint"],
+        }
+
         self._session = None
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.setup()
@@ -2730,14 +2737,11 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self,
         samples,
         label_schema,
-        classes=None,
         segment_size=None,
         image_quality=75,
         job_reviewers=None,
         job_assignees=None,
         task_assignee=None,
-        job_sample_map=None,
-        extra_attrs=None,
     ):
         """Upload samples into annotation tool.
         
@@ -2746,9 +2750,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 upload to CVAT
             label_field: the string name of the field to be uploaded for
                 annotation
-            classes: list of class strings to use for annotation
             segment_size (None): maximum number of images to load into a job. Not
-                applicable to videos, only used if `job_sample_map` is `None`
+                applicable to videos
             image_quality (75): an integer ranging from 0 to 100 indicating the 
                 quality of images after uploading to CVAT
             job_reviewers (None): a list containing usernames to which to assign
@@ -2757,13 +2760,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 sequentially 
             task_assignee (None): the username of the user assigned to the
                 created task
-            job_sample_map (None): a list of lists containing sample ids to be grouped
-                into jobs. Not applicable to videos, overrides `segment_size`
-            extra_attrs (None): a list of attribute field names or dictionary of
-                attribute field names to `AnnotationWidgetType` specifying the
-                attribute field names on the `label_field` to annotate. By
-                default, no extra attributes are sent for annotation, only the
-                label
         """
         samples = samples.sort_by("filepath")
         task_ids = []
@@ -2849,17 +2845,25 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         "scalar",
                     ]:
                         is_shape = False
+                        annot_tags = self.create_tags_or_shapes(
+                            batch_samples,
+                            label_field,
+                            label_type,
+                            attr_names,
+                            classes,
+                            is_shape=False,
+                            assign_scalar_attrs=assign_scalar_attrs,
+                        )
                     else:
                         is_shape = True
-                    annot_tags = self.create_tags_or_shapes(
-                        batch_samples,
-                        label_field,
-                        label_type,
-                        attr_names,
-                        classes,
-                        is_shape,
-                        assign_scalar_attrs,
-                    )
+                        annot_shapes = self.create_tags_or_shapes(
+                            batch_samples,
+                            label_field,
+                            label_type,
+                            attr_names,
+                            classes,
+                            is_shape=True,
+                        )
 
                 current_job_assignees = job_assignees
                 current_job_reviewers = job_reviewers
@@ -2960,6 +2964,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         """Download annotations from the annotation tool"""
         results = {}
         additional_results = {}
+        scalar_types = {}
 
         rev_labels_task_map = {}
         for lf, tasks in labels_task_map.items():
@@ -2971,6 +2976,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 results[label_field] = {}
             current_schema = label_schema[label_field]
             label_type = current_schema["type"]
+
+            if label_field not in scalar_types:
+                scalar_types[label_field] = None
 
             # Download task data
             task_resp = self._session_get(self.task_url(task_id))
@@ -3018,7 +3026,20 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
                 if label_type == "scalar":
                     if assigned_scalar_attrs[label_field]:
-                        label = attrs[0]["value"]
+                        label = _parse_attribute(attrs[0]["value"])
+                        prev_type = scalar_types[label_field]
+                        if (
+                            prev_type is not None
+                            and label is not None
+                            and type(label) != prev_type
+                        ):
+                            logger.warning(
+                                "Scalar '%s' does not match previous scalars of type %s. Skipping."
+                                % (label, str(prev_type))
+                            )
+                            label = None
+                        else:
+                            scalar_types[label_field] = type(label)
                     else:
                         label = class_map[tag["label_id"]]
 
@@ -3080,6 +3101,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                                 sample_id
                             ][label.id] = label
 
+            # Load non-classification labels
             for shape in shapes:
                 frame = shape["frame"]
                 if len(frames) > frame:
@@ -3121,13 +3143,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 if label is None:
                     continue
 
-                expected_type_map = {
-                    "rectangle": ["detection", "detections"],
-                    "polygon": ["polylines", "polyline"],
-                    "polyline": ["polylines", "polyline"],
-                    "points": ["keypoints", "keypoint"],
-                }
-                if label_type not in expected_type_map[shape_type]:
+                if label_type not in self.expected_type_map[shape_type]:
                     if label_field not in additional_results:
                         additional_results[label_field] = {}
                     if new_field_type not in additional_results[label_field]:
@@ -3531,8 +3547,8 @@ class CVATLabel(object):
 
             for attr in label_dict["attributes"]:
                 name = attr_id_map_rev[attr["spec_id"]]
-                val = self.parse_attribute(attr["value"])
-                if val is not None:
+                val = _parse_attribute(attr["value"])
+                if val is not None and val != "":
                     self.attributes[name] = CVATAttribute(name=name, value=val)
 
             self.fo_attributes = {}
@@ -3543,14 +3559,6 @@ class CVATLabel(object):
                     attribute.name = name
                     if attribute.value is not None:
                         self.fo_attributes[name] = attribute.to_attribute()
-
-    def parse_attribute(self, attribute):
-        if attribute in ["", "None"]:
-            return None
-        try:
-            return float(attribute)
-        except:
-            return attribute
 
     def update_attrs(self, label):
         if "label_id" in self.attributes:
@@ -3664,7 +3672,6 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         auth=None,
         segment_size=None,
         image_quality=75,
-        classes=None,
         job_reviewers=None,
         job_assignees=None,
         task_assignee=None,
@@ -3687,7 +3694,6 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         self.auth = auth
         self.segment_size = segment_size
         self.image_quality = image_quality
-        self.classes = classes
         self.job_reviewers = job_reviewers
         self.job_assignees = job_assignees
         self.task_assignee = task_assignee
@@ -3735,11 +3741,9 @@ def annotate(
     auth=None,
     segment_size=None,
     image_quality=75,
-    classes=None,
     job_reviewers=None,
     job_assignees=None,
     task_assignee=None,
-    job_sample_map=None,
 ):
     """Exports the samples and a label field to CVAT.
 
@@ -3757,19 +3761,15 @@ def annotate(
             "password" to the CVAT username and password to use to connect to
             the CVAT server
         segment_size (None): maximum number of images to load into a job. Not
-            applicable to videos, only used if `job_sample_map` is `None`
+            applicable to videos
         image_quality (75): an integer ranging from 0 to 100 indicating the 
             quality of images after uploading to CVAT
-        classes (None): a list of classes used to define the options in the
-            labelling schema
         job_reviewers (None): a list containing usernames to which to assign
             job reviews sequentially 
         job_assignees (None): a list containing usernames to which to assign jobs
             sequentially for images or tasks for videos
         task_assignee (None): the username of the user assigned to the
             created task
-        job_sample_map (None): a list of lists containing sample ids to be grouped
-            into jobs. Not applicable to videos, overrides `segment_size`
 
     Returns:
         annotation_info: the
@@ -3785,11 +3785,9 @@ def annotate(
         auth=auth,
         segment_size=segment_size,
         image_quality=image_quality,
-        classes=classes,
         job_reviewers=job_reviewers,
         job_assignees=job_assignees,
         task_assignee=task_assignee,
-        job_sample_map=job_sample_map,
     )
     api = info.connect_to_api(auth=auth)
     logger.info("Uploading samples to CVAT...")
@@ -3802,13 +3800,11 @@ def annotate(
     ) = api.upload_samples(
         samples,
         label_schema=label_schema,
-        classes=classes,
         segment_size=segment_size,
         image_quality=image_quality,
         job_reviewers=job_reviewers,
         job_assignees=job_assignees,
         task_assignee=task_assignee,
-        job_sample_map=job_sample_map,
     )
     info.task_ids = task_ids
     info.job_ids = job_ids
@@ -4094,6 +4090,12 @@ def _ensure_list(value):
 
 
 def _parse_attribute(value):
+    if value in {"True", "true"}:
+        return True
+
+    if value in {"False", "false"}:
+        return False
+
     try:
         return int(value)
     except:
@@ -4103,12 +4105,6 @@ def _parse_attribute(value):
         return float(value)
     except:
         pass
-
-    if value in {"True", "true"}:
-        return True
-
-    if value in {"False", "false"}:
-        return False
 
     if value == "None":
         return None

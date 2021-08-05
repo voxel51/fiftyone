@@ -27,7 +27,14 @@ In the general workflow to use CVAT and FiftyOne follows these steps:
 
 3) Create a |DatasetView| containing the samples that need to be annotated
 
-4) Call :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to automatically  
+4) Call :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+   to automatically upload samples and labels to CVAT for annotation
+
+5) Annotate tasks in CVAT and save them
+
+6) Call
+   :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+   to reload annotations from CVAT back into FiftyOne
 
 
 .. code-block:: python
@@ -60,7 +67,7 @@ In the general workflow to use CVAT and FiftyOne follows these steps:
     # Step 5: In CVAT, annotate samples and save
 
     # Step 6: Load updated annotations back into FiftyOne
-    annot_view.load_annotations(info)
+    annot_view.load_annotations(info, delete_tasks=True)
 
 
 Authentication
@@ -158,3 +165,19 @@ FiftyOne config
 
     This method is generally not recommended as it stores login information on disk
     in plain text.
+
+
+
+Annotate
+________
+
+The :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+call contains various keyword arguments that allow for detailed descriptions of
+the label fields used and how to construct annotation tasks.
+
+
+Label Schema
+------------
+
+The label schema parameter is the most flexible way to define how to construct
+tasks in CVAT and how to upload and download labels. 
