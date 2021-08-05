@@ -4,11 +4,12 @@
 
 import { SCALE_FACTOR } from "../../constants";
 import { BaseState, Coordinates, Optional } from "../../state";
-import { clampScale } from "../../util";
+import { clampScale, getDPR } from "../../util";
 import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
 import { invisible, lookerCanvas } from "./canvas.module.css";
+import { IS_NOTEBOOK } from "./actions";
 
 export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
@@ -110,62 +111,92 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         });
       },
       wheel: ({ event, update, dispatchEvent }) => {
-        update(
-          ({
-            config: { thumbnail, dimensions },
-            pan: [px, py],
-            scale,
-            windowBBox: [tlx, tly, width, height],
-            options: { zoomPad },
-          }) => {
-            if (thumbnail) {
-              return {};
-            }
+        requestAnimationFrame(() => {
+          update(
+            ({
+              config: { thumbnail, dimensions },
+              pan: [px, py],
+              scale,
+              windowBBox: [tlx, tly, width, height],
+              options: { zoomPad },
+            }) => {
+              if (thumbnail) {
+                return {};
+              }
 
-            const x = event.x - tlx;
-            const y = event.y - tly;
+              if (IS_NOTEBOOK && !event.shiftKey) {
+                return {};
+              }
 
-            const xs = (x - px) / scale;
-            const ys = (y - py) / scale;
-            const newScale = clampScale(
-              [width, height],
-              dimensions,
-              event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR,
-              zoomPad
-            );
+              const x = event.x - tlx;
+              const y = event.y - tly;
 
-            if (scale === newScale) {
-              return {};
-            }
+              const xs = (x - px) / scale;
+              const ys = (y - py) / scale;
+              const newScale = clampScale(
+                [width, height],
+                dimensions,
+                event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR,
+                zoomPad
+              );
 
-            if (this.wheelTimeout) {
-              clearTimeout(this.wheelTimeout);
-            }
+              if (scale === newScale) {
+                return {};
+              }
 
-            this.wheelTimeout = setTimeout(() => {
-              this.wheelTimeout = null;
-              update({ wheeling: false });
-            }, 200);
+              if (this.wheelTimeout) {
+                clearTimeout(this.wheelTimeout);
+              }
 
-            return {
-              pan: [x - xs * newScale, y - ys * newScale],
-              scale: newScale,
-              cursorCoordinates: [
-                (<MouseEvent>event).pageX,
-                (<MouseEvent>event).pageY,
-              ],
-              wheeling: true,
-            };
-          },
-          dispatchTooltipEvent(dispatchEvent)
-        );
+              this.wheelTimeout = setTimeout(() => {
+                this.wheelTimeout = null;
+                update(
+                  (state) => {
+                    return {
+                      wheeling: false,
+                      disableOverlays: Boolean(state.playing || state.seeking),
+                    };
+                  },
+                  (state, overlays) =>
+                    dispatchTooltipEvent(dispatchEvent, state.disableOverlays)(
+                      state,
+                      overlays
+                    )
+                );
+              }, 200);
+
+              return {
+                pan: [x - xs * newScale, y - ys * newScale],
+                scale: newScale,
+                cursorCoordinates: [
+                  (<MouseEvent>event).pageX,
+                  (<MouseEvent>event).pageY,
+                ],
+                wheeling: true,
+                disableOverlays: true,
+              };
+            },
+            dispatchTooltipEvent(dispatchEvent, true)
+          );
+        });
       },
     };
   }
 
-  createHTMLElement() {
+  createHTMLElement(update) {
     const element = document.createElement("canvas");
     element.classList.add(lookerCanvas, invisible);
+    this.hideControlsTimeout = setTimeout(
+      () =>
+        update(({ showOptions, hoveringControls }) => {
+          this.hideControlsTimeout = null;
+          if (!showOptions && !hoveringControls) {
+            return { showControls: false };
+          }
+          return {};
+        }),
+      3500
+    );
     return element;
   }
 
@@ -178,11 +209,13 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     disableOverlays,
   }: Readonly<State>) {
     if (this.width !== width) {
-      this.element.width = width;
+      const dpr = getDPR();
+      this.element.width = width * dpr;
       this.width = width;
     }
     if (this.height !== height) {
-      this.element.height = height;
+      const dpr = getDPR();
+      this.element.height = height * dpr;
       this.height = height;
     }
 

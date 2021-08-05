@@ -52,6 +52,7 @@ const processOverlays = <State extends BaseState>(
       (a, b) =>
         a.getMouseDistance(state, [x, y]) - b.getMouseDistance(state, [x, y])
     );
+
   const outside = ordered.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||

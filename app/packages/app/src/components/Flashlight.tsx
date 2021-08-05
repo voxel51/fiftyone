@@ -1,3 +1,4 @@
+import LRU from "lru-cache";
 import React, {
   useLayoutEffect,
   useRef,
@@ -23,7 +24,6 @@ import {
   VideoLooker,
   zoomAspectRatio,
 } from "@fiftyone/looker";
-import { scrollbarStyles } from "./utils";
 import { activeFields } from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
@@ -52,10 +52,17 @@ const gridRowAspectRatio = selector<number>({
   },
 });
 
+const createLookerCache = () => {
+  return new LRU<string, FrameLooker | ImageLooker | VideoLooker>({
+    max: 500,
+    dispose: (id, looker) => looker.destroy(),
+  });
+};
+
 export let samples = new Map<string, atoms.SampleData>();
 export let sampleIndices = new Map<number, string>();
 let nextIndex = 0;
-let lookers = new Map<string, FrameLooker | ImageLooker | VideoLooker>();
+let lookers = createLookerCache();
 
 const url = (() => {
   let origin = window.location.origin;
@@ -73,10 +80,6 @@ const Container = styled.div`
   height: 100%;
   display: block;
   position: relative;
-
-  overflow-y: scroll;
-
-  ${scrollbarStyles}
 `;
 
 const flashlightOptions = selector<FlashlightOptions>({
@@ -202,11 +205,15 @@ const useThumbnailClick = (
 
         const [start, end] =
           clickedIndex - before <= after - clickedIndex
+            ? clickedIndex - before === 0
+              ? [clickedIndex, after]
+              : [before, clickedIndex]
+            : after - clickedIndex === 0
             ? [before, clickedIndex]
             : [clickedIndex, after];
 
         selected = new Set(
-          array.filter((s) => itemIndexMap[s] < start && itemIndexMap[s] > end)
+          array.filter((s) => itemIndexMap[s] < start || itemIndexMap[s] > end)
         );
       };
 
@@ -216,9 +223,9 @@ const useThumbnailClick = (
       }
 
       const array = [...selected];
-      if (event.ctrlKey && !selected.has(sampleId)) {
+      if (event.shiftKey && !selected.has(sampleId)) {
         addRange();
-      } else if (event.ctrlKey) {
+      } else if (event.shiftKey) {
         removeRange();
       } else {
         selected.has(sampleId)
@@ -306,6 +313,7 @@ export default React.memo(() => {
       : aspectRatio;
   };
   const flashlight = useRef<Flashlight<number>>();
+  const cropToContent = useRecoilValue(atoms.cropToContent(false));
 
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
@@ -347,7 +355,7 @@ export default React.memo(() => {
     }
 
     samples = new Map();
-    lookers = new Map();
+    lookers.reset();
     sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();
@@ -357,7 +365,12 @@ export default React.memo(() => {
     datasetName,
     filterView(view),
     refresh,
+    cropToContent,
   ]);
+
+  useEventHandler(document, "visibilitychange", () => {
+    document.visibilityState === "hidden" && lookers.reset();
+  });
 
   useLayoutEffect(() => {
     if (!flashlight.current) {
@@ -415,7 +428,7 @@ export default React.memo(() => {
             nextRequestKey: more ? page + 1 : null,
           };
         },
-        render: (sampleId, element, dimensions) => {
+        render: (sampleId, element, dimensions, soft) => {
           const result = samples.get(sampleId);
 
           if (lookers.has(sampleId)) {
@@ -423,14 +436,16 @@ export default React.memo(() => {
             return null;
           }
 
-          const looker = lookerGeneratorRef.current(result);
-          looker.addEventListener(
-            "selectthumbnail",
-            ({ detail }: { detail: string }) => onSelect(detail)
-          );
+          if (!soft) {
+            const looker = lookerGeneratorRef.current(result);
+            looker.addEventListener(
+              "selectthumbnail",
+              ({ detail }: { detail: string }) => onSelect(detail)
+            );
 
-          lookers.set(sampleId, looker);
-          looker.attach(element, dimensions);
+            lookers.set(sampleId, looker);
+            looker.attach(element, dimensions);
+          }
 
           return null;
         },

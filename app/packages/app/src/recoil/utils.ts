@@ -35,6 +35,10 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
 export const useClearModal = () => {
   return useRecoilCallback(
     ({ set, snapshot }) => async () => {
+      const fullscreen = await snapshot.getPromise(atoms.fullscreen);
+      if (fullscreen) {
+        return;
+      }
       const currentOptions = await snapshot.getPromise(
         atoms.savedLookerOptions
       );

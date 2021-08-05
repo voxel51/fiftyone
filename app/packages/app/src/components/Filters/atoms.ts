@@ -465,18 +465,20 @@ export const labelCount = selectorFamily<number | null, boolean>({
 
     let sum = 0;
     let counts = get(atom({ modal, key: "sample" }));
-    get(activeLabels({ modal, frames: false })).forEach((path) => {
-      if (path in counts) {
-        sum += counts[path];
-      }
-    });
+    counts &&
+      get(activeLabels({ modal, frames: false })).forEach((path) => {
+        if (path in counts) {
+          sum += counts[path];
+        }
+      });
 
     counts = get(atom({ modal, key: "frame" }));
-    get(activeLabels({ modal, frames: true })).forEach((path) => {
-      if (path in counts) {
-        sum += counts[path];
-      }
-    });
+    counts &&
+      get(activeLabels({ modal, frames: true })).forEach((path) => {
+        if (path in counts) {
+          sum += counts[path];
+        }
+      });
 
     return sum;
   },

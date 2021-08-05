@@ -21,6 +21,13 @@
   border: 1px solid #191c1f;
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 3px;
+
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Old versions of Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently */
 }
 
 .lookerOptionsPanel *:hover,

@@ -74,13 +74,17 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
           const seeked = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                this.imageSource.getContext("2d").drawImage(video, 0, 0);
-                release();
-                video.removeEventListener("seeked", seeked);
-                update({
-                  loaded: true,
-                  duration: video.duration,
-                });
+                setTimeout(() => {
+                  const ctx = this.imageSource.getContext("2d");
+                  ctx.imageSmoothingEnabled = false;
+                  ctx.drawImage(video, 0, 0);
+                  release();
+                  video.removeEventListener("seeked", seeked);
+                  update({
+                    loaded: true,
+                    duration: video.duration,
+                  });
+                }, 10);
               });
             });
           };

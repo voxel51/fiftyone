@@ -8,7 +8,7 @@ import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useTheme } from "../utils/hooks";
+import { useMessageHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
@@ -197,8 +197,24 @@ const useOnSelectLabel = () => {
   );
 };
 
+export const useSampleUpdate = (lookerRef) => {
+  const handler = useRecoilCallback(
+    ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
+      const modal = await snapshot.getPromise(atoms.modal);
+      updatedSamples.forEach(({ sample }) => {
+        modal.sample._id === sample._id &&
+          lookerRef.current &&
+          lookerRef.current.updateSample(sample);
+      });
+      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
+      set(selectors.anyTagging, false);
+    },
+    []
+  );
+  useMessageHandler("samples_update", handler);
+};
+
 const SampleModal = ({ onClose }: Props, ref) => {
-  const fullscreen = useRecoilValue(atoms.fullscreen);
   const {
     sample: { filepath, _id, _media_type, metadata },
     index,
@@ -214,6 +230,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
     count = total;
   }
 
+  useSampleUpdate(lookerRef);
+
   const theme = useTheme();
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>
@@ -227,53 +245,51 @@ const SampleModal = ({ onClose }: Props, ref) => {
           onNext={() => getIndex(index + 1)}
         />
       </div>
-      {!fullscreen && (
-        <div className={`sidebar`}>
-          <ModalFooter
-            style={{
-              width: "100%",
-              borderTop: "none",
-              borderBottom: `2px solid ${theme.border}`,
-              position: "relative",
-            }}
-          >
-            <Actions modal={true} lookerRef={lookerRef} />
-          </ModalFooter>
-          <div className="sidebar-content">
-            <h2>
-              Metadata
-              <span className="push-right" />
-            </h2>
-            <Row name="id" value={_id} />
-            <Row name="filepath" value={filepath} />
-            <Row name="media type" value={_media_type} />
-            {formatMetadata(metadata).map(({ name, value }) => (
-              <Row key={"metadata-" + name} name={name} value={value} />
-            ))}
-            <Suspense
-              fallback={
-                <h2>
-                  Fields
-                  <span className="push-right" />
-                </h2>
-              }
-            >
+      <div className={`sidebar`}>
+        <ModalFooter
+          style={{
+            width: "100%",
+            borderTop: "none",
+            borderBottom: `2px solid ${theme.border}`,
+            position: "relative",
+          }}
+        >
+          <Actions modal={true} lookerRef={lookerRef} />
+        </ModalFooter>
+        <div className="sidebar-content">
+          <h2>
+            Metadata
+            <span className="push-right" />
+          </h2>
+          <Row name="id" value={_id} />
+          <Row name="filepath" value={filepath} />
+          <Row name="media type" value={_media_type} />
+          {formatMetadata(metadata).map(({ name, value }) => (
+            <Row key={"metadata-" + name} name={name} value={value} />
+          ))}
+          <Suspense
+            fallback={
               <h2>
                 Fields
                 <span className="push-right" />
               </h2>
-              <FieldsSidebar
-                modal={true}
-                style={{
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                  height: "auto",
-                }}
-              />
-            </Suspense>
-          </div>
+            }
+          >
+            <h2>
+              Fields
+              <span className="push-right" />
+            </h2>
+            <FieldsSidebar
+              modal={true}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+            />
+          </Suspense>
         </div>
-      )}
+      </div>
     </Container>
   );
 };

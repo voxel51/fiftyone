@@ -708,7 +708,7 @@ export const Button = ({
 
 type FieldsSidebarProps = {
   modal: boolean;
-  style: object;
+  style?: React.CSSProperties;
 };
 
 const FieldsSidebar = React.forwardRef(

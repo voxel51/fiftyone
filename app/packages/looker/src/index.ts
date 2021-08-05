@@ -53,6 +53,7 @@ import {
 import {
   addToBuffers,
   createWorker,
+  getDPR,
   getElementBBox,
   getFitRect,
   mergeUpdates,
@@ -95,21 +96,24 @@ export abstract class Looker<
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    if (!this.state.config.thumbnail) {
+      this.state.showControls = true;
+    }
     this.pluckedOverlays = [];
     this.currentOverlays = [];
     this.lookerElement = this.getElements(config);
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
 
-    this.resizeObserver = new ResizeObserver(() =>
-      requestAnimationFrame(
-        () =>
-          this.lookerElement &&
-          this.updater({
-            windowBBox: getElementBBox(this.lookerElement.element),
-          })
-      )
-    );
+    this.resizeObserver = new ResizeObserver(() => {
+      const box = getElementBBox(this.lookerElement.element);
+      box[2] &&
+        box[3] &&
+        this.lookerElement &&
+        this.updater({
+          windowBBox: box,
+        });
+    });
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -159,9 +163,11 @@ export abstract class Looker<
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
 
-      if (!this.state.windowBBox) {
+      if (!this.state.windowBBox || this.state.destroyed) {
         return;
       }
+
+      this.state = this.postProcess();
 
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
@@ -169,7 +175,6 @@ export abstract class Looker<
         this.pluckedOverlays
       );
 
-      this.state = this.postProcess();
       this.state.mouseIsOnOverlay =
         Boolean(this.currentOverlays.length) &&
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
@@ -187,11 +192,12 @@ export abstract class Looker<
       }
       const ctx = this.ctx;
 
-      if (!this.state.loaded || !this.state.overlaysPrepared) {
-        return;
-      }
-
-      if (this.waiting) {
+      if (
+        !this.state.loaded ||
+        !this.state.overlaysPrepared ||
+        this.state.destroyed ||
+        this.waiting
+      ) {
         return;
       }
 
@@ -201,10 +207,16 @@ export abstract class Looker<
       ctx.textBaseline = "bottom";
       ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, this.state.windowBBox[2], this.state.windowBBox[3]);
+      ctx.clearRect(
+        0,
+        0,
+        this.state.windowBBox[2] * getDPR(),
+        this.state.windowBBox[3] * getDPR()
+      );
 
-      ctx.translate(...this.state.pan);
-      ctx.scale(this.state.scale, this.state.scale);
+      const p = this.state.pan.map((p) => p * getDPR());
+      ctx.translate(p[0], p[1]);
+      ctx.scale(this.state.scale * getDPR(), this.state.scale * getDPR());
 
       const [tlx, tly, w, h] = this.state.canvasBBox;
       ctx.drawImage(
@@ -251,16 +263,18 @@ export abstract class Looker<
       return;
     }
 
-    this.lookerElement.element.parentElement &&
+    if (this.lookerElement.element.parentElement) {
+      this.resizeObserver.disconnect();
       this.lookerElement.element.parentElement.removeChild(
         this.lookerElement.element
       );
+    }
 
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
     });
     element.appendChild(this.lookerElement.element);
-    !dimensions && this.resizeObserver.observe(this.lookerElement.element);
+    !dimensions && this.resizeObserver.observe(element);
   }
 
   resize(dimensions: Dimensions): void {
@@ -270,7 +284,7 @@ export abstract class Looker<
   }
 
   detach(): void {
-    this.resizeObserver.unobserve(this.lookerElement.element);
+    this.resizeObserver.disconnect();
     this.lookerElement.element.parentNode &&
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
@@ -316,10 +330,12 @@ export abstract class Looker<
   }
 
   destroy() {
+    this.resizeObserver.disconnect();
     this.lookerElement.element.parentElement &&
       this.lookerElement.element.parentElement.removeChild(
         this.lookerElement.element
       );
+    this.updater({ destroyed: true });
   }
 
   protected abstract hasDefaultZoom(
@@ -381,6 +397,7 @@ export abstract class Looker<
       hasDefaultZoom: true,
       SHORTCUTS: COMMON_SHORTCUTS,
       error: null,
+      destroyed: false,
     };
   }
 

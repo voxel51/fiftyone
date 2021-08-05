@@ -16,7 +16,6 @@ import {
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 import { useClearModal } from "../recoil/utils";
-import { filterView } from "../utils/view";
 import { activeFields } from "../components/Filters/utils";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Scalars"];

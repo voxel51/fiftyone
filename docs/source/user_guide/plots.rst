@@ -778,7 +778,7 @@ Freezing plots
 
 Working with interactive plots in notebooks is an amazingly productive
 experience. However, when you find something particularly interesting that you
-want to save, or you want to share a notebook with a collague without requiring
+want to save, or you want to share a notebook with a colleague without requiring
 them to rerun all of the cells to reproduce your results, you may want to
 *freeze* your responsive plots.
 

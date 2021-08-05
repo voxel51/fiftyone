@@ -17,7 +17,11 @@ import {
   State,
 } from "./state";
 
-import { flashlight, flashlightPixels } from "./styles.module.css";
+import {
+  flashlight,
+  flashlightContainer,
+  flashlightPixels,
+} from "./styles.module.css";
 import tile from "./tile";
 import { argMin } from "./util";
 
@@ -36,6 +40,7 @@ export interface FlashlightConfig<K> {
 export default class Flashlight<K> {
   private loading: boolean = false;
   private container: HTMLDivElement;
+  private element: HTMLDivElement;
   private state: State<K>;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
@@ -48,11 +53,20 @@ export default class Flashlight<K> {
     this.config = config;
     this.container = this.createContainer();
     this.showPixels();
+    this.element = document.createElement("div");
+    this.element.classList.add(flashlight);
     this.state = this.getEmptyState(config);
 
     let attached = false;
 
     let animation = null;
+
+    document.addEventListener(
+      "visibilitychange",
+      () =>
+        document.visibilityState === "hidden" &&
+        requestAnimationFrame(() => this.render())
+    );
 
     this.resizeObserver = new ResizeObserver(
       ([
@@ -65,6 +79,8 @@ export default class Flashlight<K> {
           attached = true;
           return;
         }
+
+        width = width - 16;
 
         typeof animation === "number" && cancelAnimationFrame(animation);
         animation = requestAnimationFrame(() => {
@@ -81,6 +97,20 @@ export default class Flashlight<K> {
         });
       }
     );
+
+    let timeout = null;
+
+    this.element.addEventListener("scroll", () => {
+      this.render();
+
+      timeout && clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        this.render(true);
+        timeout = null;
+      }, 100);
+    });
+
+    this.element.appendChild(this.container);
   }
 
   reset() {
@@ -124,26 +154,14 @@ export default class Flashlight<K> {
     this.state.width = width - 16;
     this.state.containerHeight = height;
 
-    let timeout = null;
-
-    element.addEventListener("scroll", () => {
-      this.render();
-
-      timeout && clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        this.render(true);
-        timeout = null;
-      }, 100);
-    });
-
-    element.appendChild(this.container);
-
-    this.resizeObserver.observe(element);
-
     const options =
       this.state.width !== width && this.state.onResize
         ? this.state.onResize(width)
         : {};
+
+    element.appendChild(this.element);
+
+    this.resizeObserver.observe(element);
 
     this.updateOptions(options);
 
@@ -347,7 +365,7 @@ export default class Flashlight<K> {
             .forEach((id) => this.state.updater(id));
         this.state.clean.add(section.index);
       }
-      section.show(this.container, hidden);
+      section.show(this.container, hidden, this.state.zooming);
       this.state.shownSections.add(section.index);
     });
   }
@@ -406,7 +424,9 @@ export default class Flashlight<K> {
     this.lastRender = time;
     this.lastScrollTop = top;
     this.state.zooming =
-      !force && this.lastScrollTop !== null && pixelDelta / timeDelta > 20;
+      !force &&
+      this.lastScrollTop !== null &&
+      pixelDelta / timeDelta > 100 / this.state.options.rowAspectRatioThreshold;
 
     this.showSections();
 
@@ -490,7 +510,7 @@ export default class Flashlight<K> {
 
   private createContainer(): HTMLDivElement {
     const container = document.createElement("div");
-    container.classList.add(flashlight);
+    container.classList.add(flashlightContainer);
     container.tabIndex = -1;
     container.addEventListener("mouseenter", () => container.focus());
     container.removeEventListener("mouseleaver", () => container.blur());

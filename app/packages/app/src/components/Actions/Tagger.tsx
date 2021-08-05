@@ -149,6 +149,10 @@ const Section = ({
     setTagging(true);
   };
 
+  if (!items) {
+    return <Loader />;
+  }
+
   const hasChanges = Object.keys(changes).length > 0;
 
   const hasCreate = value.length > 0 && !(value in changes || value in items);

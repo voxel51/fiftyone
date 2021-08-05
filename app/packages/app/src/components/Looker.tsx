@@ -378,7 +378,6 @@ interface LookerProps {
 const Looker = ({
   lookerRef,
   onClose,
-  onClick,
   onNext,
   onPrevious,
   onSelectLabel,
@@ -388,6 +387,7 @@ const Looker = ({
   const { sample, dimensions, frameRate, frameNumber } = useRecoilValue(
     atoms.modal
   );
+  const fullscreen = useRecoilValue(atoms.fullscreen);
   const mimetype = getMimeType(sample);
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
@@ -442,7 +442,11 @@ const Looker = ({
     initialRef.current = false;
   }, []);
 
-  useEffect(() => looker.attach(id), [id]);
+  useEffect(() => {
+    looker.attach(fullscreen ? "root" : id);
+
+    return () => looker.destroy();
+  }, [id, fullscreen]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
 
@@ -455,7 +459,6 @@ const Looker = ({
         background: theme.backgroundDark,
         ...style,
       }}
-      onClick={onClick}
     >
       {<TooltipInfo looker={looker} />}
     </div>

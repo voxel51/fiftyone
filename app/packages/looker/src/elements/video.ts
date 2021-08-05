@@ -488,14 +488,18 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           const listener = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                this.canvas.getContext("2d").drawImage(video, 0, 0);
-                release();
-                video.removeEventListener("seeked", listener);
-                this.update({
-                  hasPoster: true,
-                  duration: this.duration,
-                  loaded: true,
-                });
+                setTimeout(() => {
+                  const ctx = this.canvas.getContext("2d");
+                  ctx.imageSmoothingEnabled = false;
+                  ctx.drawImage(video, 0, 0);
+                  release();
+                  video.removeEventListener("seeked", listener);
+                  this.update({
+                    hasPoster: true,
+                    duration: this.duration,
+                    loaded: true,
+                  });
+                }, 10);
               });
             });
           };
@@ -592,9 +596,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private releaseVideo() {
     if (this.waitingToPause || this.waitingToPlay || !this.element) {
       this.waitingToRelease = true;
-      this.update(({ waitingForVideo }) =>
-        waitingForVideo ? { waitingForVideo: false } : {}
-      );
+      this.imageSource = this.canvas;
+      this.canvas &&
+        this.update(({ waitingForVideo }) =>
+          waitingForVideo ? { waitingForVideo: false } : {}
+        );
       return;
     }
 
@@ -620,9 +626,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     buffering,
     hovering,
     hasPoster,
+    destroyed,
   }: Readonly<VideoState>) {
+    if (destroyed) {
+      this.releaseVideo();
+    }
+
     if (!this.element) {
-      if (hovering) {
+      if (hovering && thumbnail) {
         const result = this.acquireVideo();
 
         if (result) {
@@ -805,7 +816,6 @@ class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
 
   renderSelf({ options: { volume } }: Readonly<VideoState>) {
     if (this.volume !== volume) {
-      this.element.style.display = "block";
       this.element.style.setProperty("--volume", `${volume * 100}%`);
       this.element.value = volume.toFixed(4);
       this.element.title = `Volume ${(volume * 100).toFixed(0)}%`;
@@ -909,8 +919,6 @@ class PlaybackRateBarElement extends BaseElement<VideoState, HTMLInputElement> {
     options: { playbackRate },
     config: { frameRate },
   }: Readonly<VideoState>) {
-    this.element.style.display = "block";
-
     if (this.playbackRate !== playbackRate) {
       this.element.title = `${playbackRate.toFixed(1)}x ${(
         frameRate * playbackRate

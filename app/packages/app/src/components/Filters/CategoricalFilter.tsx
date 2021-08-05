@@ -159,14 +159,16 @@ const Wrapper = ({
     );
   }
 
+  allValues = [...new Set(allValues)];
+
   return (
     <>
-      {[...new Set(allValues)].sort(nullSort(sorting)).map(([value, count]) => (
+      {allValues.sort(nullSort(sorting)).map(([value, count]) => (
         <Checkbox
           key={String(value)}
           color={color}
-          value={selectedSet.has(value) || allValues.length === 1}
-          disabled={totalCount === 1}
+          value={selectedSet.has(value)}
+          disabled={modal && allValues.length === 1}
           name={value}
           count={count}
           subCountAtom={subCountValueAtom({ path, modal, value })}

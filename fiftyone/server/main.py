@@ -139,6 +139,8 @@ class ReactivateHandler(RequestHandler):
             handle_id: a handle uuid
         """
         StateHandler.state["active_handle"] = handle_id
+        global _deactivated_clients
+        _deactivated_clients.discard(handle_id)
         for client in StateHandler.clients:
             client.write_message({"type": "reactivate", "handle": handle_id})
 

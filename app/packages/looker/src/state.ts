@@ -32,7 +32,8 @@ export type DispatchEvent = (eventType: string, details?: any) => void;
 export type Action<State extends BaseState> = (
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent,
-  eventKey?: string
+  eventKey?: string,
+  shiftKey?: boolean
 ) => void;
 
 export interface Control<State extends BaseState = BaseState> {
@@ -164,6 +165,7 @@ export interface BaseState {
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
   error: boolean;
+  destroyed: boolean;
 }
 
 export interface FrameState extends BaseState {

@@ -42,8 +42,40 @@
     background-position: 0 20000px;
   }
 }
-
 .flashlight {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+
+  --light-color: hsl(230, 3%, 60%);
+  --dark-color: hsl(214, 7%, 19%);
+
+  scrollbar-color: var(--light-color) var(--dark-color);
+}
+
+.flashlight::-webkit-scrollbar {
+  width: 16px;
+  margin-left: -16px;
+}
+
+.flashlight::-webkit-scrollbar-track {
+  border: solid 4px transparent var(--light-color);
+}
+
+.flashlight::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px transparent;
+  border: solid 4px transparent;
+  border-radius: 16px;
+  transition: box-shadow linear 0.5s;
+}
+
+.flashlight:hover::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px var(--light-color);
+}
+
+.flashlightContainer {
   position: relative;
   width: 100%;
   contain: size layout paint style;
@@ -59,7 +91,7 @@
   -o-animation: animatedBackground 60s linear infinite;
 }
 
-.flashlight:focus {
+.flashlightContainer:focus {
   border: none;
   outline: none;
 }

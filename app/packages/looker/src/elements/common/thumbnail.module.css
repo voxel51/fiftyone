@@ -14,7 +14,9 @@
   top: 0;
   left: 0;
   opacity: 0;
+  visibility: hidden;
   cursor: pointer;
+  display: none;
 
   padding: 3px 3px 12px 3px;
 
@@ -26,7 +28,9 @@
 }
 
 .lookerThumbnailSelector.showSelector {
+  display: block;
   opacity: 1;
+  visibility: visible;
 }
 
 .lookerThumbnailSelector:hover,

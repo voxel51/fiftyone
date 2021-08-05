@@ -94,7 +94,7 @@ const Check = ({
           {name}
         </CheckboxTextDiv>
         <CheckboxTextDiv>
-          {count > 0 ? numeral(count).format("0,0") : null}
+          {count > 0 ? numeral(count).format("0,0") : "0"}
         </CheckboxTextDiv>
       </CheckboxContentDiv>
     </CheckboxDiv>

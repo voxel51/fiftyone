@@ -1677,6 +1677,7 @@ __metadata:
     classnames: ^2.2.6
     electron: ^13.1.2
     html2canvas: 1.0.0-rc.7
+    lru-cache: ^6.0.0
     mime: ^2.5.2
     numeral: ^2.0.6
     prettier: 2.2.1
