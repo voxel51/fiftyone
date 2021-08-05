@@ -2794,6 +2794,7 @@ path to a DICOMDIR file as follows:
         dataset = fo.Dataset.from_dir(
             dicom_path=dicom_path,
             dataset_type=fo.types.DICOMDataset,
+            keywords=["PatientName", "StudyID"],  # load specific attributes
             name=name,
         )
 
@@ -2816,7 +2817,9 @@ path to a DICOMDIR file as follows:
         fiftyone datasets create \
             --name $NAME \
             --type fiftyone.types.DICOMDataset \
-            --kwargs dicom_path=$DICOM_PATH
+            --kwargs \
+                dicom_path=$DICOM_PATH \
+                keywords=PatientName,StudyID  # load specific attributes
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
