@@ -47,9 +47,6 @@ done
 set -e
 OS=$(uname -s)
 
-echo "***** INSTALLING PLAYER51 *****"
-git submodule update --init
-
 if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     echo "***** INSTALLING MONGODB *****"
     mkdir -p ~/.fiftyone/bin
