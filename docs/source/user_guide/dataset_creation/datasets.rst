@@ -783,7 +783,7 @@ as a directory of TFRecords in the above format as follows:
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `images_dir`, which is required because FiftyOne
-    datasets must make their images available as invididual files on disk.
+    datasets must make their images available as individual files on disk.
 
   .. group-tab:: CLI
 
@@ -808,7 +808,7 @@ as a directory of TFRecords in the above format as follows:
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `IMAGES_DIR`, which is required because FiftyOne
-    datasets must make their images available as invididual files on disk.
+    datasets must make their images available as individual files on disk.
 
     To view an image classification dataset stored as a directory of TFRecords
     in the FiftyOne App without creating a persistent FiftyOne dataset,
@@ -1752,7 +1752,7 @@ directory of TFRecords in the above format as follows:
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `images_dir`, which is required because FiftyOne
-    datasets must make their images available as invididual files on disk.
+    datasets must make their images available as individual files on disk.
 
   .. group-tab:: CLI
 
