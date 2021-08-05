@@ -742,9 +742,9 @@ video is paused, ``>`` and ``<`` are available shortcuts for seeking to the
 next and previous frame, respectively.
 
 All of the same options in the image settings are available in video, as well
-as the "Use frame number" option to show frame stamp instead of the time stamp.
-Th default setting for ``Use frame number`` can also configured in the
-:ref:`App config <app-config>`.
+as the ``Use frame number``  option to show frame stamp instead of the time
+stamp and ``Loop video``. The default setting for using frame numbers and
+looping can also configured in the :ref:`App config <app-config>`.
 
 Playback rate and volume are also available in the video controls HUD to right
 of the play/pause button. Clicking on one of the icons resets the setting to
