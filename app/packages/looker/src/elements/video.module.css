@@ -53,10 +53,11 @@
   grid-area: 2 / 3 / 2 / 3;
 }
 
-.lookerPlaybackRate input {
+.lookerPlaybackRate > input {
   --playback: 0%;
   margin-top: 12px;
   width: 0;
+  display: none;
 }
 
 .lookerVolume {
@@ -71,11 +72,13 @@
   --volume: 0%;
   width: 0;
   margin-top: 12px;
+  display: none;
 }
 
 .lookerPlaybackRate:hover input,
 .lookerVolume:hover input {
   width: 65px;
+  display: block;
 }
 
 .lookerSeekBar {

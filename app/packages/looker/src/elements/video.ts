@@ -488,13 +488,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           const listener = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                this.canvas.getContext("2d").drawImage(video, 0, 0);
-                release();
-                video.removeEventListener("seeked", listener);
-                this.update({
-                  hasPoster: true,
-                  duration: this.duration,
-                  loaded: true,
+                requestAnimationFrame(() => {
+                  this.canvas.getContext("2d").drawImage(video, 0, 0);
+                  release();
+                  video.removeEventListener("seeked", listener);
+                  this.update({
+                    hasPoster: true,
+                    duration: this.duration,
+                    loaded: true,
+                  });
                 });
               });
             });
@@ -805,7 +807,6 @@ class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
 
   renderSelf({ options: { volume } }: Readonly<VideoState>) {
     if (this.volume !== volume) {
-      this.element.style.display = "block";
       this.element.style.setProperty("--volume", `${volume * 100}%`);
       this.element.value = volume.toFixed(4);
       this.element.title = `Volume ${(volume * 100).toFixed(0)}%`;
@@ -909,8 +910,6 @@ class PlaybackRateBarElement extends BaseElement<VideoState, HTMLInputElement> {
     options: { playbackRate },
     config: { frameRate },
   }: Readonly<VideoState>) {
-    this.element.style.display = "block";
-
     if (this.playbackRate !== playbackRate) {
       this.element.title = `${playbackRate.toFixed(1)}x ${(
         frameRate * playbackRate
