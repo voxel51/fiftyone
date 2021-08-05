@@ -95,6 +95,9 @@ export abstract class Looker<
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    if (!this.state.config.thumbnail) {
+      this.state.showControls = true;
+    }
     this.pluckedOverlays = [];
     this.currentOverlays = [];
     this.lookerElement = this.getElements(config);

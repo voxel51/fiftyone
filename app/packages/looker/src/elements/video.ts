@@ -488,7 +488,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           const listener = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
+                setTimeout(() => {
                   this.canvas.getContext("2d").drawImage(video, 0, 0);
                   release();
                   video.removeEventListener("seeked", listener);
@@ -497,7 +497,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                     duration: this.duration,
                     loaded: true,
                   });
-                });
+                }, 10);
               });
             });
           };

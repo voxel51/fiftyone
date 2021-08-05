@@ -74,7 +74,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
           const seeked = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
+                setTimeout(() => {
                   this.imageSource.getContext("2d").drawImage(video, 0, 0);
                   release();
                   video.removeEventListener("seeked", seeked);
@@ -82,7 +82,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
                     loaded: true,
                     duration: video.duration,
                   });
-                });
+                }, 10);
               });
             });
           };

@@ -178,9 +178,20 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     };
   }
 
-  createHTMLElement() {
+  createHTMLElement(update) {
     const element = document.createElement("canvas");
     element.classList.add(lookerCanvas, invisible);
+    this.hideControlsTimeout = setTimeout(
+      () =>
+        update(({ showOptions, hoveringControls }) => {
+          this.hideControlsTimeout = null;
+          if (!showOptions && !hoveringControls) {
+            return { showControls: false };
+          }
+          return {};
+        }),
+      3500
+    );
     return element;
   }
 
