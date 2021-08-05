@@ -1394,7 +1394,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if validate:
             self._validate_samples(samples)
 
-        dicts = [sample.to_mongo_dict() for sample in samples]
+        dicts = []
+        for sample in samples:
+            d = sample.to_mongo_dict()
+
+            # We omit None here to allow samples with None-valued new fields to
+            # be added without raising nonexistent field errors. This is valid
+            # because None and missing are equivalent in our data model
+            d = {k: v for k, v in d.items() if v is not None}
+
+            dicts.append(d)
 
         try:
             # adds `_id` to each dict
@@ -4027,7 +4036,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         non_existent_fields.add(field_name)
                 else:
                     if value is not None or not field.null:
-                        field.validate(value)
+                        try:
+                            field.validate(value)
+                        except Exception as e:
+                            raise ValueError(
+                                "Invalid value for field '%s'. Reason: %s"
+                                % (field_name, str(e))
+                            )
 
             if non_existent_fields:
                 raise ValueError(
