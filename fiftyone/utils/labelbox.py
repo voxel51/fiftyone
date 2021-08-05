@@ -51,6 +51,11 @@ _SUPPORTED_FIELD_TYPES = (
     fof.StringField,
     fof.BooleanField,
 )
+ATTRIBUTE_TYPES_REQUIREMENTS = {
+    "text": [],
+    "select": ["values"],
+    "radio": ["values"],
+}
 
 
 def annotate(

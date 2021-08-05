@@ -5571,9 +5571,12 @@ class SampleCollection(object):
     def annotate(
         self,
         backend="cvat",
+        label_schema=None,
         label_field=None,
+        label_type=None,
+        classes=None,
+        attributes=True,
         launch_editor=False,
-        extra_attrs=None,
         **kwargs,
     ):
         """Exports the samples and a label field to the given annotation
@@ -5582,24 +5585,41 @@ class SampleCollection(object):
         Args:
             backend ("cvat"): the name of the annotation backend to which to
                 export the samples. Options are ("cvat", "labelbox")
-            label_field (None): a string indicating the label field to export to the
-                annotation backend. A value of `None` indicates exporting only
-                the media.
+            label_schema (None): a dictionary indicating the type, class options, and
+                attributes for each label field. This is required for new label fields
+                if `classes` is not provided.
+                For existing label fields, provided classes and attributes will be used
+                instead of parsing existing classes or attributes
+            label_field (None): a string indicating either an existing label field to upload,
+                or the name of a new label field to create. Required if `label_schema` is not provided.
+            label_type (None): a string indicating the type of labels to expect 
+                when creating a new `label_field`. 
+                Options: ("detections", "classifications", "polylines", "keypoints", "scalar")
+            classes (None): a list of strings indicating the class options. These
+                classes will be used as the default for all fields without classes
+                specified in the `label_schema`. This is required for a new
+                `label_field` if `label_schema` is not provided. For existing label fields, if
+                neither `classes` nor `label_schema` is given, default classes are used
+                if available, otherwise classes are parsed from existing labels in the
+                label field
+            attributes (True): a list of string attributes or dictionary of attribute
+                name to type, values, and default values that will be the default for
+                every label field without attributes specified through the
+                `label_schema`. `True` indicates loading all values for existing
+                label fields. `False` indicates loading no attributes
             launch_editor (False): whether to launch the backend editor in a
                 browser window after uploading samples
-            extra_attrs (None): a list of attribute field names or dictionary of
-                attribute field names to `AnnotationWidgetType` specifying the
-                attribute field names on the `label_field` to annotate. By
-                default, no extra attributes are sent for annotation, only the
-                label
             **kwargs: additional arguments to send to the annotation backend
         """
         annotation_info = foua.annotate(
             samples=self,
             backend=backend,
+            label_schema=label_schema,
             label_field=label_field,
+            label_type=label_type,
+            classes=classes,
+            attributes=attributes,
             launch_editor=launch_editor,
-            extra_attrs=extra_attrs,
             **kwargs,
         )
         return annotation_info

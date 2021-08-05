@@ -54,6 +54,12 @@ _SUPPORTED_FIELD_TYPES = (
     fof.StringField,
     fof.BooleanField,
 )
+ATTRIBUTE_TYPES_REQUIREMENTS = {
+    "text": [],
+    "select": ["values"],
+    "checkbox": ["values"],
+    "radio": ["values"],
+}
 
 
 class CVATImageDatasetImporter(
@@ -2660,22 +2666,24 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         task_json = task_creation_resp.json()
         task_id = task_json["id"]
 
-        self._attribute_id_map[task_id] = {}
-        self._class_id_map[task_id] = {}
+        attribute_id_map = {}
+        class_id_map = {}
+        attribute_id_map[task_id] = {}
+        class_id_map[task_id] = {}
         for label in task_json["labels"]:
             class_id = label["id"]
-            self._class_id_map[task_id][label["name"]] = class_id
-            self._attribute_id_map[task_id][class_id] = {}
+            class_id_map[task_id][label["name"]] = class_id
+            attribute_id_map[task_id][class_id] = {}
             for attr in label["attributes"]:
                 attr_name = attr["name"]
                 attr_id = attr["id"]
-                self._attribute_id_map[task_id][class_id][attr_name] = attr_id
+                attribute_id_map[task_id][class_id][attr_name] = attr_id
 
         if task_assignee is not None:
             task_patch = {"assignee_id": self._user_id_map[task_assignee]}
             resp = self._session_patch(self.task_url(task_id), json=task_patch)
 
-        return task_id
+        return task_id, attribute_id_map, class_id_map
 
     def delete_task(self, task_id):
         response = self._session_delete(self.task_url(task_id))
@@ -2730,10 +2738,27 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return job_ids
 
+    def construct_cvat_attributes(self, attributes):
+        """Remaps label schema attributes to attributes expected by the CVAT
+        REST API to construct tasks
+        """
+        cvat_attrs = {}
+        for attr_name, info in attributes.items():
+            cvat_attr = {"name": attr_name, "mutable": True}
+            for attr_key, val in info.items():
+                if attr_key == "type":
+                    cvat_attr["input_type"] = val
+                elif attr_key == "values":
+                    cvat_attr["values"] = [str(v) for v in val]
+                elif attr_key == "default_value":
+                    cvat_attr["default_value"] = str(val)
+            cvat_attrs[attr_name] = cvat_attr
+        return cvat_attrs
+
     def upload_samples(
         self,
         samples,
-        label_field,
+        label_schema,
         classes=None,
         segment_size=None,
         image_quality=75,
@@ -2772,65 +2797,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         samples = samples.sort_by("filepath")
         task_ids = []
         job_ids = {}
-        if type(extra_attrs) == str:
-            extra_attrs = [extra_attrs]
-        self._extra_attrs = extra_attrs
-
-        # label_field can either contain a FiftyOne Label type or a primitive
-        # field type. Primitive fields will be uploaded as sample-level tags
-        # with a single value that can be edited
-        self._field_label_type = None
-        is_supported_label = False
-        if label_field is not None:
-            if label_field.startswith("frames."):
-                formatted_label_field = label_field[len("frames.") :]
-            else:
-                formatted_label_field = label_field
-            if samples._is_frame_field(label_field):
-                self._field_type = samples.get_frame_field_schema()[
-                    formatted_label_field
-                ]
-            else:
-                self._field_type = samples.get_field_schema()[label_field]
-            if isinstance(self._field_type, fof.EmbeddedDocumentField):
-                if self._field_type.document_type in _SUPPORTED_LABEL_TYPES:
-                    # label_field is a non-primitive Label field
-                    is_supported_label = True
-                    self._field_label_type = self._field_type.document_type
-                else:
-                    raise TypeError(
-                        "Label field %s of type %s is not supported"
-                        % (label_field, str(self._field_type.document_type))
-                    )
-
-            elif self._field_type not in _SUPPORTED_FIELD_TYPES:
-                raise TypeError(
-                    "Field %s of type %s is not supported"
-                    % (label_field, str(self._field_type))
-                )
-
-        if classes is None:
-            # Note classes can be populated even if label_field is a primitive
-            # field in the case we want to support new annotations
-            classes = []
-            if is_supported_label and label_field is not None:
-                label_path = samples._get_label_field_path(
-                    label_field, "label"
-                )[1]
-                classes = samples._dataset.distinct(label_path)
-
-            # CVAT crashes with more than ~450 classes
-            new_classes = []
-            if label_field in samples.classes and label_field is not None:
-                new_classes = samples.classes[label_field]
-            elif samples.default_classes:
-                new_classes = samples.default_classes
-
-            if new_classes:
-                new_classes = new_classes[: (400 - len(classes))]
-                classes = sorted(list(set(classes) | set(new_classes)))
-
-        self._classes = classes
+        frame_id_map = {}
+        labels_task_map = {}
 
         # CVAT only allows for one video per task
         if samples.media_type == fom.VIDEO:
@@ -2840,129 +2808,186 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             is_video = False
             task_batch_size = len(samples)
 
-        for task_index, task_batch_ind in enumerate(
-            range(0, len(samples), task_batch_size)
-        ):
-            self._label_attributes = {}
-            batch_samples = samples.skip(task_batch_ind).limit(task_batch_size)
-            # Only relevant for non-primitive Label fields
-            if is_supported_label:
-                label_id_attr = {
-                    "name": "label_id",
-                    "mutable": True,
-                    "input_type": "text",
-                }
-                self._label_attributes["label_id"] = label_id_attr
+        # Create a new task for every label field to annotate
+        for label_field, label_info in label_schema.items():
+            labels_task_map[label_field] = []
+            label_type = label_info["type"]
+            classes = label_info["classes"]
+            input_attributes = label_info["attributes"]
+            is_existing_field = label_info["existing_field"]
+            cvat_attributes = self.construct_cvat_attributes(input_attributes)
 
-            # Parse label field into format expected by CVAT
-            # At the same time parse attribute fields and populate
-            # self._label_attributes
-            annot_tags = []
-            annot_shapes = []
-            id_mapping = {}
-            if label_field is not None:
-                if not is_supported_label or self._field_label_type in (
-                    fol.Classification,
-                    fol.Classifications,
-                ):
-                    annot_tags, id_mapping = self.create_tags(
-                        batch_samples, label_field, self._field_label_type,
-                    )
-                else:
-                    annot_shapes, id_mapping = self.create_shapes(
-                        batch_samples, label_field, self._field_label_type,
-                    )
-
-            attributes = list(self._label_attributes.values())
-
-            # Top level CVAT labels are classes for FiftyOne Label fields
-            # for primitive fields, there is only one CVAT label and it is the
-            # label_field string
-            labels = []
-            label_names = classes
-            if not is_supported_label:
-                if label_field is not None:
-                    label_names = [label_field]
-                else:
-                    label_names = ["Label"]
-            for ln in label_names:
-                labels.append({"name": ln, "attributes": attributes})
-
-            current_job_assignees = job_assignees
-            current_job_reviewers = job_reviewers
-            if is_video:
-                # Videos are uploaded in multiple tasks with one job per task
-                # Assign the correct users for the current task
-                if job_assignees is not None:
-                    job_assignee_ind = min(task_index, len(job_assignees) - 1)
-                    current_job_assignees = [job_assignees[job_assignee_ind]]
-
-                if job_reviewers is not None:
-                    job_reviewer_ind = min(task_index, len(job_reviewers) - 1)
-                    currnet_job_reviewers = [job_reviewers[job_reviewer_ind]]
-
-            # Create task and upload raw data
-            task_id = self.create_task(
-                labels, segment_size, image_quality, task_assignee
-            )
-            task_ids.append(task_id)
-            paths = batch_samples.values("filepath")
-            current_job_ids = self.upload_data(
-                task_id,
-                paths,
-                image_quality,
-                job_assignees=current_job_assignees,
-                job_reviewers=current_job_reviewers,
-            )
-            job_ids[task_id] = current_job_ids
-            self._frame_id_map[task_id] = id_mapping
-
-            # Creating task assigned ids to classes and attributes
-            # Remap annotations to these ids before uploading
-            annot_shapes = self.remap_ids(annot_shapes, task_id)
-            annot_tags = self.remap_ids(annot_tags, task_id)
-            annot_tracks = []
-
-            annot_json = {
-                "version": 0,
-                "tags": annot_tags,
-                "shapes": annot_shapes,
-                "tracks": annot_tracks,
-            }
-
-            len_shapes = 0
-            len_tags = 0
-            len_tracks = 0
-            while (
-                len(annot_shapes) != len_shapes
-                or len(annot_tags) != len_tags
-                or len(annot_tracks) != len_tracks
+            # Create a new task for every video sample
+            for task_index, task_batch_ind in enumerate(
+                range(0, len(samples), task_batch_size)
             ):
-                # Upload annotations
-                resp = self._session_put(
-                    self.task_annotation_url(task_id), json=annot_json
+                self._label_attributes = {}
+                batch_samples = samples.skip(task_batch_ind).limit(
+                    task_batch_size
                 )
-                resp_json = resp.json()
-                len_shapes = len(resp_json["shapes"])
-                len_tags = len(resp_json["tags"])
-                len_tracks = len(resp_json["tracks"])
 
-        return task_ids, job_ids
+                # Only relevant to track label ids for existing non-scalar Label fields
+                if is_existing_field and label_type != "scalar":
+                    label_id_attr = {
+                        "name": "label_id",
+                        "mutable": True,
+                        "input_type": "text",
+                    }
+                    cvat_attributes["label_id"] = label_id_attr
 
-    def download_annotations(self, label_field, task_ids, job_ids):
+                attributes = list(cvat_attributes.values())
+                attr_names = list(cvat_attributes.keys())
+
+                # Top level CVAT labels are classes for FiftyOne Label fields
+                # for scalar fields, there may only be one CVAT label and it is the
+                # label_field string if no classes are provided
+                labels = []
+                label_names = classes
+                assign_scalar_attrs = False
+                if classes == []:
+                    assign_scalar_attrs = True
+                    label_names = [label_field]
+                    if attributes:
+                        attributes = [attributes[0]]
+                        attr_names = [attr_names[0]]
+                    else:
+                        attributes = [
+                            {
+                                "name": "value",
+                                "mutable": True,
+                                "input_type": "text",
+                            }
+                        ]
+                        attr_names = ["value"]
+                for ln in label_names:
+                    labels.append({"name": ln, "attributes": attributes})
+
+                # Parse label data into format expected by CVAT
+                annot_tags = []
+                annot_shapes = []
+                id_mapping = {}
+                if is_existing_field:
+                    if label_type in [
+                        "classification",
+                        "classifications",
+                        "scalar",
+                    ]:
+                        annot_tags, id_mapping = self.create_tags(
+                            batch_samples,
+                            label_field,
+                            label_type,
+                            attr_names,
+                            assign_scalar_attrs,
+                        )
+                    else:
+                        annot_shapes, id_mapping = self.create_shapes(
+                            batch_samples, label_field, label_type, attr_names
+                        )
+
+                current_job_assignees = job_assignees
+                current_job_reviewers = job_reviewers
+                if is_video:
+                    # Videos are uploaded in multiple tasks with one job per task
+                    # Assign the correct users for the current task
+                    if job_assignees is not None:
+                        job_assignee_ind = min(
+                            task_index, len(job_assignees) - 1
+                        )
+                        current_job_assignees = [
+                            job_assignees[job_assignee_ind]
+                        ]
+
+                    if job_reviewers is not None:
+                        job_reviewer_ind = min(
+                            task_index, len(job_reviewers) - 1
+                        )
+                        currnet_job_reviewers = [
+                            job_reviewers[job_reviewer_ind]
+                        ]
+
+                # Create task and upload raw data
+                task_id, attribute_id_map, class_id_map = self.create_task(
+                    labels, segment_size, image_quality, task_assignee
+                )
+                task_ids.append(task_id)
+                labels_task_map[label_field].append(task_id)
+                paths = batch_samples.values("filepath")
+                current_job_ids = self.upload_data(
+                    task_id,
+                    paths,
+                    image_quality,
+                    job_assignees=current_job_assignees,
+                    job_reviewers=current_job_reviewers,
+                )
+                job_ids[task_id] = current_job_ids
+                frame_id_map[task_id] = id_mapping
+
+                # Creating task assigned ids to classes and attributes
+                # Remap annotations to these ids before uploading
+                annot_shapes = self.remap_ids(
+                    annot_shapes, task_id, attribute_id_map, class_id_map
+                )
+                annot_tags = self.remap_ids(
+                    annot_tags, task_id, attribute_id_map, class_id_map
+                )
+                annot_tracks = []
+
+                annot_json = {
+                    "version": 0,
+                    "tags": annot_tags,
+                    "shapes": annot_shapes,
+                    "tracks": annot_tracks,
+                }
+
+                len_shapes = 0
+                len_tags = 0
+                len_tracks = 0
+                while (
+                    len(annot_shapes) != len_shapes
+                    or len(annot_tags) != len_tags
+                    or len(annot_tracks) != len_tracks
+                ):
+                    # Upload annotations
+                    resp = self._session_put(
+                        self.task_annotation_url(task_id), json=annot_json
+                    )
+                    resp_json = resp.json()
+                    len_shapes = len(resp_json["shapes"])
+                    len_tags = len(resp_json["tags"])
+                    len_tracks = len(resp_json["tracks"])
+
+            return task_ids, job_ids, frame_id_map, labels_task_map
+
+    def download_annotations(
+        self, label_schema, task_ids, job_ids, frame_id_map, labels_task_map
+    ):
         """Download annotations from the annotation tool"""
         results = {}
+        additional_results = {}
+
+        rev_labels_task_map = {}
+        for lf, tasks in labels_task_map.items():
+            for task in tasks:
+                rev_labels_task_map[task] = lf
         for task_id in task_ids:
+            label_field = rev_labels_task_map[task_id]
+            if label_field not in results:
+                results[label_field] = {}
+            current_schema = label_schema[label_field]
+            label_type = current_schema["type"]
+
             task_resp = self._session_get(self.task_url(task_id))
             task_json = task_resp.json()
-            if task_id not in self._attribute_id_map:
-                labels = task_json["labels"]
-                attr_map = {}
-                for label in labels:
-                    attr_map[label["id"]] = dict(
-                        [(i["name"], i["id"]) for i in label["attributes"]]
-                    )
-                self._attribute_id_map.update({task_id: attr_map})
+            attr_id_map = {}
+            class_map = {}
+            labels = task_json["labels"]
+            for label in labels:
+                class_map[label["id"]] = label["name"]
+                attr_id_map[label["id"]] = dict(
+                    [(i["name"], i["id"]) for i in label["attributes"]]
+                )
+
+            classes = list(class_map.values())
 
             if task_json["data_original_chunk_type"] == "video":
                 media_type = "video"
@@ -2978,14 +3003,11 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             data_resp = self._session_get(self.task_data_meta_url(task_id))
             frames = data_resp.json()["frames"]
 
-            class_map = {v: k for k, v in self._class_id_map[task_id].items()}
-            attr_id_map = self._attribute_id_map[task_id]
-
             created_classification = False
             created_primitive = False
             for tag in tags:
                 frame = tag["frame"]
-                sample_id = self._frame_id_map[task_id][frame]["sample_id"]
+                sample_id = frame_id_map[task_id][frame]["sample_id"]
                 attrs = tag["attributes"]
 
                 if len(attrs) > 1:
@@ -2996,14 +3018,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                             "All tag annotations must be"
                             " classifications if one is a classification"
                         )
-                    if sample_id not in results:
-                        results[sample_id] = {}
+                    if sample_id not in results[label_field]:
+                        results[label_field][sample_id] = {}
 
-                    cvat_tag = CVATTag(
-                        tag, class_map, attr_id_map, self._classes
-                    )
+                    cvat_tag = CVATTag(tag, class_map, attr_id_map, classes)
                     label = cvat_tag.to_classification()
-                    results[sample_id][label.id] = label
+                    results[label_field][sample_id][label.id] = label
 
                 else:
                     # Primitive field directly on sample
@@ -3012,13 +3032,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                             "All tag annotations must be"
                             " sample-level primitives if one is."
                         )
-                    if sample_id in results:
+                    if sample_id in results[label_field]:
                         raise ValueError(
                             "Found two annotations for Sample with ID %s"
                             % sample_id
                         )
 
-                    results[sample_id] = attrs[0]["value"]
+                    results[label_field][sample_id] = attrs[0]["value"]
 
             for shape in shapes:
                 frame = shape["frame"]
@@ -3026,30 +3046,27 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     metadata = frames[frame]
                 else:
                     metadata = frames[0]
-                sample_id = self._frame_id_map[task_id][frame]["sample_id"]
+                sample_id = frame_id_map[task_id][frame]["sample_id"]
                 shape_type = shape["type"]
-                if sample_id not in results:
-                    results[sample_id] = {}
+                if sample_id not in results[label_field]:
+                    results[label_field][sample_id] = {}
 
                 store_frame = False
-                if "frame_id" in self._frame_id_map[task_id][frame]:
+                if "frame_id" in frame_id_map[task_id][frame]:
                     store_frame = True
-                    frame_id = self._frame_id_map[task_id][frame]["frame_id"]
-                    if frame_id not in results[sample_id]:
-                        results[sample_id][frame_id] = {}
+                    frame_id = frame_id_map[task_id][frame]["frame_id"]
+                    if frame_id not in results[label_field][sample_id]:
+                        results[label_field][sample_id][frame_id] = {}
 
                 label = None
                 cvat_shape = CVATShape(
-                    shape, class_map, attr_id_map, self._classes, metadata
+                    shape, class_map, attr_id_map, classes, metadata
                 )
                 if shape_type == "rectangle":
                     label = cvat_shape.to_detection()
                 elif shape_type == "polygon":
                     label = cvat_shape.to_polyline(closed=True, filled=True)
-                    if self._field_label_type in (
-                        fol.Detections,
-                        fol.Detection,
-                    ):
+                    if label_type in ("detections", "detection",):
                         label = cvat_shape.polyline_to_detection(label)
 
                 elif shape_type == "polyline":
@@ -3061,13 +3078,20 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     continue
 
                 if store_frame:
-                    results[sample_id][frame_id][label.id] = label
+                    results[label_field][sample_id][frame_id][label.id] = label
                 else:
-                    results[sample_id][label.id] = label
+                    results[label_field][sample_id][label.id] = label
 
             return results
 
-    def create_tags(self, samples, label_field, label_type):
+    def create_tags(
+        self,
+        samples,
+        label_field,
+        label_type,
+        attr_names,
+        assign_scalar_attrs=False,
+    ):
         tags = []
         id_mapping = {}
         for sample in samples:
@@ -3075,30 +3099,19 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             id_mapping[frame_id] = {"sample_id": sample.id}
 
             sample_label = sample[label_field]
-            if label_type in (fol.Classifications, fol.Classification):
+            if label_type in ("classifications", "classification"):
                 if sample_label is None:
                     continue
 
-                if label_type == fol.Classifications:
+                if label_type == "classifications":
                     classifications = sample_label.classifications
                 else:
                     classifications = [sample_label]
 
-                default_fields = [
-                    "attributes",
-                    "_id",
-                    "tags",
-                    "confidence",
-                    "_cls",
-                    "logits",
-                ]
                 for cls in classifications:
                     attributes, class_name = self.create_attributes(
-                        cls, default_fields
+                        cls, attr_names
                     )
-
-                    shape_id = len(self._label_id_map) + 1
-                    self._label_id_map[shape_id] = cls.id
 
                     tag = {
                         "label_id": class_name,
@@ -3110,13 +3123,17 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     tags.append(tag)
 
             else:
-                value = sample_label
-                formatted_value = self.update_label_attributes("value", value)
-                if formatted_value is None:
-                    continue
-                attributes = [{"spec_id": "value", "value": formatted_value}]
+                # Scalar
+                if assign_scalar_attrs:
+                    attributes = [
+                        {"spec_id": attr_names[0], "value": str(sample_label)}
+                    ]
+                    class_name = label_field
+                else:
+                    attributes = []
+                    class_name = str(sample_label)
                 tag = {
-                    "label_id": label_field,
+                    "label_id": class_name,
                     "group": 0,
                     "frame": frame_id,
                     "source": "manual",
@@ -3126,7 +3143,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return tags, id_mapping
 
-    def create_shapes(self, samples, label_field, label_type):
+    def create_shapes(self, samples, label_field, label_type, attr_names):
         samples.compute_metadata()
         shapes = []
         id_mapping = {}
@@ -3156,42 +3173,42 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 if image_label is None:
                     continue
 
-                if label_type == fol.Detections:
+                if label_type == "detections":
                     detections = image_label.detections
                     shapes.extend(
                         self.create_detection_shapes(
-                            detections, width, height, frame_id
+                            detections, width, height, attr_names, frame_id
                         )
                     )
 
-                elif label_type == fol.Detection:
+                elif label_type == "detection":
                     detection = image_label
                     shapes.extend(
                         self.create_detection_shapes(
-                            [detection], width, height, frame_id
+                            [detection], width, height, attr_names, frame_id
                         )
                     )
-                elif label_type == fol.Polylines:
+                elif label_type == "polylines":
                     polylines = image_label.polylines
                     shapes.extend(
                         self.create_polyline_shapes(
-                            polylines, width, height, frame_id
+                            polylines, width, height, attr_names, frame_id
                         )
                     )
 
-                elif label_type == fol.Polyline:
+                elif label_type == "polyline":
                     polyline = image_label
                     shapes.extend(
                         self.create_polyline_shapes(
-                            [polyline], width, height, frame_id
+                            [polyline], width, height, attr_names, frame_id
                         )
                     )
 
-                elif label_type == fol.Keypoints:
+                elif label_type == "keypoints":
                     keypoints = image_label.keypoints
                     shapes.extend(
                         self.create_keypoint_shapes(
-                            keypoints, width, height, frame_id
+                            keypoints, width, height, attr_names, frame_id
                         )
                     )
 
@@ -3203,22 +3220,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes, id_mapping
 
-    def create_keypoint_shapes(self, keypoints, width, height, frame_id=0):
+    def create_keypoint_shapes(
+        self, keypoints, width, height, attr_names, frame_id=0
+    ):
         shapes = []
-        default_fields = [
-            "attributes",
-            "_id",
-            "tags",
-            "points",
-            "confidence",
-            "index",
-            "_cls",
-        ]
         for kp in keypoints:
-            attributes, class_name = self.create_attributes(kp, default_fields)
-
-            shape_id = len(self._label_id_map) + 1
-            self._label_id_map[shape_id] = kp.id
+            attributes, class_name = self.create_attributes(kp, attr_names)
 
             points = kp.points
             abs_points = HasCVATPoints._to_abs_points(points, (width, height))
@@ -3242,26 +3249,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes
 
-    def create_polyline_shapes(self, polylines, width, height, frame_id=0):
+    def create_polyline_shapes(
+        self, polylines, width, height, attr_names, frame_id=0
+    ):
         shapes = []
-        default_fields = [
-            "attributes",
-            "_id",
-            "tags",
-            "points",
-            "confidence",
-            "index",
-            "_cls",
-            "closed",
-            "filled",
-        ]
         for poly in polylines:
-            attributes, class_name = self.create_attributes(
-                poly, default_fields
-            )
-
-            shape_id = len(self._label_id_map) + 1
-            self._label_id_map[shape_id] = poly.id
+            attributes, class_name = self.create_attributes(poly, attr_names)
 
             points = poly.points[0]
             abs_points = HasCVATPoints._to_abs_points(points, (width, height))
@@ -3298,24 +3291,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes
 
-    def create_detection_shapes(self, detections, width, height, frame_id=0):
+    def create_detection_shapes(
+        self, detections, width, height, attr_names, frame_id=0
+    ):
         shapes = []
-        default_fields = [
-            "attributes",
-            "_id",
-            "tags",
-            "bounding_box",
-            "mask",
-            "confidence",
-            "index",
-            "_cls",
-        ]
         for det in detections:
-            shape_id = len(self._label_id_map) + 1
-            self._label_id_map[shape_id] = det.id
-            attributes, class_name = self.create_attributes(
-                det, default_fields
-            )
+            attributes, class_name = self.create_attributes(det, attr_names)
             if det.mask is None:
                 x, y, w, h = det.bounding_box
                 xtl = float(round(x * width))
@@ -3364,43 +3345,25 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes
 
-    def create_attributes(self, label, default_fields):
-        fields = label._fields_ordered
-        attributes = [{"spec_id": "label_id", "value": label.id}]
-        class_name = None
-        for field in fields:
-            # If no extra attributes are given, save all non-default attributes
-            # Otherwise save only specified attributes
-            save_field = (
-                self._extra_attrs is None and field not in default_fields
-            ) or (self._extra_attrs is not None and field in self._extra_attrs)
+    def create_attributes(self, label, attributes):
+        label_attrs = []
+        for attribute in attributes:
+            value = None
+            if attribute.startswith("attribute:"):
+                attr_name = attribute[len("attribute:") :]
+                value = label.get_attribute_value(attr_name, None)
+            elif attribute in label:
+                value = label[attribute]
 
-            if field == "label":
-                class_name = label[field]
-            elif save_field:
-                value = label[field]
-                formatted_val = self.update_label_attributes(field, value)
-                if formatted_val is None:
-                    continue
-                attributes.append({"spec_id": field, "value": formatted_val})
+            if value is not None:
+                label_attrs.append({"spec_id": attribute, "value": str(value)})
 
-        if hasattr(label, "attributes"):
-            for attr in label.attributes.keys():
-                if self._extra_attrs is None or attr in self._extra_attrs:
-                    value = label.get_attribute_value(attr)
-                    formatted_val = self.update_label_attributes(
-                        "attribute:" + attr, value
-                    )
-                    if formatted_val is None:
-                        continue
-                    attributes.append(
-                        {
-                            "spec_id": "attribute:" + attr,
-                            "value": formatted_val,
-                        }
-                    )
+        if "label" in label:
+            class_name = label["label"]
+        else:
+            class_name = None
 
-        return attributes, class_name
+        return label_attrs, class_name
 
     def update_label_attributes(self, attr_name, value):
         # Construct attribute and decide the type of the attribute to use for
@@ -3452,12 +3415,14 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return value
 
-    def remap_ids(self, shapes_or_tags, task_id):
+    def remap_ids(
+        self, shapes_or_tags, task_id, attribute_id_map, class_id_map
+    ):
         for obj in shapes_or_tags:
             label_name = obj["label_id"]
-            class_id = self._class_id_map[task_id][label_name]
+            class_id = class_id_map[task_id][label_name]
             obj["label_id"] = class_id
-            attr_id_map = self._attribute_id_map[task_id][class_id]
+            attr_id_map = attribute_id_map[task_id][class_id]
             for attr in obj["attributes"]:
                 attr_name = attr["spec_id"]
                 attr["spec_id"] = attr_id_map[attr_name]
@@ -3604,7 +3569,7 @@ class CVATTag(CVATLabel):
 class CVATAnnotationInfo(foua.AnnotationInfo):
     def __init__(
         self,
-        label_field=None,
+        label_schema=None,
         launch_editor=False,
         url="cvat.org",
         port=None,
@@ -3620,12 +3585,14 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         extra_attrs=None,
         task_ids=None,
         job_ids=None,
+        frame_id_map=None,
+        labels_task_map=None,
     ):
-        super().__init__(
-            label_field=label_field, backend="cvat", extra_attrs=extra_attrs
-        )
+        super().__init__(label_schema=label_schema, backend="cvat")
         self.task_ids = task_ids
         self.job_ids = job_ids
+        self.frame_id_map = frame_id_map
+        self.labels_task_map = labels_task_map
         self.launch_editor = launch_editor
         self.url = url
         self.port = port
@@ -3649,7 +3616,7 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
 
 def annotate(
     samples,
-    label_field=None,
+    label_schema,
     launch_editor=False,
     url=None,
     port=None,
@@ -3662,15 +3629,13 @@ def annotate(
     job_assignees=None,
     task_assignee=None,
     job_sample_map=None,
-    extra_attrs=None,
 ):
     """Exports the samples and a label field to CVAT.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        label_field (None): a string indicating the label field to export to the
-            annotation backend. A value of `None` indicates exporting only
-            the media.
+        label_schema: a dictionary containing the description of label fields,
+            classes and attribute to annotate
         launch_editor (False): whether to launch the backend editor in a
             browser window after uploading samples
         url ("cvat.org"): URL of the CVAT server to which to upload samples 
@@ -3694,11 +3659,6 @@ def annotate(
             created task
         job_sample_map (None): a list of lists containing sample ids to be grouped
             into jobs. Not applicable to videos, overrides `segment_size`
-        extra_attrs (None): a list of attribute field names specifying the
-            attributes on the `label_field` to annotate. By
-            default, all extra attributes are sent for annotation. Providing an
-            empty list, `[]`, will load no additional attributes, only the
-            label and id
 
     Returns:
         annotation_info: the
@@ -3706,7 +3666,7 @@ def annotate(
             upload and annotate the given samples
     """
     info = CVATAnnotationInfo(
-        label_field=label_field,
+        label_schema=label_schema,
         launch_editor=launch_editor,
         url=url,
         port=port,
@@ -3719,13 +3679,12 @@ def annotate(
         job_assignees=job_assignees,
         task_assignee=task_assignee,
         job_sample_map=job_sample_map,
-        extra_attrs=extra_attrs,
     )
     api = info.connect_to_api(auth=auth)
     logger.info("Uploading samples to CVAT...")
-    task_ids, job_ids = api.upload_samples(
+    task_ids, job_ids, frame_id_map, labels_task_map = api.upload_samples(
         samples,
-        label_field=label_field,
+        label_schema=label_schema,
         classes=classes,
         segment_size=segment_size,
         image_quality=image_quality,
@@ -3733,10 +3692,11 @@ def annotate(
         job_assignees=job_assignees,
         task_assignee=task_assignee,
         job_sample_map=job_sample_map,
-        extra_attrs=extra_attrs,
     )
     info.task_ids = task_ids
     info.job_ids = job_ids
+    info.frame_id_map = frame_id_map
+    info.labels_task_map = labels_task_map
     info.store_label_ids(samples)
     if job_ids and job_ids[task_ids[0]]:
         annotator_url = api.base_job_url(task_ids[0], job_ids[task_ids[0]][0])
@@ -3752,8 +3712,12 @@ def load_annotations(info, delete_task=True, auth=None):
     api = info.api
     task_ids = info.task_ids
     job_ids = info.job_ids
-    label_field = info.label_field
-    annotations = api.download_annotations(label_field, task_ids, job_ids)
+    frame_id_map = info.frame_id_map
+    label_schema = info.label_schema
+    labels_task_map = info.labels_task_map
+    annotations = api.download_annotations(
+        label_schema, task_ids, job_ids, frame_id_map, labels_task_map
+    )
     if delete_task:
         for task_id in task_ids:
             api.delete_task(task_id)
