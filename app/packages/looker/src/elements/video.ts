@@ -594,9 +594,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private releaseVideo() {
     if (this.waitingToPause || this.waitingToPlay || !this.element) {
       this.waitingToRelease = true;
-      this.update(({ waitingForVideo }) =>
-        waitingForVideo ? { waitingForVideo: false } : {}
-      );
+      this.imageSource = this.canvas;
+      this.canvas &&
+        this.update(({ waitingForVideo }) =>
+          waitingForVideo ? { waitingForVideo: false } : {}
+        );
       return;
     }
 

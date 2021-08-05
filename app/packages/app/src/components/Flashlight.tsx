@@ -24,7 +24,6 @@ import {
   VideoLooker,
   zoomAspectRatio,
 } from "@fiftyone/looker";
-import { scrollbarStyles } from "./utils";
 import { activeFields } from "./Filters/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
@@ -208,11 +207,15 @@ const useThumbnailClick = (
 
         const [start, end] =
           clickedIndex - before <= after - clickedIndex
+            ? clickedIndex - before === 0
+              ? [clickedIndex, after]
+              : [before, clickedIndex]
+            : after - clickedIndex === 0
             ? [before, clickedIndex]
             : [clickedIndex, after];
 
         selected = new Set(
-          array.filter((s) => itemIndexMap[s] < start && itemIndexMap[s] > end)
+          array.filter((s) => itemIndexMap[s] < start || itemIndexMap[s] > end)
         );
       };
 
@@ -222,9 +225,9 @@ const useThumbnailClick = (
       }
 
       const array = [...selected];
-      if (event.ctrlKey && !selected.has(sampleId)) {
+      if (event.shiftKey && !selected.has(sampleId)) {
         addRange();
-      } else if (event.ctrlKey) {
+      } else if (event.shiftKey) {
         removeRange();
       } else {
         selected.has(sampleId)

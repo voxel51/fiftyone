@@ -26,7 +26,7 @@ export class ThumbnailSelectorElement<
     return {
       click: ({ event, update, dispatchEvent }) => {
         update(({ options: { selected, inSelectionMode } }) => {
-          if (inSelectionMode && event.ctrlKey) {
+          if (inSelectionMode && event.shiftKey) {
             return {};
           }
           event.stopPropagation();

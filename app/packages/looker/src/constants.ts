@@ -33,7 +33,7 @@ export const LABEL_LISTS = {
 };
 
 export const SELECTION_TEXT =
-  "Click to select sample, Ctrl+Click to select a range";
+  "Click to select sample, Shift+Click to select a range";
 
 export const JSON_COLORS = {
   keyColor: "rgb(138, 138, 138)",
