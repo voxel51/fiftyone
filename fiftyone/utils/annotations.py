@@ -371,22 +371,88 @@ def load_annotations(samples, info, **kwargs):
         logger.warning("No annotations found")
         return
 
+    default_label_types_map = {
+        v: k for k, v in AnnotationLabelSchema.default_label_types_dict.items()
+    }
+
     label_schema = info.label_schema
     for label_field in label_schema.keys():
+        if label_field not in annotations_results:
+            logger.info("No annotations found for field '%s'" % label_field)
+            continue
         annotations = annotations_results[label_field]
 
+        if len(annotations) == 0:
+            logger.info("No annotations found for field '%s'" % label_field)
+            continue
+
+        label_info = label_schema[label_field]
+        label_type = label_info["type"]
+        existing_field = label_info["existing_field"]
+
         is_video = True if samples.media_type == fom.VIDEO else False
+        formatted_label_field = label_field
+        is_frame_label = False
+        if is_video and label_field.startswith("frames."):
+            is_frame_label = True
+            formatted_label_field = label_field[len("frames.") :]
 
         if type(list(annotations.values())[0]) != dict:
-            # Only setting top-level field, label parsing is not required
+            # Only setting top-level sample or frame field, label parsing is not required
             for sample_id, value in annotations.items():
                 sample = samples[sample_id]
-                sample[label_field] = value
-                sample.save()
-            return
+                if type(value) == dict:
+                    frame_ids = list(value.keys())
+                    frames = samples.select_frames(frame_ids).first()
+                    for frame in frames.values():
+                        if frame.id in value:
+                            frame_value = value[frame.id]
+                            frame[formatted_label_field] = frame_value
+                            frame.save()
 
-        # TODO: Add check to see if label_field doesn't exist, then just add all
-        # annotation labels to that new field
+                else:
+                    sample[label_field] = value
+                    sample.save()
+
+            continue
+
+        if not existing_field:
+            fo_label_type = default_label_types_map[label_type]
+            is_list = False
+            if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+                is_list = True
+                list_field = fo_label_type._LABEL_LIST_FIELD
+            for sample in samples:
+                sample_id = sample.id
+                if sample_id in annotations:
+                    sample_annots = annotations[sample_id]
+                    if is_video and is_frame_label:
+                        images = sample.frames.values()
+                    else:
+                        images = [sample]
+                    for image in images:
+                        if is_video and is_frame_label:
+                            if image.id not in sample_annots:
+                                continue
+
+                            image_annots = sample_annots[image.id]
+                        else:
+                            image_annots = sample_annots
+
+                        if is_list:
+                            new_label = fo_label_type()
+                            annot_list = list(image_annots.values())
+                            new_label[list_field] = annot_list
+                        else:
+                            if len(image_annots) == 0:
+                                continue
+                            else:
+                                new_label = list(image_annots.values())[0]
+
+                        image[formatted_label_field] = new_label
+                    sample.save()
+
+            continue
 
         # Setting a label field, need to parse, add, delete, and merge labels
         annotation_label_ids = []
@@ -412,9 +478,6 @@ def load_annotations(samples, info, **kwargs):
 
         prev_ids = set(prev_label_ids)
         ann_ids = set(annotation_label_ids)
-        curr_ids = set(
-            current_label_ids
-        )  # Not currently used, remove in future
         deleted_labels = prev_ids - ann_ids
         added_labels = ann_ids - prev_ids
         labels_to_merge = ann_ids - deleted_labels - added_labels
@@ -428,15 +491,13 @@ def load_annotations(samples, info, **kwargs):
         for sample in annotated_samples:
             sample_id = sample.id
             formatted_label_field = label_field
-            if is_video:
+            if is_video and is_frame_label:
                 images = sample.frames.values()
-                if label_field.startswith("frames."):
-                    formatted_label_field = label_field[len("frames.") :]
             else:
                 images = [sample]
             sample_annots = annotations[sample_id]
             for image in images:
-                if is_video:
+                if is_video and is_frame_label:
                     image_annots = sample_annots[image.id]
                 else:
                     image_annots = sample_annots
@@ -514,6 +575,26 @@ class AnnotationInfo(object):
 
 
 class AnnotationLabelSchema(object):
+    default_label_types = [
+        "classifications",
+        "classification",
+        "detections",
+        "keypoints",
+        "polylines",
+        "scalar",
+    ]
+
+    default_label_types_dict = {
+        fol.Classifications: "classifications",
+        fol.Classification: "classification",
+        fol.Detections: "detections",
+        fol.Detection: "detection",
+        fol.Keypoints: "keypoints",
+        fol.Keypoint: "keypoint",
+        fol.Polylines: "polylines",
+        fol.Polyline: "polyline",
+    }
+
     def __init__(
         self,
         backend,
@@ -541,30 +622,6 @@ class AnnotationLabelSchema(object):
                 self.label_schema = self.initialize_schema_from_kwargs()
 
         self.complete_label_schema = self.build_schema()
-
-    @property
-    def default_label_types(self):
-        return [
-            "classifications",
-            "classification",
-            "detections",
-            "keypoints",
-            "polylines",
-            "scalar",
-        ]
-
-    @property
-    def default_label_types_dict(self):
-        return {
-            fol.Classifications: "classifications",
-            fol.Classification: "classification",
-            fol.Detections: "detections",
-            fol.Detection: "detection",
-            fol.Keypoints: "keypoints",
-            fol.Keypoint: "keypoint",
-            fol.Polylines: "polylines",
-            fol.Polyline: "polyline",
-        }
 
     def map_fiftyone_label_to_type(self, label_field, fiftyone_label_type):
         if fiftyone_label_type in self.default_label_types_dict:
