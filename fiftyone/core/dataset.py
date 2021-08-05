@@ -4047,8 +4047,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     if value is not None or not field.null:
                         try:
                             field.validate(value)
-                        except Exception as e:
-                            raise ValueError(
+                        except moe.ValidationError as e:
+                            raise moe.ValidationError(
                                 "Invalid value for field '%s'. Reason: %s"
                                 % (field_name, str(e))
                             )
