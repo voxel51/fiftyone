@@ -525,9 +525,9 @@ After you make a selection, a new |ToPatches| view stage will be appended to the
 view bar and your view will be updated to show the patches.
 
 By default, patches are cropped so only the label patch is visible. To view the
-entire image when in a patches view, you click on the settings icon and uncheck
-the `Crop to patch` setting. The setting is available in both the grid and
-expanded sample view.
+entire image when in a patches view, you can click on the settings icon and
+uncheck the `Crop to patch` setting. The setting is available in both the grid
+and expanded sample view.
 
 .. note::
 
@@ -575,7 +575,7 @@ appended to the view bar and your view will be updated to show the evaluation
 patches!
 
 By default, patches are cropped so only the label(s) that make up the patch are
-visible. To view the entire image when in a patches view, you click on the
+visible. To view the entire image when in a patches view, you can click on the
 settings icon and uncheck the `Crop to patch` setting. The setting is available
 in both the grid and expanded sample view.
 
@@ -709,24 +709,24 @@ Using the image visualizer
 __________________________
 
 The image visualizer is made for pixel perfect inspection of images and the
-labels asscoiated with an image. To zoom in and out on image, the `+` and `-`
-icons can be used. Or, simply use your mousewheel or scroll with your touchpad.
-And to crop and zoom to only the visible or selected labels, click the
-`Crop` icon, or use the `z` shortcut. And to pan when zoomed in on an image,
-click and drag in any direction.
+labels asscoiated with an image. To zoom in and out on image, the ``+`` and
+``-`` icons can be used. Or, simply use your mousewheel or wheel with your
+touchpad. And to crop and zoom to only the visible or selected labels, click
+the ``Crop`` icon, or use the ``z`` shortcut. To pan when zoomed in on an
+image, click and drag in any direction.
 
 When multiple labels are overlayed on top of each other, the up and down
-arrows offer a convenient way to rotate the z-order of the labels that are
-hovered on, so every label and it's tooltip can viewed.
+arrows offer a convenient way to rotate the z-order of the labels that your
+cursor is hovering over, so every label and it's tooltip can viewed.
 
 The settings icon in the controls HUD offers the label rendering options 
-`Only show hovered label`, `Show confidence`, `Show label`, and `Show tooltip`.
-Default setting for `Show confidence`, `Show label` and `Show tooltip` can be
-configured in the :ref:`App config <app-config>`.
+``Only show hovered label``, ``Show confidence``, ``Show label``, and
+``Show tooltip``. Default setting for ``Show confidence``, ``Show label`` and
+``Show tooltip`` can be configured in the :ref:`App config <app-config>`.
 
-Shortcut keys are availble for almost every action. Clicking `?` icon or using
-the `?` shortcut will display a list of available actions and their key
-mappings.
+Shortcut keys are availble for almost every action. Clicking ``?`` icon or
+using the ``?`` shortcut will display the list of available actions and their
+key mappings.
 
 
 .. _app-video-visualizer:
@@ -736,14 +736,14 @@ __________________________
 
 The video visualizer offers all of the same functionality as the image
 visualizer, as well as some convenient actions and shortcuts for navigating
-through a video. The spacebar pauses and plays the video, and `0`, `1`,... `9`
-are shortcuts to seek to  0%, 10%,... 90% of the video. When the video is
-paused, `>` and `<` are available shortcuts for seeking to the next and
-previous frame, respectively.
+through a video. The spacebar pauses and plays the video, and ``0``, ``1``,
+... ``9`` are shortcuts to seek to  0%, 10%,... 90% of the video. When the
+video is paused, ``>`` and ``<`` are available shortcuts for seeking to the
+next and previous frame, respectively.
 
 All of the same options in the image settings are available in video, as well
-as the `Use frame number` option to show frame stamp instead of the time stamp.
-Th default setting for `Use frame number` can also configured in the
+as the "Use frame number" option to show frame stamp instead of the time stamp.
+Th default setting for ``Use frame number`` can also configured in the
 :ref:`App config <app-config>`.
 
 Playback rate and volume are also available in the video controls HUD to right
