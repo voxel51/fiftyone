@@ -934,6 +934,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             fos.Sample._reload_docs(self._sample_collection_name)
 
+        self._reload()
+
     def _rename_frame_fields(self, field_mapping, view=None):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
@@ -959,6 +961,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_fields, embedded_new_fields, sample_collection
             )
             fofr.Frame._reload_docs(self._frame_collection_name)
+
+        self._reload()
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field into a new field of the dataset.
@@ -1030,6 +1034,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         fos.Sample._reload_docs(self._sample_collection_name)
+        self._reload()
 
     def _clone_frame_fields(self, field_mapping, view=None):
         if self.media_type != fom.VIDEO:
@@ -1052,6 +1057,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         fofr.Frame._reload_docs(self._frame_collection_name)
+        self._reload()
 
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the dataset.
@@ -1227,6 +1233,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_doc_cls._delete_embedded_fields(embedded_fields)
             fos.Sample._reload_docs(self._sample_collection_name)
 
+        self._reload()
+
     def _delete_frame_fields(self, field_names, error_level):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
@@ -1242,6 +1250,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if embedded_fields:
             self._frame_doc_cls._delete_embedded_fields(embedded_fields)
             fofr.Frame._reload_docs(self._frame_collection_name)
+
+        self._reload()
 
     def iter_samples(self, progress=False):
         """Returns an iterator over the samples in the dataset.
