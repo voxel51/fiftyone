@@ -16,15 +16,18 @@ App
   that have been loaded
 - Added the `Show label` option in the expanded sample view to toggle the label
   text above detections boxes
-  
 - Added support for zooming and panning in the expanded sample view
-- Added support for visualizing multiple segmentation fields simultaneously
-  on video samples
+- Added support for cropping and zooming to content in the expanded sample view
+- Added support for visualizing multiple segmentation frame fields
+  simultaneously
 - Added label streaming to the video visualizer
 - Added volume and playback rate settings to the video visualizer
 - Added the `Crop to content` option in patches or evaluation patches views
-  which crops samples in the grid to only show the labels that make up the
-  patch. Defaults to `True`
+  which crops samples to only show the labels that make up the patch. Defaults
+  to `True`
+- Added count and filtered count values to categorical filters
+  (:class:`BooleanField <fiftyone.core.fields.BooleanField>` and
+  :class:`StringField <fiftyone.core.fields.StringField>` fields)
 
 
 Docs
