@@ -3,6 +3,53 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.12.0:
+
+FiftyOne 0.12.0
+---------------
+*Released August 5, 2021*
+
+App
+^^^
+- Resolved performance issues with scrolling via grid virtualization. Toggling
+  fields or selecting samples is no longer impacted by the amount of samples
+  that have been loaded
+- Added the `Show label` option in the expanded sample view to toggle the label
+  text above detections boxes
+  
+- Added support for zooming and panning in the expanded sample view
+- Added support for visualizing multiple segmentation fields simultaneously
+  on video samples
+- Added label streaming to the video visualizer
+- Added volume and playback rate settings to the video visualizer
+- Added the `Crop to content` option in patches or evaluation patches views
+  which crops samples in the grid to only show the labels that make up the
+  patch. Defaults to `True`
+
+
+Docs
+^^^^
+- Added sections
+
+Zoo
+^^^
+- Patched an Open Images issue where `classes` or `attrs` requirements were
+  being ignored when loading a dataset with no `max_samples` requirement
+
+.. _release-notes-v0.11.2.1:
+
+FiftyOne 0.11.2.1
+-----------------
+
+Zoo
+^^^
+- Patched an Open Images issue where label files were not being downloaded
+  when running a :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>`
+  call that does not include `classes` or `attrs` options in an environment
+  where Open Images has never been downloaded
+- Patched loading of Cityscape datasets
+- Patched loading of COCO datasets
+
 .. _release-notes-v0.11.2:
 
 FiftyOne 0.11.2
