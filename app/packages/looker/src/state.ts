@@ -165,6 +165,7 @@ export interface BaseState {
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
   error: boolean;
+  destroyed: boolean;
 }
 
 export interface FrameState extends BaseState {

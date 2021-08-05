@@ -162,7 +162,7 @@ export abstract class Looker<
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
 
-      if (!this.state.windowBBox) {
+      if (!this.state.windowBBox || this.state.destroyed) {
         return;
       }
 
@@ -327,6 +327,7 @@ export abstract class Looker<
       this.lookerElement.element.parentElement.removeChild(
         this.lookerElement.element
       );
+    this.updater({ destroyed: true });
   }
 
   protected abstract hasDefaultZoom(
@@ -388,6 +389,7 @@ export abstract class Looker<
       hasDefaultZoom: true,
       SHORTCUTS: COMMON_SHORTCUTS,
       error: null,
+      destroyed: false,
     };
   }
 
@@ -842,6 +844,11 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
     );
   }
 
+  destroy() {
+    this.lookerElement.children[0].releaseVideo();
+    super.destroy();
+  }
+
   dispatchImpliedEvents(
     previousState: Readonly<VideoState>,
     state: Readonly<VideoState>
@@ -1123,12 +1130,6 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
     this.frames.clear();
     super.updateSample(sample);
     this.requestFrames(this.frameNumber, true);
-  }
-
-  destroy() {
-    this.lookerElement.children[0].releaseVideo &&
-      this.lookerElement.children[0].releaseVideo();
-    super.destroy();
   }
 
   private hasFrame(frameNumber: number) {

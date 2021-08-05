@@ -55,9 +55,7 @@ const gridRowAspectRatio = selector<number>({
 const createLookerCache = () => {
   return new LRU<string, FrameLooker | ImageLooker | VideoLooker>({
     max: 500,
-    dispose: (id, looker) => {
-      looker.destroy();
-    },
+    dispose: (id, looker) => looker.destroy(),
   });
 };
 

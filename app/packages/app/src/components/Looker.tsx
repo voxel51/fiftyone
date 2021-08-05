@@ -442,7 +442,11 @@ const Looker = ({
     initialRef.current = false;
   }, []);
 
-  useEffect(() => looker.attach(fullscreen ? "root" : id), [id, fullscreen]);
+  useEffect(() => {
+    looker.attach(fullscreen ? "root" : id);
+
+    return () => looker.destroy();
+  }, [id, fullscreen]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
 
