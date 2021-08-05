@@ -489,7 +489,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
                 setTimeout(() => {
-                  this.canvas.getContext("2d").drawImage(video, 0, 0);
+                  const ctx = this.canvas.getContext("2d");
+                  ctx.imageSmoothingEnabled = false;
+                  ctx.drawImage(video, 0, 0);
                   release();
                   video.removeEventListener("seeked", listener);
                   this.update({
