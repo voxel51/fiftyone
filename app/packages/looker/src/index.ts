@@ -664,7 +664,8 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
   updateOptions(options: Optional<ImageState["options"]>) {
     const state: Optional<ImageState> = { options };
     if (options.zoom !== undefined) {
-      state.setZoom = this.state.options.zoom !== options.zoom;
+      state.setZoom =
+        this.state.options.zoom !== options.zoom || this.state.config.thumbnail;
     }
     this.updater(state);
   }
