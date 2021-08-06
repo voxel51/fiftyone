@@ -445,7 +445,7 @@ export abstract class Looker<
     this.state.pointRadius = POINT_RADIUS / this.state.scale;
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
     this.state.dashLength = DASH_LENGTH / this.state.scale;
-    this.state.config.thumbnail && (this.state.strokeWidth /= 2);
+    this.state.config.thumbnail && (this.state.strokeWidth /= 3);
     this.state.textPad = PAD / this.state.scale;
 
     this.state.hasDefaultZoom = this.hasDefaultZoom(

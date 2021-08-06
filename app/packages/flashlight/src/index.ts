@@ -330,31 +330,39 @@ export default class Flashlight<K> {
 
   private showSections() {
     const hidden = this.state.zooming && this.shownSectionsNeedUpdate();
+    let count = 0;
     this.state.shownSections.forEach((index) => {
       const section = this.state.sections[index];
       if (!section) {
         return;
       }
+      let shown = false;
 
       if (
         this.state.resized &&
         !this.state.resized.has(section.index) &&
-        !hidden
+        !hidden &&
+        count === 0
       ) {
         this.state.onItemResize && section.resizeItems(this.state.onItemResize);
         this.state.resized.add(section.index);
+        shown = true;
       }
 
       if (!this.state.clean.has(section.index) && !hidden) {
-        this.state.updater &&
+        count === 0 &&
+          this.state.updater &&
           section
             .getItems()
             .map(({ id }) => id)
             .forEach((id) => this.state.updater(id));
         this.state.clean.add(section.index);
+        shown = true;
       }
-      section.show(this.container, hidden, this.state.zooming);
+      section.show(this.container, hidden, this.state.zooming || count > 0);
       this.state.shownSections.add(section.index);
+
+      shown && count++;
     });
   }
 
@@ -419,7 +427,9 @@ export default class Flashlight<K> {
     this.state.zooming =
       !force &&
       this.lastScrollTop !== null &&
-      pixelDelta / timeDelta > 100 / this.state.options.rowAspectRatioThreshold;
+      (pixelDelta / timeDelta >
+        0.5 / this.state.options.rowAspectRatioThreshold ||
+        timeDelta > 20);
 
     this.showSections();
 
