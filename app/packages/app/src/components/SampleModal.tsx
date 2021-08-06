@@ -1,11 +1,6 @@
-import React, { Suspense, useState, useRef, useMemo } from "react";
+import React, { Suspense, useRef } from "react";
 import styled from "styled-components";
-import {
-  useRecoilValue,
-  useRecoilState,
-  selector,
-  useRecoilCallback,
-} from "recoil";
+import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import Actions from "./Actions";
 import FieldsSidebar from "./FieldsSidebar";
@@ -13,31 +8,11 @@ import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useTheme } from "../utils/hooks";
+import { useMessageHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
-const modalSrc = selector<string | null>({
-  key: "modalSrc",
-  get: ({ get }) => get(selectors.sampleSrc(get(atoms.modal).sampleId)),
-});
-
-const modalIndex = selector<number>({
-  key: "modalIndex",
-  get: ({ get }) => {
-    const { sampleId } = get(atoms.modal);
-    return get(selectors.sampleIndices)[sampleId];
-  },
-  set: ({ get, set }, value) => {
-    if (typeof value !== "number") {
-      value = 0;
-    }
-    set(atoms.modal, {
-      visible: true,
-      sampleId: get(selectors.sampleIds)[value],
-    });
-  },
-});
+import { getSampleSrc } from "../recoil/utils";
+import { samples } from "./Flashlight";
 
 const Container = styled.div`
   position: relative;
@@ -188,7 +163,6 @@ const Row = ({ name, value, children, ...rest }: RowProps) => (
 
 type Props = {
   onClose: () => void;
-  sampleId: string;
 };
 
 interface SelectEvent {
@@ -204,7 +178,7 @@ const useOnSelectLabel = () => {
     ({ snapshot, set }) => async ({
       detail: { id, field, frameNumber },
     }: SelectEvent) => {
-      const { sampleId } = await snapshot.getPromise(atoms.modal);
+      const { sample } = await snapshot.getPromise(atoms.modal);
       let labels = {
         ...(await snapshot.getPromise(selectors.selectedLabels)),
       };
@@ -213,7 +187,7 @@ const useOnSelectLabel = () => {
       } else {
         labels[id] = {
           field,
-          sample_id: sampleId,
+          sample_id: sample._id,
           frame_number: frameNumber,
         };
       }
@@ -223,94 +197,99 @@ const useOnSelectLabel = () => {
   );
 };
 
-const SampleModal = ({ onClose, sampleId }: Props, ref) => {
-  const { filepath, _media_type, metadata, _id } = useRecoilValue(
-    atoms.sample(sampleId)
+export const useSampleUpdate = (lookerRef) => {
+  const handler = useRecoilCallback(
+    ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
+      const modal = await snapshot.getPromise(atoms.modal);
+      updatedSamples.forEach(({ sample }) => {
+        modal.sample._id === sample._id &&
+          lookerRef.current &&
+          lookerRef.current.updateSample(sample);
+      });
+      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
+      set(selectors.anyTagging, false);
+    },
+    []
   );
-  const fullscreen = useRecoilValue(atoms.fullscreen);
-  const sampleSrc = useRecoilValue(modalSrc);
-  const [index, setIndex] = useRecoilState(modalIndex);
-  const numSamples = useRecoilValue(selectors.currentSamplesSize);
+  useMessageHandler("samples_update", handler);
+};
+
+const SampleModal = ({ onClose }: Props, ref) => {
+  const {
+    sample: { filepath, _id, _media_type, metadata },
+    index,
+    getIndex,
+  } = useRecoilValue(atoms.modal);
+
+  const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
+  let count = useRecoilValue(selectors.filteredCount);
+  const total = useRecoilValue(selectors.totalCount);
+  if (count === null) {
+    count = total;
+  }
 
-  const onNext = useMemo(() => {
-    if (index < numSamples - 1) {
-      return () => setIndex(index + 1);
-    }
-    return null;
-  }, [index, numSamples]);
-
-  const onPrevious = useMemo(() => {
-    if (index > 0) {
-      return () => setIndex(index - 1);
-    }
-    return null;
-  }, [index]);
+  useSampleUpdate(lookerRef);
 
   const theme = useTheme();
-
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>
       <div className={`looker-element`}>
         <Looker
           key={`modal-${sampleSrc}`} // force re-render when this changes
-          sampleId={_id}
-          modal={true}
           lookerRef={lookerRef}
           onSelectLabel={onSelectLabel}
-          onNext={onNext}
-          onPrevious={onPrevious}
           onClose={onClose}
+          onPrevious={index > 0 ? () => getIndex(index - 1) : null}
+          onNext={() => getIndex(index + 1)}
         />
       </div>
-      {!fullscreen && (
-        <div className={`sidebar`}>
-          <ModalFooter
-            style={{
-              width: "100%",
-              borderTop: "none",
-              borderBottom: `2px solid ${theme.border}`,
-              position: "relative",
-            }}
-          >
-            <Actions modal={true} lookerRef={lookerRef} />
-          </ModalFooter>
-          <div className="sidebar-content">
-            <h2>
-              Metadata
-              <span className="push-right" />
-            </h2>
-            <Row name="id" value={_id} />
-            <Row name="filepath" value={filepath} />
-            <Row name="media type" value={_media_type} />
-            {formatMetadata(metadata).map(({ name, value }) => (
-              <Row key={"metadata-" + name} name={name} value={value} />
-            ))}
-            <Suspense
-              fallback={
-                <h2>
-                  Fields...
-                  <span className="push-right" />
-                </h2>
-              }
-            >
+      <div className={`sidebar`}>
+        <ModalFooter
+          style={{
+            width: "100%",
+            borderTop: "none",
+            borderBottom: `2px solid ${theme.border}`,
+            position: "relative",
+          }}
+        >
+          <Actions modal={true} lookerRef={lookerRef} />
+        </ModalFooter>
+        <div className="sidebar-content">
+          <h2>
+            Metadata
+            <span className="push-right" />
+          </h2>
+          <Row name="id" value={_id} />
+          <Row name="filepath" value={filepath} />
+          <Row name="media type" value={_media_type} />
+          {formatMetadata(metadata).map(({ name, value }) => (
+            <Row key={"metadata-" + name} name={name} value={value} />
+          ))}
+          <Suspense
+            fallback={
               <h2>
                 Fields
                 <span className="push-right" />
               </h2>
-              <FieldsSidebar
-                modal={true}
-                style={{
-                  overflowY: "auto",
-                  overflowX: "hidden",
-                  height: "auto",
-                }}
-              />
-            </Suspense>
-          </div>
+            }
+          >
+            <h2>
+              Fields
+              <span className="push-right" />
+            </h2>
+            <FieldsSidebar
+              modal={true}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+            />
+          </Suspense>
         </div>
-      )}
+      </div>
     </Container>
   );
 };

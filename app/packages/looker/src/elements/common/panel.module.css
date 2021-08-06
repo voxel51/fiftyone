@@ -31,10 +31,9 @@
   top: 0;
   left: 0;
   height: 100%;
-  width: 100%;
   display: flex;
   justify-content: center;
-  padding: 10px 20px 50px;
+  padding: 10px 60px 50px;
 }
 
 .lookerPanelVerticalContainer {

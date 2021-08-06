@@ -67,15 +67,13 @@ export default class ClassificationsOverlay<State extends BaseState>
   getPointInfo(state: Readonly<State>): PointInfo {
     const filtered = this.getFilteredAndFlat(state);
     const [w, h] = state.config.dimensions;
-    const [_, __, ww, wh] = state.windowBBox;
-    const pad = (getRenderedScale([ww, wh], [w, h]) * state.strokeWidth) / 2;
 
     for (const [field, label] of filtered) {
       const box = this.labelBoundingBoxes[label._id];
 
       if (box) {
         let [bx, by, bw, bh] = box;
-        [bx, by, bw, bh] = [bx * w, by * h, bw * w + pad, bh * h + pad];
+        [bx, by, bw, bh] = [bx * w, by * h, bw * w, bh * h];
 
         const [px, py] = state.pixelCoordinates;
 
@@ -139,7 +137,7 @@ export default class ClassificationsOverlay<State extends BaseState>
   private getFiltered(state: Readonly<State>): ClassificationLabels {
     return this.labels.map(([field, labels]) => [
       field,
-      labels.filter((label) => isShown(state, field, label)),
+      labels.filter((label) => isShown(state, field, label) && label.label),
     ]);
   }
 
@@ -157,7 +155,7 @@ export default class ClassificationsOverlay<State extends BaseState>
 
     if (sort) {
       const store = Object.fromEntries(
-        state.options.activeLabels.map<[string, ClassificationLabel[]]>((a) => [
+        state.options.activePaths.map<[string, ClassificationLabel[]]>((a) => [
           a,
           [],
         ])
@@ -165,7 +163,7 @@ export default class ClassificationsOverlay<State extends BaseState>
       result.forEach(([field, label]) => {
         store[field].push(label);
       });
-      result = state.options.activeLabels.reduce<
+      result = state.options.activePaths.reduce<
         [string, ClassificationLabel][]
       >((acc, field) => {
         return [
@@ -246,10 +244,10 @@ export default class ClassificationsOverlay<State extends BaseState>
     return {
       top: tly + h + state.textPad * 2,
       box: [
-        tlx / state.canvasBBox[2],
+        (tlx - state.textPad / 2) / state.canvasBBox[2],
         tly / state.canvasBBox[3],
-        w / state.canvasBBox[2],
-        h / state.canvasBBox[3],
+        (w + state.textPad / 2) / state.canvasBBox[2],
+        (h + state.textPad) / state.canvasBBox[3],
       ],
     };
   }

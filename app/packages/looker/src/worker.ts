@@ -45,8 +45,8 @@ const processMasks = (sample: { [key: string]: any }): ArrayBuffer[] => {
 };
 
 const getUrl = (origin: string): string => {
-  // @ts-ignore
   try {
+    // @ts-ignore
     if (import.meta.env.DEV) {
       origin = "http://localhost:5151";
     }

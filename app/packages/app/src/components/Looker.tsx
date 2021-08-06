@@ -1,72 +1,19 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import {
-  selectorFamily,
-  useRecoilValue,
-  useRecoilCallback,
-  selector,
-} from "recoil";
+import { useRecoilValue, useRecoilCallback, selector } from "recoil";
 import { animated, useSpring } from "react-spring";
 import { v4 as uuid } from "uuid";
 
 import * as labelAtoms from "./Filters/utils";
 import { ContentDiv, ContentHeader } from "./utils";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler, useTheme } from "../utils/hooks";
+import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { getSampleSrc, lookerType } from "../recoil/utils";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
-import {
-  FrameOptions,
-  ImageOptions,
-  VideoOptions,
-} from "@fiftyone/looker/src/state";
-import ExternalLink from "./ExternalLink";
-import { Warning } from "@material-ui/icons";
-
-type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
-
-const lookerType = selectorFamily<LookerTypes, string>({
-  key: "lookerType",
-  get: (sampleId) => ({ get }) => {
-    const video = get(selectors.sampleMimeType(sampleId)).startsWith("video/");
-    const isFrame = get(selectors.isFramesView);
-    const isPatch = get(selectors.isPatchesView);
-    if (video && (isFrame || isPatch)) {
-      return FrameLooker;
-    }
-
-    if (video) {
-      return VideoLooker;
-    }
-    return ImageLooker;
-  },
-});
-
-const InfoWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 100;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 125%;
-  svg {
-    font-size: 200%;
-    color: ${({ theme }) => theme.fontDark};
-  }
-  svg.error {
-    color: ${({ theme }) => theme.error};
-  }
-  p {
-    margin: 0;
-  }
-`;
 
 const TagBlock = styled.div`
   margin: 0;
@@ -201,7 +148,10 @@ const AttrInfo = ({ label, children = null }) => {
     typeof label.attributes === "object"
       ? Object.entries(
           label.attributes as { [key: string]: { value: string | number } }
-        ).map(([k, v]) => ["attributes." + k, v.value])
+        ).map<[string, string | number]>(([k, v]) => [
+          "attributes." + k,
+          v.value,
+        ])
       : null;
 
   return (
@@ -352,21 +302,24 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
 
 type EventCallback = (event: CustomEvent) => void;
 
-const defaultLookerOptions = selectorFamily({
-  key: "defaultLookerOptions",
-  get: (modal: boolean) => ({ get }) => {
+const reverse = (obj) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
+
+const lookerOptions = selector({
+  key: "lookerOptions",
+  get: ({ get }) => {
     const showConfidence = get(selectors.appConfig).show_confidence;
     const showIndex = get(selectors.appConfig).show_index;
     const showLabel = get(selectors.appConfig).show_label;
     const showTooltip = get(selectors.appConfig).show_tooltip;
     const useFrameNumber = get(selectors.appConfig).use_frame_number;
     const video = get(selectors.isVideoDataset)
-      ? { loop: modal ? get(selectors.appConfig).loop_videos : true }
+      ? { loop: get(selectors.appConfig).loop_videos }
       : {};
     const zoom = get(selectors.isPatchesView)
-      ? get(atoms.cropToContent(modal))
+      ? get(atoms.cropToContent(true))
       : false;
-    const colorByLabel = get(atoms.colorByLabel(modal));
+    const colorByLabel = get(atoms.colorByLabel(true));
 
     return {
       colorByLabel,
@@ -376,37 +329,7 @@ const defaultLookerOptions = selectorFamily({
       useFrameNumber,
       showTooltip,
       ...video,
-      ...zoom,
-    };
-  },
-});
-
-const lookerOptions = selector<
-  Partial<FrameOptions | ImageOptions | VideoOptions>
->({
-  key: "lookerOptions",
-  get: ({ get }) => {
-    return {
-      colorByLabel: get(atoms.colorByLabel(false)),
-      colorMap: get(selectors.colorMap(false)),
-      filter: get(labelFilters(false)),
-      zoom: get(selectors.isPatchesView)
-        ? get(atoms.cropToContent(false))
-        : false,
-    };
-  },
-});
-
-const reverse = (obj) =>
-  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
-
-const lookerModalOptions = selector<
-  Partial<FrameOptions | ImageOptions | VideoOptions>
->({
-  key: "lookerModalOptions",
-  get: ({ get }) => {
-    return {
-      ...get(defaultLookerOptions(true)),
+      zoom,
       colorMap: get(selectors.colorMap(true)),
       filter: get(labelFilters(true)),
       ...get(atoms.savedLookerOptions),
@@ -435,112 +358,82 @@ const useFullscreen = () => {
   });
 };
 
-const useErrorHandler = (looker, sampleId) => {
-  const [error, setError] = useState(null);
-  const mimetype = useRecoilValue(selectors.sampleMimeType(sampleId));
-  const video = mimetype.startsWith("video/");
-
-  useEventHandler(looker, "error", () =>
-    setError(
-      <>
-        <p>
-          The {video ? "video" : "image"} failed to load. The file may not
-          exist, or its type ({mimetype}) may be unsupported.
-        </p>
-        <p>
-          {video && (
-            <>
-              {" "}
-              You can use{" "}
-              <code>
-                <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
-                  fiftyone.utils.video.reencode_videos()
-                </ExternalLink>
-              </code>{" "}
-              to re-encode videos in a supported format.
-            </>
-          )}
-        </p>
-      </>
-    )
+const useClearSelectedLabels = () => {
+  return useRecoilCallback(
+    ({ set }) => async () => set(selectors.selectedLabels, {}),
+    []
   );
-
-  return error;
 };
 
 interface LookerProps {
   lookerRef?: MutableRefObject<any>;
-  modal: boolean;
   onClose?: EventCallback;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onNext?: EventCallback;
   onPrevious?: EventCallback;
   onSelectLabel?: EventCallback;
-  sampleId: string;
   style?: React.CSSProperties;
 }
 
 const Looker = ({
   lookerRef,
-  modal,
   onClose,
-  onClick,
   onNext,
   onPrevious,
   onSelectLabel,
-  sampleId,
   style,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  let sample = useRecoilValue(atoms.sample(sampleId));
-  const sampleSrc = useRecoilValue(selectors.sampleSrc(sampleId));
-  const options = useRecoilValue(modal ? lookerModalOptions : lookerOptions);
-  const activeLabels = useRecoilValue(
-    modal ? labelAtoms.activeModalFields : labelAtoms.activeFields
+  const { sample, dimensions, frameRate, frameNumber } = useRecoilValue(
+    atoms.modal
   );
-  const metadata = useRecoilValue(atoms.sampleMetadata(sampleId));
+  const fullscreen = useRecoilValue(atoms.fullscreen);
+  const mimetype = getMimeType(sample);
+  const sampleSrc = getSampleSrc(sample.filepath, sample._id);
+  const options = useRecoilValue(lookerOptions);
+  const activePaths = useRecoilValue(labelAtoms.activeModalFields);
   const theme = useTheme();
-  const lookerConstructor = useRecoilValue(lookerType(sampleId));
+  const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
 
-  const [looker] = useState(
-    () =>
-      new lookerConstructor(
-        sample,
-        {
-          src: sampleSrc,
-          thumbnail: !modal,
-          dimensions: [metadata.width, metadata.height],
-          frameRate: metadata.frameRate,
-          frameNumber: sample.frame_number,
-          sampleId,
-        },
-        {
-          activeLabels,
-          ...options,
-          hasNext: Boolean(onNext),
-          hasPrevious: Boolean(onPrevious),
-        }
-      )
-  );
+  const [looker] = useState(() => {
+    const constructor = getLookerConstructor(mimetype);
+
+    return new constructor(
+      sample,
+      {
+        src: sampleSrc,
+        dimensions,
+        frameRate,
+        frameNumber,
+        sampleId: sample._id,
+        thumbnail: false,
+      },
+      {
+        activePaths,
+        ...options,
+        hasNext: Boolean(onNext),
+        hasPrevious: Boolean(onPrevious),
+      }
+    );
+  });
 
   useEffect(() => {
-    !initialRef.current && looker.updateOptions({ ...options, activeLabels });
-  }, [options, activeLabels]);
+    !initialRef.current && looker.updateOptions({ ...options, activePaths });
+  }, [options, activePaths]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
   }, [sample]);
 
   useEffect(() => {
-    return () => modal && looker && looker.destroy();
+    return () => looker && looker.destroy();
   }, [looker]);
 
   lookerRef && (lookerRef.current = looker);
 
-  const error = useErrorHandler(looker, sampleId);
-  modal && useEventHandler(looker, "options", useLookerOptionsUpdate());
-  modal && useEventHandler(looker, "fullscreen", useFullscreen());
+  useEventHandler(looker, "options", useLookerOptionsUpdate());
+  useEventHandler(looker, "fullscreen", useFullscreen());
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);
@@ -549,7 +442,13 @@ const Looker = ({
     initialRef.current = false;
   }, []);
 
-  useEffect(() => looker.attach(id), [id]);
+  useEffect(() => {
+    looker.attach(fullscreen ? "root" : id);
+
+    return () => looker.destroy();
+  }, [id, fullscreen]);
+
+  useEventHandler(looker, "clear", useClearSelectedLabels());
 
   return (
     <div
@@ -560,15 +459,8 @@ const Looker = ({
         background: theme.backgroundDark,
         ...style,
       }}
-      onClick={onClick}
     >
-      {error && (
-        <InfoWrapper>
-          <Warning classes={{ root: "error" }} />
-          {!modal ? null : <div>{error}</div>}{" "}
-        </InfoWrapper>
-      )}
-      {modal && <TooltipInfo looker={looker} />}
+      {<TooltipInfo looker={looker} />}
     </div>
   );
 };

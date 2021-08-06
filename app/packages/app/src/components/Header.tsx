@@ -25,7 +25,6 @@ import { Slack } from "../icons";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
-import { useTheme } from "../utils/hooks";
 import { packageMessage } from "../utils/socket";
 
 import Logo from "../images/logo.png";

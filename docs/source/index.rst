@@ -59,10 +59,8 @@ failure modes, finding annotation mistakes, and much more!
     :button_text: Install FiftyOne!
     :button_link: getting_started/install.html
 
-**The pandas for visual datasets**
-
 FiftyOne integrates naturally with your favorite tools. Click on a logo to
-learn how!
+learn how:
 
 .. raw:: html
 
@@ -256,15 +254,15 @@ adding custom tags, model predictions and more.
     datasets in custom formats.
 
     Check out :doc:`loading datasets <user_guide/dataset_creation/index>` to see
-    how to load your data into FiftyOne!
+    how to load your data into FiftyOne.
 
 :doc:`FiftyOne App <user_guide/app>`
 ------------------------------------
 
-The FiftyOne App is a graphical user interface (GUI) that makes it easy to
-rapidly gain intuition into your datasets. You can visualize labels, bounding
-boxes and segmentations overlayed on the samples; sort, query and slice your
-dataset into any aspect you need; and more.
+The FiftyOne App is a graphical user interface that makes it easy to explore
+and rapidly gain intuition into your datasets. You can visualize labels like
+bounding boxes and segmentations overlaid on the samples; sort, query and
+slice your dataset into any subset of interest; and more.
 
 .. custombutton::
     :button_text: See more of the App

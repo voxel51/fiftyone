@@ -68,10 +68,9 @@ export const scrollbarStyles = ({ theme }) => `
 ::-webkit-scrollbar {
   width: 16px;
 }
-scrollbar-width: none;
-@-moz-document url-prefix() {
-  padding-right: 16px;
-}
+
+scrollbar-color: ${({ theme }) => theme.fontDarkest} ${({ theme }) =>
+  theme.background};
 
 ::-webkit-scrollbar-track {
   border: solid 4px transparent ${theme.fontDarkest};

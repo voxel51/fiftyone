@@ -30,7 +30,7 @@ export class NextElement<State extends BaseState> extends BaseElement<
   State,
   HTMLImageElement
 > {
-  private showControls: boolean = false;
+  private showControls: boolean;
   getEvents(): Events<State> {
     return {
       click: ({ update, event, dispatchEvent }) => {
@@ -55,28 +55,27 @@ export class NextElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  isShown({ config: { thumbnail }, options: { hasNext } }: Readonly<State>) {
-    return !thumbnail && hasNext;
+  isShown({ thumbnail }: Readonly<State["config"]>) {
+    return !thumbnail;
   }
 
   renderSelf({
     showControls,
     disableControls,
-    config: { thumbnail },
+    options: { hasNext },
   }: Readonly<State>) {
-    if (thumbnail) {
-      return this.element;
-    }
-    showControls = showControls && !disableControls;
+    showControls = showControls && !disableControls && hasNext;
     if (this.showControls === showControls) {
       return this.element;
     }
     if (showControls) {
       this.element.style.opacity = "0.9";
       this.element.style.height = "unset";
+      this.element.style.display = "block";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
+      this.element.style.display = "none";
     }
     this.showControls = showControls;
     return this.element;
@@ -87,7 +86,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   State,
   HTMLImageElement
 > {
-  private showControls: boolean = false;
+  private showControls: boolean;
   getEvents(): Events<State> {
     return {
       click: ({ update, event, dispatchEvent }) => {
@@ -112,31 +111,27 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  isShown({
-    config: { thumbnail },
-    options: { hasPrevious },
-  }: Readonly<State>) {
-    return !thumbnail && hasPrevious;
+  isShown({ thumbnail }: Readonly<State["config"]>) {
+    return !thumbnail;
   }
 
   renderSelf({
     showControls,
     disableControls,
-    config: { thumbnail },
+    options: { hasPrevious },
   }: Readonly<State>) {
-    if (thumbnail) {
-      return this.element;
-    }
-    showControls = showControls && !disableControls;
+    showControls = showControls && !disableControls && hasPrevious;
     if (this.showControls === showControls) {
       return this.element;
     }
     if (showControls) {
       this.element.style.opacity = "0.9";
       this.element.style.height = "unset";
+      this.element.style.display = "block";
     } else {
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
+      this.element.style.display = "none";
     }
     this.showControls = showControls;
     return this.element;
@@ -165,19 +160,17 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
     return element;
   }
 
-  isShown({ config: { thumbnail } }: Readonly<State>) {
+  isShown({ thumbnail }: Readonly<State["config"]>) {
     return !thumbnail;
   }
 
   renderSelf({
     showControls,
     disableControls,
-    config: { thumbnail },
+    error,
+    loaded,
   }: Readonly<State>) {
-    if (thumbnail) {
-      return this.element;
-    }
-    showControls = showControls && !disableControls;
+    showControls = showControls && !disableControls && !error && loaded;
     if (this.showControls === showControls) {
       return this.element;
     }

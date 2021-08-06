@@ -5,14 +5,18 @@
 import { ImageState } from "../state";
 import { BaseElement, Events } from "./base";
 
-import { mediaOrCanvas, invisible } from "./media.module.css";
-
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private src: string = "";
+  private imageSource: HTMLCanvasElement = document.createElement("canvas");
 
   getEvents(): Events<ImageState> {
     return {
       load: ({ update }) => {
+        this.imageSource.width = this.element.naturalWidth;
+        this.imageSource.height = this.element.naturalHeight;
+        this.imageSource.getContext("2d").drawImage(this.element, 0, 0);
+        delete this.element;
+
         update({ loaded: true });
       },
       error: ({ event, dispatchEvent }) => {
@@ -22,9 +26,8 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   }
 
   createHTMLElement() {
-    const element = document.createElement("img");
-    element.classList.add(mediaOrCanvas, invisible);
-    element.loading = "lazy";
+    const element = new Image();
+    element.loading = "eager";
     return element;
   }
 
@@ -34,6 +37,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
       this.element.setAttribute("src", src);
     }
 
-    return this.element;
+    return null;
   }
 }

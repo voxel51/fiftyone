@@ -32,6 +32,7 @@ type ElementConstructor<
   State extends BaseState,
   Element extends BaseElement<State>
 > = new (
+  config: Readonly<State["config"]>,
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent,
   children?: BaseElement<State>[]
@@ -49,18 +50,27 @@ export function createElementsTree<
   State extends BaseState,
   Element extends BaseElement<State> = BaseElement<State>
 >(
+  config: Readonly<State["config"]>,
   root: ElementsTemplate<State, Element>,
   update: StateUpdate<State>,
   dispatchEvent: (eventType: string, details?: any) => void
 ): Element {
+  const element = new root.node(config, update, dispatchEvent);
+
+  if (!element.isShown(config)) {
+    return element;
+  }
+
   let children = new Array<BaseElement<State>>();
   children = root.children
     ? root.children.map((child) =>
-        createElementsTree<State>(child, update, dispatchEvent)
+        createElementsTree<State>(config, child, update, dispatchEvent)
       )
     : children;
 
-  return new root.node(update, dispatchEvent, children);
+  element.applyChildren(children);
+
+  return element;
 }
 
 const stringifyNumber = function (
@@ -186,3 +196,54 @@ export function withEvents<
   // @ts-ignore
   return WithElement;
 }
+
+const makeAcquirer = (maxVideos: number) => {
+  const VIDEOS: HTMLVideoElement[] = [];
+  const QUEUE = [];
+  const FREE = [];
+
+  const release = (video: HTMLVideoElement) => {
+    return () => {
+      if (!video.paused) {
+        throw new Error("Release playing video");
+      }
+
+      video.pause();
+      video.muted = true;
+      video.preload = "metadata";
+      video.loop = false;
+      video.src = "";
+      if (QUEUE.length) {
+        const resolve = QUEUE.shift();
+        resolve([video, release(video)]);
+      } else {
+        FREE.push(video);
+      }
+    };
+  };
+
+  return (): Promise<[HTMLVideoElement, () => void]> => {
+    if (FREE.length) {
+      const video = FREE.shift();
+      return Promise.resolve([video, release(video)]);
+    }
+
+    if (VIDEOS.length < maxVideos) {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted = true;
+      video.loop = false;
+
+      VIDEOS.push(video);
+      return Promise.resolve([video, release(video)]);
+    }
+
+    return new Promise<[HTMLVideoElement, () => void]>((resolve) => {
+      QUEUE.push(resolve);
+    });
+  };
+};
+
+export const acquirePlayer = makeAcquirer(1);
+
+export const acquireThumbnailer = makeAcquirer(6);

@@ -11,12 +11,14 @@
         "start": "vite preview"
     },
     "dependencies": {
+        "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
         "@material-ui/core": "4.11.4",
         "@material-ui/icons": "^4.9.1",
         "@xstate/react": "1.3.3",
         "classnames": "^2.2.6",
         "html2canvas": "1.0.0-rc.7",
+        "lru-cache": "^6.0.0",
         "mime": "^2.5.2",
         "numeral": "^2.0.6",
         "re-resizable": "^6.8.0",
@@ -25,7 +27,6 @@
         "react-error-boundary": "^2.3.1",
         "react-ga": "^3.1.2",
         "react-hotkeys": "^2.0.0",
-        "react-infinite-scroller": "^1.2.4",
         "react-input-autosize": "^3.0.0",
         "react-is": "^17.0.1",
         "react-spring": "8.0.1",

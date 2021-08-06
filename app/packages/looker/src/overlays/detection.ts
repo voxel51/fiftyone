@@ -5,7 +5,6 @@ import { get32BitColor, getAlphaColor } from "../color";
 import {
   BACKGROUND_ALPHA,
   DASH_COLOR,
-  DASH_LENGTH,
   MASK_ALPHA,
   SELECTED_MASK_ALPHA,
   TEXT_COLOR,
@@ -13,11 +12,7 @@ import {
 
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
-import {
-  distanceFromLineSegment,
-  ensureCanvasSize,
-  getRenderedScale,
-} from "../util";
+import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
@@ -29,18 +24,21 @@ interface DetectionLabel extends RegularLabel {
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
-  private colorMap: (key: string | number) => string;
-  private imageColors: Uint32Array;
-  private static readonly intermediateCanvas: HTMLCanvasElement =
-    typeof document !== "undefined" ? document.createElement("canvas") : null;
+  private imageData: ImageData;
   private labelBoundingBox: BoundingBox;
-  private mask: Uint8Array;
-  private selected: boolean;
+  private mask: Uint8ClampedArray;
+  private bitColor: number;
+  private canvas: HTMLCanvasElement;
 
   constructor(field, label) {
     super(field, label);
     if (this.label.mask) {
-      this.mask = new Uint8Array(this.label.mask.buffer);
+      this.mask = new Uint8ClampedArray(this.label.mask.buffer);
+      const [height, width] = this.label.mask.shape;
+      this.canvas = document.createElement("canvas");
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.imageData = new ImageData(width, height);
     }
   }
 
@@ -135,52 +133,41 @@ export default class DetectionOverlay<
 
     const rHeight = (height + bpad) / state.canvasBBox[3];
     this.labelBoundingBox = [
-      tlx,
+      tlx - state.strokeWidth / state.canvasBBox[2],
       tly - rHeight,
-      (width + bpad) / state.canvasBBox[2],
-      rHeight,
+      (width + bpad + state.strokeWidth / 2) / state.canvasBBox[2],
+      rHeight + state.strokeWidth / state.canvasBBox[3],
     ];
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
-    const [maskHeight, maskWidth] = this.label.mask.shape;
-    const maskContext = DetectionOverlay.intermediateCanvas.getContext("2d");
-    ensureCanvasSize(DetectionOverlay.intermediateCanvas, [
-      maskWidth,
-      maskHeight,
-    ]);
-    const maskImage = maskContext.createImageData(maskWidth, maskHeight);
-    const maskImageRaw = new Uint32Array(maskImage.data.buffer);
-    const imageColors = new Uint32Array(maskImage.data.buffer);
-
     const selected = this.isSelected(state);
-    if (
-      this.colorMap === state.options.colorMap &&
-      this.selected === selected
-    ) {
-      imageColors.set(this.imageColors);
-    } else {
-      this.colorMap = state.options.colorMap;
-      this.selected = selected;
-      const bitColor = get32BitColor(
-        this.getColor(state),
-        selected ? SELECTED_MASK_ALPHA : MASK_ALPHA
-      );
+    const bitColor = get32BitColor(
+      this.getColor(state),
+      selected ? SELECTED_MASK_ALPHA : MASK_ALPHA
+    );
+    const imagePixels = new Uint32Array(this.imageData.data.buffer);
+    if (this.bitColor !== bitColor) {
+      this.bitColor = bitColor;
       for (let i = 0; i < this.mask.length; i++) {
-        if (this.mask[i]) {
-          maskImageRaw[i] = bitColor;
-        }
+        this.mask[i] && (imagePixels[i] = bitColor);
       }
-      this.imageColors = imageColors;
+      this.bitColor = bitColor;
+
+      const maskCtx = this.canvas.getContext("2d");
+      maskCtx.clearRect(
+        0,
+        0,
+        this.label.mask.shape[1],
+        this.label.mask.shape[0]
+      );
+      maskCtx.putImageData(this.imageData, 0, 0);
     }
-
-    maskContext.putImageData(maskImage, 0, 0);
-
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
 
     ctx.drawImage(
-      maskContext.canvas,
+      this.canvas,
       x,
       y,
       w * state.canvasBBox[2],
@@ -239,9 +226,11 @@ export default class DetectionOverlay<
 
   private getDrawnBBox(state: Readonly<State>): BoundingBox {
     const [w, h] = state.config.dimensions;
-    const pad = state.strokeWidth;
     let [bx, by, bw, bh] = this.label.bounding_box;
-    return [bx * w, by * h, bw * w + pad, bh * h + pad];
+
+    const ow = state.strokeWidth / state.canvasBBox[2];
+    const oh = state.strokeWidth / state.canvasBBox[3];
+    return [(bx - ow) * w, (by - oh) * h, (bw + ow * 2) * w, (bh + oh * 2) * h];
   }
 }
 

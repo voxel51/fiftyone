@@ -92,7 +92,7 @@ function readStringAt(array: Uint8Array, start: number, end: number) {
  */
 function parse(array: Uint8Array): NumpyResult {
   if (readStringAt(array, 0, 6) !== "\x93NUMPY") {
-    throw new Error("Invalid magic number");
+    //throw new Error(`Invalid magic number: ${readStringAt(array, 0, 6)}`);
   }
   const version = readUint16At(array, 6);
   if (version !== 1) {

@@ -2,15 +2,18 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { SELECTION_TEXT } from "../../constants";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { looker, lookerFullscreen } from "./looker.module.css";
+import { looker, lookerError, lookerFullscreen } from "./looker.module.css";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
   HTMLDivElement
 > {
+  private selection: boolean;
+
   getEvents(): Events<State> {
     return {
       keydown: ({ event, update, dispatchEvent }) => {
@@ -19,9 +22,9 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         }
 
         const e = event as KeyboardEvent;
-        update(({ SHORTCUTS }) => {
-          if (e.key in SHORTCUTS) {
-            SHORTCUTS[e.key].action(update, dispatchEvent, e.key);
+        update(({ SHORTCUTS, error }) => {
+          if (!error && e.key in SHORTCUTS) {
+            SHORTCUTS[e.key].action(update, dispatchEvent, e.key, e.shiftKey);
           }
 
           return {};
@@ -61,11 +64,16 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   renderSelf({
     hovering,
+    error,
     config: { thumbnail },
-    options: { fullscreen },
+    options: { fullscreen, inSelectionMode },
   }: Readonly<State>) {
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
+    }
+
+    if (error && !thumbnail) {
+      this.element.classList.add(lookerError);
     }
 
     const fullscreenClass = this.element.classList.contains(lookerFullscreen);
@@ -73,6 +81,11 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       this.element.classList.add(lookerFullscreen);
     } else if (!fullscreen && fullscreenClass) {
       this.element.classList.remove(lookerFullscreen);
+    }
+
+    if (thumbnail && inSelectionMode !== this.selection) {
+      this.selection = inSelectionMode;
+      this.element.title = inSelectionMode ? SELECTION_TEXT : "Click to expand";
     }
 
     return this.element;

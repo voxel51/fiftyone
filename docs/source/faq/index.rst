@@ -37,6 +37,36 @@ default.
 Check out the :ref:`enviornments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
 
+.. _faq-app-no-session:
+
+Why isn't the App opening? Not connected to a session?
+------------------------------------------------------
+
+When you call :func:`fo.launch_app() <fiftyone.core.session.launch_app>` to
+launch the :ref:`FiftyOne App <fiftyone-app>`, the App will launch
+asynchronously and return control to your Python process. The App will then
+remain connected until the process exits.
+
+If you are using the App in a script, you should use
+:meth:`session.wait() <fiftyone.core.session.Session.wait>` to block execution
+until you close it manually:
+
+.. code-block:: python
+
+    # Launch the App
+    session = fo.launch_app(...)
+
+    # (Perform any additional operations here)
+
+    # Blocks execution until the App is closed
+    session.wait()
+
+If you launch the App in a script without including
+:meth:`session.wait() <fiftyone.core.session.Session.wait>`, the App's
+connection will close when the script exits, and you will see a message like
+"It looks like you are not connected to a session" in the browser tab that was
+opened.
+
 .. _faq-notebook-support:
 
 Can I use FiftyOne in a notebook?

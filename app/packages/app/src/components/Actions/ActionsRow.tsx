@@ -90,7 +90,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
   const [mRef, bounds] = useMeasure();
-  const close = useRecoilValue(selectors.selectedLoading);
+  const close = false;
 
   useLayoutEffect(() => {
     close && setOpen(false);
@@ -134,7 +134,7 @@ const Tag = ({
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-  const close = useRecoilValue(selectors.selectedLoading);
+  const close = false;
 
   const disabled = tagging;
 
