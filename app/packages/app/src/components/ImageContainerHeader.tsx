@@ -1,7 +1,7 @@
 import React from "react";
 import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
-import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
@@ -66,7 +66,8 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const element = useRecoilValue(selectors.elementNames);
   const filteredCount = useRecoilValue(selectors.filteredCount);
-  const resetGridZoom = useResetRecoilState(gridZoom);
+  const setGridZoom = useSetRecoilState(gridZoom);
+  const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
   let countStr = null;
 
@@ -120,7 +121,9 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
             </div>
             <div
               title={"Reset zoom"}
-              onClick={() => resetGridZoom()}
+              onClick={() => {
+                setGridZoom(Math.max(gridZoomRangeValue[0], 5));
+              }}
               style={{ cursor: "pointer" }}
             >
               <Apps style={{ marginTop: 2.5 }} />

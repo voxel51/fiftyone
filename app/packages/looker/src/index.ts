@@ -207,16 +207,17 @@ export abstract class Looker<
       ctx.textBaseline = "bottom";
       ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const dpr = getDPR();
       ctx.clearRect(
         0,
         0,
-        this.state.windowBBox[2] * getDPR(),
-        this.state.windowBBox[3] * getDPR()
+        this.state.windowBBox[2] * dpr,
+        this.state.windowBBox[3] * dpr
       );
 
-      const p = this.state.pan.map((p) => p * getDPR());
-      ctx.translate(p[0], p[1]);
-      ctx.scale(this.state.scale * getDPR(), this.state.scale * getDPR());
+      ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
+      const scale = this.state.scale * dpr;
+      ctx.scale(scale, scale);
 
       const [tlx, tly, w, h] = this.state.canvasBBox;
       ctx.drawImage(

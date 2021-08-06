@@ -457,6 +457,13 @@ export const addToBuffers = (range: BufferRange, buffers: Buffers): Buffers => {
   return buffers;
 };
 
-export const getDPR = () => {
-  return window.devicePixelRatio ? window.devicePixelRatio : 1;
-};
+export const getDPR = (() => {
+  let dpr = null;
+  return () => {
+    if (dpr == null) {
+      dpr = window.devicePixelRatio ? window.devicePixelRatio : 1;
+    }
+
+    return dpr;
+  };
+})();
