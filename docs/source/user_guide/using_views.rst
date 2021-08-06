@@ -1196,8 +1196,154 @@ choice:
     # Only contains samples in Manhattan
     view = dataset.geo_within(MANHATTAN)
 
-Modifying fields
+.. _tagging-view-contents:
+
+Tagging contents
 ________________
+
+You can use the
+:meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+and :meth:`untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`
+methods to add or remove :ref:`sample tags <using-tags>` from the samples in a
+view:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.untag_samples("validation") # remove pre-existing tags
+
+    # Perform a random 90-10 test-train split
+    dataset.take(0.1 * len(dataset)).tag_samples("test")
+    dataset.match_tags("test", bool=False).tag_samples("train")
+
+    print(dataset.count_sample_tags())
+    # {'train': 180, 'test': 20}
+
+You can also use the
+:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+methods to add or remove :ref:`label tags <label-tags>` from the labels in one
+or more fields of a view:
+
+.. code-block:: python
+    :linenos:
+
+    # Add a tag to all low confidence predictions
+    view = dataset.filter_labels("predictions", F("confidence") < 0.06)
+    view.tag_labels("low_confidence", label_fields="predictions")
+
+    print(dataset.count_label_tags())
+    # {'low_confidence': 447}
+
+.. _editing-view-fields:
+
+Editing fields
+______________
+
+You can perform arbitrary edits to a |DatasetView| by iterating over its
+contents and editing the samples directly:
+
+.. code-block:: python
+    :linenos:
+
+    import random
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    view = dataset.limit(50)
+
+    # Populate a new field on each sample in the view
+    for sample in view:
+        sample["random"] = random.random()
+        sample.save()
+
+    print(dataset.count("random"))  # 50
+    print(dataset.bounds("random")) # (0.0005, 0.9928)
+
+Alternatively, you can use
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
+set a field (or embedded field) on each sample in the collection in a single
+batch operation:
+
+.. code-block:: python
+    :linenos:
+
+    # Delete the field we added in the previous variation
+    dataset.delete_sample_field("random")
+
+    # Equivalent way to populate a new field on each sample in a view
+    values = [random.random() for _ in range(len(view))]
+    view.set_values("random", values)
+
+    print(dataset.count("random"))  # 50
+    print(dataset.bounds("random")) # (0.0272, 0.9921)
+
+.. note::
+
+    When possible, using
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    is often more efficient than performing the equivalent operation via an
+    explicit iteration over the |DatasetView| because it avoids the need to
+    read the entire |SampleView| instances into memory and then save them.
+
+Naturally, you can edit nested sample fields of a |DatasetView| by iterating
+over the view and editing the necessary data:
+
+.. code-block:: python
+    :linenos:
+
+    # Create a view that contains only low confidence predictions
+    view = dataset.filter_labels("predictions", F("confidence") < 0.06)
+
+    # Add a tag to all predictions in the view
+    for sample in view:
+        for detection in sample["predictions"].detections:
+            detection.tags.append("low_confidence")
+
+        sample.save()
+
+    print(dataset.count_label_tags())
+    # {'low_confidence': 447}
+
+However, an equivalent and often more efficient approach is to use
+:meth:`values() <fiftyone.core.collections.SampleCollection.values>` to
+extract the slice of data you wish to modify and then use
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
+save the updated data in a single batch operation:
+
+.. code-block:: python
+    :linenos:
+
+    # Remove the tags we added in the previous variation
+    dataset.untag_labels("low_confidence")
+
+    # Load all predicted detections
+    # This is a list of lists of `Detection` instances for each sample
+    detections = view.values("predictions.detections")
+
+    # Add a tag to all low confidence detections
+    for sample_detections in detections:
+        for detection in sample_detections:
+            detection.tags.append("low_confidence")
+
+    # Save the updated predictions
+    view.set_values("predictions.detections", detections)
+
+    print(dataset.count_label_tags())
+    # {'low_confidence': 447}
+
+.. _transforming-view-fields:
+
+Transforming fields
+___________________
 
 In certain situations, you may wish to temporarily modify the values of sample
 fields in the context of a |DatasetView| without modifying the underlying
@@ -1214,6 +1360,12 @@ to do this:
 
 .. code-block:: python
     :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
 
     ANIMALS = [
         "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
@@ -1245,13 +1397,28 @@ to do this:
     print(bounded_view.bounds("predictions.detections.confidence"))
     # (0.5, 0.9999035596847534)
 
+.. note::
+
+    In order to populate a *new field* using
+    :meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`,
+    you must first declare the new field on the dataset via
+    :meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`:
+
+    .. code-block:: python
+
+        # Record the number of predictions in each sample in a new field
+        dataset.add_sample_field("num_predictions", fo.IntField)
+        view = dataset.set_field("num_predictions", F("predictions.detections").length())
+
+        view.save("num_predictions")  # save the new field's values on the dataset
+        print(dataset.bounds("num_predictions"))  # (1, 100)
+
 The |ViewExpression| language is quite powerful, allowing you to define complex
 operations without needing to write an explicit Python loop to perform the
 desired manipulation.
 
 For example, the snippet below visualizes the top-5 highest confidence
-predictions for each sample in the
-:ref:`quickstart dataset <dataset-zoo-quickstart>`:
+predictions for each sample in the dataset:
 
 .. code-block:: python
     :linenos:
@@ -1269,6 +1436,19 @@ predictions for each sample in the
 
     session = fo.launch_app(view=top5_view)
 
+If you want to permanently save transformed view fields to the underlying
+dataset, you can do so by calling
+:meth:`save() <fiftyone.core.view.DatasetView.save>` on the view and optionally
+passing the name(s) of specific field(s) that you want to save:
+
+.. code-block:: python
+    :linenos:
+
+    # Saves `predictions` field's contents in the view permanently to dataset
+    top5_view.save("predictions")
+
+.. _saving-and-cloning-views:
+
 Saving and cloning
 __________________
 
@@ -1280,11 +1460,18 @@ the underlying dataset with the contents of a view you've created:
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
+    import fiftyone.zoo as foz
     from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
 
     # Discard all predictions with confidence below 0.3
     high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.3)
     high_conf_view.save()
+
+    print(dataset.bounds("predictions.detections.confidence"))
+    # (0.3001, 0.9999)
 
 Alternatively, you can create a new |Dataset| that contains only the contents
 of a |DatasetView| using
@@ -1293,11 +1480,34 @@ of a |DatasetView| using
 .. code-block:: python
     :linenos:
 
-    from fiftyone import ViewField as F
+    # Reload full quickstart dataset
+    dataset.delete()
+    dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a new dataset that contains only the high confidence predictions
     high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.3)
     high_conf_dataset = high_conf_view.clone()
+
+    print(high_conf_dataset.bounds("predictions.detections.confidence"))
+    # (0.3001, 0.9999)
+
+You can also use
+:meth:`clone_sample_field() <fiftyone.core.view.DatasetView.clone_sample_field>`
+to copy the contents of a view's field into a new field of the underlying
+|Dataset|:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.count("predictions.detections"))  # 5620
+
+    # Make view containing only high confidence predictions
+    view = dataset.filter_labels("predictions", F("confidence") > 0.5)
+    print(view.count("predictions.detections"))  # 1564
+
+    # Copy high confidence predictions to a new field
+    view.clone_sample_field("predictions", "high_conf_predictions")
+    print(dataset.count("high_conf_predictions.detections"))  # 1564
 
 Tips & tricks
 _____________

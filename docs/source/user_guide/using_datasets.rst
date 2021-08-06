@@ -557,7 +557,7 @@ By default, all |Sample| instances have the following fields:
     <Sample: {
         'id': None,
         'media_type': 'image',
-        'filepath': 'path/to/image.png',
+        'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
     }>
@@ -686,6 +686,47 @@ Setting a field to an inappropriate type raises an error:
     order to persist changes to the database when editing samples that are in
     datasets.
 
+.. _editing-sample-fields:
+
+Editing sample fields
+---------------------
+
+You can make any edits you wish to the fields of an existing |Sample|:
+
+.. code-block:: python
+    :linenos:
+
+    sample = fo.Sample(
+        filepath="/path/to/image.jpg",
+        ground_truth=fo.Detections(
+            detections=[
+                fo.Detection(label="CAT", bounding_box=[0.1, 0.1, 0.4, 0.4]),
+                fo.Detection(label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4]),
+            ]
+        )
+    )
+
+    detections = sample.ground_truth.detections
+
+    # Edit an existing detection
+    detections[0].label = "cat"
+
+    # Add a new detection
+    new_detection = fo.Detection(label="animals", bounding_box=[0, 0, 1, 1])
+    detections.append(new_detection)
+
+    print(sample)
+
+    sample.save()  # if the sample is in a dataset
+
+.. note::
+
+    You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
+    order to persist changes to the database when editing samples that are in
+    datasets.
+
+.. _removing-sample-fields:
+
 Removing fields from a sample
 -----------------------------
 
@@ -746,9 +787,9 @@ as per the table below:
 Tags
 ____
 
-All |Sample| instances have a `tags` field, which is a |ListField| of strings.
-By default, this list is empty, but it can be used (for example) to define
-dataset splits or mark low quality images:
+All |Sample| instances have a `tags` field, which is a string list. By default,
+this list is empty, but you can use it to store information like dataset splits
+or application-specific issues like low quality images:
 
 .. code-block:: python
     :linenos:
@@ -762,10 +803,15 @@ dataset splits or mark low quality images:
         ]
     )
 
-    print(dataset.distinct("tags").values)
+    print(dataset.distinct("tags"))
     # ["test", "low_quality", "train"]
 
-The `tags` field can be treated like a standard Python `list`:
+.. note::
+
+    Did you know? You can add, edit, and filter by sample tags
+    :ref:`directly in the App <app-tagging>`.
+
+The `tags` field can be used like a standard Python list:
 
 .. code-block:: python
     :linenos:
@@ -1760,6 +1806,30 @@ can easily retrieve the raw GeoJSON data for a slice of your dataset using the
      {'type': 'Point', 'coordinates': [-73.96569416502996, 40.75449283200206]},
      {'type': 'Point', 'coordinates': [-73.97397106211423, 40.67925541341504]}]
 
+.. _label-tags:
+
+Label tags
+----------
+
+All |Label| instances have a `tags` field, which is a string list. By default,
+this list is empty, but you can use it to store application-specific
+information like whether the label is mistaken:
+
+.. code-block:: python
+    :linenos:
+
+    detection = fo.Detection(label="cat", bounding_box=[0, 0, 1, 1])
+
+    detection.tags.append("mistake")
+
+    print(detection.tags)
+    # ["mistake"]
+
+.. note::
+
+    Did you know? You can add, edit, and filter by label tags
+    :ref:`directly in the App <app-tagging>`.
+
 .. _label-attributes:
 
 Label attributes
@@ -2117,3 +2187,206 @@ of a sample with |Detections| below a specified threshold filtered out.
 .. custombutton::
     :button_text: Learn more about DatasetViews
     :button_link: using_views.html
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.compute_metadata()
+
+    # Create a view containing the 5 samples from the validation split whose
+    # images are >= 48 KB that have the most predictions with confidence > 0.9
+    complex_view = (
+        dataset
+        .match_tags("validation")
+        .match(F("metadata.size_bytes") >= 48 * 1024)  # >= 48 KB
+        .filter_labels("predictions", F("confidence") > 0.9)
+        .sort_by(F("predictions.detections").length(), reverse=True)
+        .limit(5)
+    )
+
+    # Check to see how many predictions there are in each matching sample
+    print(complex_view.values(F("predictions.detections").length()))
+    # [29, 20, 17, 15, 15]
+
+.. _batch-actions:
+
+Batch actions
+_____________
+
+You are always free to perform any necessary modifications to a |Dataset| by
+iterating over it via a Python loop and explicitly
+:ref:`performing the edits <editing-sample-fields>` that you require.
+
+However, the |Dataset| class provides a number of methods that allow you to
+efficiently perform various common batch actions to your entire dataset.
+
+.. _clone-rename-clear-delete:
+
+Cloning, renaming, clearing, and deleting fields
+------------------------------------------------
+
+You can use the
+:meth:`clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`,
+:meth:`rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`,
+:meth:`clear_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`,
+and
+:meth:`delete_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`
+methods to efficiently perform common actions on the sample fields of a
+|Dataset|:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Clone an existing field
+    dataset.clone_sample_field("predictions", "also_predictions")
+    print("also_predictions" in dataset.get_field_schema())  # True
+
+    # Rename a field
+    dataset.rename_sample_field("also_predictions", "still_predictions")
+    print("still_predictions" in dataset.get_field_schema())  # True
+
+    # Clear a field (sets all values to None)
+    dataset.clear_sample_field("still_predictions")
+    print(dataset.count_values("still_predictions"))  # {None: 200}
+
+    # Delete a field
+    dataset.delete_sample_field("still_predictions")
+
+You can also use
+`dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
+to manipulate the fields or subfields of embedded documents in your dataset:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+
+    # Clone an existing embedded field
+    dataset.clone_sample_field(
+        "predictions.detections.label",
+        "predictions.detections.also_label",
+    )
+    print(sample.predictions.detections[0]["also_label"])  # "bird"
+
+    # Rename an embedded field
+    dataset.rename_sample_field(
+        "predictions.detections.also_label",
+        "predictions.detections.still_label",
+    )
+    print(sample.predictions.detections[0]["still_label"])  # "bird"
+
+    # Clear an embedded field (sets all values to None)
+    dataset.clear_sample_field("predictions.detections.still_label")
+    print(sample.predictions.detections[0]["still_label"])  # None
+
+    # Delete an embedded field
+    dataset.delete_sample_field("predictions.detections.still_label")
+
+.. _efficient-batch-edits:
+
+Efficient batch edits
+---------------------
+
+You are always free to perform arbitrary edits to a |Dataset| by iterating over
+its contents and editing the samples directly:
+
+.. code-block:: python
+    :linenos:
+
+    import random
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Populate a new field on each sample in the dataset
+    for sample in dataset:
+        sample["random"] = random.random()
+        sample.save()
+
+    print(dataset.count("random"))  # 200
+    print(dataset.bounds("random")) # (0.0007, 0.9987)
+
+Alternatively, you can use
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
+set a field (or embedded field) on each sample in the dataset in a single
+batch operation:
+
+.. code-block:: python
+    :linenos:
+
+    # Delete the field we added in the previous variation
+    dataset.delete_sample_field("random")
+
+    # Equivalent way to populate a new field on each sample in a view
+    values = [random.random() for _ in range(len(dataset))]
+    dataset.set_values("random", values)
+
+    print(dataset.count("random"))  # 50
+    print(dataset.bounds("random")) # (0.0041, 0.9973)
+
+.. note::
+
+    When possible, using
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    is often more efficient than performing the equivalent operation via an
+    explicit iteration over the |Dataset| because it avoids the need to read
+    the entire |Sample| instances into memory and then save them.
+
+Similarly, you can edit nested sample fields of a |Dataset| by iterating over
+the dataset and editing the necessary data:
+
+.. code-block:: python
+    :linenos:
+
+    # Add a tag to all low confidence predictions in the dataset
+    for sample in dataset:
+        for detection in sample["predictions"].detections:
+            if detection.confidence < 0.06:
+                detection.tags.append("low_confidence")
+
+        sample.save()
+
+    print(dataset.count_label_tags())
+    # {'low_confidence': 447}
+
+However, an equivalent and often more efficient approach is to use
+:meth:`values() <fiftyone.core.collections.SampleCollection.values>` to
+extract the slice of data you wish to modify and then use
+:meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>` to
+save the updated data in a single batch operation:
+
+.. code-block:: python
+    :linenos:
+
+    # Remove the tags we added in the previous variation
+    dataset.untag_labels("low_confidence")
+
+    # Load all predicted detections
+    # This is a list of lists of `Detection` instances for each sample
+    detections = dataset.values("predictions.detections")
+
+    # Add a tag to all low confidence detections
+    for sample_detections in detections:
+        for detection in sample_detections:
+            if detection.confidence < 0.06:
+                detection.tags.append("low_confidence")
+
+    # Save the updated predictions
+    dataset.set_values("predictions.detections", detections)
+
+    print(dataset.count_label_tags())
+    # {'low_confidence': 447}

@@ -855,7 +855,7 @@ class SampleCollection(object):
             import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
-            dataset = foz.load_zoo_dataset("quickstart").clone()
+            dataset = foz.load_zoo_dataset("quickstart")
 
             #
             # Create a new sample field
@@ -875,7 +875,7 @@ class SampleCollection(object):
             detections = view.values("predictions.detections")
             for sample_detections in detections:
                 for detection in sample_detections:
-                    detection.tags.append("low confidence")
+                    detection.tags.append("low_confidence")
 
             view.set_values("predictions.detections", detections)
 
@@ -4131,7 +4131,7 @@ class SampleCollection(object):
             import fiftyone.brain as fob
             import fiftyone.zoo as foz
 
-            dataset = foz.load_zoo_dataset("quickstart").clone()
+            dataset = foz.load_zoo_dataset("quickstart")
 
             fob.compute_similarity(dataset, brain_key="similarity")
 
