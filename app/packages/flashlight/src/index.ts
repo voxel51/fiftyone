@@ -412,7 +412,7 @@ export default class Flashlight<K> {
       this.state.shownSections.add(i);
       i++;
     }
-    [...this.state.shownSections].forEach((index) => {
+    [...Array.from(this.state.shownSections)].forEach((index) => {
       if (index < this.state.firstSection || index > this.state.lastSection) {
         this.hideSection(index);
       }
