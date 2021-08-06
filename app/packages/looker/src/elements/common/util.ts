@@ -4,7 +4,9 @@
 
 import { Overlay } from "../../overlays/base";
 import { BaseState } from "../../state";
-import { DispatchEvent } from "../base";
+import { DispatchEvent } from "../../state";
+
+import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
 export const dispatchTooltipEvent = <State extends BaseState>(
   dispatchEvent: DispatchEvent,
@@ -40,4 +42,23 @@ export const dispatchTooltipEvent = <State extends BaseState>(
         : null
     );
   };
+};
+
+export const makeCheckboxRow = function (
+  text: string,
+  checked: boolean
+): [HTMLLabelElement, HTMLInputElement] {
+  const label = document.createElement("label");
+  label.classList.add(lookerLabel);
+  label.innerHTML = text;
+
+  const checkbox = document.createElement("input");
+  checkbox.setAttribute("type", "checkbox");
+  checkbox.checked = checked;
+  const span = document.createElement("span");
+  span.classList.add(lookerCheckbox);
+  label.appendChild(checkbox);
+  label.appendChild(span);
+
+  return [label, checkbox];
 };

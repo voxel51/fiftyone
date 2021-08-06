@@ -4,12 +4,16 @@
 
 import { Overlay } from "./overlays/base";
 
-export interface BaseSample {
+export interface Sample {
   metadata: {
     width: number;
     height: number;
   };
   _id: string;
+  _media_type: "image" | "image";
+  filepath: string;
+  tags: string[];
+  _label_tags: string[];
 }
 
 export interface LabelData {
@@ -28,7 +32,8 @@ export type DispatchEvent = (eventType: string, details?: any) => void;
 export type Action<State extends BaseState> = (
   update: StateUpdate<State>,
   dispatchEvent: DispatchEvent,
-  eventKey?: string
+  eventKey?: string,
+  shiftKey?: boolean
 ) => void;
 
 export interface Control<State extends BaseState = BaseState> {
@@ -44,7 +49,7 @@ export interface ControlMap<State extends BaseState> {
 }
 
 interface BaseOptions {
-  activeLabels: string[];
+  activePaths: string[];
   colorByLabel: boolean;
   filter: {
     [key: string]: (label: { label?: string; confidence?: number }) => boolean;
@@ -62,7 +67,9 @@ interface BaseOptions {
   hasPrevious: boolean;
   fullscreen: boolean;
   zoomPad: number;
+  selected: boolean;
   fieldsMap?: { [key: string]: string };
+  inSelectionMode: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -156,7 +163,9 @@ export interface BaseState {
   zoomToContent: boolean;
   setZoom: boolean;
   hasDefaultZoom: boolean;
-  SHORTCUTS: Readonly<ControlMap<any>>; // fix me
+  SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
+  error: boolean;
+  destroyed: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -185,6 +194,8 @@ export interface VideoState extends BaseState {
   buffers: Buffers;
   seekBarHovering: boolean;
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
+  hasPoster: boolean;
+  waitingForVideo: boolean;
 }
 
 export type Optional<T> = {
@@ -202,7 +213,7 @@ export type StateUpdate<State extends BaseState> = (
 ) => void;
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
-  activeLabels: [],
+  activePaths: [],
   colorByLabel: false,
   selectedLabels: [],
   showConfidence: false,
@@ -218,7 +229,9 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   hasPrevious: false,
   fullscreen: false,
   zoomPad: 0.1,
+  selected: false,
   fieldsMap: {},
+  inSelectionMode: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
@@ -247,7 +260,7 @@ export interface FrameSample {
   frame_number: number;
 }
 
-export interface VideoSample extends BaseSample {
+export interface VideoSample extends Sample {
   frames: [FrameSample];
 }
 

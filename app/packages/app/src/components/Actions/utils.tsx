@@ -78,29 +78,20 @@ export const numTaggable = selectorFamily<
   },
 });
 
-export const allTags = selector<{ sample: string[]; label: string[] }>({
+export const allTags = selector<{ sample: string[]; label: string[] } | null>({
   key: "tagAggs",
   get: async ({ get }) => {
-    const state = get(atoms.stateDescription);
+    const labels = get(filterAtoms.labelTagCounts(false));
+    const sample = get(filterAtoms.sampleTagCounts(false));
 
-    const wrap = (handler, type) => ({ data }) => {
-      data = JSON.parse(data);
-      data.type === type && handler(data);
+    if (!labels || !sample) {
+      return null;
+    }
+
+    return {
+      label: Object.keys(labels).sort(),
+      sample: Object.keys(sample).sort(),
     };
-
-    const promise = new Promise<{ sample: string[]; label: string[] }>(
-      (resolve) => {
-        const listener = wrap(({ sample, label }) => {
-          socket.removeEventListener("message", listener);
-          resolve({ sample: sample.sort(), label: label.sort() });
-        }, "all_tags");
-        socket.addEventListener("message", listener);
-        socket.send(packageMessage("all_tags", {}));
-      }
-    );
-
-    const result = await promise;
-    return result;
   },
 });
 
@@ -113,7 +104,8 @@ export const tagStatistics = selectorFamily<
 >({
   key: "tagStatistics",
   get: ({ modal, labels }) => async ({ get }) => {
-    const state = get(atoms.stateDescription);
+    get(atoms.stateDescription);
+    get(atoms.selectedSamples);
     const activeLabels = get(activeLabelPaths(false));
 
     const id = uuid();
@@ -125,7 +117,7 @@ export const tagStatistics = selectorFamily<
       uuid: id,
       args: {
         active_labels: activeLabels,
-        sample_id: modal ? get(atoms.modal).sampleId : null,
+        sample_id: modal ? get(atoms.modal).sample._id : null,
         filters: modal
           ? get(filterAtoms.modalFilterStages)
           : get(selectors.filterStages),
@@ -145,14 +137,19 @@ export const numLabelsInSelectedSamples = selector<number>({
 });
 
 export const tagStats = selectorFamily<
-  { [key: string]: number },
+  { [key: string]: number } | null,
   { modal: boolean; labels: boolean }
 >({
   key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
-    const results = Object.fromEntries(
-      get(allTags)[labels ? "label" : "sample"].map((t) => [t, 0])
-    );
+    const tags = get(allTags);
+    const results = tags
+      ? Object.fromEntries(tags[labels ? "label" : "sample"].map((t) => [t, 0]))
+      : null;
+
+    if (!results) {
+      return null;
+    }
 
     return {
       ...results,

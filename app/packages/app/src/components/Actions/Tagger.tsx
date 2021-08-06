@@ -149,6 +149,10 @@ const Section = ({
     setTagging(true);
   };
 
+  if (!items) {
+    return <Loader />;
+  }
+
   const hasChanges = Object.keys(changes).length > 0;
 
   const hasCreate = value.length > 0 && !(value in changes || value in items);
@@ -357,7 +361,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
       if (modal) {
         socket.send(
           packageModal({
-            sample_id: (await snapshot.getPromise(selectors.modalSample))._id,
+            sample_id: (await snapshot.getPromise(atoms.modal)).sample._id,
             changes,
             labels: targetLabels,
             activeLabels,

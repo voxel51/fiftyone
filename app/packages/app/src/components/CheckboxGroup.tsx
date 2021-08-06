@@ -180,7 +180,7 @@ const CheckboxText = ({
           : count.toLocaleString()}
       </span>
 
-      {hasDropdown && (
+      {hasDropdown && count > 0 && (
         <ArrowType
           onClick={(e) => {
             e.preventDefault();
@@ -304,7 +304,8 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
             disableRipple={true}
             checked={selected}
             title={`Show ${name} ${type}`}
-            onChange={() => onCheck({ ...entry, selected: !entry.selected })}
+            onClick={() => onCheck({ ...entry, selected: !entry.selected })}
+            onMouseDown={null}
             style={{
               display: hideCheckbox ? "none" : "block",
               color:

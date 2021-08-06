@@ -94,6 +94,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
   },
 });
+3;
 
 export const fieldIsFiltered = selectorFamily<
   boolean,

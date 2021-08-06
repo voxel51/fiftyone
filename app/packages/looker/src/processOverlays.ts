@@ -11,9 +11,9 @@ const processOverlays = <State extends BaseState>(
   state: State,
   overlays: Overlay<State>[]
 ): [Overlay<State>[], number] => {
-  const activeLabels = state.options.activeLabels;
+  const activePaths = state.options.activePaths;
   const bins = Object.fromEntries(
-    activeLabels.map<[string, Overlay<State>[]]>((l) => [l, []])
+    activePaths.map<[string, Overlay<State>[]]>((l) => [l, []])
   );
   let classifications = null;
 
@@ -30,7 +30,7 @@ const processOverlays = <State extends BaseState>(
     bins[overlay.field].push(overlay);
   }
 
-  let ordered = activeLabels.reduce((acc, cur) => [...acc, ...bins[cur]], []);
+  let ordered = activePaths.reduce((acc, cur) => [...acc, ...bins[cur]], []);
 
   if (classifications && !state.config.thumbnail) {
     ordered = [classifications, ...ordered];
@@ -52,6 +52,7 @@ const processOverlays = <State extends BaseState>(
       (a, b) =>
         a.getMouseDistance(state, [x, y]) - b.getMouseDistance(state, [x, y])
     );
+
   const outside = ordered.filter(
     (o) =>
       o instanceof ClassificationsOverlay ||

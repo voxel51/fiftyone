@@ -4,13 +4,12 @@
 
 import {
   DASH_COLOR,
-  DASH_LENGTH,
   MASK_ALPHA,
   SELECTED_MASK_ALPHA,
   TOLERANCE,
 } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { distanceFromLineSegment } from "../util";
+import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
@@ -24,7 +23,12 @@ export default class PolylineOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, PolylineLabel> {
   containsPoint(state: Readonly<State>): CONTAINS {
-    const tolerance = state.strokeWidth * TOLERANCE;
+    const tolerance =
+      (state.strokeWidth * TOLERANCE) /
+      getRenderedScale(
+        [state.windowBBox[2], state.windowBBox[3]],
+        state.config.dimensions
+      );
     const minDistance = this.getMouseDistance(state);
     if (minDistance <= tolerance) {
       return CONTAINS.BORDER;
@@ -66,11 +70,8 @@ export default class PolylineOverlay<
 
   getMouseDistance(state: Readonly<State>): number {
     const distances = [];
-    const [_, __, w, h] = state.canvasBBox;
-    const xy: Coordinates = [
-      state.relativeCoordinates[0] * w,
-      state.relativeCoordinates[1] * h,
-    ];
+    const [w, h] = state.config.dimensions;
+    const xy = state.pixelCoordinates;
     for (const shape of this.label.points) {
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
@@ -139,11 +140,8 @@ export default class PolylineOverlay<
   }
 
   private isPointInPath(state: Readonly<State>, path: Coordinates[]): boolean {
-    const [_, __, w, h] = state.canvasBBox;
-    const [x, y] = [
-      state.relativeCoordinates[0] * w,
-      state.relativeCoordinates[1] * h,
-    ];
+    const [w, h] = state.config.dimensions;
+    const [x, y] = state.pixelCoordinates;
 
     let inside = false;
     if (this.label.closed) {

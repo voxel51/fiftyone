@@ -2,11 +2,15 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { FrameState } from "../state";
+import { DispatchEvent, FrameState, StateUpdate } from "../state";
 import { BaseElement, Events } from "./base";
-import { getFrameString, getTime, getTimeString } from "./util";
+import {
+  acquirePlayer,
+  acquireThumbnailer,
+  getFrameString,
+  getTime,
+} from "./util";
 
-import { mediaOrCanvas, invisible } from "./media.module.css";
 import { lookerTime } from "./common/controls.module.css";
 
 export class FrameNumberElement extends BaseElement<FrameState> {
@@ -20,13 +24,9 @@ export class FrameNumberElement extends BaseElement<FrameState> {
   renderSelf({
     duration,
     config: { frameRate, frameNumber },
-    options: { useFrameNumber },
   }: Readonly<FrameState>) {
     if (duration) {
-      const timestamp = useFrameNumber
-        ? getFrameString(frameNumber, duration, frameRate)
-        : getTimeString(frameNumber, frameRate, duration);
-      this.element.innerHTML = timestamp;
+      this.element.innerHTML = getFrameString(frameNumber, duration, frameRate);
     }
     return this.element;
   }
@@ -34,6 +34,7 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 
 export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
   private src: string = "";
+  imageSource: HTMLCanvasElement;
 
   getEvents(): Events<FrameState> {
     return {
@@ -55,23 +56,74 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement() {
-    const element = document.createElement("video");
-    element.classList.add(mediaOrCanvas, invisible);
-    element.preload = "metadata";
-    element.muted = true;
-    return element;
+  createHTMLElement(
+    update: StateUpdate<FrameState>,
+    dispatchEvent: DispatchEvent
+  ) {
+    this.imageSource = document.createElement("canvas");
+
+    update(
+      ({ config: { thumbnail, dimensions, src, frameRate, frameNumber } }) => {
+        this.imageSource.width = dimensions[0];
+        this.imageSource.height = dimensions[1];
+        this.src = src;
+
+        const acquirer = thumbnail ? acquireThumbnailer : acquirePlayer;
+
+        acquirer().then(([video, release]) => {
+          const seeked = () => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  const ctx = this.imageSource.getContext("2d");
+                  ctx.imageSmoothingEnabled = false;
+                  ctx.drawImage(video, 0, 0);
+                  release();
+                  video.removeEventListener("seeked", seeked);
+                  update({
+                    loaded: true,
+                    duration: video.duration,
+                  });
+                }, 10);
+              });
+            });
+          };
+          video.addEventListener("seeked", seeked);
+
+          const error = (event) => {
+            // Chrome v60
+            if (event.path && event.path[0]) {
+              event = event.path[0].error;
+            }
+
+            // Firefox v55
+            if (event.originalTarget) {
+              event = error.originalTarget.error;
+            }
+            video.removeEventListener("error", error);
+            update({ error: true });
+          };
+
+          const loaded = () => {
+            video.currentTime = getTime(frameNumber, frameRate);
+            update({ duration: video.duration });
+            video.removeEventListener("error", error);
+            video.removeEventListener("loadedmetadata", loaded);
+          };
+
+          video.src = src;
+          video.addEventListener("error", error);
+          video.addEventListener("loadedmetadata", loaded);
+        });
+
+        return {};
+      }
+    );
+
+    return null;
   }
 
-  renderSelf(state: Readonly<FrameState>) {
-    const {
-      config: { src },
-    } = state;
-    if (this.src !== src) {
-      this.src = src;
-      this.element.setAttribute("src", src);
-    }
-
-    return this.element;
+  renderSelf() {
+    return null;
   }
 }

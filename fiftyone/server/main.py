@@ -139,6 +139,8 @@ class ReactivateHandler(RequestHandler):
             handle_id: a handle uuid
         """
         StateHandler.state["active_handle"] = handle_id
+        global _deactivated_clients
+        _deactivated_clients.discard(handle_id)
         for client in StateHandler.clients:
             client.write_message({"type": "reactivate", "handle": handle_id})
 
@@ -211,6 +213,48 @@ class FramesHandler(tornado.web.RequestHandler):
         frames = results[0]["frames"]
 
         self.write({"frames": frames, "range": [start_frame, end_frame]})
+
+
+class PageHandler(tornado.web.RequestHandler):
+    """Page requests
+
+    Args:
+        page: the page number
+        page_length (20): the number of items to return
+    """
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+
+    async def get(self):
+        # pylint: disable=no-value-for-parameter
+        page = int(self.get_argument("page", 1))
+        page_length = int(self.get_argument("page_length", 20))
+
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset
+        else:
+            self.write({"results": [], "more": False})
+            return
+
+        view = get_extended_view(view, state.filters, count_labels_tags=True)
+        view = view.skip((page - 1) * page_length)
+
+        results, more = await _get_sample_data(
+            StateHandler.sample_collection(),
+            view,
+            page_length,
+            page,
+            detach_frames=False,
+        )
+
+        self.write({"results": results, "more": more})
 
 
 class TeamsHandler(RequestHandler):
@@ -312,7 +356,6 @@ class PollingHandler(tornado.web.RequestHandler):
             if event in {
                 "distinct",
                 "distributions",
-                "page",
                 "get_video_data",
                 "all_tags",
                 "selected_statistics",
@@ -540,46 +583,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             clients.update({"extended_statistics"})
 
         await self.send_statistics(view, filters=filters)
-
-    @classmethod
-    async def on_page(cls, self, page, page_length=20):
-        """Sends a pagination response to the current client.
-
-        Args:
-            page: the page number
-            page_length (20): the number of items to return
-        """
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset
-        else:
-            _write_message(
-                {"type": "page", "page": page, "results": [], "more": False},
-                only=self,
-            )
-            return
-
-        view = get_extended_view(view, state.filters, count_labels_tags=True)
-        view = view.skip((page - 1) * page_length)
-
-        results, more = await _get_sample_data(
-            cls.sample_collection(),
-            view,
-            page_length,
-            page,
-            detach_frames=False,
-        )
-
-        message = {
-            "type": "page",
-            "page": page,
-            "results": results,
-            "more": more,
-        }
-
-        _write_message(message, only=self)
 
     @classmethod
     async def on_sample(cls, self, sample_id, uuid):
@@ -1516,6 +1519,7 @@ class Application(tornado.web.Application):
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),
             (r"/notebook", NotebookHandler),
+            (r"/page", PageHandler),
             (r"/polling", PollingHandler),
             (r"/reactivate", ReactivateHandler),
             (r"/stages", StagesHandler),

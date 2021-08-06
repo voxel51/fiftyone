@@ -53,10 +53,7 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   field: string,
   label: Label
 ) => {
-  if (
-    state.options.activeLabels &&
-    !state.options.activeLabels.includes(field)
-  ) {
+  if (state.options.activePaths && !state.options.activePaths.includes(field)) {
     return false;
   }
 

@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 import FieldsSidebar from "../components/FieldsSidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
-import Samples from "../components/Samples";
+import Flashlight from "../components/Flashlight";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { scrollbarStyles } from "../components/utils";
 
@@ -17,12 +17,14 @@ const SidebarContainer = styled.div`
 `;
 
 const SidebarColumn = styled.div`
-  ${scrollbarStyles}
-  z-index: 400;
   max-height: 100%;
   height: 100%;
   overflow-y: scroll;
   overflow-x: hidden;
+  scrollbar-color: ${({ theme }) => theme.fontDarkest}
+    ${({ theme }) => theme.background};
+
+  ${scrollbarStyles}
 `;
 
 const ContentColumn = styled.div`
@@ -52,17 +54,12 @@ const SamplesContainer = React.memo(() => {
         {showSidebar ? (
           <SidebarContainer>
             <SidebarColumn>
-              <FieldsSidebar
-                modal={false}
-                style={{
-                  scrollbarWidth: "thin",
-                }}
-              />
+              <FieldsSidebar modal={false} />
             </SidebarColumn>
           </SidebarContainer>
         ) : null}
         <ContentColumn>
-          <Samples />
+          <Flashlight />
         </ContentColumn>
       </Container>
     </>

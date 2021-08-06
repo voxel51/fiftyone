@@ -25,6 +25,7 @@
     "immutable": "^4.0.0-rc.12",
     "json-format-highlight": "^1.0.4",
     "lru-cache": "^6.0.0",
+    "mime": "^2.5.2",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

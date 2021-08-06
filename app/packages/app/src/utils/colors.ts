@@ -1,7 +1,4 @@
-let seedCache = 0;
-let mapCache = {};
 let poolCache: string[] = null;
-let colorByLabelCache = false;
 
 function shuffle(array: string[], seed: number) {
   let m = array.length,
@@ -25,35 +22,39 @@ function random(seed: number) {
   return x - Math.floor(x);
 }
 
+let colorMaps = {};
+
 export function generateColorMap(
   colorPool: string[],
-  seed: number,
-  colorByLabel = false
+  seed: number
 ): (value) => string {
-  if (
-    JSON.stringify(poolCache) !== JSON.stringify(colorPool) ||
-    colorByLabelCache !== colorByLabel
-  ) {
+  if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
+    colorMaps = {};
     poolCache = colorPool;
-    mapCache = {};
-  }
-  const newMap = seed === seedCache ? Object.assign({}, mapCache) : {};
-  seedCache = seed;
-  let colors = Array.from(poolCache);
-  if (seed > 0) {
-    colors = shuffle(colors, seed);
   }
 
-  let offset = Object.keys(newMap).length;
-  mapCache = newMap;
+  colorPool = [...colorPool];
+
+  if (seed in colorMaps) {
+    return colorMaps[seed];
+  }
+
+  if (seed > 0) {
+    colorPool = shuffle(colorPool, seed);
+  }
+
+  let map = {};
   let i = 0;
-  return (val) => {
-    if (val in newMap) {
-      return newMap[val];
+
+  colorMaps[seed] = (val) => {
+    if (val in map) {
+      return map[val];
     }
-    offset = Object.keys(newMap).length;
-    newMap[val] = colors[i % colors.length];
+
+    map[val] = colorPool[i % colorPool.length];
     i++;
-    return newMap[val];
+    return map[val];
   };
+
+  return colorMaps[seed];
 }

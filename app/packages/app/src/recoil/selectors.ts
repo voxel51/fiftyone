@@ -1,4 +1,3 @@
-import mime from "mime";
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
@@ -14,6 +13,13 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
+
+export const isModalActive = selector<boolean>({
+  key: "isModalActive",
+  get: ({ get }) => {
+    return Boolean(get(atoms.modal));
+  },
+});
 
 export const refresh = selector<boolean>({
   key: "refresh",
@@ -271,9 +277,6 @@ export const filterStages = selector<object>({
       ...get(atoms.stateDescription),
       filters,
     };
-    state.selected.forEach((id) => {
-      set(atoms.isSelectedSample(id), false);
-    });
     state.selected = [];
     set(atoms.selectedSamples, new Set());
     socket.send(packageMessage("filters_update", { filters }));
@@ -571,7 +574,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
 
-    return generateColorMap(pool, seed, colorByLabel);
+    return generateColorMap(pool, seed);
   },
 });
 
@@ -623,66 +626,11 @@ export const getTarget = selector({
   },
 });
 
-export const modalSample = selector({
-  key: "modalSample",
-  get: async ({ get }) => {
-    const { sampleId } = get(atoms.modal);
-    return get(atoms.sample(sampleId));
-  },
-});
-
-export const tagSampleModalCounts = selector<{ [key: string]: number }>({
-  key: "tagSampleModalCounts",
-  get: ({ get }) => {
-    const sample = get(modalSample);
-    const tags = get(tagNames);
-    return tags.reduce((acc, cur) => {
-      acc[cur] = sample.tags.includes(cur) ? 1 : 0;
-      return acc;
-    }, {});
-  },
-});
-
 export const selectedLabelIds = selector<Set<string>>({
   key: "selectedLabelIds",
   get: ({ get }) => {
     const labels = get(selectedLabels);
     return new Set(Object.keys(labels));
-  },
-});
-
-export const currentSamples = selector<string[]>({
-  key: "currentSamples",
-  get: ({ get }) => {
-    const { rows } = get(atoms.gridRows);
-    return rows
-      .map((r) => r.samples.map(({ id }) => id))
-      .flat()
-      .filter((id) => Boolean(id));
-  },
-});
-
-export const sampleIndices = selector<{ [key: string]: number }>({
-  key: "sampleIndices",
-  get: ({ get }) =>
-    Object.fromEntries(get(currentSamples).map((id, i) => [id, i])),
-});
-
-export const sampleIds = selector<{ [key: number]: string }>({
-  key: "sampleIdx",
-  get: ({ get }) =>
-    Object.fromEntries(get(currentSamples).map((id, i) => [i, id])),
-});
-
-export const selectedLoading = selector({
-  key: "selectedLoading",
-  get: ({ get }) => {
-    const ids = get(atoms.selectedSamples);
-    let loading = false;
-    ids.forEach((id) => {
-      loading = get(atoms.sample(id)) === null;
-    });
-    return loading;
   },
 });
 
@@ -710,13 +658,6 @@ export const hiddenLabelIds = selector({
   key: "hiddenLabelIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenLabels)));
-  },
-});
-
-export const currentSamplesSize = selector<number>({
-  key: "currentSamplesSize",
-  get: ({ get }) => {
-    return get(currentSamples).length;
   },
 });
 
@@ -773,27 +714,6 @@ export const fieldType = selectorFamily<string, string>({
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;
-  },
-});
-
-export const sampleMimeType = selectorFamily<string, string>({
-  key: "sampleMimeType",
-  get: (id) => ({ get }) => {
-    const sample = get(atoms.sample(id));
-    return (
-      (sample.metadata && sample.metadata.mime_type) ||
-      mime.getType(sample.filepath) ||
-      "image/jpg"
-    );
-  },
-});
-
-export const sampleSrc = selectorFamily<string, string>({
-  key: "sampleSrc",
-  get: (id) => ({ get }) => {
-    return `${http}/filepath/${encodeURI(
-      get(atoms.sample(id)).filepath
-    )}?id=${id}`;
   },
 });
 

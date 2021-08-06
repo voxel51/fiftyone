@@ -4,6 +4,7 @@
 
 export { CanvasElement } from "./canvas";
 export * from "./controls";
+export { ErrorElement } from "./error";
 export { JSONPanelElement } from "./json";
 export {
   HelpPanelElement,
@@ -13,3 +14,5 @@ export {
 } from "./actions";
 export { LookerElement } from "./looker";
 export * from "./options";
+export { TagsElement } from "./tags";
+export { ThumbnailSelectorElement } from "./thumbnail";

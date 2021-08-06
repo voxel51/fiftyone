@@ -41,17 +41,19 @@ import {
   DEFAULT_VIDEO_OPTIONS,
   Coordinates,
   Optional,
-  BaseSample,
   FrameChunkResponse,
   VideoSample,
   FrameSample,
   Buffers,
   LabelData,
   BufferRange,
+  Dimensions,
+  Sample,
 } from "./state";
 import {
   addToBuffers,
   createWorker,
+  getDPR,
   getElementBBox,
   getFitRect,
   mergeUpdates,
@@ -67,11 +69,9 @@ export { zoomAspectRatio } from "./zoom";
 
 const labelsWorker = createWorker();
 
-type ImageSource = HTMLImageElement | HTMLVideoElement;
-
 export abstract class Looker<
-  State extends BaseState = BaseState,
-  Sample extends BaseSample = BaseSample
+  ImageSource extends CanvasImageSource,
+  State extends BaseState = BaseState
 > {
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
@@ -82,7 +82,6 @@ export abstract class Looker<
 
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
-  protected imageSource: ImageSource;
   protected sample: Sample;
   protected state: State;
   protected readonly updater: StateUpdate<State>;
@@ -90,27 +89,38 @@ export abstract class Looker<
   constructor(
     sample: Sample,
     config: State["config"],
-    options: Optional<State["options"]>
+    options: Optional<State["options"]> = {}
   ) {
     this.sample = sample;
     this.loadSample(sample);
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    if (!this.state.config.thumbnail) {
+      this.state.showControls = true;
+    }
     this.pluckedOverlays = [];
     this.currentOverlays = [];
-    this.lookerElement = this.getElements();
+    this.lookerElement = this.getElements(config);
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
-    this.imageSource = this.lookerElement.children[0].element as ImageSource;
-    this.resizeObserver = new ResizeObserver(() =>
-      requestAnimationFrame(() =>
-        this.updater({ windowBBox: getElementBBox(this.lookerElement.element) })
-      )
-    );
+
+    this.resizeObserver = new ResizeObserver(() => {
+      const box = getElementBBox(this.lookerElement.element);
+      box[2] &&
+        box[3] &&
+        this.lookerElement &&
+        this.updater({
+          windowBBox: box,
+        });
+    });
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
+    if (eventType === "error") {
+      this.updater({ error: true });
+    }
+
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
@@ -125,6 +135,11 @@ export abstract class Looker<
         this.getSample().then((sample) =>
           copyToClipboard(JSON.stringify(sample, null, 4))
         );
+        return;
+      }
+
+      if (eventType === "selectthumbnail") {
+        this.dispatchEvent(eventType, this.sample._id);
         return;
       }
 
@@ -148,9 +163,11 @@ export abstract class Looker<
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
 
-      if (!this.state.windowBBox) {
+      if (!this.state.windowBBox || this.state.destroyed) {
         return;
       }
+
+      this.state = this.postProcess();
 
       this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
@@ -158,7 +175,6 @@ export abstract class Looker<
         this.pluckedOverlays
       );
 
-      this.state = this.postProcess();
       this.state.mouseIsOnOverlay =
         Boolean(this.currentOverlays.length) &&
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
@@ -166,7 +182,7 @@ export abstract class Looker<
 
       this.dispatchImpliedEvents(this.previousState, this.state);
 
-      this.lookerElement.render(this.state as Readonly<State>);
+      this.lookerElement.render(this.state, this.sample);
 
       if (this.state.options.showJSON) {
         const pre = this.lookerElement.element.querySelectorAll("pre")[0];
@@ -175,11 +191,13 @@ export abstract class Looker<
         });
       }
       const ctx = this.ctx;
-      if (!this.state.loaded) {
-        return;
-      }
 
-      if (this.waiting) {
+      if (
+        !this.state.loaded ||
+        !this.state.overlaysPrepared ||
+        this.state.destroyed ||
+        this.waiting
+      ) {
         return;
       }
 
@@ -189,14 +207,20 @@ export abstract class Looker<
       ctx.textBaseline = "bottom";
       ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, this.state.windowBBox[2], this.state.windowBBox[3]);
+      ctx.clearRect(
+        0,
+        0,
+        this.state.windowBBox[2] * getDPR(),
+        this.state.windowBBox[3] * getDPR()
+      );
 
-      ctx.translate(...this.state.pan);
-      ctx.scale(this.state.scale, this.state.scale);
+      const p = this.state.pan.map((p) => p * getDPR());
+      ctx.translate(p[0], p[1]);
+      ctx.scale(this.state.scale * getDPR(), this.state.scale * getDPR());
 
       const [tlx, tly, w, h] = this.state.canvasBBox;
       ctx.drawImage(
-        this.imageSource,
+        this.getImageSource(),
         0,
         0,
         this.state.config.dimensions[0],
@@ -230,27 +254,41 @@ export abstract class Looker<
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
-  attach(element: HTMLElement | string): void {
+  attach(element: HTMLElement | string, dimensions?: Dimensions): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
     }
 
-    this.updater({ windowBBox: getElementBBox(element) });
+    if (element === this.lookerElement.element.parentElement) {
+      return;
+    }
+
+    if (this.lookerElement.element.parentElement) {
+      this.resizeObserver.disconnect();
+      this.lookerElement.element.parentElement.removeChild(
+        this.lookerElement.element
+      );
+    }
+
+    this.updater({
+      windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
+    });
     element.appendChild(this.lookerElement.element);
-    this.resizeObserver.observe(this.lookerElement.element);
+    !dimensions && this.resizeObserver.observe(element);
+  }
+
+  resize(dimensions: Dimensions): void {
+    this.updater({
+      windowBBox: [0, 0, ...dimensions],
+    });
   }
 
   detach(): void {
-    this.resizeObserver.unobserve(this.lookerElement.element);
+    this.resizeObserver.disconnect();
     this.lookerElement.element.parentNode &&
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
       );
-  }
-
-  destroy(): void {
-    this.detach();
-    delete this.lookerElement;
   }
 
   abstract updateOptions(options: Optional<State["options"]>): void;
@@ -291,14 +329,25 @@ export abstract class Looker<
     return false;
   }
 
+  destroy() {
+    this.resizeObserver.disconnect();
+    this.lookerElement.element.parentElement &&
+      this.lookerElement.element.parentElement.removeChild(
+        this.lookerElement.element
+      );
+    this.updater({ destroyed: true });
+  }
+
   protected abstract hasDefaultZoom(
     state: State,
     overlays: Overlay<State>[]
   ): boolean;
 
-  protected abstract getElements(): LookerElement<State>;
+  protected abstract getElements(
+    config: Readonly<State["config"]>
+  ): LookerElement<State>;
 
-  protected abstract loadOverlays(sample: BaseSample): void;
+  protected abstract loadOverlays(sample: Sample): void;
 
   protected abstract pluckOverlays(state: State): Overlay<State>[];
 
@@ -308,6 +357,10 @@ export abstract class Looker<
     config: State["config"],
     options: Optional<State["options"]>
   ): State;
+
+  protected getImageSource(): CanvasImageSource {
+    return this.lookerElement.children[0].imageSource;
+  }
 
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
     return {
@@ -343,6 +396,8 @@ export abstract class Looker<
       setZoom: true,
       hasDefaultZoom: true,
       SHORTCUTS: COMMON_SHORTCUTS,
+      error: null,
+      destroyed: false,
     };
   }
 
@@ -430,20 +485,20 @@ export abstract class Looker<
   }
 }
 
-export class FrameLooker extends Looker<FrameState> {
+export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
   private overlays: Overlay<FrameState>[];
 
   constructor(
-    sample: BaseSample,
+    sample: Sample,
     config: FrameState["config"],
-    options: FrameState["options"]
+    options: Optional<FrameState["options"]> = {}
   ) {
     super(sample, config, options);
     this.overlays = [];
   }
 
-  getElements() {
-    return getFrameElements(this.updater, this.getDispatchEvent());
+  getElements(config) {
+    return getFrameElements(config, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(
@@ -484,7 +539,7 @@ export class FrameLooker extends Looker<FrameState> {
     );
   }
 
-  loadOverlays(sample: BaseSample) {
+  loadOverlays(sample: Sample) {
     this.overlays = loadOverlays(sample);
   }
 
@@ -522,20 +577,20 @@ export class FrameLooker extends Looker<FrameState> {
   }
 }
 
-export class ImageLooker extends Looker<ImageState> {
+export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
   private overlays: Overlay<ImageState>[];
 
   constructor(
-    sample: BaseSample,
+    sample: Sample,
     config: ImageState["config"],
-    options: ImageState["options"]
+    options: Optional<ImageState["options"]> = {}
   ) {
     super(sample, config, options);
     this.overlays = [];
   }
 
-  getElements() {
-    return getImageElements(this.updater, this.getDispatchEvent());
+  getElements(config) {
+    return getImageElements(config, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(
@@ -576,7 +631,7 @@ export class ImageLooker extends Looker<ImageState> {
     );
   }
 
-  loadOverlays(sample: BaseSample) {
+  loadOverlays(sample: Sample) {
     this.overlays = loadOverlays(sample);
   }
 
@@ -766,16 +821,15 @@ const { aquireReader, addFrame } = (() => {
 
 let lookerWithReader: VideoLooker | null = null;
 
-export class VideoLooker extends Looker<VideoState, VideoSample> {
+export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
-  protected imageSource: HTMLVideoElement;
   private requestFrames: (frameNumber: number, force?: boolean) => void;
 
   constructor(
     sample: VideoSample,
     config: VideoState["config"],
-    options: VideoState["options"]
+    options: Optional<VideoState["options"]> = {}
   ) {
     super(sample, config, options);
   }
@@ -789,7 +843,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 
   get waiting() {
-    return this.imageSource.seeking;
+    const video = this.lookerElement.children[0].element as HTMLVideoElement;
+    return (
+      video &&
+      (video.seeking ||
+        video.readyState < 2 ||
+        !this.hasFrame(this.state.frameNumber))
+    );
   }
 
   dispatchImpliedEvents(
@@ -854,8 +914,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     return labels;
   }
 
-  getElements() {
-    return getVideoElements(this.updater, this.getDispatchEvent());
+  getElements(config) {
+    return getVideoElements(config, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(
@@ -879,6 +939,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       buffers: [[1, 1]] as Buffers,
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
+      hasPoster: false,
+      waitingForVideo: false,
     };
   }
 
@@ -900,7 +962,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       )
     );
 
-    const providedFrames = sample.frames || [{ frame_number: 1 }];
+    const providedFrames = sample.frames.length
+      ? sample.frames
+      : [{ frame_number: 1 }];
     const providedFrameOverlays = providedFrames.map((frameSample) =>
       loadOverlays(
         Object.fromEntries(
@@ -963,6 +1027,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         update: this.updater,
         dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       });
+      lookerWithReader && lookerWithReader.pause();
       lookerWithReader = this;
       this.state.buffers = [[1, 1]];
     } else if (lookerWithReader !== this && frameCount) {
@@ -1030,17 +1095,6 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         return { playing: false };
       }
       return {};
-    });
-  }
-
-  resetToFragment(): void {
-    this.updater(({ fragment }) => {
-      if (!fragment) {
-        this.dispatchEvent("error", new Error("No fragment set"));
-        return {};
-      } else {
-        return { locked: true, frameNumber: fragment[0] };
-      }
     });
   }
 
@@ -1124,7 +1178,7 @@ const toggleZoom = <State extends FrameState | ImageState | VideoState>(
   state.zoomToContent = false;
 };
 
-const filterSample = <S extends BaseSample | FrameSample>(
+const filterSample = <S extends Sample | FrameSample>(
   state: Readonly<BaseState>,
   sample: S,
   fieldsMap: { [key: string]: string },
@@ -1141,7 +1195,7 @@ const filterSample = <S extends BaseSample | FrameSample>(
       sample[field]._cls &&
       FROM_FO.hasOwnProperty(sample[field]._cls)
     ) {
-      if (!state.options.activeLabels.includes(prefix + field)) {
+      if (!state.options.activePaths.includes(prefix + field)) {
         delete sample[field];
         continue;
       }

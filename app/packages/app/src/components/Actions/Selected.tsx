@@ -13,16 +13,8 @@ import { useEventHandler } from "../../utils/hooks";
 const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(selectors.elementNames);
   const clearSelection = useRecoilCallback(
-    ({ snapshot, set, reset }) => async () => {
-      const [oldSelected, state] = await Promise.all([
-        snapshot.getPromise(atoms.selectedSamples),
-        snapshot.getPromise(atoms.stateDescription),
-      ]);
-      oldSelected.forEach((s) => reset(atoms.isSelectedSample(s)));
-      const newState = JSON.parse(JSON.stringify(state));
-      newState.selected = [];
-      set(atoms.stateDescription, newState);
-      reset(atoms.selectedSamples);
+    ({ set }) => async () => {
+      set(atoms.selectedSamples, new Set());
       socket.send(packageMessage("clear_selection", {}));
       close();
     },

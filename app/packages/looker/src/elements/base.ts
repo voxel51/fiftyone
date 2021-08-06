@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, StateUpdate } from "../state";
+import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
 
 type ElementEvent<State extends BaseState, E extends Event> = (args: {
   event: E;
@@ -17,61 +17,89 @@ export type Events<State extends BaseState> = {
   >;
 };
 
+type LoadedEvents = {
+  [K in keyof HTMLElementEventMap]?: HTMLElementEventMap[K];
+};
+
 export abstract class BaseElement<
   State extends BaseState,
-  Element extends HTMLElement = HTMLElement
+  Element extends HTMLElement = HTMLElement | null
 > {
-  readonly children: BaseElement<State>[] = [];
-  readonly element: Element;
+  children: BaseElement<State>[] = [];
+  element: Element;
+  protected events: LoadedEvents = {};
 
   constructor(
-    update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void,
-    children?: BaseElement<State>[]
-  ) {
-    this.children = children || [];
-    this.element = this.createHTMLElement(update, dispatchEvent);
-    Object.entries(this.getEvents()).forEach(([eventType, handler]) => {
-      this.element.addEventListener(
-        eventType,
-        (event) =>
-          // @ts-ignore
-          handler({ event, update, dispatchEvent }),
-        false
-      );
-    });
-  }
-
-  protected getEvents(): Events<State> {
-    return {};
-  }
-
-  abstract createHTMLElement(
+    config: Readonly<State["config"]>,
     update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void
-  ): Element;
+  ) {
+    if (!this.isShown(config)) {
+      return;
+    }
 
-  isShown(state: Readonly<State>): boolean {
+    this.element = this.createHTMLElement(update, dispatchEvent);
+
+    for (const [eventType, handler] of Object.entries(this.getEvents())) {
+      this.events[eventType] = (event) =>
+        handler({ event, update, dispatchEvent });
+      this.element &&
+        this.element.addEventListener(eventType, this.events[eventType], {
+          passive: eventType === "wheel",
+        });
+    }
+  }
+  applyChildren(children: BaseElement<State>[]) {
+    this.children = children || [];
+  }
+
+  isShown(config: Readonly<State["config"]>): boolean {
     return true;
   }
 
-  render(state: Readonly<State>): Element {
-    const self = this.renderSelf(state);
+  render(state: Readonly<State>, sample: Readonly<Sample>): Element | null {
+    const self = this.renderSelf(state, sample);
 
     this.children.forEach((child) => {
-      if (!child.isShown(state)) {
+      if (!child.isShown(state.config)) {
         return;
       }
 
-      const element = child.render(state);
-      if (element.parentNode === this.element) {
+      const element = child.render(state, sample);
+      if (!element || element.parentNode === this.element) {
         return;
       }
-      self.appendChild(element);
+      self && self.appendChild(element);
     });
 
     return self;
   }
 
-  abstract renderSelf(state: Readonly<State>): Element;
+  abstract createHTMLElement(
+    update: StateUpdate<State>,
+    dispatchEvent: (eventType: string, details?: any) => void
+  ): Element | null;
+
+  abstract renderSelf(
+    state: Readonly<State>,
+    sample: Readonly<Sample>
+  ): Element | null;
+
+  protected getEvents(): Events<State> {
+    return {};
+  }
+
+  protected removeEvents() {
+    for (const [eventType, handler] of Object.entries(this.events)) {
+      // @ts-ignore
+      this.element.removeEventListener(eventType, handler);
+    }
+  }
+
+  protected attachEvents() {
+    for (const [eventType, handler] of Object.entries(this.events)) {
+      // @ts-ignore
+      this.element.addEventListener(eventType, handler);
+    }
+  }
 }

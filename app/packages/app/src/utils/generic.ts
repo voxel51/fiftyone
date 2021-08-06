@@ -1,3 +1,5 @@
+import mime from "mime";
+
 export const isElectron = (): boolean => {
   return (
     window.process &&
@@ -75,4 +77,12 @@ export const genSort = (a, b, asc) => {
   }
 
   return asc ? -1 : 1;
+};
+
+export const getMimeType = (sample: any) => {
+  return (
+    (sample.metadata && sample.metadata.mime_type) ||
+    mime.getType(sample.filepath) ||
+    "image/jpg"
+  );
 };

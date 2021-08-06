@@ -26,6 +26,9 @@
   font-weight: bold;
   background-color: hsl(210, 11%, 15%);
   outline: none;
+  border: none;
+}
+.lookerError {
 }
 
 .looker * {

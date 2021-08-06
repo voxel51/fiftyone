@@ -20,12 +20,20 @@ export const SCALE_FACTOR = 1.09;
 export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 20;
 
+export const CLASSIFICATION = "Classification";
+export const CLASSIFICATIONS = "Classifications";
+
+export const LABEL_TAGS_CLASSES = [CLASSIFICATION, CLASSIFICATIONS];
+
 export const LABEL_LISTS = {
   Classifications: "classifications",
   Detections: "detections",
   Keypoints: "Keypoints",
   Polylines: "polylines",
 };
+
+export const SELECTION_TEXT =
+  "Click to select sample, Shift+Click to select a range";
 
 export const JSON_COLORS = {
   keyColor: "rgb(138, 138, 138)",

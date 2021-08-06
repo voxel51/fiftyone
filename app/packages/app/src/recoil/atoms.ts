@@ -1,14 +1,21 @@
-import { atom, atomFamily, SerializableParam } from "recoil";
+import { Sample, Dimensions } from "@fiftyone/looker/src/state";
+import { atom, atomFamily } from "recoil";
 
-export const modal = atom<{
-  visible: boolean;
-  sampleId: string;
-}>({
+export interface SampleData {
+  sample: Sample;
+  dimensions: Dimensions;
+  frameRate?: number;
+  frameNumber?: number;
+}
+
+interface ModalSample extends SampleData {
+  index: number;
+  getIndex: (index: number) => void;
+}
+
+export const modal = atom<ModalSample | null>({
   key: "modal",
-  default: {
-    visible: false,
-    sampleId: null,
-  },
+  default: null,
 });
 
 export interface SortResults {
@@ -99,11 +106,6 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export const isSelectedSample = atomFamily<boolean, string>({
-  key: "isSelectedSample",
-  default: false,
-});
-
 export interface SelectedLabelData {
   sample_id: string;
   field: string;
@@ -131,37 +133,6 @@ export const stageInfo = atom({
 export const sidebarVisible = atom({
   key: "sidebarVisible",
   default: true,
-});
-
-export const gridRows = atom({
-  key: "gridRows",
-  default: {
-    rows: [],
-    remainder: [],
-  },
-});
-
-export const sample = atomFamily<SerializableParam, string>({
-  key: "sample",
-  default: null,
-});
-
-export const sampleMetadata = atomFamily<
-  {
-    width: number | null;
-    height: number;
-    frameRate?: number;
-    aspectRatio: number;
-  },
-  string
->({
-  key: "sampleMetadata",
-  default: {
-    width: null,
-    height: null,
-    frameRate: null,
-    aspectRatio: null,
-  },
 });
 
 export const viewCounter = atom({
