@@ -1813,7 +1813,7 @@ Label tags
 
 All |Label| instances have a `tags` field, which is a string list. By default,
 this list is empty, but you can use it to store application-specific
-information like whether the label is mistaken:
+information like whether the label is incorrect:
 
 .. code-block:: python
     :linenos:
@@ -2233,9 +2233,9 @@ Cloning, renaming, clearing, and deleting fields
 You can use the
 :meth:`clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`,
 :meth:`rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`,
-:meth:`clear_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`,
+:meth:`clear_sample_field() <fiftyone.core.dataset.Dataset.clear_sample_field>`,
 and
-:meth:`delete_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`
+:meth:`delete_sample_field() <fiftyone.core.dataset.Dataset.delete_sample_field>`
 methods to efficiently perform common actions on the sample fields of a
 |Dataset|:
 
