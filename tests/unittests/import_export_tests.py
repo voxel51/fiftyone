@@ -1072,6 +1072,49 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         )
 
 
+class DICOMDatasetTests(ImageDatasetTests):
+    def _get_dcm_path(self):
+        import pydicom
+        from pydicom.data import get_testdata_file
+
+        return get_testdata_file("MR_small.dcm")
+
+    @drop_datasets
+    def test_dicom_dataset(self):
+
+        dataset_dir = self._new_dir()
+        images_dir = self._new_dir()
+
+        ref_path = self._get_dcm_path()
+        dicom_path = os.path.join(dataset_dir, "test.dcm")
+        etau.copy_file(ref_path, dicom_path)
+
+        # Standard format
+
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            images_dir=images_dir,
+            dataset_type=fo.types.DICOMDataset,
+            label_field="",
+        )
+
+        self.assertEqual(len(dataset), 1)
+        self.assertIn("PatientName", dataset.get_field_schema())
+
+        # Direct path, specific keywords
+
+        dataset2 = fo.Dataset.from_dir(
+            dicom_path=dicom_path,
+            images_dir=images_dir,
+            dataset_type=fo.types.DICOMDataset,
+            keywords=["PatientName"],
+            label_field="",
+        )
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertIn("PatientName", dataset2.get_field_schema())
+
+
 class GeoLocationDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [
