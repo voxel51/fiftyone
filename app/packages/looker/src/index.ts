@@ -167,10 +167,9 @@ export abstract class Looker<
       if (!this.state.windowBBox || this.state.destroyed) {
         return;
       }
-
+      this.pluckedOverlays = this.pluckOverlays(this.state);
       this.state = this.postProcess();
 
-      this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
