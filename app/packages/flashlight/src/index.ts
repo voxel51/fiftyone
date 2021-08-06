@@ -329,7 +329,6 @@ export default class Flashlight<K> {
   }
 
   private showSections() {
-    const hidden = this.state.zooming && this.shownSectionsNeedUpdate();
     let count = 0;
     this.state.shownSections.forEach((index) => {
       const section = this.state.sections[index];
@@ -337,6 +336,10 @@ export default class Flashlight<K> {
         return;
       }
       let shown = false;
+      const hidden =
+        this.state.zooming &&
+        ((this.state.resized && !this.state.resized.has(index)) ||
+          Boolean(!this.state.clean.has(section.index) && this.state.updater));
 
       if (
         this.state.resized &&
@@ -349,9 +352,8 @@ export default class Flashlight<K> {
         shown = true;
       }
 
-      if (!this.state.clean.has(section.index) && !hidden) {
-        count === 0 &&
-          this.state.updater &&
+      if (!this.state.clean.has(section.index) && !hidden && count === 0) {
+        this.state.updater &&
           section
             .getItems()
             .map(({ id }) => id)
@@ -427,9 +429,7 @@ export default class Flashlight<K> {
     this.state.zooming =
       !force &&
       this.lastScrollTop !== null &&
-      (pixelDelta / timeDelta >
-        0.5 / this.state.options.rowAspectRatioThreshold ||
-        timeDelta > 20);
+      pixelDelta / timeDelta > 0.5 / this.state.options.rowAspectRatioThreshold;
 
     this.showSections();
 
