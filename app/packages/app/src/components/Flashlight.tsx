@@ -32,7 +32,7 @@ import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
-import socket from "../shared/connection";
+import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
 
 export const gridZoom = atom<number | null>({
@@ -72,7 +72,7 @@ const url = (() => {
       origin = "http://localhost:5151";
     }
   } catch {}
-  return `${origin}/page?`;
+  return `${http}/page?`;
 })();
 
 const Container = styled.div`

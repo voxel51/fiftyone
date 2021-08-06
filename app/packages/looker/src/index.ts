@@ -56,6 +56,7 @@ import {
   getDPR,
   getElementBBox,
   getFitRect,
+  getURL,
   mergeUpdates,
   removeFromBuffers,
   snapBox,
@@ -785,6 +786,7 @@ const { aquireReader, addFrame } = (() => {
       frameNumber,
       uuid: subscription,
       origin: window.location.origin,
+      url: getURL(),
     });
     return subscription;
   };
