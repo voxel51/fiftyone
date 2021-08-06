@@ -45,29 +45,21 @@ class SelectionTests(unittest.TestCase):
                     }
                 )
 
-        selected_view = dataset.select_labels(selected_labels)
-        excluded_view = dataset.exclude_labels(selected_labels)
+        selected_view = dataset.select_labels(labels=selected_labels)
+        excluded_view = dataset.exclude_labels(labels=selected_labels)
 
-        total_labels = _count_detections(dataset, "ground_truth")
+        num_labels = dataset.count("ground_truth.detections")
         num_selected_labels = len(selected_labels)
-        num_labels_in_selected_view = _count_detections(
-            selected_view, "ground_truth"
+        num_labels_in_selected_view = selected_view.count(
+            "ground_truth.detections"
         )
-        num_labels_in_excluded_view = _count_detections(
-            excluded_view, "ground_truth"
+        num_labels_in_excluded_view = excluded_view.count(
+            "ground_truth.detections"
         )
-        num_labels_excluded = total_labels - num_labels_in_excluded_view
+        num_labels_excluded = num_labels - num_labels_in_excluded_view
 
         self.assertEqual(num_selected_labels, num_labels_in_selected_view)
         self.assertEqual(num_selected_labels, num_labels_excluded)
-
-
-def _count_detections(sample_collection, label_field):
-    num_labels = 0
-    for sample in sample_collection:
-        num_labels += len(sample[label_field].detections)
-
-    return num_labels
 
 
 if __name__ == "__main__":
