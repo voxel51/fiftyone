@@ -98,17 +98,7 @@ export default class Flashlight<K> {
       }
     );
 
-    let timeout = null;
-
-    this.element.addEventListener("scroll", () => {
-      requestAnimationFrame(() => this.render());
-
-      timeout && clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        this.render(true);
-        timeout = null;
-      }, 100);
-    });
+    requestAnimationFrame(() => this.render());
 
     this.element.appendChild(this.container);
   }
@@ -226,7 +216,6 @@ export default class Flashlight<K> {
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
           this.container.parentElement.scrollTo(0, section.getTop());
-          this.render(true);
           break;
         }
       }
@@ -319,7 +308,6 @@ export default class Flashlight<K> {
           nextRequestKey === null
         ) {
           this.hidePixels();
-          this.render();
         }
       });
   }
@@ -379,6 +367,11 @@ export default class Flashlight<K> {
       return;
     }
 
+    if (this.state.sections.length === 0) {
+      requestAnimationFrame(() => this.render());
+      return;
+    }
+
     const top = this.container.parentElement.scrollTop;
     const time = performance.now();
 
@@ -433,6 +426,8 @@ export default class Flashlight<K> {
     if (this.state.lastSection === this.state.sections.length - 1) {
       this.requestMore();
     }
+
+    requestAnimationFrame(() => this.render());
   }
 
   private shownSectionsNeedUpdate() {
