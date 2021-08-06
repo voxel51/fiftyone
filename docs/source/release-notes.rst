@@ -3,6 +3,59 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.12.0:
+
+FiftyOne 0.12.0
+---------------
+*Released August 5, 2021*
+
+App
+^^^
+- Resolved performance issues with scrolling via grid virtualization. Toggling
+  fields or selecting samples is no longer impacted by the amount of samples
+  that have been loaded
+- Added the `Show label` option in the expanded sample view to toggle the label
+  text above detections boxes
+- Added support for zooming and panning in the expanded sample view
+- Added support for cropping and zooming to content in the expanded sample view
+- Added support for visualizing multiple segmentation frame fields
+  simultaneously
+- Added label streaming to the video visualizer
+- Added volume and playback rate settings to the video visualizer
+- Added the `Crop to content` option in patches or evaluation patches views
+  which crops samples to only show the labels that make up the patch. Defaults
+  to `True`
+- Added count and filtered count values to categorical filters
+  (:class:`BooleanField <fiftyone.core.fields.BooleanField>` and
+  :class:`StringField <fiftyone.core.fields.StringField>` fields)
+
+
+Docs
+^^^^
+- Added :ref:`Using the image visualizer <app-image-visualizer>` and
+  :ref:`Using the video visualizer <app-video-visualizer>` sections to the 
+  :ref:`Using the FiftyOne App <fiftyone-app>` user guide
+
+Zoo
+^^^
+- Patched an Open Images issue where `classes` or `attrs` requirements were
+  being ignored when loading a dataset with no `max_samples` requirement
+
+.. _release-notes-v0.11.2.1:
+
+FiftyOne 0.11.2.1
+-----------------
+*Released July 31, 2021*
+
+Zoo
+^^^
+- Patched an Open Images issue where label files were not being downloaded
+  when running a :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>`
+  call that does not include `classes` or `attrs` options in an environment
+  where Open Images has never been downloaded
+- Patched loading of Cityscapes datasets
+- Patched loading of COCO datasets
+
 .. _release-notes-v0.11.2:
 
 FiftyOne 0.11.2

@@ -218,6 +218,9 @@ format when reading the dataset from disk.
     | :ref:`BDDDataset <BDDDataset-import>`                                                 | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`DICOMDataset <DICOMDataset-import>`                                             | An image dataset whose image data and optional properties are stored in            |
+    |                                                                                       | `DICOM format <https://en.wikipedia.org/wiki/DICOM>`_.                             |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`GeoJSONDataset <GeoJSONDataset-import>`                                         | An image or video dataset whose location data and labels are stored in             |
     |                                                                                       | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -2665,6 +2668,164 @@ as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
+
+.. _DICOMDataset-import:
+
+DICOMDataset
+------------
+
+The :class:`fiftyone.types.DICOMDataset <fiftyone.types.dataset_types.DICOMDataset>`
+type represents a dataset consisting of images and their associated properties
+stored in `DICOM format <https://en.wikipedia.org/wiki/DICOM>`_.
+
+.. note::
+
+    You must have `pydicom <https://github.com/pydicom/pydicom>`_ installed in
+    order to load DICOM datasets.
+
+The standard format for datasets of this type is the following:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <filename1>.dcm
+        <filename2>.dcm
+
+where each `.dcm` file is a DICOM file that can be read via
+:func:`pydicom.dcmread <pydicom:pydicom.filereader.dcmread>`.
+
+Alternatively, rather than providing a ``dataset_dir``, you can provide the
+``dicom_path`` argument, which can directly specify a glob pattern of DICOM
+files or the path to a
+`DICOMDIR <https://pydicom.github.io/pydicom/stable/tutorials/filesets.html>`_
+file.
+
+By default, all attributes in the DICOM files discoverable via
+:meth:`pydicom:pydicom.dataset.Dataset.dir` with supported types are loaded
+into sample-level fields, but you can select only specific attributes by
+passing the optional ``keywords`` argument.
+
+.. note::
+
+    When importing DICOM datasets, the pixel data are converted to 8-bit
+    images, using the ``SmallestImagePixelValue`` and
+    ``LargestImagePixelValue`` attributes (if present), to inform the
+    conversion.
+
+    The images are written to a backing directory that you can configure by
+    passing the ``images_dir`` argument. By default, the images are written to
+    ``dataset_dir``.
+
+    Currently, only single frame images are supported, but a community
+    contribution to support 3D or 4D image types (e.g., CT scans) is welcomed!
+
+.. note::
+
+    See :class:`DICOMDatasetImporter <fiftyone.utils.dicom.DICOMDatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a DICOM dataset stored in standard
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/dicom-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.DICOMDataset,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/dicom-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.DICOMDataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+You can create a FiftyOne dataset from a glob pattern of DICOM files or the
+path to a DICOMDIR file as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+
+        dicom_path = "/path/to/*.dcm"  # glob pattern of DICOM files
+        # dicom_path = "/path/to/DICOMDIR"  # DICOMDIR file
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dicom_path=dicom_path,
+            dataset_type=fo.types.DICOMDataset,
+            keywords=["PatientName", "StudyID"],  # load specific attributes
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+
+        DICOM_PATH='/path/to/*.dcm'  # glob pattern of DICOM files
+        # DICOM_PATH='/path/to/DICOMDIR'  # DICOMDIR file
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.DICOMDataset \
+            --kwargs \
+                dicom_path=$DICOM_PATH \
+                keywords=PatientName,StudyID  # load specific attributes
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
 .. _GeoJSONDataset-import:
 
