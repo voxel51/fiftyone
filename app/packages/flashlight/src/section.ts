@@ -90,6 +90,7 @@ export default class SectionElement implements Section {
 
       if (this.width !== width) {
         this.section.style.height = `${localTop}px`;
+        this.section.style.width = `${width}px`;
       }
 
       this.width = width;

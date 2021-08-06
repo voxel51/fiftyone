@@ -101,7 +101,7 @@ export default class Flashlight<K> {
     let timeout = null;
 
     this.element.addEventListener("scroll", () => {
-      this.render();
+      requestAnimationFrame(() => this.render());
 
       timeout && clearTimeout(timeout);
       timeout = setTimeout(() => {
