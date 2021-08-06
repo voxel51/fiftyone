@@ -6,17 +6,12 @@ import { SELECTION_TEXT } from "../../constants";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import {
-  lookerThumbnailSelector,
-  showSelector,
-  lookerThumbnailExpand,
-} from "./thumbnail.module.css";
+import { lookerThumbnailSelector, showSelector } from "./thumbnail.module.css";
 import { makeCheckboxRow } from "./util";
 
 export class ThumbnailSelectorElement<
   State extends BaseState
 > extends BaseElement<State> {
-  private expand: boolean;
   private shown: boolean;
   private selected: boolean;
   private checkbox: HTMLInputElement;
@@ -70,13 +65,6 @@ export class ThumbnailSelectorElement<
     if (this.selected !== selected) {
       this.selected = selected;
       this.checkbox.checked = selected;
-    }
-
-    if (this.expand !== inSelectionMode || selected) {
-      this.expand = inSelectionMode || selected;
-      this.expand
-        ? this.element.classList.add(lookerThumbnailExpand)
-        : this.element.classList.remove(lookerThumbnailExpand);
     }
 
     return this.element;

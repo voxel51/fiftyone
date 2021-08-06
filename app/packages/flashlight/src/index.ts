@@ -375,7 +375,7 @@ export default class Flashlight<K> {
       this.state.sections.length === 0 &&
       this.state.currentRequestKey === null
     ) {
-      this.showPixels();
+      this.hidePixels();
       return;
     }
 

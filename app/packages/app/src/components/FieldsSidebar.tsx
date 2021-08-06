@@ -401,7 +401,7 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
               }
               setMatchedTags(newMatch);
             },
-            false
+            true
           ),
         };
       })}
