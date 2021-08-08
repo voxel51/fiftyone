@@ -8,6 +8,7 @@ Utilities for working with datasets in
 """
 from collections import defaultdict
 from copy import copy
+from copy import deepcopy
 from datetime import datetime
 import itertools
 import logging
@@ -2837,15 +2838,36 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 # Parse label data into format expected by CVAT
                 annot_tags = []
                 annot_shapes = []
+                annot_tracks = []
                 id_mapping = self.create_id_mapping(samples)
+
                 if is_existing_field:
-                    if label_type in [
+                    if is_video and label_type in [
+                        "detections",
+                        "keypoints",
+                        "polylines",
+                        "keypoint",
+                        "polyline",
+                        "detection",
+                    ]:
+                        (
+                            annot_shapes,
+                            annot_tracks,
+                        ) = self.create_shapes_tags_tracks(
+                            batch_samples,
+                            label_field,
+                            label_type,
+                            attr_names,
+                            classes,
+                            is_shape=True,
+                            load_tracks=True,
+                        )
+                    elif label_type in [
                         "classification",
                         "classifications",
                         "scalar",
                     ]:
-                        is_shape = False
-                        annot_tags = self.create_tags_or_shapes(
+                        annot_tags = self.create_shapes_tags_tracks(
                             batch_samples,
                             label_field,
                             label_type,
@@ -2855,8 +2877,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                             assign_scalar_attrs=assign_scalar_attrs,
                         )
                     else:
-                        is_shape = True
-                        annot_shapes = self.create_tags_or_shapes(
+                        annot_shapes = self.create_shapes_tags_tracks(
                             batch_samples,
                             label_field,
                             label_type,
@@ -2918,7 +2939,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 annot_tags = self.remap_ids(
                     annot_tags, task_id, attribute_id_map, class_id_map
                 )
-                annot_tracks = []
+                annot_tracks = self.remap_track_ids(
+                    annot_tracks, task_id, attribute_id_map, class_id_map
+                )
 
                 annot_json = {
                     "version": 0,
@@ -3182,9 +3205,110 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     else:
                         results[label_field][sample_id][label.id] = label
 
+            track_index = 0
+            for track in tracks:
+                for shape in track["shapes"]:
+                    if shape["outside"]:
+                        continue
+                    frame = shape["frame"]
+                    shape["label_id"] = track["label_id"]
+                    if len(frames) > frame:
+                        metadata = frames[frame]
+                    else:
+                        metadata = frames[0]
+                    sample_id = frame_id_map[task_id][frame]["sample_id"]
+                    shape_type = shape["type"]
+                    if sample_id not in results[label_field]:
+                        results[label_field][sample_id] = {}
+
+                    store_frame = False
+                    if "frame_id" in frame_id_map[task_id][frame]:
+                        store_frame = True
+                        frame_id = frame_id_map[task_id][frame]["frame_id"]
+                        if frame_id not in results[label_field][sample_id]:
+                            results[label_field][sample_id][frame_id] = {}
+
+                    label = None
+                    cvat_shape = CVATShape(
+                        shape,
+                        class_map,
+                        attr_id_map,
+                        classes,
+                        metadata,
+                        index=track_index,
+                    )
+                    if shape_type == "rectangle":
+                        label = cvat_shape.to_detection()
+                        new_field_type = "detections"
+                    elif shape_type == "polygon":
+                        label = cvat_shape.to_polyline(
+                            closed=True, filled=True
+                        )
+                        new_field_type = "polylines"
+                        if label_type in ("detections", "detection",):
+                            label = cvat_shape.polyline_to_detection(label)
+
+                    elif shape_type == "polyline":
+                        new_field_type = "polylines"
+                        label = cvat_shape.to_polyline()
+                    elif shape_type == "points":
+                        new_field_type = "keypoints"
+                        label = cvat_shape.to_points()
+
+                    if label is None:
+                        continue
+
+                    if label_type not in self.expected_type_map[shape_type]:
+                        if label_field not in additional_results:
+                            additional_results[label_field] = {}
+                        if (
+                            new_field_type
+                            not in additional_results[label_field]
+                        ):
+                            additional_results[label_field][
+                                new_field_type
+                            ] = {}
+                        if (
+                            sample_id
+                            not in additional_results[label_field][
+                                new_field_type
+                            ]
+                        ):
+                            additional_results[label_field][new_field_type][
+                                sample_id
+                            ] = {}
+
+                        if store_frame:
+                            if (
+                                frame_id
+                                not in additional_results[label_field][
+                                    new_field_type
+                                ][sample_id]
+                            ):
+                                additional_results[label_field][
+                                    new_field_type
+                                ][sample_id][frame_id] = {}
+                            additional_results[label_field][new_field_type][
+                                sample_id
+                            ][frame_id][label.id] = label
+                        else:
+                            additional_results[label_field][new_field_type][
+                                sample_id
+                            ][label.id] = label
+
+                    else:
+                        if store_frame:
+                            results[label_field][sample_id][frame_id][
+                                label.id
+                            ] = label
+                        else:
+                            results[label_field][sample_id][label.id] = label
+
+                track_index += 1
+
         return results, additional_results
 
-    def create_tags_or_shapes(
+    def create_shapes_tags_tracks(
         self,
         samples,
         label_field,
@@ -3192,9 +3316,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         attr_names,
         classes,
         is_shape=False,
+        load_tracks=False,
         assign_scalar_attrs=False,
     ):
         tags_or_shapes = []
+        tracks = {}
+
         if is_shape:
             samples.compute_metadata()
 
@@ -3268,79 +3395,89 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     }
                     tags_or_shapes.append(tag)
 
-                elif label_type == "detections":
-                    detections = image_label.detections
-                    tags_or_shapes.extend(
-                        self.create_detection_shapes(
-                            detections,
-                            width,
-                            height,
-                            attr_names,
-                            classes,
-                            frame_id,
-                        )
-                    )
-
-                elif label_type == "detection":
-                    detection = image_label
-                    tags_or_shapes.extend(
-                        self.create_detection_shapes(
-                            [detection],
-                            width,
-                            height,
-                            attr_names,
-                            classes,
-                            frame_id,
-                        )
-                    )
-                elif label_type == "polylines":
-                    polylines = image_label.polylines
-                    tags_or_shapes.extend(
-                        self.create_polyline_shapes(
-                            polylines,
-                            width,
-                            height,
-                            attr_names,
-                            classes,
-                            frame_id,
-                        )
-                    )
-
-                elif label_type == "polyline":
-                    polyline = image_label
-                    tags_or_shapes.extend(
-                        self.create_polyline_shapes(
-                            [polyline],
-                            width,
-                            height,
-                            attr_names,
-                            classes,
-                            frame_id,
-                        )
-                    )
-
-                elif label_type == "keypoints":
-                    keypoints = image_label.keypoints
-                    tags_or_shapes.extend(
-                        self.create_keypoint_shapes(
-                            keypoints,
-                            width,
-                            height,
-                            attr_names,
-                            classes,
-                            frame_id,
-                        )
-                    )
-
                 else:
-                    raise ValueError(
-                        "Label type %s of field %s is not supported"
-                        % (str(label_type), label_field)
+
+                    if label_type == "detections":
+                        labels = image_label.detections
+                        func = self.create_detection_shapes
+
+                    elif label_type == "detection":
+                        labels = [image_label]
+                        func = self.create_detection_shapes
+
+                    elif label_type == "polylines":
+                        labels = image_label.polylines
+                        func = self.create_polyline_shapes
+
+                    elif label_type == "polyline":
+                        labels = [image_label]
+                        func = self.create_polyline_shapes
+
+                    elif label_type == "keypoints":
+                        labels = image_label.keypoints
+                        func = self.create_keypoint_shapes
+
+                    elif label_type == "keypoint":
+                        labels = [image_label]
+                        func = self.create_keypoint_shapes
+
+                    else:
+                        raise ValueError(
+                            "Label type %s of field %s is not supported"
+                            % (str(label_type), label_field)
+                        )
+
+                    shapes, new_tracks = func(
+                        labels,
+                        width,
+                        height,
+                        attr_names,
+                        classes,
+                        frame_id=frame_id,
+                        load_tracks=load_tracks,
                     )
+                    tags_or_shapes.extend(shapes)
+                    tracks = self.update_tracks(tracks, new_tracks)
 
                 frame_id += 1
 
-        return tags_or_shapes
+        if load_tracks:
+            formatted_tracks = self.format_tracks(tracks, frame_id)
+            return tags_or_shapes, formatted_tracks
+        else:
+            return tags_or_shapes
+
+    def format_tracks(self, tracks, num_frames):
+        formatted_tracks = []
+        for index_tracks in tracks.values():
+            for track in index_tracks.values():
+                # Last shapes are copied and set to `outside`
+                last_shape = track["shapes"][-1]
+                if last_shape["frame"] < num_frames - 1:
+                    new_shape = deepcopy(last_shape)
+                    new_shape["frame"] += 1
+                    new_shape["outside"] = True
+                    track["shapes"].append(new_shape)
+
+                formatted_tracks.append(track)
+
+        return formatted_tracks
+
+    def update_tracks(self, tracks, new_tracks):
+        for class_name, track_info in new_tracks.items():
+            if class_name not in tracks:
+                tracks[class_name] = track_info
+            else:
+                for index, track in track_info.items():
+                    if index not in tracks[class_name]:
+                        tracks[class_name][index] = track
+                    else:
+                        tracks[class_name][index]["shapes"].extend(
+                            track["shapes"]
+                        )
+                        if tracks[class_name][index]["frame"] > track["frame"]:
+                            tracks[class_name][index]["frame"] = track["frame"]
+        return tracks
 
     def create_id_mapping(self, samples):
         id_mapping = {}
@@ -3361,9 +3498,17 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return id_mapping
 
     def create_keypoint_shapes(
-        self, keypoints, width, height, attr_names, classes, frame_id=0
+        self,
+        keypoints,
+        width,
+        height,
+        attr_names,
+        classes,
+        frame_id=0,
+        load_tracks=False,
     ):
         shapes = []
+        tracks = {}
         for kp in keypoints:
             attributes, class_name = self.create_attributes(
                 kp, attr_names, classes
@@ -3388,15 +3533,39 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 "source": "manual",
                 "attributes": attributes,
             }
+            if load_tracks and kp.index is not None:
+                index = kp.index
+                if class_name not in tracks:
+                    tracks[class_name] = {}
 
-            shapes.append(shape)
+                if index not in tracks[class_name]:
+                    tracks[class_name][index] = {}
+                    tracks[class_name][index]["label_id"] = class_name
+                    tracks[class_name][index]["shapes"] = []
+                    tracks[class_name][index]["frame"] = frame_id
+                    tracks[class_name][index]["group"] = 0
+                    tracks[class_name][index]["attributes"] = []
 
-        return shapes
+                shape["outside"] = False
+                del shape["label_id"]
+                tracks[class_name][index]["shapes"].append(shape)
+            else:
+                shapes.append(shape)
+
+        return shapes, tracks
 
     def create_polyline_shapes(
-        self, polylines, width, height, attr_names, classes, frame_id=0
+        self,
+        polylines,
+        width,
+        height,
+        attr_names,
+        classes,
+        frame_id=0,
+        load_tracks=False,
     ):
         shapes = []
+        tracks = {}
         for poly in polylines:
             attributes, class_name = self.create_attributes(
                 poly, attr_names, classes
@@ -3435,20 +3604,46 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     "source": "manual",
                     "attributes": attributes,
                 }
-            shapes.append(shape)
+            if load_tracks and poly.index is not None:
+                index = poly.index
+                if class_name not in tracks:
+                    tracks[class_name] = {}
 
-        return shapes
+                if index not in tracks[class_name]:
+                    tracks[class_name][index] = {}
+                    tracks[class_name][index]["label_id"] = class_name
+                    tracks[class_name][index]["shapes"] = []
+                    tracks[class_name][index]["frame"] = frame_id
+                    tracks[class_name][index]["group"] = 0
+                    tracks[class_name][index]["attributes"] = []
+
+                shape["outside"] = False
+                del shape["label_id"]
+                tracks[class_name][index]["shapes"].append(shape)
+            else:
+                shapes.append(shape)
+
+        return shapes, tracks
 
     def create_detection_shapes(
-        self, detections, width, height, attr_names, classes, frame_id=0
+        self,
+        detections,
+        width,
+        height,
+        attr_names,
+        classes,
+        frame_id=0,
+        load_tracks=False,
     ):
         shapes = []
+        tracks = {}
         for det in detections:
             attributes, class_name = self.create_attributes(
                 det, attr_names, classes
             )
             if class_name is None:
                 continue
+
             if det.mask is None:
                 x, y, w, h = det.bounding_box
                 xtl = float(round(x * width))
@@ -3493,9 +3688,27 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     "attributes": attributes,
                 }
 
-            shapes.append(shape)
+            if load_tracks and det.index is not None:
+                index = det.index
+                if class_name not in tracks:
+                    tracks[class_name] = {}
 
-        return shapes
+                if index not in tracks[class_name]:
+                    tracks[class_name][index] = {}
+                    tracks[class_name][index]["label_id"] = class_name
+                    tracks[class_name][index]["shapes"] = []
+                    tracks[class_name][index]["frame"] = frame_id
+                    tracks[class_name][index]["group"] = 0
+                    tracks[class_name][index]["attributes"] = []
+
+                shape["outside"] = False
+                del shape["label_id"]
+                tracks[class_name][index]["shapes"].append(shape)
+
+            else:
+                shapes.append(shape)
+
+        return shapes, tracks
 
     def create_attributes(self, label, attributes, classes):
         label_attrs = []
@@ -3530,6 +3743,18 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 attr_name = attr["spec_id"]
                 attr["spec_id"] = attr_id_map[attr_name]
         return shapes_or_tags
+
+    def remap_track_ids(self, tracks, task_id, attribute_id_map, class_id_map):
+        for track in tracks:
+            label_name = track["label_id"]
+            class_id = class_id_map[task_id][label_name]
+            track["label_id"] = class_id
+            attr_id_map = attribute_id_map[task_id][class_id]
+            for shape in track["shapes"]:
+                for attr in shape["attributes"]:
+                    attr_name = attr["spec_id"]
+                    attr["spec_id"] = attr_id_map[attr_name]
+        return tracks
 
 
 class CVATLabel(object):
@@ -3577,11 +3802,14 @@ class CVATLabel(object):
 
 
 class CVATShape(CVATLabel):
-    def __init__(self, label_dict, class_map, attr_id_map, classes, metadata):
+    def __init__(
+        self, label_dict, class_map, attr_id_map, classes, metadata, index=None
+    ):
         super().__init__(label_dict, class_map, attr_id_map, classes)
         self.width = metadata["width"]
         self.height = metadata["height"]
         self.points = label_dict["points"]
+        self.index = index
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
@@ -3604,6 +3832,8 @@ class CVATShape(CVATLabel):
             attributes=self.fo_attributes,
         )
         label = self.update_attrs(label)
+        if self.index is not None:
+            label.index = self.index
         return label
 
     def to_polyline(self, closed=False, filled=False):
@@ -3621,6 +3851,8 @@ class CVATShape(CVATLabel):
             attributes=self.fo_attributes,
         )
         label = self.update_attrs(label)
+        if self.index is not None:
+            label.index = self.index
         return label
 
     def to_points(self):
@@ -3636,6 +3868,8 @@ class CVATShape(CVATLabel):
             attributes=self.fo_attributes,
         )
         label = self.update_attrs(label)
+        if self.index is not None:
+            label.index = self.index
         return label
 
     def polyline_to_detection(self, label):

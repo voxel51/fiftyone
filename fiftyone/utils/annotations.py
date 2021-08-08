@@ -304,6 +304,9 @@ def annotate(
             :class:`fiftyone.utils.annotations.AnnotationInfo` used to
             upload and annotate the given samples
     """
+    if len(samples) == 0:
+        raise ValueError("No samples found in the given SampleCollection")
+
     annotation_label_schema = AnnotationLabelSchema(
         backend=backend,
         label_schema=label_schema,
@@ -542,12 +545,23 @@ def load_annotations(samples, info, **kwargs):
         deleted_view = samples.select_labels(ids=list(deleted_labels))
         samples._dataset.delete_labels(view=deleted_view, fields=label_field)
 
+        if is_video and label_type in ["detections", "keypoints", "polylines"]:
+            tracking_index_map, max_tracking_index = get_tracking_index_map(
+                samples, label_field, annotations
+            )
+        else:
+            tracking_index_map = {}
+            max_tracking_index = 0
+
         # Add or merge remaining labels
         annotated_samples = samples._dataset.select(sample_ids)
         for sample in annotated_samples:
             sample_id = sample.id
             formatted_label_field = label_field
             if is_video:
+                formatted_label_field, _ = samples._handle_frame_field(
+                    label_field
+                )
                 images = sample.frames.values()
             else:
                 images = [sample]
@@ -570,6 +584,21 @@ def load_annotations(samples, info, **kwargs):
                     label_id = label.id
                     if label_id in labels_to_merge:
                         annot_label = image_annots[label_id]
+                        if is_video and "index" in annot_label:
+                            if (
+                                annot_label.index
+                                in tracking_index_map[sample_id]
+                            ):
+                                annot_label.index = tracking_index_map[
+                                    sample_id
+                                ][annot_label.index]
+                            else:
+                                tracking_index_map[sample_id][
+                                    annot_label.index
+                                ] = max_tracking_index
+                                annot_label.index = max_tracking_index
+                                max_tracking_index += 1
+
                         for field in annot_label._fields_ordered:
                             if (
                                 field in label._fields_ordered
@@ -582,9 +611,44 @@ def load_annotations(samples, info, **kwargs):
                 if has_label_list:
                     for annot_label_id, annot_label in image_annots.items():
                         if annot_label_id in added_labels:
+                            if is_video and "index" in annot_label:
+                                if (
+                                    annot_label.index
+                                    in tracking_index_map[sample_id]
+                                ):
+                                    annot_label.index = tracking_index_map[
+                                        sample_id
+                                    ][annot_label.index]
+                                else:
+                                    tracking_index_map[sample_id][
+                                        annot_label.index
+                                    ] = max_tracking_index
+                                    annot_label.index = max_tracking_index
+                                    max_tracking_index += 1
+
                             labels.append(annot_label)
 
             sample.save()
+
+
+def get_tracking_index_map(samples, label_field, annotations):
+    _, index_path = samples._get_label_field_path(label_field, "index")
+    _, id_path = samples._get_label_field_path(label_field, "id")
+    indices = flatten_list(samples.values(index_path))
+    max_index = max([i for i in indices if i is not None]) + 1
+    ids = flatten_list(samples.values(id_path))
+    existing_index_map = dict(zip(ids, indices))
+    tracking_index_map = {}
+    for sid, sample_annots in annotations.items():
+        if sid not in tracking_index_map:
+            tracking_index_map[sid] = {}
+        for fid, frame_annots in sample_annots.items():
+            for lid, annot_label in frame_annots.items():
+                if lid in existing_index_map:
+                    tracking_index_map[sid][
+                        annot_label.index
+                    ] = existing_index_map[lid]
+    return tracking_index_map, max_index
 
 
 class BaseAnnotationAPI(object):
@@ -620,9 +684,12 @@ class AnnotationInfo(object):
                 if self.label_schema[label_field]["type"] != "scalar":
                     field_schema = samples.get_field_schema() or []
                     frame_field_schema = samples.get_frame_field_schema() or []
+                    frame_field, is_frame_field = samples._handle_frame_field(
+                        label_field
+                    )
                     if (
                         label_field in field_schema
-                        or label_field in frame_field_schema
+                        or frame_field in frame_field_schema
                     ):
                         label_id_path = samples._get_label_field_path(
                             label_field, "id"
@@ -714,29 +781,31 @@ class AnnotationLabelSchema(object):
 
         if isinstance(d, dict):
             for label_field, label_info in d.items():
-                frame_field = self.samples._is_frame_field(label_field)
+                frame_field, is_frame_field = self.samples._handle_frame_field(
+                    label_field
+                )
 
                 if (
                     label_field in field_schema
-                    or label_field in frame_field_schema
+                    or frame_field in frame_field_schema
                 ):
                     existing_field = True
                 else:
                     existing_field = False
 
                 label_type = self.get_label_type(
-                    label_field, label_info, existing_field, frame_field
-                )
-                classes = self.get_classes(
                     label_field,
                     label_info,
                     existing_field,
                     frame_field,
-                    label_type,
+                    is_frame_field,
+                )
+                classes = self.get_classes(
+                    label_field, label_info, existing_field, label_type,
                 )
                 if label_type != "scalar":
                     attributes = self.get_attributes(
-                        label_field, label_info, existing_field, frame_field
+                        label_field, label_info, existing_field
                     )
                 else:
                     attributes = {}
@@ -753,16 +822,20 @@ class AnnotationLabelSchema(object):
         return output_schema
 
     def get_label_type(
-        self, label_field, label_info, existing_field, frame_field
+        self,
+        label_field,
+        label_info,
+        existing_field,
+        frame_field,
+        is_frame_field,
     ):
         if existing_field:
             self._field_label_type = None
             is_supported_label = False
             if label_field is not None:
-                if frame_field:
-                    formatted_label_field = label_field[len("frames.") :]
+                if is_frame_field:
                     field_type = self.samples.get_frame_field_schema()[
-                        formatted_label_field
+                        frame_field
                     ]
                 else:
                     field_type = self.samples.get_field_schema()[label_field]
@@ -802,9 +875,7 @@ class AnnotationLabelSchema(object):
 
         return label_type
 
-    def get_classes(
-        self, label_field, label_info, existing_field, frame_field, label_type
-    ):
+    def get_classes(self, label_field, label_info, existing_field, label_type):
         if "classes" in label_info and label_info["classes"]:
             return label_info["classes"]
         elif self.classes:
@@ -831,9 +902,7 @@ class AnnotationLabelSchema(object):
                 '"classes" are required when defining a new label field'
             )
 
-    def get_attributes(
-        self, label_field, label_info, existing_field, frame_field
-    ):
+    def get_attributes(self, label_field, label_info, existing_field):
         if "attributes" in label_info:
             attributes = label_info["attributes"]
         elif self.attributes not in [True, False, None]:
