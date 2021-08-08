@@ -675,6 +675,20 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
+class DICOMDataset(ImageLabelsDataset):
+    """An image dataset whose image data and optional properties
+    are stored in `DICOM format <https://en.wikipedia.org/wiki/DICOM>`_.
+
+    See :ref:`this page <DICOMDataset-import>` for importing datasets of this
+    type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.dicom as foud
+
+        return foud.DICOMDatasetImporter
+
+
 class GeoJSONDataset(LabeledDataset):
     """An image or video dataset whose geolocation data and optional properties
     are stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.

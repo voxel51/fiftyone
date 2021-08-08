@@ -1393,6 +1393,8 @@ def _to_eta_attributes(label):
             _attr = etad.NumericAttribute(name, value)
         elif isinstance(value, bool):
             _attr = etad.BooleanAttribute(name, value)
+        elif value is None:
+            continue
         else:
             msg = "Ignoring unsupported attribute type '%s'" % type(value)
             warnings.warn(msg)
