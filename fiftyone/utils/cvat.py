@@ -2449,7 +2449,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self._session = None
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.setup()
-        self._user_id_map = self.get_user_id_map()
+        self._user_id_map = {}
 
     def _parse_arg(self, arg, config_arg):
         if arg == None:
@@ -2512,6 +2512,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
+
+    def user_search_url(self, username):
+        return "%s/users?search=%s" % (self.base_api_url, username)
 
     def _raise_response_errors(self, response):
         try:
@@ -2613,14 +2616,24 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             "password": password,
         }
 
-    def get_user_id_map(self):
-        user_response = self._session_get(self.users_url)
-        resp_json = user_response.json()
-        user_id_map = {}
-        for user_info in resp_json["results"]:
-            user_id_map[user_info["username"]] = user_info["id"]
+    def get_user_id(self, username):
+        if username is None:
+            return None
 
-        return user_id_map
+        if username in self._user_id_map:
+            return self._user_id_map[username]
+
+        search_url = self.user_search_url(username)
+        user_response = self._session_get(search_url)
+        resp_json = user_response.json()
+        for user_info in resp_json["results"]:
+            if user_info["username"] == username:
+                user_id = user_info["id"]
+                self._user_id_map[username] = user_id
+                return user_id
+
+        logger.warning("User '%s' not found in %s" % (username, search_url))
+        return None
 
     def create_task(
         self,
@@ -2659,8 +2672,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 attribute_id_map[task_id][class_id][attr_name] = attr_id
 
         if task_assignee is not None:
-            task_patch = {"assignee_id": self._user_id_map[task_assignee]}
-            resp = self._session_patch(self.task_url(task_id), json=task_patch)
+            user_id = self.get_user_id(task_assignee)
+            if user_id is not None:
+                task_patch = {"assignee_id": self.get_user_id(task_assignee)}
+                resp = self._session_patch(
+                    self.task_url(task_id), json=task_patch
+                )
 
         return task_id, attribute_id_map, class_id_map
 
@@ -2699,8 +2716,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             for ind, job_id in enumerate(job_ids):
                 assignee_ind = min(ind, len(job_assignees) - 1)
                 assignee = job_assignees[assignee_ind]
-                if assignee is not None:
-                    job_patch = {"assignee_id": self._user_id_map[assignee]}
+                user_id = self.get_user_id(assignee)
+                if assignee is not None and user_id is not None:
+                    job_patch = {"assignee_id": user_id}
                     resp = self._session_patch(
                         self.taskless_job_url(job_id), json=job_patch
                     )
@@ -2709,8 +2727,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             for ind, job_id in enumerate(job_ids):
                 reviewer_ind = min(ind, len(job_reviewers) - 1)
                 reviewer = job_reviewers[reviewer_ind]
-                if reviewer is not None:
-                    job_patch = {"reviewer_id": self._user_id_map[reviewer]}
+                user_id = self.get_user_id(reviewer)
+                if reviewer is not None and user_id is not None:
+                    job_patch = {"reviewer_id": user_id}
                     resp = self._session_patch(
                         self.taskless_job_url(job_id), json=job_patch
                     )
