@@ -310,23 +310,23 @@ The image visualizer allows you to interactively visualize images along with
 their associated labels. When you hover over an image in the visualizer, a
 head-up display (HUD) appears with a control bar providing various options.
 
-You can zoom in/out and pan around an image by scrolling and click-dragging
-with your mouse or trackpad. You can also zoom tightly into the currently
-visible (or selected) labels by clicking on the ``Crop`` icon in the controls
-HUD or using the ``z`` keyboard shortcut. Press ``ESC`` to reset your view.
+For example, you can zoom in/out and pan around an image by scrolling and
+click-dragging with your mouse or trackpad. You can also zoom tightly into the
+currently visible (or selected) labels by clicking on the `Crop` icon in the
+controls HUD or using the `z` keyboard shortcut. Press `ESC` to reset your
+view.
 
 When multiple labels are overlayed on top of each other, the up and down
 arrows offer a convenient way to rotate the z-order of the labels that your
 cursor is hovering over, so every label and it's tooltip can be viewed.
 
 The settings icon in the controls HUD contains a variety of options for
-customizing the rendering of your labels, including
-``Only show hovered label``, ``Show confidence``, ``Show label``, and
-``Show tooltip``. The default settings for these parameters can be configured
-via the :ref:`App config <app-config>`.
+customizing the rendering of your labels, including whether to show object
+labels, confidences, or the tooltip. The default settings for these parameters
+can be configured via the :ref:`App config <app-config>`.
 
-Shortcut keys are availble for almost every action. Click the ``?`` icon in the
-controls HUD or use the ``?`` keyboard shortcut to display the list of
+Keyboard shortcuts are availble for almost every action. Click the `?` icon
+in the controls HUD or use the `?` keyboard shortcut to display the list of
 available actions and their associated hotkeys.
 
 .. image:: /images/app/app-image-visualizer.gif
@@ -344,30 +344,28 @@ through a video and its labels.
 
 There are a variety of additional video-specific keyboard shortcuts. For
 example, you can press the spacebar to play/pause the video, and you can press
-``0``, ``1``, ..., ``9`` to seek to the 0%, 10%, ..., 90% timestamp in the
-video. When the video is paused, you can press ``<`` and ``>`` to seek to the
-previous and next frame, respectively.
+`0`, `1`, ..., `9` to seek to the 0%, 10%, ..., 90% timestamp in the video.
+When the video is paused, you can use `<` and `>` to navigate frame-by-frame
+through the video.
 
-Click the ``?`` icon in the controls HUD or use the ``?`` keyboard shortcut to
+Click the `?` icon in the controls HUD or use the `?` keyboard shortcut to
 display the list of available actions and their associated hotkeys.
 
 All of the same options in the image settings are available in the video
-settings menu in the controls HUD, as well as an additional
-``Use frame number`` option, which configures the visualizer to show frame
-numbers rather than timestamps, and the ``Loop video`` option. The default
-settings for these parameters can be configured via the
+settings menu in the controls HUD, as well as additional options like whether
+to show frame numbers rather than timestamp in the HUD. The default settings
+for all such parameters can be configured via the
 :ref:`App config <app-config>`.
 
-Playback rate and volume are also available in the video controls HUD to right
-of the play/pause button. Clicking on one of the icons resets the setting to
-the default. And when hovering, a slider appears to adjust the setting
-manually.
+Playback rate and volume are also available in the video controls HUD.
+Clicking on one of the icons resets the setting to the default. And when
+hovering, a slider appears to adjust the setting manually.
 
 .. note::
 
-    Did you know? The video visualizer streams frame-label data on demand,
-    which means that playback begins as soon as possible and even heavyweight
-    label types like segmentations are supported!
+    Did you know? The video visualizer streams frame data on-demand, which
+    means that playback begins as soon as possible and even heavyweight label
+    types like segmentations are supported!
 
 .. image:: /images/app/app-video-visualizer.gif
     :alt: video-visualizer
