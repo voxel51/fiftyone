@@ -2757,6 +2757,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self,
         samples,
         label_schema,
+        media_field="filepath",
         segment_size=None,
         image_quality=75,
         job_reviewers=None,
@@ -2768,8 +2769,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` to
                 upload to CVAT
-            label_field: the string name of the field to be uploaded for
-                annotation
+            label_schema: a dictionary containing the description of label fields,
+                classes and attribute to annotate
+            media_field ("filepath"): string field name containing the paths to
+                media files on disk to upload
             segment_size (None): maximum number of images to load into a job. Not
                 applicable to videos
             image_quality (75): an integer ranging from 0 to 100 indicating the 
@@ -2781,7 +2784,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             task_assignee (None): the username of the user assigned to the
                 created task
         """
-        samples = samples.sort_by("filepath")
+        if media_field not in samples.get_field_schema():
+            logger.warning(
+                "Media field '%s' not found, uploading media from 'filepath'"
+                % media_field
+            )
+            media_field = "filepath"
+        samples = samples.sort_by(media_field)
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -2939,7 +2948,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 )
                 task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
-                paths = batch_samples.values("filepath")
+                paths = batch_samples.values(media_field)
                 current_job_ids = self.upload_data(
                     task_id,
                     paths,
@@ -3987,6 +3996,7 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
 def annotate(
     samples,
     label_schema,
+    media_field="filepath",
     launch_editor=False,
     url=None,
     port=None,
@@ -4004,6 +4014,8 @@ def annotate(
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         label_schema: a dictionary containing the description of label fields,
             classes and attribute to annotate
+        media_field ("filepath"): string field name containing the paths to
+            media files on disk to upload
         launch_editor (False): whether to launch the backend editor in a
             browser window after uploading samples
         url ("cvat.org"): URL of the CVAT server to which to upload samples 
@@ -4053,6 +4065,7 @@ def annotate(
     ) = api.upload_samples(
         samples,
         label_schema=label_schema,
+        media_field=media_field,
         segment_size=segment_size,
         image_quality=image_quality,
         job_reviewers=job_reviewers,

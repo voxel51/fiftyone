@@ -263,6 +263,7 @@ def annotate(
     label_type=None,
     classes=None,
     attributes=True,
+    media_field="filepath",
     launch_editor=False,
     **kwargs
 ):
@@ -295,6 +296,8 @@ def annotate(
             every label field without attributes specified through the
             `label_schema`. `True` indicates loading all values for existing
             label fields. `False` indicates loading no attributes
+        media_field ("filepath"): string field name containing the paths to
+            media files on disk to upload
         launch_editor (False): whether to launch the backend editor in a
             browser window after uploading samples
         **kwargs: additional arguments to send to the annotation backend
@@ -322,6 +325,7 @@ def annotate(
             samples,
             launch_editor=launch_editor,
             label_schema=label_schema,
+            media_field=media_field,
             **kwargs
         )
     elif backend == "labelbox":
@@ -329,6 +333,7 @@ def annotate(
             samples,
             launch_editor=launch_editor,
             label_schema=label_schema,
+            media_field=media_field,
             **kwargs
         )
     else:
