@@ -1333,28 +1333,21 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
     labeled images.
 
     Args:
-        label_field_or_dict: the name of the
-            :class:`fiftyone.core.labels.Label` field of the samples to parse,
-            or a dictionary mapping label field names to keys in the returned
-            label dictionary
-        label_fcn_or_dict (None): an optional function or dictionary mapping
-            label field names to functions (must match ``label_field_or_dict``)
-            to apply to each label before returning it
+        label_field: the name of the label field to parse, or a dictionary
+            mapping label field names to keys for the return label dictionaries
+        label_fcn (None): an optional function or dictionary mapping label
+            field names to functions (must match ``label_field``) to apply to
+            each label before returning it
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
             if :func:`get_image_metadata` is called and no metadata is
             available
     """
 
-    def __init__(
-        self,
-        label_field_or_dict,
-        label_fcn_or_dict=None,
-        compute_metadata=False,
-    ):
+    def __init__(self, label_field, label_fcn=None, compute_metadata=False):
         super().__init__()
-        self.label_field_or_dict = label_field_or_dict
-        self.label_fcn_or_dict = label_fcn_or_dict
+        self.label_field = label_field
+        self.label_fcn = label_fcn
         self.compute_metadata = compute_metadata
 
     @property
@@ -1386,14 +1379,14 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
 
     def get_label(self):
         sample = self.current_sample
-        label_field = self.label_field_or_dict
-        coerce_fcn = self.label_fcn_or_dict
+        label_field = self.label_field
+        label_fcn = self.label_fcn
 
         if isinstance(label_field, dict):
-            if coerce_fcn is not None:
+            if label_fcn is not None:
                 label = {}
                 for k, v in label_field.items():
-                    f = coerce_fcn.get(k, None)
+                    f = label_fcn.get(k, None)
                     if f is not None:
                         label[v] = f(sample[k])
                     else:
@@ -1402,8 +1395,8 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
                 label = {v: sample[k] for k, v in label_field.items()}
         else:
             label = sample[label_field]
-            if coerce_fcn is not None:
-                label = coerce_fcn(label)
+            if label_fcn is not None:
+                label = label_fcn(label)
 
         return label
 
@@ -1445,19 +1438,18 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
     labeled videos.
 
     Args:
-        label_field_or_dict (None): the name of a
-            :class:`fiftyone.core.labels.Label` field of the sample to parse,
-            or a dictionary mapping label field names to output keys to use in
-            the returned sample-level labels dictionary
-        frame_labels_field_or_dict (None): the name of the frame label field to
-            export, or a dictionary mapping field names to output keys
-            describing the frame label fields to export
-        label_fcn_or_dict (None): an optional function or dictionary mapping
-            label field names to functions (must match ``label_field_or_dict``)
-            to apply to each sample label before returning it
-        frame_labels_fcn_or_dict (None): an optional function or dictionary
-            mapping frame label field names to functions (must match
-            ``frame_labels_field_or_dict``) to apply to each frame label before
+        label_field (None): the name of a label field to parse, or a dictionary
+            mapping label field names to output keys to use in the returned
+            sample-level labels dictionary
+        frame_labels_field (None): the name of a frame label field to parse, or
+            a dictionary mapping field names to output keys describing the
+            frame label fields to export
+        label_fcn (None): an optional function or dictionary mapping label
+            field names to functions (must match ``label_field``) to apply to
+            each sample label before returning it
+        frame_labels_fcn (None): an optional function or dictionary mapping
+            frame label field names to functions (must match
+            ``frame_labels_field``) to apply to each frame label before
             returning it
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
@@ -1467,20 +1459,20 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
 
     def __init__(
         self,
-        label_field_or_dict=None,
-        frame_labels_field_or_dict=None,
-        label_fcn_or_dict=None,
-        frame_labels_fcn_or_dict=None,
+        label_field=None,
+        frame_labels_field=None,
+        label_fcn=None,
+        frame_labels_fcn=None,
         compute_metadata=False,
     ):
         frame_labels_dict, frame_fcn_dict = self._parse_frame_args(
-            frame_labels_field_or_dict, frame_labels_fcn_or_dict
+            frame_labels_field, frame_labels_fcn
         )
 
         super().__init__()
-        self.label_field_or_dict = label_field_or_dict
+        self.label_field = label_field
         self.frame_labels_dict = frame_labels_dict
-        self.label_fcn_or_dict = label_fcn_or_dict
+        self.label_fcn = label_fcn
         self.frame_fcn_dict = frame_fcn_dict
         self.compute_metadata = compute_metadata
 
@@ -1510,17 +1502,17 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
 
     def get_label(self):
         sample = self.current_sample
-        label_field = self.label_field_or_dict
-        coerce_fcn = self.label_fcn_or_dict
+        label_field = self.label_field
+        label_fcn = self.label_fcn
 
         if label_field is None:
             return None
 
         if isinstance(label_field, dict):
-            if coerce_fcn is not None:
+            if label_fcn is not None:
                 label = {}
                 for k, v in label_field.items():
-                    f = coerce_fcn.get(k, None)
+                    f = label_fcn.get(k, None)
                     if f is not None:
                         label[v] = f(sample[k])
                     else:
@@ -1529,25 +1521,25 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
                 label = {v: sample[k] for k, v in label_field.items()}
         else:
             label = sample[label_field]
-            if coerce_fcn is not None:
-                label = coerce_fcn(label)
+            if label_fcn is not None:
+                label = label_fcn(label)
 
         return label
 
     def get_frame_labels(self):
         frames = self.current_sample.frames
         frame_labels_dict = self.frame_labels_dict
-        frame_coerce_fcn = self.frame_fcn_dict
+        frame_fcn_dict = self.frame_fcn_dict
 
         if frame_labels_dict is None:
             return None
 
-        if frame_coerce_fcn is not None:
+        if frame_fcn_dict is not None:
             new_frames = {}
             for frame_number, frame in frames.items():
                 new_frame = {}
                 for k, v in frame_labels_dict.items():
-                    f = frame_coerce_fcn.get(k, None)
+                    f = frame_fcn_dict.get(k, None)
                     if f is not None:
                         new_frame[v] = f(frame[k])
                     else:
@@ -1564,21 +1556,19 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         return new_frames
 
     @staticmethod
-    def _parse_frame_args(
-        frame_labels_field_or_dict, frame_labels_fcn_or_dict
-    ):
-        if frame_labels_field_or_dict is None:
+    def _parse_frame_args(frame_labels_field, frame_labels_fcn):
+        if frame_labels_field is None:
             return None, None
 
-        if not isinstance(frame_labels_field_or_dict, dict):
-            label_field = frame_labels_field_or_dict
+        if not isinstance(frame_labels_field, dict):
+            label_field = frame_labels_field
             frame_labels_dict = {label_field: label_field}
-            if frame_labels_fcn_or_dict is not None:
-                frame_fcn_dict = {label_field: frame_labels_fcn_or_dict}
+            if frame_labels_fcn is not None:
+                frame_fcn_dict = {label_field: frame_labels_fcn}
             else:
                 frame_fcn_dict = None
         else:
-            frame_labels_dict = frame_labels_field_or_dict
-            frame_fcn_dict = frame_labels_fcn_or_dict
+            frame_labels_dict = frame_labels_field
+            frame_fcn_dict = frame_labels_fcn
 
         return frame_labels_dict, frame_fcn_dict

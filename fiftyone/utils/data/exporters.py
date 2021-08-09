@@ -12,7 +12,6 @@ import os
 import warnings
 
 from bson import json_util
-import numpy as np
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -50,8 +49,8 @@ def export_samples(
     labels_path=None,
     export_media=None,
     dataset_exporter=None,
-    label_field_or_dict=None,
-    frame_labels_field_or_dict=None,
+    label_field=None,
+    frame_labels_field=None,
     num_samples=None,
     **kwargs,
 ):
@@ -171,15 +170,15 @@ def export_samples(
             records, "symlink" is not an option)
         dataset_exporter (None): a :class:`DatasetExporter` to use to write the
             dataset
-        label_field_or_dict (None): the name of the label field to export, or
-            a dictionary mapping field names to output keys describing the
-            label fields to export. Only applicable if ``dataset_exporter`` is
-            a :class:`LabeledImageDatasetExporter` or
+        label_field (None): the name of the label field to export, or a
+            dictionary mapping field names to output keys describing the label
+            fields to export. Only applicable if ``dataset_exporter`` is a
+            :class:`LabeledImageDatasetExporter` or
             :class:`LabeledVideoDatasetExporter`, or if you are exporting image
             patches
-        frame_labels_field_or_dict (None): the name of the frame label field to
-            export, or a dictionary mapping field names to output keys
-            describing the frame label fields to export. Only applicable if
+        frame_labels_field (None): the name of the frame label field to export,
+            or a dictionary mapping field names to output keys describing the
+            frame label fields to export. Only applicable if
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
@@ -189,7 +188,7 @@ def export_samples(
             :class:`fiftyone.utils.patches.ImagePatchesExtractor`
     """
     found_patches, patches_kwargs, kwargs = _check_for_patches_export(
-        samples, dataset_exporter, label_field_or_dict, kwargs
+        samples, dataset_exporter, label_field, kwargs
     )
 
     if dataset_exporter is None:
@@ -227,10 +226,7 @@ def export_samples(
         if found_patches:
             # Export unlabeled image patches
             samples = foup.ImagePatchesExtractor(
-                samples,
-                label_field_or_dict,
-                include_labels=False,
-                **patches_kwargs,
+                samples, label_field, include_labels=False, **patches_kwargs,
             )
             sample_parser = ImageSampleParser()
             num_samples = len(samples)
@@ -248,38 +244,33 @@ def export_samples(
         if found_patches:
             # Export labeled image patches
             samples = foup.ImagePatchesExtractor(
-                samples,
-                label_field_or_dict,
-                include_labels=True,
-                **patches_kwargs,
+                samples, label_field, include_labels=True, **patches_kwargs,
             )
             sample_parser = ImageClassificationSampleParser()
             num_samples = len(samples)
         else:
-            label_fcn_or_dict = _make_label_coersion_functions(
-                label_field_or_dict, sample_collection, dataset_exporter
+            label_fcn = _make_label_coersion_functions(
+                label_field, sample_collection, dataset_exporter
             )
             sample_parser = FiftyOneLabeledImageSampleParser(
-                label_field_or_dict,
-                label_fcn_or_dict=label_fcn_or_dict,
-                compute_metadata=True,
+                label_field, label_fcn=label_fcn, compute_metadata=True,
             )
 
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
-        label_fcn_or_dict = _make_label_coersion_functions(
-            label_field_or_dict, sample_collection, dataset_exporter
+        label_fcn = _make_label_coersion_functions(
+            label_field, sample_collection, dataset_exporter
         )
-        frame_labels_fcn_or_dict = _make_label_coersion_functions(
-            frame_labels_field_or_dict,
+        frame_labels_fcn = _make_label_coersion_functions(
+            frame_labels_field,
             sample_collection,
             dataset_exporter,
             frames=True,
         )
         sample_parser = FiftyOneLabeledVideoSampleParser(
-            label_field_or_dict=label_field_or_dict,
-            frame_labels_field_or_dict=frame_labels_field_or_dict,
-            label_fcn_or_dict=label_fcn_or_dict,
-            frame_labels_fcn_or_dict=frame_labels_fcn_or_dict,
+            label_field=label_field,
+            frame_labels_field=frame_labels_field,
+            label_fcn=label_fcn,
+            frame_labels_fcn=frame_labels_fcn,
             compute_metadata=True,
         )
 
@@ -425,16 +416,12 @@ def build_dataset_exporter(
     return dataset_exporter, unused_kwargs
 
 
-def _check_for_patches_export(
-    samples, dataset_exporter, label_field_or_dict, kwargs
-):
-    if isinstance(label_field_or_dict, dict):
-        if len(label_field_or_dict) == 1:
-            label_field = next(iter(label_field_or_dict.keys()))
+def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
+    if isinstance(label_field, dict):
+        if len(label_field) == 1:
+            label_field = next(iter(label_field.keys()))
         else:
             label_field = None
-    else:
-        label_field = label_field_or_dict
 
     if label_field is None:
         return False, {}, kwargs
@@ -504,6 +491,8 @@ def _make_label_coersion_functions(
 
     if isinstance(label_cls, dict):
         export_types = list(label_cls.values())
+    elif isinstance(label_cls, (list, tuple)):
+        export_types = list(label_cls)
     else:
         export_types = [label_cls]
 
@@ -1209,6 +1198,9 @@ class LabeledImageDatasetExporter(DatasetExporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             exporter directly exports labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the exporter can export a single label field of any of
+            these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the exporter can handle label dictionaries with
             value-types specified by this dictionary. Not all keys need be
@@ -1263,6 +1255,9 @@ class LabeledVideoDatasetExporter(DatasetExporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             exporter directly exports sample-level labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the exporter can export a single sample-level label
+            field of any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the exporter can export multiple label fields with
             value-types specified by this dictionary. Not all keys need be
@@ -1281,6 +1276,9 @@ class LabeledVideoDatasetExporter(DatasetExporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             exporter directly exports frame labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the exporter can export a single frame-level label field
+            of any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the exporter can export multiple frame label fields
             with value-types specified by this dictionary. Not all keys need be
@@ -2364,11 +2362,7 @@ class ImageSegmentationDirectoryExporter(
 
     @property
     def label_cls(self):
-        return {
-            "segmentations": fol.Segmentation,
-            "detections": fol.Detections,
-            "polylines": fol.Polylines,
-        }
+        return (fol.Segmentation, fol.Detections, fol.Polylines)
 
     def setup(self):
         self._media_exporter = ImageExporter(
@@ -2379,60 +2373,37 @@ class ImageSegmentationDirectoryExporter(
         )
         self._media_exporter.setup()
 
-    def export_sample(self, image_or_path, labels, metadata=None):
+    def export_sample(self, image_or_path, label, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
 
-        if labels is None:
+        if label is None:
             return  # unlabeled
 
-        if not isinstance(labels, dict):
-            labels = {"labels": labels}
+        if isinstance(label, fol.Segmentation):
+            mask = label.mask
+        elif isinstance(label, (fol.Detections, fol.Polylines)):
+            if self.mask_size is not None:
+                frame_size = self.mask_size
+            else:
+                if metadata is None:
+                    metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        if all(v is None for v in labels.values()):
-            return  # unlabeled
+                frame_size = (metadata.width, metadata.height)
 
-        mask = None
+            if isinstance(label, fol.Detections):
+                segmentation = label.to_segmentation(
+                    frame_size=frame_size, mask_targets=self.mask_targets
+                )
+            else:
+                segmentation = label.to_segmentation(
+                    frame_size=frame_size,
+                    mask_targets=self.mask_targets,
+                    thickness=self.thickness,
+                )
 
-        must_render = False
-        for label in labels.values():
-            if isinstance(label, fol.Segmentation):
-                if mask is None:
-                    mask = label.mask
-                else:
-                    logger.warning(
-                        "Found multiple segmentation masks; only the first "
-                        "mask will be used..."
-                    )
-            elif isinstance(label, (fol.Detections, fol.Polylines)):
-                must_render = True
-            elif label is not None:
-                raise ValueError("Unsupported label type '%s'" % type(label))
-
-        if must_render:
-            if mask is None:
-                if self.mask_size is not None:
-                    width, height = self.mask_size
-                else:
-                    if metadata is None:
-                        metadata = fom.ImageMetadata.build_for(image_or_path)
-
-                    width, height = metadata.width, metadata.height
-
-                mask = np.zeros((height, width), dtype=np.uint8)
-
-            for label in labels.values():
-                if isinstance(label, fol.Detections):
-                    segmentation = label.to_segmentation(
-                        mask=mask, mask_targets=self.mask_targets
-                    )
-                    mask = segmentation.mask
-                elif isinstance(label, fol.Polylines):
-                    segmentation = label.to_segmentation(
-                        mask=mask,
-                        mask_targets=self.mask_targets,
-                        thickness=self.thickness,
-                    )
-                    mask = segmentation.mask
+            mask = segmentation.mask
+        else:
+            raise ValueError("Unsupported label type '%s'" % type(label))
 
         out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
         etai.write(mask, out_mask_path)

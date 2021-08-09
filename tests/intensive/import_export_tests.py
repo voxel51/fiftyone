@@ -489,7 +489,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
     dataset.export(
         export_dir=export_dir,
         dataset_type=fo.types.BDDDataset,
-        label_prefix="gt_",
+        label_field="gt_*",
     )
     dataset2 = fo.Dataset.from_dir(
         dataset_dir=export_dir,
@@ -502,7 +502,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
     dataset.export(
         export_dir=export_dir,
         dataset_type=fo.types.FiftyOneImageLabelsDataset,
-        label_prefix="gt_",
+        label_field="gt_*",
     )
     dataset3 = fo.Dataset.from_dir(
         dataset_dir=export_dir,
@@ -830,7 +830,11 @@ def test_custom_multitask_image_dataset_imports(basedir):
             basedir, "custom-imports", dataset_type.__name__
         )
         _run_custom_imports(
-            idataset, export_dir, dataset_type, max_samples=3, label_prefix="",
+            idataset,
+            export_dir,
+            dataset_type,
+            label_field=["classifications", "detections"],
+            max_samples=3,
         )
 
 

@@ -23,7 +23,15 @@ def test_labelbox_image():
         "bdd100k", split="validation", shuffle=True, max_samples=10
     )
 
-    _test_labelbox_image(dataset)
+    label_field = [
+        "weather",
+        "scene",
+        "timeofday",
+        "detections",
+        "polylines",
+    ]
+
+    _test_labelbox_image(dataset, label_field)
 
 
 @unittest.skip("Must be run manually")
@@ -31,7 +39,9 @@ def test_labelbox_video_objects():
     # Video dataset with objects
     dataset = foz.load_zoo_dataset("quickstart-video", max_samples=10)
 
-    _test_labelbox_video(dataset)
+    frame_labels_field = ["detections"]
+
+    _test_labelbox_video(dataset, frame_labels_field)
 
 
 @unittest.skip("Must be run manually")
@@ -63,10 +73,12 @@ def test_labelbox_video_events():
 
     dataset.add_sample(sample)
 
-    _test_labelbox_video(dataset)
+    frame_labels_field = ["weather"]
+
+    _test_labelbox_video(dataset, frame_labels_field)
 
 
-def _test_labelbox_image(dataset):
+def _test_labelbox_image(dataset, label_field):
     labelbox_export_path = "/tmp/labelbox-image-export.json"
     labelbox_import_path = "/tmp/labelbox-image-import.json"
     labelbox_id_field = "labelbox_id"
@@ -81,7 +93,7 @@ def _test_labelbox_image(dataset):
         dataset,
         labelbox_export_path,
         labelbox_id_field=labelbox_id_field,
-        label_prefix="",  # all fields
+        label_field=label_field,
     )
 
     # Convert to Labelbox import format
@@ -102,7 +114,7 @@ def _test_labelbox_image(dataset):
     session.wait()
 
 
-def _test_labelbox_video(dataset):
+def _test_labelbox_video(dataset, frame_labels_field):
     labelbox_export_dir = "/tmp/labelbox-video-export"
     labelbox_export_path = "/tmp/labelbox-video-export.json"
     labelbox_import_dir = "/tmp/labelbox-video-import"
@@ -123,7 +135,7 @@ def _test_labelbox_video(dataset):
         labelbox_export_path,
         video_labels_dir=labelbox_export_dir,
         labelbox_id_field=labelbox_id_field,
-        frame_labels_prefix="",  # all fields
+        frame_labels_field=frame_labels_field,
     )
 
     # Convert to Labelbox import format

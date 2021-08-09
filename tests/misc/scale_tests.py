@@ -22,7 +22,15 @@ def test_scale_image():
         "bdd100k", split="validation", shuffle=True, max_samples=10
     )
 
-    _test_scale_image(dataset)
+    label_field = [
+        "weather",
+        "scene",
+        "timeofday",
+        "detections",
+        "polylines",
+    ]
+
+    _test_scale_image(dataset, label_field)
 
 
 @unittest.skip("Must be run manually")
@@ -30,7 +38,9 @@ def test_scale_video_objects():
     # Video dataset with objects
     dataset = foz.load_zoo_dataset("quickstart-video", max_samples=10)
 
-    _test_scale_video(dataset)
+    frame_labels_field = ["detections"]
+
+    _test_scale_video(dataset, frame_labels_field)
 
 
 @unittest.skip("Must be run manually")
@@ -62,17 +72,19 @@ def test_scale_video_events():
 
     dataset.add_sample(sample)
 
-    _test_scale_video(dataset)
+    frame_labels_field = ["weather"]
+
+    _test_scale_video(dataset, frame_labels_field)
 
 
-def _test_scale_image(dataset):
+def _test_scale_image(dataset, label_field):
     scale_export_path = "/tmp/scale-image-export.json"
     scale_import_path = "/tmp/scale-image-import.json"
     scale_id_field = "scale_id"
 
     # Export labels in Scale format
     fous.export_to_scale(
-        dataset, scale_export_path, label_prefix="",  # all fields
+        dataset, scale_export_path, label_field=label_field,
     )
 
     # Convert to Scale import format
@@ -98,7 +110,7 @@ def _test_scale_image(dataset):
     session.wait()
 
 
-def _test_scale_video(dataset):
+def _test_scale_video(dataset, frame_labels_field):
     scale_export_path = "/tmp/scale-video-export.json"
     scale_import_path = "/tmp/scale-video-import.json"
 
@@ -117,7 +129,7 @@ def _test_scale_video(dataset):
         video_labels_dir=scale_video_labels_dir,
         video_events_dir=scale_video_events_dir,
         video_playback=True,  # try both `True` and `False` here
-        frame_labels_prefix="",  # all frame fields
+        frame_labels_field=frame_labels_field,
     )
 
     # Convert to Scale import format

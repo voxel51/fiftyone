@@ -1095,7 +1095,6 @@ class DICOMDatasetTests(ImageDatasetTests):
             dataset_dir=dataset_dir,
             images_dir=images_dir,
             dataset_type=fo.types.DICOMDataset,
-            label_field="",
         )
 
         self.assertEqual(len(dataset), 1)
@@ -1108,7 +1107,6 @@ class DICOMDatasetTests(ImageDatasetTests):
             images_dir=images_dir,
             dataset_type=fo.types.DICOMDataset,
             keywords=["PatientName"],
-            label_field="",
         )
 
         self.assertEqual(len(dataset2), 1)
@@ -1273,7 +1271,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.FiftyOneImageLabelsDataset,
-            label_field="",
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -1307,9 +1304,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.BDDDataset,
-            label_field="",
+            dataset_dir=export_dir, dataset_type=fo.types.BDDDataset,
         )
 
         self.assertEqual(len(view), len(dataset2))
@@ -1332,7 +1327,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.BDDDataset,
-            label_field="",
             include_all_data=True,
         )
 
@@ -1351,7 +1345,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             data_path=data_path,
             labels_path=labels_path,
             dataset_type=fo.types.BDDDataset,
-            label_field="",
             include_all_data=True,
         )
 
@@ -1378,9 +1371,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.CVATImageDataset,
-            label_field="",
+            dataset_dir=export_dir, dataset_type=fo.types.CVATImageDataset,
         )
 
         self.assertEqual(len(view), len(dataset2))
@@ -1400,7 +1391,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.CVATImageDataset,
-            label_field="",
             include_all_data=True,
         )
 
@@ -1419,7 +1409,6 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             data_path=data_path,
             labels_path=labels_path,
             dataset_type=fo.types.CVATImageDataset,
-            label_field="",
             include_all_data=True,
         )
 
@@ -1636,7 +1625,6 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.FiftyOneVideoLabelsDataset,
-            label_field="",
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -1671,9 +1659,7 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.CVATVideoDataset,
-            label_field="",
+            dataset_dir=export_dir, dataset_type=fo.types.CVATVideoDataset,
         )
 
         self.assertEqual(len(view), len(dataset2))
@@ -1693,7 +1679,6 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.CVATVideoDataset,
-            label_field="",
             include_all_data=True,
         )
 
@@ -1712,7 +1697,6 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
             data_path=data_path,
             labels_path=labels_path,
             dataset_type=fo.types.CVATVideoDataset,
-            label_field="",
             include_all_data=True,
         )
 
