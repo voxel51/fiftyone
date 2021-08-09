@@ -85,5 +85,4 @@ export interface State<K> {
   nextItemIndex: number;
   itemIndexMap: ItemIndexMap;
   resized?: Set<number>;
-  zooming: boolean;
 }
