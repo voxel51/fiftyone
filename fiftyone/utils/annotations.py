@@ -381,6 +381,10 @@ def load_annotations(samples, info, **kwargs):
                     "\nLabels of type '%s' found when loading annotations for field '%s'.\nPlease enter a name for the field in which to store these addtional annotations: "
                     % (new_field, label_field)
                 )
+                if not new_field_name:
+                    logger.warning(
+                        "Invalid field name '%s'. Skipping..." % new_field_name
+                    )
                 if is_video and not new_field_name.startswith("frames."):
                     new_field_name = "frames." + new_field_name
 

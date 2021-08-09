@@ -264,7 +264,7 @@ CVAT-specific arguments
 * `https`: boolen indicating whether to use `http` or `https` in the server url
 * `segment_size`: maximum number of images to upload per job
 * `image_quality`: quality to reduce images to prior to uploading
-* `job_reviewers`: a list of usernames that job reviews are assigned to sequentially
+* `job_reviewers`: a list of usernames that job reviewers are assigned to sequentially
 * `job_asignees`: a list of usernames that jobs are assigned to sequentially
 * `task_assignees`: a list of usernames that tasks are assigned to sequentially
 
@@ -481,9 +481,93 @@ The above code snippet will only load existing classes and attributes. The
 Create new label fields
 -----------------------
 
+In order to annotate a new label field, a label schema needs to be provided or
+be able to be constructed from the given `label_type` and `classes`.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    info = view.annotate(
+        label_field="new_classifications",
+        label_type="classifications",
+        classes=["dog", "cat", "person"],
+        launch_editor=True,
+    )
+
+    # Create Tag annotations in CVAT
+
+    view.load_annotations(info, delete_tasks=True)
+
+
+Alternatively, the `label_schema` can be used to define the same new label
+field.
+
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    label_schema = {
+        "new_classifications": {
+            "type": "classifications",
+            "classes": ["dog", "cat", "person"],
+        }
+    }
+
+    info = view.annotate(label_schema=label_schema, launch_editor=True)
+
+    # Create Tag annotations in CVAT
+
+    view.load_annotations(info, delete_tasks=True)
 
 Annotate multiple fields
 ------------------------
+
+The `label_schema` argument allows for multiple fields to be annotated at the
+same time. Every field will be uploaded as a separate task since every CVAT
+task only supports a single schema. Each CVAT task will be named
+`FiftyOne_annotation_<LABEL-FIELD>`. 
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    label_schema = {
+        "ground_truth": {},
+        "new_keypoints": {
+            "type": "keypoints",
+            "classes": dataset.default_classes,
+            "attributes": {
+                "occluded": "select",
+                "values": [True, False],
+            }
+        }
+    }
+
+    info = view.annotate(label_schema=label_schema, launch_editor=True)
+
+    # Automatically open the "ground_truth" task and modify detections
+
+    # Navigate to tasks and open the "FiftyOne_annotation_new_keypoints" task
+    # to add keypoint annotations 
+
+    view.load_annotations(info, delete_tasks=True)
 
 
 Unexpected annotations
@@ -526,3 +610,30 @@ names for these unexpected new fields.
     print(view)
 
 
+Videos
+______
+
+While CVAT supports video annotation, it only allows for a single video per
+task. For video samples, every video will be uploaded to a separate task.
+
+CVAT also does not provided a striaghtforward way to annotate sample-level
+labels like |Classifications|. It is recommended to use FiftyOne |tags| for
+|Sample|-level classifications on a video |Dataset|.
+
+|Frame|-level labels can be annotated in CVAT through this integration. Label
+fields for |Frame|-level labels must be prepended by `"frames."`.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    view = dataset.take(1)
+
+    info = view.annotate(label_field="frames.ground_truth_detections", launch_editor=True)
+
+    # Annotate in CVAT
+
+    view.load_annotations(info, delete_tasks=True)
