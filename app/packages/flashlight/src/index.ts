@@ -47,6 +47,7 @@ export default class Flashlight<K> {
   private readonly config: FlashlightConfig<K>;
   private pixelsSet: boolean;
   private ctx: number = 0;
+  private resizeTimeout: ReturnType<typeof setTimeout>;
 
   constructor(config: FlashlightConfig<K>) {
     this.config = config;
@@ -80,9 +81,10 @@ export default class Flashlight<K> {
               ? this.state.onResize(width)
               : {};
 
+          const newWidth = this.state.width !== width;
           this.state.width = width;
 
-          this.updateOptions(options);
+          this.updateOptions(options, newWidth);
         });
       }
     );
@@ -91,6 +93,10 @@ export default class Flashlight<K> {
       this.element,
       (zooming) => this.render(zooming),
       () => {
+        if (this.state.resizing) {
+          return Infinity;
+        }
+
         return (
           ((this.state.options.rowAspectRatioThreshold * this.state.width) /
             this.state.containerHeight) *
@@ -149,12 +155,12 @@ export default class Flashlight<K> {
 
     this.resizeObserver.observe(element);
 
-    this.updateOptions(options);
+    this.updateOptions(options, false);
 
     this.get();
   }
 
-  updateOptions(options: Optional<Options>) {
+  updateOptions(options: Optional<Options>, newWidth: boolean) {
     const retile = Object.entries(options).some(
       ([k, v]) => this.state.options[k] != v
     );
@@ -209,20 +215,38 @@ export default class Flashlight<K> {
       });
       newContainer.style.height = `${this.state.height}px`;
 
+      this.state.resizing = true;
+      this.resizeTimeout && clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = setTimeout(() => {
+        this.state.resizing = false;
+        this.resizeTimeout = null;
+        this.render();
+      }, 500);
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
-          this.container.parentElement.scrollTo(0, section.getTop());
+          this.container.parentElement.scrollTop = section.getTop();
           this.render();
           return;
         }
       }
-    } else {
+    } else if (newWidth) {
+      this.state.resized = new Set();
       this.state.height = 0;
       this.state.sections.forEach((section) => {
         section.set(this.state.height, this.state.width);
         this.state.height += section.getHeight();
       });
+      this.state.resizing = true;
+      this.resizeTimeout && clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = setTimeout(() => {
+        this.state.resizing = false;
+        this.resizeTimeout = null;
+        this.render();
+      }, 500);
       this.container.style.height = `${this.state.height}px`;
+      const activeSection = this.state.sections[this.state.activeSection];
+      activeSection &&
+        (this.container.parentElement.scrollTop = activeSection.getTop());
 
       this.render();
     }
@@ -345,7 +369,8 @@ export default class Flashlight<K> {
       if (
         this.state.resized &&
         !this.state.resized.has(section.index) &&
-        !zooming
+        !zooming &&
+        !this.state.resizing
       ) {
         this.state.onItemResize && section.resizeItems(this.state.onItemResize);
         this.state.resized.add(section.index);
@@ -361,7 +386,11 @@ export default class Flashlight<K> {
       }
 
       const clean = this.state.clean.has(section.index) || !this.state.updater;
-      section.show(this.container, !clean && zooming, zooming);
+      section.show(
+        this.container,
+        (!clean && zooming) || this.state.resizing,
+        zooming
+      );
       this.state.shownSections.add(section.index);
     });
   }

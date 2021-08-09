@@ -14,15 +14,18 @@ export const createScrollReader = (
 
   element.addEventListener("scroll", () => {
     scrolling = true;
-    updateScrollStatus();
-    !zooming && render(zooming);
+    updateScrollStatus() && !zooming && render(zooming);
   });
 
   const updateScrollStatus = () => {
+    const threshold = getScrollSpeendThreshold();
+    if (threshold === Infinity) {
+      return false;
+    }
     if (!prior) {
       prior = element.scrollTop;
     } else {
-      if (Math.abs(element.scrollTop - prior) > getScrollSpeendThreshold()) {
+      if (Math.abs(element.scrollTop - prior) > threshold) {
         zooming = true;
         if (timer !== undefined) {
           clearTimeout(timer);
@@ -40,12 +43,13 @@ export const createScrollReader = (
       }
       prior = element.scrollTop;
     }
+
+    return true;
   };
 
   const animate = () => {
     requestAnimationFrame(animate);
-    scrolling && updateScrollStatus();
-    zooming && render(zooming);
+    scrolling && updateScrollStatus() && zooming && render(zooming);
   };
 
   animate();
