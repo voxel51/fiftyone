@@ -2213,9 +2213,133 @@ of a sample with |Detections| below a specified threshold filtered out.
     print(complex_view.values(F("predictions.detections").length()))
     # [29, 20, 17, 15, 15]
 
-.. _batch-actions:
+.. _merging-datasets:
 
-Batch actions
+Merging datasets
+________________
+
+The |Dataset| class provides a powerful
+:meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` method
+that you can use to merge the contents of another |Dataset| or |DatasetView|
+into an existing dataset.
+
+By default, samples with the same absolute `filepath` are merged, and top-level
+fields from the provided samples are merged in, overwriting any existing values
+for those fields, with the exception of list fields (e.g.,
+:ref:`tags <using-tags>`) and label list fields (e.g.,
+:ref:`Detections <object-detection>`), in which case the elements of the lists
+themselves are merged. In the case of label list fields, labels with the same
+`id` in both collections are updated rather than duplicated.
+
+The :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+method can be configured in numerous ways, including:
+
+-   Which field to use as a merge key, or an arbitrary function defining the
+    merge key
+-   Whether existing samples should be modified or skipped
+-   Whether new samples should be added or omitted
+-   Whether new fields can be added to the dataset schema
+-   Whether list fields should be treated as ordinary fields and merged as a
+    whole rather than merging their elements
+-   Whether to merge only specific fields, or all but certain fields
+-   Mapping input fields to different field names of this dataset
+
+For example, the following snippet demonstrates merging a new field into an
+existing dataset:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset1 = foz.load_zoo_dataset("quickstart")
+
+    # Create a dataset containing only ground truth objects
+    dataset2 = dataset1.select_fields("ground_truth").clone()
+
+    # Create a view containing only the predictions
+    predictions_view = dataset1.select_fields("predictions")
+
+    # Merge the predictions
+    dataset2.merge_samples(predictions_view)
+
+    print(dataset1.count("ground_truth.detections"))  # 1232
+    print(dataset2.count("ground_truth.detections"))  # 1232
+
+    print(dataset1.count("predictions.detections"))  # 5620
+    print(dataset2.count("predictions.detections"))  # 5620
+
+Note that the argument to
+:meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` can be a
+|DatasetView|, which means that you can perform possibly-complex
+:ref:`transformations <using-views>` to the source dataset to select the
+desired content to merge.
+
+Consider the following variation of the above snippet, which demonstrates a
+workflow where |Detections| from another dataset are merged into a dataset with
+existing |Detections| in the same field:
+
+.. code:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Create a new dataset that only contains predictions with confidence >= 0.9
+    dataset3 = (
+        dataset1
+        .select_fields("predictions")
+        .filter_labels("predictions", F("confidence") > 0.9)
+    ).clone()
+
+    # Create a view that contains only the remaining predictions
+    low_conf_view = dataset1.filter_labels("predictions", F("confidence") < 0.9)
+
+    # Merge the low confidence predictions back in
+    dataset3.merge_samples(low_conf_view, fields="predictions")
+
+    print(dataset1.count("predictions.detections"))  # 5620
+    print(dataset3.count("predictions.detections"))  # 5620
+
+Finally, the example below demonstrates the use of a custom merge key to define
+which samples to merge:
+
+.. code:: python
+    :linenos:
+
+    import os
+
+    # Create a dataset with 100 samples of ground truth labels
+    dataset4 = dataset1[50:150].select_fields("ground_truth").clone()
+
+    # Create a view with 50 overlapping samples of predictions
+    predictions_view = dataset1[:100].select_fields("predictions")
+
+    # Merge predictions into dataset, using base filename as merge key and
+    # never inserting new samples
+    dataset4.merge_samples(
+        predictions_view,
+        key_fcn=lambda sample: os.path.basename(sample.filepath),
+        insert_new=False,
+    )
+
+    print(len(dataset4))  # 100
+    print(len(dataset4.exists("predictions")))  # 50
+
+.. note::
+
+    Did you know? You can use
+    :meth:`merge_dir() <fiftyone.core.dataset.Dataset.merge_dir>` to directly
+    directly merge the contents of a dataset on disk into an existing FiftyOne
+    dataset without first
+    :ref:`loading it <loading-datasets-from-disk>` into a temporary dataset and
+    then using
+    :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
+    perform the merge.
+
+.. _batch-updates:
+
+Batch updates
 _____________
 
 You are always free to perform any necessary modifications to a |Dataset| by
