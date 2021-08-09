@@ -171,7 +171,7 @@ export default class Flashlight<K> {
     };
 
     if (retile && this.state.sections.length) {
-      this.state.resized = new Set();
+      this.resetResize();
       const newContainer = this.createContainer();
       this.container.replaceWith(newContainer);
       this.container = newContainer;
@@ -214,14 +214,6 @@ export default class Flashlight<K> {
         this.state.height += sectionElement.getHeight();
       });
       newContainer.style.height = `${this.state.height}px`;
-
-      this.state.resizing = true;
-      this.resizeTimeout && clearTimeout(this.resizeTimeout);
-      this.resizeTimeout = setTimeout(() => {
-        this.state.resizing = false;
-        this.resizeTimeout = null;
-        this.render();
-      }, 500);
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
           this.container.parentElement.scrollTop = section.getTop();
@@ -230,19 +222,11 @@ export default class Flashlight<K> {
         }
       }
     } else if (newWidth) {
-      this.state.resized = new Set();
-      this.state.height = 0;
+      this.resetResize();
       this.state.sections.forEach((section) => {
         section.set(this.state.height, this.state.width);
         this.state.height += section.getHeight();
       });
-      this.state.resizing = true;
-      this.resizeTimeout && clearTimeout(this.resizeTimeout);
-      this.resizeTimeout = setTimeout(() => {
-        this.state.resizing = false;
-        this.resizeTimeout = null;
-        this.render();
-      }, 500);
       this.container.style.height = `${this.state.height}px`;
       const activeSection = this.state.sections[this.state.activeSection];
       activeSection &&
@@ -521,5 +505,17 @@ export default class Flashlight<K> {
     container.removeEventListener("mouseleaver", () => container.blur());
 
     return container;
+  }
+
+  private resetResize(): void {
+    this.state.resized = new Set();
+    this.state.height = 0;
+    this.state.resizing = true;
+    this.resizeTimeout && clearTimeout(this.resizeTimeout);
+    this.resizeTimeout = setTimeout(() => {
+      this.state.resizing = false;
+      this.resizeTimeout = null;
+      this.render();
+    }, 500);
   }
 }
