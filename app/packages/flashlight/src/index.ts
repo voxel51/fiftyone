@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { NUM_ROWS_PER_SECTION } from "./constants";
+import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
 import {
   Get,
@@ -16,6 +16,7 @@ import {
   RowData,
   State,
 } from "./state";
+import { createScrollReader } from "./zooming";
 
 import {
   flashlight,
@@ -44,8 +45,6 @@ export default class Flashlight<K> {
   private state: State<K>;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
-  private lastScrollTop: number;
-  private lastRender: number;
   private pixelsSet: boolean;
   private ctx: number = 0;
 
@@ -59,14 +58,9 @@ export default class Flashlight<K> {
 
     let attached = false;
 
-    let animation = null;
+    let frame = null;
 
-    document.addEventListener(
-      "visibilitychange",
-      () =>
-        document.visibilityState === "hidden" &&
-        requestAnimationFrame(() => this.render())
-    );
+    document.addEventListener("visibilitychange", () => this.render());
 
     this.resizeObserver = new ResizeObserver(
       ([
@@ -81,9 +75,8 @@ export default class Flashlight<K> {
         }
 
         width = width - 16;
-
-        typeof animation === "number" && cancelAnimationFrame(animation);
-        animation = requestAnimationFrame(() => {
+        frame && cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
           const options =
             this.state.width !== width && this.state.onResize
               ? this.state.onResize(width)
@@ -93,22 +86,22 @@ export default class Flashlight<K> {
           this.state.width = width;
 
           this.updateOptions(options, force);
-          animation = null;
+          frame = null;
         });
       }
     );
 
-    let timeout = null;
-
-    this.element.addEventListener("scroll", () => {
-      this.render();
-
-      timeout && clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        this.render(true);
-        timeout = null;
-      }, 100);
-    });
+    createScrollReader(
+      this.element,
+      (zooming) => this.render(zooming),
+      () => {
+        return (
+          ((this.state.options.rowAspectRatioThreshold * this.state.width) /
+            this.state.containerHeight) *
+          20
+        );
+      }
+    );
 
     this.element.appendChild(this.container);
   }
@@ -226,10 +219,12 @@ export default class Flashlight<K> {
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
           this.container.parentElement.scrollTo(0, section.getTop());
-          this.render(true);
-          break;
+          this.render();
+          return;
         }
       }
+    } else {
+      this.render();
     }
   }
 
@@ -340,24 +335,27 @@ export default class Flashlight<K> {
     this.state.shownSections.delete(section.index);
   }
 
-  private showSections() {
-    const hidden = this.state.zooming && this.shownSectionsNeedUpdate();
+  private showSections(zooming: boolean) {
     this.state.shownSections.forEach((index) => {
       const section = this.state.sections[index];
       if (!section) {
         return;
       }
 
+      const clean =
+        (this.state.clean.has(section.index) || !this.state.updater) &&
+        this.state.resized &&
+        !this.state.resized.has(section.index);
       if (
         this.state.resized &&
         !this.state.resized.has(section.index) &&
-        !hidden
+        !zooming
       ) {
         this.state.onItemResize && section.resizeItems(this.state.onItemResize);
         this.state.resized.add(section.index);
       }
 
-      if (!this.state.clean.has(section.index) && !hidden) {
+      if (!this.state.clean.has(section.index) && !zooming) {
         this.state.updater &&
           section
             .getItems()
@@ -365,22 +363,21 @@ export default class Flashlight<K> {
             .forEach((id) => this.state.updater(id));
         this.state.clean.add(section.index);
       }
-      section.show(this.container, hidden, this.state.zooming);
+      section.show(this.container, clean, zooming);
       this.state.shownSections.add(section.index);
     });
   }
 
-  private render(force = false) {
+  private render(zooming: boolean = false) {
     if (
       this.state.sections.length === 0 &&
       this.state.currentRequestKey === null
     ) {
-      this.showPixels();
+      this.hidePixels();
       return;
     }
 
-    const top = this.container.parentElement.scrollTop;
-    const time = performance.now();
+    const top = this.element.scrollTop;
 
     const index = argMin(
       this.state.sections.map((section) => Math.abs(section.getTop() - top))
@@ -401,9 +398,16 @@ export default class Flashlight<K> {
     this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
 
     this.state.activeSection = this.state.firstSection;
-    while (this.state.sections[this.state.activeSection].getBottom() < top) {
+    let activeSection = this.state.sections[this.state.activeSection];
+
+    if (!activeSection) {
+      return;
+    }
+
+    while (activeSection.getBottom() - MARGIN <= top) {
       if (this.state.sections[this.state.activeSection + 1]) {
         this.state.activeSection += 1;
+        activeSection = this.state.sections[this.state.activeSection];
       } else break;
     }
 
@@ -412,23 +416,13 @@ export default class Flashlight<K> {
       this.state.shownSections.add(i);
       i++;
     }
-    [...this.state.shownSections].forEach((index) => {
+    [...Array.from(this.state.shownSections)].forEach((index) => {
       if (index < this.state.firstSection || index > this.state.lastSection) {
         this.hideSection(index);
       }
     });
 
-    const timeDelta = this.lastRender ? time - this.lastRender : 1000;
-    const pixelDelta = Math.abs(top - this.lastScrollTop);
-
-    this.lastRender = time;
-    this.lastScrollTop = top;
-    this.state.zooming =
-      !force &&
-      this.lastScrollTop !== null &&
-      pixelDelta / timeDelta > 100 / this.state.options.rowAspectRatioThreshold;
-
-    this.showSections();
+    this.showSections(zooming);
 
     if (this.state.lastSection === this.state.sections.length - 1) {
       this.requestMore();
@@ -495,7 +489,6 @@ export default class Flashlight<K> {
       itemIndexMap: {},
       nextItemIndex: 0,
       resized: null,
-      zooming: false,
     };
   }
 

@@ -499,7 +499,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                     duration: this.duration,
                     loaded: true,
                   });
-                }, 10);
+                }, 20);
               });
             });
           };
@@ -794,8 +794,11 @@ class VolumBarElement extends BaseElement<VideoState, HTMLInputElement> {
       click: ({ event }) => {
         event.stopPropagation();
       },
-      input: ({ update }) => {
+      input: ({ update, dispatchEvent }) => {
         const percent = this.element.valueAsNumber;
+
+        dispatchEvent("options", { volume: percent });
+
         update({
           options: {
             volume: percent,
@@ -896,7 +899,10 @@ class PlaybackRateBarElement extends BaseElement<VideoState, HTMLInputElement> {
       click: ({ event }) => {
         event.stopPropagation();
       },
-      input: ({ update }) => {
+      input: ({ update, dispatchEvent }) => {
+        dispatchEvent("options", {
+          playbackRate: this.element.valueAsNumber,
+        });
         update({
           options: {
             playbackRate: this.element.valueAsNumber,

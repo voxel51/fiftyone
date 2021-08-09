@@ -44,16 +44,6 @@ const processMasks = (sample: { [key: string]: any }): ArrayBuffer[] => {
   return buffers;
 };
 
-const getUrl = (origin: string): string => {
-  try {
-    // @ts-ignore
-    if (import.meta.env.DEV) {
-      origin = "http://localhost:5151";
-    }
-  } catch {}
-  return `${origin}/frames?`;
-};
-
 /** GLOBALS */
 
 const HIGH_WATER_MARK = 6;
@@ -113,14 +103,15 @@ const createReader = ({
   chunkSize,
   frameCount,
   frameNumber,
-  origin,
   sampleId,
+  url,
 }: {
   chunkSize: number;
   frameCount: number;
   frameNumber: number;
   origin: string;
   sampleId: string;
+  url: string;
 }): FrameStream => {
   let cancelled = false;
 
@@ -134,7 +125,7 @@ const createReader = ({
 
         return new Promise((resolve, reject) => {
           fetch(
-            getUrl(origin) +
+            `${url}/frames?` +
               new URLSearchParams({
                 frameNumber: frameNumber.toString(),
                 numFrames: chunkSize.toString(),
@@ -204,21 +195,22 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 };
 
 interface SetStream {
-  origin: string;
   sampleId: string;
   frameNumber: number;
   frameCount: number;
   uuid: string;
+  url: string;
+  origin: string;
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
 
 const setStream = ({
-  origin,
   sampleId,
   frameNumber,
   frameCount,
   uuid,
+  url,
 }: SetStream) => {
   if (stream) {
     stream.cancel();
@@ -229,6 +221,7 @@ const setStream = ({
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
+    url,
     origin,
   });
 

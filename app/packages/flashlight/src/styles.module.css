@@ -78,7 +78,7 @@
 .flashlightContainer {
   position: relative;
   width: 100%;
-  contain: size layout paint style;
+  contain: size layout paint;
 
   background-repeat: repeat-y;
   background-size: 100% auto;
@@ -103,13 +103,14 @@
 .flashlightSection {
   display: block;
   position: absolute;
-  contain: size layout style;
+  contain: size layout paint;
 }
 
 .flashlightSection > div {
   position: absolute;
-  contain: size layout paint style;
+  contain: size layout paint;
   background-color: hsl(210, 11%, 15%);
+  overflow: hidden;
 }
 
 .flashlightSection.flashlightSectionHidden > div > div {

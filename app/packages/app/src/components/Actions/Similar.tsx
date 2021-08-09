@@ -22,28 +22,55 @@ import { useTheme } from "../../utils/hooks";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
+import { samples } from "../Flashlight";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
   default: false,
 });
 
-const getQueryIds = async (snapshot: Snapshot) => {
-  const selectedLabels = await snapshot.getPromise(selectors.selectedLabelIds);
-  if (selectedLabels.size) {
-    return [...selectedLabels];
+const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
+  const selectedLabelIds = await snapshot.getPromise(
+    selectors.selectedLabelIds
+  );
+  const selectedLabels = await snapshot.getPromise(selectors.selectedLabels);
+  const keys = await snapshot.getPromise(selectors.similarityKeys);
+  const labels_field = keys.patches
+    .filter(([k, v]) => k === brainKey)
+    .map(([k, v]) => v)[0];
+  if (selectedLabelIds.size) {
+    return [...selectedLabelIds].filter(
+      (id) => selectedLabels[id].field === labels_field
+    );
+  }
+  const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
+  const isPatches = await snapshot.getPromise(selectors.isPatchesView);
+  const modal = await snapshot.getPromise(atoms.modal);
+
+  if (isPatches) {
+    if (selectedSamples.size) {
+      return [...selectedSamples].map(
+        (id) => samples.get(id).sample[labels_field]._id
+      );
+    }
+
+    return modal.sample[labels_field]._id;
   }
 
-  const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
-  return [...selectedSamples];
+  if (selectedSamples.size) {
+    return [...selectedSamples];
+  }
+
+  return modal.sample._id;
 };
 
 const useSortBySimilarity = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async () => {
       const params = await snapshot.getPromise(sortBySimilarityParameters);
-      const queryIds = await getQueryIds(snapshot);
+      const queryIds = await getQueryIds(snapshot, params.brainKey);
       set(similaritySorting, true);
+      set(atoms.modal, null);
 
       socket.send(
         packageMessage("save_filters", {
@@ -89,9 +116,9 @@ const searchBrainKeyValue = atom<string>({
 const availableSimilarityKeys = selectorFamily<string[], boolean>({
   key: "availableSimilarityKeys",
   get: (modal) => ({ get }) => {
-    const isRoot = get(selectors.isRootView);
+    const isPatches = get(selectors.isPatchesView);
     const keys = get(selectors.similarityKeys);
-    if (isRoot && !modal) {
+    if (!isPatches && !modal) {
       return keys.samples;
     } else if (!modal) {
       return keys.patches.reduce((acc, [key, field]) => {
@@ -102,19 +129,29 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
       }, []);
     } else if (modal) {
       const selectedLabels = get(selectors.selectedLabels);
-      const fields = Object.values(selectedLabels).reduce((acc, { field }) => {
-        acc.add(field);
-        return acc;
-      }, new Set<string>());
-      if (fields.size === 1) {
-        const field = [...fields][0];
+
+      if (Object.keys(selectedLabels).length) {
+        const fields = new Set(
+          Object.values(selectedLabels).map(({ field }) => field)
+        );
+
         const patches = keys.patches
-          .filter(([k, v]) => v === field)
+          .filter(([k, v]) => fields.has(v))
           .reduce((acc, [k]) => {
             return [...acc, k];
           }, []);
         return patches;
+      } else if (isPatches) {
+        const { sample } = get(atoms.modal);
+
+        return keys.patches
+          .filter(([k, v]) => sample[v])
+          .reduce((acc, [k]) => {
+            return [...acc, k];
+          }, []);
       }
+
+      return keys.samples;
     }
     return [];
   },

@@ -84,7 +84,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
                     loaded: true,
                     duration: video.duration,
                   });
-                }, 10);
+                }, 20);
               });
             });
           };

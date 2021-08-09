@@ -457,6 +457,33 @@ export const addToBuffers = (range: BufferRange, buffers: Buffers): Buffers => {
   return buffers;
 };
 
-export const getDPR = () => {
-  return window.devicePixelRatio ? window.devicePixelRatio : 1;
+export const getDPR = (() => {
+  let dpr = null;
+  return () => {
+    if (dpr == null) {
+      dpr = window.devicePixelRatio ? window.devicePixelRatio : 1;
+    }
+
+    return dpr;
+  };
+})();
+
+const isElectron = (): boolean => {
+  return (
+    window.process &&
+    window.process.versions &&
+    Boolean(window.process.versions.electron)
+  );
+};
+
+const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
+
+export const port = isElectron()
+  ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
+  : parseInt(window.location.port);
+
+export const getURL = () => {
+  return isElectron()
+    ? `http://localhost:${port}`
+    : window.location.protocol + "//" + host;
 };

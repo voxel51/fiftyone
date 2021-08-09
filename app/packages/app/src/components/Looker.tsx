@@ -444,8 +444,6 @@ const Looker = ({
 
   useEffect(() => {
     looker.attach(fullscreen ? "root" : id);
-
-    return () => looker.destroy();
   }, [id, fullscreen]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());

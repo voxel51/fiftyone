@@ -53,7 +53,7 @@ const escape: Control = {
   title: "Escape context",
   shortcut: "Esc",
   eventKeys: "Escape",
-  detail: "Escape help > JSON > settings > zoom > fullscreen > clear > close",
+  detail: "Escape the current context",
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
@@ -473,13 +473,19 @@ export const muteUnmute: Control<VideoState> = {
   title: "Mute / unmute",
   shortcut: "m",
   detail: "Mute or unmute the video",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(({ options: { volume }, config: { thumbnail } }) => {
-      return thumbnail
-        ? {}
-        : {
-            options: { volume: volume === 0 ? 0.5 : 0 },
-          };
+      if (thumbnail) {
+        return {};
+      }
+
+      volume = volume === 0 ? 0.5 : 0;
+
+      dispatchEvent("options", { volume });
+
+      return {
+        options: { volume },
+      };
     });
   },
 };
@@ -488,13 +494,17 @@ export const resetPlaybackRate: Control<VideoState> = {
   title: "Reset playback rate",
   shortcut: "p",
   detail: "Reset the video's playback rate",
-  action: (update) => {
+  action: (update, dispatchEvent) => {
     update(({ config: { thumbnail } }) => {
-      return thumbnail
-        ? {}
-        : {
-            options: { playbackRate: 1 },
-          };
+      if (thumbnail) {
+        return {};
+      }
+
+      dispatchEvent("options", { playbackRate: 1 });
+
+      return {
+        options: { playbackRate: 1 },
+      };
     });
   },
 };
@@ -523,8 +533,7 @@ const videoEscape: Control<VideoState> = {
   title: "Escape context",
   shortcut: "Esc",
   eventKeys: "Escape",
-  detail:
-    "Escape help > JSON > settings > zoom > playback > fullscreen > clear > close",
+  detail: "Escape the current context",
   action: (update, dispatchEvent, eventKey) => {
     update(
       ({
@@ -664,13 +673,17 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
     close.onclick = () => update({ showHelp: false });
     element.appendChild(close);
 
+    const first = ["Wheel", "Esc"];
+
     Object.values(controls)
       .sort((a, b) =>
-        a.shortcut.length === b.shortcut.length && a.shortcut.length === 1
-          ? a.shortcut > b.shortcut
+        a.shortcut.length !== b.shortcut.length
+          ? first.includes(b.shortcut)
             ? 1
-            : -1
-          : a.shortcut.length > b.shortcut.length
+            : first.includes(a.shortcut)
+            ? -1
+            : b.shortcut.length - a.shortcut.length
+          : a.shortcut > b.shortcut
           ? 1
           : -1
       )

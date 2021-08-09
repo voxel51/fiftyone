@@ -1460,7 +1460,9 @@ async def _get_sample_data(
     for r in results:
         filepath = r["sample"]["filepath"]
         if filepath not in metadata:
-            metadata[filepath] = fosu.read_metadata(filepath)
+            metadata[filepath] = fosu.read_metadata(
+                filepath, r["sample"].get("metadata", None)
+            )
 
         r.update(metadata[filepath])
 

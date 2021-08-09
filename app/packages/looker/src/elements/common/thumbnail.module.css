@@ -33,11 +33,6 @@
   visibility: visible;
 }
 
-.lookerThumbnailSelector:hover,
-.lookerThumbnailExpand {
-  padding: 6px 6px 18px 6px;
-}
-
 .lookerThumbnailSelector span {
   margin: 0.25rem !important;
 }

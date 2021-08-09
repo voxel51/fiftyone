@@ -15,7 +15,7 @@ export default class SectionElement implements Section {
   private top: number;
   private width: number;
   private height: number;
-  private hidden: boolean = false;
+  private hidden: boolean;
   readonly index: number;
   readonly itemIndex: number;
   private readonly section: HTMLDivElement = document.createElement("div");
@@ -90,6 +90,7 @@ export default class SectionElement implements Section {
 
       if (this.width !== width) {
         this.section.style.height = `${localTop}px`;
+        this.section.style.width = `${width}px`;
       }
 
       this.width = width;
@@ -122,14 +123,14 @@ export default class SectionElement implements Section {
 
   show(element: HTMLDivElement, hidden: boolean, soft: boolean): void {
     if (hidden !== this.hidden) {
-      this.section.classList.toggle(flashlightSectionHidden);
+      hidden
+        ? this.section.classList.add(flashlightSectionHidden)
+        : this.section.classList.remove(flashlightSectionHidden);
       this.hidden = hidden;
     }
 
     if (!this.attached) {
-      requestAnimationFrame(() => {
-        element.appendChild(this.section);
-      });
+      element.appendChild(this.section);
       this.attached = true;
     }
 

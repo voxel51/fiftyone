@@ -32,7 +32,7 @@ import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
-import socket from "../shared/connection";
+import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
 
 export const gridZoom = atom<number | null>({
@@ -72,7 +72,7 @@ const url = (() => {
       origin = "http://localhost:5151";
     }
   } catch {}
-  return `${origin}/page?`;
+  return `${http}/page?`;
 })();
 
 const Container = styled.div`
@@ -389,7 +389,6 @@ export default React.memo(() => {
             min = 6;
           }
           const newZoom = Math.max(min, gridZoomRef.current);
-          setGridZoom(newZoom);
           setGridZoomRange([min, 10]);
           return {
             rowAspectRatioThreshold: 11 - newZoom,
@@ -436,7 +435,7 @@ export default React.memo(() => {
             return null;
           }
 
-          if (!soft) {
+          if (!soft && document.visibilityState === "visible") {
             const looker = lookerGeneratorRef.current(result);
             looker.addEventListener(
               "selectthumbnail",

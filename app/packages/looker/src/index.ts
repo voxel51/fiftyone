@@ -56,6 +56,7 @@ import {
   getDPR,
   getElementBBox,
   getFitRect,
+  getURL,
   mergeUpdates,
   removeFromBuffers,
   snapBox,
@@ -166,10 +167,9 @@ export abstract class Looker<
       if (!this.state.windowBBox || this.state.destroyed) {
         return;
       }
-
+      this.pluckedOverlays = this.pluckOverlays(this.state);
       this.state = this.postProcess();
 
-      this.pluckedOverlays = this.pluckOverlays(this.state);
       [this.currentOverlays, this.state.rotate] = processOverlays(
         this.state,
         this.pluckedOverlays
@@ -207,16 +207,17 @@ export abstract class Looker<
       ctx.textBaseline = "bottom";
       ctx.imageSmoothingEnabled = false;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const dpr = getDPR();
       ctx.clearRect(
         0,
         0,
-        this.state.windowBBox[2] * getDPR(),
-        this.state.windowBBox[3] * getDPR()
+        this.state.windowBBox[2] * dpr,
+        this.state.windowBBox[3] * dpr
       );
 
-      const p = this.state.pan.map((p) => p * getDPR());
-      ctx.translate(p[0], p[1]);
-      ctx.scale(this.state.scale * getDPR(), this.state.scale * getDPR());
+      ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
+      const scale = this.state.scale * dpr;
+      ctx.scale(scale, scale);
 
       const [tlx, tly, w, h] = this.state.canvasBBox;
       ctx.drawImage(
@@ -444,7 +445,7 @@ export abstract class Looker<
     this.state.pointRadius = POINT_RADIUS / this.state.scale;
     this.state.strokeWidth = STROKE_WIDTH / this.state.scale;
     this.state.dashLength = DASH_LENGTH / this.state.scale;
-    this.state.config.thumbnail && (this.state.strokeWidth /= 2);
+    this.state.config.thumbnail && (this.state.strokeWidth /= 3);
     this.state.textPad = PAD / this.state.scale;
 
     this.state.hasDefaultZoom = this.hasDefaultZoom(
@@ -663,7 +664,8 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
   updateOptions(options: Optional<ImageState["options"]>) {
     const state: Optional<ImageState> = { options };
     if (options.zoom !== undefined) {
-      state.setZoom = this.state.options.zoom !== options.zoom;
+      state.setZoom =
+        this.state.options.zoom !== options.zoom || this.state.config.thumbnail;
     }
     this.updater(state);
   }
@@ -784,6 +786,7 @@ const { aquireReader, addFrame } = (() => {
       frameNumber,
       uuid: subscription,
       origin: window.location.origin,
+      url: getURL(),
     });
     return subscription;
   };

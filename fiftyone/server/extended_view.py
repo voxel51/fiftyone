@@ -158,7 +158,8 @@ def _make_filter_stages(
                 )
 
                 filtered_labels.add(path)
-                cleanup.add(new_field)
+                if new_field:
+                    cleanup.add(new_field)
         else:
             view_field = get_view_field(fields_map, path)
             expr = _make_scalar_expression(view_field, args)
@@ -188,7 +189,8 @@ def _make_filter_stages(
                     _prefix=prefix,
                 )
             )
-            cleanup.add(new_field)
+            if new_field:
+                cleanup.add(new_field)
 
         match_exprs = []
         for path, _ in fos.DatasetStatistics.labels(view):
