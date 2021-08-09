@@ -56,7 +56,7 @@ export default class Flashlight<K> {
     this.element.classList.add(flashlight);
     this.state = this.getEmptyState(config);
 
-    let attached = false;
+    let initial = true;
 
     let frame = null;
 
@@ -69,24 +69,21 @@ export default class Flashlight<K> {
         },
       ]: ResizeObserverEntry[]) => {
         this.state.containerHeight = height;
-        if (!attached) {
-          attached = true;
-          return;
-        }
 
         width = width - 16;
         frame && cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => {
           const options =
-            this.state.width !== width && this.state.onResize
+            (this.state.width !== width || initial) && this.state.onResize
               ? this.state.onResize(width)
               : {};
 
-          const force = this.state.width !== width;
+          const force = this.state.width !== width || initial;
           this.state.width = width;
 
           this.updateOptions(options, force);
           frame = null;
+          initial = false;
         });
       }
     );
