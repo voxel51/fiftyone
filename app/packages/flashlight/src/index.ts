@@ -75,7 +75,7 @@ export default class Flashlight<K> {
         }
 
         width = width - 16;
-        frame && clearTimeout(frame);
+        frame && cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => {
           const options =
             this.state.width !== width && this.state.onResize
@@ -181,7 +181,6 @@ export default class Flashlight<K> {
         ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
       ];
       const active = this.state.activeSection;
-      console.log(active, this.state.sections[active].itemIndex);
       const activeItemIndex = this.state.sections[active].itemIndex;
       let sections = this.tile(items);
 
@@ -224,6 +223,8 @@ export default class Flashlight<K> {
           return;
         }
       }
+    } else {
+      this.render();
     }
   }
 
@@ -335,33 +336,34 @@ export default class Flashlight<K> {
   }
 
   private showSections(zooming: boolean) {
-    const hidden = zooming && this.shownSectionsNeedUpdate();
     this.state.shownSections.forEach((index) => {
       const section = this.state.sections[index];
       if (!section) {
         return;
       }
-      let shown = false;
+
+      const clean =
+        (this.state.clean.has(section.index) || !this.state.updater) &&
+        this.state.resized &&
+        !this.state.resized.has(section.index);
       if (
         this.state.resized &&
         !this.state.resized.has(section.index) &&
-        !hidden
+        !zooming
       ) {
         this.state.onItemResize && section.resizeItems(this.state.onItemResize);
         this.state.resized.add(section.index);
-        shown = true;
       }
 
-      if (!this.state.clean.has(section.index) && !hidden) {
+      if (!this.state.clean.has(section.index) && !zooming) {
         this.state.updater &&
           section
             .getItems()
             .map(({ id }) => id)
             .forEach((id) => this.state.updater(id));
         this.state.clean.add(section.index);
-        shown = true;
       }
-      section.show(this.container, hidden, zooming);
+      section.show(this.container, clean, zooming);
       this.state.shownSections.add(section.index);
     });
   }

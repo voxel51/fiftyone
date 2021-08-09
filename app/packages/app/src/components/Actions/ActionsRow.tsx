@@ -75,9 +75,8 @@ const Patches = () => {
 const hasSimilarityKeys = selectorFamily<boolean, boolean>({
   key: "hasSimilarityKeys",
   get: (modal) => ({ get }) => {
-    const isRoot = get(selectors.isRootView);
     if (modal) {
-      return !isRoot || Boolean(get(selectors.selectedLabelIds).size);
+      return true;
     }
     return Boolean(get(atoms.selectedSamples).size);
   },
@@ -240,7 +239,6 @@ const Options = ({ modal }) => {
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-  const patches = useRecoilValue(selectors.isPatchesView);
 
   return (
     <ActionDiv ref={ref}>
@@ -248,7 +246,7 @@ const Options = ({ modal }) => {
         icon={<Settings />}
         open={open}
         onClick={() => setOpen(!open)}
-        highlight={open || patches}
+        highlight={open}
         ref={mRef}
         title={"Display options"}
       />
