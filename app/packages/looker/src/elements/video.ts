@@ -513,9 +513,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
             // Firefox v55
             if (event.originalTarget) {
-              event = error.originalTarget.error;
+              event = event.originalTarget.error;
             }
+
             video.removeEventListener("error", error);
+            release();
             update({ error: true });
           };
           video.addEventListener("error", error);

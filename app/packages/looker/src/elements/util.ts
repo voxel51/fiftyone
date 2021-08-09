@@ -212,7 +212,6 @@ const makeAcquirer = (maxVideos: number) => {
       video.muted = true;
       video.preload = "metadata";
       video.loop = false;
-      video.src = "";
       if (QUEUE.length) {
         const resolve = QUEUE.shift();
         resolve([video, release(video)]);

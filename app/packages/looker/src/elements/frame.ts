@@ -33,7 +33,6 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 }
 
 export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
-  private src: string = "";
   imageSource: HTMLCanvasElement;
 
   getEvents(): Events<FrameState> {
@@ -98,9 +97,10 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
 
             // Firefox v55
             if (event.originalTarget) {
-              event = error.originalTarget.error;
+              event = event.originalTarget.error;
             }
             video.removeEventListener("error", error);
+            release();
             update({ error: true });
           };
 
