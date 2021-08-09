@@ -389,7 +389,6 @@ export default React.memo(() => {
             min = 6;
           }
           const newZoom = Math.max(min, gridZoomRef.current);
-          setGridZoom(newZoom);
           setGridZoomRange([min, 10]);
           return {
             rowAspectRatioThreshold: 11 - newZoom,
@@ -436,7 +435,7 @@ export default React.memo(() => {
             return null;
           }
 
-          if (!soft) {
+          if (!soft && document.visibilityState === "visible") {
             const looker = lookerGeneratorRef.current(result);
             looker.addEventListener(
               "selectthumbnail",

@@ -499,7 +499,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                     duration: this.duration,
                     loaded: true,
                   });
-                }, 10);
+                }, 20);
               });
             });
           };
