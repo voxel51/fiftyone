@@ -3028,9 +3028,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             current_schema = label_schema[label_field]
             label_type = current_schema["type"]
 
-            if label_field not in scalar_types:
-                scalar_types[label_field] = None
-
             # Download task data
             task_resp = self._session_get(self.task_url(task_id))
             task_json = task_resp.json()
@@ -3078,17 +3075,20 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 if label_type == "scalar":
                     if assigned_scalar_attrs[label_field]:
                         label = _parse_attribute(attrs[0]["value"])
-                        prev_type = scalar_types[label_field]
+                        prev_type = scalar_types.get(label_field, None)
                         if (
                             prev_type is not None
                             and label is not None
                             and type(label) != prev_type
                         ):
-                            logger.warning(
-                                "Scalar '%s' does not match previous scalars of type %s. Skipping."
-                                % (label, str(prev_type))
-                            )
-                            label = None
+                            if prev_type == str:
+                                label = str(label)
+                            else:
+                                logger.warning(
+                                    "Scalar '%s' does not match previous scalars of type %s. Skipping."
+                                    % (label, str(prev_type))
+                                )
+                                label = None
                         else:
                             scalar_types[label_field] = type(label)
                     else:
