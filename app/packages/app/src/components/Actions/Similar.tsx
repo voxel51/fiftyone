@@ -22,6 +22,7 @@ import { useTheme } from "../../utils/hooks";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
+import { samples } from "../Flashlight";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
@@ -42,14 +43,20 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
       (id) => selectedLabels[id].field === labels_field
     );
   }
-
+  const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
   const isPatches = await snapshot.getPromise(selectors.selectedLabelIds);
+
   if (isPatches) {
+    if (selectedSamples.size) {
+      return [...selectedSamples].map(
+        (id) => samples.get(id).sample[labels_field]._id
+      );
+    }
+
     const { sample } = await snapshot.getPromise(atoms.modal);
     return sample[labels_field]._id;
   }
 
-  const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
   return [...selectedSamples];
 };
 
@@ -119,17 +126,13 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
     } else if (modal) {
       const selectedLabels = get(selectors.selectedLabels);
 
-      if (selectedLabels.size) {
-        const fields = Array.from(
-          Object.values(selectedLabels).reduce((acc, { field }) => {
-            return acc;
-          }, new Set<string>())
-        ).map(([field]) => field);
-
-        console.log(fields);
+      if (Object.keys(selectedLabels).length) {
+        const fields = new Set(
+          Object.values(selectedLabels).map(({ field }) => field)
+        );
 
         const patches = keys.patches
-          .filter(([k, v]) => fields.includes(v))
+          .filter(([k, v]) => fields.has(v))
           .reduce((acc, [k]) => {
             return [...acc, k];
           }, []);
