@@ -15,7 +15,7 @@ export const createScrollReader = (
   element.addEventListener("scroll", () => {
     scrolling = true;
     updateScrollStatus();
-    render(zooming);
+    !zooming && render(zooming);
   });
 
   const updateScrollStatus = () => {
@@ -32,7 +32,7 @@ export const createScrollReader = (
           zooming = false;
           timer = undefined;
           render(false);
-        }, 250);
+        }, 500);
       } else {
         if (timer === undefined) {
           scrolling = false;
@@ -45,6 +45,7 @@ export const createScrollReader = (
   const animate = () => {
     requestAnimationFrame(animate);
     scrolling && updateScrollStatus();
+    zooming && render(zooming);
   };
 
   animate();
