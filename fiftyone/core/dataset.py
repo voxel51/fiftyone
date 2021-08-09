@@ -1549,8 +1549,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         -   Whether new fields can be added to the dataset schema
         -   Whether list fields should be treated as ordinary fields and merged
             as a whole rather than merging their elements
-        -   Whether to merge (a) only specific fields or (b) all but certain
-            fields
+        -   Whether to merge only specific fields, or all but certain fields
         -   Mapping input fields to different field names of this dataset
 
         Args:
@@ -2280,8 +2279,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         -   Whether new fields can be added to the dataset schema
         -   Whether list fields should be treated as ordinary fields and merged
             as a whole rather than merging their elements
-        -   Whether to merge (a) only specific fields or (b) all but certain
-            fields
+        -   Whether to merge only specific fields, or all but certain fields
         -   Mapping input fields to different field names of this dataset
 
         Args:
@@ -2569,8 +2567,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         -   Whether new fields can be added to the dataset schema
         -   Whether list fields should be treated as ordinary fields and merged
             as a whole rather than merging their elements
-        -   Whether to merge (a) only specific fields or (b) all but certain
-            fields
+        -   Whether to merge only specific fields, or all but certain fields
         -   Mapping input fields to different field names of this dataset
 
         Args:
@@ -2776,8 +2773,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         -   Whether new fields can be added to the dataset schema
         -   Whether list fields should be treated as ordinary fields and merged
             as a whole rather than merging their elements
-        -   Whether to merge (a) only specific fields or (b) all but certain
-            fields
+        -   Whether to merge only specific fields, or all but certain fields
         -   Mapping input fields to different field names of this dataset
 
         Args:
