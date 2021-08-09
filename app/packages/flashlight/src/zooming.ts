@@ -15,7 +15,7 @@ export const createScrollReader = (
   element.addEventListener("scroll", () => {
     scrolling = true;
     updateScrollStatus();
-    render(zooming);
+    !zooming && render(zooming);
   });
 
   const updateScrollStatus = () => {
@@ -36,7 +36,6 @@ export const createScrollReader = (
       } else {
         if (timer === undefined) {
           scrolling = false;
-          render(false);
         }
       }
       prior = element.scrollTop;

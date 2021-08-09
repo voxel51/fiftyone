@@ -45,13 +45,6 @@ export const gridZoomRange = atom<[number, number]>({
   default: [0, 10],
 });
 
-const gridRowAspectRatio = selector<number>({
-  key: "gridRowAspectRatio",
-  get: ({ get }) => {
-    return 11 - get(gridZoom);
-  },
-});
-
 const createLookerCache = () => {
   return new LRU<string, FrameLooker | ImageLooker | VideoLooker>({
     max: 500,
@@ -86,7 +79,8 @@ const flashlightOptions = selector<FlashlightOptions>({
   key: "flashlightOptions",
   get: ({ get }) => {
     return {
-      rowAspectRatioThreshold: get(gridRowAspectRatio),
+      rowAspectRatioThreshold:
+        11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
     };
   },
 });
@@ -326,7 +320,7 @@ export default React.memo(() => {
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   useSampleUpdate();
   const gridZoomRef = useRef<number>();
-  const [gridZoomValue, setGridZoom] = useRecoilState(gridZoom);
+  const gridZoomValue = useRecoilValue(gridZoom);
   gridZoomRef.current = gridZoomValue;
 
   useEventHandler(
@@ -379,7 +373,7 @@ export default React.memo(() => {
         options,
         onItemClick: onThumbnailClick,
         onResize: (width) => {
-          let min = 7;
+          let min = 9;
 
           if (width >= 1200) {
             min = 0;
@@ -388,6 +382,7 @@ export default React.memo(() => {
           } else if (width >= 800) {
             min = 6;
           }
+
           const newZoom = Math.max(min, gridZoomRef.current);
           setGridZoomRange([min, 10]);
           return {

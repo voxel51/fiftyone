@@ -56,9 +56,7 @@ export default class Flashlight<K> {
     this.element.classList.add(flashlight);
     this.state = this.getEmptyState(config);
 
-    let initial = true;
-
-    let frame = null;
+    let attached = false;
 
     document.addEventListener("visibilitychange", () => this.render());
 
@@ -70,20 +68,21 @@ export default class Flashlight<K> {
       ]: ResizeObserverEntry[]) => {
         this.state.containerHeight = height;
 
+        if (!attached) {
+          attached = true;
+          return;
+        }
+
         width = width - 16;
-        frame && cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
           const options =
-            (this.state.width !== width || initial) && this.state.onResize
+            this.state.width !== width && this.state.onResize
               ? this.state.onResize(width)
               : {};
 
-          const force = this.state.width !== width || initial;
           this.state.width = width;
 
-          this.updateOptions(options, force);
-          frame = null;
-          initial = false;
+          this.updateOptions(options);
         });
       }
     );
@@ -144,10 +143,7 @@ export default class Flashlight<K> {
     this.state.width = width - 16;
     this.state.containerHeight = height;
 
-    const options =
-      this.state.width !== width && this.state.onResize
-        ? this.state.onResize(width)
-        : {};
+    const options = this.state.onResize ? this.state.onResize(width) : {};
 
     element.appendChild(this.element);
 
@@ -158,7 +154,7 @@ export default class Flashlight<K> {
     this.get();
   }
 
-  updateOptions(options: Optional<Options>, force: boolean = false) {
+  updateOptions(options: Optional<Options>) {
     const retile = Object.entries(options).some(
       ([k, v]) => this.state.options[k] != v
     );
@@ -168,7 +164,7 @@ export default class Flashlight<K> {
       ...options,
     };
 
-    if ((retile || force) && this.state.sections.length) {
+    if (retile && this.state.sections.length) {
       this.state.resized = new Set();
       const newContainer = this.createContainer();
       this.container.replaceWith(newContainer);
@@ -221,6 +217,13 @@ export default class Flashlight<K> {
         }
       }
     } else {
+      this.state.height = 0;
+      this.state.sections.forEach((section) => {
+        section.set(this.state.height, this.state.width);
+        this.state.height += section.getHeight();
+      });
+      this.container.style.height = `${this.state.height}px`;
+
       this.render();
     }
   }
@@ -339,10 +342,6 @@ export default class Flashlight<K> {
         return;
       }
 
-      const clean =
-        (this.state.clean.has(section.index) || !this.state.updater) &&
-        this.state.resized &&
-        !this.state.resized.has(section.index);
       if (
         this.state.resized &&
         !this.state.resized.has(section.index) &&
@@ -360,7 +359,9 @@ export default class Flashlight<K> {
             .forEach((id) => this.state.updater(id));
         this.state.clean.add(section.index);
       }
-      section.show(this.container, clean, zooming);
+
+      const clean = this.state.clean.has(section.index) || !this.state.updater;
+      section.show(this.container, !clean && zooming, zooming);
       this.state.shownSections.add(section.index);
     });
   }
@@ -426,22 +427,6 @@ export default class Flashlight<K> {
     }
   }
 
-  private shownSectionsNeedUpdate() {
-    let needsUpdate = false;
-    this.state.shownSections.forEach((index) => {
-      const section = this.state.sections[index];
-      if (this.state.resized && !this.state.resized.has(section.index)) {
-        needsUpdate = true;
-      }
-
-      if (this.state.updater && !this.state.clean.has(section.index)) {
-        needsUpdate = true;
-      }
-    });
-
-    return needsUpdate;
-  }
-
   private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
     let { rows, remainder } = tile(
       items,
@@ -486,6 +471,7 @@ export default class Flashlight<K> {
       itemIndexMap: {},
       nextItemIndex: 0,
       resized: null,
+      resizing: false,
     };
   }
 
