@@ -62,11 +62,19 @@ def import_samples(
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         dataset_importer: a :class:`DatasetImporter`
-        label_field (None): the name (or root name) of the field(s) to use for
-            the labels. Only applicable if ``dataset_importer`` is a
-            :class:`LabeledImageDatasetImporter`
+        label_field (None): controls the field(s) in which imported labels are
+            stored. Only applicable if ``dataset_importer`` is a
+            :class:`LabeledImageDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per sample,
+            this argument specifies the name of the field to use; the default
+            is ``"ground_truth"``. If the importer produces a dictionary of
+            labels per sample, this argument can be a string prefix to prepend
+            to each label key or a dictionary mapping keys of
+            :meth:`LabeledImageDatasetImporter.label_cls` to field names; the
+            default in this case is to directly use the keys of the imported
+            label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
-                sample
+            sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
@@ -186,9 +194,17 @@ def merge_samples(
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         dataset_importer: a :class:`DatasetImporter`
-        label_field (None): the name (or root name) of the field(s) to use for
-            the labels. Only applicable if ``dataset_importer`` is a
-            :class:`LabeledImageDatasetImporter`
+        label_field (None): controls the field(s) in which imported labels are
+            stored. Only applicable if the dataset importer used is a
+            :class:`LabeledImageDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per sample,
+            this argument specifies the name of the field to use; the default
+            is ``"ground_truth"``. If the importer produces a dictionary of
+            labels per sample, this argument can be a string prefix to prepend
+            to each label key or a dictionary mapping keys of
+            :meth:`LabeledImageDatasetImporter.label_cls` to field names; the
+            default in this case is to directly use the keys of the imported
+            label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         key_field ("filepath"): the sample field to use to decide whether to
@@ -369,35 +385,10 @@ def _build_parse_sample_fcn(
     elif isinstance(dataset_importer, LabeledImageDatasetImporter):
         # Labeled image dataset
 
-        # Check if a single label field is being imported
-        try:
-            single_label_field = issubclass(
-                dataset_importer.label_cls, fol.Label
-            )
-
-            if label_field is None:
-                raise ValueError(
-                    "A `label_field` must be provided when importing labeled "
-                    "image samples with a single label field"
-                )
-        except:
-            single_label_field = False
-
-        if expand_schema and single_label_field:
-            # This has the benefit of ensuring that `label_field` exists,
-            # even if all of the imported samples are unlabeled (i.e.,
-            # return labels that are all `None`)
-            dataset._ensure_label_field(
-                label_field, dataset_importer.label_cls
-            )
-
-            # The schema now never needs expanding, because we already
-            # ensured that `label_field` exists, if necessary
-            expand_schema = False
-
         if label_field:
             label_key = lambda k: label_field + "_" + k
         else:
+            label_field = "ground_truth"
             label_key = lambda k: k
 
         def parse_sample(sample):
@@ -415,29 +406,31 @@ def _build_parse_sample_fcn(
 
             return sample
 
+        # Optimization: if we can deduce exactly what fields will be added
+        # during import, we declare them now and set `expand_schema` to False
+        try:
+            can_expand_now = issubclass(dataset_importer.label_cls, fol.Label)
+        except:
+            can_expand_now = False
+
+        if expand_schema and can_expand_now:
+            dataset._ensure_label_field(
+                label_field, dataset_importer.label_cls
+            )
+            expand_schema = False
+
     elif isinstance(dataset_importer, LabeledVideoDatasetImporter):
         # Labeled video dataset
-
-        # Check if a single sample-level label field is being imported
-        try:
-            if (
-                issubclass(dataset_importer.label_cls, fol.Label)
-                and label_field is None
-            ):
-                raise ValueError(
-                    "A `label_field` must be provided when importing labeled "
-                    "video samples with a single sample-level field"
-                )
-        except:
-            pass
 
         if label_field:
             label_key = lambda k: label_field + "_" + k
         else:
+            label_field = "ground_truth"
             label_key = lambda k: k
 
         def parse_sample(sample):
             video_path, video_metadata, label, frames = sample
+
             sample = fos.Sample(
                 filepath=video_path, metadata=video_metadata, tags=tags,
             )
@@ -450,15 +443,18 @@ def _build_parse_sample_fcn(
                 sample[label_field] = label
 
             if frames is not None:
-                sample.frames.merge(
-                    {
-                        frame_number: {
-                            label_key(fname): flabel
-                            for fname, flabel in frame_dict.items()
+                frame_labels = {}
+
+                for frame_number, _label in frames.items():
+                    if isinstance(_label, dict):
+                        frame_labels[frame_number] = {
+                            label_key(field_name): label
+                            for field_name, label in _label.items()
                         }
-                        for frame_number, frame_dict in frames.items()
-                    }
-                )
+                    elif _label is not None:
+                        frame_labels[frame_number] = _label
+
+                sample.frames.merge(frame_labels)
 
             return sample
 
