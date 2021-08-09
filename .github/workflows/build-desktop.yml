@@ -47,21 +47,21 @@ jobs:
         uses: actions/cache@v2
         with:
           path: app/node_modules
-          key: npm-${{ hashFiles('app/package.json') }}
+          key: npm-${{ hashFiles('app/packages/desktop/package.json') }}
           restore-keys: |
-            npm-${{ hashFiles('app/package.json') }}
+            npm-${{ hashFiles('app/packages/desktop/package.json') }}
             npm-
       - name: Install dependencies
-        working-directory: app
+        working-directory: app/packages/desktop
         run: yarn
       - name: Package App (Linux)
-        working-directory: app
+        working-directory: app/packages/desktop
         run: yarn package-linux --publish never
       - name: Package App (macOS)
-        working-directory: app
+        working-directory: app/packages/desktop
         run: yarn package-mac --publish never
       - name: Package App (Windows)
-        working-directory: app
+        working-directory: app/packages/desktop
         # from https://www.electron.build/multi-platform-build#docker
         # removed node_modules mount to use existing packages
         run: |

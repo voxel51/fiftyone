@@ -41,10 +41,10 @@ jobs:
             npm-
       - name: Install app dependencies
         working-directory: app
-        run: yarn
-      - name: Build web app
+        run: yarn install
+      - name: Build app
         working-directory: app
-        run: yarn build-web
+        run: yarn build
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}

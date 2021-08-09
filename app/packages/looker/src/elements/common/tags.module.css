@@ -1,0 +1,47 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
+.lookerTags {
+  position: absolute;
+  bottom: 0;
+  padding: 0.5rem;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  width: 100%;
+  z-index: 498;
+  pointer-events: none;
+}
+
+.lookerTags::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+  display: none;
+}
+
+.lookerTags::-webkit-scrollbar-thumb {
+  width: 0px;
+  display: none;
+}
+
+.lookerTags > div {
+  display: inline-block;
+  box-sizing: content-box;
+  height: 1em;
+  margin: 0 2px 0;
+  padding: 3px 12px 3px 12px;
+  color: white;
+  font-size: 14px;
+  line-height: 12px;
+  border-radius: 10px;
+  font-weight: bold;
+  text-align: center;
+  vertical-align: bottom;
+  white-space: nowrap;
+  pointer-events: auto;
+  max-width: calc(100% - 32px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
