@@ -3248,8 +3248,8 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomUnlabeledImageDatasetImporter(...)
+
         with importer:
             for image_path, image_metadata in importer:
                 dataset.add_sample(
@@ -3438,7 +3438,6 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomLabeledImageDatasetImporter(...)
         label_field = ...
 
@@ -3617,8 +3616,8 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomUnlabeledVideoDatasetImporter(...)
+
         with importer:
             for video_path, video_metadata in importer:
                 dataset.add_sample(
@@ -3838,7 +3837,6 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomLabeledVideoDatasetImporter(...)
         label_field = ...
 
@@ -3854,15 +3852,18 @@ should implement is determined by the type of dataset that you are importing.
                     sample[label_field] = label
 
                 if frames is not None:
-                    sample.frames.merge(
-                        {
-                            frame_number: {
-                                label_field + "_" + fname: flabel
-                                for fname, flabel in frame_dict.items()
+                    frame_labels = {}
+
+                    for frame_number, _label in frames.items():
+                        if isinstance(_label, dict):
+                            frame_labels[frame_number] = {
+                                label_field + "_" + field_name: label
+                                for field_name, label in _label.items()
                             }
-                            for frame_number, frame_dict in frames.items()
-                        }
-                    )
+                        elif _label is not None:
+                            frame_labels[frame_number] = _label
+
+                    sample.frames.merge(frame_labels)
 
                 dataset.add_sample(sample)
 

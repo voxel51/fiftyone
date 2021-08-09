@@ -1277,8 +1277,8 @@ class LabeledVideoDatasetExporter(DatasetExporter):
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             exporter directly exports frame labels of this type
         -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
-            this case, the exporter can export a single frame-level label field
-            of any of these types
+            this case, the exporter can export a single frame label field of
+            any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the exporter can export multiple frame label fields
             with value-types specified by this dictionary. Not all keys need be
