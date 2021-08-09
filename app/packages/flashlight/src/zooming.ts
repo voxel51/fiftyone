@@ -4,23 +4,25 @@
 
 export const createScrollReader = (
   element: HTMLElement,
-  render: (zooming: boolean) => void
+  render: (zooming: boolean) => void,
+  getScrollSpeendThreshold: () => number
 ): void => {
   let zooming = false;
   let scrolling = false;
   let prior = 0;
-  let scrollSpeed = 300;
   let timer = undefined;
 
   element.addEventListener("scroll", () => {
     scrolling = true;
+    updateScrollStatus();
+    render(zooming);
   });
 
   const updateScrollStatus = () => {
     if (!prior) {
       prior = element.scrollTop;
     } else {
-      if (Math.abs(element.scrollTop - prior) > scrollSpeed) {
+      if (Math.abs(element.scrollTop - prior) > getScrollSpeendThreshold()) {
         zooming = true;
         if (timer !== undefined) {
           clearTimeout(timer);
@@ -29,7 +31,8 @@ export const createScrollReader = (
         timer = setTimeout(function () {
           zooming = false;
           timer = undefined;
-        }, 100);
+          render(false);
+        }, 250);
       } else {
         if (timer === undefined) {
           scrolling = false;
@@ -41,10 +44,7 @@ export const createScrollReader = (
 
   const animate = () => {
     requestAnimationFrame(animate);
-    if (scrolling) {
-      updateScrollStatus();
-      render(zooming);
-    }
+    scrolling && updateScrollStatus();
   };
 
   animate();

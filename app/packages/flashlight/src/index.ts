@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { NUM_ROWS_PER_SECTION } from "./constants";
+import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
 import {
   Get,
@@ -47,7 +47,6 @@ export default class Flashlight<K> {
   private readonly config: FlashlightConfig<K>;
   private pixelsSet: boolean;
   private ctx: number = 0;
-  private isZooming: () => boolean;
 
   constructor(config: FlashlightConfig<K>) {
     this.config = config;
@@ -59,14 +58,9 @@ export default class Flashlight<K> {
 
     let attached = false;
 
-    let animation = null;
+    let frame = null;
 
-    document.addEventListener(
-      "visibilitychange",
-      () =>
-        document.visibilityState === "hidden" &&
-        requestAnimationFrame(() => this.render())
-    );
+    document.addEventListener("visibilitychange", () => this.render());
 
     this.resizeObserver = new ResizeObserver(
       ([
@@ -81,9 +75,8 @@ export default class Flashlight<K> {
         }
 
         width = width - 16;
-
-        typeof animation === "number" && cancelAnimationFrame(animation);
-        animation = requestAnimationFrame(() => {
+        frame && clearTimeout(frame);
+        frame = requestAnimationFrame(() => {
           const options =
             this.state.width !== width && this.state.onResize
               ? this.state.onResize(width)
@@ -93,12 +86,22 @@ export default class Flashlight<K> {
           this.state.width = width;
 
           this.updateOptions(options, force);
-          animation = null;
+          frame = null;
         });
       }
     );
 
-    createScrollReader(this.element, (zooming) => this.render(zooming));
+    createScrollReader(
+      this.element,
+      (zooming) => this.render(zooming),
+      () => {
+        return (
+          ((this.state.options.rowAspectRatioThreshold * this.state.width) /
+            this.state.containerHeight) *
+          20
+        );
+      }
+    );
 
     this.element.appendChild(this.container);
   }
@@ -178,6 +181,7 @@ export default class Flashlight<K> {
         ...this.state.currentRowRemainder.map(({ items }) => items).flat(),
       ];
       const active = this.state.activeSection;
+      console.log(active, this.state.sections[active].itemIndex);
       const activeItemIndex = this.state.sections[active].itemIndex;
       let sections = this.tile(items);
 
@@ -217,7 +221,7 @@ export default class Flashlight<K> {
         if (section.itemIndex >= activeItemIndex) {
           this.container.parentElement.scrollTo(0, section.getTop());
           this.render();
-          break;
+          return;
         }
       }
     }
@@ -390,15 +394,16 @@ export default class Flashlight<K> {
     this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
 
     this.state.activeSection = this.state.firstSection;
-    const activeSection = this.state.sections[this.state.activeSection];
+    let activeSection = this.state.sections[this.state.activeSection];
 
     if (!activeSection) {
       return;
     }
 
-    while (activeSection.getBottom() < top) {
+    while (activeSection.getBottom() - MARGIN <= top) {
       if (this.state.sections[this.state.activeSection + 1]) {
         this.state.activeSection += 1;
+        activeSection = this.state.sections[this.state.activeSection];
       } else break;
     }
 
@@ -480,7 +485,6 @@ export default class Flashlight<K> {
       itemIndexMap: {},
       nextItemIndex: 0,
       resized: null,
-      zooming: false,
     };
   }
 
