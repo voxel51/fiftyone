@@ -24,14 +24,13 @@ def add_images(dataset, samples, sample_parser, tags=None):
 
     See :ref:`this guide <custom-sample-parser>` for more details about
     adding images to a dataset by defining your own
-    :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
+    :class:`UnlabeledImageSampleParser`.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         samples: an iterable of samples that can be parsed by ``sample_parser``
-        sample_parser: a
-            :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
-            instance to use to parse the samples
+        sample_parser: a :class:`UnlabeledImageSampleParser` instance to use to
+            parse the samples
         tags (None): an optional tag or iterable of tags to attach to each
             sample
 
@@ -85,7 +84,7 @@ def add_labeled_images(
     dataset,
     samples,
     sample_parser,
-    label_field="ground_truth",
+    label_field=None,
     tags=None,
     expand_schema=True,
 ):
@@ -97,16 +96,23 @@ def add_labeled_images(
 
     See :ref:`this guide <custom-sample-parser>` for more details about
     adding labeled images to a dataset by defining your own
-    :class:`LabeledImageSampleParser <fiftyone.utils.data.parsers.LabeledImageSampleParser>`.
+    :class:`LabeledImageSampleParser`.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         samples: an iterable of samples that can be parsed by ``sample_parser``
-        sample_parser: a
-            :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
-            instance to use to parse the samples
-        label_field ("ground_truth"): the name (or root name) of the field(s)
-            to use for the labels
+        sample_parser: a :class:`LabeledImageSampleParser` instance to use to
+            parse the samples
+        label_field (None): controls the field(s) in which imported labels are
+            stored. If the parser produces a single
+            :class:`fiftyone.core.labels.Label` instance per sample, this
+            argument specifies the name of the field to use; the default is
+            ``"ground_truth"``. If the parser produces a dictionary of labels
+            per sample, this argument can be a string prefix to prepend to each
+            label key or a dictionary mapping keys of
+            :meth:`LabeledImageSampleParser.label_cls` to field names; the
+            default in this case is to directly use the keys of the imported
+            label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -131,25 +137,10 @@ def add_labeled_images(
             )
         )
 
-    # Check if a single label field is being imported
-    try:
-        single_label_field = issubclass(sample_parser.label_cls, fol.Label)
-    except:
-        single_label_field = False
-
-    if expand_schema and single_label_field:
-        # This has the benefit of ensuring that `label_field` exists, even if
-        # all of the parsed samples are unlabeled (i.e., return labels that are
-        # all `None`)
-        dataset._ensure_label_field(label_field, sample_parser.label_cls)
-
-        # The schema now never needs expanding, because we already ensured
-        # that `label_field` exists, if necessary
-        expand_schema = False
-
     if label_field:
         label_key = lambda k: label_field + "_" + k
     else:
+        label_field = "ground_truth"
         label_key = lambda k: k
 
     if etau.is_str(tags):
@@ -178,6 +169,17 @@ def add_labeled_images(
 
         return sample
 
+    # Optimization: if we can deduce exactly what fields will be added during
+    # import, we declare them now and set `expand_schema` to False
+    try:
+        can_expand_now = issubclass(sample_parser.label_cls, fol.Label)
+    except:
+        can_expand_now = False
+
+    if expand_schema and can_expand_now:
+        dataset._ensure_label_field(label_field, sample_parser.label_cls)
+        expand_schema = False
+
     try:
         num_samples = len(samples)
     except:
@@ -196,14 +198,13 @@ def add_videos(dataset, samples, sample_parser, tags=None):
 
     See :ref:`this guide <custom-sample-parser>` for more details about
     adding videos to a dataset by defining your own
-    :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
+    :class:`UnlabeledVideoSampleParser`.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         samples: an iterable of samples that can be parsed by ``sample_parser``
-        sample_parser: a
-            :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
-            instance to use to parse the samples
+        sample_parser: a :class:`UnlabeledVideoSampleParser` instance to use to
+            parse the samples
         tags (None): an optional tag or iterable of tags to attach to each
             sample
 
@@ -253,7 +254,7 @@ def add_labeled_videos(
     dataset,
     samples,
     sample_parser,
-    label_field="ground_truth",
+    label_field=None,
     tags=None,
     expand_schema=True,
 ):
@@ -264,16 +265,24 @@ def add_labeled_videos(
 
     See :ref:`this guide <custom-sample-parser>` for more details about
     adding labeled videos to a dataset by defining your own
-    :class:`LabeledVideoSampleParser <fiftyone.utils.data.parsers.LabeledVideoSampleParser>`.
+    :class:`LabeledVideoSampleParser`.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         samples: an iterable of samples that can be parsed by ``sample_parser``
-        sample_parser: a
-            :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
-            instance to use to parse the samples
-        label_field ("ground_truth"): the name (or root name) of the frame
-            fields to use for the labels
+        sample_parser: a :class:`LabeledVideoSampleParser` instance to use to
+            parse the samples
+        label_field (None): controls the field(s) in which imported labels are
+            stored. If the parser produces a single
+            :class:`fiftyone.core.labels.Label` instance per sample/frame, this
+            argument specifies the name of the field to use; the default is
+            ``"ground_truth"``. If the parser produces a dictionary of labels
+            per sample/frame, this argument can be a string prefix to prepend
+            to each label key or a dictionary mapping keys of
+            :meth:`LabeledVideoSampleParser.label_cls`/
+            :meth:`LabeledVideoSampleParser.frame_label_cls` to field names;
+            the default in this case is to directly use the keys of the
+            imported label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -295,6 +304,7 @@ def add_labeled_videos(
     if label_field:
         label_key = lambda k: label_field + "_" + k
     else:
+        label_field = "ground_truth"
         label_key = lambda k: k
 
     if etau.is_str(tags):
@@ -312,20 +322,29 @@ def add_labeled_videos(
         else:
             metadata = None
 
-        sample = fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
-
+        label = sample_parser.get_label()
         frames = sample_parser.get_frame_labels()
 
+        sample = fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
+
+        if isinstance(label, dict):
+            sample.update_fields({label_key(k): v for k, v in label.items()})
+        elif label is not None:
+            sample[label_field] = label
+
         if frames is not None:
-            sample.frames.merge(
-                {
-                    frame_number: {
+            frame_labels = {}
+
+            for frame_number, _label in frames.items():
+                if isinstance(_label, dict):
+                    frame_labels[frame_number] = {
                         label_key(field_name): label
-                        for field_name, label in frame_dict.items()
+                        for field_name, label in _label.items()
                     }
-                    for frame_number, frame_dict in frames.items()
-                }
-            )
+                elif _label is not None:
+                    frame_labels[frame_number] = _label
+
+            sample.frames.merge(frame_labels)
 
         return sample
 
@@ -776,9 +795,12 @@ class LabeledVideoSampleParser(SampleParser):
         """Returns the frame labels for the current sample.
 
         Returns:
-            a dictionary mapping frame numbers to dictionaries that map label
-            fields to :class:`fiftyone.core.labels.Label` instances for each
-            video frame, or ``None`` if the sample has no frame labels
+            a dictionary mapping frame numbers to either
+            :class:`fiftyone.core.labels.Label` instances or dictionaries that
+            map label fields to :class:`fiftyone.core.labels.Label` instances
+            for each video frame. This method can return ``None`` if the sample
+            has no frame labels, and any dictionary values may also be ``None``
+            if a particular frame or frame-field has no label(s)
         """
         raise NotImplementedError("subclass must implement get_frame_labels()")
 
