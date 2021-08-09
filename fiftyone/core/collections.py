@@ -3372,7 +3372,7 @@ class SampleCollection(object):
             # Match frames with at least 10 detections
             #
 
-            num_objects = F("ground_truth_detections.detections").length()
+            num_objects = F("detections.detections").length()
             view = dataset.match_frames(num_objects > 10)
 
             print(dataset.count())
@@ -4363,7 +4363,7 @@ class SampleCollection(object):
             # objects, sampled at a maximum frame rate of 1fps
             #
 
-            num_objects = F("ground_truth_detections.detections").length()
+            num_objects = F("detections.detections").length()
             view = dataset.match_frames(num_objects > 10)
 
             frames = view.to_frames(max_fps=1, sparse=True)

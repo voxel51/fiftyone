@@ -221,7 +221,7 @@ Each block in the example code below denotes a separate cell in a
 
     # Generate scatterplot
     plot = results.visualize(
-        labels="ground_truth_timeofday.label",
+        labels="timeofday.label",
         labels_title="time of day",
         axis_equal=True,
     )

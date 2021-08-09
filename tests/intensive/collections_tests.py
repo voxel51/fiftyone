@@ -107,7 +107,7 @@ def test_set_values_frames():
 
     # Test array fields
 
-    path = "frames.ground_truth_detections.detections.label"
+    path = "frames.detections.detections.label"
     path_upper = path + "_upper"
     path_check = path + "_check"
 
@@ -164,17 +164,16 @@ def test_tag_detections():
 
 def test_tag_detections_frames():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
 
-    print(dataset.count_label_tags("frames.ground_truth"))
+    print(dataset.count_label_tags("frames.detections"))
 
-    view = dataset.filter_labels("frames.ground_truth", F("index") == 1)
+    view = dataset.filter_labels("frames.detections", F("index") == 1)
 
-    view.tag_labels("test", "frames.ground_truth")
-    print(dataset.count_label_tags("frames.ground_truth"))
+    view.tag_labels("test", "frames.detections")
+    print(dataset.count_label_tags("frames.detections"))
 
-    view.untag_labels("test", "frames.ground_truth")
-    print(dataset.count_label_tags("frames.ground_truth"))
+    view.untag_labels("test", "frames.detections")
+    print(dataset.count_label_tags("frames.detections"))
 
 
 def _to_upper(values):

@@ -692,8 +692,6 @@ the ``frames`` prefix to the relevant frame field name:
     # 1279
 
     # Compute a histogram of per-frame object labels
-    counts = dataset.count_values(
-        "frames.ground_truth_detections.detections.label"
-    )
+    counts = dataset.count_values("frames.detections.detections.label")
     print(counts)
     # {'person': 1108, 'vehicle': 7511, 'road sign': 2726}
