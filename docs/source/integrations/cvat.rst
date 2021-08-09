@@ -610,6 +610,98 @@ names for these unexpected new fields.
     print(view)
 
 
+
+Assign users
+------------
+
+Lists of usernames can be provided to assign tasks, jobs, and reviewers. The
+`task_assignees`, `job_reviewers`, and `job_asignees` arguments can be used to
+provide a list of usernames that are sequentially assigned to created tasks and
+jobs. The `segment_size` argument is used to define the maximum number of images that
+can be uploaded per job. 
+
+If the number of usernames provided is less than the number of tasks or jobs,
+the last username will be assigned multiple times. If there are more usernames
+than tasks or jobs, the excess usernames are unassigned.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(5)
+
+    task_assignees = ["username1", "username2"]
+    job_asignees = ["username3", "username4"]
+    job_reviewers = ["username5", "username6", "username7"]
+
+    # Load "ground_truth" field into one task
+    # Create another task for "keypoints" field
+    label_schema = {
+        "ground_truth": {},
+        "keypoints": {
+            "type": "keypoints",
+            "classes": ["person"],
+        }
+    }
+
+    info = view.annotate(
+        label_schema=label_schema,
+        task_assignees=task_assignees,
+        job_asignees=job_asignees,
+        job_reviewers=job_reviewers,
+        segment_size=2,
+        launch_editor=True,
+    )
+
+
+Scalar labels
+-------------
+
+FiftyOne |Label| fields are the primary way to store information in a
+|Dataset|. However, FiftyOne also provides the ability to store scalar
+information on samples. This information can be annotated in CVAT similarly to
+how classifications are handled. 
+
+Float, int, string, and boolean scalar types are supported. The `label_field`
+argument is used just like for |Label| fields, but the `classes` argument is
+now optional and the `attributes` argument is unused. 
+
+If `classes` are provided, then the CVAT tag will allow you to select from this
+list. If `classes` is `None`, then the CVAT tag will show the `label_field`
+name and you must enter the value of the scalar in the `value` attribute of the
+tag in CVAT.
+
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    # Create two scalar fields
+    # One with classes and one without
+    label_schema = {
+        "scalar1": {
+            "type": "scalar",
+        },
+        "scalar2": {
+            "type": "scalar",
+            "classes": ["class1", "class2", "class3"],
+        }
+    }
+
+    info = view.annotate(
+        label_schema=label_schema,
+        launch_editor=True,
+    )
+
+
 Videos
 ______
 
