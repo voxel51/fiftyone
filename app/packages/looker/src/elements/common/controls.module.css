@@ -1,0 +1,163 @@
+/**
+ * Copyright 2017-2021, Voxel51, Inc.
+ */
+
+.lookerControls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  opacity: 0;
+  z-index: 20;
+  padding-bottom: 0.25rem;
+  display: grid;
+  grid-template-columns: 0.5rem max-content max-content max-content max-content 1fr max-content max-content max-content max-content max-content max-content max-content max-content 0.5rem;
+  grid-gap: 0.25rem;
+  justify-items: center;
+  align-items: center;
+
+  color: #eee;
+
+  -webkit-transition: opacity 0.5s;
+  -moz-transition: opacity 0.5s;
+  -o-transition: opacity 0.5s;
+  -ms-transition: opacity 0.5s;
+  transition: opacity 0.5s;
+  width: 100%;
+
+  background-color: hsl(210, 11%, 11%);
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+}
+
+.lookerError > .lookerControls {
+  display: none;
+}
+
+.lookerControls * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.lookerControls img,
+.lookerControls svg {
+  border-radius: 3px;
+  -webkit-transition: 0.2s ease-in-out;
+  -moz-transition: 0.2s ease-in-out;
+  -o-transition: 0.2s ease-in-out;
+  transition: 0.2s ease-in-out;
+}
+
+.lookerControls img:hover,
+.lookerControls svg:hover,
+.lookerControls .lookerControlActive {
+  transform: translate(0, -1px);
+}
+
+.lookerControls button {
+  background: rgba(0, 0, 0, 0.5);
+  border: 0;
+  color: #eee;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  -o-border-radius: 3px;
+  border-radius: 3px;
+  margin: 3px;
+  min-width: max-content;
+  min-height: max-content;
+  width: 10%;
+  height: fit-content;
+  padding: 1%;
+  cursor: pointer;
+}
+
+.lookerControls input[type="range"] {
+  height: 4px;
+  cursor: pointer;
+  animate: 0.2s;
+  outline: none;
+  border: none;
+}
+.lookerControls input[type="range"]:focus {
+  outline: none;
+  border: none;
+}
+.lookerControls input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  cursor: pointer;
+  animate: 0.2s;
+}
+.lookerControls input[type="range"]::-webkit-slider-thumb {
+  height: 0;
+  width: 0;
+  -webkit-appearance: none;
+}
+.lookerControls input[type="range"]:hover::-webkit-slider-runnable-track {
+  height: 6px;
+}
+.lookerControls input[type="range"]::-moz-range-runnable-track {
+  height: 4px;
+  cursor: pointer;
+  animate: 0.2s;
+  background: rgb(238, 238, 238);
+  outline: 0;
+  border: none;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--progress, 0%),
+    rgb(238, 238, 238) var(--progress, 0%),
+    rgb(238, 238, 238) 100%
+  );
+  overflow: hidden;
+}
+.lookerControls input[type="range"]::-moz-range-thumb {
+  height: 0;
+  width: 0;
+  outline: 0;
+  border: none;
+  overflow: hidden;
+}
+.lookerControls input[type="range"]:hover::-moz-range-runnable-track {
+  height: 6px;
+}
+.lookerControls *:hover,
+.lookerControls *:active {
+  outline: none;
+}
+
+.lookerClickable {
+  cursor: pointer;
+}
+
+.lookerArrow {
+  position: absolute;
+  width: 3rem;
+  height: 2.5rem;
+  padding: 0.75rem 0.75rem;
+  top: 50%;
+  margin-top: -1.75rem;
+  cursor: pointer;
+  background-color: hsl(210, 11%, 11%);
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border-radius: 3px;
+  z-index: 100;
+}
+
+.lookerTime {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-content: center;
+  font-family: Arial, sans-serif, monospace;
+  font-weight: normal;
+  height: 100%;
+  margin-top: 2px;
+  font-size: 20px;
+}
+
+.lookerError .lookerControls {
+  display: none;
+}

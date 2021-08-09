@@ -174,7 +174,7 @@ bash install.bash
 
 **NOTE:** When you pull in new changes to the App, you will need to rebuild it,
 which you can do either by rerunning the install script or just running
-`yarn build-web` in the `./app` directory.
+`yarn build` in the `./app` directory.
 
 ### Upgrading your source installation
 

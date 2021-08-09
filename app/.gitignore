@@ -1,22 +1,12 @@
-node_modules
-
-# OSX
-.DS_Store
-
-# App dist and web build
-release
-dist
-!dist/app.html
-build
-
-.idea
-*.css.d.ts
-
 .yarn/*
 !.yarn/releases
 !.yarn/plugins
 !.yarn/sdks
 !.yarn/versions
-.pnp.*
-
+node_modules
+.snowpack
+build
+dist
+.yarnrc
 yarn-error.log
+tsconfig.tsbuildinfo
