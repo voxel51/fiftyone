@@ -44,7 +44,8 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
     );
   }
   const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
-  const isPatches = await snapshot.getPromise(selectors.selectedLabelIds);
+  const isPatches = await snapshot.getPromise(selectors.isPatchesView);
+  const modal = await snapshot.getPromise(atoms.modal);
 
   if (isPatches) {
     if (selectedSamples.size) {
@@ -53,11 +54,14 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
       );
     }
 
-    const { sample } = await snapshot.getPromise(atoms.modal);
-    return sample[labels_field]._id;
+    return modal.sample[labels_field]._id;
   }
 
-  return [...selectedSamples];
+  if (selectedSamples.size) {
+    return [...selectedSamples];
+  }
+
+  return modal.sample._id;
 };
 
 const useSortBySimilarity = () => {
