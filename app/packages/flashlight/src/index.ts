@@ -313,6 +313,7 @@ export default class Flashlight<K> {
           nextRequestKey === null
         ) {
           this.hidePixels();
+          this.render();
         }
       });
   }
