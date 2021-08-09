@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "outDir": "dist"
+    },
+    "include": ["src"]
+}

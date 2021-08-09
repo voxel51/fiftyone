@@ -6,6 +6,7 @@ FiftyOne video-related unit tests.
 |
 """
 from bson import ObjectId
+import numpy as np
 import unittest
 
 import fiftyone as fo
@@ -173,6 +174,59 @@ class VideoTests(unittest.TestCase):
             self.assertEqual(frame_number, frame.frame_number)
 
         self.assertListEqual(frame_numbers2, [2, 4])
+
+    @drop_datasets
+    def test_expand_schema(self):
+        # None-valued new frame fields are ignored for schema expansion
+
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(ground_truth=None)
+        dataset.add_sample(sample)
+
+        self.assertNotIn("ground_truth", dataset.get_frame_field_schema())
+
+        # None-valued new frame fields are allowed when a later frame
+        # determines the appropriate field type
+
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(ground_truth=None)
+        sample.frames[2] = fo.Frame(ground_truth=fo.Classification())
+
+        dataset.add_sample(sample)
+
+        self.assertIn("ground_truth", dataset.get_frame_field_schema())
+
+        # Test implied frame field types
+
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            bool_field=True,
+            int_field=1,
+            str_field="hi",
+            float_field=1.0,
+            list_field=[1, 2, 3],
+            dict_field={"hello": "world"},
+            vector_field=np.arange(5),
+            array_field=np.random.randn(3, 4),
+        )
+
+        dataset.add_sample(sample)
+        schema = dataset.get_frame_field_schema()
+
+        self.assertIsInstance(schema["bool_field"], fo.BooleanField)
+        self.assertIsInstance(schema["int_field"], fo.IntField)
+        self.assertIsInstance(schema["str_field"], fo.StringField)
+        self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["list_field"], fo.ListField)
+        self.assertIsInstance(schema["dict_field"], fo.DictField)
+        self.assertIsInstance(schema["vector_field"], fo.VectorField)
+        self.assertIsInstance(schema["array_field"], fo.ArrayField)
 
     @drop_datasets
     def test_modify_video_sample(self):

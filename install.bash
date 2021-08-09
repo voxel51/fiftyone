@@ -47,9 +47,6 @@ done
 set -e
 OS=$(uname -s)
 
-echo "***** INSTALLING PLAYER51 *****"
-git submodule update --init
-
 if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     echo "***** INSTALLING MONGODB *****"
     mkdir -p ~/.fiftyone/bin
@@ -100,8 +97,8 @@ if [ ${BUILD_APP} = true ]; then
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
     export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-    nvm install v12.16.2
-    nvm use v12.16.2
+    nvm install v16.3.0
+    nvm use v16.3.0
     npm -g install yarn
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc
@@ -113,7 +110,7 @@ if [ ${BUILD_APP} = true ]; then
     cd app
     echo "Building the App. This will take a minute or two..."
     yarn install > /dev/null 2>&1
-    yarn build-web
+    yarn build
     cd ..
 fi
 

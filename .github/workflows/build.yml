@@ -41,10 +41,10 @@ jobs:
             npm-
       - name: Install app dependencies
         working-directory: app
-        run: yarn
-      - name: Build web app
+        run: yarn install
+      - name: Build app
         working-directory: app
-        run: yarn build-web
+        run: yarn build
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -127,7 +127,7 @@ jobs:
           sudo apt install ffmpeg
       - name: Install fiftyone
         run: |
-          pip install scikit-learn scikit-image shapely
+          pip install scikit-learn scikit-image shapely pydicom
           pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
           pip install -e .
       - name: Install ETA from source

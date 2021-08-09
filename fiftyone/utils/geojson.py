@@ -332,7 +332,7 @@ class GeoJSONDatasetImporter(
         property_parsers (None): an optional dict mapping property names to
             functions that parse the property values (e.g., into the
             appropriate) :class:`fiftyone.core.labels.Label` types). By
-            default, all properies are stored as primitive field values
+            default, all properties are stored as primitive field values
         skip_missing_media (False): whether to skip (True) or raise an error
             (False) when features with no ``filename`` property are encountered
         include_all_data (False): whether to generate samples for all media in

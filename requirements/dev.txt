@@ -2,7 +2,9 @@
 -r docs.txt
 
 ipython==7.8.0
+shapely==1.7.1
 pre-commit==2.0.1
+pydicom==2.2.0
 pylint==2.3.1
 pytest==5.4.3
 twine>=3

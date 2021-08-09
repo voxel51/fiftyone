@@ -61,30 +61,82 @@ def change_label_tags(collection, changes, label_fields=None):
     collection._edit_label_tags(modifier, label_fields=label_fields)
 
 
-def get_file_dimensions(file_path):
+def read_metadata(filepath, metadata=None):
     """
-    Calculates the dimensions of the specified file.
+    Calculates the metadata for a specified media file
 
     Args:
-        file_path (str): path to the file
+        filepath: path to the file
+        metadata (None): existing metadata dict
 
     Returns:
-        tuple: (width, height) as integers
+        dict
+    """
+    mimetype, _ = mimetypes.guess_type(filepath)
+    if mimetype.startswith("video/"):
+        if metadata:
+            width = metadata.get("frame_width", None)
+            height = metadata.get("frame_height", None)
+            frame_rate = metadata.get("frame_rate", None)
+
+            if width and height and frame_rate:
+                return {
+                    "width": width,
+                    "height": height,
+                    "frame_rate": frame_rate,
+                }
+
+        return read_video_metadata(filepath)
+
+    if metadata:
+        width = metadata.get("width", None)
+        height = metadata.get("height", None)
+
+        if width and height:
+            return {"width": width, "height": height}
+
+    return read_image_metadata(filepath)
+
+
+def read_image_metadata(filepath):
+    """
+    Calculates the metadata for a specified image
+
+    Args:
+        filepath (str): path to the file
+
+    Returns:
+        dict
     """
     try:
-        mime_type, _ = mimetypes.guess_type(file_path)
-        if mime_type is None:
-            raise UnknownFileFormat(
-                "Cannot identify mime type from %r" % file_path
-            )
-        category = mime_type.split("/")[0]
-        if category == "image":
-            return get_image_size(file_path)
-        elif category == "video":
-            return etav.get_frame_size(file_path)
-        raise UnknownFileFormat("Unhandled mime type: %r" % mime_type)
+        width, height = get_image_size(filepath)
+        return {"width": width, "height": height}
     except:
-        return 512, 512
+        return {
+            "width": 512,
+            "height": 512,
+        }
+
+
+def read_video_metadata(filepath):
+    """
+    Calculates the metadata for a video
+
+    Args:
+        filepath (str): path to the file
+
+    Returns:
+        dict
+    """
+    try:
+        info = etav.VideoStreamInfo.build_for(filepath)
+        return {
+            "width": info.frame_size[0],
+            "height": info.frame_size[1],
+            "frame_rate": info.frame_rate,
+        }
+    except:
+        return {"width": 512, "height": 512, "frame_rate": 30}
 
 
 types = collections.OrderedDict()
@@ -128,7 +180,7 @@ def get_image_size(file_path):
     dependencies except the os and struct builtin modules
     """
     try:
-        img = get_image_metadata(file_path)
+        img = get_image_data(file_path)
         return (img.width, img.height)
     except UnknownImageFormat:
         return _get_image_size_pil(file_path)
@@ -143,7 +195,7 @@ def get_image_size_from_bytesio(input, size):
         size (int): size of buffer in byte
     """
     try:
-        img = get_image_metadata_from_bytesio(input, size)
+        img = get_image_data_from_bytesio(input, size)
         return (img.width, img.height)
     except UnknownImageFormat:
         return _get_image_size_pil(input)
@@ -157,7 +209,7 @@ def _get_image_size_pil(file):
         raise UnknownImageFormat(e)
 
 
-def get_image_metadata(file_path):
+def get_image_data(file_path):
     """
     Return an `Image` object for a given img file content - no external
     dependencies except the os and struct builtin modules
@@ -170,10 +222,10 @@ def get_image_metadata(file_path):
 
     # be explicit with open arguments - we need binary mode
     with io.open(file_path, "rb") as input:
-        return get_image_metadata_from_bytesio(input, size, file_path)
+        return get_image_data_from_bytesio(input, size, file_path)
 
 
-def get_image_metadata_from_bytesio(input, size, file_path=None):
+def get_image_data_from_bytesio(input, size, file_path=None):
     """
     Return an `Image` object for a given img file content - no external
     dependencies except the os and struct builtin modules
