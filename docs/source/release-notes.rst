@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.12.0
 ---------------
-*Released August 5, 2021*
+*Released August 9, 2021*
 
 App
 ^^^
@@ -29,12 +29,24 @@ App
   (:class:`BooleanField <fiftyone.core.fields.BooleanField>` and
   :class:`StringField <fiftyone.core.fields.StringField>` fields)
 
+Core
+^^^^
+- Added support for importing :ref:`DICOM datasets <DICOMDataset-import>`
+- Added better default behavior for the `label_field` parameter when importing
+  datasets using methods like
+  :meth:`from_dir() <fiftyone.core.dataset.Dataset.from_dir>` and exporting
+  datasets using
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+- When adding samples to datasets, `None`-valued sample fields are now
+  gracefully ignored when expanding dataset schemas
 
 Docs
 ^^^^
 - Added :ref:`Using the image visualizer <app-image-visualizer>` and
-  :ref:`Using the video visualizer <app-video-visualizer>` sections to the 
-  :ref:`Using the FiftyOne App <fiftyone-app>` user guide
+  :ref:`Using the video visualizer <app-video-visualizer>` sections to the
+  App user guide
+- Added sections covering :ref:`merging datasets <merging-datasets>` and
+  :ref:`batch updates <batch-updates>` to the dataset user guide page
 
 Zoo
 ^^^
