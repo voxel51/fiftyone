@@ -21,7 +21,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 fouc = fou.lazy_import("fiftyone.utils.cvat")
-foul = fou.lazy_import("fiftyone.utils.labelbox")
 
 
 logger = logging.getLogger(__name__)
@@ -273,7 +272,7 @@ def annotate(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         backend ("cvat"): the name of the annotation backend to which to
-            export the samples. Options are ("cvat", "labelbox")
+            export the samples. Options are ("cvat")
         label_schema (None): a dictionary indicating the type, class options, and
             attributes for each label field. This is required for new label fields
             if `classes` is not provided.
@@ -328,14 +327,6 @@ def annotate(
             media_field=media_field,
             **kwargs
         )
-    elif backend == "labelbox":
-        annotation_info = foul.annotate(
-            samples,
-            launch_editor=launch_editor,
-            label_schema=label_schema,
-            media_field=media_field,
-            **kwargs
-        )
     else:
         logger.warning("Unsupported annotation backend %s" % backend)
         return
@@ -359,17 +350,6 @@ def load_annotations(samples, info, **kwargs):
                 "Expected info to be of type"
                 " `fiftyone.utils.cvat.CVATAnnotationInfo` when"
                 " using the CVAT backend. Found %s" % str(type(info))
-            )
-
-        annotations_results, additional_results = fouc.load_annotations(
-            info, **kwargs
-        )
-    elif info.backend == "labelbox":
-        if not isinstance(info, foul.LabelboxAnnotationInfo):
-            raise ValueError(
-                "Expected info to be of type"
-                " `fiftyone.utils.labelbox.LabelboxAnnotationInfo` when"
-                " using the Labelbox backend. Found %s" % str(type(info))
             )
 
         annotations_results, additional_results = fouc.load_annotations(
@@ -924,8 +904,6 @@ class AnnotationLabelSchema(object):
     def backend_attr_types(self):
         if self.backend == "cvat":
             return list(fouc.ATTRIBUTE_TYPES_REQUIREMENTS.keys())
-        elif self.backend == "labelbox":
-            return list(foul.ATTRIBUTE_TYPES_REQUIREMENTS.keys())
         else:
             raise ValueError(
                 "Annotation backend '%s' is not supported" % self.backend
@@ -933,8 +911,6 @@ class AnnotationLabelSchema(object):
 
     def base_backend_attr_type(self):
         if self.backend == "cvat":
-            return "text"
-        elif self.backend == "labelbox":
             return "text"
         else:
             raise ValueError(
@@ -950,8 +926,6 @@ class AnnotationLabelSchema(object):
 
         if self.backend == "cvat":
             return "values" in fouc.ATTRIBUTE_TYPES_REQUIREMENTS[attr_type]
-        elif self.backend == "labelbox":
-            return "values" in foul.ATTRIBUTE_TYPES_REQUIREMENTS[attr_type]
         else:
             raise ValueError(
                 "Annotation backend '%s' is not supported" % self.backend
@@ -959,8 +933,6 @@ class AnnotationLabelSchema(object):
 
     def selection_backend_attr_type(self):
         if self.backend == "cvat":
-            return "select"
-        elif self.backend == "labelbox":
             return "select"
         else:
             raise ValueError(

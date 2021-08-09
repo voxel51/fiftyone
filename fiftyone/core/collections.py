@@ -5585,7 +5585,7 @@ class SampleCollection(object):
 
         Args:
             backend ("cvat"): the name of the annotation backend to which to
-                export the samples. Options are ("cvat", "labelbox")
+                export the samples. Options are ("cvat")
             label_schema (None): a dictionary indicating the type, class options, and
                 attributes for each label field. This is required for new label fields
                 if `classes` is not provided.

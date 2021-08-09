@@ -221,13 +221,6 @@ class AnnotationConfig(EnvConfig):
             d, "cvat_https", env_var="FIFTYONE_CVAT_HTTPS", default=True,
         )
 
-        self.labelbox_api_key = self.parse_string(
-            d,
-            "labelbox_api_key",
-            env_var="FIFTYONE_LABELBOX_API_KEY",
-            default=None,
-        )
-
 
 class AppConfig(EnvConfig):
     """FiftyOne App configuration settings."""
