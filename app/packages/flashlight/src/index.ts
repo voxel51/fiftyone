@@ -425,8 +425,6 @@ export default class Flashlight<K> {
     if (this.state.lastSection === this.state.sections.length - 1) {
       this.requestMore();
     }
-
-    requestAnimationFrame(() => this.render());
   }
 
   private shownSectionsNeedUpdate() {
