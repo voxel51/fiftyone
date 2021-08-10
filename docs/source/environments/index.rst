@@ -148,8 +148,7 @@ FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_ and
 
 To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 
-.. code-block:: python
-    :linenos:
+.. code-block:: text
 
     !pip install fiftyone
 
