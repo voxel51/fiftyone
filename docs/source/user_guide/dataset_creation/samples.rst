@@ -1214,7 +1214,7 @@ classification or object detections) associated with the image.
                                 for field_name, label in _label.items()
                             }
                         elif _label is not None:
-                            frame_labels[frame_number] = _label
+                            frame_labels[frame_number] = {label_field: _label}
 
                     sample.frames.merge(frame_labels)
 
