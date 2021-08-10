@@ -23,7 +23,10 @@ allowing you to automate the dataset loading process.
 .. _adding-samples-to-datasets:
 
 Adding samples to datasets
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
+
+Basic recipe
+~~~~~~~~~~~~
 
 The basic recipe for using the |SampleParser| interface to add samples to a
 |Dataset| is to create a parser of the appropriate type and then pass the
