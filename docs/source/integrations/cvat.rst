@@ -832,12 +832,17 @@ ______
 While CVAT supports video annotation, it only allows for a single video per
 task. For video samples, every video will be uploaded to a separate task.
 
-CVAT also does not provided a straightforward way to annotate video-level
+CVAT does not provided a straightforward way to annotate video-level
 labels like |Classifications|. It is recommended to use FiftyOne |tags| for
 |Sample|-level classifications on a video |Dataset|.
 
 |Frame|-level labels can be annotated in CVAT through this integration. Label
 fields for |Frame|-level labels must be prepended by `"frames."`.
+
+All CVAT label types except `tags` provide an option to annotate a `track`.
+This is useful for videos in order to annotate objects from one frame to
+another with the same object id. This is passed to and from FiftyOne through
+the `index` field of a given |Label| indicating the object id.
 
 .. code:: python
     :linenos:
@@ -856,3 +861,8 @@ fields for |Frame|-level labels must be prepended by `"frames."`.
     # Annotate in CVAT
 
     view.load_annotations(info, delete_tasks=True)
+
+
+.. image:: /images/integrations/cvat_video.png
+   :alt: cvat-video
+   :align: center
