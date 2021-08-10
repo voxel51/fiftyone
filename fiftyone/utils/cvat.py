@@ -15,6 +15,7 @@ import logging
 import os
 import requests
 import urllib3
+from uuid import uuid4
 import warnings
 import webbrowser
 
@@ -3040,8 +3041,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     [(i["name"], i["id"]) for i in label["attributes"]]
                 )
 
-            classes = list(class_map.values())
-
             if task_json["data_original_chunk_type"] == "video":
                 media_type = "video"
             else:
@@ -3097,7 +3096,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     results[label_field][sample_id] = label
 
                 else:
-                    cvat_tag = CVATTag(tag, class_map, attr_id_map, classes)
+                    cvat_tag = CVATTag(tag, class_map, attr_id_map)
                     label = cvat_tag.to_classification()
 
                     if label_type in ["classification", "classifications"]:
@@ -3172,9 +3171,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         results[label_field][sample_id][frame_id] = {}
 
                 label = None
-                cvat_shape = CVATShape(
-                    shape, class_map, attr_id_map, classes, metadata
-                )
+                cvat_shape = CVATShape(shape, class_map, attr_id_map, metadata)
                 if shape_type == "rectangle":
                     label = cvat_shape.to_detection()
                     new_field_type = "detections"
@@ -3261,7 +3258,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         shape,
                         class_map,
                         attr_id_map,
-                        classes,
                         metadata,
                         index=track_index,
                     )
@@ -3786,12 +3782,23 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
 
 class CVATLabel(object):
-    def __init__(self, label_dict, class_map, attr_id_map, classes):
+    """A class to convert labels returned from the CVAT API to FiftyOne labels
+    and the associated attributes.
+
+    Args:
+        label_dict: the dictionary containing the label information loaded from
+            the CVAT API
+        class_map: a dictionary mapping label ids to class strings
+        attr_id_map: a dictionary mapping attribute ids attribute names for
+            every label 
+    """
+
+    def __init__(self, label_dict, class_map, attr_id_map):
         label_id = label_dict["label_id"]
         self.label_id = label_id
         self.class_name = class_map[label_id]
         self.ignore = False
-        if self.class_name not in classes:
+        if self.class_name not in class_map:
             self.ignore = True
 
         else:
@@ -3814,11 +3821,26 @@ class CVATLabel(object):
                         self.fo_attributes[name] = attribute.to_attribute()
 
     def update_attrs(self, label):
+        """Iterates through attributes of the current label and replaces the
+        label id with the "label_id" stored in the CVAT attributes if it
+        exists as well as storing all loaded attributes that do not start with
+        "attribute:".
+
+        Args:
+            label: the :class:`fiftyone.core.labels.Label` instance for which
+                to update the attributes
+
+        Returns:
+            label: the updated :class:`fiftyone.core.labels.Label`
+        """
         if "label_id" in self.attributes:
             label_id = self.attributes["label_id"].value
 
             if label_id is not None:
-                label._id = label_id
+                try:
+                    label._id = label_id
+                except ValueError:
+                    pass
 
         for attr_name, attribute in self.attributes.items():
             if attr_name != "label_id" and not attr_name.startswith(
@@ -3830,10 +3852,22 @@ class CVATLabel(object):
 
 
 class CVATShape(CVATLabel):
+    """A class to convert labels returned from the CVAT API to FiftyOne labels
+    and the associated attributes specifically for label types that require
+    spatial metadata.
+
+    Args:
+        label_dict: the dictionary containing the label information loaded from
+            the CVAT API
+        class_map: a dictionary mapping label ids to class strings
+        attr_id_map: a dictionary mapping attribute ids attribute names for
+            every label 
+    """
+
     def __init__(
-        self, label_dict, class_map, attr_id_map, classes, metadata, index=None
+        self, label_dict, class_map, attr_id_map, metadata, index=None
     ):
-        super().__init__(label_dict, class_map, attr_id_map, classes)
+        super().__init__(label_dict, class_map, attr_id_map)
         self.width = metadata["width"]
         self.height = metadata["height"]
         self.points = label_dict["points"]
@@ -3844,6 +3878,12 @@ class CVATShape(CVATLabel):
         return reshaped_points.tolist()
 
     def to_detection(self):
+        """Converts the `CVATLabel` to a
+        :class:`fiftyone.core.labels.Detection`
+
+        Returns:
+            label: a :class:`fiftyone.core.labels.Detection`
+        """
         if self.ignore:
             return None
 
@@ -3865,6 +3905,12 @@ class CVATShape(CVATLabel):
         return label
 
     def to_polyline(self, closed=False, filled=False):
+        """Converts the `CVATLabel` to a
+        :class:`fiftyone.core.labels.Polyline`
+
+        Returns:
+            label: a :class:`fiftyone.core.labels.Polyline`
+        """
         if self.ignore:
             return None
 
@@ -3884,6 +3930,12 @@ class CVATShape(CVATLabel):
         return label
 
     def to_points(self):
+        """Converts the `CVATLabel` to a
+        :class:`fiftyone.core.labels.Keypoint`
+
+        Returns:
+            label: a :class:`fiftyone.core.labels.Keypoint`
+        """
         if self.ignore:
             return None
 
@@ -3901,6 +3953,13 @@ class CVATShape(CVATLabel):
         return label
 
     def polyline_to_detection(self, label):
+        """Converts the `CVATLabel` to a
+        :class:`fiftyone.core.labels.Detection` with a segmentation mask
+        created from the polyline annotation
+
+        Returns:
+            label: a :class:`fiftyone.core.labels.Detection`
+        """
         new_fields = label._fields
         default_fields = type(label)._fields_ordered
         label = label.to_detection(frame_size=(self.width, self.height))
@@ -3912,7 +3971,17 @@ class CVATShape(CVATLabel):
 
 
 class CVATTag(CVATLabel):
+    """A class to convert labels returned from the CVAT API to FiftyOne labels
+    and the associated attributes specifically for classifications.
+    """
+
     def to_classification(self):
+        """Converts the `CVATLabel` to a
+        :class:`fiftyone.core.labels.Classification`
+
+        Returns:
+            label: a :class:`fiftyone.core.labels.Classification`
+        """
         if self.ignore:
             return None
 
@@ -3924,9 +3993,43 @@ class CVATTag(CVATLabel):
 
 
 class CVATAnnotationInfo(foua.AnnotationInfo):
+    """The annotation info class storing all relevant information needed to
+    connect to a specific CVAT server and upload the labels from the provided
+    schema. This info then stores the required ids and information of the CVAT
+    tasks, jobs, and other artifacts needed to download and merge annotations
+    in the future.
+
+    Args:
+        label_schema: a dictionary containing the description of label fields,
+            classes and attribute to annotate
+        media_field ("filepath"): string field name containing the paths to
+            media files on disk to upload
+        launch_editor (False): whether to launch the backend editor in a
+            browser window after uploading samples
+        url ("cvat.org"): URL of the CVAT server to which to upload samples 
+        port (None): four digit port to append to url when connecting to server
+        https (True): boolean indicating whether to connect to https (True) or
+            http (False) server
+        auth (None): an optional dictionary mapping the strings "username" and
+            "password" to the CVAT username and password to use to connect to
+            the CVAT server
+        segment_size (None): maximum number of images to load into a job. Not
+            applicable to videos
+        image_quality (75): an integer ranging from 0 to 100 indicating the 
+            quality of images after uploading to CVAT
+        job_reviewers (None): a list containing usernames to which to assign
+            job reviews sequentially 
+        job_assignees (None): a list containing usernames to which to assign jobs
+            sequentially for images or tasks for videos
+        task_assignee (None): the username of the user assigned to the
+            created task
+        
+    """
+
     def __init__(
         self,
         label_schema=None,
+        media_field="filepath",
         launch_editor=False,
         url="cvat.org",
         port=None,
@@ -3937,18 +4040,9 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         job_reviewers=None,
         job_assignees=None,
         task_assignee=None,
-        job_sample_map=None,
-        task_ids={},
-        job_ids={},
-        frame_id_map={},
-        labels_task_map={},
-        assigned_scalar_attrs={},
     ):
         super().__init__(label_schema=label_schema, backend="cvat")
-        self.task_ids = task_ids
-        self.job_ids = job_ids
-        self.frame_id_map = frame_id_map
-        self.labels_task_map = labels_task_map
+        self.media_field = media_field
         self.launch_editor = launch_editor
         self.url = url
         self.port = port
@@ -3959,8 +4053,11 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         self.job_reviewers = job_reviewers
         self.job_assignees = job_assignees
         self.task_assignee = task_assignee
-        self.job_sample_map = job_sample_map
-        self.assigned_scalar_attrs = assigned_scalar_attrs
+        self.task_ids = {}
+        self.job_ids = {}
+        self.frame_id_map = {}
+        self.labels_task_map = {}
+        self.assigned_scalar_attrs = {}
         self.api = None
 
     def connect_to_api(self, auth=None):
@@ -4008,7 +4105,7 @@ def annotate(
     job_assignees=None,
     task_assignee=None,
 ):
-    """Exports the samples and a label field to CVAT.
+    """Exports the samples and labels to CVAT from the given label schema.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -4038,7 +4135,7 @@ def annotate(
 
     Returns:
         annotation_info: the
-            :class:`fiftyone.utils.annotations.AnnotationInfo` used to
+            :class:`fiftyone.utils.cvat.CVATAnnotationInfo` used to
             upload and annotate the given samples
     """
     info = CVATAnnotationInfo(
@@ -4095,6 +4192,18 @@ def annotate(
 
 
 def load_annotations(info, delete_tasks=False, auth=None):
+    """Uses the provided :class:`fiftyone.utils.cvat.CVATAnnotationInfo` to
+        reconnect to the API using the specifications in the info and downloads
+        annotations from the label schema.
+
+    Args:
+        info: a :class:`fiftyone.utils.cvat.CVATAnnotationInfo` that was used
+            to annotate samples previously
+        delete_tasks (False): whether to delete the CVAT tasks after
+            downloading annotations
+        auth (None): a dictionary with the "username" and "password" to use to
+            connect to the CVAT server
+    """
     if auth is None:
         api = info.connect_to_api()
     else:

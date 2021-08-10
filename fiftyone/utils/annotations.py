@@ -340,7 +340,7 @@ def load_annotations(samples, info, **kwargs):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         info: the :class`AnnotationInfo` returned from a call to
-            `annotate()`
+            :meth:`fiftyone.core.collections.SampleCollection.annotate()`
         **kwargs: additional arguments to pass to the `load_annotations`
             function of the specified backend
     """
@@ -621,6 +621,16 @@ def load_annotations(samples, info, **kwargs):
 
 
 def get_tracking_index_map(samples, label_field, annotations):
+    """
+    Computes a map of sample ids and annotation tracking index to the original
+    tracking index of labels that already existed in the
+    :class:`fiftyone.core.collections.SampleCollection`
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        label_field: the string field name from which to gather indices
+        annotations: the dictionary of output annotations for a label field
+    """
     _, index_path = samples._get_label_field_path(label_field, "index")
     _, id_path = samples._get_label_field_path(label_field, "id")
     indices = flatten_list(samples.values(index_path))
@@ -659,7 +669,7 @@ class BaseAnnotationAPI(object):
 
 
 class AnnotationInfo(object):
-    """Basic interface for results returned from `annotate()` call"""
+    """Basic interface for results returned from :meth:`fiftyone.core.collections.SampleCollection.annotate()` call"""
 
     def __init__(self, label_schema, backend, extra_attrs=None):
         self.label_schema = label_schema
@@ -691,6 +701,10 @@ class AnnotationInfo(object):
 
 
 class AnnotationLabelSchema(object):
+    """A class to build labels schemas used for annotation from the arguments
+    provided to :meth:`fiftyone.core.collections.SampleCollection.annotate()`
+    """
+
     default_label_types = [
         "classifications",
         "classification",
@@ -761,6 +775,12 @@ class AnnotationLabelSchema(object):
         return schema
 
     def build_schema(self):
+        """Completes the label schema from the provided information
+
+        Returns:
+            output_schema: a dictionary with the complete label schema needed
+                to specify annotation jobs
+        """
         d = self.label_schema
         output_schema = {}
         field_schema = self.samples.get_field_schema() or []
@@ -794,7 +814,7 @@ class AnnotationLabelSchema(object):
                 )
                 if label_type != "scalar":
                     attributes = self.get_attributes(
-                        label_field, label_info, existing_field
+                        label_field, label_info, existing_field, label_type
                     )
                 else:
                     attributes = {}
@@ -818,6 +838,24 @@ class AnnotationLabelSchema(object):
         frame_field,
         is_frame_field,
     ):
+        """Parses existing information to return the label type for the given
+        label field. Will parse existing fields to determine the label or
+        require it to be provided for new fields.
+        
+        Args:
+            label_field: string of the label field for which to parse the label
+                type
+            label_info: the provided info dictionary for the given label field
+            existing_field: boolean indicating whether the field exists or is
+                to be newly created
+            frame_field: string of the parsed name of frame fields 
+            is_frame_field: boolean indicating whether the label field is a frame
+                field
+
+        Returns:
+            label_type: a string indicating the type of annotation the label
+                field represents 
+        """
         if existing_field:
             self._field_label_type = None
             is_supported_label = False
@@ -865,6 +903,27 @@ class AnnotationLabelSchema(object):
         return label_type
 
     def get_classes(self, label_field, label_info, existing_field, label_type):
+        """Parses existing information to return the classes for the given
+        label field. Will parse existing fields to determine the classes or
+        require them to be provided for new fields.
+
+        The default classes on the dataset will attempt to be used first if no
+        classes are provided.
+
+        Scalar fields are the only type that may return an empty list of
+        classes indicating that the scalar is a type requiring text input.
+        
+        Args:
+            label_field: string of the label field for which to parse the classes
+            label_info: the provided info dictionary for the given label field
+            existing_field: boolean indicating whether the field exists or is
+                to be newly created
+            label_type: the label type for which to parse classes 
+
+        Returns:
+            classes: a list of class string names to upload and add to the
+                label schema
+        """
         if "classes" in label_info and label_info["classes"]:
             return label_info["classes"]
         elif self.classes:
@@ -891,14 +950,40 @@ class AnnotationLabelSchema(object):
                 '"classes" are required when defining a new label field'
             )
 
-    def get_attributes(self, label_field, label_info, existing_field):
+    def get_attributes(
+        self, label_field, label_info, existing_field, label_type
+    ):
+        """Parses existing information to return the attributes for the given
+        label field. Will parse existing fields to determine the attributes if
+        `attributes` is True.
+
+        Attributes are not required, if `attributes` is False, no attributes
+        are loaded.  
+
+        Scalar fields are not able to contain attributes. 
+        
+        Args:
+            label_field: string of the label field for which to parse the
+                attributes 
+            label_info: the provided info dictionary for the given label field
+            existing_field: boolean indicating whether the field exists or is
+                to be newly created
+            label_type: the label type for which to parse attributes 
+
+        Returns:
+            attributes: a dict of formatted attributes to upload and add to the
+                label schema
+        """
         if "attributes" in label_info:
             attributes = label_info["attributes"]
-        elif self.attributes not in [True, False, None]:
+        else:
             attributes = self.attributes
-        elif self.label_type == "scalar":
+
+        if attributes not in [True, False, None]:
+            pass
+        elif label_type == "scalar":
             attributes = {}
-        elif existing_field and self.attributes == True:
+        elif existing_field and attributes == True:
             attributes = self.parse_all_sample_attrs(label_field)
         else:
             attributes = {}
@@ -944,6 +1029,9 @@ class AnnotationLabelSchema(object):
             )
 
     def format_attributes(self, attributes):
+        """Takes a dictionary or list of attributes and completes the attribute
+        definitions with default parameters for the given backend.
+        """
         output_attrs = {}
         if isinstance(attributes, list):
             attributes = {a: {} for a in attributes}
@@ -994,6 +1082,9 @@ class AnnotationLabelSchema(object):
         return output_attrs
 
     def parse_all_sample_attrs(self, label_field):
+        """Parses the attributes of a given label field for the
+        :class:`fiftyone.core.collections.SampleCollection`
+        """
         attributes = {}
         label_type, label_path = self.samples._get_label_field_path(
             label_field
