@@ -68,11 +68,9 @@ def import_samples(
             single :class:`fiftyone.core.labels.Label` instance per sample,
             this argument specifies the name of the field to use; the default
             is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument can be a string prefix to prepend
-            to each label key or a dictionary mapping keys of
-            :meth:`LabeledImageDatasetImporter.label_cls` to field names; the
-            default in this case is to directly use the keys of the imported
-            label dictionaries as field names
+            labels per sample, this argument specifies a string prefix to
+            prepend to each label key; the default in this case is to directly
+            use the keys of the imported label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -200,11 +198,9 @@ def merge_samples(
             single :class:`fiftyone.core.labels.Label` instance per sample,
             this argument specifies the name of the field to use; the default
             is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument can be a string prefix to prepend
-            to each label key or a dictionary mapping keys of
-            :meth:`LabeledImageDatasetImporter.label_cls` to field names; the
-            default in this case is to directly use the keys of the imported
-            label dictionaries as field names
+            labels per sample, this argument specifies a string prefix to
+            prepend to each label key; the default in this case is to directly
+            use the keys of the imported label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         key_field ("filepath"): the sample field to use to decide whether to
