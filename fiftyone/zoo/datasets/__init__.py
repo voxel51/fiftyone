@@ -161,7 +161,9 @@ def load_zoo_dataset(
         label_field (None): the label field (or prefix, if the dataset contains
             multiple label fields) in which to store the dataset's labels. By
             default, this is ``"ground_truth"`` if the dataset contains a
-            single label field and ``""`` otherwise
+            single label field. If the dataset contains multiple label fields
+            and this value is not provided, the labels will be stored under
+            dataset-specific field names
         dataset_name (None): an optional name to give the returned
             :class:`fiftyone.core.dataset.Dataset`. By default, a name will be
             constructed based on the dataset and split(s) you are loading
@@ -274,18 +276,18 @@ def load_zoo_dataset(
         for split in splits:
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
             split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
-            dataset_importer, _label_field = _build_importer(
-                dataset_type, split_dir, label_field, **importer_kwargs
+            dataset_importer, _ = foud.build_dataset_importer(
+                dataset_type, dataset_dir=split_dir, **importer_kwargs
             )
             dataset.add_importer(
-                dataset_importer, label_field=_label_field, tags=[split]
+                dataset_importer, label_field=label_field, tags=[split]
             )
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        dataset_importer, _label_field = _build_importer(
-            dataset_type, dataset_dir, label_field, **importer_kwargs
+        dataset_importer, _ = foud.build_dataset_importer(
+            dataset_type, dataset_dir=dataset_dir, **importer_kwargs
         )
-        dataset.add_importer(dataset_importer, label_field=_label_field)
+        dataset.add_importer(dataset_importer, label_field=label_field)
 
     if info.classes is not None:
         dataset.default_classes = info.classes
@@ -294,26 +296,6 @@ def load_zoo_dataset(
     logger.info("Dataset '%s' created", dataset.name)
 
     return dataset
-
-
-def _build_importer(dataset_type, dataset_dir, label_field, **kwargs):
-    dataset_importer, _ = foud.build_dataset_importer(
-        dataset_type, dataset_dir=dataset_dir, **kwargs
-    )
-
-    if label_field is None:
-        try:
-            label_cls = dataset_importer.label_cls
-        except AttributeError:
-            label_cls = None
-
-        # If we're importing multiple fields, don't add a prefix, for brevity
-        if isinstance(label_cls, dict):
-            label_field = ""
-        else:
-            label_field = "ground_truth"
-
-    return dataset_importer, label_field
 
 
 def find_zoo_dataset(name, split=None):

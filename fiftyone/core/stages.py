@@ -2714,7 +2714,7 @@ class SetField(ViewStage):
 
     Args:
         field: the field or ``embedded.field.name`` to set
-        expr: a :class:`fiftyone.core.expressions.ViewExpression or
+        expr: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
     """
@@ -2961,7 +2961,7 @@ class MatchFrames(ViewStage):
         # Match frames with at least 10 detections
         #
 
-        num_objects = F("ground_truth_detections.detections").length()
+        num_objects = F("detections.detections").length()
         stage = fo.MatchFrames(num_objects > 10)
         view = dataset.add_stage(stage)
 
@@ -5209,7 +5209,7 @@ class ToFrames(ViewStage):
         # objects, sampled at a maximum frame rate of 1fps
         #
 
-        num_objects = F("ground_truth_detections.detections").length()
+        num_objects = F("detections.detections").length()
         view = dataset.match_frames(num_objects > 10)
 
         stage = fo.ToFrames(max_fps=1, sparse=True)

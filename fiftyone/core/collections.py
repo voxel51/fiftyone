@@ -6,6 +6,7 @@ Interface for sample collections.
 |
 """
 from collections import defaultdict
+import fnmatch
 import itertools
 import logging
 import os
@@ -3371,7 +3372,7 @@ class SampleCollection(object):
             # Match frames with at least 10 detections
             #
 
-            num_objects = F("ground_truth_detections.detections").length()
+            num_objects = F("detections.detections").length()
             view = dataset.match_frames(num_objects > 10)
 
             print(dataset.count())
@@ -4362,7 +4363,7 @@ class SampleCollection(object):
             # objects, sampled at a maximum frame rate of 1fps
             #
 
-            num_objects = F("ground_truth_detections.detections").length()
+            num_objects = F("detections.detections").length()
             view = dataset.match_frames(num_objects > 10)
 
             frames = view.to_frames(max_fps=1, sparse=True)
@@ -5296,11 +5297,7 @@ class SampleCollection(object):
         export_media=None,
         dataset_exporter=None,
         label_field=None,
-        label_prefix=None,
-        labels_dict=None,
         frame_labels_field=None,
-        frame_labels_prefix=None,
-        frame_labels_dict=None,
         overwrite=False,
         **kwargs,
     ):
@@ -5435,43 +5432,34 @@ class SampleCollection(object):
                 to export the samples. When provided, parameters such as
                 ``export_dir``, ``dataset_type``, ``data_path``, and
                 ``labels_path`` have no effect
-            label_field (None): the name of the label field to export. Only
+            label_field (None): controls the label field(s) to export. Only
                 applicable to labeled image datasets or labeled video datasets
-                with sample-level labels. If none of ``label_field``,
-                ``label_prefix``, and ``labels_dict`` are specified and the
-                requested output type is a labeled image dataset or labeled
-                video dataset with sample-level labels, the first field of
-                compatible type for the output format is used
-            label_prefix (None): a label field prefix; all fields whose name
-                starts with the given prefix will be exported (with the prefix
-                removed when constructing the label dicts). Only applicable to
-                labeled image datasets or labeled video datasets with
-                sample-level labels. This parameter can only be used when the
-                exporter can handle dictionaries of labels
-            labels_dict (None): a dictionary mapping label field names to keys
-                to use when constructing the label dict to pass to the
-                exporter. Only applicable to labeled image datasets or labeled
-                video datasets with sample-level labels. This parameter can
-                only be used when the exporter can handle dictionaries of
-                labels
-            frame_labels_field (None): the name of the frame labels field to
-                export. Only applicable for labeled video datasets. If none of
-                ``frame_labels_field``, ``frame_labels_prefix``, and
-                ``frame_labels_dict`` are specified and the requested output
-                type is a labeled video dataset with frame-level labels, the
-                first frame-level field of compatible type for the output
-                format is used
-            frame_labels_prefix (None): a frame labels field prefix; all
-                frame-level fields whose name starts with the given prefix will
-                be exported (with the prefix removed when constructing the
-                frame label dicts). Only applicable for labeled video datasets.
-                This parameter can only be used when the exporter can handle
-                dictionaries of frame-level labels
-            frame_labels_dict (None): a dictionary mapping frame-level label
-                field names to keys to use when constructing the frame labels
-                dicts to pass to the exporter. Only applicable for labeled
-                video datasets. This parameter can only be used when the
-                exporter can handle dictionaries of frame-level labels
+                with sample-level labels. Can be any of the following:
+
+                -   the name of a label field to export
+                -   a glob pattern of label field(s) to export
+                -   a list or tuple of label field(s) to export
+                -   a dictionary mapping label field names to keys to use when
+                    constructing the label dictionaries to pass to the exporter
+
+                Note that multiple fields can only be specified when the
+                exporter used can handle dictionaries of labels. By default,
+                the first field of compatible type for the exporter is used
+            frame_labels_field (None): controls the frame label field(s) to
+                export. Only applicable to labeled video datasets. Can be any
+                of the following:
+
+                -   the name of a frame label field to export
+                -   a glob pattern of frame label field(s) to export
+                -   a list or tuple of frame label field(s) to export
+                -   a dictionary mapping frame label field names to keys to use
+                    when constructing the frame label dictionaries to pass to
+                    the exporter
+
+                Note that multiple fields can only be specified when the
+                exporter used can handle dictionaries of frame labels. By
+                default, the first field of compatible type for the exporter is
+                used
             overwrite (False): whether to delete existing directories before
                 performing the export (True) or to merge the export with
                 existing files and directories (False). Not applicable when a
@@ -5511,56 +5499,40 @@ class SampleCollection(object):
         # Get label field(s) to export
         if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
             # Labeled images
-            label_field_or_dict = get_label_fields(
-                self,
-                label_field=label_field,
-                label_prefix=label_prefix,
-                labels_dict=labels_dict,
+            label_field = self._parse_label_field(
+                label_field,
                 dataset_exporter=dataset_exporter,
                 allow_coersion=True,
                 required=True,
             )
-            frame_labels_field_or_dict = None
+            frame_labels_field = None
         elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
             # Labeled videos
-            label_field_or_dict = get_label_fields(
-                self,
-                label_field=label_field,
-                label_prefix=label_prefix,
-                labels_dict=labels_dict,
+            label_field = self._parse_label_field(
+                label_field,
                 dataset_exporter=dataset_exporter,
                 allow_coersion=True,
                 required=False,
             )
-            frame_labels_field_or_dict = get_frame_labels_fields(
-                self,
-                frame_labels_field=frame_labels_field,
-                frame_labels_prefix=frame_labels_prefix,
-                frame_labels_dict=frame_labels_dict,
+            frame_labels_field = self._parse_frame_labels_field(
+                frame_labels_field,
                 dataset_exporter=dataset_exporter,
                 allow_coersion=True,
                 required=False,
             )
 
-            if (
-                label_field_or_dict is None
-                and frame_labels_field_or_dict is None
-            ):
+            if label_field is None and frame_labels_field is None:
                 raise ValueError(
                     "Unable to locate compatible sample or frame-level "
                     "field(s) to export"
                 )
-        else:
-            # Other (unlabeled, entire samples, etc)
-            label_field_or_dict = label_field
-            frame_labels_field_or_dict = frame_labels_field
 
         # Perform the export
         foud.export_samples(
             self,
             dataset_exporter=dataset_exporter,
-            label_field_or_dict=label_field_or_dict,
-            frame_labels_field_or_dict=frame_labels_field_or_dict,
+            label_field=label_field,
+            frame_labels_field=frame_labels_field,
             **kwargs,
         )
 
@@ -6270,6 +6242,40 @@ class SampleCollection(object):
 
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
+    def _parse_label_field(
+        self,
+        label_field,
+        dataset_exporter=None,
+        allow_coersion=False,
+        force_dict=False,
+        required=False,
+    ):
+        return _parse_label_field(
+            self,
+            label_field,
+            dataset_exporter=dataset_exporter,
+            allow_coersion=allow_coersion,
+            force_dict=force_dict,
+            required=required,
+        )
+
+    def _parse_frame_labels_field(
+        self,
+        frame_labels_field,
+        dataset_exporter=None,
+        allow_coersion=False,
+        force_dict=False,
+        required=False,
+    ):
+        return _parse_frame_labels_field(
+            self,
+            frame_labels_field,
+            dataset_exporter=dataset_exporter,
+            allow_coersion=allow_coersion,
+            force_dict=force_dict,
+            required=required,
+        )
+
     def _get_db_field(self, field_name):
         field, is_frame_field = self._handle_frame_field(field_name)
         fields_map = self._get_db_fields_map(frames=is_frame_field)
@@ -6437,47 +6443,22 @@ class SampleCollection(object):
         )
 
 
-def get_label_fields(
+def _parse_label_field(
     sample_collection,
-    label_field=None,
-    label_prefix=None,
-    labels_dict=None,
+    label_field,
     dataset_exporter=None,
     allow_coersion=False,
     force_dict=False,
     required=False,
 ):
-    """Gets the label field(s) of the sample collection matching the specified
-    arguments.
+    if isinstance(label_field, dict):
+        return label_field
 
-    Provide one of ``label_field``, ``label_prefix``, ``labels_dict``, or
-    ``dataset_exporter``.
+    if _is_glob_pattern(label_field):
+        label_field = _get_matching_fields(sample_collection, label_field)
 
-    Args:
-        sample_collection: a :class:`SampleCollection`
-        label_field (None): the name of the label field to export
-        label_prefix (None): a label field prefix; the returned labels dict
-            will contain all fields whose name starts with the given prefix
-        labels_dict (None): a dictionary mapping label field names to keys
-        dataset_exporter (None): a
-            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
-            choose appropriate label field(s)
-        allow_coersion (False): whether to allow label fields to be coerced to
-            match the dataset exporter's needs, if possible
-        force_dict (False): whether to always return a labels dict rather than
-            an individual label field
-        required (False): whether at least one matching field must be found
-
-    Returns:
-        a label field or dict mapping label fields to keys
-    """
-    if label_prefix is not None:
-        labels_dict = _get_labels_dict_for_prefix(
-            sample_collection, label_prefix
-        )
-
-    if labels_dict is not None:
-        return labels_dict
+    if etau.is_container(label_field):
+        return {f: f for f in label_field}
 
     if label_field is None and dataset_exporter is not None:
         label_field = _get_default_label_fields_for_exporter(
@@ -6502,51 +6483,24 @@ def get_label_fields(
     return label_field
 
 
-def get_frame_labels_fields(
+def _parse_frame_labels_field(
     sample_collection,
-    frame_labels_field=None,
-    frame_labels_prefix=None,
-    frame_labels_dict=None,
+    frame_labels_field,
     dataset_exporter=None,
     allow_coersion=False,
     force_dict=False,
     required=False,
 ):
-    """Gets the frame label field(s) of the sample collection matching the
-    specified arguments.
+    if isinstance(frame_labels_field, dict):
+        return frame_labels_field
 
-    Provide one of ``frame_labels_field``, ``frame_labels_prefix``,
-    ``frame_labels_dict``, or ``dataset_exporter``.
-
-    Args:
-        sample_collection: a :class:`SampleCollection`
-        frame_labels_field (None): the name of the frame labels field to
-            export
-        frame_labels_prefix (None): a frame labels field prefix; the returned
-            labels dict will contain all frame-level fields whose name starts
-            with the given prefix
-        frame_labels_dict (None): a dictionary mapping frame-level label field
-            names to keys
-        dataset_exporter (None): a
-            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
-            choose appropriate frame label field(s)
-        allow_coersion (False): whether to allow label fields to be coerced to
-            match the dataset exporter's needs, if possible
-        force_dict (False): whether to always return a labels dict rather than
-            an individual label field
-        required (False): whether at least one matching frame field must be
-            found
-
-    Returns:
-        a frame label field or dict mapping frame label fields to keys
-    """
-    if frame_labels_prefix is not None:
-        frame_labels_dict = _get_frame_labels_dict_for_prefix(
-            sample_collection, frame_labels_prefix
+    if _is_glob_pattern(frame_labels_field):
+        frame_labels_field = _get_matching_fields(
+            sample_collection, frame_labels_field, frames=True
         )
 
-    if frame_labels_dict is not None:
-        return frame_labels_dict
+    if etau.is_container(frame_labels_field):
+        return {f: f for f in frame_labels_field}
 
     if frame_labels_field is None and dataset_exporter is not None:
         frame_labels_field = _get_default_frame_label_fields_for_exporter(
@@ -6572,6 +6526,22 @@ def get_frame_labels_fields(
     return frame_labels_field
 
 
+def _is_glob_pattern(s):
+    if not etau.is_str(s):
+        return False
+
+    return "*" in s or "?" in s or "[" in s
+
+
+def _get_matching_fields(sample_collection, patt, frames=False):
+    if frames:
+        schema = sample_collection.get_frame_field_schema()
+    else:
+        schema = sample_collection.get_field_schema()
+
+    return fnmatch.filter(list(schema.keys()), patt)
+
+
 def _get_image_label_fields(sample_collection):
     label_fields = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
@@ -6584,31 +6554,6 @@ def _get_frame_label_fields(sample_collection):
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
     )
     return list(label_fields.keys())
-
-
-def _get_labels_dict_for_prefix(sample_collection, label_prefix):
-    label_fields = sample_collection.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    )
-
-    return _make_labels_dict_for_prefix(label_fields, label_prefix)
-
-
-def _get_frame_labels_dict_for_prefix(sample_collection, frame_labels_prefix):
-    label_fields = sample_collection.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    )
-
-    return _make_labels_dict_for_prefix(label_fields, frame_labels_prefix)
-
-
-def _make_labels_dict_for_prefix(label_fields, label_prefix):
-    labels_dict = {}
-    for field_name in label_fields:
-        if field_name.startswith(label_prefix):
-            labels_dict[field_name] = field_name[len(label_prefix) :]
-
-    return labels_dict
 
 
 def _get_default_label_fields_for_exporter(

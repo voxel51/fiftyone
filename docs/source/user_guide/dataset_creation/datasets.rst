@@ -2157,14 +2157,14 @@ where the labels XML files are stored in the following format:
             </original_size>
             <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
         </meta>
-        <track id="0" label=car">
+        <track id="0" label="car">
             <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
                 <attribute name="type">sedan</attribute>
                 ...
             </box>
             ...
         </track>
-        <track id="1" label=car">
+        <track id="1" label="car">
             <polygon frame="0" points="561.30,916.23;561.30,842.77;...;560.20,966.67" outside="0" occluded="0" keyframe="1">
                 <attribute name="make">Honda</attribute>
                 ...
@@ -3248,8 +3248,8 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomUnlabeledImageDatasetImporter(...)
+
         with importer:
             for image_path, image_metadata in importer:
                 dataset.add_sample(
@@ -3438,7 +3438,6 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomLabeledImageDatasetImporter(...)
         label_field = ...
 
@@ -3617,8 +3616,8 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomUnlabeledVideoDatasetImporter(...)
+
         with importer:
             for video_path, video_metadata in importer:
                 dataset.add_sample(
@@ -3838,7 +3837,6 @@ should implement is determined by the type of dataset that you are importing.
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
-
         importer = CustomLabeledVideoDatasetImporter(...)
         label_field = ...
 
@@ -3854,15 +3852,18 @@ should implement is determined by the type of dataset that you are importing.
                     sample[label_field] = label
 
                 if frames is not None:
-                    sample.frames.merge(
-                        {
-                            frame_number: {
-                                label_field + "_" + fname: flabel
-                                for fname, flabel in frame_dict.items()
+                    frame_labels = {}
+
+                    for frame_number, _label in frames.items():
+                        if isinstance(_label, dict):
+                            frame_labels[frame_number] = {
+                                label_field + "_" + field_name: label
+                                for field_name, label in _label.items()
                             }
-                            for frame_number, frame_dict in frames.items()
-                        }
-                    )
+                        elif _label is not None:
+                            frame_labels[frame_number] = {label_field: _label}
+
+                    sample.frames.merge(frame_labels)
 
                 dataset.add_sample(sample)
 

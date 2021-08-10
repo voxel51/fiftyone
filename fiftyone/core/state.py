@@ -192,7 +192,7 @@ class DatasetStatistics(object):
             collection: a :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
-            a ``list`` of (path, field) ``tuple``s
+            a list of ``(path, field)`` tuples
         """
         result = []
 
@@ -219,7 +219,7 @@ class DatasetStatistics(object):
             collection: a :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
-            a ``list`` of (path, field) ``tuple``s
+            a list of ``(path, field)`` tuples
         """
         return [
             (path, field)
