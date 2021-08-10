@@ -869,7 +869,7 @@ class AnnotationLabelSchema(object):
             return label_info["classes"]
         elif self.classes:
             return self.classes
-        elif self.label_type == "scalar":
+        elif label_type == "scalar":
             return []
         elif existing_field:
             if label_field in self.samples.classes:

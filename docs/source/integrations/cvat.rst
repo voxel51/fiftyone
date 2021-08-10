@@ -9,11 +9,26 @@ CVAT Integration
 the market. We've made it easy to upload your data and labels directly from
 FiftyOne to CVAT to create, delete, and modify annotations.
 
+This integration supports the following label types for images and videos:
+
+* :ref:`Detections <object-detection>`
+* :ref:`Instance segmentations <instance-segmentation>`
+* :ref:`Classifications <classification>`
+* :ref:`Polygons and polylines <polylines>`
+* :ref:`Keypoints <keypoints>`
+* :ref:`Scalars <adding-sample-fields>`
+
+
 .. note::
 
     Check out :doc:`this tutorial </tutorials/fixing_annotations>` to see how
     you can use FiftyOne to upload your data to CVAT to create, delete, and fix
     annotations.
+
+
+.. image:: /images/integrations/cvat_example.png
+   :alt: cvat-example
+   :align: center
 
 
 Workflow Overview
@@ -53,14 +68,12 @@ In the general workflow to use CVAT and FiftyOne follows these steps:
     results = dataset.evaluate_detections(pred_field="predictions", eval_key="eval")
     high_conf_view = dataset.filter_labels(
         "predictions", 
-        F("confidence") > 0.8 & F("eval") == "fp"),
+        (F("confidence") > 0.8) & (F("eval") == "fp"),
     )
 
-    # Visualize and select samples with ground truth errors
-    session = fo.launch_app(view=high_conf_view)
-    
     # Step 3: Create a view of samples to annotate
-    annot_view = dataset.select(session.selected)
+    # Select a sample for annotation for this example
+    annot_view = high_conf_view.limit(1)
 
     # Step 4: Send samples to CVAT
     info = annot_view.annotate(label_field="ground_truth", launch_editor=True)
@@ -69,6 +82,7 @@ In the general workflow to use CVAT and FiftyOne follows these steps:
 
     # Step 6: Load updated annotations back into FiftyOne
     annot_view.load_annotations(info, delete_tasks=True)
+
 
 
 CVAT Overview 
@@ -233,6 +247,8 @@ created or updated with the following settings:
     in plain text. However, this is recommended for storing URL information.
 
 
+.. _cvat-annotate:
+
 Annotate
 ________
 
@@ -266,7 +282,8 @@ CVAT-specific arguments
 * `image_quality`: quality to reduce images to prior to uploading
 * `job_reviewers`: a list of usernames that job reviewers are assigned to sequentially
 * `job_asignees`: a list of usernames that jobs are assigned to sequentially
-* `task_assignees`: a list of usernames that tasks are assigned to sequentially
+* `task_assignee`: the user to assign to the generated task or tasks 
+
 
 
 Attributes
@@ -378,6 +395,7 @@ default values when missing in the given `label_schema`.
     }
     info = view.annotate(label_schema=label_schema)
 
+.. _cvat-load-annotations:
 
 Load Annotations
 ________________
@@ -432,9 +450,13 @@ and their attributes are uploaded for annotation.
 
     view.load_annotations(info, delete_tasks=True)
 
+.. image:: /images/integrations/cvat_example.png
+   :alt: cvat-example
+   :align: center
 
 The above code snippet will only load existing classes and attributes. The
-`classes` and `attributes` arguments can be used to create new ones.
+`classes` and `attributes` arguments can be used to annotate new classes and
+attributes.
 
 .. code:: python
     :linenos:
@@ -469,6 +491,9 @@ The above code snippet will only load existing classes and attributes. The
 
     view.load_annotations(info, delete_tasks=True)
 
+.. image:: /images/integrations/cvat_new_class.png
+   :alt: cvat-new-class
+   :align: center
 
 .. note::
 
@@ -531,6 +556,10 @@ field.
 
     view.load_annotations(info, delete_tasks=True)
 
+.. image:: /images/integrations/cvat_tag.png
+   :alt: cvat-tag
+   :align: center
+
 Annotate multiple fields
 ------------------------
 
@@ -552,10 +581,12 @@ task only supports a single schema. Each CVAT task will be named
         "ground_truth": {},
         "new_keypoints": {
             "type": "keypoints",
-            "classes": dataset.default_classes,
+            "classes": ["person", "cat", "dog", "food"],
             "attributes": {
-                "occluded": "select",
-                "values": [True, False],
+                "occluded": {
+                    "type": "select",
+                    "values": [True, False],
+                }
             }
         }
     }
@@ -568,6 +599,11 @@ task only supports a single schema. Each CVAT task will be named
     # to add keypoint annotations 
 
     view.load_annotations(info, delete_tasks=True)
+
+.. image:: /images/integrations/cvat_multiple_fields.png
+   :alt: cvat-multiple-fields
+   :align: center
+
 
 
 Unexpected annotations
@@ -598,6 +634,10 @@ names for these unexpected new fields.
 
     view.load_annotations(info, delete_tasks=True)
 
+.. image:: /images/integrations/cvat_polyline.png
+   :alt: cvat-polyline
+   :align: center
+
 .. code:: text
 
     Labels of type 'polylines' found when loading annotations for field 'ground_truth'.
@@ -609,14 +649,32 @@ names for these unexpected new fields.
 
     print(view)
 
+.. code:: text
+
+    Dataset:     quickstart
+    Media type:  image
+    Num samples: 1
+    Tags:        ['validation']
+    Sample fields:
+        id:            fiftyone.core.fields.ObjectIdField
+        filepath:      fiftyone.core.fields.StringField
+        tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        ground_truth:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        uniqueness:    fiftyone.core.fields.FloatField
+        predictions:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        new_polylines: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Polylines)
+    View stages:
+        1. Take(size=1, seed=None)
+
 
 
 Assign users
 ------------
 
 Lists of usernames can be provided to assign tasks, jobs, and reviewers. The
-`task_assignees`, `job_reviewers`, and `job_asignees` arguments can be used to
-provide a list of usernames that are sequentially assigned to created tasks and
+`task_assignee`, `job_reviewers`, and `job_asignees` arguments can be used to
+provide a username (for `task_assignee`) or list of usernames that are sequentially assigned to created tasks and
 jobs. The `segment_size` argument is used to define the maximum number of images that
 can be uploaded per job. 
 
@@ -633,9 +691,9 @@ than tasks or jobs, the excess usernames are unassigned.
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(5)
 
-    task_assignees = ["username1", "username2"]
-    job_asignees = ["username3", "username4"]
-    job_reviewers = ["username5", "username6", "username7"]
+    task_assignee = "username1"
+    job_asignees = ["username2", "username3"]
+    job_reviewers = ["username4", "username5", "username6", "username7"]
 
     # Load "ground_truth" field into one task
     # Create another task for "keypoints" field
@@ -649,7 +707,7 @@ than tasks or jobs, the excess usernames are unassigned.
 
     info = view.annotate(
         label_schema=label_schema,
-        task_assignees=task_assignees,
+        task_assignee=task_assignee,
         job_asignees=job_asignees,
         job_reviewers=job_reviewers,
         segment_size=2,
@@ -701,6 +759,72 @@ tag in CVAT.
         launch_editor=True,
     )
 
+.. image:: /images/integrations/cvat_scalar.png
+   :alt: cvat-scalar
+   :align: center
+
+
+Upload alternate media
+----------------------
+
+In some cases, the media that is uploaded for annotation may differ from what
+is stored in the dataset. For example, a private dataset composed of images of public
+spaces may need to anonymize faces and license plates be before uploading
+samples to an annotation service.
+
+The easiest way to approach this is to store the alternate media files on disk
+and create a new field for every |Sample| in the |Dataset| storing the filepath to
+the alternate media. When annotating the samples, provide this new field to the
+`media_field` argument.
+
+For example, say we want to upload blurred images to CVAT:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import cv2
+    import os
+
+    def create_alternate_media(sample, directory):
+        filepath = sample.filepath
+        filename = os.path.basename(filepath)
+        alt_filepath = os.path.join(directory, filename)
+
+        img = cv2.imread(filepath)
+        processed_img = cv2.blur(img, (20,20))
+        cv2.imwrite(alt_filepath, processed_img)
+
+        sample["alt_filepath"] = alt_filepath
+        sample.save()
+
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    alt_dir = "/tmp/alternate_media_example"
+    if not os.path.exists(alt_dir):
+        os.makedirs(alt_dir)
+
+    for sample in view:
+        create_alternate_media(sample, alt_dir)
+
+    info = view.annotate(
+        label_field="ground_truth",
+        media_field="alt_filepath",
+        launch_editor=True,
+    )
+
+    # Annotate in CVAT
+
+    view.load_annotations(info, delete_tasks=True)
+
+.. image:: /images/integrations/cvat_alt_media.png
+   :alt: cvat-alt-media
+   :align: center
+
+    
 
 Videos
 ______
@@ -708,7 +832,7 @@ ______
 While CVAT supports video annotation, it only allows for a single video per
 task. For video samples, every video will be uploaded to a separate task.
 
-CVAT also does not provided a striaghtforward way to annotate sample-level
+CVAT also does not provided a straightforward way to annotate video-level
 labels like |Classifications|. It is recommended to use FiftyOne |tags| for
 |Sample|-level classifications on a video |Dataset|.
 
@@ -724,7 +848,10 @@ fields for |Frame|-level labels must be prepended by `"frames."`.
     dataset = foz.load_zoo_dataset("quickstart-video")
     view = dataset.take(1)
 
-    info = view.annotate(label_field="frames.ground_truth_detections", launch_editor=True)
+    info = view.annotate(
+        label_field="frames.ground_truth_detections",
+        launch_editor=True,
+    )
 
     # Annotate in CVAT
 
