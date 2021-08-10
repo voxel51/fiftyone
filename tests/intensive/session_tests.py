@@ -84,21 +84,20 @@ def test_select_labels():
 
 
 def test_select_frame_labels():
-    dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
+    dataset = foz.load_zoo_dataset("quickstart-video")
 
     session = fo.launch_app(dataset)
 
     ids = [
-        dataset.first().frames.first().ground_truth.detections[0].id,
-        dataset.last().frames[120].ground_truth.detections[-1].id,
+        dataset.first().frames.first().detections.detections[0].id,
+        dataset.last().frames[120].detections.detections[-1].id,
     ]
 
     tag_counts = dataset.count_label_tags()
     assert tag_counts == {}
 
     view = dataset.select_labels(ids=ids)
-    count = view.count("frames.ground_truth.detections")
+    count = view.count("frames.detections.detections")
     assert count == 2
 
     tag_counts = dataset.count_label_tags()

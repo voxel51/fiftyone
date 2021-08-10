@@ -23,7 +23,10 @@ allowing you to automate the dataset loading process.
 .. _adding-samples-to-datasets:
 
 Adding samples to datasets
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
+
+Basic recipe
+~~~~~~~~~~~~
 
 The basic recipe for using the |SampleParser| interface to add samples to a
 |Dataset| is to create a parser of the appropriate type and then pass the
@@ -781,9 +784,6 @@ classification or object detections) associated with the image.
             import fiftyone as fo
 
             dataset = fo.Dataset(...)
-
-            # An iterable of samples to parse and the UnlabeledImageSampleParser
-            # to use to parse them
             samples = ...
             sample_parser = CustomUnlabeledImageSampleParser(...)
 
@@ -925,13 +925,9 @@ classification or object detections) associated with the image.
 
             dataset = fo.Dataset(...)
 
-            # An iterable of samples and the LabeledImageSampleParser to use
-            # to parse them
             samples = ...
             sample_parser = CustomLabeledImageSampleParser(...)
-
-            # The name of the sample field in which to store the labels
-            label_field = "ground_truth"  # for example
+            label_field = ...
 
             for sample in samples:
                 sample_parser.with_sample(sample)
@@ -1037,9 +1033,6 @@ classification or object detections) associated with the image.
             import fiftyone as fo
 
             dataset = fo.Dataset(...)
-
-            # An iterable of samples to parse and the UnlabeledVideoSampleParser
-            # to use to parse them
             samples = ...
             sample_parser = CustomUnlabeledVideoSampleParser(...)
 
@@ -1185,14 +1178,9 @@ classification or object detections) associated with the image.
             import fiftyone as fo
 
             dataset = fo.Dataset(...)
-
-            # An iterable of samples and the LabeledVideoSampleParser to use
-            # to parse them
             samples = ...
             sample_parser = CustomLabeledVideoSampleParser(...)
-
-            # A prefix for all frame label fields in which to store the labels
-            label_field = "ground_truth"  # for example
+            label_field = ...
 
             for sample in samples:
                 sample_parser.with_sample(sample)
@@ -1217,15 +1205,18 @@ classification or object detections) associated with the image.
                     sample[label_field] = label
 
                 if frames is not None:
-                    sample.frames.merge(
-                        {
-                            frame_number: {
-                                label_field + "_" + fname: flabel
-                                for fname, flabel in frame_dict.items()
+                    frame_labels = {}
+
+                    for frame_number, _label in frames.items():
+                        if isinstance(_label, dict):
+                            frame_labels[frame_number] = {
+                                label_field + "_" + field_name: label
+                                for field_name, label in _label.items()
                             }
-                            for frame_number, frame_dict in frames.items()
-                        }
-                    )
+                        elif _label is not None:
+                            frame_labels[frame_number] = {label_field: _label}
+
+                    sample.frames.merge(frame_labels)
 
                 dataset.add_sample(sample)
 

@@ -2670,8 +2670,7 @@ should implement is determined by the type of dataset that you are exporting.
 
             import fiftyone as fo
 
-            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
+            samples = ...
             exporter = CustomUnlabeledImageDatasetExporter(...)
 
             with exporter:
@@ -2760,6 +2759,9 @@ should implement is determined by the type of dataset that you are exporting.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         exporter directly exports labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the exporter can export a single label field of any of
+                        these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the exporter can handle label dictionaries with
                         value-types specified by this dictionary. Not all keys need be
@@ -2843,10 +2845,9 @@ should implement is determined by the type of dataset that you are exporting.
 
             import fiftyone as fo
 
-            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-            label_field = ...
-
+            samples = ...
             exporter = CustomLabeledImageDatasetExporter(...)
+            label_field = ...
 
             with exporter:
                 exporter.log_collection(samples)
@@ -3004,8 +3005,7 @@ should implement is determined by the type of dataset that you are exporting.
 
             import fiftyone as fo
 
-            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
+            samples = ...
             exporter = CustomUnlabeledVideoDatasetExporter(...)
 
             with exporter:
@@ -3094,6 +3094,9 @@ should implement is determined by the type of dataset that you are exporting.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         exporter directly exports sample-level labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the exporter can export a single sample-level label field
+                        of any of these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the exporter can export multiple label fields with
                         value-types specified by this dictionary. Not all keys need be
@@ -3113,6 +3116,9 @@ should implement is determined by the type of dataset that you are exporting.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         exporter directly exports frame labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the exporter can export a single frame label field of
+                        any of these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the exporter can export multiple frame label fields
                         with value-types specified by this dictionary. Not all keys need be
@@ -3199,8 +3205,7 @@ should implement is determined by the type of dataset that you are exporting.
 
             import fiftyone as fo
 
-            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-
+            samples = ...
             exporter = CustomLabeledVideoDatasetExporter(...)
 
             with exporter:

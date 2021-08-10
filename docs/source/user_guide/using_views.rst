@@ -783,13 +783,11 @@ prepending ``"frames."`` to the relevent parameters:
     dataset = foz.load_zoo_dataset("quickstart-video")
 
     # Create a view that only contains vehicles
-    view = dataset.filter_labels(
-        "frames.ground_truth_detections", F("label") == "vehicle"
-    )
+    view = dataset.filter_labels("frames.detections", F("label") == "vehicle")
 
     # Compare the number of objects in the view and the source dataset
-    print(dataset.count("frames.ground_truth_detections.detections"))  # 11345
-    print(view.count("frames.ground_truth_detections.detections"))  # 7511
+    print(dataset.count("frames.detections.detections"))  # 11345
+    print(view.count("frames.detections.detections"))  # 7511
 
 In addition, FiftyOne provides a variety of dedicated view stages for
 performing manipulations that are unique to video data.
@@ -843,13 +841,13 @@ frame of the videos in a |Dataset| or |DatasetView|:
     Num samples: 1279
     Tags:        []
     Sample fields:
-        id:                      fiftyone.core.fields.ObjectIdField
-        filepath:                fiftyone.core.fields.StringField
-        tags:                    fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:                fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        sample_id:               fiftyone.core.fields.ObjectIdField
-        frame_number:            fiftyone.core.fields.FrameNumberField
-        ground_truth_detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
     View stages:
         1. ToFrames(config=None)
 
@@ -883,7 +881,7 @@ for frames with at least 10 objects, sampling at most one frame per second:
     # objects, sampled at a maximum frame rate of 1fps
     #
 
-    num_objects = F("ground_truth_detections.detections").length()
+    num_objects = F("detections.detections").length()
     view = dataset.match_frames(num_objects > 10)
 
     frames = view.to_frames(max_fps=1, sparse=True)
@@ -948,11 +946,11 @@ sample per object patch in the frames of the dataset!
     session = fo.launch_app(dataset)
 
     # Create a frame patches view
-    frame_patches = dataset.to_frames().to_patches("ground_truth_detections")
+    frame_patches = dataset.to_frames().to_patches("detections")
     print(frame_patches)
 
     # Verify that one sample per object was created
-    print(dataset.count("frames.ground_truth_detections.detections"))  # 11345
+    print(dataset.count("frames.detections.detections"))  # 11345
     print(len(frame_patches))  # 11345
 
     # View frame patches in the App
@@ -965,17 +963,17 @@ sample per object patch in the frames of the dataset!
     Num patches: 11345
     Tags:        []
     Patch fields:
-        id:                      fiftyone.core.fields.ObjectIdField
-        filepath:                fiftyone.core.fields.StringField
-        tags:                    fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:                fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        sample_id:               fiftyone.core.fields.ObjectIdField
-        frame_id:                fiftyone.core.fields.ObjectIdField
-        frame_number:            fiftyone.core.fields.FrameNumberField
-        ground_truth_detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        sample_id:    fiftyone.core.fields.ObjectIdField
+        frame_id:     fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
         1. ToFrames(config=None)
-        2. ToPatches(field='ground_truth_detections')
+        2. ToPatches(field='detections')
 
 .. _querying-frames:
 
@@ -1015,7 +1013,7 @@ The snippet below demonstrates a possible workflow. See the API reference for
     dataset = foz.load_zoo_dataset("quickstart-video")
 
     # Create a view that only contains frames with at least 10 objects
-    num_objects = F("ground_truth_detections.detections").length()
+    num_objects = F("detections.detections").length()
     view = dataset.match_frames(num_objects > 10)
 
     # Compare the number of frames in each collection
