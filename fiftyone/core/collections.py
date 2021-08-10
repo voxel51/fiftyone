@@ -6451,11 +6451,14 @@ def _parse_label_field(
     force_dict=False,
     required=False,
 ):
+    if isinstance(label_field, dict):
+        return label_field
+
     if _is_glob_pattern(label_field):
         label_field = _get_matching_fields(sample_collection, label_field)
 
     if etau.is_container(label_field):
-        label_field = {f: f for f in label_field}
+        return {f: f for f in label_field}
 
     if label_field is None and dataset_exporter is not None:
         label_field = _get_default_label_fields_for_exporter(
@@ -6488,13 +6491,16 @@ def _parse_frame_labels_field(
     force_dict=False,
     required=False,
 ):
+    if isinstance(frame_labels_field, dict):
+        return frame_labels_field
+
     if _is_glob_pattern(frame_labels_field):
         frame_labels_field = _get_matching_fields(
             sample_collection, frame_labels_field, frames=True
         )
 
     if etau.is_container(frame_labels_field):
-        frame_labels_field = {f: f for f in frame_labels_field}
+        return {f: f for f in frame_labels_field}
 
     if frame_labels_field is None and dataset_exporter is not None:
         frame_labels_field = _get_default_frame_label_fields_for_exporter(
