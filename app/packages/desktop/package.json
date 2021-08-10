@@ -9,7 +9,7 @@
   "prettier": "@fiftyone/prettier-config",
   "scripts": {
     "build-desktop": "yarn build-desktop-source && yarn pull-desktop-source && tsc -p tsconfig.json",
-    "build-desktop-source": "yarn workspace @fiftyone/app build",
+    "build-desktop-source": "yarn workspace @fiftyone/app build-bare",
     "pull-desktop-source": "yarn workspace @fiftyone/app copy-to-desktop",
     "start-desktop": "cross-env DEBUG_APP=true electron ./dist/main.js",
     "package-mac": "yarn build-desktop && electron-builder build --mac",

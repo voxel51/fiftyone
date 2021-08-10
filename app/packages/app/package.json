@@ -5,7 +5,8 @@
     "private": true,
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build && yarn copy-to-python",
+        "build": "yarn build-bare && yarn copy-to-python",
+        "build-bare": "tsc && vite build",
         "copy-to-python": "rm -rf ../../../fiftyone/server/static && cp -r ./dist ../../../fiftyone/server/static",
         "copy-to-desktop": "rm -rf ../desktop/dist/ && cp -r ./dist ../desktop/dist",
         "start": "vite preview"
