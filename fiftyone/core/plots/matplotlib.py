@@ -656,7 +656,6 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self.expand_selected = expand_selected
         self.click_tolerance = click_tolerance
 
-        self._select_callback = None
         self._xy = collection.get_offsets()
         self._num_pts = len(self._xy)
         self._fc = None
@@ -691,9 +690,6 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
             return None
 
         return list(self._ids[self._inds])
-
-    def _register_selection_callback(self, callback):
-        self._select_callback = callback
 
     def _register_sync_callback(self, callback):
         if self.supports_session_updates:
@@ -926,8 +922,8 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
         self._inds = inds
         self._update_plot()
 
-        if self._select_callback is not None:
-            self._select_callback(self.selected_ids)
+        if self._selection_callback is not None:
+            self._selection_callback(self.selected_ids)
 
     def _update_plot(self):
         self._prep_collection()

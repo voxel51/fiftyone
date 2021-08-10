@@ -1184,7 +1184,6 @@ class InteractiveScatter(PlotlyInteractivePlot):
         self._ids_to_traces = {}
         self._ids_to_inds = {}
         self._callback_flags = {}
-        self._select_callback = None
 
         widget = self._make_widget()
 
@@ -1210,9 +1209,6 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
     def _init_callback_flags(self):
         self._callback_flags = {t.name: False for t in self._traces}
-
-    def _register_selection_callback(self, callback):
-        self._select_callback = callback
 
     @property
     def supports_session_updates(self):
@@ -1294,13 +1290,13 @@ class InteractiveScatter(PlotlyInteractivePlot):
                 trace.update(selectedpoints=trace_inds)
 
     def _on_select(self, trace, selector=None):
-        if self._select_callback is None:
+        if self._selection_callback is None:
             return
 
         if not self._ready_for_callback(trace):
             return
 
-        self._select_callback(self.selected_ids)
+        self._selection_callback(self.selected_ids)
 
     def _ready_for_callback(self, trace):
         if trace.visible == True:
@@ -1402,7 +1398,6 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         self._selectedw = None
         self._bgw = None
         self._selected_cells = []
-        self._select_callback = None
 
         # Lower bound at 1 to avoid zero division errors
         self._ids_counts = np.vectorize(lambda a: max(1, len(a)))(ids)
@@ -1432,9 +1427,6 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
                 self.ids[y, x] for x, y in self._selected_cells
             )
         )
-
-    def _register_selection_callback(self, callback):
-        self._select_callback = callback
 
     def _make_widget(self):
         widget = go.FigureWidget(self._figure)
@@ -1572,8 +1564,8 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
             self._bgw.zmin = zlim[0]
             self._bgw.zmax = zlim[1]
 
-        if self._select_callback is not None:
-            self._select_callback(self.selected_ids)
+        if self._selection_callback is not None:
+            self._selection_callback(self.selected_ids)
 
     def _init_cells_map(self):
         num_rows, num_cols = self.Z.shape

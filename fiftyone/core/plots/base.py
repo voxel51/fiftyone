@@ -610,10 +610,55 @@ class InteractivePlot(ResponsivePlot):
                 % (link_type, supported_link_types)
             )
 
+        super().__init__(link_type)
+
         self.label_fields = label_fields
         self.init_view = init_view
 
-        super().__init__(link_type)
+        self._selection_callback = None
+        self._sync_callback = None
+        self._disconnect_callback = None
+        self._selection_mode = None
+
+        if link_type == "labels":
+            self.selection_mode = "select"
+
+    @property
+    def selection_mode(self):
+        """The current selection mode of the plot.
+
+        This property controls how the current view is updated in response to
+        updates from :class:`InteractivePlot` instances that are linked to
+        objects:
+
+        -   ``"select"``: show only the selected labels
+        -   ``"match"``: show unfiltered samples containing the selected labels
+        -   ``"patches"``: show the selected labels in a patches view
+        """
+        return self._selection_mode
+
+    @selection_mode.setter
+    def selection_mode(self, mode):
+        if self.link_type == "samples":
+            if mode is not None:
+                logger.warning(
+                    "Ignoring `selection_mode` parameter, which is only "
+                    "applicable for plots linked to objects"
+                )
+
+            return
+
+        supported_modes = ("select", "match", "patches")
+        if mode not in supported_modes:
+            raise ValueError(
+                "Unsupported selection_mode '%s'; supported values are %s"
+                % (mode, supported_modes)
+            )
+
+        self._selection_mode = mode
+
+        if self.is_connected and self._selection_callback is not None:
+            self._selection_callback(self.selected_ids)
 
     @property
     def selected_ids(self):
@@ -645,12 +690,11 @@ class InteractivePlot(ResponsivePlot):
         Args:
             callback: a selection callback
         """
+        self._selection_callback = callback
         self._register_selection_callback(callback)
 
     def _register_selection_callback(self, callback):
-        raise ValueError(
-            "Subclass must implement _register_selection_callback()"
-        )
+        pass
 
     def register_sync_callback(self, callback):
         """Registers a callback that can sync this plot with a
@@ -662,6 +706,7 @@ class InteractivePlot(ResponsivePlot):
         Args:
             callback: a function with no arguments
         """
+        self._sync_callback = callback
         self._register_sync_callback(callback)
 
     def _register_sync_callback(self, callback):
@@ -677,6 +722,7 @@ class InteractivePlot(ResponsivePlot):
         Args:
             callback: a function with no arguments
         """
+        self._disconnect_callback = callback
         self._register_disconnect_callback(callback)
 
     def _register_disconnect_callback(self, callback):

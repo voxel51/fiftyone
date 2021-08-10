@@ -12,6 +12,8 @@ import warnings
 
 import eta.core.utils as etau
 
+import fiftyone.core.patches as fop
+
 from .base import ResponsivePlot, ViewPlot, InteractivePlot
 
 
@@ -394,10 +396,41 @@ class PlotManager(object):
             self._current_sample_ids = None
             self._current_labels = None
         elif plot.link_type == "labels":
-            # Create a view that contains only the selected labels in the plot
-            plot_view = plot_view.select_labels(
-                ids=ids, fields=plot.label_fields
-            )
+            if plot.selection_mode == "select":
+                # Create a view with only the selected labels in the plot
+                plot_view = plot_view.select_labels(
+                    ids=ids, fields=plot.label_fields
+                )
+            elif plot.selection_mode == "match":
+                # Create a view that contains only samples
+                plot_view = plot_view.match_labels(
+                    ids=ids, fields=plot.label_fields
+                )
+            elif plot.selection_mode == "patches":
+                # Create a patches view containing only the selected labels
+                if isinstance(plot_view, fop.PatchesView):
+                    plot_view = plot_view.select(ids)
+                elif isinstance(plot_view, fop.EvaluationPatchesView):
+                    plot_view = plot_view.select_labels(
+                        ids=ids, fields=plot.label_fields
+                    )
+                elif etau.is_str(plot.label_fields):
+                    plot_view = plot_view.to_patches(plot.label_fields).select(
+                        ids
+                    )
+                else:
+                    logger.warning(
+                        "Cannot create a patches view for the selected labels "
+                        "of a plot with `label_fields=%s`",
+                        plot.label_fields,
+                    )
+                    plot_view = plot_view.select_labels(
+                        ids=ids, fields=plot.label_fields
+                    )
+            else:
+                raise ValueError(
+                    "Unsupported `selection_mode=%s`" % plot.selection_mode
+                )
 
             field = plot.label_fields
             if field is not None and not etau.is_str(field):
@@ -408,7 +441,7 @@ class PlotManager(object):
                 {"field": field, "label_id": _id} for _id in ids
             ]
         elif plot.link_type == "samples":
-            # Create a view that contains only the selected samples in the plot
+            # Create a view with only the selected samples in the plot
             plot_view = plot_view.select(ids)
 
             if self.has_label_links:
