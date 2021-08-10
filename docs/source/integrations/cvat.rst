@@ -849,7 +849,7 @@ fields for |Frame|-level labels must be prepended by `"frames."`.
     view = dataset.take(1)
 
     info = view.annotate(
-        label_field="frames.ground_truth_detections",
+        label_field="frames.detections",
         launch_editor=True,
     )
 
