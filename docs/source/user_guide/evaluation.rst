@@ -1434,15 +1434,13 @@ Dataset Zoo:
         "quickstart-video", dataset_name="video-eval-demo"
     )
 
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
-
     #
     # Create some test predictions by copying the ground truth objects into a
     # new `predictions` field of the frames with 10% of the labels perturbed at
     # random
     #
 
-    classes = dataset.distinct("frames.ground_truth.detections.label")
+    classes = dataset.distinct("frames.detections.detections.label")
 
     def jitter(val):
         if random.random() < 0.10:
@@ -1451,7 +1449,7 @@ Dataset Zoo:
         return val
 
     predictions = []
-    for sample_gts in dataset.values("frames.ground_truth"):
+    for sample_gts in dataset.values("frames.detections"):
         sample_predictions = []
         for frame_gts in sample_gts:
             sample_predictions.append(
@@ -1474,10 +1472,10 @@ Dataset Zoo:
     print(dataset)
 
     # Evaluate the frame-level `predictions` against the frame-level
-    # `ground_truth` objects
+    # `detections` objects
     results = dataset.evaluate_detections(
         "frames.predictions",
-        gt_field="frames.ground_truth",
+        gt_field="frames.detections",
         eval_key="eval",
     )
 
@@ -1524,7 +1522,7 @@ You can also view frame-level evaluation results as
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
-        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.ObjectIdField
         frame_id:     fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField

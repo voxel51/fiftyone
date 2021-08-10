@@ -72,11 +72,12 @@ FiftyOne.
 
 ## Quickstart
 
-Dive right into FiftyOne by running the snippet below, which downloads a
+Dive right into FiftyOne by opening a Python shell and running the snippet
+below, which downloads a
 [small dataset](https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/datasets.html#quickstart)
 and launches the
 [FiftyOne App](https://voxel51.com/docs/fiftyone/user_guide/app.html) so you
-can explore it!
+can explore it:
 
 ```py
 import fiftyone as fo
@@ -86,9 +87,14 @@ dataset = foz.load_zoo_dataset("quickstart")
 session = fo.launch_app(dataset)
 ```
 
-You can also check out
+Then check out
 [this Colab notebook](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb)
 to see some common workflows on the quickstart dataset.
+
+Note that if you are running the above code in a script, you must include
+`session.wait()` to block execution until you close the App. See
+[this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
+for more information.
 
 ## Documentation
 
@@ -168,7 +174,7 @@ bash install.bash
 
 **NOTE:** When you pull in new changes to the App, you will need to rebuild it,
 which you can do either by rerunning the install script or just running
-`yarn build-web` in the `./app` directory.
+`yarn build` in the `./app` directory.
 
 ### Upgrading your source installation
 

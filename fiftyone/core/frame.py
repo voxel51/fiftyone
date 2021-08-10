@@ -346,8 +346,7 @@ class Frames(object):
         -   Whether new fields can be added to the frame schema
         -   Whether list fields should be treated as ordinary fields and merged
             as a whole rather than merging their elements
-        -   Whether to merge (a) only specific fields or (b) all but certain
-            fields
+        -   Whether to merge only specific fields, or all but certain fields
         -   Mapping input frame fields to different field names of this frame
 
         Args:
@@ -547,9 +546,16 @@ class Frames(object):
         doc = self._dataset._frame_dict_to_doc(d)
         return Frame.from_doc(doc, dataset=self._dataset)
 
-    def _make_dict(self, frame):
-        d = frame.to_mongo_dict()
+    def _make_dict(self, frame, include_id=False):
+        d = frame.to_mongo_dict(include_id=include_id)
+
+        # We omit None here to allow frames with None-valued new fields to
+        # be added without raising nonexistent field errors. This is safe
+        # because None and missing are equivalent in our data model
+        d = {k: v for k, v in d.items() if v is not None}
+
         d["_sample_id"] = self._sample._id
+
         return d
 
     def _to_frames_dict(self):

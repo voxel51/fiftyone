@@ -217,17 +217,17 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_GRID_ZOOM",
             default=5,
         )
+        self.loop_videos = self.parse_bool(
+            d,
+            "loop_videos",
+            env_var="FIFTYONE_APP_LOOP_VIDEOS",
+            default=False,
+        )
         self.notebook_height = self.parse_int(
             d,
             "notebook_height",
             env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
             default=800,
-        )
-        self.show_attributes = self.parse_bool(
-            d,
-            "show_attributes",
-            env_var="FIFTYONE_APP_SHOW_ATTRIBUTES",
-            default=False,
         )
         self.show_confidence = self.parse_bool(
             d,
@@ -235,11 +235,23 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
             default=True,
         )
+        self.show_index = self.parse_bool(
+            d, "show_index", env_var="FIFTYONE_APP_SHOW_INDEX", default=True,
+        )
+        self.show_label = self.parse_bool(
+            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
+        )
         self.show_tooltip = self.parse_bool(
             d,
             "show_tooltip",
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
+        )
+        self.use_frame_number = self.parse_bool(
+            d,
+            "use_frame_number",
+            env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
+            default=False,
         )
 
         self._validate()

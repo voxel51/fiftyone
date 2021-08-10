@@ -262,8 +262,7 @@ def _run_custom_imports(
             include_all_data=True,
         )
 
-        schema = _dataset.get_field_schema()
-        label_field = [f for f in schema if f.startswith("ground_truth")][0]
+        label_field = _dataset._get_label_fields()[0]
 
         num_samples = len(_dataset)
         num_labeled = len(_dataset.exists(label_field))
@@ -489,7 +488,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
     dataset.export(
         export_dir=export_dir,
         dataset_type=fo.types.BDDDataset,
-        label_prefix="gt_",
+        label_field="gt_*",
     )
     dataset2 = fo.Dataset.from_dir(
         dataset_dir=export_dir,
@@ -502,7 +501,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
     dataset.export(
         export_dir=export_dir,
         dataset_type=fo.types.FiftyOneImageLabelsDataset,
-        label_prefix="gt_",
+        label_field="gt_*",
     )
     dataset3 = fo.Dataset.from_dir(
         dataset_dir=export_dir,
@@ -830,7 +829,11 @@ def test_custom_multitask_image_dataset_imports(basedir):
             basedir, "custom-imports", dataset_type.__name__
         )
         _run_custom_imports(
-            idataset, export_dir, dataset_type, max_samples=3, label_prefix="",
+            idataset,
+            export_dir,
+            dataset_type,
+            label_field=["positive_labels", "detections"],
+            max_samples=3,
         )
 
 
@@ -887,9 +890,8 @@ def test_fiftyone_dataset_with_run_results(basedir):
 
 def test_fiftyone_dataset_with_filtered_video(basedir):
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    view = dataset.filter_labels(
-        "frames.ground_truth_detections", F("label") == "vehicle"
-    )
+
+    view = dataset.filter_labels("frames.detections", F("label") == "vehicle")
 
     export_dir = os.path.join(basedir, "fiftyone-dataset-video")
 
@@ -899,14 +901,10 @@ def test_fiftyone_dataset_with_filtered_video(basedir):
     )
 
     print(view)
-    print(view.count_values("frames.ground_truth_detections.detections.label"))
+    print(view.count_values("frames.detections.detections.label"))
 
     print(dataset2)
-    print(
-        dataset2.count_values(
-            "frames.ground_truth_detections.detections.label"
-        )
-    )
+    print(dataset2.count_values("frames.detections.detections.label"))
 
 
 def test_legacy_fiftyone_dataset_with_run_results(basedir):
@@ -939,9 +937,8 @@ def test_legacy_fiftyone_dataset_with_run_results(basedir):
 
 def test_legacy_fiftyone_dataset_with_filtered_video(basedir):
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    view = dataset.filter_labels(
-        "frames.ground_truth_detections", F("label") == "vehicle"
-    )
+
+    view = dataset.filter_labels("frames.detections", F("label") == "vehicle")
 
     export_dir = os.path.join(basedir, "legacy-fiftyone-dataset-video")
 
@@ -953,14 +950,10 @@ def test_legacy_fiftyone_dataset_with_filtered_video(basedir):
     )
 
     print(view)
-    print(view.count_values("frames.ground_truth_detections.detections.label"))
+    print(view.count_values("frames.detections.detections.label"))
 
     print(dataset2)
-    print(
-        dataset2.count_values(
-            "frames.ground_truth_detections.detections.label"
-        )
-    )
+    print(dataset2.count_values("frames.detections.detections.label"))
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ aggregate statistics about datasets, such as label counts, distributions, and
 ranges, where each |Sample| is reduced to a single quantity in the aggregate
 results.
 
-The :mod:`fiftyone.core.aggregations` module offers a declaritive and
+The :mod:`fiftyone.core.aggregations` module offers a declarative and
 highly-efficient approach to computing summary statistics about your datasets
 and views.
 
@@ -41,7 +41,7 @@ Aggregations are conveniently exposed as methods on all |Dataset| and
     # ['bounds', 'count', 'count_values', 'distinct', ..., 'sum']
 
 Think of aggregations as more efficient, concise alternatives to writing
-explict loops over your dataset to compute a statistic:
+explicit loops over your dataset to compute a statistic:
 
 .. code-block:: python
     :linenos:
@@ -533,7 +533,7 @@ The following examples demonstrate the power of aggregating with expressions:
     However, there is one important exception when expressions are involved:
     fields paths that **end** in array fields are not automatically unwound,
     you must specify that they should be unwound by appending ``[]``. This
-    change in default behavior allows for the possiblity that the
+    change in default behavior allows for the possibility that the
     |ViewExpression| you provide is intended to operate on the array as a
     whole.
 
@@ -692,8 +692,6 @@ the ``frames`` prefix to the relevant frame field name:
     # 1279
 
     # Compute a histogram of per-frame object labels
-    counts = dataset.count_values(
-        "frames.ground_truth_detections.detections.label"
-    )
+    counts = dataset.count_values("frames.detections.detections.label")
     print(counts)
     # {'person': 1108, 'vehicle': 7511, 'road sign': 2726}

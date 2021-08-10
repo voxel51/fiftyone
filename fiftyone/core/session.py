@@ -47,7 +47,6 @@ _session = None
 _server_services = {}
 _subscribed_sessions = defaultdict(set)
 
-
 _APP_DESKTOP_MESSAGE = """
 Desktop App launched.
 """
@@ -614,11 +613,11 @@ class Session(foc.HasClient):
 
         Items are dictionaries with the following keys:
 
-            -   ``label_id``: the ID of the label
-            -   ``sample_id``: the ID of the sample containing the label
-            -   ``field``: the field name containing the label
-            -   ``frame_number``: the frame number containing the label (only
-                applicable to video samples)
+        -   ``label_id``: the ID of the label
+        -   ``sample_id``: the ID of the sample containing the label
+        -   ``field``: the field name containing the label
+        -   ``frame_number``: the frame number containing the label (only
+            applicable to video samples)
         """
         return list(self.state.selected_labels)
 
@@ -657,7 +656,7 @@ class Session(foc.HasClient):
     def tag_selected_samples(self, tag):
         """Adds the tag to the currently selected samples, if necessary.
 
-        The currently selected labels are :meth:`Sesssion.selected`.
+        The currently selected labels are :attr:`Session.selected`.
 
         Args:
             tag: a tag
@@ -668,7 +667,7 @@ class Session(foc.HasClient):
     def untag_selected_samples(self, tag):
         """Removes the tag from the currently selected samples, if necessary.
 
-        The currently selected labels are :meth:`Sesssion.selected`.
+        The currently selected labels are :attr:`Session.selected`.
 
         Args:
             tag: a tag
@@ -679,7 +678,7 @@ class Session(foc.HasClient):
     def tag_selected_labels(self, tag):
         """Adds the tag to the currently selected labels, if necessary.
 
-        The currently selected labels are :meth:`Sesssion.selected_labels`.
+        The currently selected labels are :attr:`Session.selected_labels`.
 
         Args:
             tag: a tag
@@ -692,7 +691,7 @@ class Session(foc.HasClient):
     def untag_selected_labels(self, tag):
         """Removes the tag from the currently selected labels, if necessary.
 
-        The currently selected labels are :meth:`Sesssion.selected_labels`.
+        The currently selected labels are :attr:`Session.selected_labels`.
 
         Args:
             tag: a tag
@@ -700,6 +699,35 @@ class Session(foc.HasClient):
         self._collection.select_labels(
             labels=self.selected_labels
         ).untag_labels(tag)
+
+    @property
+    def selected_view(self):
+        """A :class:`fiftyone.core.view.DatasetView` containing the currently
+        selected content in the App.
+
+        The selected view is defined as follows:
+
+        -   If both samples and labels are selected, the view will contain only
+            the :attr:`selected_labels` from within the :attr:`selected`
+            samples
+        -   If samples are selected, the view will only contain the
+            :attr:`selected` samples
+        -   If labels are selected, the view will only contain the
+            :attr:`selected_labels`
+        -   If no samples or labels are selected, the view will be ``None``
+        """
+        if self.selected:
+            view = self._collection.select(self.selected)
+
+            if self.selected_labels:
+                return view.select_labels(labels=self.selected_labels)
+
+            return view
+
+        if self.selected_labels:
+            return self._collection.select_labels(labels=self.selected_labels)
+
+        return None
 
     def summary(self):
         """Returns a string summary of the session.
@@ -892,7 +920,8 @@ class Session(foc.HasClient):
             return
 
         handle = data["handle"]
-        if data["handle"] in self._handles:
+        if handle in self._handles and self._handles[handle]["active"]:
+            self._handles[handle]["active"] = False
             self._handles[handle]["target"].update(
                 HTML(
                     fout._SCREENSHOT_HTML.render(
@@ -923,6 +952,7 @@ class Session(foc.HasClient):
         self.state.active_handle = handle
         if handle in self._handles:
             source = self._handles[handle]
+            source["active"] = True
             _display(
                 self,
                 source["target"],
@@ -958,7 +988,11 @@ class Session(foc.HasClient):
         if height is None:
             height = self.config.notebook_height
 
-        self._handles[uuid] = {"target": handle, "height": height}
+        self._handles[uuid] = {
+            "target": handle,
+            "height": height,
+            "active": True,
+        }
 
         _display(self, handle, uuid, self._port, height)
         return uuid

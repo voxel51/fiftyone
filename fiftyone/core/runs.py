@@ -342,11 +342,8 @@ class Run(Configurable):
                 same key
         """
         key = run_info.key
-        dataset_doc = samples._root_dataset._doc
-        view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
-        run_docs = getattr(dataset_doc, cls._runs_field())
 
-        if key in run_docs:
+        if key in cls.list_runs(samples):
             if overwrite:
                 cls.delete_run(samples, key)
             else:
@@ -354,6 +351,10 @@ class Run(Configurable):
                     "%s with key '%s' already exists"
                     % (cls._run_str().capitalize(), key)
                 )
+
+        dataset_doc = samples._root_dataset._doc
+        run_docs = getattr(dataset_doc, cls._runs_field())
+        view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
 
         run_docs[key] = RunDocument(
             key=key,

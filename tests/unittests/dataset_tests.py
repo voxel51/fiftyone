@@ -6,8 +6,10 @@ FiftyOne dataset-related unit tests.
 |
 """
 import gc
-import unittest
 import os
+
+import numpy as np
+import unittest
 
 import eta.core.utils as etau
 
@@ -713,6 +715,58 @@ class DatasetTests(unittest.TestCase):
                     None,
                 ],
             )
+
+    @drop_datasets
+    def test_expand_schema(self):
+        # None-valued new fields are ignored for schema expansion
+
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg", ground_truth=None)
+        dataset.add_sample(sample)
+
+        self.assertNotIn("ground_truth", dataset.get_field_schema())
+
+        # None-valued new fields are allowed when a later sample determines the
+        # appropriate field type
+
+        dataset = fo.Dataset()
+
+        samples = [
+            fo.Sample(filepath="image1.jpg", ground_truth=None),
+            fo.Sample(filepath="image2.jpg", ground_truth=fo.Classification()),
+        ]
+        dataset.add_samples(samples)
+
+        self.assertIn("ground_truth", dataset.get_field_schema())
+
+        # Test implied field types
+
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            bool_field=True,
+            int_field=1,
+            str_field="hi",
+            float_field=1.0,
+            list_field=[1, 2, 3],
+            dict_field={"hello": "world"},
+            vector_field=np.arange(5),
+            array_field=np.random.randn(3, 4),
+        )
+
+        dataset.add_sample(sample)
+        schema = dataset.get_field_schema()
+
+        self.assertIsInstance(schema["bool_field"], fo.BooleanField)
+        self.assertIsInstance(schema["int_field"], fo.IntField)
+        self.assertIsInstance(schema["str_field"], fo.StringField)
+        self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["list_field"], fo.ListField)
+        self.assertIsInstance(schema["dict_field"], fo.DictField)
+        self.assertIsInstance(schema["vector_field"], fo.VectorField)
+        self.assertIsInstance(schema["array_field"], fo.ArrayField)
 
     @drop_datasets
     def test_rename_fields(self):

@@ -20,7 +20,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
-import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
@@ -249,11 +248,7 @@ def export_to_scale(
     video_events_dir=None,
     video_playback=False,
     label_field=None,
-    label_prefix=None,
-    labels_dict=None,
     frame_labels_field=None,
-    frame_labels_prefix=None,
-    frame_labels_dict=None,
 ):
     """Exports labels from the FiftyOne samples to Scale AI format.
 
@@ -296,8 +291,8 @@ def export_to_scale(
                 }
             }
 
-    When exporting labels for video samples, the ``url`` field will contain the
-    paths on disk to per-sample JSON files that are written to
+    When exporting labels for video datasets, the ``url`` field will contain
+    the paths on disk to per-sample JSON files that are written to
     ``video_labels_dir`` as follows::
 
         video_labels_dir/
@@ -363,49 +358,47 @@ def export_to_scale(
             :class:`fiftyone.core.collections.SampleCollection`
         json_path: the path to write the JSON export
         video_labels_dir (None): a directory to write the per-sample video
-            labels. Only applicable for video samples
+            labels. Only applicable for video datasets
         video_events_dir (None): a directory to write the per-sample video
-            events. Only applicable for video samples
+            events. Only applicable for video datasets
         video_playback (False): whether to export video labels in a suitable
             format for use with the
             `Video Playback <https://docs.scale.com/reference#video-playback>`_ task.
             By default, video labels are exported for in a suitable format for
             the `General Video Annotation <https://docs.scale.com/reference#general-video-annotation>`_
-            task. Only applicable for video samples
-        label_field (None): the name of a label field to export
-        label_prefix (None): a label field prefix; all fields whose name starts
-            with the given prefix will be exported
-        labels_dict (None): a dictionary mapping label field names to keys; all
-            fields whose names are in this dictionary will be exported
-        frame_labels_field (None): the name of a frame labels field to export.
-            Only applicable for video samples
-        frame_labels_prefix (None): a frame labels field prefix; all
-            frame-level fields whose name starts with the given prefix will be
-            exported. Only applicable for video samples
-        frame_labels_dict (None): a dictionary mapping frame label fields to
-            keys; all frame-level fields whose names are in this dictionary
-            will be exported. Only applicable for video samples
+            task. Only applicable for video datasets
+        label_field (None): optional label field(s) to export. Can be any of
+            the following:
+
+            -   the name of a label field to export
+            -   a glob pattern of label field(s) to export
+            -   a list or tuple of label field(s) to export
+            -   a dictionary mapping label field names to keys to use when
+                constructing the exported labels
+
+            By default, no labels are exported
+        frame_labels_field (None): optional frame label field(s) to export.
+            Only applicable to video datasets. Can be any of the following:
+
+            -   the name of a frame label field to export
+            -   a glob pattern of frame label field(s) to export
+            -   a list or tuple of frame label field(s) to export
+            -   a dictionary mapping frame label field names to keys to use
+                when constructing the exported frame labels
+
+            By default, no frame labels are exported
     """
     is_video = sample_collection.media_type == fomm.VIDEO
 
     # Get label fields to export
-    label_fields = foc.get_label_fields(
-        sample_collection,
-        label_field=label_field,
-        label_prefix=label_prefix,
-        labels_dict=labels_dict,
-        allow_coersion=False,
-        force_dict=True,
-        required=False,
+    label_fields = sample_collection._parse_label_field(
+        label_field, allow_coersion=False, force_dict=True, required=False,
     )
 
     # Get frame label fields to export
     if is_video:
-        frame_label_fields = foc.get_frame_labels_fields(
-            sample_collection,
-            frame_labels_field=frame_labels_field,
-            frame_labels_prefix=frame_labels_prefix,
-            frame_labels_dict=frame_labels_dict,
+        frame_label_fields = sample_collection._parse_frame_labels_field(
+            frame_labels_field,
             allow_coersion=False,
             required=False,
             force_dict=True,
@@ -416,7 +409,7 @@ def export_to_scale(
         ):
             raise ValueError(
                 "Must provide `video_labels_dir` and/or `video_events_dir` "
-                "when exporting labels for video samples"
+                "when exporting labels for video datasets"
             )
 
     # Compute metadata if necessary
