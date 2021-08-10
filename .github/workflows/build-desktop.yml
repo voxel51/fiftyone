@@ -61,7 +61,7 @@ jobs:
         working-directory: app/packages/desktop
         run: yarn package-mac --publish never
       - name: Package App (Windows)
-        working-directory: app/packages/desktop
+        working-directory: app/
         # from https://www.electron.build/multi-platform-build#docker
         # removed node_modules mount to use existing packages
         run: |
@@ -73,7 +73,7 @@ jobs:
            -v ~/.cache/electron:/root/.cache/electron \
            -v ~/.cache/electron-builder:/root/.cache/electron-builder \
            electronuserland/builder:wine \
-           yarn package-win --publish never
+           yarn workspace FiftyOne package-win --publish never
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}

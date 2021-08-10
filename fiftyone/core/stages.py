@@ -2713,7 +2713,7 @@ class SetField(ViewStage):
 
     Args:
         field: the field or ``embedded.field.name`` to set
-        expr: a :class:`fiftyone.core.expressions.ViewExpression or
+        expr: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
     """
