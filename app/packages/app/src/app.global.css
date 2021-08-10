@@ -1,0 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
+:root {
+  --bg: #ffffff;
+  --bg-darker: #f8f8f8;
+  --bg-darkest: #c0c0c0;
+  --std-border-color: var(--bg-darkest);
+  --std-border-width: 0.1rem;
+  --std-border-radius: 0.2rem;
+  --std-font-color: var(--bg-darkest);
+
+  font-family: "Palanquin", sans-serif;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+input {
+  font-family: "Palanquin", sans-serif;
+}
+
+body {
+  position: relative;
+  height: 100vh;
+  min-width: 512px;
+}
+
+body.noscroll {
+  overflow: hidden;
+}
+
+.noscroll .sample-grid {
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}

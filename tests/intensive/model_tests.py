@@ -134,12 +134,10 @@ def test_compute_patch_embeddings_frames():
 
     model = foz.load_zoo_model("mobilenet-v2-imagenet-tf1")
 
-    patch_embeddings1a = view.compute_patch_embeddings(
-        model, "ground_truth_detections"
-    )
+    patch_embeddings1a = view.compute_patch_embeddings(model, "detections")
 
     view.compute_patch_embeddings(
-        model, "ground_truth_detections", embeddings_field="patch_embeddings1"
+        model, "detections", embeddings_field="patch_embeddings1"
     )
     patch_embeddings1b = {
         _id: {fn: p for fn, p in enumerate(e, 1)}
@@ -151,11 +149,11 @@ def test_compute_patch_embeddings_frames():
     # patch_embeddings1a and patch_embeddings1b should match
 
     patch_embeddings2a = view.compute_patch_embeddings(
-        model, "ground_truth_detections", batch_size=8
+        model, "detections", batch_size=8
     )
 
     view.compute_patch_embeddings(
-        model, "ground_truth_detections", embeddings_field="patch_embeddings2"
+        model, "detections", embeddings_field="patch_embeddings2"
     )
     patch_embeddings2b = {
         _id: {fn: p for fn, p in enumerate(e, 1)}

@@ -1,6 +1,10 @@
 """
 Collection merge tests.
 
+All of these tests are designed to be run manually via::
+
+    pytest tests/intensive/merge_tests.py -s -k test_<name>
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -121,14 +125,13 @@ def test_merge_samples_video(basedir):
     label = "vehicle"
 
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
 
     dataset1 = dataset.clone()
     dataset2 = dataset.clone()
     dataset3 = dataset.clone()
 
     # Give `dataset2` new field names
-    dataset2.rename_frame_field("ground_truth", "gt")
+    dataset2.rename_frame_field("detections", "det")
 
     # Give `dataset3` new video locations
     inpaths = dataset3.values("filepath")
@@ -139,8 +142,8 @@ def test_merge_samples_video(basedir):
     dataset3.set_values("filepath", outpaths)
 
     # Only merge `vehicle` labels
-    view2 = dataset2.filter_labels("frames.gt", F("label") == label)
-    view3 = dataset3.filter_labels("frames.ground_truth", F("label") == label)
+    view2 = dataset2.filter_labels("frames.det", F("label") == label)
+    view3 = dataset3.filter_labels("frames.detections", F("label") == label)
 
     # Perform the merges
     dataset.merge_samples(view2)
@@ -149,75 +152,68 @@ def test_merge_samples_video(basedir):
     # Check that schema is correct
     schema = dataset.get_frame_field_schema()
 
-    assert "ground_truth" in schema
-    assert "gt" in schema
+    assert "detections" in schema
+    assert "det" in schema
 
     #
     # `dataset` should contain:
-    #   `view2` counts in its `gt` field
-    #   `dataset1` + `view3` counts in its `ground_truth` field
+    #   `view2` counts in its `det` field
+    #   `dataset1` + `view3` counts in its `detections` field
     #
 
-    dataset_counts = dataset.count_values(
-        "frames.ground_truth.detections.label"
-    )
+    dataset_counts = dataset.count_values("frames.detections.detections.label")
     dataset1_counts = dataset1.count_values(
-        "frames.ground_truth.detections.label"
+        "frames.detections.detections.label"
     )
-    view3_counts = view3.count_values("frames.ground_truth.detections.label")
+    view3_counts = view3.count_values("frames.detections.detections.label")
 
     assert dataset_counts[label] == (
         dataset1_counts[label] + view3_counts[label]
     )
 
-    dataset_counts = dataset.count_values("frames.gt.detections.label")
-    view2_counts = view2.count_values("frames.gt.detections.label")
+    dataset_counts = dataset.count_values("frames.det.detections.label")
+    view2_counts = view2.count_values("frames.det.detections.label")
 
     assert dataset_counts[label] == view2_counts[label]
 
 
 def test_merge_samples_and_labels_video():
-    dataset = foz.load_zoo_dataset("quickstart-video").limit(3).clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
+    dataset = foz.load_zoo_dataset("quickstart-video").limit(3)
 
     dataset1 = dataset[:2].clone()
 
     dataset2 = dataset[1:].clone()
     dataset2.set_field(
-        "frames.ground_truth.detections.label",
+        "frames.detections.detections.label",
         (F("label") == "vehicle").if_else(F("label").upper(), F("label")),
     ).save()
 
     d1 = dataset1.clone()
     d1.merge_samples(dataset2)
 
-    num_objects1 = d1.count("frames.ground_truth.detections")
-    num_objects1_ref = dataset.count("frames.ground_truth.detections")
+    num_objects1 = d1.count("frames.detections.detections")
+    num_objects1_ref = dataset.count("frames.detections.detections")
     assert num_objects1 == num_objects1_ref
 
-    counts1 = d1.count_values("frames.ground_truth.detections.label")
+    counts1 = d1.count_values("frames.detections.detections.label")
     counts1_ref1 = dataset1[:1].count_values(
-        "frames.ground_truth.detections.label"
+        "frames.detections.detections.label"
     )
-    counts1_ref2 = dataset2.count_values(
-        "frames.ground_truth.detections.label"
-    )
+    counts1_ref2 = dataset2.count_values("frames.detections.detections.label")
     assert counts1["vehicle"] == counts1_ref1["vehicle"]
     assert counts1["VEHICLE"] == counts1_ref2["VEHICLE"]
 
     d2 = dataset1.clone()
     d2.merge_samples(dataset2, overwrite=False)
 
-    num_objects2 = d2.count("frames.ground_truth.detections")
-    num_objects2_ref = dataset.count("frames.ground_truth.detections")
+    num_objects2 = d2.count("frames.detections.detections")
+    num_objects2_ref = dataset.count("frames.detections.detections")
     assert num_objects2 == num_objects2_ref
 
-    counts2 = d2.count_values("frames.ground_truth.detections.label")
-    counts2_ref1 = dataset1.count_values(
-        "frames.ground_truth.detections.label"
-    )
+    counts2 = d2.count_values("frames.detections.detections.label")
+    counts2_ref1 = dataset1.count_values("frames.detections.detections.label")
     counts2_ref2 = dataset2[1:].count_values(
-        "frames.ground_truth.detections.label"
+        "frames.detections.detections.label"
     )
     assert counts2["vehicle"] == counts2_ref1["vehicle"]
     assert counts2["VEHICLE"] == counts2_ref2["VEHICLE"]

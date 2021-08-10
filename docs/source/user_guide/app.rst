@@ -301,6 +301,76 @@ the raw JSON description of the sample.
     :alt: app-expanded
     :align: center
 
+.. _app-image-visualizer:
+
+Using the image visualizer
+__________________________
+
+The image visualizer allows you to interactively visualize images along with
+their associated labels. When you hover over an image in the visualizer, a
+head-up display (HUD) appears with a control bar providing various options.
+
+For example, you can zoom in/out and pan around an image by scrolling and
+click-dragging with your mouse or trackpad. You can also zoom tightly into the
+currently visible (or selected) labels by clicking on the `Crop` icon in the
+controls HUD or using the `z` keyboard shortcut. Press `ESC` to reset your
+view.
+
+When multiple labels are overlayed on top of each other, the up and down
+arrows offer a convenient way to rotate the z-order of the labels that your
+cursor is hovering over, so every label and it's tooltip can be viewed.
+
+The settings icon in the controls HUD contains a variety of options for
+customizing the rendering of your labels, including whether to show object
+labels, confidences, or the tooltip. The default settings for these parameters
+can be configured via the :ref:`App config <app-config>`.
+
+Keyboard shortcuts are availble for almost every action. Click the `?` icon
+in the controls HUD or use the `?` keyboard shortcut to display the list of
+available actions and their associated hotkeys.
+
+.. image:: /images/app/app-image-visualizer.gif
+    :alt: image-visualizer
+    :align: center
+
+.. _app-video-visualizer:
+
+Using the video visualizer
+__________________________
+
+The video visualizer offers all of the same functionality as the image
+visualizer, as well as some convenient actions and shortcuts for navigating
+through a video and its labels.
+
+There are a variety of additional video-specific keyboard shortcuts. For
+example, you can press the spacebar to play/pause the video, and you can press
+`0`, `1`, ..., `9` to seek to the 0%, 10%, ..., 90% timestamp in the video.
+When the video is paused, you can use `<` and `>` to navigate frame-by-frame
+through the video.
+
+Click the `?` icon in the controls HUD or use the `?` keyboard shortcut to
+display the list of available actions and their associated hotkeys.
+
+All of the same options in the image settings are available in the video
+settings menu in the controls HUD, as well as additional options like whether
+to show frame numbers rather than timestamp in the HUD. The default settings
+for all such parameters can be configured via the
+:ref:`App config <app-config>`.
+
+Playback rate and volume are also available in the video controls HUD.
+Clicking on one of the icons resets the setting to the default. And when
+hovering, a slider appears to adjust the setting manually.
+
+.. note::
+
+    Did you know? The video visualizer streams frame data on-demand, which
+    means that playback begins as soon as possible and even heavyweight label
+    types like segmentations are supported!
+
+.. image:: /images/app/app-video-visualizer.gif
+    :alt: video-visualizer
+    :align: center
+
 .. _app-stats-tabs:
 
 Statistics tabs
@@ -354,7 +424,6 @@ the sample grid records the number of samples that you have currently selected.
 You can also take actions such as updating the view to only show (or exclude)
 the currently selected samples.
 
-Once sample
 Tagging also automatically applies to selected samples or their labels when any
 samples are selected. See :ref:`tagging <app-tagging>` for more details.
 
@@ -387,8 +456,8 @@ use this functionality to visually show/hide labels of interest in the App; or
 you can access the data for the selected labels from Python, for example by
 creating a |DatasetView| that includes/excludes the selected labels.
 
-To perform this workflow, open the expanded sample modal by clicking on
-a sample in the App. Then click on individual labels to select them:
+To perform this workflow, open the expanded sample view by clicking on a sample
+in the App. Then click on individual labels to select them:
 
 .. image:: /images/app/app-label-selection.gif
     :alt: app-label-selection
@@ -522,8 +591,15 @@ To switch to patches view, simply click the patches icon above the sample grid
 in the App, toggle to the ``Labels`` submenu, and then choose the field whose
 object patches you want to view.
 
-After you make a selection, a new |ToPatches| view stage will be appended to the
-view bar and your view will be updated to show the patches.
+After you make a selection, a new |ToPatches| view stage will be appended to
+the view bar and your view will be updated to show the patches.
+
+By default, patches are cropped so only the label patch is visible, but you can
+zoom in/out and pan as desired in the
+:ref:`image visualizer <app-image-visualizer>`. If you would like to see the
+entire image for each patch by default, click on the settings icon and uncheck
+the `Crop to patch` setting. The setting is available in both the grid and
+expanded sample view.
 
 .. note::
 
@@ -569,6 +645,13 @@ view.
 After you make a selection, a new |ToEvaluationPatches| view stage will be
 appended to the view bar and your view will be updated to show the evaluation
 patches!
+
+By default, evaluation patches are cropped so only the label(s) that make up
+the patch are visible, but you can zoom in/out and pan as desired in the
+:ref:`image visualizer <app-image-visualizer>`. If you would like to see the
+entire image for each patch by default, click on the settings icon and uncheck
+the `Crop to patch` setting. The setting is available in both the grid and
+expanded sample view.
 
 .. note::
 
@@ -681,7 +764,7 @@ similarity (``reverse``).
     :align: center
 
 You can also sort by visual similarity to an object from the expanded sample
-modal in the App by selecting an object and then using the similarity menu that
+view in the App by selecting an object and then using the similarity menu that
 appears in the upper-right corner of the modal:
 
 .. image:: /images/brain/brain-object-similarity-modal.gif
@@ -713,7 +796,7 @@ below shows the basic pattern for customizing the App on a one-off basis:
     # Create a custom App config
     app_config = fo.AppConfig()
     app_config.show_confidence = False
-    app_config.show_attributes = True
+    app_config.show_label = True
 
     session = fo.launch_app(dataset, config=app_config)
 
@@ -727,7 +810,7 @@ apply the changes:
 
     # Customize the config of a live Session
     session.config.show_confidence = True
-    session.config.show_attributes = True
+    session.config.show_label = True
 
     # Refresh the session to apply the changes
     session.refresh()

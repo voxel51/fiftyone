@@ -1,6 +1,10 @@
 """
 View tests.
 
+All of these tests are designed to be run manually via::
+
+    pytest tests/intensive/view_tests.py -s -k test_<name>
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -14,36 +18,32 @@ from fiftyone import ViewField as F
 
 def test_filter_frame_labels():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
 
-    label_counts = dataset.count_values("frames.ground_truth.detections.label")
+    label_counts = dataset.count_values("frames.detections.detections.label")
     assert len(label_counts) == 3
     # {'person': 1108, 'vehicle': 7511, 'road sign': 2726}
 
-    view = dataset.filter_labels(
-        "frames.ground_truth", F("label") == "vehicle"
-    )
+    view = dataset.filter_labels("frames.detections", F("label") == "vehicle")
 
-    label_counts = view.count_values("frames.ground_truth.detections.label")
+    label_counts = view.count_values("frames.detections.detections.label")
     assert len(label_counts) == 1
     # {'vehicle': 7511}
 
     view.save()
 
-    label_counts = dataset.count_values("frames.ground_truth.detections.label")
+    label_counts = dataset.count_values("frames.detections.detections.label")
     assert len(label_counts) == 1
     # {'vehicle': 7511}
 
 
 def test_select_frame_fields():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
 
     view = dataset.select_fields()
-    assert "ground_truth" not in view.get_frame_field_schema()
+    assert "detections" not in view.get_frame_field_schema()
 
     frame = view.first().frames.first()
-    assert frame.ground_truth is None
+    assert frame.detections is None
 
 
 if __name__ == "__main__":

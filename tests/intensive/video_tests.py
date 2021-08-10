@@ -19,7 +19,6 @@ from fiftyone import ViewField as F
 
 def test_to_frames():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
 
     dataset.tag_samples("test")
 
@@ -46,39 +45,39 @@ def test_to_frames():
     # Tagging labels applies to the source dataset
     print(frames.count_label_tags())
     print(dataset.count_label_tags())
-    print(dataset.count_values("frames.ground_truth.detections.tags"))
+    print(dataset.count_values("frames.detections.detections.tags"))
 
     frames.untag_labels("test")
 
     # Untagging labels applies to the source dataset
     print(frames.count_label_tags())
     print(dataset.count_label_tags())
-    print(dataset.count_values("frames.ground_truth.detections.tags"))
+    print(dataset.count_values("frames.detections.detections.tags"))
 
     view = frames.limit(100).set_field(
-        "ground_truth.detections.label", F("label").upper()
+        "detections.detections.label", F("label").upper()
     )
 
     # Views can be created, but don't affect source dataset until saved
-    print(frames.count("ground_truth.detections"))
-    print(view.count("ground_truth.detections"))
-    print(dataset.count("frames.ground_truth.detections"))
-    print(frames.count_values("ground_truth.detections.label"))
-    print(view.count_values("ground_truth.detections.label"))
-    print(dataset.count_values("frames.ground_truth.detections.label"))
+    print(frames.count("detections.detections"))
+    print(view.count("detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(frames.count_values("detections.detections.label"))
+    print(view.count_values("detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
 
     view.save()
 
     # Changes and deletions are synced with source dataset
-    print(frames.count("ground_truth.detections"))
-    print(view.count("ground_truth.detections"))
-    print(dataset.count("frames.ground_truth.detections"))
-    print(frames.count_values("ground_truth.detections.label"))
-    print(view.count_values("ground_truth.detections.label"))
-    print(dataset.count_values("frames.ground_truth.detections.label"))
+    print(frames.count("detections.detections"))
+    print(view.count("detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(frames.count_values("detections.detections.label"))
+    print(view.count_values("detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
 
     # Ensure that data is correctly formed
-    print(frames.first().frame_id)
+    print(frames.first().sample_id)
     print(dataset.first().frames.first().id)
 
     sample = frames.first()
@@ -92,17 +91,17 @@ def test_to_frames():
     print(frames.count_values("hello"))
     print(dataset.count_values("frames.hello"))
 
-    sample = frames.exclude_fields("ground_truth").first()
+    sample = frames.exclude_fields("detections").first()
     sample["hello2"] = "world2"
     sample.save()
 
     # Excluded fields are not removed when saving frame samples
     print(frames)
     print(dataset)
-    print(frames.count_values("ground_truth.detections.label"))
+    print(frames.count_values("detections.detections.label"))
     print(frames.count_values("hello2"))
     print(dataset.count_values("frames.hello2"))
-    print(dataset.count_values("frames.ground_truth.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
 
     dataset.untag_samples("test")
     frames.reload()
@@ -114,12 +113,11 @@ def test_to_frames():
 
 def test_to_frame_patches():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
 
     dataset.tag_samples("test")
 
     frames = dataset.to_frames()
-    patches = frames.to_patches("ground_truth")
+    patches = frames.to_patches("detections")
 
     # Frames and patches inherit sample tags
     print(dataset.count_sample_tags())
@@ -144,47 +142,45 @@ def test_to_frame_patches():
 
     # Tagging patch labels applies to the source datasets
     print(patches.count_label_tags())
-    print(patches.count_values("ground_truth.tags"))
+    print(patches.count_values("detections.tags"))
     print(frames.count_label_tags())
-    print(frames.count_values("ground_truth.detections.tags"))
+    print(frames.count_values("detections.detections.tags"))
     print(dataset.count_label_tags())
-    print(dataset.count_values("frames.ground_truth.detections.tags"))
+    print(dataset.count_values("frames.detections.detections.tags"))
 
     patches.untag_labels("test")
 
     # Untagging labels applies to the source datasets
     print(patches.count_label_tags())
-    print(patches.count_values("ground_truth.tags"))
+    print(patches.count_values("detections.tags"))
     print(frames.count_label_tags())
-    print(frames.count_values("ground_truth.detections.tags"))
+    print(frames.count_values("detections.detections.tags"))
     print(dataset.count_label_tags())
-    print(dataset.count_values("frames.ground_truth.detections.tags"))
+    print(dataset.count_values("frames.detections.detections.tags"))
 
-    view = patches.limit(100).set_field(
-        "ground_truth.label", F("label").upper()
-    )
+    view = patches.limit(100).set_field("detections.label", F("label").upper())
 
     # Views can be created, but don't affect source datasets until saved
-    print(view.count("ground_truth"))
-    print(patches.count("ground_truth"))
-    print(frames.count("ground_truth.detections"))
-    print(dataset.count("frames.ground_truth.detections"))
-    print(view.count_values("ground_truth.label"))
-    print(patches.count_values("ground_truth.label"))
-    print(frames.count_values("ground_truth.detections.label"))
-    print(dataset.count_values("frames.ground_truth.detections.label"))
+    print(view.count("detections"))
+    print(patches.count("detections"))
+    print(frames.count("detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(view.count_values("detections.label"))
+    print(patches.count_values("detections.label"))
+    print(frames.count_values("detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
 
     view.save()
 
     # Changes and deletions are synced with source datasets
-    print(view.count("ground_truth"))
-    print(patches.count("ground_truth"))
-    print(frames.count("ground_truth.detections"))
-    print(dataset.count("frames.ground_truth.detections"))
-    print(view.count_values("ground_truth.label"))
-    print(patches.count_values("ground_truth.label"))
-    print(frames.count_values("ground_truth.detections.label"))
-    print(dataset.count_values("frames.ground_truth.detections.label"))
+    print(view.count("detections"))
+    print(patches.count("detections"))
+    print(frames.count("detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(view.count_values("detections.label"))
+    print(patches.count_values("detections.label"))
+    print(frames.count_values("detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
 
     # Ensure that data is correctly formed
     print(view.first().frame_id)
@@ -203,14 +199,14 @@ def test_to_frame_patches():
     assert "hello" not in frames.get_field_schema()
     assert "hello" not in dataset.get_frame_field_schema()
 
-    sample.ground_truth.hello = "world"
+    sample.detections.hello = "world"
     sample.save()
 
     # Patch label changes are synced to source datasets
-    print(view.count_values("ground_truth.hello"))
-    print(patches.count_values("ground_truth.hello"))
-    print(frames.count_values("ground_truth.detections.hello"))
-    print(dataset.count_values("frames.ground_truth.detections.hello"))
+    print(view.count_values("detections.hello"))
+    print(patches.count_values("detections.hello"))
+    print(frames.count_values("detections.detections.hello"))
+    print(dataset.count_values("frames.detections.detections.hello"))
 
     dataset.untag_samples("test")
     patches.reload()
@@ -223,12 +219,11 @@ def test_to_frame_patches():
 
 def test_to_frame_eval_patches():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
     dataset.limit(1).save()
 
     for sample in dataset:
         for frame in sample.frames.values():
-            predictions = frame["ground_truth"].copy()
+            predictions = frame["detections"].copy()
             for det in predictions.detections:
                 det.confidence = random.random()
                 det.bounding_box[0] += 0.03 * (random.random() - 0.5)
@@ -239,7 +234,7 @@ def test_to_frame_eval_patches():
         sample.save()
 
     dataset.evaluate_detections(
-        "frames.predictions", gt_field="frames.ground_truth", eval_key="eval",
+        "frames.predictions", gt_field="frames.detections", eval_key="eval",
     )
 
     try:

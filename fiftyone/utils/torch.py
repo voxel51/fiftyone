@@ -251,7 +251,8 @@ class TorchImageModel(
 
     @property
     def transforms(self):
-        """The `torchvision.transforms <https://pytorch.org/vision/stable/transforms.html>`
+        """The
+        `torchvision.transforms <https://pytorch.org/vision/stable/transforms.html>`_
         function that will/must be applied to each input before prediction.
         """
         return self._transforms

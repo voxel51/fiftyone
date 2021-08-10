@@ -17,7 +17,7 @@ import os
 import shutil
 
 
-VERSION = "0.13.4"
+VERSION = "0.14.0"
 
 
 def get_version():
@@ -96,6 +96,8 @@ class CustomBdistWheel(bdist_wheel):
                 "..",
                 "..",
                 "app",
+                "packages",
+                "desktop",
                 "release",
             )
         bin_dir = os.path.join(

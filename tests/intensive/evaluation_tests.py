@@ -129,6 +129,7 @@ def test_evaluate_classifications():
 
 def test_evaluate_classifications_frames():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
+
     for sample in dataset:
         for frame in sample.frames.values():
             gt_idx = random.randint(0, _NUM_CLASSES - 1)
@@ -455,11 +456,9 @@ def test_evaluate_polygons():
 
 def test_evaluate_detections_frames():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
+    dataset.clone_frame_field("detections", "predictions")
 
-    dataset.rename_frame_field("ground_truth_detections", "ground_truth")
-    dataset.clone_frame_field("ground_truth", "predictions")
-
-    classes = dataset.distinct("frames.ground_truth.detections.label")
+    classes = dataset.distinct("frames.detections.detections.label")
 
     def jitter(val):
         if isinstance(val, list):
@@ -470,10 +469,10 @@ def test_evaluate_detections_frames():
 
         return random.choice(classes)
 
-    values = dataset.values("frames.ground_truth.detections.label")
+    values = dataset.values("frames.detections.detections.label")
     dataset.set_values("frames.predictions.detections.label", jitter(values))
 
-    print(dataset.count_values("frames.ground_truth.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
     print(dataset.count_values("frames.predictions.detections.label"))
 
     #
@@ -483,9 +482,7 @@ def test_evaluate_detections_frames():
     EVAL_KEY = "eval_coco"
 
     results = dataset.evaluate_detections(
-        "frames.predictions",
-        gt_field="frames.ground_truth",
-        eval_key=EVAL_KEY,
+        "frames.predictions", gt_field="frames.detections", eval_key=EVAL_KEY,
     )
 
     results.print_report()

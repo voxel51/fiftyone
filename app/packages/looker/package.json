@@ -1,0 +1,42 @@
+{
+  "name": "@fiftyone/looker",
+  "version": "0.1.0",
+  "author": "Voxel51, Inc.",
+  "description": "Media viewer that can render label overlays.",
+  "homepage": "https://github.com/voxel51/fiftyone/app/looker#readme",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/app/looker"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "vite"
+  },
+  "prettier": "@fiftyone/prettier-config",
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@ungap/event-target": "^0.2.2",
+    "color-string": "^1.5.5",
+    "copy-to-clipboard": "^3.3.1",
+    "immutable": "^4.0.0-rc.12",
+    "json-format-highlight": "^1.0.4",
+    "lru-cache": "^6.0.0",
+    "mime": "^2.5.2",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@fiftyone/prettier-config": "*",
+    "@types/color-string": "^1.5.0",
+    "@types/lru-cache": "^5.1.0",
+    "@types/uuid": "^8.3.0",
+    "path": "^0.12.7",
+    "prettier": "2.2.1",
+    "typescript": "4.2.4",
+    "typescript-plugin-css-modules": "^3.4.0",
+    "vite": "2.4.2"
+  }
+}
