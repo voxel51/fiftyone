@@ -1,6 +1,10 @@
 """
 Tests for the :mod:`fiftyone.utils.scale` module.
 
+You must run these tests interactively as follows::
+
+    pytest tests/intensive/scale_tests.py -s -k <test_case>
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -15,7 +19,6 @@ import fiftyone.zoo as foz
 import fiftyone.utils.scale as fous
 
 
-@unittest.skip("Must be run manually")
 def test_scale_image():
     # Image dataset
     dataset = foz.load_zoo_dataset(
@@ -33,7 +36,6 @@ def test_scale_image():
     _test_scale_image(dataset, label_field)
 
 
-@unittest.skip("Must be run manually")
 def test_scale_video_objects():
     # Video dataset with objects
     dataset = foz.load_zoo_dataset("quickstart-video", max_samples=10)
@@ -43,7 +45,6 @@ def test_scale_video_objects():
     _test_scale_video(dataset, frame_labels_field)
 
 
-@unittest.skip("Must be run manually")
 def test_scale_video_events():
     # Download a video to work with
     filepath = "/tmp/road.mp4"
