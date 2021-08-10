@@ -790,12 +790,9 @@ class LabeledVideoSampleParser(SampleParser):
         """Returns the frame labels for the current sample.
 
         Returns:
-            a dictionary mapping frame numbers to either
-            :class:`fiftyone.core.labels.Label` instances or dictionaries that
-            map label fields to :class:`fiftyone.core.labels.Label` instances
-            for each video frame. This method can return ``None`` if the sample
-            has no frame labels, and any dictionary values may also be ``None``
-            if a particular frame or frame-field has no label(s)
+            a dictionary mapping frame numbers to dictionaries that map label
+            fields to :class:`fiftyone.core.labels.Label` instances for each
+            video frame, or ``None`` if the sample has no frame labels
         """
         raise NotImplementedError("subclass must implement get_frame_labels()")
 
