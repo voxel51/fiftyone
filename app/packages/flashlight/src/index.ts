@@ -98,9 +98,10 @@ export default class Flashlight<K> {
         }
 
         return (
-          ((this.state.options.rowAspectRatioThreshold * this.state.width) /
-            this.state.containerHeight) *
-          20
+          (this.state.width /
+            (this.state.containerHeight *
+              this.state.options.rowAspectRatioThreshold)) *
+          300
         );
       }
     );
