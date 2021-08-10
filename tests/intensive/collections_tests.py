@@ -1,6 +1,10 @@
 """
 Sample collections tests.
 
+All of these tests are designed to be run manually via::
+
+    pytest tests/intensive/collections_tests.py -s -k test_<name>
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |

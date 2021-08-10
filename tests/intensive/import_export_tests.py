@@ -262,8 +262,7 @@ def _run_custom_imports(
             include_all_data=True,
         )
 
-        schema = _dataset.get_field_schema()
-        label_field = [f for f in schema if f.startswith("ground_truth")][0]
+        label_field = _dataset._get_label_fields()[0]
 
         num_samples = len(_dataset)
         num_labeled = len(_dataset.exists(label_field))
@@ -833,7 +832,7 @@ def test_custom_multitask_image_dataset_imports(basedir):
             idataset,
             export_dir,
             dataset_type,
-            label_field=["classifications", "detections"],
+            label_field=["positive_labels", "detections"],
             max_samples=3,
         )
 

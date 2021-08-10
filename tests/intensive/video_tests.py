@@ -77,7 +77,7 @@ def test_to_frames():
     print(dataset.count_values("frames.detections.detections.label"))
 
     # Ensure that data is correctly formed
-    print(frames.first().frame_id)
+    print(frames.first().sample_id)
     print(dataset.first().frames.first().id)
 
     sample = frames.first()
