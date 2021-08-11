@@ -101,7 +101,7 @@ export default class Flashlight<K> {
           (this.state.width /
             (this.state.containerHeight *
               this.state.options.rowAspectRatioThreshold)) *
-          300
+          500
         );
       }
     );
