@@ -2610,7 +2610,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 "environment variables `FIFTYONE_CVAT_USERNAME` and "
                 "`FIFTYONE_CVAT_PASSWORD` to avoid this in the future."
             )
-            self.prompt_username_password(host="CVAT")
+            return self.prompt_username_password(host="CVAT")
 
         return {
             "username": username,
