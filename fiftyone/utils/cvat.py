@@ -2551,16 +2551,46 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             )
 
     def delete(self, url):
+        """Send delete request to the given CVAT API URL
+        
+        Args:
+            url: the url to send the request to
+
+        Returns:
+            response: the response from the API request
+        """
         response = self._session.delete(url, verify=False)
         self._raise_response_errors(response)
         return response
 
     def get(self, url):
+        """Send get request to the given CVAT API URL
+        
+        Args:
+            url: the url to send the request to
+
+        Returns:
+            response: the response from the API request
+        """
         response = self._session.get(url, verify=False)
         self._raise_response_errors(response)
         return response
 
     def patch(self, url, auth=None, data=None, files=None, json=None):
+        """Send patch request to the given CVAT API URL
+        
+        Args:
+            url: the url to send the request to
+            auth (None): dictionary of "username" and "password" credentials to
+                send along with request
+            data (None): data to send along with patch request
+            files (None): files to send along with patch request
+            json (None): json data to send along with patch request
+
+        Returns:
+            response: the response from the API request
+        """
+
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2576,6 +2606,20 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return response
 
     def post(self, url, auth=None, data=None, files=None, json=None):
+        """Send post request to the given CVAT API URL
+        
+        Args:
+            url: the url to send the request to
+            auth (None): dictionary of "username" and "password" credentials to
+                send along with request
+            data (None): data to send along with patch request
+            files (None): files to send along with patch request
+            json (None): json data to send along with patch request
+
+        Returns:
+            response: the response from the API request
+        """
+
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2591,6 +2635,20 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return response
 
     def put(self, url, auth=None, data=None, files=None, json=None):
+        """Send put request to the given CVAT API URL
+        
+        Args:
+            url: the url to send the request to
+            auth (None): dictionary of "username" and "password" credentials to
+                send along with request
+            data (None): data to send along with patch request
+            files (None): files to send along with patch request
+            json (None): json data to send along with patch request
+
+        Returns:
+            response: the response from the API request
+        """
+
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2608,7 +2666,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def setup(self):
         """Performs any necessary setup for the API."""
         if self._auth is None:
-            self._auth = self.get_username_password("CVAT")
+            self._auth = self._get_username_password("CVAT")
         self._session = requests.Session()
         response = self.post(self.login_url, data=self._auth)
         if "csrftoken" in response.cookies:
@@ -2616,7 +2674,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 "csrftoken"
             ]
 
-    def get_username_password(self, host=""):
+    def _get_username_password(self, host=""):
         username = fo.annotation_config.cvat_username
         password = fo.annotation_config.cvat_password
 
@@ -2635,6 +2693,16 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         }
 
     def get_user_id(self, username):
+        """Search for and gather the CVAT internal user id for a given
+        username.
+        
+        Args:
+            username: the string username to get the id of
+
+        Returns:
+            user_id: the user id of the username provided, None if the user was
+                not found
+        """
         if username is None:
             return None
 
@@ -2823,7 +2891,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         job_assignees=None,
         task_assignee=None,
     ):
-        """Upload samples into annotation tool.
+        """Parse the given samples and use the label schema to create tasks,
+        upload data, and upload formatted annotations to CVAT.
         
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` to
@@ -2954,7 +3023,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         (
                             annot_shapes,
                             annot_tracks,
-                        ) = self.create_shapes_tags_tracks(
+                        ) = self._create_shapes_tags_tracks(
                             batch_samples,
                             label_field,
                             label_type,
@@ -2968,7 +3037,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         "classifications",
                         "scalar",
                     ]:
-                        annot_tags = self.create_shapes_tags_tracks(
+                        annot_tags = self._create_shapes_tags_tracks(
                             batch_samples,
                             label_field,
                             label_type,
@@ -2978,7 +3047,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                             assign_scalar_attrs=assign_scalar_attrs,
                         )
                     else:
-                        annot_shapes = self.create_shapes_tags_tracks(
+                        annot_shapes = self._create_shapes_tags_tracks(
                             batch_samples,
                             label_field,
                             label_type,
@@ -3427,7 +3496,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return results, additional_results
 
-    def create_shapes_tags_tracks(
+    def _create_shapes_tags_tracks(
         self,
         samples,
         label_field,
