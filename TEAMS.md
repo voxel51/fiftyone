@@ -62,5 +62,5 @@ the code that will be made public.
 Then follow the normal steps to make a pull request in the public
 [FiftyOne](https://github.com/voxel51/fiftyone) project.
 
-As these workflows solidify, syncing between the projects can be automated to
-whatever extend possible.
+As these workflows solidify, syncing between the projects should be automated to
+whatever extent possible.
