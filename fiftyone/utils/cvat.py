@@ -15,7 +15,7 @@ import logging
 import os
 import requests
 import urllib3
-from uuid import uuid4
+from uuid import UUID
 import warnings
 import webbrowser
 
@@ -3923,12 +3923,15 @@ class CVATLabel(object):
         """
         if "label_id" in self.attributes:
             label_id = self.attributes["label_id"].value
+            is_uuid = False
+            try:
+                label_id = UUID(label_id)
+                is_uuid = True
+            except:
+                pass
 
-            if label_id is not None:
-                try:
-                    label._id = label_id
-                except ValueError:
-                    pass
+            if label_id is not None and is_uuid:
+                label._id = label_id
 
         for attr_name, attribute in self.attributes.items():
             if attr_name != "label_id" and not attr_name.startswith(
