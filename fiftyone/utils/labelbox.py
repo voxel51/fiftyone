@@ -11,7 +11,6 @@ import logging
 import os
 from uuid import uuid4
 import warnings
-import webbrowser
 
 import numpy as np
 
@@ -26,9 +25,6 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
-import fiftyone.utils.annotations as foua
-
-lb = fou.lazy_import("labelbox", callback=fou.ensure_labelbox)
 
 
 logger = logging.getLogger(__name__)
