@@ -336,6 +336,7 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
+        eval_key (None): the evaluation key for this evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
@@ -351,6 +352,7 @@ class COCODetectionResults(DetectionResults):
         recall,
         iou_threshs,
         classes,
+        eval_key=None,
         gt_field=None,
         pred_field=None,
         missing=None,
@@ -358,6 +360,7 @@ class COCODetectionResults(DetectionResults):
     ):
         super().__init__(
             matches,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             classes=classes,

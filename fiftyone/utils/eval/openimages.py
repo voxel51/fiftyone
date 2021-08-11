@@ -334,6 +334,9 @@ class OpenImagesDetectionResults(DetectionResults):
         precision: a dict of precision values per class
         recall: a dict of recall values per class
         classes: the list of possible classes
+        eval_key (None): the evaluation key for this evaluation
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
@@ -346,6 +349,7 @@ class OpenImagesDetectionResults(DetectionResults):
         precision,
         recall,
         classes,
+        eval_key=None,
         gt_field=None,
         pred_field=None,
         missing=None,
@@ -353,6 +357,7 @@ class OpenImagesDetectionResults(DetectionResults):
     ):
         super().__init__(
             matches,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             classes=classes,
