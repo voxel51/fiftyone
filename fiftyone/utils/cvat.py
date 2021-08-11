@@ -3890,28 +3890,23 @@ class CVATLabel(object):
         label_id = label_dict["label_id"]
         self.label_id = label_id
         self.class_name = class_map[label_id]
-        self.ignore = False
-        if self.class_name not in class_map:
-            self.ignore = True
+        self.attributes = {}
+        attr_id_map_rev = {v: k for k, v in attr_id_map[label_id].items()}
 
-        else:
-            self.attributes = {}
-            attr_id_map_rev = {v: k for k, v in attr_id_map[label_id].items()}
+        for attr in label_dict["attributes"]:
+            name = attr_id_map_rev[attr["spec_id"]]
+            val = _parse_attribute(attr["value"])
+            if val is not None and val != "":
+                self.attributes[name] = CVATAttribute(name=name, value=val)
 
-            for attr in label_dict["attributes"]:
-                name = attr_id_map_rev[attr["spec_id"]]
-                val = _parse_attribute(attr["value"])
-                if val is not None and val != "":
-                    self.attributes[name] = CVATAttribute(name=name, value=val)
+        self.fo_attributes = {}
 
-            self.fo_attributes = {}
-
-            for attr_name, attribute in self.attributes.items():
-                if attr_name.startswith("attribute:"):
-                    name = attr_name.replace("attribute:", "")
-                    attribute.name = name
-                    if attribute.value is not None:
-                        self.fo_attributes[name] = attribute.to_attribute()
+        for attr_name, attribute in self.attributes.items():
+            if attr_name.startswith("attribute:"):
+                name = attr_name.replace("attribute:", "")
+                attribute.name = name
+                if attribute.value is not None:
+                    self.fo_attributes[name] = attribute.to_attribute()
 
     def update_attrs(self, label):
         """Iterates through attributes of the current label and replaces the
@@ -3977,9 +3972,6 @@ class CVATShape(CVATLabel):
         Returns:
             label: a :class:`fiftyone.core.labels.Detection`
         """
-        if self.ignore:
-            return None
-
         xtl, ytl, xbr, ybr = self.points
         bbox = [
             xtl / self.width,
@@ -4004,9 +3996,6 @@ class CVATShape(CVATLabel):
         Returns:
             label: a :class:`fiftyone.core.labels.Polyline`
         """
-        if self.ignore:
-            return None
-
         points = self._to_pairs_of_points(self.points)
         frame_size = (self.width, self.height)
         rel_points = HasCVATPoints._to_rel_points(points, frame_size)
@@ -4029,9 +4018,6 @@ class CVATShape(CVATLabel):
         Returns:
             label: a :class:`fiftyone.core.labels.Keypoint`
         """
-        if self.ignore:
-            return None
-
         points = self._to_pairs_of_points(self.points)
         frame_size = (self.width, self.height)
         rel_points = HasCVATPoints._to_rel_points(points, frame_size)
@@ -4075,9 +4061,6 @@ class CVATTag(CVATLabel):
         Returns:
             label: a :class:`fiftyone.core.labels.Classification`
         """
-        if self.ignore:
-            return None
-
         label = fol.Classification(
             label=self.class_name, attributes=self.fo_attributes
         )
