@@ -406,27 +406,6 @@ class PlotManager(object):
                 plot_view = plot_view.match_labels(
                     ids=ids, fields=plot.label_fields
                 )
-            elif plot.selection_mode == "patches":
-                # Create a patches view containing only the selected labels
-                if isinstance(plot_view, fop.PatchesView):
-                    plot_view = plot_view.select(ids)
-                elif isinstance(plot_view, fop.EvaluationPatchesView):
-                    plot_view = plot_view.select_labels(
-                        ids=ids, fields=plot.label_fields
-                    )
-                elif etau.is_str(plot.label_fields):
-                    plot_view = plot_view.to_patches(plot.label_fields).select(
-                        ids
-                    )
-                else:
-                    logger.warning(
-                        "Cannot create a patches view for the selected labels "
-                        "of a plot with `label_fields=%s`",
-                        plot.label_fields,
-                    )
-                    plot_view = plot_view.select_labels(
-                        ids=ids, fields=plot.label_fields
-                    )
             else:
                 raise ValueError(
                     "Unsupported `selection_mode=%s`" % plot.selection_mode

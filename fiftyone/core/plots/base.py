@@ -627,13 +627,14 @@ class InteractivePlot(ResponsivePlot):
     def selection_mode(self):
         """The current selection mode of the plot.
 
+        Only applicable when ``link_type == "labels"``.
+
         This property controls how the current view is updated in response to
         updates from :class:`InteractivePlot` instances that are linked to
         objects:
 
         -   ``"select"``: show only the selected labels
         -   ``"match"``: show unfiltered samples containing the selected labels
-        -   ``"patches"``: show the selected labels in a patches view
         """
         return self._selection_mode
 
@@ -643,12 +644,12 @@ class InteractivePlot(ResponsivePlot):
             if mode is not None:
                 logger.warning(
                     "Ignoring `selection_mode` parameter, which is only "
-                    "applicable for plots linked to objects"
+                    "applicable for plots linked to labels"
                 )
 
             return
 
-        supported_modes = ("select", "match", "patches")
+        supported_modes = ("select", "match")
         if mode not in supported_modes:
             raise ValueError(
                 "Unsupported selection_mode '%s'; supported values are %s"
