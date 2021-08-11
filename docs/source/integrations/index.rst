@@ -58,6 +58,7 @@ on the cards below to see how!
     :header: CVAT
     :description: Use our CVAT integration to easily annotate and edit your FiftyOne datasets.
     :link: cvat.html 
+    :image: ../_static/images/integrations/cvat.png
     :tags: Annotation
 
 
