@@ -231,7 +231,7 @@ call to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 The annotation config located at `~/.fiftyone/annotation_config.json` can be
 created or updated with the following settings:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "cvat_username": MY_USERNAME,
@@ -281,7 +281,7 @@ CVAT-specific arguments
 * `segment_size`: maximum number of images to upload per job
 * `image_quality`: quality to reduce images to prior to uploading
 * `job_reviewers`: a list of usernames that job reviewers are assigned to sequentially
-* `job_asignees`: a list of usernames that jobs are assigned to sequentially
+* `job_assignees`: a list of usernames that jobs are assigned to sequentially
 * `task_assignee`: the user to assign to the generated task or tasks 
 
 
@@ -673,7 +673,7 @@ Assign users
 ------------
 
 Lists of usernames can be provided to assign tasks, jobs, and reviewers. The
-`task_assignee`, `job_reviewers`, and `job_asignees` arguments can be used to
+`task_assignee`, `job_reviewers`, and `job_assignees` arguments can be used to
 provide a username (for `task_assignee`) or list of usernames that are sequentially assigned to created tasks and
 jobs. The `segment_size` argument is used to define the maximum number of images that
 can be uploaded per job. 
@@ -692,7 +692,7 @@ than tasks or jobs, the excess usernames are unassigned.
     view = dataset.take(5)
 
     task_assignee = "username1"
-    job_asignees = ["username2", "username3"]
+    job_assignees = ["username2", "username3"]
     job_reviewers = ["username4", "username5", "username6", "username7"]
 
     # Load "ground_truth" field into one task
@@ -708,7 +708,7 @@ than tasks or jobs, the excess usernames are unassigned.
     info = view.annotate(
         label_schema=label_schema,
         task_assignee=task_assignee,
-        job_asignees=job_asignees,
+        job_assignees=job_assignees,
         job_reviewers=job_reviewers,
         segment_size=2,
         launch_editor=True,
@@ -866,3 +866,121 @@ the `index` field of a given |Label| indicating the object id.
 .. image:: /images/integrations/cvat_video.png
    :alt: cvat-video
    :align: center
+
+
+Additional CVAT utilities
+_________________________
+
+The :class:`CVATAnnotationInfo <fiftyone.utils.cvat.CVATAnnotationInfo>` object
+that is returned from 
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+is able to connect to the specified CVAT server even outside of the commands
+shown above.
+
+Calling
+:meth:`CVATAnnotationInfo.connect_to_api() <fiftyone.utils.cvat.CVATAnnotationInfo.connect_to_api>`
+will return a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
+object that serves as a wrapper around the CVAT REST API and contains potentially
+useful functions for power users.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    info = view.annotate(label_field = "ground_truth")
+
+    api = info.connect_to_api()
+
+    # Launch CVAT in your browser
+    print(api.base_url)
+    api.launch_editor(api.base_url)
+
+    # Get the data of all tasks currently on the CVAT server
+    response = api.get(api.tasks_url)
+    response_json = response.json()
+
+
+View annotation status
+----------------------
+
+The :class:`CVATAnnotationInfo <fiftyone.utils.cvat.CVATAnnotationInfo>` object
+also has a :meth:`print_status() <fiftyone.utils.cvat.CVATAnnotationInfo.print_status>`
+method that will connect to CVAT and gather information regarding the current
+status of the tasks and jobs created for that annotation run.
+
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(3)
+
+    info = view.annotate(
+        label_field = "ground_truth",
+        task_assignee = "user1",
+        job_assignees = ["user1"],
+        job_reviewers = ["user2", "user3"],
+        segment_size = 2,
+    )
+
+    info.print_status(return_status=False)
+
+.. code-block:: text
+
+    Status for label field 'ground_truth':
+    
+            Task 'FiftyOne_annotation_ground_truth' with ID '331':
+                    Status: annotation
+                    Assignee: user1
+                    Last updated: 2021-08-11T15:09:02.680181Z
+                    URL: http://localhost:8080/tasks/331
+    
+                    Job ID '369':
+                            Status: annotation
+                            Assignee: user1
+                            Reviewer: user2
+    
+                    Job ID '370':
+                            Status: annotation
+                            Assignee: user1
+                            Reviewer: user3 
+
+
+Alternatively, setting `return_status` to `True` will return this information
+in a dictionary instead of printing it.
+
+Delete tasks
+------------
+
+The 
+:meth:`delete_task() <fiftyone.utils.cvat.CVATAnnotationAPI.delete_task>`
+method of the 
+:class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
+lets you delete tasks by providing a task id.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    info = view.annotate(label_field = "ground_truth")
+
+    print(info.task_ids)
+
+    # [372]
+
+    api = info.connect_to_api()
+
+    api.delete_task(372)

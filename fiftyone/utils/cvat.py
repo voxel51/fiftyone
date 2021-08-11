@@ -2533,17 +2533,17 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 )
             )
 
-    def _session_delete(self, url):
+    def delete(self, url):
         response = self._session.delete(url, verify=False)
         self._raise_response_errors(response)
         return response
 
-    def _session_get(self, url):
+    def get(self, url):
         response = self._session.get(url, verify=False)
         self._raise_response_errors(response)
         return response
 
-    def _session_patch(self, url, auth=None, data=None, files=None, json=None):
+    def patch(self, url, auth=None, data=None, files=None, json=None):
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2558,7 +2558,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self._raise_response_errors(response)
         return response
 
-    def _session_post(self, url, auth=None, data=None, files=None, json=None):
+    def post(self, url, auth=None, data=None, files=None, json=None):
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2573,7 +2573,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         self._raise_response_errors(response)
         return response
 
-    def _session_put(self, url, auth=None, data=None, files=None, json=None):
+    def put(self, url, auth=None, data=None, files=None, json=None):
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2593,7 +2593,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         if self._auth is None:
             self._auth = self.get_username_password("CVAT")
         self._session = requests.Session()
-        response = self._session_post(self.login_url, data=self._auth)
+        response = self.post(self.login_url, data=self._auth)
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
@@ -2625,7 +2625,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             return self._user_id_map[username]
 
         search_url = self.user_search_url(username)
-        user_response = self._session_get(search_url)
+        user_response = self.get(search_url)
         resp_json = user_response.json()
         for user_info in resp_json["results"]:
             if user_info["username"] == username:
@@ -2653,9 +2653,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         if segment_size is not None:
             data_task_create["segment_size"] = segment_size
 
-        task_creation_resp = self._session_post(
-            self.tasks_url, json=data_task_create,
-        )
+        task_creation_resp = self.post(self.tasks_url, json=data_task_create,)
         task_json = task_creation_resp.json()
         task_id = task_json["id"]
 
@@ -2676,14 +2674,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             user_id = self.get_user_id(task_assignee)
             if user_id is not None:
                 task_patch = {"assignee_id": self.get_user_id(task_assignee)}
-                resp = self._session_patch(
-                    self.task_url(task_id), json=task_patch
-                )
+                resp = self.patch(self.task_url(task_id), json=task_patch)
 
         return task_id, attribute_id_map, class_id_map
 
     def delete_task(self, task_id):
-        response = self._session_delete(self.task_url(task_id))
+        response = self.delete(self.task_url(task_id))
 
     def launch_editor(self, url=None):
         """Open the uploaded annotations in the annotation tool"""
@@ -2704,13 +2700,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         files = {
             "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
         }
-        files_resp = self._session_post(
+        files_resp = self.post(
             self.task_data_url(task_id), data=data, files=files,
         )
 
         job_ids = []
         while job_ids == []:
-            job_resp = self._session_get(self.jobs_url(task_id))
+            job_resp = self.get(self.jobs_url(task_id))
             job_ids = [j["id"] for j in job_resp.json()]
 
         if job_assignees is not None:
@@ -2720,7 +2716,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 user_id = self.get_user_id(assignee)
                 if assignee is not None and user_id is not None:
                     job_patch = {"assignee_id": user_id}
-                    resp = self._session_patch(
+                    resp = self.patch(
                         self.taskless_job_url(job_id), json=job_patch
                     )
 
@@ -2731,13 +2727,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 user_id = self.get_user_id(reviewer)
                 if reviewer is not None and user_id is not None:
                     job_patch = {"reviewer_id": user_id}
-                    resp = self._session_patch(
+                    resp = self.patch(
                         self.taskless_job_url(job_id), json=job_patch
                     )
 
         return job_ids
 
-    def construct_cvat_attributes(self, attributes):
+    def _construct_cvat_attributes(self, attributes):
         """Remaps label schema attributes to attributes expected by the CVAT
         REST API to construct tasks
         """
@@ -2813,7 +2809,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             classes = label_info["classes"]
             input_attributes = label_info["attributes"]
             is_existing_field = label_info["existing_field"]
-            cvat_attributes = self.construct_cvat_attributes(input_attributes)
+            cvat_attributes = self._construct_cvat_attributes(input_attributes)
 
             # Create a new task for every video sample
             for task_index, task_batch_ind in enumerate(
@@ -2962,13 +2958,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
                 # Creating task assigned ids to classes and attributes
                 # Remap annotations to these ids before uploading
-                annot_shapes = self.remap_ids(
+                annot_shapes = self._remap_ids(
                     annot_shapes, task_id, attribute_id_map, class_id_map
                 )
-                annot_tags = self.remap_ids(
+                annot_tags = self._remap_ids(
                     annot_tags, task_id, attribute_id_map, class_id_map
                 )
-                annot_tracks = self.remap_track_ids(
+                annot_tracks = self._remap_track_ids(
                     annot_tracks, task_id, attribute_id_map, class_id_map
                 )
 
@@ -2988,7 +2984,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     or len(annot_tracks) != len_tracks
                 ):
                     # Upload annotations
-                    resp = self._session_put(
+                    resp = self.put(
                         self.task_annotation_url(task_id), json=annot_json
                     )
                     resp_json = resp.json()
@@ -3030,7 +3026,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             label_type = current_schema["type"]
 
             # Download task data
-            task_resp = self._session_get(self.task_url(task_id))
+            task_resp = self.get(self.task_url(task_id))
             task_json = task_resp.json()
             attr_id_map = {}
             class_map = {}
@@ -3046,13 +3042,13 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             else:
                 media_type = "image"
 
-            response = self._session_get(self.task_annotation_url(task_id))
+            response = self.get(self.task_annotation_url(task_id))
             resp_json = response.json()
             shapes = resp_json["shapes"]
             tags = resp_json["tags"]
             tracks = resp_json["tracks"]
 
-            data_resp = self._session_get(self.task_data_meta_url(task_id))
+            data_resp = self.get(self.task_data_meta_url(task_id))
             frames = data_resp.json()["frames"]
 
             # Parse annotations into FiftyOne labels
@@ -3461,17 +3457,17 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         load_tracks=load_tracks,
                     )
                     tags_or_shapes.extend(shapes)
-                    tracks = self.update_tracks(tracks, new_tracks)
+                    tracks = self._update_tracks(tracks, new_tracks)
 
                 frame_id += 1
 
         if load_tracks:
-            formatted_tracks = self.format_tracks(tracks, frame_id)
+            formatted_tracks = self._format_tracks(tracks, frame_id)
             return tags_or_shapes, formatted_tracks
         else:
             return tags_or_shapes
 
-    def format_tracks(self, tracks, num_frames):
+    def _format_tracks(self, tracks, num_frames):
         formatted_tracks = []
         for index_tracks in tracks.values():
             for track in index_tracks.values():
@@ -3487,7 +3483,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return formatted_tracks
 
-    def update_tracks(self, tracks, new_tracks):
+    def _update_tracks(self, tracks, new_tracks):
         for class_name, track_info in new_tracks.items():
             if class_name not in tracks:
                 tracks[class_name] = track_info
@@ -3755,7 +3751,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return label_attrs, class_name
 
-    def remap_ids(
+    def _remap_ids(
         self, shapes_or_tags, task_id, attribute_id_map, class_id_map
     ):
         for obj in shapes_or_tags:
@@ -3768,7 +3764,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 attr["spec_id"] = attr_id_map[attr_name]
         return shapes_or_tags
 
-    def remap_track_ids(self, tracks, task_id, attribute_id_map, class_id_map):
+    def _remap_track_ids(
+        self, tracks, task_id, attribute_id_map, class_id_map
+    ):
         for track in tracks:
             label_name = track["label_id"]
             class_id = class_id_map[task_id][label_name]
@@ -4058,16 +4056,113 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         self.frame_id_map = {}
         self.labels_task_map = {}
         self.assigned_scalar_attrs = {}
-        self.api = None
 
     def connect_to_api(self, auth=None):
+        """Connect to the previously specified CVAT server and create a
+        :class:`fiftyone.utils.cvat.CVATAnnotationAPI` object
+
+        Args:
+            auth (None): dict containing the "username" and "password" used to
+                connect to API if not provided another way
+        
+        Returns:
+            api: the created :class:`fiftyone.utils.cvat.CVATAnnotationAPI` object
+        """
+
         if auth is None:
             auth = self.auth
-        return CVATAnnotationAPI(
+        api = CVATAnnotationAPI(
             url=self.url, port=self.port, https=self.https, auth=auth
         )
+        return api
 
-    def get_label_field_ids(self, label_field):
+    def print_status(self, auth=None, return_status=False):
+        """Connect to API and print the status of assigned tasks and jobs
+
+        Args:
+            auth (None): dict containing the "username" and "password" used to
+                connect to API if not provided another way
+            return_status (False): whether to print the status (False) or just
+                return a dict containing the status information (True)
+
+        Returns:
+            status: a dict containing the status information returned only if
+                `return_status` is True
+        """
+        api = self.connect_to_api(auth=auth)
+
+        current_status = self._get_label_fields_info()
+        status = {}
+        for label_field, lf_info in current_status.items():
+            logger.info("\nStatus for label field '%s':\n" % label_field)
+            status[label_field] = {}
+            for task_info in lf_info:
+                task_id = task_info["task_id"]
+                status[label_field][task_id] = {}
+                job_ids = task_info["job_ids"]
+                task_url = api.task_url(task_id)
+                try:
+                    task_resp = api.get(task_url)
+                except:
+                    logger.info(
+                        "\tTask '%d' not found at %s\n" % (task_id, task_url)
+                    )
+                    continue
+
+                task_json = task_resp.json()
+                updated = task_json["updated_date"]
+                name = task_json["name"]
+                task_assignee = task_json["assignee"]
+                task_status = task_json["status"]
+                if not return_status:
+                    logger.info(
+                        "\tTask '%s' with ID '%d':\n\t\tStatus: %s\n\t\tAssignee: %s\n\t\tLast updated: %s\n\t\tURL: %s\n"
+                        % (
+                            name,
+                            task_id,
+                            str(task_status),
+                            str(task_assignee),
+                            updated,
+                            api.base_task_url(task_id),
+                        )
+                    )
+                status[label_field][task_id]["name"] = name
+                status[label_field][task_id]["assignee"] = task_assignee
+                status[label_field][task_id]["status"] = task_status
+                status[label_field][task_id]["updated"] = updated
+                status[label_field][task_id]["jobs"] = {}
+
+                for job_id in job_ids:
+                    job_url = api.taskless_job_url(job_id)
+                    try:
+                        job_resp = api.get(job_url)
+                    except:
+                        logger.info(
+                            "\t\tJob '%d' not found at %s\n"
+                            % (job_id, job_url)
+                        )
+                        continue
+                    job_json = job_resp.json()
+                    job_status = job_json["status"]
+                    job_assignee = job_json["assignee"]
+                    reviewer = job_json["reviewer"]
+                    if not return_status:
+                        logger.info(
+                            "\t\tJob ID '%d':\n\t\t\tStatus: %s\n\t\t\tAssignee: %s\n\t\t\tReviewer: %s\n"
+                            % (
+                                job_id,
+                                str(job_status),
+                                str(job_assignee),
+                                str(reviewer),
+                            )
+                        )
+
+                    status[label_field][task_id]["jobs"][job_id] = job_json
+
+        if return_status:
+            return status
+
+    def _get_label_field_ids(self, label_field):
         results = []
         for task_id in self.labels_task_map[label_field]:
             results.append(
@@ -4075,13 +4170,13 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
             )
         return results
 
-    def get_label_fields_info(self):
+    def _get_label_fields_info(self):
         results = {}
         for label_field in self.labels_task_map.keys():
-            results[label_field] = self.get_label_field_ids(label_field)
+            results[label_field] = self._get_label_field_ids(label_field)
         return results
 
-    def task_id_to_label_field(self, task_id):
+    def _task_id_to_label_field(self, task_id):
         self.labels_task_map_rev = {}
         for lf, tasks in self.labels_task_map.items():
             for task in tasks:
@@ -4181,7 +4276,7 @@ def annotate(
         editor_url = api.base_task_url(task_ids[0])
     logger.info("Samples uploaded successfully")
     if launch_editor:
-        label_field = info.task_id_to_label_field(task_ids[0])
+        label_field = info._task_id_to_label_field(task_ids[0])
         label_type = label_schema[label_field]["type"]
         logger.info(
             "Launching editor for label field '%s' of type %s at %s"
