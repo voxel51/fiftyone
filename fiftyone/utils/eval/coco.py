@@ -198,6 +198,7 @@ class COCOEvaluation(DetectionEvaluation):
         if not self.config.compute_mAP:
             return DetectionResults(
                 matches,
+                eval_key=eval_key,
                 gt_field=gt_field,
                 pred_field=pred_field,
                 classes=classes,
@@ -316,6 +317,7 @@ class COCOEvaluation(DetectionEvaluation):
             recall,
             iou_threshs,
             classes,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             missing=missing,

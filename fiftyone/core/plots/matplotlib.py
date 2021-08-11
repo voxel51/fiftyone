@@ -344,9 +344,11 @@ def scatterplot(
 
         if link_field is not None:
             link_type = "labels"
+            selection_mode = "patches"
             init_patches_fcn = lambda view: view.to_patches(link_field)
         else:
             link_type = "samples"
+            selection_mode = None
             init_patches_fcn = None
 
         return InteractiveCollection(
@@ -354,8 +356,9 @@ def scatterplot(
             ids=ids,
             buttons=buttons,
             link_type=link_type,
-            label_fields=link_field,
             init_view=samples,
+            label_fields=link_field,
+            selection_mode=selection_mode,
             init_patches_fcn=init_patches_fcn,
         )
 

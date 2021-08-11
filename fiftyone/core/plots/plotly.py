@@ -186,8 +186,10 @@ def _plot_confusion_matrix_interactive(
     ylabels = np.flip(ylabels)
 
     if eval_key is not None:
+        selection_mode = "patches"
         init_patches_fcn = lambda view: view.to_evaluation_patches(eval_key)
     else:
+        selection_mode = "select"
         init_patches_fcn = None
 
     plot = InteractiveHeatmap(
@@ -198,8 +200,9 @@ def _plot_confusion_matrix_interactive(
         zlim=zlim,
         colorscale=colorscale,
         link_type="labels",
-        label_fields=label_fields,
         init_view=samples,
+        label_fields=label_fields,
+        selection_mode=selection_mode,
         init_patches_fcn=init_patches_fcn,
     )
 
@@ -599,16 +602,19 @@ def scatterplot(
 
     if link_field is not None:
         link_type = "labels"
+        selection_mode = "patches"
         init_patches_fcn = lambda view: view.to_patches(link_field)
     else:
         link_type = "samples"
+        selection_mode = None
         init_patches_fcn = None
 
     return InteractiveScatter(
         figure,
         link_type=link_type,
-        label_fields=link_field,
         init_view=samples,
+        label_fields=link_field,
+        selection_mode=selection_mode,
         init_patches_fcn=init_patches_fcn,
     )
 

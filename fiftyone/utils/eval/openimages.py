@@ -316,6 +316,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
             precision,
             recall,
             classes,
+            eval_key=eval_key,
             missing=missing,
             gt_field=gt_field,
             pred_field=pred_field,

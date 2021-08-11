@@ -319,6 +319,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         return SegmentationResults(
             confusion_matrix,
             classes,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             missing=missing,
