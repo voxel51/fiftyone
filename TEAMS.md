@@ -1,0 +1,66 @@
+# FiftyOne Teams
+
+Guide to developing in the private Teams fork of
+[FiftyOne](https://github.com/voxel51/fiftyone)
+
+## Pulling in changes in from [FiftyOne](https://github.com/voxel51/fiftyone)
+
+The `public` branch in
+[FiftyOne Teams](https://github.com/voxel51/fiftyone-teams) should match
+`develop` in [FiftyOne](https://github.com/voxel51/fiftyone).
+
+Be sure to have `fiftyone` added as the `public` remote:
+
+```sh
+git remote add public https://github.com/voxel51/fiftyone.git
+```
+
+Merge in changes from `fiftyone` into the `public` branch:
+
+```
+git checkout public
+git pull public develop
+git push origin public # protect the `public` branch?
+```
+
+Open a pull request for `public` to be merged into `develop`. Can we automate
+this?
+
+## Creating a pull request from [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams) into [FiftyOne](https://github.com/voxel51/fiftyone)
+
+When developing features privately intended to reach the public
+[FiftyOne](https://github.com/voxel51/fiftyone) repository, it is best to
+branch from `public` and not `develop`.
+
+```
+git checkout public
+git checkout -b my-feature
+# finish your feature, make commits
+```
+
+Open a pull request to merge `my-feature` into `public`.
+
+To add the changes to the public repository,
+[FiftyOne](https://github.com/voxel51/fiftyone), switch to your local clone of
+the open source project and add
+[FiftyOne Teams](https://github.com/voxel51/fiftyone-teams) as a remote:
+
+```
+cd /path/to/public/fiftyone
+git remote add teams https://github.com/voxel51/fiftyone-teams.git
+git checkout -b release-to-public
+git pull teams public
+git push origin release-to-public
+```
+
+## Adding a previously "Teams"-only feature to the public [FiftyOne](https://github.com/voxel51/fiftyone)
+
+In this case, the assumption is that feature has been refactored to fit within
+the structure of the open source project. Branch from `public` and commit the
+the code that will be made public.
+
+Then follow the normal steps to make a pull request in the public
+[FiftyOne](https://github.com/voxel51/fiftyone) project.
+
+As these workflows solidify, syncing between the projects can be automated to
+whatever extend possible.
