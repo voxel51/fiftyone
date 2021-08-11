@@ -18,6 +18,7 @@ def plot_confusion_matrix(
     labels,
     ids=None,
     samples=None,
+    eval_key=None,
     gt_field=None,
     pred_field=None,
     backend="plotly",
@@ -41,6 +42,7 @@ def plot_confusion_matrix(
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the confusion matrix was generated. Only used by the
             "plotly" backend when ``ids`` are provided
+        eval_key (None): the evaluation key of the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -71,6 +73,7 @@ def plot_confusion_matrix(
             dict(
                 ids=ids,
                 samples=samples,
+                eval_key=eval_key,
                 gt_field=gt_field,
                 pred_field=pred_field,
             )
@@ -600,9 +603,22 @@ class InteractivePlot(ResponsivePlot):
             defining an initial view from which to derive selection views when
             points are selected in the plot. This view will also be shown when
             the plot is in its default state (no selection)
+        init_patches_fcn (None): an optional function that can be called with
+            ``init_view`` as its argument and returns a
+            :class:`fiftyone.core.collections.SampleCollection` defining an
+            initial view from which to dervie selection views when cells are
+            selected in the plot when :meth:`selection_mode` is ``"patches"``.
+            Only applicable when ``link_type == "labels"``. If no function is
+            provided, this plot will not support patches selection mode
     """
 
-    def __init__(self, link_type="samples", label_fields=None, init_view=None):
+    def __init__(
+        self,
+        link_type="samples",
+        label_fields=None,
+        init_view=None,
+        init_patches_fcn=None,
+    ):
         supported_link_types = ("samples", "labels")
         if link_type not in supported_link_types:
             raise ValueError(
@@ -613,7 +629,10 @@ class InteractivePlot(ResponsivePlot):
         super().__init__(link_type)
 
         self.label_fields = label_fields
-        self.init_view = init_view
+
+        self._init_view = init_view
+        self._init_patches_fcn = init_patches_fcn
+        self._init_patches_view = None
 
         self._selection_callback = None
         self._sync_callback = None
@@ -635,6 +654,7 @@ class InteractivePlot(ResponsivePlot):
 
         -   ``"select"``: show only the selected labels
         -   ``"match"``: show unfiltered samples containing the selected labels
+        -   ``"patches"``: show the selected labels in a patches view
         """
         return self._selection_mode
 
@@ -644,22 +664,44 @@ class InteractivePlot(ResponsivePlot):
             if mode is not None:
                 logger.warning(
                     "Ignoring `selection_mode` parameter, which is only "
-                    "applicable for plots linked to labels"
+                    "applicable for plots linked to objects"
                 )
 
             return
 
-        supported_modes = ("select", "match")
+        supported_modes = ("select", "match", "patches")
         if mode not in supported_modes:
             raise ValueError(
                 "Unsupported selection_mode '%s'; supported values are %s"
                 % (mode, supported_modes)
             )
 
+        if mode == "patches" and self._init_patches_view is None:
+            if self._init_patches_fcn is None:
+                raise ValueError(
+                    "This plot does not support `selection_mode='%s'" % mode
+                )
+
+            self._init_patches_view = self._init_patches_fcn(self._init_view)
+
         self._selection_mode = mode
 
         if self.is_connected and self._selection_callback is not None:
             self._selection_callback(self.selected_ids)
+
+    @property
+    def init_view(self):
+        """A :class:`fiftyone.core.collections.SampleCollection` defining the
+        initial view from which to derive selection views when points are
+        selected in the plot.
+
+        This view will also be shown when the plot is in its default state (no
+        selection).
+        """
+        if self.selection_mode == "patches":
+            return self._init_patches_view
+
+        return self._init_view
 
     @property
     def selected_ids(self):

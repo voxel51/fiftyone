@@ -386,8 +386,9 @@ class PlotManager(object):
         if not self._ready_for_update(name):
             return
 
-        if plot.init_view is not None:
-            plot_view = plot.init_view.view()
+        plot_view = plot.init_view
+        if plot_view is not None:
+            plot_view = plot_view.view()
         else:
             plot_view = self._session.dataset.view()
 
@@ -406,6 +407,14 @@ class PlotManager(object):
                 plot_view = plot_view.match_labels(
                     ids=ids, fields=plot.label_fields
                 )
+            elif plot.selection_mode == "patches":
+                # Create a patches view containing only the selected patches
+                if isinstance(plot_view, fop.PatchesView):
+                    plot_view = plot_view.select(ids)
+                else:
+                    plot_view = plot_view.match_labels(
+                        ids=ids, fields=plot.label_fields
+                    )
             else:
                 raise ValueError(
                     "Unsupported `selection_mode=%s`" % plot.selection_mode

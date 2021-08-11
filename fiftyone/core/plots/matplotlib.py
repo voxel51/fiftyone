@@ -342,7 +342,13 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        link_type = "labels" if link_field is not None else "samples"
+        if link_field is not None:
+            link_type = "labels"
+            init_patches_fcn = lambda view: view.to_patches(link_field)
+        else:
+            link_type = "samples"
+            init_patches_fcn = None
+
         return InteractiveCollection(
             collection,
             ids=ids,
@@ -350,6 +356,7 @@ def scatterplot(
             link_type=link_type,
             label_fields=link_field,
             init_view=samples,
+            init_patches_fcn=init_patches_fcn,
         )
 
 
