@@ -12,7 +12,7 @@ The `public` branch in
 Be sure to have `fiftyone` added as the `public` remote:
 
 ```sh
-git remote add public https://github.com/voxel51/fiftyone.git
+git remote add public git@github.com:voxel51/fiftyone.git
 ```
 
 Merge in changes from `fiftyone` into the `public` branch:
@@ -47,7 +47,7 @@ the open source project and add
 
 ```
 cd /path/to/public/fiftyone
-git remote add teams https://github.com/voxel51/fiftyone-teams.git
+git remote add teams git@github.com:voxel51/fiftyone-teams.git
 git checkout -b release-to-public
 git pull teams public
 git push origin release-to-public
