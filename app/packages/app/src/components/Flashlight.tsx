@@ -362,10 +362,6 @@ export default React.memo(() => {
     cropToContent,
   ]);
 
-  useEventHandler(document, "visibilitychange", () => {
-    document.visibilityState === "hidden" && lookers.reset();
-  });
-
   useLayoutEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({
@@ -430,7 +426,7 @@ export default React.memo(() => {
             return null;
           }
 
-          if (!soft && document.visibilityState === "visible") {
+          if (!soft) {
             const looker = lookerGeneratorRef.current(result);
             looker.addEventListener(
               "selectthumbnail",
