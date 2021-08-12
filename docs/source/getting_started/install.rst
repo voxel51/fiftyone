@@ -97,7 +97,7 @@ install as follows:
 
 .. code-block:: shell
 
-  pip install fiftyone-desktop
+  pip install fiftyone[desktop]
 
 .. note::
 
@@ -198,6 +198,12 @@ option to ``pip install``:
 .. code-block:: shell
 
    pip install --upgrade fiftyone
+
+Is you use Fiftyone desktop, you should update after updating Fiftyone:
+
+.. code-block:: shell
+
+   pip install --upgrade fiftyone[desktop]
 
 .. note::
 
