@@ -95,7 +95,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
               value: label,
             })),
         ];
-      } else if (fieldsMap && sample[fieldsMap[path] || path]) {
+      } else if (
+        fieldsMap &&
+        ![undefined, null].includes(sample[fieldsMap[path] || path])
+      ) {
         const value = sample[fieldsMap[path] || path];
         if (["boolean", "number", "string"].includes(typeof value)) {
           const pretty = prettify(value);
