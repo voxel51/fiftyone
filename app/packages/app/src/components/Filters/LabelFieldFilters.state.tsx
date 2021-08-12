@@ -19,7 +19,9 @@ interface Label {
 }
 
 export type LabelFilters = {
-  [key: string]: (label: Label) => boolean;
+  [key: string]: (
+    label: Label
+  ) => boolean | ((value: string | number | boolean) => boolean);
 };
 
 export const getPathExtension = (type: string): string => {
@@ -36,7 +38,65 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
     const hiddenLabels = modal ? get(atoms.hiddenLabels) : null;
+
+    const primitives = get(selectors.primitiveNames("sample"));
     for (const field of labels) {
+      if (primitives.includes(field)) {
+        if (get(numericField.isNumericField(field))) {
+          const [range, none] = [
+            get(numericField.rangeAtom({ modal, path: field })),
+            get(numericField.noneAtom({ modal, path: field })),
+          ];
+          filters[field] = (value) => {
+            const inRange =
+              range[0] - 0.005 <= value && value <= range[1] + 0.005;
+            const noNone = none && value === undefined;
+            return inRange || noNone;
+          };
+        } else if (get(stringField.isStringField(field))) {
+          const [values, exclude] = [
+            get(stringField.selectedValuesAtom({ modal, path: field })),
+            get(stringField.excludeAtom({ modal, path: field })),
+          ];
+
+          filters[field] = (value) => {
+            let included = values.includes(value);
+            if (exclude) {
+              included = !included;
+            }
+
+            return included || values.length === 0;
+          };
+        } else if (get(booleanField.isBooleanField(field))) {
+          const [trueValue, falseValue, noneValue] = [
+            get(booleanField.trueAtom({ modal, path: field })),
+            get(booleanField.falseAtom({ modal, path: field })),
+            get(booleanField.noneAtom({ modal, path: field })),
+          ];
+
+          if (!trueValue && !falseValue && !noneValue) {
+            filters[field] = (value) => true;
+          } else {
+            filters[field] = (value) => {
+              if (value === true && trueValue) {
+                return true;
+              }
+
+              if (value === false && falseValue) {
+                return true;
+              }
+
+              if (value === null && noneValue) {
+                return true;
+              }
+
+              return false;
+            };
+          }
+        }
+        continue;
+      }
+
       const path = `${field}${getPathExtension(typeMap[field])}`;
 
       const cPath = `${path}.confidence`;
