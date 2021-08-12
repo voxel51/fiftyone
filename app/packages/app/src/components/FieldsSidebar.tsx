@@ -575,21 +575,30 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {
+          const value = modal ? count[dbFields[name]] : null;
           return {
             name,
             disabled: false,
             hideCheckbox: modal,
-            hasDropdown: !modal,
+            hasDropdown: !modal || Array.isArray(value),
             selected: activeScalars.includes(name),
             color: colorByLabel ? theme.brand : colorMap(name),
-            title: modal ? prettify(count[dbFields[name]], false) : name,
-            value: modal ? prettify(count[dbFields[name]], false) : null,
+            title:
+              modal && !Array.isArray(value) ? prettify(value, false) : name,
+            value:
+              modal && !Array.isArray(value) ? prettify(value, false) : null,
             path: name,
-            count: modal || count === null ? null : count[name],
+            count:
+              count === null
+                ? null
+                : modal && Array.isArray(value)
+                ? value.length
+                : count[name],
             type: "values",
             modal,
             subCountAtom,
-            canFilter: !modal,
+            disableList: modal,
+            canFilter: !modal || Array.isArray(value),
           };
         })}
       onSelect={

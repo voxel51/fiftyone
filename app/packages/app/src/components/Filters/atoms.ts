@@ -97,7 +97,7 @@ const modalStatsRaw = selector({
 
 export const modalStats = selector({
   key: "modalStats",
-  get: ({ get }) => get(modalStatsRaw).main,
+  get: ({ get }) => get(modalStatsRaw),
 });
 
 const extendedModalStatsRaw = selector({
@@ -119,7 +119,7 @@ const extendedModalStatsRaw = selector({
 
 export const extendedModalStats = selector({
   key: "extendedModalStats",
-  get: ({ get }) => get(extendedModalStatsRaw).main,
+  get: ({ get }) => get(extendedModalStatsRaw),
 });
 
 export const noneFieldCounts = selectorFamily<
@@ -138,7 +138,10 @@ export const noneFieldCounts = selectorFamily<
       return {};
     }
 
-    return raw.stats.none.reduce((acc, cur) => {
+    console.log(raw.stats);
+    return {};
+
+    return raw.stats.reduce((acc, cur) => {
       acc[cur.name] = cur.result;
       return acc;
     }, {});
@@ -173,8 +176,10 @@ export const noneFilteredFieldCounts = selectorFamily<
     if (Object.entries(currentFilters).length === 0) {
       return noneFieldCounts(modal);
     }
+    console.log(raw.stats);
+    return {};
 
-    return raw.stats.none.reduce((acc, cur) => {
+    return raw.stats.reduce((acc, cur) => {
       acc[cur.name] = cur.result;
       return acc;
     }, {});
@@ -382,6 +387,8 @@ export const filteredScalarCounts = selectorFamily<
     if (stats === null) {
       return null;
     }
+
+    console.log(stats);
     return stats.reduce((acc, cur) => {
       catchLabelCount(names, "", cur, acc);
       return acc;

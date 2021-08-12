@@ -234,7 +234,7 @@ export const datasetStats = selector({
       return null;
     }
     if (viewsAreEqual(raw.view, currentView)) {
-      return raw.stats.main;
+      return raw.stats;
     }
     return null;
   },
@@ -266,7 +266,7 @@ export const extendedDatasetStats = selector({
       return null;
     }
 
-    return raw.stats.main;
+    return raw.stats;
   },
 });
 

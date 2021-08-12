@@ -118,6 +118,7 @@ interface WrapperProps {
   totalCount: number;
   modal: boolean;
   path: string;
+  disableItems?: boolean;
 }
 
 const Wrapper = ({
@@ -129,6 +130,7 @@ const Wrapper = ({
   valueName,
   modal,
   path,
+  disableItems,
 }: WrapperProps) => {
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
@@ -168,11 +170,14 @@ const Wrapper = ({
           key={String(value)}
           color={color}
           value={selectedSet.has(value)}
-          disabled={modal && allValues.length === 1}
+          disabled={(modal && allValues.length === 1) || disableItems}
           name={value}
           count={count}
           subCountAtom={subCountValueAtom({ path, modal, value })}
           setValue={(checked: boolean) => {
+            if (disableItems) {
+              return;
+            }
             if (checked) {
               selectedSet.add(value);
             } else {
@@ -182,7 +187,7 @@ const Wrapper = ({
           }}
         />
       ))}
-      {Boolean(selectedSet.size) && (
+      {Boolean(selectedSet.size) && !disableItems && (
         <>
           <PopoutSectionTitle />
           {totalCount > 3 && excludeAtom && (
@@ -375,6 +380,7 @@ interface Props {
   color: string;
   path: string;
   modal: boolean;
+  disableItems?: boolean;
 }
 
 const CategoricalFilter = React.memo(
@@ -389,6 +395,7 @@ const CategoricalFilter = React.memo(
         countsAtom,
         path,
         modal,
+        disableItems,
       }: Props,
       ref
     ) => {
@@ -508,6 +515,7 @@ const CategoricalFilter = React.memo(
               valueName={valueName}
               modal={modal}
               totalCount={count}
+              disableItems={disableItems}
             />
           </CategoricalFilterContainer>
         </NamedCategoricalFilterContainer>

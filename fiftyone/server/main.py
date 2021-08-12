@@ -11,6 +11,7 @@ from collections import defaultdict
 import math
 import os
 import traceback
+from fiftyone.core.odm.database import aggregate
 
 import tornado.escape
 import tornado.ioloop
@@ -760,31 +761,21 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
 
-        data = {"main": [], "none": []}
-
-        stats = fos.DatasetStatistics(view)
-        aggs = stats.aggregations
-        exists_aggs = stats.exists_aggregations
-        num_aggs = len(aggs)
+        aggregations = fos.DatasetStatistics(view).aggregations
 
         results = await view._async_aggregate(
-            StateHandler.sample_collection(), aggs + exists_aggs
+            StateHandler.sample_collection(), aggregations
         )
-        aggs_results = results[:num_aggs]
-        exists_results = results[num_aggs:]
 
-        for a, r, k in [
-            (aggs, aggs_results, "main"),
-            (exists_aggs, exists_results, "none"),
-        ]:
-            for agg, result in zip(a, r):
-                data[k].append(
-                    {
-                        "_CLS": agg.__class__.__name__,
-                        "name": agg.field_name,
-                        "result": result,
-                    }
-                )
+        data = []
+        for agg, result in zip(aggregations, results):
+            data.append(
+                {
+                    "_CLS": agg.__class__.__name__,
+                    "name": agg.field_name,
+                    "result": result,
+                }
+            )
 
         message = {"type": "modal_statistics", "stats": data, "uuid": uuid}
 
@@ -1011,33 +1002,23 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only (None): a client to restrict the message to
         """
         base_view = view
-        data = {"main": [], "none": []}
+        data = []
         if view is not None and (filters is None or len(filters)):
             view = get_extended_view(view, filters)
 
-            stats = fos.DatasetStatistics(view)
-            aggs = stats.aggregations
-            exists_aggs = stats.exists_aggregations
-            num_aggs = len(aggs)
-
+            aggregations = fos.DatasetStatistics(view).aggregations
             results = await view._async_aggregate(
-                cls.sample_collection(), aggs + exists_aggs
+                cls.sample_collection(), aggregations
             )
-            aggs_results = results[:num_aggs]
-            exists_results = results[num_aggs:]
 
-            for a, r, k in [
-                (aggs, aggs_results, "main"),
-                (exists_aggs, exists_results, "none"),
-            ]:
-                for agg, result in zip(a, r):
-                    data[k].append(
-                        {
-                            "_CLS": agg.__class__.__name__,
-                            "name": agg.field_name,
-                            "result": result,
-                        }
-                    )
+            for agg, result in zip(aggregations, results):
+                data.append(
+                    {
+                        "_CLS": agg.__class__.__name__,
+                        "name": agg.field_name,
+                        "result": result,
+                    }
+                )
 
         view = (
             base_view._serialize()
