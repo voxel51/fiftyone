@@ -199,6 +199,12 @@ option to ``pip install``:
 
    pip install --upgrade fiftyone
 
+Is you use Fiftyone desktop, you should update that after updating Fiftyone:
+
+.. code-block:: shell
+
+   pip install --upgrade fiftyone[desktop]
+
 .. note::
 
   New versions of FiftyOne occasionally introduce data model changes that
