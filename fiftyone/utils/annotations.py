@@ -619,6 +619,8 @@ def load_annotations(samples, info, **kwargs):
 
             sample.save()
 
+    info.cleanup(**kwargs)
+
 
 def get_tracking_index_map(samples, label_field, annotations):
     """
@@ -698,6 +700,11 @@ class AnnotationInfo(object):
                         self.id_map[label_field] = dict(
                             zip(sample_ids, label_ids)
                         )
+
+    def cleanup(self):
+        """Cleanup annotation artifacts created by uploading samples to the
+        corresponding API"""
+        pass
 
 
 class AnnotationLabelSchema(object):

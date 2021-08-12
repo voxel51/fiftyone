@@ -4312,6 +4312,21 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         if return_status:
             return status
 
+    def cleanup(self, delete_tasks=False, auth=None, **kwargs):
+        """Deletes all created tasks from CVAT
+
+        Args:
+            delete_tasks (False): whether to delete the CVAT tasks after
+                downloading annotations
+            auth (None): dict containing the "username" and "password" used to
+                connect to API if not provided another way
+            kwargs: other arguments pass to :func:`fiftyone.utils.annotations.load_annotations`
+        """
+        if delete_tasks:
+            api = self.connect_to_api(auth=auth)
+            for task_id in self.task_ids:
+                api.delete_task(task_id)
+
     def _get_label_field_ids(self, label_field):
         results = []
         for task_id in self.labels_task_map[label_field]:
@@ -4436,7 +4451,7 @@ def annotate(
     return info
 
 
-def load_annotations(info, delete_tasks=False, auth=None):
+def load_annotations(info, auth=None, **kwargs):
     """Uses the provided :class:`fiftyone.utils.cvat.CVATAnnotationInfo` to
         reconnect to the API using the specifications in the info and downloads
         annotations from the label schema.
@@ -4444,10 +4459,9 @@ def load_annotations(info, delete_tasks=False, auth=None):
     Args:
         info: a :class:`fiftyone.utils.cvat.CVATAnnotationInfo` that was used
             to annotate samples previously
-        delete_tasks (False): whether to delete the CVAT tasks after
-            downloading annotations
         auth (None): a dictionary with the "username" and "password" to use to
             connect to the CVAT server
+        kwargs: other arguments pass to :func:`fiftyone.utils.annotations.load_annotations`
     """
     if auth is None:
         api = info.connect_to_api()
@@ -4467,9 +4481,6 @@ def load_annotations(info, delete_tasks=False, auth=None):
         labels_task_map,
         assigned_scalar_attrs,
     )
-    if delete_tasks:
-        for task_id in task_ids:
-            api.delete_task(task_id)
     return annotations
 
 
