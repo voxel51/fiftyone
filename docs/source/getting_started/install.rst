@@ -97,7 +97,7 @@ install as follows:
 
 .. code-block:: shell
 
-  pip install fiftyone-desktop
+  pip install fiftyone[desktop]
 
 .. note::
 
