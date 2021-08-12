@@ -2330,7 +2330,7 @@ which samples to merge:
 
     Did you know? You can use
     :meth:`merge_dir() <fiftyone.core.dataset.Dataset.merge_dir>` to directly
-    directly merge the contents of a dataset on disk into an existing FiftyOne
+    merge the contents of a dataset on disk into an existing FiftyOne
     dataset without first
     :ref:`loading it <loading-datasets-from-disk>` into a temporary dataset and
     then using
