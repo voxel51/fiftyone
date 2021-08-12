@@ -199,7 +199,7 @@ option to ``pip install``:
 
    pip install --upgrade fiftyone
 
-Is you use Fiftyone desktop, you should update that after updating Fiftyone:
+Is you use Fiftyone desktop, you should update after updating Fiftyone:
 
 .. code-block:: shell
 
