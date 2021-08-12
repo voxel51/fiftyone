@@ -2303,7 +2303,7 @@ class GroupBy(ViewStage):
         # truth label with groups arranged in decreasing order of size
         stage = fo.GroupBy(
             "ground_truth.label",
-            sort_expr=F().length(),  # computes number of samples in each group
+            sort_expr=F().length(),
             reverse=True,
         )
         view = dataset.take(1000).add_stage(stage)
