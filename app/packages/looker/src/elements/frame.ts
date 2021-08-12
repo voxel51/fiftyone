@@ -55,11 +55,9 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement(
-    update: StateUpdate<FrameState>,
-    dispatchEvent: DispatchEvent
-  ) {
+  createHTMLElement(update: StateUpdate<FrameState>) {
     this.imageSource = document.createElement("canvas");
+    this.imageSource.style.imageRendering = "pixelated";
 
     update(
       ({ config: { thumbnail, dimensions, src, frameRate, frameNumber } }) => {
