@@ -655,7 +655,7 @@ class InteractivePlot(ResponsivePlot):
 
         This property controls how the current view is updated in response to
         updates from :class:`InteractivePlot` instances that are linked to
-        objects:
+        labels:
 
         -   ``"select"``: show only the selected labels
         -   ``"match"``: show unfiltered samples containing the selected labels

@@ -398,17 +398,19 @@ class PlotManager(object):
             self._current_labels = None
         elif plot.link_type == "labels":
             if plot.selection_mode == "select":
-                # Create a view with only the selected labels in the plot
+                # Create a view that contains only the selected labels in the
+                # plot
                 plot_view = plot_view.select_labels(
                     ids=ids, fields=plot.label_fields
                 )
             elif plot.selection_mode == "match":
-                # Create a view that contains only samples
+                # Create a view that only contains unfiltered samples with at
+                # least one selected label
                 plot_view = plot_view.match_labels(
                     ids=ids, fields=plot.label_fields
                 )
             elif plot.selection_mode == "patches":
-                # Create a patches view containing only the selected patches
+                # Create a patches view that contains only the selected patches
                 if isinstance(plot_view, fop.PatchesView):
                     plot_view = plot_view.select(ids)
                 else:
@@ -429,7 +431,7 @@ class PlotManager(object):
                 {"field": field, "label_id": _id} for _id in ids
             ]
         elif plot.link_type == "samples":
-            # Create a view with only the selected samples in the plot
+            # Create a view that contains only the selected samples in the plot
             plot_view = plot_view.select(ids)
 
             if self.has_label_links:
