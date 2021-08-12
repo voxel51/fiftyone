@@ -1,4 +1,4 @@
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { atom, selector, selectorFamily } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
 import { isLabelField } from "./LabelFieldFilters.state";
@@ -19,7 +19,8 @@ export const unsupportedFields = selector<string[]>({
         !get(isNumericField(f)) &&
         !get(isStringField(f)) &&
         !get(isBooleanField(f)) &&
-        !["metadata", "tags"].includes(f)
+        !["metadata", "tags"].includes(f) &&
+        !get(selectors.primitiveNames("sample")).includes(f)
     );
   },
 });
@@ -77,7 +78,7 @@ export const activeLabelPaths = selectorFamily<string[], boolean>({
 export const activeScalars = selectorFamily<string[], boolean>({
   key: "activeScalars",
   get: (modal) => ({ get }) => {
-    const scalars = get(selectors.scalarNames("sample"));
+    const scalars = get(selectors.primitiveNames("sample"));
     return get(modal ? activeModalFields : activeFields).filter((v) =>
       scalars.includes(v)
     );
@@ -87,7 +88,7 @@ export const activeScalars = selectorFamily<string[], boolean>({
       return [];
     }
     if (Array.isArray(value)) {
-      const scalars = get(selectors.scalarNames("sample"));
+      const scalars = get(selectors.primitiveNames("sample"));
       const prevActiveScalars = get(activeScalars(modal));
       let active = get(modal ? activeModalFields : activeFields).filter((v) =>
         scalars.includes(v) ? value.includes(v) : true

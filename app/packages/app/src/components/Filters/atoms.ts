@@ -355,7 +355,7 @@ export const scalarCounts = selectorFamily<
       return get(atoms.modal).sample;
     }
 
-    const names = get(selectors.scalarNames("sample"));
+    const names = get(selectors.primitiveNames("sample"));
     const stats = get(selectors.datasetStats);
     if (stats === null) {
       return null;
@@ -377,7 +377,7 @@ export const filteredScalarCounts = selectorFamily<
       return null;
     }
 
-    const names = get(selectors.scalarNames("sample"));
+    const names = get(selectors.primitiveNames("sample"));
     const stats = get(selectors.extendedDatasetStats);
     if (stats === null) {
       return null;

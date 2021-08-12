@@ -545,13 +545,13 @@ type ScalarsCellProps = {
 };
 
 const ScalarsCell = ({ modal }: ScalarsCellProps) => {
-  const scalars = useRecoilValue(selectors.scalarNames("sample"));
+  const scalars = useRecoilValue(selectors.primitiveNames("sample"));
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
   );
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
+  const dbFields = useRecoilValue(selectors.primitivesDbMap("sample"));
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, count] = [
@@ -561,7 +561,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   return (
     <Cell
-      label="Scalars"
+      label="Primitives"
       icon={<BarChart />}
       pills={
         modal
@@ -608,7 +608,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         setActiveScalars([]);
       }}
       modal={modal}
-      title={"Scalar fields"}
+      title={"Primitive fields"}
     />
   );
 };

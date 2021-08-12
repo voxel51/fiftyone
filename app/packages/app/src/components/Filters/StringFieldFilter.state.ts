@@ -7,7 +7,7 @@ import {
 } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
-import { OBJECT_ID_FIELD, STRING_FIELD } from "../../utils/labels";
+import { LIST_FIELD, OBJECT_ID_FIELD, STRING_FIELD } from "../../utils/labels";
 import { Value } from "./types";
 import { filterStage, FilterParams } from "./atoms";
 
@@ -16,7 +16,12 @@ export const LIST_LIMIT = 200;
 export const isStringField = selectorFamily<boolean, string>({
   key: "isStringField",
   get: (name) => ({ get }) => {
-    const map = get(selectors.scalarsMap("sample"));
+    let map = get(selectors.primitivesMap("sample"));
+
+    if (map[name] === LIST_FIELD) {
+      map = get(selectors.primitivesSubfieldMap("sample"));
+    }
+
     return [OBJECT_ID_FIELD, STRING_FIELD].includes(map[name]);
   },
 });
