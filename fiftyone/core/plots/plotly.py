@@ -2275,7 +2275,7 @@ def _make_edges_scatter(points, edges, edges_title):
 
     kwargs = dict(
         line=dict(width=0.5, color="#888"),
-        hoverinfo="none",
+        hoverinfo="skip",
         mode="lines",
         customdata=None,
         showlegend=edges_title is not None,
@@ -2297,7 +2297,7 @@ def _make_edges_scatter_mapbox(coords, edges, edges_title):
 
     kwargs = dict(
         line=dict(width=0.5, color="#888"),
-        hoverinfo="none",
+        hoverinfo="skip",
         mode="lines",
         customdata=None,
         showlegend=edges_title is not None,
