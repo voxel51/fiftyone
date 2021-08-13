@@ -454,16 +454,18 @@ export const countsAtom = selectorFamily<
 
       return {
         count,
-        results: Object.entries(
-          result.reduce((acc, cur) => {
-            if (!(cur in acc)) {
-              acc[cur] = 0;
-            }
+        results: Array.from(
+          result
+            .reduce((acc, cur) => {
+              if (!acc.has(cur)) {
+                acc.set(cur, 0);
+              }
 
-            acc[cur] += 1;
+              acc.set(cur, acc.get(cur) + 1);
 
-            return acc;
-          }, {})
+              return acc;
+            }, new Map())
+            .entries()
         ),
       };
     }

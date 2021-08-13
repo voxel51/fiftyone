@@ -153,5 +153,13 @@ export const getValueString = (value: Value): [string, boolean] => {
     return [STRING_VALUES[NONSTRING_VALUES.indexOf(value)], true];
   }
 
+  if (typeof value === "number") {
+    return [value.toLocaleString(), true];
+  }
+
+  if (typeof value === "string" && !value.length) {
+    return [`""`, true];
+  }
+
   return [value as string, false];
 };
