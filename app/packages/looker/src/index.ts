@@ -1190,7 +1190,9 @@ const filterSample = <S extends Sample | FrameSample>(
   for (const field in sample) {
     if (fieldsMap.hasOwnProperty(field)) {
       sample[fieldsMap[field]] = sample[field];
-      delete sample[field];
+      if (field !== fieldsMap[field]) {
+        delete sample[field];
+      }
     } else if (field.startsWith("_")) {
       delete sample[field];
     } else if (
