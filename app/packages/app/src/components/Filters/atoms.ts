@@ -122,6 +122,39 @@ export const extendedModalStats = selector({
   get: ({ get }) => get(extendedModalStatsRaw),
 });
 
+const computeNoneCounts = (stats: Array<any>): { [key: string]: number } => {
+  let count = null;
+
+  const data = stats.reduce((acc, cur) => {
+    if (cur.name === null) {
+      count = cur.result;
+    }
+
+    if (!acc[cur.name]) {
+      acc[cur.name] = {};
+    }
+
+    acc[cur.name][cur._CLS] = cur.result;
+
+    return acc;
+  }, {});
+
+  const result = {};
+  for (const path in data) {
+    const parent = path.includes(".")
+      ? path.split(".").slice(0, -1).join(".")
+      : path;
+
+    if (path === parent) {
+      result[path] = count - data[path][COUNT_CLS];
+    } else if (parent.includes(".")) {
+      result[path] = data[parent][COUNT_CLS] - data[path][COUNT_CLS];
+    }
+  }
+
+  return result;
+};
+
 export const noneFieldCounts = selectorFamily<
   { [key: string]: number },
   boolean
@@ -138,13 +171,7 @@ export const noneFieldCounts = selectorFamily<
       return {};
     }
 
-    console.log(raw.stats);
-    return {};
-
-    return raw.stats.reduce((acc, cur) => {
-      acc[cur.name] = cur.result;
-      return acc;
-    }, {});
+    return computeNoneCounts(raw.stats);
   },
 });
 
@@ -176,13 +203,8 @@ export const noneFilteredFieldCounts = selectorFamily<
     if (Object.entries(currentFilters).length === 0) {
       return noneFieldCounts(modal);
     }
-    console.log(raw.stats);
-    return {};
 
-    return raw.stats.reduce((acc, cur) => {
-      acc[cur.name] = cur.result;
-      return acc;
-    }, {});
+    return computeNoneCounts(raw.stats);
   },
 });
 
@@ -322,6 +344,7 @@ export const labelCounts = selectorFamily<
     if (stats === null) {
       return null;
     }
+
     return stats.reduce((acc, cur) => {
       catchLabelCount(names, prefix, cur, acc);
       return acc;
