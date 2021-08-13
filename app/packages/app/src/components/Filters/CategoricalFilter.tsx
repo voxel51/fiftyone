@@ -144,8 +144,11 @@ const Wrapper = ({
     counts[String(value)] ?? 0,
   ]);
 
-  if (totalCount <= CHECKBOX_LIMIT) {
-    allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
+  if (totalCount <= CHECKBOX_LIMIT || disableItems) {
+    allValues = [
+      ...allValues,
+      ...results.filter(([v]) => disableItems || !selectedSet.has(v)),
+    ];
   }
 
   if (totalCount === 0) {
