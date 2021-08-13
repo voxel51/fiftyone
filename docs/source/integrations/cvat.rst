@@ -10,11 +10,12 @@ open-source image and video annotation tools available, and we've made it easy
 to upload your data and labels directly from FiftyOne to CVAT to create,
 delete, and modify annotations.
 
-This integration supports the following label types for images and videos:
+This integration supports the following label types for both image and video
+datasets:
 
+- :ref:`Classifications <classification>`
 - :ref:`Detections <object-detection>`
 - :ref:`Instance segmentations <instance-segmentation>`
-- :ref:`Classifications <classification>`
 - :ref:`Polygons and polylines <polylines>`
 - :ref:`Keypoints <keypoints>`
 - :ref:`Scalar fields <adding-sample-fields>`
