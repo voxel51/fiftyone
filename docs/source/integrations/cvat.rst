@@ -17,17 +17,17 @@ This integration supports the following label types for images and videos:
 - :ref:`Classifications <classification>`
 - :ref:`Polygons and polylines <polylines>`
 - :ref:`Keypoints <keypoints>`
-- :ref:`Scalars <adding-sample-fields>`
+- :ref:`Scalar fields <adding-sample-fields>`
+
+.. image:: /images/integrations/cvat_example.png
+   :alt: cvat-example
+   :align: center
 
 .. note::
 
     Check out :doc:`this tutorial </tutorials/fixing_annotations>` to see how
     you can use FiftyOne to upload your data to CVAT to create, delete, and fix
     annotations.
-
-.. image:: /images/integrations/cvat_example.png
-   :alt: cvat-example
-   :align: center
 
 Overview
 ________
@@ -262,10 +262,10 @@ annotation config located at `~/.fiftyone/annotation_config.json`:
     Storing your username and password in plain text on disk is generally not
     recommended. Consider using environment variables instead.
 
-.. _cvat-annotate:
+.. _cvat-annotation:
 
-Annotate
-________
+Annotation
+__________
 
 Use the
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` method
@@ -469,10 +469,10 @@ can take additional values:
     Only scalar-valued label attributes are supported. Other attribute types
     like lists, dictionaries, and arrays will be omitted.
 
-.. _cvat-load-annotations:
+.. _cvat-loading-annotations:
 
-Load annotations
-________________
+Loading annotations
+___________________
 
 After your annotations tasks in the annotation backend are complete, you can
 use the
@@ -869,7 +869,7 @@ For example, let's upload some blurred images to CVAT for annotation:
 
 .. _cvat-annotating-videos:
 
-Annotating Videos
+Annotating videos
 _________________
 
 You can add or edit annotations for video datasets using the CVAT backend

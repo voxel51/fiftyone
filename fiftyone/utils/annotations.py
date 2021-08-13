@@ -275,7 +275,7 @@ def annotate(
 
     -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATAnnotationAPI`
 
-    See :ref:`this page <cvat-annotate>` for more information about using
+    See :ref:`this page <cvat-annotation>` for more information about using
     this method, including how to define label schemas using the
     ``label_schema``, ``label_field``, ``label_type``, ``classes``, and
     ``attributes`` parameters, and how to configure login credentials for
@@ -353,7 +353,7 @@ def annotate(
 def load_annotations(samples, info, **kwargs):
     """Loads the labels from the given annotation run into this dataset.
 
-    See :ref:`this page <cvat-load-annotations>` for more information about
+    See :ref:`this page <cvat-loading-annotations>` for more information about
     using this method to import annotations that you have scheduled by calling
     :func:`annotate`.
 
