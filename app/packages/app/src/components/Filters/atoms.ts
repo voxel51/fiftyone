@@ -122,12 +122,20 @@ export const extendedModalStats = selector({
   get: ({ get }) => get(extendedModalStatsRaw),
 });
 
-const computeNoneCounts = (stats: Array<any>): { [key: string]: number } => {
+const computeNoneCounts = (
+  stats: Array<any>,
+  video: boolean = false
+): { [key: string]: number } => {
   let count = null;
+  let frameCount = null;
 
   const data = stats.reduce((acc, cur) => {
     if (cur.name === null) {
       count = cur.result;
+    }
+
+    if (cur.name === "frames" && video) {
+      frameCount = cur.result;
     }
 
     if (!acc[cur.name]) {
@@ -140,14 +148,32 @@ const computeNoneCounts = (stats: Array<any>): { [key: string]: number } => {
   }, {});
 
   const result = {};
-  for (const path in data) {
-    const parent = path.includes(".")
+  for (let path in data) {
+    if (video && path.startsWith("frames.")) {
+      path = path.slice("frames.".length);
+      let parent = path.includes(".")
+        ? path.split(".").slice(0, -1).join(".")
+        : path;
+
+      const check = path;
+      path = "frames." + path;
+      parent = "frames." + parent;
+
+      if (path === parent) {
+        result[path] = frameCount - data[path][COUNT_CLS];
+      } else if (check.includes(".") && data[parent] && data[path]) {
+        result[path] = data[parent][COUNT_CLS] - data[path][COUNT_CLS];
+      }
+      continue;
+    }
+
+    let parent = path.includes(".")
       ? path.split(".").slice(0, -1).join(".")
       : path;
 
     if (path === parent) {
       result[path] = count - data[path][COUNT_CLS];
-    } else if (parent.includes(".")) {
+    } else if (path.includes(".") && data[parent] && data[path]) {
       result[path] = data[parent][COUNT_CLS] - data[path][COUNT_CLS];
     }
   }
@@ -162,6 +188,7 @@ export const noneFieldCounts = selectorFamily<
   key: "noneFieldCounts",
   get: (modal) => ({ get }) => {
     const raw = get(modal ? modalStatsRaw : atoms.datasetStatsRaw);
+    const video = get(selectors.isVideoDataset);
 
     const currentView = get(selectors.view);
     if (!raw.view) {
@@ -171,7 +198,7 @@ export const noneFieldCounts = selectorFamily<
       return {};
     }
 
-    return computeNoneCounts(raw.stats);
+    return computeNoneCounts(raw.stats, video);
   },
 });
 
@@ -184,6 +211,7 @@ export const noneFilteredFieldCounts = selectorFamily<
     const raw = get(
       modal ? extendedModalStatsRaw : atoms.extendedDatasetStatsRaw
     );
+    const video = get(selectors.isVideoDataset);
 
     const currentView = get(selectors.view);
     if (!raw.view) {
@@ -204,7 +232,7 @@ export const noneFilteredFieldCounts = selectorFamily<
       return noneFieldCounts(modal);
     }
 
-    return computeNoneCounts(raw.stats);
+    return computeNoneCounts(raw.stats, video);
   },
 });
 
@@ -331,8 +359,8 @@ export const catchLabelCount = (
   const fieldName = cur.name.slice(prefix.length).split(".")[0];
 
   let key = cur.name;
-  if (types && LABEL_LISTS.includes(types[fieldName])) {
-    key = prefix + `${fieldName}.${LABEL_LIST[types[fieldName]]}`;
+  if (types && LABEL_LISTS.includes(types[prefix + fieldName])) {
+    key = prefix + `${fieldName}.${LABEL_LIST[types[prefix + fieldName]]}`;
   } else if (types && cur.name !== prefix + fieldName) {
     return;
   }
