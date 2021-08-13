@@ -750,7 +750,10 @@ class DatasetTests(unittest.TestCase):
             int_field=1,
             str_field="hi",
             float_field=1.0,
-            list_typed_field=[1, 2, 3],
+            list_bool_field=[False, True],
+            list_float_field=[1.0, 2, 4.1],
+            list_int_field=[1, 2, 3],
+            list_str_field=["one", "two", "three"],
             list_untyped_field=[1, {"two": "three"}, [4], "five"],
             dict_field={"hello": "world"},
             vector_field=np.arange(5),
@@ -760,13 +763,29 @@ class DatasetTests(unittest.TestCase):
         dataset.add_sample(sample)
         schema = dataset.get_field_schema()
 
+        # Scalars
         self.assertIsInstance(schema["bool_field"], fo.BooleanField)
         self.assertIsInstance(schema["int_field"], fo.IntField)
         self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
-        self.assertIsInstance(schema["list_typed_field"], fo.ListField)
-        self.assertIsInstance(schema["list_typed_field"].field, fo.IntField)
+
+        # Lists
+        self.assertIsInstance(schema["list_bool_field"], fo.ListField)
+        self.assertIsInstance(schema["list_bool_field"].field, fo.BooleanField)
+
+        self.assertIsInstance(schema["list_float_field"], fo.ListField)
+        self.assertIsInstance(schema["list_float_field"].field, fo.FloatField)
+
+        self.assertIsInstance(schema["list_int_field"], fo.ListField)
+        self.assertIsInstance(schema["list_int_field"].field, fo.IntField)
+
+        self.assertIsInstance(schema["list_str_field"], fo.ListField)
+        self.assertIsInstance(schema["list_str_field"].field, fo.StringField)
+
         self.assertIsInstance(schema["list_untyped_field"], fo.ListField)
+        self.assertEqual(schema["list_untyped_field"].field, None)
+
+        # Etc
         self.assertIsInstance(schema["dict_field"], fo.DictField)
         self.assertIsInstance(schema["vector_field"], fo.VectorField)
         self.assertIsInstance(schema["array_field"], fo.ArrayField)
