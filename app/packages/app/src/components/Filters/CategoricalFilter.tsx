@@ -110,7 +110,7 @@ const nullSort = ({
 
 interface WrapperProps {
   results: [Value, number][];
-  selectedValuesAtom: RecoilState<Value[]>;
+  selectedValuesAtom?: RecoilState<Value[]>;
   excludeAtom?: RecoilState<boolean>;
   name: string;
   valueName: string;
@@ -132,7 +132,9 @@ const Wrapper = ({
   path,
   disableItems,
 }: WrapperProps) => {
-  const [selected, setSelected] = useRecoilState(selectedValuesAtom);
+  const [selected, setSelected] = selectedValuesAtom
+    ? useRecoilState(selectedValuesAtom)
+    : [[], null];
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const sorting = useRecoilValue(atoms.sortFilterResults(modal));
@@ -248,6 +250,7 @@ const ResultsWrapper = ({
   active,
 }: ResultsWrapperProps) => {
   const theme = useTheme();
+
   return (
     <>
       {shown && results && (
@@ -302,6 +305,7 @@ const useSearch = () => {
       setSearchResults,
       setSubCount,
       setActive,
+      noneCount,
     }: {
       modal: boolean;
       search: string;
@@ -310,6 +314,7 @@ const useSearch = () => {
       setSearchResults: (value) => void;
       setSubCount: (value) => void;
       setActive: (value) => void;
+      noneCount: number;
     }) => {
       const id = uuid();
 
@@ -359,6 +364,9 @@ const useSearch = () => {
         if (currentPromise.current !== promise) {
           return;
         }
+        if (noneCount > 0) {
+          results = [...results, [null, noneCount]];
+        }
         results.length && setActive(results[0][0]);
         setSearchResults(results);
         setSubCount(count);
@@ -373,7 +381,7 @@ interface Props {
     count: number;
     results: [Value, number][];
   }>;
-  selectedValuesAtom: RecoilState<Value[]>;
+  selectedValuesAtom?: RecoilState<Value[]>;
   excludeAtom?: RecoilState<boolean>;
   name?: string;
   valueName: string;
@@ -399,7 +407,9 @@ const CategoricalFilter = React.memo(
       }: Props,
       ref
     ) => {
-      const selected = useRecoilValue(selectedValuesAtom);
+      const selected = selectedValuesAtom
+        ? useRecoilValue(selectedValuesAtom)
+        : [null, null];
       const { count, results } = useRecoilValue(countsAtom);
       const [focused, setFocused] = useState(false);
       const [hovering, setHovering] = useState(false);
@@ -416,6 +426,8 @@ const CategoricalFilter = React.memo(
         () => setActive(undefined),
       ]);
 
+      const none = results.filter(([v, c]) => v === null);
+      const noneCount = none.length ? none[0][1] : 0;
       const runSearch = useSearch();
 
       useLayoutEffect(() => {
@@ -428,8 +440,9 @@ const CategoricalFilter = React.memo(
             setSearchResults,
             setSubCount,
             setActive,
+            noneCount,
           });
-      }, [focused, search, selected]);
+      }, [focused, search, selected, noneCount]);
 
       return (
         <NamedCategoricalFilterContainer ref={ref}>
@@ -437,7 +450,7 @@ const CategoricalFilter = React.memo(
             {name && <>{name}</>}
           </NamedCategoricalFilterHeader>
           <CategoricalFilterContainer>
-            {count > CHECKBOX_LIMIT && (
+            {count > CHECKBOX_LIMIT && !disableItems && (
               <>
                 <Input
                   key={"input"}

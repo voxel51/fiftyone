@@ -750,7 +750,8 @@ class DatasetTests(unittest.TestCase):
             int_field=1,
             str_field="hi",
             float_field=1.0,
-            list_field=[1, 2, 3],
+            list_typed_field=[1, 2, 3],
+            list_untyped_field=[1, {"two": "three"}, [4], "five"],
             dict_field={"hello": "world"},
             vector_field=np.arange(5),
             array_field=np.random.randn(3, 4),
@@ -763,7 +764,9 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(schema["int_field"], fo.IntField)
         self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
-        self.assertIsInstance(schema["list_field"], fo.ListField)
+        self.assertIsInstance(schema["list_typed_field"], fo.ListField)
+        self.assertIsInstance(schema["list_typed_field"].field, fo.IntField)
+        self.assertIsInstance(schema["list_untyped_field"], fo.ListField)
         self.assertIsInstance(schema["dict_field"], fo.DictField)
         self.assertIsInstance(schema["vector_field"], fo.VectorField)
         self.assertIsInstance(schema["array_field"], fo.ArrayField)

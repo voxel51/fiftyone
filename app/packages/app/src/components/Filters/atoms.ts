@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { AGGS } from "../../utils/labels";
+import { AGGS, LABEL_LIST, LABEL_LISTS } from "../../utils/labels";
 import { request } from "../../utils/socket";
 import { viewsAreEqual } from "../../utils/view";
 import { Value } from "./types";
@@ -321,14 +321,24 @@ export const catchLabelCount = (
   names: string[],
   prefix: string,
   cur: { name: string; _CLS: string; result: number },
-  acc: { [key: string]: number }
+  acc: { [key: string]: number },
+  types?: { [key: string]: string }
 ): void => {
-  if (
-    cur.name &&
-    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
-    cur._CLS === COUNT_CLS
-  ) {
-    acc[prefix + cur.name.slice(prefix.length).split(".")[0]] = cur.result;
+  if (!cur.name) {
+    return;
+  }
+
+  const fieldName = cur.name.slice(prefix.length).split(".")[0];
+
+  let key = cur.name;
+  if (types && LABEL_LISTS.includes(types[fieldName])) {
+    key = prefix + `${fieldName}.${LABEL_LIST[types[fieldName]]}`;
+  } else if (types && cur.name !== prefix + fieldName) {
+    return;
+  }
+
+  if (names.includes(fieldName) && key === cur.name && cur._CLS === COUNT_CLS) {
+    acc[prefix + fieldName] = cur.result;
   }
 };
 
@@ -341,12 +351,13 @@ export const labelCounts = selectorFamily<
     const names = get(selectors.labelNames(key));
     const prefix = key === "sample" ? "" : "frames.";
     const stats = get(modal ? modalStats : selectors.datasetStats);
+    const labelTypesMap = get(selectors.labelTypesMap);
     if (stats === null) {
       return null;
     }
 
     return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
+      catchLabelCount(names, prefix, cur, acc, labelTypesMap);
       return acc;
     }, {});
   },
@@ -363,11 +374,13 @@ export const filteredLabelCounts = selectorFamily<
     const stats = get(
       modal ? extendedModalStats : selectors.extendedDatasetStats
     );
+    const labelTypesMap = get(selectors.labelTypesMap);
+
     if (stats === null) {
       return null;
     }
     return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
+      catchLabelCount(names, prefix, cur, acc, labelTypesMap);
       return acc;
     }, {});
   },
@@ -411,7 +424,6 @@ export const filteredScalarCounts = selectorFamily<
       return null;
     }
 
-    console.log(stats);
     return stats.reduce((acc, cur) => {
       catchLabelCount(names, "", cur, acc);
       return acc;
@@ -428,6 +440,33 @@ export const countsAtom = selectorFamily<
     const none = get(
       filtered ? noneFilteredFieldCounts(modal) : noneFieldCounts(modal)
     )[path];
+
+    const primitive = get(selectors.primitiveNames("sample"));
+
+    if (modal && primitive.includes(path)) {
+      const result = get(atoms.modal).sample[path];
+
+      if (!Array.isArray(result)) {
+        return { count: 0, results: [] };
+      }
+
+      const count = result.length;
+
+      return {
+        count,
+        results: Object.entries(
+          result.reduce((acc, cur) => {
+            if (!(cur in acc)) {
+              acc[cur] = 0;
+            }
+
+            acc[cur] += 1;
+
+            return acc;
+          }, {})
+        ),
+      };
+    }
 
     const atom = modal
       ? filtered
