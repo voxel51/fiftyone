@@ -321,8 +321,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError(
-                'media_type can only be one of %s; received "%s"'
-                % (fom.MEDIA_TYPES, media_type)
+                "Invalid media_type '%s'. Supported values are %s"
+                % (media_type, fom.MEDIA_TYPES)
             )
 
         self._doc.media_type = media_type
@@ -350,6 +350,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @name.setter
     def name(self, name):
+        if name in list_datasets():
+            raise ValueError("A dataset with name '%s' already exists" % name)
+
         _name = self._doc.name
         try:
             self._doc.name = name
