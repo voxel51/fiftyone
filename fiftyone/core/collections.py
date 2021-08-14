@@ -2937,6 +2937,56 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def group_by(self, field_or_expr, sort_expr=None, reverse=False):
+        """Creates a view that reorganizes the samples in the collection so
+        that they are grouped by a specified field or expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            # Take a random sample of 1000 samples and organize them by ground
+            # truth label with groups arranged in decreasing order of size
+            view = dataset.take(1000).group_by(
+                "ground_truth.label",
+                sort_expr=F().length(),
+                reverse=True,
+            )
+
+            print(view.values("ground_truth.label"))
+            print(
+                sorted(
+                    view.count_values("ground_truth.label").items(),
+                    key=lambda kv: kv[1],
+                    reverse=True,
+                )
+            )
+
+        Args:
+            field_or_expr: the field or ``embedded.field.name`` to group by, or
+                a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines the value to group by
+            sort_expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines how to sort the groups in the output view. If
+                provided, this expression will be evaluated on the list of
+                samples in each group
+            reverse (False): whether to return the results in descending order
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.GroupBy(field_or_expr, sort_expr=sort_expr, reverse=reverse)
+        )
+
+    @view_stage
     def limit(self, limit):
         """Returns a view with at most the given number of samples.
 

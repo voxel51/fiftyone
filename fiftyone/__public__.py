@@ -139,6 +139,7 @@ from .core.stages import (
     LimitLabels,
     GeoNear,
     GeoWithin,
+    GroupBy,
     MapLabels,
     Match,
     MatchFrames,
