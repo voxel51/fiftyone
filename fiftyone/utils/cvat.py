@@ -2539,33 +2539,31 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             ]
 
     def get(self, url):
-        """Send get request to the given CVAT API URL
+        """Sends a GET request to the given CVAT API URL
 
         Args:
-            url: the url to send the request to
+            url: the url
 
         Returns:
-            the response from the API request
+            the request response
         """
         response = self._session.get(url, verify=False)
         self._validate(response)
         return response
 
     def patch(self, url, auth=None, data=None, files=None, json=None):
-        """Send patch request to the given CVAT API URL
+        """Sends a PATCH request to the given CVAT API URL.
 
         Args:
-            url: the url to send the request to
-            auth (None): dictionary of "username" and "password" credentials to
-                send along with request
-            data (None): data to send along with patch request
-            files (None): files to send along with patch request
-            json (None): json data to send along with patch request
+            url: the url
+            auth (None): authentication credentials
+            data (None): data to send
+            files (None): files to send
+            json (None): json data to send
 
         Returns:
-            the response from the API request
+            the request response
         """
-
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2581,18 +2579,17 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return response
 
     def post(self, url, auth=None, data=None, files=None, json=None):
-        """Send post request to the given CVAT API URL
+        """Sends a POST request to the given CVAT API URL.
 
         Args:
-            url: the url to send the request to
-            auth (None): dictionary of "username" and "password" credentials to
-                send along with request
-            data (None): data to send along with patch request
-            files (None): files to send along with patch request
-            json (None): json data to send along with patch request
+            url: the url
+            auth (None): authentication credentials
+            data (None): data to send
+            files (None): files to send
+            json (None): json data to send
 
         Returns:
-            the response from the API request
+            the request response
         """
         kwargs = {"url": url, "verify": False}
         if auth is not None:
@@ -2609,15 +2606,14 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return response
 
     def put(self, url, auth=None, data=None, files=None, json=None):
-        """Send put request to the given CVAT API URL
+        """Sends a PUT request to the given CVAT API URL.
 
         Args:
-            url: the url to send the request to
-            auth (None): dictionary of "username" and "password" credentials to
-                send along with request
-            data (None): data to send along with patch request
-            files (None): files to send along with patch request
-            json (None): json data to send along with patch request
+            url: the url
+            auth (None): authentication credentials
+            data (None): data to send
+            files (None): files to send
+            json (None): json data to send
 
         Returns:
             the request response
@@ -2637,28 +2633,26 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         return response
 
     def delete(self, url):
-        """Send delete request to the given CVAT API URL
+        """Sends a DELETE request to the given CVAT API URL.
 
         Args:
             url: the url to send the request to
 
         Returns:
-            the response from the API request
+            the request response
         """
         response = self._session.delete(url, verify=False)
         self._validate(response)
         return response
 
     def get_user_id(self, username):
-        """Search for and gather the CVAT internal user id for a given
-        username.
+        """Retrieves the CVAT user ID for the given username.
 
         Args:
-            username: the string username to get the id of
+            username: the username
 
         Returns:
-            the user id of the username provided, or None if the user was not
-            found
+            the user ID, or None if the user was not found
         """
         if username is None:
             return
