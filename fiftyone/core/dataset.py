@@ -2511,26 +2511,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        dataset_dir = etau.split_archive(archive_path)[0]
-
-        if not os.path.isdir(dataset_dir):
-            outdir = os.path.dirname(dataset_dir)
-            etau.extract_archive(
-                archive_path, outdir=outdir, delete_archive=cleanup
-            )
-
-            if not os.path.isdir(dataset_dir):
-                raise ValueError(
-                    "Expected to find a directory '%s' after extracting '%s', "
-                    "but it was not found" % (dataset_dir, archive_path)
-                )
-        else:
-            logger.info(
-                "Assuming '%s' contains the extracted contents of '%s'",
-                dataset_dir,
-                archive_path,
-            )
-
+        dataset_dir = _extract_archive_if_necessary(archive_path, cleanup)
         return self.add_dir(
             dataset_dir=dataset_dir,
             dataset_type=dataset_type,
@@ -2566,9 +2547,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the contents of the given archive into the dataset.
 
-        If the archive does not exist but a directory with the same root name
-        does exist, it is assumed that this directory contains the extracted
-        contents of the archive.
+        If a directory with the same root name as ``archive_path`` exists, it
+        is assumed that this directory contains the extracted contents of the
+        archive, and thus the archive is not re-extracted.
 
         See :ref:`this guide <loading-datasets-from-disk>` for example usages
         of this method and descriptions of the available dataset types.
@@ -2707,12 +2688,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
         """
-        dataset_dir = etau.split_archive(archive_path)[0]
-        if os.path.isfile(archive_path) or not os.path.isdir(dataset_dir):
-            etau.extract_archive(
-                archive_path, outdir=dataset_dir, delete_archive=cleanup
-            )
-
+        dataset_dir = _extract_archive_if_necessary(archive_path, cleanup)
         return self.merge_dir(
             dataset_dir=dataset_dir,
             dataset_type=dataset_type,
@@ -5489,3 +5465,27 @@ def _parse_field_mapping(field_mapping):
             new_fields.append(new_field)
 
     return fields, new_fields, embedded_fields, embedded_new_fields
+
+
+def _extract_archive_if_necessary(archive_path, cleanup):
+    dataset_dir = etau.split_archive(archive_path)[0]
+
+    if not os.path.isdir(dataset_dir):
+        outdir = os.path.dirname(dataset_dir)
+        etau.extract_archive(
+            archive_path, outdir=outdir, delete_archive=cleanup
+        )
+
+        if not os.path.isdir(dataset_dir):
+            raise ValueError(
+                "Expected to find a directory '%s' after extracting '%s', "
+                "but it was not found" % (dataset_dir, archive_path)
+            )
+    else:
+        logger.info(
+            "Assuming '%s' contains the extracted contents of '%s'",
+            dataset_dir,
+            archive_path,
+        )
+
+    return dataset_dir
