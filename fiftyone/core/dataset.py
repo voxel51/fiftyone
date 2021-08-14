@@ -2522,7 +2522,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if not os.path.isdir(dataset_dir):
                 raise ValueError(
                     "Expected to find a directory '%s' after extracting '%s', "
-                    "but it was not found"
+                    "but it was not found" % (dataset_dir, archive_path)
                 )
         else:
             logger.info(
