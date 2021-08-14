@@ -948,9 +948,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ) = _parse_field_mapping(field_mapping)
 
         if fields:
-            self._frame_doc_cls._rename_fields(
-                fields, new_fields, are_frame_fields=True
-            )
+            self._frame_doc_cls._rename_fields(fields, new_fields, frames=True)
             fofr.Frame._rename_fields(
                 self._frame_collection_name, fields, new_fields
             )
@@ -1243,7 +1241,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if fields:
             self._frame_doc_cls._delete_fields(
-                fields, are_frame_fields=True, error_level=error_level
+                fields, frames=True, error_level=error_level
             )
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
