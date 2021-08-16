@@ -147,8 +147,8 @@ const Distribution = ({ distribution }) => {
 const omitDistributions = selectorFamily<string[], string>({
   key: "omitDistributions",
   get: (group) => ({ get }) => {
-    if (group.toLowerCase() == "scalars") {
-      const scalars = get(selectors.scalarNames("sample"));
+    if (group.toLowerCase() == "other") {
+      const primitives = get(selectors.primitiveNames("sample"));
       let stats = get(selectors.extendedDatasetStats);
       if (!stats || stats.length === 0) {
         stats = get(selectors.datasetStats);
@@ -163,7 +163,7 @@ const omitDistributions = selectorFamily<string[], string>({
         return acc;
       }, {});
       const omit = ["tags", "filepath", "sample_id"];
-      scalars.forEach((name) => {
+      primitives.forEach((name) => {
         if (distinct[name] && distinct[name] > 100) {
           omit.push(name);
         }
