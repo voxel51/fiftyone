@@ -9,7 +9,6 @@ import { BaseElement, Events } from "../base";
 import { dispatchTooltipEvent } from "./util";
 
 import { invisible, lookerCanvas } from "./canvas.module.css";
-import { IS_NOTEBOOK } from "./actions";
 
 export class CanvasElement<State extends BaseState> extends BaseElement<
   State,
@@ -124,9 +123,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 return {};
               }
 
-              if (IS_NOTEBOOK && !event.shiftKey) {
-                return {};
-              }
+              event.preventDefault();
+              event.stopImmediatePropagation();
 
               const x = event.x - tlx;
               const y = event.y - tly;
