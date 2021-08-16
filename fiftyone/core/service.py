@@ -453,7 +453,7 @@ class AppService(Service):
 
     def find_app(self):
         if foc.DEV_INSTALL:
-            return ["yarn", "start-app"]
+            return ["yarn", "start-desktop"]
 
         for path in etau.list_files("./"):
             if path.endswith(".tar.gz"):

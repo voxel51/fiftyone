@@ -484,6 +484,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.canvas = document.createElement("canvas");
         this.canvas.width = dimensions[0];
         this.canvas.height = dimensions[1];
+        this.canvas.style.imageRendering = "pixelated";
         acquireThumbnailer().then(([video, release]) => {
           const listener = () => {
             requestAnimationFrame(() => {

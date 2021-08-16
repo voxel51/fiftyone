@@ -35,7 +35,7 @@ export const createScrollReader = (
           zooming = false;
           timer = undefined;
           render(false);
-        }, 500);
+        }, 350);
       } else {
         if (timer === undefined) {
           scrolling = false;
