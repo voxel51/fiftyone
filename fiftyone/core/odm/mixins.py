@@ -157,20 +157,15 @@ def get_implied_field_kwargs(value):
 
     if isinstance(value, (list, tuple)):
         kwargs = {"ftype": fof.ListField}
-        if not value:
-            return kwargs
 
-        first_type = _get_scalar_type(value[0])
-        if first_type is None:
-            return kwargs
+        value_types = set(_get_list_value_type(v) for v in value)
 
-        if all(_get_scalar_type(v) == first_type for v in value[1:]):
-            kwargs["subfield"] = first_type
-        elif all(
-            _get_scalar_type(v) in {fo.IntField, fo.FloatField}
-            for v in value[1:]
-        ):
-            kwargs["subfield"] = fo.FloatField
+        if value_types == {fof.IntField, fof.FloatField}:
+            kwargs["subfield"] = fof.FloatField
+        elif len(value_types) == 1:
+            value_type = next(iter(value_types))
+            if value_type is not None:
+                kwargs["subfield"] = value_type
 
         return kwargs
 
@@ -188,7 +183,7 @@ def get_implied_field_kwargs(value):
     )
 
 
-def _get_scalar_type(value):
+def _get_list_value_type(value):
     if isinstance(value, bool):
         return fof.BooleanField
 
