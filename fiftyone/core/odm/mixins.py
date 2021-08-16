@@ -156,7 +156,18 @@ def get_implied_field_kwargs(value):
         return {"ftype": fof.StringField}
 
     if isinstance(value, (list, tuple)):
-        return {"ftype": fof.ListField}
+        kwargs = {"ftype": fof.ListField}
+
+        value_types = set(_get_list_value_type(v) for v in value)
+
+        if value_types == {fof.IntField, fof.FloatField}:
+            kwargs["subfield"] = fof.FloatField
+        elif len(value_types) == 1:
+            value_type = next(iter(value_types))
+            if value_type is not None:
+                kwargs["subfield"] = value_type
+
+        return kwargs
 
     if isinstance(value, np.ndarray):
         if value.ndim == 1:
@@ -170,6 +181,22 @@ def get_implied_field_kwargs(value):
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value
     )
+
+
+def _get_list_value_type(value):
+    if isinstance(value, bool):
+        return fof.BooleanField
+
+    if isinstance(value, six.integer_types):
+        return fof.IntField
+
+    if isinstance(value, numbers.Number):
+        return fof.FloatField
+
+    if isinstance(value, six.string_types):
+        return fof.StringField
+
+    return None
 
 
 class DatasetMixin(object):
@@ -390,15 +417,13 @@ class DatasetMixin(object):
         self.set_field(field_name, None)
 
     @classmethod
-    def _rename_fields(
-        cls, field_names, new_field_names, are_frame_fields=False
-    ):
+    def _rename_fields(cls, field_names, new_field_names, frames=False):
         """Renames the fields of the samples in this collection.
 
         Args:
             field_names: an iterable of field names
             new_field_names: an iterable of new field names
-            are_frame_fields (False): whether these are frame-level fields
+            frames (False): whether these are frame-level fields
         """
         default_fields = get_default_fields(
             cls.__bases__[0], include_private=True
@@ -417,9 +442,7 @@ class DatasetMixin(object):
             return
 
         for field_name, new_field_name in zip(field_names, new_field_names):
-            cls._rename_field_schema(
-                field_name, new_field_name, are_frame_fields
-            )
+            cls._rename_field_schema(field_name, new_field_name, frames)
 
         cls._rename_fields_simple(field_names, new_field_names)
 
@@ -528,14 +551,12 @@ class DatasetMixin(object):
         cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
-    def _delete_fields(
-        cls, field_names, are_frame_fields=False, error_level=0
-    ):
+    def _delete_fields(cls, field_names, frames=False, error_level=0):
         """Deletes the field(s) from the samples in this collection.
 
         Args:
             field_names: an iterable of field names
-            are_frame_fields (False): whether these are frame-level fields
+            frames (False): whether these are frame-level fields
             error_level (0): the error level to use. Valid values are:
 
             -   0: raise error if a field cannot be deleted
@@ -568,7 +589,7 @@ class DatasetMixin(object):
             return
 
         for field_name in _field_names:
-            cls._delete_field_schema(field_name, are_frame_fields)
+            cls._delete_field_schema(field_name, frames)
 
         cls._delete_fields_simple(_field_names)
 
@@ -703,7 +724,6 @@ class DatasetMixin(object):
             if issubclass(cls, SampleDocument):
                 setattr(cls, field.name, field)
         except TypeError:
-            # Instance, not class
             pass
 
     @classmethod
@@ -735,14 +755,13 @@ class DatasetMixin(object):
         dataset_doc.save()
 
     @classmethod
-    def _rename_field_schema(
-        cls, field_name, new_field_name, are_frame_fields
-    ):
+    def _rename_field_schema(cls, field_name, new_field_name, frames):
         # pylint: disable=no-member
         field = cls._fields[field_name]
         field = _rename_field(field, new_field_name)
         cls._fields[new_field_name] = field
         del cls._fields[field_name]
+
         cls._fields_ordered = tuple(
             (fn if fn != field_name else new_field_name)
             for fn in cls._fields_ordered
@@ -753,19 +772,20 @@ class DatasetMixin(object):
             if issubclass(cls, Document):
                 setattr(cls, new_field_name, field)
         except TypeError:
-            # Instance, not class, so do not `setattr`
             pass
 
         dataset_doc = cls._dataset_doc()
 
-        if are_frame_fields:
+        if frames:
             for f in dataset_doc.frame_fields:
                 if f.name == field_name:
                     f.name = new_field_name
+                    f.db_field = new_field_name
         else:
             for f in dataset_doc.sample_fields:
                 if f.name == field_name:
                     f.name = new_field_name
+                    f.db_field = new_field_name
 
         dataset_doc.save()
 
@@ -776,7 +796,7 @@ class DatasetMixin(object):
         cls._add_field_schema(new_field_name, **get_field_kwargs(field))
 
     @classmethod
-    def _delete_field_schema(cls, field_name, are_frame_fields):
+    def _delete_field_schema(cls, field_name, frames):
         # pylint: disable=no-member
         del cls._fields[field_name]
         cls._fields_ordered = tuple(
@@ -786,7 +806,7 @@ class DatasetMixin(object):
 
         dataset_doc = cls._dataset_doc()
 
-        if are_frame_fields:
+        if frames:
             dataset_doc.frame_fields = [
                 f for f in dataset_doc.frame_fields if f.name != field_name
             ]

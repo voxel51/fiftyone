@@ -7,13 +7,18 @@ import {
 
 import * as selectors from "../../recoil/selectors";
 import { Range } from "./RangeSlider";
-import { AGGS, VALID_NUMERIC_TYPES } from "../../utils/labels";
+import { AGGS, LIST_FIELD, VALID_NUMERIC_TYPES } from "../../utils/labels";
 import { filterStage } from "./atoms";
 
 export const isNumericField = selectorFamily<boolean, string>({
   key: "isNumericField",
   get: (name) => ({ get }) => {
-    const map = get(selectors.scalarsMap("sample"));
+    let map = get(selectors.primitivesMap("sample"));
+
+    if (map[name] === LIST_FIELD) {
+      map = get(selectors.primitivesSubfieldMap("sample"));
+    }
+
     return VALID_NUMERIC_TYPES.includes(map[name]);
   },
 });

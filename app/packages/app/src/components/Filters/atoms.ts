@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { AGGS } from "../../utils/labels";
+import { AGGS, LABEL_LIST, LABEL_LISTS } from "../../utils/labels";
 import { request } from "../../utils/socket";
 import { viewsAreEqual } from "../../utils/view";
 import { Value } from "./types";
@@ -97,7 +97,7 @@ const modalStatsRaw = selector({
 
 export const modalStats = selector({
   key: "modalStats",
-  get: ({ get }) => get(modalStatsRaw).main,
+  get: ({ get }) => get(modalStatsRaw),
 });
 
 const extendedModalStatsRaw = selector({
@@ -119,8 +119,67 @@ const extendedModalStatsRaw = selector({
 
 export const extendedModalStats = selector({
   key: "extendedModalStats",
-  get: ({ get }) => get(extendedModalStatsRaw).main,
+  get: ({ get }) => get(extendedModalStatsRaw),
 });
+
+const computeNoneCounts = (
+  stats: Array<any>,
+  video: boolean = false
+): { [key: string]: number } => {
+  let count = null;
+  let frameCount = null;
+
+  const data = stats.reduce((acc, cur) => {
+    if (cur.name === null) {
+      count = cur.result;
+    }
+
+    if (cur.name === "frames" && video) {
+      frameCount = cur.result;
+    }
+
+    if (!acc[cur.name]) {
+      acc[cur.name] = {};
+    }
+
+    acc[cur.name][cur._CLS] = cur.result;
+
+    return acc;
+  }, {});
+
+  const result = {};
+  for (let path in data) {
+    if (video && path.startsWith("frames.")) {
+      path = path.slice("frames.".length);
+      let parent = path.includes(".")
+        ? path.split(".").slice(0, -1).join(".")
+        : path;
+
+      const check = path;
+      path = "frames." + path;
+      parent = "frames." + parent;
+
+      if (path === parent) {
+        result[path] = frameCount - data[path][AGGS.COUNT];
+      } else if (check.includes(".") && data[parent] && data[path]) {
+        result[path] = data[parent][AGGS.COUNT] - data[path][AGGS.COUNT];
+      }
+      continue;
+    }
+
+    let parent = path.includes(".")
+      ? path.split(".").slice(0, -1).join(".")
+      : path;
+
+    if (path === parent) {
+      result[path] = count - data[path][AGGS.COUNT];
+    } else if (path.includes(".") && data[parent] && data[path]) {
+      result[path] = data[parent][AGGS.COUNT] - data[path][AGGS.COUNT];
+    }
+  }
+
+  return result;
+};
 
 export const noneFieldCounts = selectorFamily<
   { [key: string]: number },
@@ -129,6 +188,7 @@ export const noneFieldCounts = selectorFamily<
   key: "noneFieldCounts",
   get: (modal) => ({ get }) => {
     const raw = get(modal ? modalStatsRaw : atoms.datasetStatsRaw);
+    const video = get(selectors.isVideoDataset);
 
     const currentView = get(selectors.view);
     if (!raw.view) {
@@ -138,10 +198,7 @@ export const noneFieldCounts = selectorFamily<
       return {};
     }
 
-    return raw.stats.none.reduce((acc, cur) => {
-      acc[cur.name] = cur.result;
-      return acc;
-    }, {});
+    return computeNoneCounts(raw.stats, video);
   },
 });
 
@@ -154,6 +211,7 @@ export const noneFilteredFieldCounts = selectorFamily<
     const raw = get(
       modal ? extendedModalStatsRaw : atoms.extendedDatasetStatsRaw
     );
+    const video = get(selectors.isVideoDataset);
 
     const currentView = get(selectors.view);
     if (!raw.view) {
@@ -174,10 +232,7 @@ export const noneFilteredFieldCounts = selectorFamily<
       return noneFieldCounts(modal);
     }
 
-    return raw.stats.none.reduce((acc, cur) => {
-      acc[cur.name] = cur.result;
-      return acc;
-    }, {});
+    return computeNoneCounts(raw.stats, video);
   },
 });
 
@@ -258,8 +313,8 @@ export const sampleTagCounts = selectorFamily<
 
     return stats
       ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags") {
-            return cur.result;
+          if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
+            return Object.fromEntries(cur.result[1]);
           }
           return acc;
         }, {})
@@ -279,8 +334,8 @@ export const filteredSampleTagCounts = selectorFamily<
 
     return stats
       ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags") {
-            return cur.result;
+          if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
+            return Object.fromEntries(cur.result[1]);
           }
           return acc;
         }, {})
@@ -288,20 +343,32 @@ export const filteredSampleTagCounts = selectorFamily<
   },
 });
 
-const COUNT_CLS = "Count";
-
 export const catchLabelCount = (
   names: string[],
   prefix: string,
   cur: { name: string; _CLS: string; result: number },
-  acc: { [key: string]: number }
+  acc: { [key: string]: number },
+  types?: { [key: string]: string }
 ): void => {
+  if (!cur.name) {
+    return;
+  }
+
+  const fieldName = cur.name.slice(prefix.length).split(".")[0];
+
+  let key = cur.name;
+  if (types && LABEL_LISTS.includes(types[prefix + fieldName])) {
+    key = prefix + `${fieldName}.${LABEL_LIST[types[prefix + fieldName]]}`;
+  } else if (types && cur.name !== prefix + fieldName) {
+    return;
+  }
+
   if (
-    cur.name &&
-    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
-    cur._CLS === COUNT_CLS
+    names.includes(fieldName) &&
+    key === cur.name &&
+    cur._CLS === AGGS.COUNT
   ) {
-    acc[prefix + cur.name.slice(prefix.length).split(".")[0]] = cur.result;
+    acc[prefix + fieldName] = cur.result;
   }
 };
 
@@ -314,11 +381,13 @@ export const labelCounts = selectorFamily<
     const names = get(selectors.labelNames(key));
     const prefix = key === "sample" ? "" : "frames.";
     const stats = get(modal ? modalStats : selectors.datasetStats);
+    const labelTypesMap = get(selectors.labelTypesMap);
     if (stats === null) {
       return null;
     }
+
     return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
+      catchLabelCount(names, prefix, cur, acc, labelTypesMap);
       return acc;
     }, {});
   },
@@ -335,11 +404,13 @@ export const filteredLabelCounts = selectorFamily<
     const stats = get(
       modal ? extendedModalStats : selectors.extendedDatasetStats
     );
+    const labelTypesMap = get(selectors.labelTypesMap);
+
     if (stats === null) {
       return null;
     }
     return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc);
+      catchLabelCount(names, prefix, cur, acc, labelTypesMap);
       return acc;
     }, {});
   },
@@ -355,7 +426,7 @@ export const scalarCounts = selectorFamily<
       return get(atoms.modal).sample;
     }
 
-    const names = get(selectors.scalarNames("sample"));
+    const names = get(selectors.primitiveNames("sample"));
     const stats = get(selectors.datasetStats);
     if (stats === null) {
       return null;
@@ -377,11 +448,12 @@ export const filteredScalarCounts = selectorFamily<
       return null;
     }
 
-    const names = get(selectors.scalarNames("sample"));
+    const names = get(selectors.primitiveNames("sample"));
     const stats = get(selectors.extendedDatasetStats);
     if (stats === null) {
       return null;
     }
+
     return stats.reduce((acc, cur) => {
       catchLabelCount(names, "", cur, acc);
       return acc;
@@ -398,6 +470,35 @@ export const countsAtom = selectorFamily<
     const none = get(
       filtered ? noneFilteredFieldCounts(modal) : noneFieldCounts(modal)
     )[path];
+
+    const primitive = get(selectors.primitiveNames("sample"));
+
+    if (modal && primitive.includes(path)) {
+      const result = get(atoms.modal).sample[path];
+
+      if (!Array.isArray(result)) {
+        return { count: 0, results: [] };
+      }
+
+      const count = result.length;
+
+      return {
+        count,
+        results: Array.from(
+          result
+            .reduce((acc, cur) => {
+              if (!acc.has(cur)) {
+                acc.set(cur, 0);
+              }
+
+              acc.set(cur, acc.get(cur) + 1);
+
+              return acc;
+            }, new Map())
+            .entries()
+        ),
+      };
+    }
 
     const atom = modal
       ? filtered
@@ -489,8 +590,8 @@ export const tagNames = selectorFamily<string[], boolean>({
   get: (modal) => ({ get }) => {
     return (get(modal ? modalStats : selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
-        if (cur.name === "tags") {
-          return Object.keys(cur.result).sort();
+        if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
+          return cur.result[1].map(([v]) => v).sort();
         }
         return acc;
       },

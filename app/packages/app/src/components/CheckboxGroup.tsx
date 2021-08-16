@@ -21,7 +21,7 @@ import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
 import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
 import { useTheme } from "../utils/hooks";
-import { genSort } from "../utils/generic";
+import { genSort, prettify } from "../utils/generic";
 import { sortFilterResults } from "../recoil/atoms";
 
 const Body = styled.div`
@@ -152,10 +152,10 @@ const CheckboxText = ({
   const subCount = subCounts ? subCounts[path] : null;
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
 
-  if (value) {
+  if (value || typeof value === "string") {
     return (
-      <span className="count" title={title}>
-        {value}
+      <span className="count" title={title} style={{ marginRight: 4 }}>
+        {prettify(value)}
       </span>
     );
   }
@@ -172,6 +172,7 @@ const CheckboxText = ({
       />
     );
   }
+
   return (
     <>
       <span className="count" title={title}>
@@ -186,7 +187,7 @@ const CheckboxText = ({
             e.preventDefault();
             setExpanded(!expanded);
           }}
-          style={{ marginRight: -4 }}
+          style={{ marginRight: -4, cursor: "pointer" }}
         />
       )}
     </>
@@ -210,6 +211,7 @@ export type Entry = {
   type: string;
   icon?: any;
   key?: string;
+  disableList?: boolean;
 };
 
 type EntryProps = {
@@ -238,23 +240,30 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
-  const fieldFiltered =
-    useRecoilValue(fieldIsFiltered({ path, modal })) && canFilter;
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
   const isBoolean = useRecoilValue(isBooleanField(path));
+  const fieldFiltered =
+    useRecoilValue(fieldIsFiltered({ path, modal })) &&
+    canFilter &&
+    !((isNumeric || isBoolean || isString) && modal);
 
   const checkboxClass = hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
     backgroundColor: fieldFiltered ? "#6C757D" : theme.backgroundLight,
   });
+
   return (
     <CheckboxContainer style={containerProps}>
       <FormControlLabel
         disabled={disabled}
         label={
           <>
-            <span className="name" title={name}>
+            <span
+              className="name"
+              title={name}
+              style={{ marginLeft: hideCheckbox ? 4 : 0 }}
+            >
               {name}
             </span>
             {

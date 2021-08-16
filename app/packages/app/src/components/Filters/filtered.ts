@@ -21,7 +21,7 @@ const clearFilters = ({ current, get, modal, paths, set }) => {
 export const filteredScalars = selectorFamily<string[], boolean>({
   key: "filteredScalars",
   get: (modal) => ({ get }) => {
-    const scalars = get(selectors.scalarNames("sample"));
+    const scalars = get(selectors.primitiveNames("sample"));
 
     let filtered = [];
     scalars.forEach((path) => {

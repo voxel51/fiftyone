@@ -95,9 +95,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
               value: label,
             })),
         ];
-      } else if (fieldsMap && sample[fieldsMap[path] || path]) {
+      } else if (
+        fieldsMap &&
+        ![undefined, null].includes(sample[fieldsMap[path] || path])
+      ) {
         const value = sample[fieldsMap[path] || path];
-        if (["boolean", "number", "string"].includes(typeof value)) {
+
+        const appendElement = (value) => {
           const pretty = prettify(value);
           elements = [
             ...elements,
@@ -107,6 +111,19 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
               value: pretty,
             },
           ];
+        };
+
+        if (isScalar(value)) {
+          appendElement(value);
+        } else if (Array.isArray(value)) {
+          const filtered = filter[path]
+            ? value.filter((v) => filter[path](v))
+            : value;
+          const shown = [...filtered].sort().slice(0, 3);
+          shown.forEach((v) => appendElement(v));
+
+          const more = filtered.length - shown.length;
+          more > 0 && appendElement(`+${more} more`);
         }
       }
       return elements;
@@ -154,3 +171,6 @@ const prettify = (v: boolean | string | null | undefined | number): string => {
   }
   return null;
 };
+
+const isScalar = (value) =>
+  ["boolean", "number", "string"].includes(typeof value);

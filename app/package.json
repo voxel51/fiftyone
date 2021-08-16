@@ -6,10 +6,11 @@
     "private": true,
     "main": "index.js",
     "scripts": {
-        "dev": "yarn workspace @fiftyone/app dev",
-        "start": "yarn workspace @fiftyone/app start",
         "build": "yarn workspace @fiftyone/app build",
-        "postinstall": "patch-package"
+        "dev": "yarn workspace @fiftyone/app dev",
+        "postinstall": "patch-package",
+        "start": "yarn workspace @fiftyone/app start",
+        "start-desktop": "yarn workspace FiftyOne start-desktop"
     },
     "devDependencies": {
         "patch-package": "^6.4.7",

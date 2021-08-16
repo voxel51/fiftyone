@@ -8,6 +8,7 @@ import {
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   VALID_LIST_TYPES,
+  LIST_FIELD,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -233,7 +234,7 @@ export const datasetStats = selector({
       return null;
     }
     if (viewsAreEqual(raw.view, currentView)) {
-      return raw.stats.main;
+      return raw.stats;
     }
     return null;
   },
@@ -265,7 +266,7 @@ export const extendedDatasetStats = selector({
       return null;
     }
 
-    return raw.stats.main;
+    return raw.stats;
   },
 });
 
@@ -341,12 +342,16 @@ const labelFilter = (f) => {
   );
 };
 
-const scalarFilter = (f) => {
+const primitiveFilter = (f) => {
   if (f.name.startsWith("_") || f.name === "tags") {
     return false;
   }
 
   if (VALID_SCALAR_TYPES.includes(f.ftype)) {
+    return true;
+  }
+
+  if (f.ftype === LIST_FIELD && VALID_SCALAR_TYPES.includes(f.subfield)) {
     return true;
   }
 
@@ -484,29 +489,37 @@ export const labelTypes = selectorFamily<string[], string>({
   },
 });
 
-const scalars = selectorFamily({
-  key: "scalars",
+const primitives = selectorFamily({
+  key: "primitives",
   get: (dimension: string) => ({ get }) => {
     const fieldsValue = get(selectedFields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
-      .filter(scalarFilter);
+      .filter(primitiveFilter);
   },
 });
 
-export const scalarNames = selectorFamily({
-  key: "scalarNames",
+export const primitiveNames = selectorFamily({
+  key: "primitiveNames",
   get: (dimension: string) => ({ get }) => {
-    const l = get(scalars(dimension));
+    const l = get(primitives(dimension));
     return l.map((l) => l.name);
   },
 });
 
-export const scalarTypes = selectorFamily({
-  key: "scalarTypes",
+export const primitiveTypes = selectorFamily({
+  key: "primitiveTypes",
   get: (dimension: string) => ({ get }) => {
-    const l = get(scalars(dimension));
+    const l = get(primitives(dimension));
     return l.map((l) => l.ftype);
+  },
+});
+
+export const primitiveSubfields = selectorFamily({
+  key: "primitiveSubfields",
+  get: (dimension: string) => ({ get }) => {
+    const l = get(primitives(dimension));
+    return l.map((l) => l.subfield);
   },
 });
 
@@ -531,11 +544,11 @@ export const labelMap = selectorFamily({
   },
 });
 
-export const scalarsMap = selectorFamily<{ [key: string]: string }, string>({
-  key: "scalarsMap",
+export const primitivesMap = selectorFamily<{ [key: string]: string }, string>({
+  key: "primitivesMap",
   get: (dimension) => ({ get }) => {
-    const types = get(scalarTypes(dimension));
-    return get(scalarNames(dimension)).reduce(
+    const types = get(primitiveTypes(dimension));
+    return get(primitiveNames(dimension)).reduce(
       (acc, cur, i) => ({
         ...acc,
         [cur]: types[i],
@@ -545,11 +558,31 @@ export const scalarsMap = selectorFamily<{ [key: string]: string }, string>({
   },
 });
 
-export const scalarsDbMap = selectorFamily<{ [key: string]: string }, string>({
-  key: "scalarsMap",
+export const primitivesSubfieldMap = selectorFamily<
+  { [key: string]: string },
+  string
+>({
+  key: "primitivesSubfieldMap",
   get: (dimension) => ({ get }) => {
-    const values = get(scalars(dimension));
-    return get(scalarNames(dimension)).reduce(
+    const subfields = get(primitiveSubfields(dimension));
+    return get(primitiveNames(dimension)).reduce(
+      (acc, cur, i) => ({
+        ...acc,
+        [cur]: subfields[i],
+      }),
+      {}
+    );
+  },
+});
+
+export const primitivesDbMap = selectorFamily<
+  { [key: string]: string },
+  string
+>({
+  key: "primitivesDbMap",
+  get: (dimension) => ({ get }) => {
+    const values = get(primitives(dimension));
+    return get(primitiveNames(dimension)).reduce(
       (acc, cur, i) => ({
         ...acc,
         [cur]: values[i].db_field,

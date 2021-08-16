@@ -211,8 +211,8 @@ export abstract class Looker<
       ctx.clearRect(
         0,
         0,
-        this.state.windowBBox[2] * dpr,
-        this.state.windowBBox[3] * dpr
+        Math.ceil(this.state.windowBBox[2] * dpr),
+        Math.ceil(this.state.windowBBox[3] * dpr)
       );
 
       ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
@@ -555,7 +555,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
 
     if (this.state.zoomToContent) {
       toggleZoom(this.state, this.currentOverlays);
-    } else if (this.state.setZoom && this.pluckedOverlays.length) {
+    } else if (this.state.setZoom && this.state.overlaysPrepared) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -647,7 +647,7 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
 
     if (this.state.zoomToContent) {
       toggleZoom(this.state, this.currentOverlays);
-    } else if (this.state.setZoom && this.pluckedOverlays.length) {
+    } else if (this.state.setZoom && this.state.overlaysPrepared) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -1190,7 +1190,9 @@ const filterSample = <S extends Sample | FrameSample>(
   for (const field in sample) {
     if (fieldsMap.hasOwnProperty(field)) {
       sample[fieldsMap[field]] = sample[field];
-      delete sample[field];
+      if (field !== fieldsMap[field]) {
+        delete sample[field];
+      }
     } else if (field.startsWith("_")) {
       delete sample[field];
     } else if (
