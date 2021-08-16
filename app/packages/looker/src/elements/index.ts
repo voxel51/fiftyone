@@ -38,10 +38,10 @@ export const getFrameElements: GetElements<FrameState> = (
       {
         node: common.ErrorElement,
       },
+      { node: common.TagsElement },
       {
         node: common.ThumbnailSelectorElement,
       },
-      { node: common.TagsElement },
       {
         node: common.JSONPanelElement,
       },
@@ -105,10 +105,10 @@ export const getImageElements: GetElements<ImageState> = (
       {
         node: common.ErrorElement,
       },
+      { node: common.TagsElement },
       {
         node: common.ThumbnailSelectorElement,
       },
-      { node: common.TagsElement },
       {
         node: common.JSONPanelElement,
       },
@@ -172,10 +172,10 @@ export const getVideoElements: GetElements<VideoState> = (
       {
         node: common.ErrorElement,
       },
+      { node: common.TagsElement },
       {
         node: common.ThumbnailSelectorElement,
       },
-      { node: common.TagsElement },
       {
         node: common.JSONPanelElement,
       },

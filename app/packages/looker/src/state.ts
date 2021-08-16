@@ -94,7 +94,6 @@ export interface ImageConfig extends BaseConfig {}
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
-  restPromise?: Promise<BaseSample>;
 }
 
 export interface FrameOptions extends BaseOptions {

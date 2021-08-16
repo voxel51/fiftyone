@@ -162,7 +162,14 @@ def _make_filter_stages(
                     cleanup.add(new_field)
         else:
             view_field = get_view_field(fields_map, path)
-            expr = _make_scalar_expression(view_field, args)
+
+            if isinstance(field, fof.ListField):
+                filter = _make_scalar_expression(F(), args)
+                if filter is not None:
+                    expr = view_field.filter(filter).length() > 0
+            else:
+                expr = _make_scalar_expression(view_field, args)
+
             if expr is not None:
                 stages.append(fosg.Match(expr))
 

@@ -130,7 +130,7 @@ const Results = React.memo(
             highlight={highlight}
             onClick={() => onSelect(result[0])}
             active={active === result[0]}
-            maxLen={32 - result[1].toLocaleString().length}
+            maxLen={26 - result[1].toLocaleString().length}
             color={color}
           />
         ))}

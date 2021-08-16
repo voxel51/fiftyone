@@ -333,6 +333,13 @@ available actions and their associated hotkeys.
     :alt: image-visualizer
     :align: center
 
+.. note::
+
+    When working in :ref:`Jupyter/Colab notebooks <notebooks>`, you can hold
+    down the `SHIFT` key when zoom-scrolling or using the arrow keys to
+    navigate between samples/labels to restrict your inputs to the App and thus
+    prevent them from also affecting your browser window.
+
 .. _app-video-visualizer:
 
 Using the video visualizer
@@ -370,6 +377,13 @@ hovering, a slider appears to adjust the setting manually.
 .. image:: /images/app/app-video-visualizer.gif
     :alt: video-visualizer
     :align: center
+
+.. note::
+
+    When working in :ref:`Jupyter/Colab notebooks <notebooks>`, you can hold
+    down the `SHIFT` key when zoom-scrolling or using the arrow keys to
+    navigate between samples/labels to restrict your inputs to the App and thus
+    prevent them from also affecting your browser window.
 
 .. _app-stats-tabs:
 
