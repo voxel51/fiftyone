@@ -96,8 +96,8 @@ const flashlightLookerOptions = selector({
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
-      fieldsMap: get(selectors.scalarsDbMap("sample")),
-      frameFieldsMap: get(selectors.scalarsDbMap("frame")),
+      fieldsMap: get(selectors.primitivesDbMap("sample")),
+      frameFieldsMap: get(selectors.primitivesDbMap("frame")),
     };
   },
 });

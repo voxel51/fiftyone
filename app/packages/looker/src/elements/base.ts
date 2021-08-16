@@ -44,9 +44,7 @@ export abstract class BaseElement<
       this.events[eventType] = (event) =>
         handler({ event, update, dispatchEvent });
       this.element &&
-        this.element.addEventListener(eventType, this.events[eventType], {
-          passive: eventType === "wheel",
-        });
+        this.element.addEventListener(eventType, this.events[eventType]);
     }
   }
   applyChildren(children: BaseElement<State>[]) {

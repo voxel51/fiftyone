@@ -10,7 +10,6 @@
   overflow-y: auto;
   scrollbar-width: none;
   width: 100%;
-  z-index: 498;
   pointer-events: none;
 }
 

@@ -156,7 +156,18 @@ def get_implied_field_kwargs(value):
         return {"ftype": fof.StringField}
 
     if isinstance(value, (list, tuple)):
-        return {"ftype": fof.ListField}
+        kwargs = {"ftype": fof.ListField}
+
+        value_types = set(_get_list_value_type(v) for v in value)
+
+        if value_types == {fof.IntField, fof.FloatField}:
+            kwargs["subfield"] = fof.FloatField
+        elif len(value_types) == 1:
+            value_type = next(iter(value_types))
+            if value_type is not None:
+                kwargs["subfield"] = value_type
+
+        return kwargs
 
     if isinstance(value, np.ndarray):
         if value.ndim == 1:
@@ -170,6 +181,22 @@ def get_implied_field_kwargs(value):
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value
     )
+
+
+def _get_list_value_type(value):
+    if isinstance(value, bool):
+        return fof.BooleanField
+
+    if isinstance(value, six.integer_types):
+        return fof.IntField
+
+    if isinstance(value, numbers.Number):
+        return fof.FloatField
+
+    if isinstance(value, six.string_types):
+        return fof.StringField
+
+    return None
 
 
 class DatasetMixin(object):

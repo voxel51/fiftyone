@@ -540,18 +540,18 @@ const useClearFiltersPill = (
     : null;
 };
 
-type ScalarsCellProps = {
+type OthersCellProps = {
   modal: boolean;
 };
 
-const ScalarsCell = ({ modal }: ScalarsCellProps) => {
-  const scalars = useRecoilValue(selectors.scalarNames("sample"));
+const OthersCell = ({ modal }: ScalarsCellProps) => {
+  const scalars = useRecoilValue(selectors.primitiveNames("sample"));
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
   );
   const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
-  const dbFields = useRecoilValue(selectors.scalarsDbMap("sample"));
+  const dbFields = useRecoilValue(selectors.primitivesDbMap("sample"));
 
   const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, count] = [
@@ -561,7 +561,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   return (
     <Cell
-      label="Scalars"
+      label="Other fields"
       icon={<BarChart />}
       pills={
         modal
@@ -575,21 +575,30 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {
+          const value = modal ? count[dbFields[name]] : null;
           return {
             name,
             disabled: false,
             hideCheckbox: modal,
-            hasDropdown: !modal,
+            hasDropdown: !modal || Array.isArray(value),
             selected: activeScalars.includes(name),
             color: colorByLabel ? theme.brand : colorMap(name),
-            title: modal ? prettify(count[dbFields[name]], false) : name,
-            value: modal ? prettify(count[dbFields[name]], false) : null,
+            title:
+              modal && !Array.isArray(value) ? prettify(value, false) : name,
+            value:
+              modal && !Array.isArray(value) ? prettify(value, false) : null,
             path: name,
-            count: modal || count === null ? null : count[name],
+            count:
+              count === null
+                ? null
+                : modal && Array.isArray(value)
+                ? value.length
+                : count[name],
             type: "values",
             modal,
             subCountAtom,
-            canFilter: !modal,
+            disableList: modal,
+            canFilter: !modal || Array.isArray(value),
           };
         })}
       onSelect={
@@ -608,7 +617,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         setActiveScalars([]);
       }}
       modal={modal}
-      title={"Scalar fields"}
+      title={"Other fields"}
     />
   );
 };
@@ -621,7 +630,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
   return unsupported.length ? (
     <Cell
-      label={"Unsupported"}
+      label={"Unsupported fields"}
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
@@ -632,7 +641,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
         hideCheckbox: true,
         selected: false,
       }))}
-      title={"Currently unsupported fields"}
+      title={"Unsupported fields"}
       modal={modal}
     />
   ) : null;
@@ -723,7 +732,7 @@ const FieldsSidebar = React.forwardRef(
         <LabelTagsCell modal={modal} />
         <LabelsCell modal={modal} frames={false} />
         {isVideo && <LabelsCell modal={modal} frames={true} />}
-        <ScalarsCell modal={modal} />
+        <OthersCell modal={modal} />
         <UnsupportedCell modal={modal} />
       </Container>
     );
