@@ -147,7 +147,7 @@ const Distribution = ({ distribution }) => {
 const omitDistributions = selectorFamily<string[], string>({
   key: "omitDistributions",
   get: (group) => ({ get }) => {
-    if (group.toLowerCase() == "other") {
+    if (group.toLowerCase() == "other fields") {
       const primitives = get(selectors.primitiveNames("sample"));
       let stats = get(selectors.extendedDatasetStats);
       if (!stats || stats.length === 0) {

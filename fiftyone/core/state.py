@@ -190,7 +190,7 @@ class DatasetStatistics(object):
 
         schema = collection.get_field_schema()
         for field_name, field in schema.items():
-            if field_name not in ("metadata", "tags"):
+            if field_name != "metadata":
                 result.append((field_name, field))
 
         if collection.media_type == fom.VIDEO:
@@ -273,7 +273,9 @@ class DatasetStatistics(object):
                 ):
                     include = (
                         None
-                        if filters is None or field_name not in filters
+                        if filters is None
+                        or field_name not in filters
+                        or field_name == "tags"
                         else filters[field_name]["values"]
                     )
                     aggregations.append(

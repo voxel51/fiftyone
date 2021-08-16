@@ -160,9 +160,9 @@ const computeNoneCounts = (
       parent = "frames." + parent;
 
       if (path === parent) {
-        result[path] = frameCount - data[path][COUNT_CLS];
+        result[path] = frameCount - data[path][AGGS.COUNT];
       } else if (check.includes(".") && data[parent] && data[path]) {
-        result[path] = data[parent][COUNT_CLS] - data[path][COUNT_CLS];
+        result[path] = data[parent][AGGS.COUNT] - data[path][AGGS.COUNT];
       }
       continue;
     }
@@ -172,9 +172,9 @@ const computeNoneCounts = (
       : path;
 
     if (path === parent) {
-      result[path] = count - data[path][COUNT_CLS];
+      result[path] = count - data[path][AGGS.COUNT];
     } else if (path.includes(".") && data[parent] && data[path]) {
-      result[path] = data[parent][COUNT_CLS] - data[path][COUNT_CLS];
+      result[path] = data[parent][AGGS.COUNT] - data[path][AGGS.COUNT];
     }
   }
 
@@ -313,8 +313,8 @@ export const sampleTagCounts = selectorFamily<
 
     return stats
       ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags") {
-            return cur.result;
+          if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
+            return Object.fromEntries(cur.result[1]);
           }
           return acc;
         }, {})
@@ -334,16 +334,14 @@ export const filteredSampleTagCounts = selectorFamily<
 
     return stats
       ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags") {
-            return cur.result;
+          if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
+            return Object.fromEntries(cur.result[1]);
           }
           return acc;
         }, {})
       : {};
   },
 });
-
-const COUNT_CLS = "Count";
 
 export const catchLabelCount = (
   names: string[],
@@ -365,7 +363,11 @@ export const catchLabelCount = (
     return;
   }
 
-  if (names.includes(fieldName) && key === cur.name && cur._CLS === COUNT_CLS) {
+  if (
+    names.includes(fieldName) &&
+    key === cur.name &&
+    cur._CLS === AGGS.COUNT
+  ) {
     acc[prefix + fieldName] = cur.result;
   }
 };
@@ -588,8 +590,8 @@ export const tagNames = selectorFamily<string[], boolean>({
   get: (modal) => ({ get }) => {
     return (get(modal ? modalStats : selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
-        if (cur.name === "tags") {
-          return Object.keys(cur.result).sort();
+        if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
+          return cur.result[1].map(([v]) => v).sort();
         }
         return acc;
       },
