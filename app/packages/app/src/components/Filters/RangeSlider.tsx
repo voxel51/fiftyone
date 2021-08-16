@@ -130,7 +130,10 @@ const BaseSlider = React.memo(
           onMouseUp={() => setClicking(false)}
           value={value}
           onChange={onChange}
-          onChangeCommitted={onCommit}
+          onChangeCommitted={(e, v) => {
+            onCommit(e, v);
+            setClicking(false);
+          }}
           classes={{
             thumb: "thumb",
             track: "track",
