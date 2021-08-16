@@ -555,7 +555,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
 
     if (this.state.zoomToContent) {
       toggleZoom(this.state, this.currentOverlays);
-    } else if (this.state.setZoom) {
+    } else if (this.state.setZoom && this.state.overlaysPrepared) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -647,7 +647,7 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
 
     if (this.state.zoomToContent) {
       toggleZoom(this.state, this.currentOverlays);
-    } else if (this.state.setZoom) {
+    } else if (this.state.setZoom && this.state.overlaysPrepared) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
