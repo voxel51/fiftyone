@@ -978,8 +978,8 @@ class Session(foc.HasClient):
 
         import IPython.display
 
-        handle = IPython.display.display(display_id=True)
         uuid = str(uuid4())
+        handle = IPython.display.DisplayHandle(display_id=uuid)
 
         # @todo isn't it bad to set this here? The first time this is called
         # is before `self.state` has been initialized

@@ -21,7 +21,7 @@ import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
 import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
 import { useTheme } from "../utils/hooks";
-import { genSort } from "../utils/generic";
+import { genSort, prettify } from "../utils/generic";
 import { sortFilterResults } from "../recoil/atoms";
 
 const Body = styled.div`
@@ -152,10 +152,10 @@ const CheckboxText = ({
   const subCount = subCounts ? subCounts[path] : null;
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
 
-  if (value) {
+  if (value || typeof value === "string") {
     return (
       <span className="count" title={title}>
-        {value}
+        {prettify(value)}
       </span>
     );
   }
