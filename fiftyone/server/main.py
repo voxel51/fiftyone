@@ -761,7 +761,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
 
-        aggregations = fos.DatasetStatistics(view).aggregations
+        aggregations = fos.DatasetStatistics(view, filters).aggregations
 
         results = await view._async_aggregate(
             StateHandler.sample_collection(), aggregations
@@ -1006,7 +1006,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if view is not None and (filters is None or len(filters)):
             view = get_extended_view(view, filters)
 
-            aggregations = fos.DatasetStatistics(view).aggregations
+            aggregations = fos.DatasetStatistics(view, filters).aggregations
             results = await view._async_aggregate(
                 cls.sample_collection(), aggregations
             )
@@ -1047,7 +1047,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         count=True,
         limit=200,
         sample_id=None,
-        filters={},
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         col = cls.sample_collection()
@@ -1055,8 +1054,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.view
         elif state.dataset is not None:
             view = state.dataset
-
-        view = get_extended_view(view, filters=filters)
 
         view = _get_search_view(view, path, search, selected)
 

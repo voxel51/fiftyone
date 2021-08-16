@@ -162,10 +162,11 @@ class DatasetStatistics(object):
 
     Args:
         view: a :class:`fiftyone.core.view.DatasetView`
+        filters (None): An options dict of filters defined by the App
     """
 
-    def __init__(self, view):
-        self._aggregations = self._build(view)
+    def __init__(self, view, filters=None):
+        self._aggregations = self._build(view, filters)
 
     @property
     def aggregations(self):
@@ -233,7 +234,7 @@ class DatasetStatistics(object):
 
         return count_aggs, tag_aggs
 
-    def _build(self, view):
+    def _build(self, view, filters):
         aggregations = [foa.Count()]
 
         if view.media_type == fom.VIDEO:
@@ -246,9 +247,16 @@ class DatasetStatistics(object):
                 label_path = "%s.label" % path
                 confidence_path = "%s.confidence" % path
                 tags_path = "%s.tags" % path
+                include_labels = (
+                    None
+                    if filters is None or label_path not in filters
+                    else filters[label_path]["values"]
+                )
                 aggregations.extend(
                     [
-                        foa.CountValues(label_path, _first=200),
+                        foa.CountValues(
+                            label_path, _first=200, _include=include_labels
+                        ),
                         foa.Count(label_path),
                         foa.Bounds(confidence_path),
                         foa.Count(confidence_path),
@@ -263,8 +271,15 @@ class DatasetStatistics(object):
                     field,
                     (fof.BooleanField, fof.StringField, fof.ObjectIdField),
                 ):
+                    include = (
+                        None
+                        if filters is None or field_name not in filters
+                        else filters[field_name]["values"]
+                    )
                     aggregations.append(
-                        foa.CountValues(field_name, _first=200)
+                        foa.CountValues(
+                            field_name, _first=200, _include=include
+                        )
                     )
 
         return aggregations

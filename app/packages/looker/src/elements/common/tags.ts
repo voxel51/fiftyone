@@ -123,7 +123,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           shown.forEach((v) => appendElement(v));
 
           const more = filtered.length - shown.length;
-          more > 0 && appendElement(`${more} more`);
+          more > 0 && appendElement(`+${more} more`);
         }
       }
       return elements;

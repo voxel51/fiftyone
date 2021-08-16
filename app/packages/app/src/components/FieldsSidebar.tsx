@@ -540,11 +540,11 @@ const useClearFiltersPill = (
     : null;
 };
 
-type ScalarsCellProps = {
+type OthersCellProps = {
   modal: boolean;
 };
 
-const ScalarsCell = ({ modal }: ScalarsCellProps) => {
+const OthersCell = ({ modal }: ScalarsCellProps) => {
   const scalars = useRecoilValue(selectors.primitiveNames("sample"));
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
@@ -561,7 +561,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   return (
     <Cell
-      label="Primitives"
+      label="Other fields"
       icon={<BarChart />}
       pills={
         modal
@@ -617,7 +617,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         setActiveScalars([]);
       }}
       modal={modal}
-      title={"Primitive fields"}
+      title={"Other fields"}
     />
   );
 };
@@ -630,7 +630,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
   return unsupported.length ? (
     <Cell
-      label={"Unsupported"}
+      label={"Unsupported fields"}
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
@@ -641,7 +641,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
         hideCheckbox: true,
         selected: false,
       }))}
-      title={"Currently unsupported fields"}
+      title={"Unsupported fields"}
       modal={modal}
     />
   ) : null;
@@ -732,7 +732,7 @@ const FieldsSidebar = React.forwardRef(
         <LabelTagsCell modal={modal} />
         <LabelsCell modal={modal} frames={false} />
         {isVideo && <LabelsCell modal={modal} frames={true} />}
-        <ScalarsCell modal={modal} />
+        <OthersCell modal={modal} />
         <UnsupportedCell modal={modal} />
       </Container>
     );
