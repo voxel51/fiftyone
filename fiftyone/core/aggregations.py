@@ -5,6 +5,7 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import OrderedDict
 from copy import deepcopy
 
 import numpy as np
@@ -478,11 +479,13 @@ class CountValues(Aggregation):
         _first=None,
         _sort_by="count",
         _asc=True,
+        _include=None,
     ):
         super().__init__(field_or_expr, expr=expr)
         self._first = _first
         self._sort_by = _sort_by
         self._order = 1 if _asc else -1
+        self._include = _include
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -528,10 +531,20 @@ class CountValues(Aggregation):
         ]
 
         if self._first:
-            pipeline += [
-                {"$sort": {self._sort_by: self._order}},
-                {"$limit": self._first},
-            ]
+            sort = OrderedDict()
+            limit = self._first
+
+            if self._include is not None:
+                limit = max(limit, len(self._include))
+                pipeline += [
+                    {"$set": {"included": {"$in": ["$_id", self._include]}}},
+                ]
+                sort["included"] = -1
+
+            sort[self._sort_by] = self._order
+            sort["count" if self._sort_by != "count" else "_id"] = self._order
+
+            pipeline += [{"$sort": sort}, {"$limit": limit}]
 
         pipeline += [
             {

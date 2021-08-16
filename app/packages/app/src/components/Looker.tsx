@@ -335,8 +335,8 @@ const lookerOptions = selector({
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
-      fieldsMap: reverse(get(selectors.scalarsDbMap("sample"))),
-      frameFieldsMap: reverse(get(selectors.scalarsDbMap("frame"))),
+      fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
+      frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
     };
   },
 });
