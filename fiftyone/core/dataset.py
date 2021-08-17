@@ -236,8 +236,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_doc_cls,
             ) = _load_dataset(name, migrate=_migrate)
 
-        self._evaluation_cache = {}
+        self._annotation_cache = {}
         self._brain_cache = {}
+        self._evaluation_cache = {}
+
         self._deleted = False
 
     def __len__(self):
@@ -4165,8 +4167,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Reloads the dataset and any in-memory samples from the database."""
         self._reload(hard=True)
         self._reload_docs(hard=True)
-        self._evaluation_cache.clear()
+
+        self._annotation_cache.clear()
         self._brain_cache.clear()
+        self._evaluation_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:

@@ -22,6 +22,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
@@ -5672,7 +5673,71 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    def load_annotations(self, info, **kwargs):
+    @property
+    def has_annotation_runs(self):
+        """Whether this colection has any annotation runs."""
+        return bool(self.list_annotation_runs())
+
+    def has_annotation_run(self, anno_key):
+        """Whether this collection has an annotation run with the given key.
+
+        Args:
+            anno_key: an annotation key
+
+        Returns:
+            True/False
+        """
+        return anno_key in self.list_annotation_runs()
+
+    def list_annotation_runs(self):
+        """Returns a list of all annotation keys on this collection.
+
+        Returns:
+            a list of annotation keys
+        """
+        return foan.AnnotationMethod.list_runs(self)
+
+    def get_annotation_info(self, anno_key):
+        """Returns information about the annotation run with the given key on
+        this collection.
+
+        Args:
+            anno_key: an annotation key
+
+        Returns:
+            a :class:`fiftyone.core.annotation.AnnotationInfo`
+        """
+        return foan.AnnotationMethod.get_run_info(self, anno_key)
+
+    def load_annotation_results(self, anno_key):
+        """Loads the :class:`fiftyone.core.annotation.AnnotationResults` for
+        the run with the given key on this collection.
+
+        Args:
+            anno_key: an annotation key
+
+        Returns:
+            a :class:`fiftyone.core.annotation.AnnotationResults`
+        """
+        return foan.AnnotationMethod.load_run_results(self, anno_key)
+
+    def load_annotation_view(self, anno_key, select_fields=False):
+        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
+        specified annotation run was performed on this collection.
+
+        Args:
+            anno_key: an annotation key
+            select_fields (False): whether to select only the fields involved
+                in the annotation run
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return foan.AnnotationMethod.load_run_view(
+            self, anno_key, select_fields=select_fields
+        )
+
+    def load_annotations(self, anno_key, **kwargs):
         """Loads the labels from the given annotation run into this dataset.
 
         See :ref:`this page <cvat-loading-annotations>` for more information
@@ -5680,12 +5745,33 @@ class SampleCollection(object):
         by calling :meth:`annotate`.
 
         Args:
-            info: the :class:`fiftyone.utils.annotations.AnnotationInfo`
-                returned from a call to :meth:`annotate`
+            anno_key: an annotation key
             **kwargs: keyword arguments to pass to the ``load_annotations()``
                 method of the annotation backend
         """
-        foua.load_annotations(self, info, **kwargs)
+        results = self.load_annotation_results(anno_key)
+        foua.load_annotations(self, results, **kwargs)
+
+    def delete_annotation_run(self, anno_key):
+        """Deletes the annotation run with the given key from this collection.
+
+        Calling this method only deletes the record of the annotation run; any
+        annotations loaded onto your dataset via :meth:`load_annotations` will
+        not be deleted.
+
+        Args:
+            anno_key: an annotation key
+        """
+        foan.AnnotationMethod.delete_run(self, anno_key)
+
+    def delete_annotation_runs(self):
+        """Deletes all annotation runs from this collection.
+
+        Calling this method only deletes the records of the annotation runs;
+        any annotations loaded onto your dataset via :meth:`load_annotations`
+        will not be deleted.
+        """
+        foan.AnnotationMethod.delete_runs(self)
 
     def list_indexes(self):
         """Returns the list of index names on this collection.
