@@ -392,6 +392,22 @@ def load_annotations(samples, info, **kwargs):
                     "name in which to store these annotations, or an empty "
                     "name to skip them: " % (new_type, label_field)
                 )
+                while True:
+                    frame_fields = samples.get_frame_field_schema() or []
+                    fields = samples.get_field_schema() or []
+                    existing_field = (
+                        new_field_name in frame_fields
+                        or new_field_name in fields
+                    )
+                    if existing_field:
+                        new_field_name = input(
+                            "\nField '%s' already exists.\nPlease enter a new field "
+                            "name in which to store these annotations, or an empty "
+                            "name to skip them: " % new_field_name
+                        )
+                    else:
+                        break
+
                 if not new_field_name:
                     logger.info(
                         "Skipping unexpected labels of type '%s' in field "
@@ -399,6 +415,7 @@ def load_annotations(samples, info, **kwargs):
                         new_type,
                         label_field,
                     )
+                    continue
 
                 if is_video and not new_field_name.startswith("frames."):
                     new_field_name = "frames." + new_field_name
