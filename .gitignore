@@ -9,6 +9,7 @@ __pycache__
 .pydevproject
 **/*.ipynb_checkpoints
 .idea
+*.swp
 
 *~
 
