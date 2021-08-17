@@ -96,8 +96,8 @@ const flashlightLookerOptions = selector({
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
-      fieldsMap: get(selectors.scalarsDbMap("sample")),
-      frameFieldsMap: get(selectors.scalarsDbMap("frame")),
+      fieldsMap: get(selectors.primitivesDbMap("sample")),
+      frameFieldsMap: get(selectors.primitivesDbMap("frame")),
     };
   },
 });
@@ -362,10 +362,6 @@ export default React.memo(() => {
     cropToContent,
   ]);
 
-  useEventHandler(document, "visibilitychange", () => {
-    document.visibilityState === "hidden" && lookers.reset();
-  });
-
   useLayoutEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({
@@ -373,14 +369,14 @@ export default React.memo(() => {
         options,
         onItemClick: onThumbnailClick,
         onResize: (width) => {
-          let min = 9;
+          let min = 7;
 
           if (width >= 1200) {
             min = 0;
           } else if (width >= 1000) {
-            min = 3;
+            min = 2;
           } else if (width >= 800) {
-            min = 6;
+            min = 4;
           }
 
           const newZoom = Math.max(min, gridZoomRef.current);
@@ -430,7 +426,7 @@ export default React.memo(() => {
             return null;
           }
 
-          if (!soft && document.visibilityState === "visible") {
+          if (!soft) {
             const looker = lookerGeneratorRef.current(result);
             looker.addEventListener(
               "selectthumbnail",

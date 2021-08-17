@@ -298,7 +298,7 @@ class YOLOv5DatasetImporter(
         data = d[self.split]
         classes = d.get("names", None)
 
-        if data.endswith(".txt"):
+        if etau.is_str(data) and data.endswith(".txt"):
             txt_path = _parse_yolo_v5_data_path(data, self.yaml_path)
             image_paths = _read_file_lines(txt_path)
         else:

@@ -98,18 +98,19 @@ const Checkbox = React.memo(
     return (
       <StyledCheckboxContainer title={text}>
         <StyledCheckbox {...props} onClick={() => setValue(!value)}>
-          <MaterialCheckbox
-            disabled={disabled}
-            checked={value}
-            title={text}
-            style={{ color, padding: "0 0.5rem 0 0" }}
-            onChange={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setValue(!value);
-            }}
-            disableRipple={true}
-          />
+          {!disabled && (
+            <MaterialCheckbox
+              checked={value}
+              title={text}
+              style={{ color, padding: "0 0.5rem 0 0" }}
+              onChange={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setValue(!value);
+              }}
+              disableRipple={true}
+            />
+          )}
           <Suspense
             fallback={
               <CheckboxName

@@ -2429,16 +2429,16 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     """A class to facilitate connection to and management of tasks in CVAT.
 
     On initializiation, this class constructs a session based on the provided
-    server url and credentials. 
+    server url and credentials.
 
     This API provides methods to easily get, put, post, patch, and delete tasks
     and jobs through the formatted urls specified by the CVAT REST API.
 
     Additionally, samples and label schemas can be uploaded and annotations
     downloaded through this class.
-        
+
     Args:
-        url ("cvat.org"): URL of the CVAT server to which to upload samples 
+        url ("cvat.org"): URL of the CVAT server to which to upload samples
         port (None): four digit port to append to url when connecting to server
         https (True): boolean indicating whether to connect to https (True) or
             http (False) server
@@ -2447,9 +2447,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             the CVAT server
     """
 
-    def __init__(
-        self, url=None, port=None, https=None, auth=None,
-    ):
+    def __init__(self, url=None, port=None, https=None, auth=None):
         self._url = fo.annotation_config.cvat_url if url is None else url
         port = fo.annotation_config.cvat_port if port is None else port
         https = fo.annotation_config.cvat_https if https is None else https
@@ -2468,12 +2466,6 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.setup()
         self._user_id_map = {}
-
-    def _parse_arg(self, arg, config_arg):
-        if arg == None:
-            return config_arg
-        else:
-            return arg
 
     @property
     def base_url(self):
@@ -2534,63 +2526,44 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     def user_search_url(self, username):
         return "%s/users?search=%s" % (self.base_api_url, username)
 
-    def _raise_response_errors(self, response):
-        try:
-            response.raise_for_status()
-        except:
-            d = response.__dict__
-            raise Exception(
-                "%d error for request %s to url %s with the reason %s. Error content: %s"
-                % (
-                    d["status_code"],
-                    d["request"],
-                    d["url"],
-                    d["reason"],
-                    d["_content"],
-                )
-            )
+    def setup(self):
+        """Performs any necessary setup for the API."""
+        if self._auth is None:
+            self._auth = self._get_username_password()
 
-    def delete(self, url):
-        """Send delete request to the given CVAT API URL
-        
-        Args:
-            url: the url to send the request to
-
-        Returns:
-            response: the response from the API request
-        """
-        response = self._session.delete(url, verify=False)
-        self._raise_response_errors(response)
-        return response
+        self._session = requests.Session()
+        response = self.post(self.login_url, data=self._auth)
+        if "csrftoken" in response.cookies:
+            self._session.headers["X-CSRFToken"] = response.cookies[
+                "csrftoken"
+            ]
 
     def get(self, url):
-        """Send get request to the given CVAT API URL
-        
+        """Sends a GET request to the given CVAT API URL
+
         Args:
-            url: the url to send the request to
+            url: the url
 
         Returns:
-            response: the response from the API request
+            the request response
         """
         response = self._session.get(url, verify=False)
-        self._raise_response_errors(response)
+        self._validate(response)
         return response
 
     def patch(self, url, auth=None, data=None, files=None, json=None):
-        """Send patch request to the given CVAT API URL
-        
+        """Sends a PATCH request to the given CVAT API URL.
+
         Args:
-            url: the url to send the request to
-            auth (None): dictionary of "username" and "password" credentials to
-                send along with request
-            data (None): data to send along with patch request
-            files (None): files to send along with patch request
-            json (None): json data to send along with patch request
+            url: the url
+            auth (None): authentication credentials
+            data (None): data to send
+            files (None): files to send
+            json (None): json data to send
 
         Returns:
-            response: the response from the API request
+            the request response
         """
-
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2602,24 +2575,22 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             kwargs["json"] = json
 
         response = self._session.patch(**kwargs)
-        self._raise_response_errors(response)
+        self._validate(response)
         return response
 
     def post(self, url, auth=None, data=None, files=None, json=None):
-        """Send post request to the given CVAT API URL
-        
+        """Sends a POST request to the given CVAT API URL.
+
         Args:
-            url: the url to send the request to
-            auth (None): dictionary of "username" and "password" credentials to
-                send along with request
-            data (None): data to send along with patch request
-            files (None): files to send along with patch request
-            json (None): json data to send along with patch request
+            url: the url
+            auth (None): authentication credentials
+            data (None): data to send
+            files (None): files to send
+            json (None): json data to send
 
         Returns:
-            response: the response from the API request
+            the request response
         """
-
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2631,24 +2602,22 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             kwargs["json"] = json
 
         response = self._session.post(**kwargs)
-        self._raise_response_errors(response)
+        self._validate(response)
         return response
 
     def put(self, url, auth=None, data=None, files=None, json=None):
-        """Send put request to the given CVAT API URL
-        
+        """Sends a PUT request to the given CVAT API URL.
+
         Args:
-            url: the url to send the request to
-            auth (None): dictionary of "username" and "password" credentials to
-                send along with request
-            data (None): data to send along with patch request
-            files (None): files to send along with patch request
-            json (None): json data to send along with patch request
+            url: the url
+            auth (None): authentication credentials
+            data (None): data to send
+            files (None): files to send
+            json (None): json data to send
 
         Returns:
-            response: the response from the API request
+            the request response
         """
-
         kwargs = {"url": url, "verify": False}
         if auth is not None:
             kwargs["auth"] = auth
@@ -2660,51 +2629,33 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             kwargs["json"] = json
 
         response = self._session.put(**kwargs)
-        self._raise_response_errors(response)
+        self._validate(response)
         return response
 
-    def setup(self):
-        """Performs any necessary setup for the API."""
-        if self._auth is None:
-            self._auth = self._get_username_password("CVAT")
-        self._session = requests.Session()
-        response = self.post(self.login_url, data=self._auth)
-        if "csrftoken" in response.cookies:
-            self._session.headers["X-CSRFToken"] = response.cookies[
-                "csrftoken"
-            ]
+    def delete(self, url):
+        """Sends a DELETE request to the given CVAT API URL.
 
-    def _get_username_password(self, host=""):
-        username = fo.annotation_config.cvat_username
-        password = fo.annotation_config.cvat_password
-
-        if username is None or password is None:
-            logger.info(
-                "No config or environment variables found for "
-                "authentication. Please enter CVAT login information. Set the "
-                "environment variables `FIFTYONE_CVAT_USERNAME` and "
-                "`FIFTYONE_CVAT_PASSWORD` to avoid this in the future."
-            )
-            return self.prompt_username_password(host="CVAT")
-
-        return {
-            "username": username,
-            "password": password,
-        }
-
-    def get_user_id(self, username):
-        """Search for and gather the CVAT internal user id for a given
-        username.
-        
         Args:
-            username: the string username to get the id of
+            url: the url to send the request to
 
         Returns:
-            user_id: the user id of the username provided, None if the user was
-                not found
+            the request response
+        """
+        response = self._session.delete(url, verify=False)
+        self._validate(response)
+        return response
+
+    def get_user_id(self, username):
+        """Retrieves the CVAT user ID for the given username.
+
+        Args:
+            username: the username
+
+        Returns:
+            the user ID, or None if the user was not found
         """
         if username is None:
-            return None
+            return
 
         if username in self._user_id_map:
             return self._user_id_map[username]
@@ -2718,36 +2669,39 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 self._user_id_map[username] = user_id
                 return user_id
 
-        logger.warning("User '%s' not found in %s" % (username, search_url))
-        return None
+        logger.warning("User '%s' not found in %s", username, search_url)
 
     def create_task(
         self,
-        labels=[],
+        labels=None,
         segment_size=None,
         image_quality=75,
         task_assignee=None,
         task_name="FiftyOne_annotation",
     ):
-        """Creates a task on the CVAT server using the given label schema
+        """Creates a task on the CVAT server using the given label schema.
 
         Args:
-            labels ([]): the label schema to use for the created task
-            segment_size (None): maximum number of images to load into a job. Not
-                applicable to videos
-            image_quality (75): an integer ranging from 0 to 100 indicating the 
-                quality of images after uploading to CVAT
-            task_assignee (None): the username of the user assigned to the
-                created task
-            task_name ("FiftyOne_annotation"): the string name of the task in CVAT
+            labels (None): the label schema to use for the created task
+            segment_size (None): maximum number of images to load into a job.
+                Not applicable to videos
+            image_quality (75): an int in `[0, 100]` determining the image
+                quality to upload to CVAT
+            task_assignee (None): the username to assign the created task(s)
+            task_name ("FiftyOne_annotation"): a name for the CVAT task
 
         Returns:
-            task_id: the id of the created task in CVAT
-            attribute_id_map: a dictionary mapping the ids assigned to
+            a tuple of
+
+            -   **task_id**: the id of the created task in CVAT
+            -   **attribute_id_map**: a dictionary mapping the ids assigned to
                 attributes by CVAT for every class
-            class_id_map: a dictionary mapping the ids assigned to classes by
-                CVAT
+            -   **class_id_map**: a dictionary mapping the ids assigned to
+                classes by CVAT
         """
+        if labels is None:
+            labels = []
+
         data_task_create = {
             "name": task_name,
             "image_quality": image_quality,
@@ -2778,27 +2732,28 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             user_id = self.get_user_id(task_assignee)
             if user_id is not None:
                 task_patch = {"assignee_id": self.get_user_id(task_assignee)}
-                resp = self.patch(self.task_url(task_id), json=task_patch)
+                self.patch(self.task_url(task_id), json=task_patch)
 
         return task_id, attribute_id_map, class_id_map
 
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
-        
-        Arg:
+
+        Args:
             task_id: id of the task to delete
         """
-        response = self.delete(self.task_url(task_id))
+        self.delete(self.task_url(task_id))
 
     def launch_editor(self, url=None):
         """Open the uploaded annotations in the annotation tool
-        
+
         Args:
             url (None): the url to open in the webrowser, by default will open
                 the base url provided for a server
         """
         if url is None:
             url = self.base_url
+
         webbrowser.open(url, new=2)
 
     def upload_data(
@@ -2815,24 +2770,19 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         Args:
             task_id: the id of the task to which to upload data
             paths: a list of paths to media files on disk to upload
-            image_quality: a number ranging from 0 to 100 determining the
-                quality to downsample images to when uploading
-            job_assignees (None): a list of usernames to assign to the created
-                jobs
-            job_assignees (None): a list of usernames to review to the created
-                jobs
+            image_quality (75): an int in `[0, 100]` determining the image
+                quality to upload to CVAT
+            job_assignees (None): a list of usernames to assign jobs
+            job_reviewers (None): a list of usernames to assign job reviews
 
         Returns:
-            job_ids: a list of the job ids created for the task
+            a list of the job ids created for the task
         """
         data = {"image_quality": image_quality}
-
         files = {
             "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
         }
-        files_resp = self.post(
-            self.task_data_url(task_id), data=data, files=files,
-        )
+        self.post(self.task_data_url(task_id), data=data, files=files)
 
         job_ids = []
         while job_ids == []:
@@ -2846,9 +2796,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 user_id = self.get_user_id(assignee)
                 if assignee is not None and user_id is not None:
                     job_patch = {"assignee_id": user_id}
-                    resp = self.patch(
-                        self.taskless_job_url(job_id), json=job_patch
-                    )
+                    self.patch(self.taskless_job_url(job_id), json=job_patch)
 
         if job_reviewers is not None:
             for ind, job_id in enumerate(job_ids):
@@ -2857,28 +2805,9 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 user_id = self.get_user_id(reviewer)
                 if reviewer is not None and user_id is not None:
                     job_patch = {"reviewer_id": user_id}
-                    resp = self.patch(
-                        self.taskless_job_url(job_id), json=job_patch
-                    )
+                    self.patch(self.taskless_job_url(job_id), json=job_patch)
 
         return job_ids
-
-    def _construct_cvat_attributes(self, attributes):
-        """Remaps label schema attributes to attributes expected by the CVAT
-        REST API to construct tasks
-        """
-        cvat_attrs = {}
-        for attr_name, info in attributes.items():
-            cvat_attr = {"name": attr_name, "mutable": True}
-            for attr_key, val in info.items():
-                if attr_key == "type":
-                    cvat_attr["input_type"] = val
-                elif attr_key == "values":
-                    cvat_attr["values"] = [str(v) for v in val]
-                elif attr_key == "default_value":
-                    cvat_attr["default_value"] = str(val)
-            cvat_attrs[attr_name] = cvat_attr
-        return cvat_attrs
 
     def upload_samples(
         self,
@@ -2887,51 +2816,52 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         media_field="filepath",
         segment_size=None,
         image_quality=75,
-        job_reviewers=None,
-        job_assignees=None,
         task_assignee=None,
+        job_assignees=None,
+        job_reviewers=None,
     ):
         """Parse the given samples and use the label schema to create tasks,
         upload data, and upload formatted annotations to CVAT.
-        
+
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` to
                 upload to CVAT
-            label_schema: a dictionary containing the description of label fields,
-                classes and attribute to annotate
+            label_schema: a dictionary containing the description of label
+                fields, classes and attribute to annotate
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
-            segment_size (None): maximum number of images to load into a job. Not
-                applicable to videos
-            image_quality (75): an integer ranging from 0 to 100 indicating the 
-                quality of images after uploading to CVAT
-            job_reviewers (None): a list containing usernames to which to assign
-                job reviews sequentially 
-            job_assignees (None): a list containing usernames to which to assign jobs
-                sequentially 
-            task_assignee (None): the username of the user assigned to the
-                created task
+            segment_size (None): maximum number of images to load into a job.
+                Not applicable to videos
+            image_quality (75): an int in `[0, 100]` determining the image
+                quality to upload to CVAT
+            task_assignee (None): the username to assign the created task(s)
+            job_assignees (None): a list of usernames to assign jobs
+            job_reviewers (None): a list of usernames to assign job reviews
 
         Returns:
-            task_ids: a list of the task ids created by uploading samples
-            job_ids: a dictionary mapping task id to a list of job ids created
-                for that task
-            frame_id_map: a dictionary mapping task id to another map from the
-                CVAT frame index of every image to the FiftyOne sample id
-                (for videos) and FiftyOne frame id
-            labels_task_map: a dictionary mapping label field names to a list
-                of tasks created for that label field 
-            assigned_scalar_attrs:  a dictionary mapping the label field name
-                of scalar fields to a boolean indicating whether the scalar
-                field is being annotated through a dropdown selection of
+            a tuple of
+
+            -   **task_ids**: a list of the task ids created by uploading
+                samples
+            -   **job_ids**: a dictionary mapping task id to a list of job ids
+                created for that task
+            -   **frame_id_map**: a dictionary mapping task id to another map
+                from the CVAT frame index of every image to the FiftyOne sample
+                id (for videos) and FiftyOne frame id
+            -   **labels_task_map**: a dictionary mapping label field names to
+                a list of tasks created for that label field
+            -   **assigned_scalar_attrs**: a dictionary mapping the label field
+                name of scalar fields to a boolean indicating whether the
+                scalar field is being annotated through a dropdown selection of
                 through an attribute with a text input box named "value"
         """
         if media_field not in samples.get_field_schema():
             logger.warning(
-                "Media field '%s' not found, uploading media from 'filepath'"
-                % media_field
+                "Media field '%s' not found, uploading media from 'filepath'",
+                media_field,
             )
             media_field = "filepath"
+
         samples = samples.sort_by(media_field)
         task_ids = []
         job_ids = {}
@@ -2964,7 +2894,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     task_batch_size
                 )
 
-                # Only relevant to track label ids for existing non-scalar Label fields
+                # Only relevant to track label ids for existing non-scalar
+                # Label fields
                 if is_existing_field and label_type != "scalar":
                     label_id_attr = {
                         "name": "label_id",
@@ -2977,8 +2908,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 attr_names = list(cvat_attributes.keys())
 
                 # Top level CVAT labels are classes for FiftyOne Label fields
-                # for scalar fields, there may only be one CVAT label and it is the
-                # label_field string if no classes are provided
+                # for scalar fields, there may only be one CVAT label and it is
+                # the label_field string if no classes are provided
                 labels = []
                 label_names = classes
                 assign_scalar_attrs = False
@@ -3059,7 +2990,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 current_job_assignees = job_assignees
                 current_job_reviewers = job_reviewers
                 if is_video:
-                    # Videos are uploaded in multiple tasks with one job per task
+                    # Videos are uploaded in multiple tasks with 1 job per task
                     # Assign the correct users for the current task
                     if job_assignees is not None:
                         job_assignee_ind = min(
@@ -3156,10 +3087,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     ):
         """Download annotations from the CVAT server and parses them into
         the correct FiftyOne Label types.
-        
+
         Args:
-            label_schema: a dictionary containing the description of label fields,
-                classes and attribute to annotate
+            label_schema: a dictionary containing the description of label
+                fields, classes and attribute to annotate
             task_ids: a list of the task ids created by uploading samples
             job_ids: a dictionary mapping task id to a list of job ids created
                 for that task
@@ -3167,16 +3098,18 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 CVAT frame index of every image to the FiftyOne sample id
                 (for videos) and FiftyOne frame id
             labels_task_map: a dictionary mapping label field names to a list
-                of tasks created for that label field 
-            assigned_scalar_attrs:  a dictionary mapping the label field name
+                of tasks created for that label field
+            assigned_scalar_attrs: a dictionary mapping the label field name
                 of scalar fields to a boolean indicating whether the scalar
                 field is being annotated through a dropdown selection of
                 through an attribute with a text input box named "value"
 
         Returns:
-            results: a dictionary mapping every label field, sample id, frame
-            id 
-            additional_results: 
+            a tuple of
+
+            -   **results**: a dictionary mapping every label field, sample id,
+                frame id
+            -   **additional_results**: a dictionary of additional annotations
         """
         results = {}
         additional_results = {}
@@ -3186,10 +3119,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         for lf, tasks in labels_task_map.items():
             for task in tasks:
                 rev_labels_task_map[task] = lf
+
         for task_id in task_ids:
             label_field = rev_labels_task_map[task_id]
             if label_field not in results:
                 results[label_field] = {}
+
             current_schema = label_schema[label_field]
             label_type = current_schema["type"]
 
@@ -3248,8 +3183,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                                 label = str(label)
                             else:
                                 logger.warning(
-                                    "Scalar '%s' does not match previous scalars of type %s. Skipping."
-                                    % (label, str(prev_type))
+                                    "Skipping scalar '%s' that does not match "
+                                    "previous scalars of type %s",
+                                    label,
+                                    str(prev_type),
                                 )
                                 label = None
                         else:
@@ -3277,7 +3214,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         else:
                             results[label_field][sample_id][label.id] = label
                     else:
-                        # Additional tag was found for a non-classifications task
+                        # Additional tag was found for a non-classifications
+                        # task
                         if label_field not in additional_results:
                             additional_results[label_field] = {}
                         if (
@@ -3322,6 +3260,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     metadata = frames[frame]
                 else:
                     metadata = frames[0]
+
                 sample_id = frame_id_map[task_id][frame]["sample_id"]
                 shape_type = shape["type"]
                 if sample_id not in results[label_field]:
@@ -3399,6 +3338,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 for shape in track["shapes"]:
                     if shape["outside"]:
                         continue
+
                     frame = shape["frame"]
                     shape["label_id"] = track["label_id"]
                     if len(frames) > frame:
@@ -3496,6 +3436,45 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return results, additional_results
 
+    def _parse_arg(self, arg, config_arg):
+        if arg is None:
+            return config_arg
+
+        return arg
+
+    def _get_username_password(self):
+        username = fo.annotation_config.cvat_username
+        password = fo.annotation_config.cvat_password
+
+        if username is None or password is None:
+            logger.info(
+                "Please enter your CVAT login credentials.\nYou can avoid "
+                "this in the future by setting your `FIFTYONE_CVAT_USERNAME` "
+                "and `FIFTYONE_CVAT_PASSWORD` environment variables."
+            )
+            return self.prompt_username_password(host="CVAT")
+
+        return {
+            "username": username,
+            "password": password,
+        }
+
+    def _construct_cvat_attributes(self, attributes):
+        cvat_attrs = {}
+        for attr_name, info in attributes.items():
+            cvat_attr = {"name": attr_name, "mutable": True}
+            for attr_key, val in info.items():
+                if attr_key == "type":
+                    cvat_attr["input_type"] = val
+                elif attr_key == "values":
+                    cvat_attr["values"] = [str(v) for v in val]
+                elif attr_key == "default":
+                    cvat_attr["default_value"] = str(val)
+
+            cvat_attrs[attr_name] = cvat_attr
+
+        return cvat_attrs
+
     def _create_shapes_tags_tracks(
         self,
         samples,
@@ -3537,6 +3516,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     image_label = image[label_field]
                 except:
                     continue
+
                 if image_label is None:
                     continue
 
@@ -3547,21 +3527,21 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         classifications = [image_label]
 
                     for cls in classifications:
-                        attributes, class_name = self.create_attributes(
+                        attributes, class_name = self._create_attributes(
                             cls, attr_names, classes,
                         )
                         if class_name is None:
                             continue
 
-                        tag_or_shapes = {
-                            "label_id": class_name,
-                            "group": 0,
-                            "frame": frame_id,
-                            "source": "manual",
-                            "attributes": attributes,
-                        }
-                        tags_or_shapes.append(tag)
-
+                        tags_or_shapes.append(
+                            {
+                                "label_id": class_name,
+                                "group": 0,
+                                "frame": frame_id,
+                                "source": "manual",
+                                "attributes": attributes,
+                            }
+                        )
                 elif label_type == "scalar":
                     if assign_scalar_attrs:
                         attributes = [
@@ -3574,40 +3554,40 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                     else:
                         attributes = []
                         class_name = str(image_label)
-                    tag = {
-                        "label_id": class_name,
-                        "group": 0,
-                        "frame": frame_id,
-                        "source": "manual",
-                        "attributes": attributes,
-                    }
-                    tags_or_shapes.append(tag)
 
+                    tags_or_shapes.append(
+                        {
+                            "label_id": class_name,
+                            "group": 0,
+                            "frame": frame_id,
+                            "source": "manual",
+                            "attributes": attributes,
+                        }
+                    )
                 else:
-
                     if label_type == "detections":
                         labels = image_label.detections
-                        func = self.create_detection_shapes
+                        func = self._create_detection_shapes
 
                     elif label_type == "detection":
                         labels = [image_label]
-                        func = self.create_detection_shapes
+                        func = self._create_detection_shapes
 
                     elif label_type == "polylines":
                         labels = image_label.polylines
-                        func = self.create_polyline_shapes
+                        func = self._create_polyline_shapes
 
                     elif label_type == "polyline":
                         labels = [image_label]
-                        func = self.create_polyline_shapes
+                        func = self._create_polyline_shapes
 
                     elif label_type == "keypoints":
                         labels = image_label.keypoints
-                        func = self.create_keypoint_shapes
+                        func = self._create_keypoint_shapes
 
                     elif label_type == "keypoint":
                         labels = [image_label]
-                        func = self.create_keypoint_shapes
+                        func = self._create_keypoint_shapes
 
                     else:
                         raise ValueError(
@@ -3632,8 +3612,8 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         if load_tracks:
             formatted_tracks = self._format_tracks(tracks, frame_id)
             return tags_or_shapes, formatted_tracks
-        else:
-            return tags_or_shapes
+
+        return tags_or_shapes
 
     def _format_tracks(self, tracks, num_frames):
         formatted_tracks = []
@@ -3665,6 +3645,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                         )
                         if tracks[class_name][index]["frame"] > track["frame"]:
                             tracks[class_name][index]["frame"] = track["frame"]
+
         return tracks
 
     def _create_id_mapping(self, samples):
@@ -3683,9 +3664,10 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 id_mapping[frame_id] = {"sample_id": sample_id}
                 if is_video:
                     id_mapping[frame_id]["frame_id"] = image.id
+
         return id_mapping
 
-    def create_keypoint_shapes(
+    def _create_keypoint_shapes(
         self,
         keypoints,
         width,
@@ -3698,7 +3680,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         shapes = []
         tracks = {}
         for kp in keypoints:
-            attributes, class_name = self.create_attributes(
+            attributes, class_name = self._create_attributes(
                 kp, attr_names, classes
             )
             if class_name is None:
@@ -3742,7 +3724,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes, tracks
 
-    def create_polyline_shapes(
+    def _create_polyline_shapes(
         self,
         polylines,
         width,
@@ -3755,7 +3737,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         shapes = []
         tracks = {}
         for poly in polylines:
-            attributes, class_name = self.create_attributes(
+            attributes, class_name = self._create_attributes(
                 poly, attr_names, classes
             )
             if class_name is None:
@@ -3813,7 +3795,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
         return shapes, tracks
 
-    def create_detection_shapes(
+    def _create_detection_shapes(
         self,
         detections,
         width,
@@ -3826,7 +3808,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         shapes = []
         tracks = {}
         for det in detections:
-            attributes, class_name = self.create_attributes(
+            attributes, class_name = self._create_attributes(
                 det, attr_names, classes
             )
             if class_name is None:
@@ -3892,13 +3874,12 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 shape["outside"] = False
                 del shape["label_id"]
                 tracks[class_name][index]["shapes"].append(shape)
-
             else:
                 shapes.append(shape)
 
         return shapes, tracks
 
-    def create_attributes(self, label, attributes, classes):
+    def _create_attributes(self, label, attributes, classes):
         label_attrs = []
         label_attrs.append({"spec_id": "label_id", "value": label.id})
         for attribute in attributes:
@@ -3928,6 +3909,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
             for attr in obj["attributes"]:
                 attr_name = attr["spec_id"]
                 attr["spec_id"] = attr_id_map[attr_name]
+
         return shapes_or_tags
 
     def _remap_track_ids(self, tracks, attribute_id_map, class_id_map):
@@ -3940,7 +3922,25 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
                 for attr in shape["attributes"]:
                     attr_name = attr["spec_id"]
                     attr["spec_id"] = attr_id_map[attr_name]
+
         return tracks
+
+    def _validate(self, response):
+        try:
+            response.raise_for_status()
+        except:
+            d = response.__dict__
+            raise Exception(
+                "%d error for request %s to url %s with the reason %s. Error "
+                "content: %s"
+                % (
+                    d["status_code"],
+                    d["request"],
+                    d["url"],
+                    d["reason"],
+                    d["_content"],
+                )
+            )
 
 
 class CVATLabel(object):
@@ -3952,7 +3952,7 @@ class CVATLabel(object):
             the CVAT API
         class_map: a dictionary mapping label ids to class strings
         attr_id_map: a dictionary mapping attribute ids attribute names for
-            every label 
+            every label
     """
 
     def __init__(self, label_dict, class_map, attr_id_map):
@@ -3988,7 +3988,7 @@ class CVATLabel(object):
                 to update the attributes
 
         Returns:
-            label: the updated :class:`fiftyone.core.labels.Label`
+            the updated :class:`fiftyone.core.labels.Label`
         """
         if "label_id" in self.attributes:
             label_id = self.attributes["label_id"].value
@@ -4021,7 +4021,7 @@ class CVATShape(CVATLabel):
             the CVAT API
         class_map: a dictionary mapping label ids to class strings
         attr_id_map: a dictionary mapping attribute ids attribute names for
-            every label 
+            every label
     """
 
     def __init__(
@@ -4042,7 +4042,7 @@ class CVATShape(CVATLabel):
         :class:`fiftyone.core.labels.Detection`
 
         Returns:
-            label: a :class:`fiftyone.core.labels.Detection`
+            a :class:`fiftyone.core.labels.Detection`
         """
         xtl, ytl, xbr, ybr = self.points
         bbox = [
@@ -4066,7 +4066,7 @@ class CVATShape(CVATLabel):
         :class:`fiftyone.core.labels.Polyline`
 
         Returns:
-            label: a :class:`fiftyone.core.labels.Polyline`
+            a :class:`fiftyone.core.labels.Polyline`
         """
         points = self._to_pairs_of_points(self.points)
         frame_size = (self.width, self.height)
@@ -4088,7 +4088,7 @@ class CVATShape(CVATLabel):
         :class:`fiftyone.core.labels.Keypoint`
 
         Returns:
-            label: a :class:`fiftyone.core.labels.Keypoint`
+            a :class:`fiftyone.core.labels.Keypoint`
         """
         points = self._to_pairs_of_points(self.points)
         frame_size = (self.width, self.height)
@@ -4109,7 +4109,7 @@ class CVATShape(CVATLabel):
         created from the polyline annotation
 
         Returns:
-            label: a :class:`fiftyone.core.labels.Detection`
+            a :class:`fiftyone.core.labels.Detection`
         """
         new_fields = label._fields
         default_fields = type(label)._fields_ordered
@@ -4131,7 +4131,7 @@ class CVATTag(CVATLabel):
         :class:`fiftyone.core.labels.Classification`
 
         Returns:
-            label: a :class:`fiftyone.core.labels.Classification`
+            a :class:`fiftyone.core.labels.Classification`
         """
         label = fol.Classification(
             label=self.class_name, attributes=self.fo_attributes
@@ -4152,55 +4152,48 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
             media files on disk to upload
-        launch_editor (False): whether to launch the backend editor in a
-            browser window after uploading samples
-        url ("cvat.org"): URL of the CVAT server to which to upload samples 
+        url ("cvat.org"): URL of the CVAT server to which to upload samples
         port (None): four digit port to append to url when connecting to server
         https (True): boolean indicating whether to connect to https (True) or
             http (False) server
         auth (None): an optional dictionary mapping the strings "username" and
             "password" to the CVAT username and password to use to connect to
             the CVAT server
-        segment_size (None): maximum number of images to load into a job. Not
-            applicable to videos
-        image_quality (75): an integer ranging from 0 to 100 indicating the 
-            quality of images after uploading to CVAT
-        job_reviewers (None): a list containing usernames to which to assign
-            job reviews sequentially 
-        job_assignees (None): a list containing usernames to which to assign jobs
-            sequentially for images or tasks for videos
-        task_assignee (None): the username of the user assigned to the
-            created task
-        
+        segment_size (None): maximum number of images per job. Not applicable
+            to videos
+        image_quality (75): an int in `[0, 100]` determining the image quality
+            uploaded to CVAT
+        task_assignee (None): the username to which the task(s) were assigned
+        job_assignees (None): a list of usernames to which jobs were assigned
+        job_reviewers (None): a list of usernames to which job reviews were
+            assigned
     """
 
     def __init__(
         self,
         label_schema=None,
         media_field="filepath",
-        launch_editor=False,
         url="cvat.org",
         port=None,
         https=True,
         auth=None,
         segment_size=None,
         image_quality=75,
-        job_reviewers=None,
-        job_assignees=None,
         task_assignee=None,
+        job_assignees=None,
+        job_reviewers=None,
     ):
         super().__init__(label_schema=label_schema, backend="cvat")
         self.media_field = media_field
-        self.launch_editor = launch_editor
         self.url = url
         self.port = port
         self.https = https
         self.auth = auth
         self.segment_size = segment_size
         self.image_quality = image_quality
-        self.job_reviewers = job_reviewers
-        self.job_assignees = job_assignees
         self.task_assignee = task_assignee
+        self.job_assignees = job_assignees
+        self.job_reviewers = job_reviewers
         self.task_ids = {}
         self.job_ids = {}
         self.frame_id_map = {}
@@ -4208,43 +4201,54 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         self.assigned_scalar_attrs = {}
 
     def connect_to_api(self, auth=None):
-        """Connect to the previously specified CVAT server and create a
-        :class:`fiftyone.utils.cvat.CVATAnnotationAPI` object
+        """Returns an API instance connected to this annotation run.
 
         Args:
-            auth (None): dict containing the "username" and "password" used to
-                connect to API if not provided another way
-        
-        Returns:
-            api: the created :class:`fiftyone.utils.cvat.CVATAnnotationAPI` object
-        """
+            auth (None): authentication credentials dict
 
+        Returns:
+            a :class:`CVATAnnotationAPI` instance
+        """
         if auth is None:
             auth = self.auth
-        api = CVATAnnotationAPI(
+
+        return CVATAnnotationAPI(
             url=self.url, port=self.port, https=self.https, auth=auth
         )
-        return api
 
-    def print_status(self, auth=None, return_status=False):
-        """Connect to API and print the status of assigned tasks and jobs
+    def get_status(self, auth=None):
+        """Gets the status of the assigned tasks and jobs.
 
         Args:
-            auth (None): dict containing the "username" and "password" used to
-                connect to API if not provided another way
-            return_status (False): whether to print the status (False) or just
-                return a dict containing the status information (True)
+            auth (None): authentication credentials dict
 
         Returns:
-            status: a dict containing the status information returned only if
-                `return_status` is True
+            a dict of status information
         """
+        return self._get_status(auth=auth)
+
+    def print_status(self, auth=None):
+        """Print the status of the assigned tasks and jobs.
+
+        Args:
+            auth (None): authentication credentials dict
+
+        Returns:
+            a dict containing the status information returned only if
+            ``return_status`` is True
+        """
+        self._get_status(auth=auth, log=True)
+
+    def _get_status(self, auth=None, log=False):
         api = self.connect_to_api(auth=auth)
 
-        current_status = self._get_label_fields_info()
         status = {}
+
+        current_status = self._get_label_fields_info()
         for label_field, lf_info in current_status.items():
-            logger.info("\nStatus for label field '%s':\n" % label_field)
+            if log:
+                logger.info("\nStatus for label field '%s':\n", label_field)
+
             status[label_field] = {}
             for task_info in lf_info:
                 task_id = task_info["task_id"]
@@ -4254,8 +4258,8 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
                 try:
                     task_resp = api.get(task_url)
                 except:
-                    logger.info(
-                        "\tTask '%d' not found at %s\n" % (task_id, task_url)
+                    logger.warning(
+                        "\tTask '%d' not found at %s\n", task_id, task_url
                     )
                     continue
 
@@ -4264,53 +4268,58 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
                 name = task_json["name"]
                 task_assignee = task_json["assignee"]
                 task_status = task_json["status"]
-                if not return_status:
-                    logger.info(
-                        "\tTask '%s' with ID '%d':\n\t\tStatus: %s\n\t\tAssignee: %s\n\t\tLast updated: %s\n\t\tURL: %s\n"
-                        % (
-                            name,
-                            task_id,
-                            str(task_status),
-                            str(task_assignee),
-                            updated,
-                            api.base_task_url(task_id),
-                        )
-                    )
+
                 status[label_field][task_id]["name"] = name
                 status[label_field][task_id]["assignee"] = task_assignee
                 status[label_field][task_id]["status"] = task_status
                 status[label_field][task_id]["updated"] = updated
                 status[label_field][task_id]["jobs"] = {}
 
+                if log:
+                    logger.info(
+                        "\tTask %d (%s):\n"
+                        "\t\tStatus: %s\n"
+                        "\t\tAssignee: %s\n"
+                        "\t\tLast updated: %s\n"
+                        "\t\tURL: %s\n",
+                        task_id,
+                        name,
+                        str(task_status),
+                        str(task_assignee),
+                        updated,
+                        api.base_task_url(task_id),
+                    )
+
                 for job_id in job_ids:
                     job_url = api.taskless_job_url(job_id)
                     try:
                         job_resp = api.get(job_url)
                     except:
-                        logger.info(
-                            "\t\tJob '%d' not found at %s\n"
-                            % (job_id, job_url)
+                        logger.warning(
+                            "\t\tJob '%d' not found at %s\n", job_id, job_url
                         )
                         continue
+
                     job_json = job_resp.json()
                     job_status = job_json["status"]
                     job_assignee = job_json["assignee"]
                     reviewer = job_json["reviewer"]
-                    if not return_status:
-                        logger.info(
-                            "\t\tJob ID '%d':\n\t\t\tStatus: %s\n\t\t\tAssignee: %s\n\t\t\tReviewer: %s\n"
-                            % (
-                                job_id,
-                                str(job_status),
-                                str(job_assignee),
-                                str(reviewer),
-                            )
-                        )
 
                     status[label_field][task_id]["jobs"][job_id] = job_json
 
-        if return_status:
-            return status
+                    if log:
+                        logger.info(
+                            "\t\tJob %d:\n"
+                            "\t\t\tStatus: %s\n"
+                            "\t\t\tAssignee: %s\n"
+                            "\t\t\tReviewer: %s\n",
+                            job_id,
+                            str(job_status),
+                            str(job_assignee),
+                            str(reviewer),
+                        )
+
+        return status
 
     def cleanup(self, delete_tasks=False, auth=None, **kwargs):
         """Deletes all created tasks from CVAT
@@ -4333,20 +4342,22 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
             results.append(
                 {"task_id": task_id, "job_ids": self.job_ids[task_id]}
             )
+
         return results
 
     def _get_label_fields_info(self):
         results = {}
         for label_field in self.labels_task_map.keys():
             results[label_field] = self._get_label_field_ids(label_field)
+
         return results
 
     def _task_id_to_label_field(self, task_id):
-        self.labels_task_map_rev = {}
         for lf, tasks in self.labels_task_map.items():
             for task in tasks:
                 if task == task_id:
                     return lf
+
         return None
 
 
@@ -4361,9 +4372,9 @@ def annotate(
     auth=None,
     segment_size=None,
     image_quality=75,
-    job_reviewers=None,
-    job_assignees=None,
     task_assignee=None,
+    job_assignees=None,
+    job_reviewers=None,
 ):
     """Exports the samples and labels to CVAT from the given label schema.
 
@@ -4373,9 +4384,9 @@ def annotate(
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
             media files on disk to upload
-        launch_editor (False): whether to launch the backend editor in a
-            browser window after uploading samples
-        url ("cvat.org"): URL of the CVAT server to which to upload samples 
+        launch_editor (False): whether to launch the annotation backend's
+            editor after uploading the samples
+        url ("cvat.org"): URL of the CVAT server to which to upload samples
         port (None): four digit port to append to url when connecting to server
         https (True): boolean indicating whether to connect to https (True) or
             http (False) server
@@ -4384,34 +4395,30 @@ def annotate(
             the CVAT server
         segment_size (None): maximum number of images to load into a job. Not
             applicable to videos
-        image_quality (75): an integer ranging from 0 to 100 indicating the 
-            quality of images after uploading to CVAT
-        job_reviewers (None): a list containing usernames to which to assign
-            job reviews sequentially 
-        job_assignees (None): a list containing usernames to which to assign jobs
-            sequentially for images or tasks for videos
-        task_assignee (None): the username of the user assigned to the
-            created task
+        image_quality (75): an int in `[0, 100]` determining the image quality
+            to upload to CVAT
+        task_assignee (None): the username to assign the created task(s)
+        job_assignees (None): a list of usernames to assign jobs
+        job_reviewers (None): a list of usernames to assign job reviews
 
     Returns:
-        annotation_info: the
-            :class:`fiftyone.utils.cvat.CVATAnnotationInfo` used to
-            upload and annotate the given samples
+        a :class:`fiftyone.utils.cvat.CVATAnnotationInfo`
     """
     info = CVATAnnotationInfo(
         label_schema=label_schema,
-        launch_editor=launch_editor,
         url=url,
         port=port,
         https=https,
         auth=auth,
         segment_size=segment_size,
         image_quality=image_quality,
-        job_reviewers=job_reviewers,
-        job_assignees=job_assignees,
         task_assignee=task_assignee,
+        job_assignees=job_assignees,
+        job_reviewers=job_reviewers,
     )
+
     api = info.connect_to_api(auth=auth)
+
     logger.info("Uploading samples to CVAT...")
     (
         task_ids,
@@ -4425,55 +4432,57 @@ def annotate(
         media_field=media_field,
         segment_size=segment_size,
         image_quality=image_quality,
-        job_reviewers=job_reviewers,
-        job_assignees=job_assignees,
         task_assignee=task_assignee,
+        job_assignees=job_assignees,
+        job_reviewers=job_reviewers,
     )
+
     info.task_ids = task_ids
     info.job_ids = job_ids
     info.frame_id_map = frame_id_map
     info.labels_task_map = labels_task_map
     info.assigned_scalar_attrs = assigned_scalar_attrs
     info.store_label_ids(samples)
-    if job_ids and job_ids[task_ids[0]]:
-        editor_url = api.base_job_url(task_ids[0], job_ids[task_ids[0]][0])
-    else:
-        editor_url = api.base_task_url(task_ids[0])
+
     logger.info("Samples uploaded successfully")
+
     if launch_editor:
-        label_field = info._task_id_to_label_field(task_ids[0])
-        label_type = label_schema[label_field]["type"]
-        logger.info(
-            "Launching editor for label field '%s' of type %s at %s"
-            % (label_field, label_type, editor_url)
-        )
+        if job_ids and job_ids[task_ids[0]]:
+            editor_url = api.base_job_url(task_ids[0], job_ids[task_ids[0]][0])
+        else:
+            editor_url = api.base_task_url(task_ids[0])
+
+        logger.info("Launching editor at '%s'...", editor_url)
         api.launch_editor(url=editor_url)
+
     return info
 
 
-def load_annotations(info, auth=None, **kwargs):
-    """Uses the provided :class:`fiftyone.utils.cvat.CVATAnnotationInfo` to
-        reconnect to the API using the specifications in the info and downloads
-        annotations from the label schema.
+def load_annotations(info, delete_tasks=False, auth=None):
+    """Downloads the annotations from CVAT for the tasks in the given
+    :class:`fiftyone.utils.cvat.CVATAnnotationInfo`.
 
     Args:
         info: a :class:`fiftyone.utils.cvat.CVATAnnotationInfo` that was used
             to annotate samples previously
         auth (None): a dictionary with the "username" and "password" to use to
             connect to the CVAT server
-        kwargs: other arguments pass to :func:`fiftyone.utils.annotations.load_annotations`
+
+    Returns:
+        a tuple of
+
+        -   **results**: a dictionary of annotations
+        -   **additional_results**: a dictionary of additional annotations
     """
-    if auth is None:
-        api = info.connect_to_api()
-    else:
-        api = info.connect_to_api(auth=auth)
+    api = info.connect_to_api(auth=auth)
+
     task_ids = info.task_ids
     job_ids = info.job_ids
     frame_id_map = info.frame_id_map
     label_schema = info.label_schema
     labels_task_map = info.labels_task_map
     assigned_scalar_attrs = info.assigned_scalar_attrs
-    annotations = api.download_annotations(
+    results, additional_results = api.download_annotations(
         label_schema,
         task_ids,
         job_ids,
@@ -4481,7 +4490,8 @@ def load_annotations(info, auth=None, **kwargs):
         labels_task_map,
         assigned_scalar_attrs,
     )
-    return annotations
+
+    return results, additional_results
 
 
 def load_cvat_image_annotations(xml_path):
@@ -4495,9 +4505,9 @@ def load_cvat_image_annotations(xml_path):
     Returns:
         a tuple of
 
-        -   info: a dict of dataset info
-        -   cvat_task_labels: a :class:`CVATTaskLabels` instance
-        -   cvat_images: a list of :class:`CVATImage` instances
+        -   **info**: a dict of dataset info
+        -   **cvat_task_labels**: a :class:`CVATTaskLabels` instance
+        -   **cvat_images**: a list of :class:`CVATImage` instances
     """
     d = fou.load_xml_as_json_dict(xml_path)
     annotations = d.get("annotations", {})
@@ -4550,9 +4560,9 @@ def load_cvat_video_annotations(xml_path):
     Returns:
         a tuple of
 
-        -   info: a dict of dataset info
-        -   cvat_task_labels: a :class:`CVATTaskLabels` instance
-        -   cvat_tracks: a list of :class:`CVATTrack` instances
+        -   **info**: a dict of dataset info
+        -   **cvat_task_labels**: a :class:`CVATTaskLabels` instance
+        -   **cvat_tracks**: a list of :class:`CVATTrack` instances
     """
     d = fou.load_xml_as_json_dict(xml_path)
     annotations = d.get("annotations", {})

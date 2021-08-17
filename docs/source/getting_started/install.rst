@@ -97,7 +97,7 @@ install as follows:
 
 .. code-block:: shell
 
-  pip install fiftyone-desktop
+  pip install fiftyone[desktop]
 
 .. note::
 
@@ -199,6 +199,15 @@ option to ``pip install``:
 
    pip install --upgrade fiftyone
 
+If you use the desktop App, you should also run:
+
+.. code-block:: shell
+
+   pip install fiftyone[desktop]
+
+to ensure that you have the proper version of the desktop App installed for
+your current FiftyOne version.
+
 .. note::
 
   New versions of FiftyOne occasionally introduce data model changes that
@@ -265,9 +274,9 @@ FiftyOne and all of its subpackages can be uninstalled with:
 
 .. code-block:: shell
 
-   pip uninstall fiftyone fiftyone-brain fiftyone-db voxel51-eta
+   pip uninstall fiftyone fiftyone-brain fiftyone-db
 
-If you installed the optional desktop App, you can uninstall that via:
+If you installed the optional desktop App, you can uninstall it via:
 
 .. code-block:: shell
 

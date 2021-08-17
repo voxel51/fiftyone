@@ -2937,6 +2937,56 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def group_by(self, field_or_expr, sort_expr=None, reverse=False):
+        """Creates a view that reorganizes the samples in the collection so
+        that they are grouped by a specified field or expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            # Take a random sample of 1000 samples and organize them by ground
+            # truth label with groups arranged in decreasing order of size
+            view = dataset.take(1000).group_by(
+                "ground_truth.label",
+                sort_expr=F().length(),
+                reverse=True,
+            )
+
+            print(view.values("ground_truth.label"))
+            print(
+                sorted(
+                    view.count_values("ground_truth.label").items(),
+                    key=lambda kv: kv[1],
+                    reverse=True,
+                )
+            )
+
+        Args:
+            field_or_expr: the field or ``embedded.field.name`` to group by, or
+                a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines the value to group by
+            sort_expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines how to sort the groups in the output view. If
+                provided, this expression will be evaluated on the list of
+                samples in each group
+            reverse (False): whether to return the results in descending order
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.GroupBy(field_or_expr, sort_expr=sort_expr, reverse=reverse)
+        )
+
+    @view_stage
     def limit(self, limit):
         """Returns a view with at most the given number of samples.
 
@@ -5552,42 +5602,65 @@ class SampleCollection(object):
         launch_editor=False,
         **kwargs,
     ):
-        """Exports the samples and a label field to the given annotation
-        backend.
+        """Exports the samples and optional label field(s) to the given
+        annotation backend.
+
+        The ``backend`` parameter controls which annotation backend to use.
+        Depending on the backend you use, you may want/need to provide extra
+        keyword arguments to this function for the constructor of the backend's
+        annotation API:
+
+        -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATAnnotationAPI`
+
+        See :ref:`this page <cvat-annotation>` for more information about using
+        this method, including how to define label schemas using the
+        ``label_schema``, ``label_field``, ``label_type``, ``classes``, and
+        ``attributes`` parameters, and how to configure login credentials for
+        your annotation provider.
 
         Args:
-            backend ("cvat"): the name of the annotation backend to which to
-                export the samples. Options are ("cvat")
-            label_schema (None): a dictionary indicating the type, class options, and
-                attributes for each label field. This is required for new label fields
-                if `classes` is not provided.
-                For existing label fields, provided classes and attributes will be used
-                instead of parsing existing classes or attributes
-            label_field (None): a string indicating either an existing label field to upload,
-                or the name of a new label field to create. Required if `label_schema` is not provided.
-            label_type (None): a string indicating the type of labels to expect 
-                when creating a new `label_field`. 
-                Options: ("detections", "classifications", "polylines", "keypoints", "scalar")
-            classes (None): a list of strings indicating the class options. These
-                classes will be used as the default for all fields without classes
-                specified in the `label_schema`. This is required for a new
-                `label_field` if `label_schema` is not provided. For existing label fields, if
-                neither `classes` nor `label_schema` is given, default classes are used
-                if available, otherwise classes are parsed from existing labels in the
-                label field
-            attributes (True): a list of string attributes or dictionary of attribute
-                name to type, values, and default values that will be the default for
-                every label field without attributes specified through the
-                `label_schema`. `True` indicates loading all values for existing
-                label fields. `False` indicates loading no attributes
-            media_field ("filepath"): string field name containing the paths to
-                media files on disk to upload
-            launch_editor (False): whether to launch the backend editor in a
-                browser window after uploading samples
+            backend ("cvat"): the annotation backend to use. Supported values
+                are ``("cvat")``
+            label_schema (None): a dictionary defining the label schema to use.
+                If this argument is provided, it takes precedence over
+                ``label_field`` and ``label_type``
+            label_field (None): a string indicating either a new or existing
+                label field to annotate
+            label_type (None): a string indicating the type of labels to expect
+                when creating a new ``label_field``. Supported values are
+                ``("detections", "classifications", "polylines", "keypoints", "scalar")``
+            classes (None): a list of strings indicating the class options for
+                either ``label_field`` or all fields in ``label_schema``
+                without classes specified. All new label fields must have a
+                class list provided via one of the supported methods. For
+                existing label fields, if classes are not provided by this
+                argument nor ``label_schema``, they are parsed from
+                :meth:`classes` or :meth:`default_classes`
+            attributes (True): specifies the label attributes of each label
+                field to include (other than their ``label``, which is always
+                included) in the annotation export. Can be any of the
+                following:
+
+                -   ``True``: export all label attributes
+                -   ``False``: don't export any custom label attributes
+                -   a list of label attributes to export
+                -   a dict mapping attribute names to dicts specifying the
+                    ``type``, ``values``, and ``default`` for each attribute
+
+                If provided, this parameter will apply to all label fields in
+                ``label_schema`` that do not define their attributes
+            media_field ("filepath"): the field containing the paths to the
+                media files to upload
+            launch_editor (False): whether to launch the annotation backend's
+                editor after uploading the samples
             **kwargs: additional arguments to send to the annotation backend
+
+        Returns:
+            the :class:`fiftyone.utils.annotations.AnnotationInfo` for the
+            export
         """
-        annotation_info = foua.annotate(
-            samples=self,
+        return foua.annotate(
+            self,
             backend=backend,
             label_schema=label_schema,
             label_field=label_field,
@@ -5598,18 +5671,21 @@ class SampleCollection(object):
             launch_editor=launch_editor,
             **kwargs,
         )
-        return annotation_info
 
     def load_annotations(self, info, **kwargs):
-        """Loads labels from the given annotation information.
-        
+        """Loads the labels from the given annotation run into this dataset.
+
+        See :ref:`this page <cvat-loading-annotations>` for more information
+        about using this method to import annotations that you have scheduled
+        by calling :meth:`annotate`.
+
         Args:
-            info: the :class`AnnotationInfo` returned from a call to
-                `annotate()`
-            **kwargs: additional arguments to pass to the `load_annotations`
-                function of the specified backend
+            info: the :class:`fiftyone.utils.annotations.AnnotationInfo`
+                returned from a call to :meth:`annotate`
+            **kwargs: keyword arguments to pass to the ``load_annotations()``
+                method of the annotation backend
         """
-        return foua.load_annotations(samples=self, info=info, **kwargs,)
+        foua.load_annotations(self, info, **kwargs)
 
     def list_indexes(self):
         """Returns the list of index names on this collection.
