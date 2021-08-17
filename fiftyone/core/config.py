@@ -203,22 +203,25 @@ class AnnotationConfig(EnvConfig):
 
     def __init__(self, d=None):
         if d is None:
-            d = {}
+            d = {"cvat": {}}
 
         self.cvat_username = self.parse_string(
-            d, "cvat_username", env_var="FIFTYONE_CVAT_USERNAME", default=None,
+            d["cvat"],
+            "username",
+            env_var="FIFTYONE_CVAT_USERNAME",
+            default=None,
         )
         self.cvat_password = self.parse_string(
-            d, "cvat_password", env_var="FIFTYONE_CVAT_PASSWORD", default=None,
+            d["cvat"],
+            "password",
+            env_var="FIFTYONE_CVAT_PASSWORD",
+            default=None,
         )
         self.cvat_url = self.parse_string(
-            d, "cvat_url", env_var="FIFTYONE_CVAT_URL", default="cvat.org",
-        )
-        self.cvat_port = self.parse_int(
-            d, "cvat_port", env_var="FIFTYONE_CVAT_PORT", default=None,
-        )
-        self.cvat_https = self.parse_bool(
-            d, "cvat_https", env_var="FIFTYONE_CVAT_HTTPS", default=True,
+            d["cvat"],
+            "url",
+            env_var="FIFTYONE_CVAT_URL",
+            default="https://cvat.org",
         )
 
 
