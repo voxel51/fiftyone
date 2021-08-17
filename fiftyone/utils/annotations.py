@@ -25,15 +25,6 @@ fouc = fou.lazy_import("fiftyone.utils.cvat")
 logger = logging.getLogger(__name__)
 
 
-_SUPPORTED_LABEL_TYPES = (
-    fol.Classifications,
-    fol.Classification,
-    fol.Detections,
-    fol.Detection,
-    fol.Keypoints,
-    fol.Polylines,
-    fol.Polyline,
-)
 _SUPPORTED_FIELD_TYPES = (
     fof.IntField,
     fof.FloatField,

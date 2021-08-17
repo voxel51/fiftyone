@@ -40,22 +40,6 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-_MAX_TASKS_MESSAGE = "The user has the maximum number of tasks"
-_SUPPORTED_LABEL_TYPES = (
-    fol.Classifications,
-    fol.Classification,
-    fol.Detections,
-    fol.Detection,
-    fol.Keypoints,
-    fol.Polylines,
-    fol.Polyline,
-)
-_SUPPORTED_FIELD_TYPES = (
-    fof.IntField,
-    fof.FloatField,
-    fof.StringField,
-    fof.BooleanField,
-)
 ATTRIBUTE_TYPES_REQUIREMENTS = {
     "text": [],
     "select": ["values"],
