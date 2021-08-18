@@ -42,10 +42,14 @@ jobs:
           if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
              echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/db-v//")" >> $GITHUB_ENV
           fi
-      - name: Build wheel (macOS)
+      - name: Build wheel (macOS ARM)
         run: |
           cd package/db
-          python setup.py bdist_wheel --plat-name mac
+          python setup.py bdist_wheel --plat-name mac-arm
+      - name: Build wheel (macOS Intel)
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name mac-intel
       - name: Build wheel (Windows)
         run: |
           cd package/db

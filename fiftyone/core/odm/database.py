@@ -16,32 +16,57 @@ from pymongo.errors import BulkWriteError
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
 
 _client = None
 _async_client = None
-_default_port = 27017
+_connection_kwargs = {}
 
 logger = logging.getLogger(__name__)
 
 _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
 
+def establish_db_conn():
+    """Establishes the database connection.
+    
+    If `fo.config.database_uri` is not defined, a
+    :class:`fiftyone.core.service.DatabaseService` is created. Otherwise, the
+    connection string URI is used.
+
+    Raises:
+        RuntimeError: if startup was attempted, but no binary was found
+        ConnectionError: if `fo.config.database_uri` is defined but a
+            connection cannot be established
+    """
+    global _connection_kwargs
+    if fo.config.database_uri is None:
+        service = fos.DatabaseService()
+        service.start()
+        _connection_kwargs["port"] = service.port
+    else:
+        _connection_kwargs["host"] = fo.config.database_uri
+
+    get_db_conn()
+
+
 def _connect():
     global _client
     if _client is None:
-        connect(foc.DEFAULT_DATABASE, port=_default_port)
-        _client = pymongo.MongoClient(port=_default_port)
+        global _connection_kwargs
+        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+        _client = pymongo.MongoClient(**_connection_kwargs)
 
 
 def _async_connect():
     global _async_client
     if _async_client is None:
-        _async_client = motor.motor_tornado.MotorClient(
-            "localhost", _default_port
-        )
+        global _connection_kwargs
+        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
 
 
 def aggregate(collection, pipeline):
@@ -59,23 +84,14 @@ def aggregate(collection, pipeline):
     return collection.aggregate(pipeline, allowDiskUse=True)
 
 
-def set_default_port(port):
-    """Changes the default port used to connect to the database.
-
-    Args:
-        port (int): port number
-    """
-    global _default_port
-    _default_port = int(port)
-
-
 def get_db_client():
     """Returns a database client.
 
     Returns:
         a ``pymongo.mongo_client.MongoClient``
     """
-    return pymongo.MongoClient(port=_default_port)
+    _connect()
+    return _client[foc.DEFAULT_DATABASE]
 
 
 def get_db_conn():

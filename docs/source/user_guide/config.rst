@@ -17,6 +17,9 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | Config field                  | Environment variable                | Default value                 | Description                                                                            |
 +===============================+=====================================+===============================+========================================================================================+
+| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A MongoDB connection string URI to defer connections to. This value is required if     |
+|                               |                                     |                               | your system                                                                                        |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database.                           |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |

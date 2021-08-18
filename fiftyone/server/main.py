@@ -34,7 +34,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import Select, _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
@@ -46,9 +45,7 @@ from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
 
 
-# connect to the existing DB service to initialize global port information
-dbs = DatabaseService()
-dbs.start()
+foo.establish_db_conn()
 db = foo.get_async_db_conn()
 
 

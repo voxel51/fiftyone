@@ -27,7 +27,8 @@ except ImportError:
 MONGODB_DOWNLOAD_URLS = {
     "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
     "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.4.2.tgz",
-    "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
+    "mac-arm": None,
+    "mac-intel": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
     "win": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
     "ubuntu1604": {
         "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
@@ -67,7 +68,9 @@ class CustomBdistWheel(bdist_wheel):
         self.root_is_pure = False
         self._plat_name = self.plat_name
         # rewrite platform name to match what mongodb supports
-        if self.plat_name.startswith("mac"):
+        if self.plat_name.startswith("mac-arm"):
+            self.plat_name = "macosx_11_0_arm64"
+        elif self.plat_name.startswith("mac-intel"):
             # mongodb 4.4.6 supports macOS 10.13 or later
             # https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/#platform-support
             # also, we only distribute 64-bit binaries
@@ -103,6 +106,10 @@ class CustomBdistWheel(bdist_wheel):
             for k, v in MONGODB_DOWNLOAD_URLS.items()
             if self._plat_name.startswith(k)
         )
+
+        if mongo_zip_url is None:
+            return
+
         if LINUX_DISTRO:
             if not self.plat_name.startswith("manylinux"):
                 raise ValueError(

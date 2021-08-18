@@ -266,7 +266,7 @@ class DatabaseService(MultiClientService):
             "--dbpath",
             self.database_dir,
             "--logpath",
-            os.path.join(self.database_dir, "log/mongo.log"),
+            os.path.join(self.database_dir, "log", "mongo.log"),
             "--port",
             "0",
         ]
@@ -287,12 +287,6 @@ class DatabaseService(MultiClientService):
         etau.ensure_dir(os.path.join(self.database_dir, "log"))
         super().start()
 
-        # Set up a default connection
-        import fiftyone.core.odm.database as food
-
-        food.set_default_port(self.port)
-        food.get_db_conn()
-
     @staticmethod
     def cleanup():
         """Deletes non-persistent datasets when the DB shuts down."""
@@ -311,8 +305,6 @@ class DatabaseService(MultiClientService):
             return
 
         try:
-            food.set_default_port(port)
-            food.get_db_conn()
             fod.delete_non_persistent_datasets()
             food.sync_database()
         except:
@@ -369,7 +361,8 @@ class DatabaseService(MultiClientService):
                     "%s: failed to launch (code %r): %s", path, code, err
                 )
         raise RuntimeError(
-            "Could not find mongod>=%s" % DatabaseService.MIN_MONGO_VERSION
+            """Could not find mongod>=%s. If using """
+            % DatabaseService.MIN_MONGO_VERSION
         )
 
 

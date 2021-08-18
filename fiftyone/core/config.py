@@ -62,6 +62,9 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.database_uri = self.parse_string(
+            d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
+        )
         self.database_dir = self.parse_string(
             d,
             "database_dir",
