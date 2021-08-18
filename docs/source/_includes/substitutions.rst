@@ -76,7 +76,6 @@
 .. |ImageMetadata| replace:: :class:`ImageMetadata <fiftyone.core.metadata.ImageMetadata>`
 .. |VideoMetadata| replace:: :class:`VideoMetadata <fiftyone.core.metadata.VideoMetadata>`
 
-.. |AnnotationConfig| replace:: :class:`AnnotationConfig <fiftyone.utils.annotations.AnnotationConfig>`
 .. |AppConfig| replace:: :class:`AppConfig <fiftyone.core.config.AppConfig>`
 
 .. |Session| replace:: :class:`Session <fiftyone.core.session.Session>`
