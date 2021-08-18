@@ -266,7 +266,7 @@ class DatabaseService(MultiClientService):
             "--dbpath",
             self.database_dir,
             "--logpath",
-            os.path.join(self.database_dir, "log/mongo.log"),
+            os.path.join(self.database_dir, "log", "mongo.log"),
             "--port",
             "0",
         ]
@@ -469,7 +469,11 @@ class AppService(Service):
                 return [os.path.join(pre, path)]
 
         if os.path.isdir("./FiftyOne.app"):
-            return [os.path.join(pre, "FiftyOne.app/Contents/MacOS/FiftyOne")]
+            return [
+                os.path.join(
+                    pre, "FiftyOne.app", "Contents", "MacOS", "FiftyOne"
+                )
+            ]
 
         raise RuntimeError(
             "Could not find FiftyOne app in %r" % foc.FIFTYONE_DESKTOP_APP_DIR
