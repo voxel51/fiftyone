@@ -818,17 +818,17 @@ class AnnotationCommand(Command):
 
 
 class AnnotationConfigCommand(Command):
-    """Tools for working with your FiftyOne Annotation config.
+    """Tools for working with your FiftyOne annotation config.
 
     Examples::
 
-        # Print your entire Annotation config
+        # Print your entire annotation config
         fiftyone annotation config
 
-        # Print a specific Annotation config field
+        # Print a specific annotation config field
         fiftyone annotation config <field>
 
-        # Print the location of your Annotation config on disk (if one exists)
+        # Print the location of your annotation config on disk (if one exists)
         fiftyone annotation config --locate
     """
 
@@ -838,13 +838,13 @@ class AnnotationConfigCommand(Command):
             "field",
             nargs="?",
             metavar="FIELD",
-            help="an Annotation config field to print",
+            help="an annotation config field to print",
         )
         parser.add_argument(
             "-l",
             "--locate",
             action="store_true",
-            help="print the location of your Annotation config on disk",
+            help="print the location of your annotation config on disk",
         )
 
     @staticmethod
@@ -855,7 +855,7 @@ class AnnotationConfigCommand(Command):
                 print(annotation_config_path)
             else:
                 print(
-                    "No Annotation config file found at '%s'"
+                    "No annotation config file found at '%s'"
                     % annotation_config_path
                 )
 
