@@ -5279,43 +5279,40 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     def draw_labels(
-        self,
-        anno_dir,
-        label_fields=None,
-        overwrite=False,
-        annotation_config=None,
+        self, output_dir, label_fields=None, overwrite=False, config=None,
     ):
-        """Renders annotated versions of the samples in the collection with
-        label field(s) overlaid to the given directory.
+        """Renders annotated versions of the media in the collection with the
+        specified label data overlaid to the given directory.
 
-        The filenames of the sample data are maintained, unless a name conflict
-        would occur in ``anno_dir``, in which case an index of the form
-        ``"-%d" % count`` is appended to the base filename.
+        The filenames of the sample media are maintained, unless a name
+        conflict would occur in ``output_dir``, in which case an index of the
+        form ``"-%d" % count`` is appended to the base filename.
 
-        Images are written in format ``fo.config.default_image_ext``.
+        Images are written in format ``fo.config.default_image_ext``, and
+        videos are written in format ``fo.config.default_video_ext``.
 
         Args:
-            anno_dir: the directory to write the annotated files
+            output_dir: the directory to write the annotated media
             label_fields (None): a list of :class:`fiftyone.core.labels.Label`
                 fields to render. By default, all
                 :class:`fiftyone.core.labels.Label` fields are drawn
-            overwrite (False): whether to delete ``anno_dir`` if it exists
-                before rendering the labels
-            annotation_config (None): an
-                :class:`fiftyone.utils.annotations.AnnotationConfig` specifying
-                how to render the annotations
+            overwrite (False): whether to delete ``output_dir`` if it exists
+                before rendering
+            config (None): an optional
+                :class:`fiftyone.utils.annotations.DrawConfig` configuring how
+                to draw the labels
 
         Returns:
-            the list of paths to the labeled images
+            the list of paths to the rendered media
         """
-        if os.path.isdir(anno_dir):
+        if os.path.isdir(output_dir):
             if overwrite:
-                etau.delete_dir(anno_dir)
+                etau.delete_dir(output_dir)
             else:
                 logger.warning(
                     "Directory '%s' already exists; outputs will be merged "
                     "with existing files",
-                    anno_dir,
+                    output_dir,
                 )
 
         if self.media_type == fom.VIDEO:
@@ -5323,20 +5320,14 @@ class SampleCollection(object):
                 label_fields = _get_frame_label_fields(self)
 
                 return foua.draw_labeled_videos(
-                    self,
-                    anno_dir,
-                    label_fields=label_fields,
-                    annotation_config=annotation_config,
+                    self, output_dir, label_fields=label_fields, config=config
                 )
 
         if label_fields is None:
             label_fields = _get_image_label_fields(self)
 
         return foua.draw_labeled_images(
-            self,
-            anno_dir,
-            label_fields=label_fields,
-            annotation_config=annotation_config,
+            self, output_dir, label_fields=label_fields, config=config
         )
 
     def export(
