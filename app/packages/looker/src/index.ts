@@ -16,6 +16,7 @@ import {
   DASH_LENGTH,
   LABEL_LISTS,
   JSON_COLORS,
+  LABELS,
 } from "./constants";
 import {
   getFrameElements,
@@ -1206,11 +1207,26 @@ const filterSample = <S extends Sample | FrameSample>(
       }
 
       if (LABEL_LISTS[sample[field]._cls]) {
-        sample[field] = sample[field][
-          LABEL_LISTS[sample[field]._cls]
-        ].filter((label) => state.options.filter[prefix + field](label));
+        sample[field] = {
+          ...sample[field],
+          [LABEL_LISTS[sample[field]._cls]]: sample[field][
+            LABEL_LISTS[sample[field]._cls]
+          ]
+            .filter((label) => state.options.filter[prefix + field](label))
+            .map((label) => {
+              label = { ...label };
+              label.id = label._id;
+              delete label._id;
+              return label;
+            }),
+        };
       } else if (!state.options.filter[prefix + field](sample[field])) {
         delete sample[field];
+      } else if (sample[field]._cls in LABELS && sample[field]._id) {
+        sample[field].id = sample[field]._id;
+        delete sample[field]._id;
+      } else {
+        alert(field);
       }
     }
   }

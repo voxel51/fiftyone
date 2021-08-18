@@ -22,14 +22,37 @@ export const CHUNK_SIZE = 20;
 
 export const CLASSIFICATION = "Classification";
 export const CLASSIFICATIONS = "Classifications";
+export const DETECTION = "Detection";
+export const DETECTIONS = "Detections";
+export const GEOLOCATION = "GeoLocation";
+export const GEOLOCATIONS = "GeoLocations";
+export const KEYPOINT = "Keypoint";
+export const KEYPOINTS = "Keypoints";
+export const POLYLINE = "Polyline";
+export const POLYLINES = "Polylines";
+export const SEGMENTATION = "Segmentation";
 
 export const LABEL_TAGS_CLASSES = [CLASSIFICATION, CLASSIFICATIONS];
 
 export const LABEL_LISTS = {
-  Classifications: "classifications",
-  Detections: "detections",
-  Keypoints: "Keypoints",
-  Polylines: "polylines",
+  [CLASSIFICATIONS]: "classifications",
+  [DETECTIONS]: "detections",
+  [KEYPOINTS]: "Keypoints",
+  [POLYLINES]: "polylines",
+};
+
+export const LABELS = {
+  CLASSIFICATION,
+  CLASSIFICATIONS,
+  DETECTION,
+  DETECTIONS,
+  GEOLOCATION,
+  GEOLOCATIONS,
+  KEYPOINT,
+  KEYPOINTS,
+  POLYLINE,
+  POLYLINES,
+  SEGMENTATION,
 };
 
 export const SELECTION_TEXT =
