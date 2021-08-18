@@ -5,15 +5,18 @@ Data annotation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 import getpass
 import logging
 
 import eta.core.annotations as etaa
 import eta.core.frames as etaf
 import eta.core.image as etai
+import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.annotation as foa
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -25,21 +28,6 @@ fouc = fou.lazy_import("fiftyone.utils.cvat")
 logger = logging.getLogger(__name__)
 
 
-_SUPPORTED_LABEL_TYPES = (
-    fol.Classifications,
-    fol.Classification,
-    fol.Detections,
-    fol.Detection,
-    fol.Keypoints,
-    fol.Polylines,
-    fol.Polyline,
-)
-_SUPPORTED_FIELD_TYPES = (
-    fof.IntField,
-    fof.FloatField,
-    fof.StringField,
-    fof.BooleanField,
-)
 #
 # @todo: the default values for the fields customized in `__init__()` below are
 # incorrect in the generated docstring
@@ -223,13 +211,14 @@ def _to_video_labels(sample, label_fields=None):
 
 def annotate(
     samples,
-    backend="cvat",
     label_schema=None,
     label_field=None,
     label_type=None,
     classes=None,
     attributes=True,
     media_field="filepath",
+    anno_key=None,
+    backend=None,
     launch_editor=False,
     **kwargs,
 ):
@@ -250,8 +239,6 @@ def annotate(
     your annotation provider.
 
     Args:
-        backend ("cvat"): the annotation backend to use. Supported values
-            are ``("cvat")``
         label_schema (None): a dictionary defining the label schema to use.
             If this argument is provided, it takes precedence over
             ``label_field`` and ``label_type``
@@ -283,18 +270,24 @@ def annotate(
             ``label_schema`` that do not define their attributes
         media_field ("filepath"): the field containing the paths to the
             media files to upload
+        anno_key (None): an annotation key to use to refer to this annotation
+            run
+        backend (None): the annotation backend to use. The supported values are
+            ``fiftyone.annotation_config.backends.keys()`` and the default
+            is ``fiftyone.annotation_config.default_backend``
         launch_editor (False): whether to launch the annotation backend's
             editor after uploading the samples
         **kwargs: additional arguments to send to the annotation backend
 
     Returns:
-        the :class:`AnnotationInfo` for the export
+        an :class:`fiftyone.core.annotations.AnnnotationResults`
     """
-    if not samples:
-        raise ValueError("%s is empty" % samples.__class__.__name__)
+    config = _parse_config(backend, None, media_field, **kwargs)
 
-    annotation_label_schema = AnnotationLabelSchema(
-        backend=backend,
+    anno_backend = config.build()
+    anno_backend.register_run(samples, anno_key, overwrite=False)
+
+    anno_backend.build_label_schema(
         label_schema=label_schema,
         label_field=label_field,
         classes=classes,
@@ -302,23 +295,42 @@ def annotate(
         label_type=label_type,
         samples=samples,
     )
-    label_schema = annotation_label_schema.complete_label_schema
 
-    if backend == "cvat":
-        annotation_info = fouc.annotate(
-            samples,
-            launch_editor=launch_editor,
-            label_schema=label_schema,
-            media_field=media_field,
-            **kwargs,
+    results = anno_backend.annotate(
+        samples, anno_key=anno_key, launch_editor=launch_editor
+    )
+
+    anno_backend.save_run_results(samples, anno_key, results)
+
+    return results
+
+
+def _parse_config(backend, label_schema, media_field, **kwargs):
+    if backend is None:
+        backend = fo.annotation_config.default_backend
+
+    backends = fo.annotation_config.backends
+
+    if backend not in backends:
+        raise ValueError(
+            "Unsupported backend '%s'. The available backends are %s"
+            % (backend, sorted(backends))
         )
-    else:
-        raise ValueError("Unsupported annotation backend %s" % backend)
 
-    return annotation_info
+    parameters = deepcopy(backends[backend])
+
+    if "config_cls" not in parameters:
+        raise ValueError(
+            "Annotation backend '%s' has no `config_cls`" % backend
+        )
+
+    config_cls = etau.get_class(parameters.pop("config_cls"))
+    parameters.update(**kwargs)
+
+    return config_cls(label_schema, media_field=media_field, **parameters)
 
 
-def load_annotations(samples, info, **kwargs):
+def load_annotations(samples, results, **kwargs):
     """Loads the labels from the given annotation run into this dataset.
 
     See :ref:`this page <cvat-loading-annotations>` for more information about
@@ -327,24 +339,14 @@ def load_annotations(samples, info, **kwargs):
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        info: the :class`AnnotationInfo` returned by the call to
-            :meth:`fiftyone.core.collections.SampleCollection.annotate`
-        **kwargs: keyword arguments to pass to the ``load_annotations()``
-            method of the annotation backend
+        results: an :class`AnnotationResults`
+        **kwargs: keyword arguments for the
+            :meth:`AnnotationBackend.load_annotations` method of
+            :attr:`AnnotationResults.backend`
     """
-    if info.backend == "cvat":
-        if not isinstance(info, fouc.CVATAnnotationInfo):
-            raise ValueError(
-                "Expected info to be of type %s; but found %s"
-                % (fouc.CVATAnnotationInfo, type(info))
-            )
-
-        annotations_results, additional_results = fouc.load_annotations(
-            info, **kwargs
-        )
-    else:
-        raise ValueError("Unsupported annotation backend %s" % info.backend)
-        return
+    annotations_results, additional_results = results.backend.load_annotations(
+        **kwargs
+    )
 
     if not annotations_results:
         logger.warning("No annotations found")
@@ -356,7 +358,7 @@ def load_annotations(samples, info, **kwargs):
 
     is_video = samples.media_type == fom.VIDEO
 
-    label_schema = info.label_schema
+    label_schema = results.label_schema
     for label_field in label_schema:
 
         # First add unexpected labels to new fields
@@ -510,7 +512,7 @@ def load_annotations(samples, info, **kwargs):
         _, id_path = samples._get_label_field_path(label_field, "id")
 
         prev_label_ids = []
-        for ids in info.id_map[label_field].values():
+        for ids in results.id_map[label_field].values():
             if ids is None:
                 continue
 
@@ -641,28 +643,47 @@ def _get_tracking_index_map(samples, label_field, annotations):
     return tracking_index_map, max_index
 
 
-class BaseAnnotationAPI(object):
-    """Base class for annotation backend APIs.
+class AnnotationBackendConfig(foa.AnnotationRunConfig):
+    """Base class for configuring an :class:`AnnotationBackend` instances.
 
-    Annotation APIs provide support for sending samples for annotation and
-    importing them back into FiftyOne.
+    Args:
+        label_schema: a dictionary containing the description of label fields,
+            classes and attribute to annotate
+        media_field ("filepath"): string field name containing the paths to
+            media files on disk to upload
+        **kwargs: any leftover keyword arguments after subclasses have done
+            their parsing
     """
 
-    def prompt_username_password(self, host=None):
-        prefix = "%s " % host if host else ""
-        username = input("%susername: " % prefix)
-        password = getpass.getpass(prompt="%spassword: " % prefix)
-        return {"username": username, "password": password}
+    def __init__(self, label_schema, media_field="filepath", **kwargs):
+        self.label_schema = label_schema
+        self.media_field = media_field
+        super().__init__(**kwargs)
 
-    def prompt_api_key(self, host=None):
-        prefix = "%s " % host if host else ""
-        return getpass.getpass(prompt="%sAPI key: " % prefix)
+    @property
+    def method(self):
+        """The name of the annotation backend."""
+        raise NotImplementedError("subclass must implement method")
 
 
-class AnnotationInfo(object):
-    """Class containing the results of an annotation run created by
-    :meth:`fiftyone.core.collections.SampleCollection.annotate`.
-    """
+class AnnotationBackend(foa.AnnotationRun):
+    """Base class for annotation backends."""
+
+    def annotate(self, samples, anno_key=None, launch_editor=False, **kwargs):
+        raise NotImplementedError("subclass must implement evaluate_samples()")
+
+    def load_annotations(self, **kwargs):
+        raise NotImplementedError("subclass must implement load_annotations()")
+
+    def get_fields(self, samples, anno_key):
+        return list(self.config.label_schema.keys())
+
+    def cleanup(self, samples, anno_key):
+        pass
+
+
+class AnnotationResults(foa.AnnotationResults):
+    """Class that stores the results of an annotation run."""
 
     def __init__(self, label_schema, backend):
         self.label_schema = label_schema
@@ -686,6 +707,33 @@ class AnnotationInfo(object):
 
             sample_ids, label_ids = samples.values(["id", label_id_path])
             self.id_map[label_field] = dict(zip(sample_ids, label_ids))
+
+    @classmethod
+    def _from_dict(cls, d, samples, **kwargs):
+        return cls(**kwargs)
+
+
+# @todo remove
+class AnnotationInfo(AnnotationResults):
+    pass
+
+
+class BaseAnnotationAPI(object):
+    """Base class for annotation backend APIs.
+
+    Annotation APIs provide support for sending samples for annotation and
+    importing them back into FiftyOne.
+    """
+
+    def prompt_username_password(self, host=None):
+        prefix = "%s " % host if host else ""
+        username = input("%susername: " % prefix)
+        password = getpass.getpass(prompt="%spassword: " % prefix)
+        return {"username": username, "password": password}
+
+    def prompt_api_key(self, host=None):
+        prefix = "%s " % host if host else ""
+        return getpass.getpass(prompt="%sAPI key: " % prefix)
 
 
 class AnnotationLabelSchema(object):
@@ -712,6 +760,13 @@ class AnnotationLabelSchema(object):
         fol.Polyline: "polyline",
         fol.Polylines: "polylines",
     }
+
+    SUPPORTED_FIELD_TYPES = (
+        fof.IntField,
+        fof.FloatField,
+        fof.StringField,
+        fof.BooleanField,
+    )
 
     def __init__(
         self,
@@ -877,7 +932,7 @@ class AnnotationLabelSchema(object):
                             % (label_field, str(field_type.document_type))
                         )
 
-                elif type(field_type) not in _SUPPORTED_FIELD_TYPES:
+                elif type(field_type) not in self.SUPPORTED_FIELD_TYPES:
                     raise TypeError(
                         "Field %s of type %s is not supported as a scalar type"
                         % (label_field, str(field_type))
