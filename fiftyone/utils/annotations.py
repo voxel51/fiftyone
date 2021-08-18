@@ -371,6 +371,22 @@ def load_annotations(samples, results, **kwargs):
                     "name in which to store these annotations, or an empty "
                     "name to skip them: " % (new_type, label_field)
                 )
+                while True:
+                    frame_fields = samples.get_frame_field_schema() or []
+                    fields = samples.get_field_schema() or []
+                    existing_field = (
+                        new_field_name in frame_fields
+                        or new_field_name in fields
+                    )
+                    if existing_field:
+                        new_field_name = input(
+                            "\nField '%s' already exists.\nPlease enter a new field "
+                            "name in which to store these annotations, or an empty "
+                            "name to skip them: " % new_field_name
+                        )
+                    else:
+                        break
+
                 if not new_field_name:
                     logger.info(
                         "Skipping unexpected labels of type '%s' in field "
@@ -378,6 +394,7 @@ def load_annotations(samples, results, **kwargs):
                         new_type,
                         label_field,
                     )
+                    continue
 
                 if is_video and not new_field_name.startswith("frames."):
                     new_field_name = "frames." + new_field_name
@@ -620,6 +637,8 @@ def load_annotations(samples, results, **kwargs):
 
             sample.save()
 
+    results.cleanup(**kwargs)
+
 
 def _get_tracking_index_map(samples, label_field, annotations):
     _, index_path = samples._get_label_field_path(label_field, "index")
@@ -707,6 +726,9 @@ class AnnotationResults(foa.AnnotationResults):
 
             sample_ids, label_ids = samples.values(["id", label_id_path])
             self.id_map[label_field] = dict(zip(sample_ids, label_ids))
+
+    def cleanup(self):
+        pass
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):

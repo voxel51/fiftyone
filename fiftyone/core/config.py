@@ -204,8 +204,7 @@ class AnnotationConfig(EnvConfig):
     _BUILTIN_BACKENDS = {
         "cvat": {
             "config_cls": "fiftyone.utils.cvat.CVATAnnotationInfo",
-            "url": "cvat.org",
-            "https": True,
+            "url": "https://cvat.org",
         }
     }
 

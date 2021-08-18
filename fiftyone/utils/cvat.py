@@ -2422,21 +2422,15 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
     downloaded through this class.
 
     Args:
-        url ("cvat.org"): URL of the CVAT server to which to upload samples
-        port (None): four digit port to append to url when connecting to server
-        https (True): boolean indicating whether to connect to https (True) or
-            http (False) server
+        url ("htts://cvat.org"): url of the CVAT server to which to
+            upload samples
         auth (None): an optional dictionary mapping the strings "username" and
             "password" to the CVAT username and password to use to connect to
             the CVAT server
     """
 
-    def __init__(self, url=None, port=None, https=None, auth=None):
+    def __init__(self, url=None, auth=None):
         self._url = fo.annotation_config.cvat_url if url is None else url
-        port = fo.annotation_config.cvat_port if port is None else port
-        https = fo.annotation_config.cvat_https if https is None else https
-        self._port = "" if port is None else ":%d" % port
-        self._protocol = "https" if https else "http"
         self._auth = auth
 
         self.expected_type_map = {
@@ -2453,7 +2447,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
 
     @property
     def base_url(self):
-        return "%s://%s%s" % (self._protocol, self._url, self._port)
+        return self._url
 
     @property
     def base_api_url(self):
@@ -4136,10 +4130,8 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
             media files on disk to upload
-        url ("cvat.org"): URL of the CVAT server to which to upload samples
-        port (None): four digit port to append to url when connecting to server
-        https (True): boolean indicating whether to connect to https (True) or
-            http (False) server
+        url ("https://cvat.org"): url of the CVAT server to which to
+            upload samples
         auth (None): an optional dictionary mapping the strings "username" and
             "password" to the CVAT username and password to use to connect to
             the CVAT server
@@ -4157,9 +4149,7 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         self,
         label_schema=None,
         media_field="filepath",
-        url="cvat.org",
-        port=None,
-        https=True,
+        url="https://cvat.org",
         auth=None,
         segment_size=None,
         image_quality=75,
@@ -4170,8 +4160,6 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         super().__init__(label_schema=label_schema, backend="cvat")
         self.media_field = media_field
         self.url = url
-        self.port = port
-        self.https = https
         self.auth = auth
         self.segment_size = segment_size
         self.image_quality = image_quality
@@ -4196,9 +4184,7 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
         if auth is None:
             auth = self.auth
 
-        return CVATAnnotationAPI(
-            url=self.url, port=self.port, https=self.https, auth=auth
-        )
+        return CVATAnnotationAPI(url=self.url, auth=auth)
 
     def get_status(self, auth=None):
         """Gets the status of the assigned tasks and jobs.
@@ -4305,6 +4291,21 @@ class CVATAnnotationInfo(foua.AnnotationInfo):
 
         return status
 
+    def cleanup(self, delete_tasks=False, auth=None, **kwargs):
+        """Deletes all created tasks from CVAT
+
+        Args:
+            delete_tasks (False): whether to delete the CVAT tasks after
+                downloading annotations
+            auth (None): dict containing the "username" and "password" used to
+                connect to API if not provided another way
+            kwargs: other arguments pass to :func:`fiftyone.utils.annotations.load_annotations`
+        """
+        if delete_tasks:
+            api = self.connect_to_api(auth=auth)
+            for task_id in self.task_ids:
+                api.delete_task(task_id)
+
     def _get_label_field_ids(self, label_field):
         results = []
         for task_id in self.labels_task_map[label_field]:
@@ -4336,8 +4337,6 @@ def annotate(
     media_field="filepath",
     launch_editor=False,
     url=None,
-    port=None,
-    https=None,
     auth=None,
     segment_size=None,
     image_quality=75,
@@ -4355,10 +4354,8 @@ def annotate(
             media files on disk to upload
         launch_editor (False): whether to launch the annotation backend's
             editor after uploading the samples
-        url ("cvat.org"): URL of the CVAT server to which to upload samples
-        port (None): four digit port to append to url when connecting to server
-        https (True): boolean indicating whether to connect to https (True) or
-            http (False) server
+        url ("https://cvat.org"): url of the CVAT server to which to
+            upload samples
         auth (None): an optional dictionary mapping the strings "username" and
             "password" to the CVAT username and password to use to connect to
             the CVAT server
@@ -4376,8 +4373,6 @@ def annotate(
     info = CVATAnnotationInfo(
         label_schema=label_schema,
         url=url,
-        port=port,
-        https=https,
         auth=auth,
         segment_size=segment_size,
         image_quality=image_quality,
@@ -4434,8 +4429,6 @@ def load_annotations(info, delete_tasks=False, auth=None):
     Args:
         info: a :class:`fiftyone.utils.cvat.CVATAnnotationInfo` that was used
             to annotate samples previously
-        delete_tasks (False): whether to delete the CVAT tasks after
-            downloading annotations
         auth (None): a dictionary with the "username" and "password" to use to
             connect to the CVAT server
 
@@ -4461,10 +4454,6 @@ def load_annotations(info, delete_tasks=False, auth=None):
         labels_task_map,
         assigned_scalar_attrs,
     )
-
-    if delete_tasks:
-        for task_id in task_ids:
-            api.delete_task(task_id)
 
     return results, additional_results
 
