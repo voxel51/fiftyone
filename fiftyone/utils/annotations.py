@@ -44,7 +44,7 @@ _SUPPORTED_FIELD_TYPES = (
 # @todo: the default values for the fields customized in `__init__()` below are
 # incorrect in the generated docstring
 #
-class AnnotationConfig(etaa.AnnotationConfig):
+class DrawConfig(etaa.AnnotationConfig):
     """.. autoclass:: eta.core.annotations.AnnotationConfig"""
 
     __doc__ = etaa.AnnotationConfig.__doc__
@@ -68,162 +68,130 @@ class AnnotationConfig(etaa.AnnotationConfig):
         super().__init__(d)
 
 
-def draw_labeled_images(
-    samples, anno_dir, label_fields=None, annotation_config=None
-):
-    """Renders annotated versions of the image samples with label field(s)
-    overlaid to the given directory.
+def draw_labeled_images(samples, output_dir, label_fields=None, config=None):
+    """Renders annotated versions of the images in the collection with the
+    specified label data overlaid to the given directory.
 
     The filenames of the sample images are maintained, unless a name conflict
-    would occur in ``anno_dir``, in which case an index of the form
+    would occur in ``output_dir``, in which case an index of the form
     ``"-%d" % count`` is appended to the base filename.
 
     The images are written in format ``fo.config.default_image_ext``.
 
     Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        anno_dir: the directory to write the annotated images
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        output_dir: the directory to write the annotated images
         label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
             fields to render. If omitted, all compatiable fields are rendered
-        annotation_config (None): an :class:`AnnotationConfig` specifying how
-            to render the annotations
+        config (None): an optional :class:`DrawConfig` configuring how to draw
+            the labels
 
     Returns:
         the list of paths to the labeled images
     """
-    if annotation_config is None:
-        annotation_config = AnnotationConfig.default()
+    if config is None:
+        config = DrawConfig.default()
 
-    filename_maker = fou.UniqueFilenameMaker(output_dir=anno_dir)
+    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
     output_ext = fo.config.default_image_ext
 
     outpaths = []
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            outpath = filename_maker.get_output_path(
-                sample.filepath, output_ext=output_ext
-            )
-            draw_labeled_image(
-                sample,
-                outpath,
-                label_fields=label_fields,
-                annotation_config=annotation_config,
-            )
-            outpaths.append(outpath)
-
-    return outpaths
-
-
-def draw_labeled_image(
-    sample, outpath, label_fields=None, annotation_config=None
-):
-    """Draws an annotated version of the image sample with its label field(s)
-    overlaid to disk.
-
-    Args:
-        sample: a :class:`fiftyone.core.sample.Sample` instance
-        outpath: the path to write the annotated image
-        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
-            fields to render. If omitted, all compatiable fields are rendered
-        annotation_config (None): an :class:`AnnotationConfig` specifying how
-            to render the annotations
-    """
-    if annotation_config is None:
-        annotation_config = AnnotationConfig.default()
-
-    img = etai.read(sample.filepath)
-    frame_labels = _to_frame_labels(sample, label_fields=label_fields)
-
-    anno_img = etaa.annotate_image(
-        img, frame_labels, annotation_config=annotation_config
-    )
-
-    etai.write(anno_img, outpath)
-
-
-def draw_labeled_videos(
-    samples, anno_dir, label_fields=None, annotation_config=None
-):
-    """Renders annotated versions of the video samples with label field(s)
-    overlaid to the given directory.
-
-    The filenames of the sample videos are maintained, unless a name conflict
-    would occur in ``anno_dir``, in which case an index of the form
-    ``"-%d" % count`` is appended to the base filename.
-
-    The videos are written in format ``fo.config.default_video_ext``.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        anno_dir: the directory to write the annotated videos
-        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
-            fields on the frames of the samples to render. If omitted, all
-            compatiable fields are rendered
-        annotation_config (None): an :class:`AnnotationConfig` specifying how
-            to render the annotations
-
-    Returns:
-        the list of paths to the labeled videos
-    """
-    if annotation_config is None:
-        annotation_config = AnnotationConfig.default()
-
-    filename_maker = fou.UniqueFilenameMaker(output_dir=anno_dir)
-    output_ext = fo.config.default_video_ext
-
-    try:
-        num_samples = len(samples)
-    except:
-        num_samples = None
-
-    outpaths = []
-
-    for idx, sample in enumerate(samples, 1):
+    for sample in samples.iter_samples(progress=True):
         outpath = filename_maker.get_output_path(
             sample.filepath, output_ext=output_ext
         )
-
-        if num_samples is not None:
-            logger.info(
-                "Rendering video %d/%d: '%s'", idx, num_samples, outpath
-            )
-        else:
-            logger.info("Rendering video %d: '%s'", idx, outpath)
-
-        draw_labeled_video(
-            sample,
-            outpath,
-            label_fields=label_fields,
-            annotation_config=annotation_config,
+        draw_labeled_image(
+            sample, outpath, label_fields=label_fields, config=config
         )
         outpaths.append(outpath)
 
     return outpaths
 
 
-def draw_labeled_video(
-    sample, outpath, label_fields=None, annotation_config=None
-):
-    """Draws an annotated version of the video sample with its label field(s)
-    overlaid to disk.
+def draw_labeled_image(sample, outpath, label_fields=None, config=None):
+    """Renders an annotated version of the sample's image with the specified
+    label data overlaid to disk.
 
     Args:
-        sample: a :class:`fiftyone.core.sample.Sample` instance
+        sample: a :class:`fiftyone.core.sample.Sample`
+        outpath: the path to write the annotated image
+        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
+            fields to render. If omitted, all compatiable fields are rendered
+        config (None): an optional :class:`DrawConfig` configuring how to draw
+            the labels
+    """
+    if config is None:
+        config = DrawConfig.default()
+
+    img = etai.read(sample.filepath)
+    frame_labels = _to_frame_labels(sample, label_fields=label_fields)
+
+    anno_img = etaa.annotate_image(img, frame_labels, annotation_config=config)
+    etai.write(anno_img, outpath)
+
+
+def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
+    """Renders annotated versions of the videos in the collection with the
+    specified label data overlaid to the given directory.
+
+    The filenames of the videos are maintained, unless a name conflict would
+    occur in ``output_dir``, in which case an index of the form
+    ``"-%d" % count`` is appended to the base filename.
+
+    The videos are written in format ``fo.config.default_video_ext``.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        output_dir: the directory to write the annotated videos
+        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
+            fields on the frames of the samples to render. If omitted, all
+            compatiable fields are rendered
+        config (None): an optional :class:`DrawConfig` configuring how to draw
+            the labels
+
+    Returns:
+        the list of paths to the labeled videos
+    """
+    if config is None:
+        config = DrawConfig.default()
+
+    filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
+    output_ext = fo.config.default_video_ext
+
+    outpaths = []
+    for sample in samples.iter_samples(progress=True):
+        outpath = filename_maker.get_output_path(
+            sample.filepath, output_ext=output_ext
+        )
+        draw_labeled_video(
+            sample, outpath, label_fields=label_fields, config=config
+        )
+        outpaths.append(outpath)
+
+    return outpaths
+
+
+def draw_labeled_video(sample, outpath, label_fields=None, config=None):
+    """Renders an annotated version of the sample's video with the specified
+    label data overlaid to disk.
+
+    Args:
+        sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
         label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
             fields on the frames of the sample to render. If omitted, all
             compatiable fields are rendered
-        annotation_config (None): an :class:`AnnotationConfig` specifying how
-            to render the annotations
+        config (None): an optional :class:`DrawConfig` configuring how to draw
+            the labels
     """
-    if annotation_config is None:
-        annotation_config = AnnotationConfig.default()
+    if config is None:
+        config = DrawConfig.default()
 
     video_path = sample.filepath
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
     etaa.annotate_video(
-        video_path, video_labels, outpath, annotation_config=annotation_config
+        video_path, video_labels, outpath, annotation_config=config
     )
 
 

@@ -568,34 +568,34 @@ Export FiftyOne datasets to disk in supported formats.
 Drawing labels on samples
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Writes annotated versions of samples in FiftyOne datasets to disk.
+Renders annotated versions of samples in FiftyOne datasets to disk.
 
 .. code-block:: text
 
-    fiftyone datasets draw [-h] [-d ANNO_DIR] [-f LABEL_FIELDs] NAME
+    fiftyone datasets draw [-h] [-d OUTPUT_DIR] [-f LABEL_FIELDS] NAME
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset to annotate
+      NAME                  the name of the dataset
 
     optional arguments:
       -h, --help            show this help message and exit
-      -d ANNO_DIR, --anno-dir ANNO_DIR
-                            the directory in which to write the annotated data
-      -f LABEL_FIELDs, --label-fields LABEL_FIELDs
+      -d OUTPUT_DIR, --output-dir OUTPUT_DIR
+                            the directory to write the annotated media
+      -f LABEL_FIELDS, --label-fields LABEL_FIELDS
                             a comma-separated list of label fields to export
 
 **Examples**
 
 .. code-block:: shell
 
-    # Write annotated versions of the samples in the dataset with the
-    # specified labels overlaid to disk
+    # Write annotated versions of the media in the dataset with the
+    # specified label field(s) overlaid to disk
     fiftyone datasets draw <name> \
-        --anno-dir <anno-dir> --label-fields <label-fields>
+        --output-dir <output-dir> --label-fields <list>,<of>,<fields>
 
 .. _cli-fiftyone-datasets-rename:
 
