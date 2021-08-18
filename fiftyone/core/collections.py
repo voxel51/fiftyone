@@ -5593,13 +5593,14 @@ class SampleCollection(object):
 
     def annotate(
         self,
-        backend="cvat",
         label_schema=None,
         label_field=None,
         label_type=None,
         classes=None,
         attributes=True,
         media_field="filepath",
+        anno_key=None,
+        backend=None,
         launch_editor=False,
         **kwargs,
     ):
@@ -5620,8 +5621,6 @@ class SampleCollection(object):
         your annotation provider.
 
         Args:
-            backend ("cvat"): the annotation backend to use. Supported values
-                are ``("cvat")``
             label_schema (None): a dictionary defining the label schema to use.
                 If this argument is provided, it takes precedence over
                 ``label_field`` and ``label_type``
@@ -5652,23 +5651,28 @@ class SampleCollection(object):
                 ``label_schema`` that do not define their attributes
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
+            anno_key (None): an annotation key to use to refer to this
+                annotation run
+            backend (None): the annotation backend to use. The supported values
+                are ``fiftyone.annotation_config.backends.keys()`` and the
+                default is ``fiftyone.annotation_config.default_backend``
             launch_editor (False): whether to launch the annotation backend's
                 editor after uploading the samples
             **kwargs: additional arguments to send to the annotation backend
 
         Returns:
-            the :class:`fiftyone.utils.annotations.AnnotationInfo` for the
-            export
+            an :class:`fiftyone.core.annotations.AnnnotationResults`
         """
         return foua.annotate(
             self,
-            backend=backend,
             label_schema=label_schema,
             label_field=label_field,
             label_type=label_type,
             classes=classes,
             attributes=attributes,
             media_field=media_field,
+            anno_key=anno_key,
+            backend=backend,
             launch_editor=launch_editor,
             **kwargs,
         )
@@ -5695,7 +5699,7 @@ class SampleCollection(object):
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationMethod.list_runs(self)
+        return foan.AnnotationRun.list_runs(self)
 
     def get_annotation_info(self, anno_key):
         """Returns information about the annotation run with the given key on
@@ -5707,7 +5711,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.annotation.AnnotationInfo`
         """
-        return foan.AnnotationMethod.get_run_info(self, anno_key)
+        return foan.AnnotationRun.get_run_info(self, anno_key)
 
     def load_annotation_results(self, anno_key):
         """Loads the :class:`fiftyone.core.annotation.AnnotationResults` for
@@ -5719,7 +5723,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.annotation.AnnotationResults`
         """
-        return foan.AnnotationMethod.load_run_results(self, anno_key)
+        return foan.AnnotationRun.load_run_results(self, anno_key)
 
     def load_annotation_view(self, anno_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -5733,7 +5737,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return foan.AnnotationMethod.load_run_view(
+        return foan.AnnotationRun.load_run_view(
             self, anno_key, select_fields=select_fields
         )
 
@@ -5762,7 +5766,7 @@ class SampleCollection(object):
         Args:
             anno_key: an annotation key
         """
-        foan.AnnotationMethod.delete_run(self, anno_key)
+        foan.AnnotationRun.delete_run(self, anno_key)
 
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
@@ -5771,7 +5775,7 @@ class SampleCollection(object):
         any annotations loaded onto your dataset via :meth:`load_annotations`
         will not be deleted.
         """
-        foan.AnnotationMethod.delete_runs(self)
+        foan.AnnotationRun.delete_runs(self)
 
     def list_indexes(self):
         """Returns the list of index names on this collection.

@@ -15,15 +15,15 @@ class AnnotationInfo(RunInfo):
         key: the annotation key
         timestamp (None): the UTC ``datetime`` when the annotation run was
             initiated
-        config (None): the :class:`AnnotationMethodConfig` for the run
+        config (None): the :class:`AnnotationRunConfig` for the run
     """
 
     @classmethod
     def config_cls(cls):
-        return AnnotationMethodConfig
+        return AnnotationRunConfig
 
 
-class AnnotationMethodConfig(RunConfig):
+class AnnotationRunConfig(RunConfig):
     """Base class for configuring :class:`AnnotationRun` instances.
 
     Args:
@@ -34,11 +34,11 @@ class AnnotationMethodConfig(RunConfig):
     pass
 
 
-class AnnotationMethod(Run):
-    """Base class for annotation methods.
+class AnnotationRun(Run):
+    """Base class for annotation runs.
 
     Args:
-        config: an :class:`AnnotationMethodConfig`
+        config: an :class:`AnnotationRunConfig`
     """
 
     @classmethod
@@ -59,6 +59,6 @@ class AnnotationMethod(Run):
 
 
 class AnnotationResults(RunResults):
-    """Base class for annotation results."""
+    """Base class for annotation run results."""
 
     pass
