@@ -152,7 +152,7 @@ def _parse_config(name, label_schema, media_field, **kwargs):
     return config_cls(name, label_schema, media_field=media_field, **params)
 
 
-def load_annotations(samples, results, cleanup=False):
+def load_annotations(samples, anno_key, cleanup=False, **kwargs):
     """Downloads the labels from the given annotation run from the annotation
     backend and merges them into the collection.
 
@@ -162,14 +162,18 @@ def load_annotations(samples, results, cleanup=False):
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        results: an :class:`AnnotationResults`
+        anno_key: an annotation key
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
+        **kwargs: optional keyword arguments for
+            :meth:`AnnotationResults.load_credentials`
     """
-    (
-        annotations_results,
-        additional_results,
-    ) = results.backend.download_annotations(results)
+    results = samples.load_annotation_results(anno_key, **kwargs)
+    backend = results.backend
+
+    annotations_results, additional_results = backend.download_annotations(
+        results
+    )
 
     if not annotations_results:
         logger.warning("No annotations found")
