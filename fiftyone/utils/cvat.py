@@ -3203,7 +3203,7 @@ class CVATAnnotationAPI(foua.BaseAnnotationAPI):
         """
         Args:
             annot_type: the type of annotations to parse ("shapes", "tags")
-            annots: list of shapes, tags, or tracks
+            annots: list of shapes or tags
             frame_id_map: dict mapping CVAT frame ids to FiftyOne 
                 sample and frame uuids
             label_type: expected label type to parse from the given annotations
