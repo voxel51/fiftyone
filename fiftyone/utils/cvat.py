@@ -2739,13 +2739,24 @@ class CVATAnnotationResults(foua.AnnotationResults):
     @classmethod
     def _from_dict(cls, d, samples):
         config = CVATBackendConfig.from_dict(d["config"])
+
+        # int keys were serialized as strings...
+        job_ids = {int(task_id): ids for task_id, ids in d["job_ids"].items()}
+        frame_id_map = {
+            int(task_id): {
+                int(frame_id): frame_data
+                for frame_id, frame_data in frame_map.items()
+            }
+            for task_id, frame_map in d["frame_id_map"].items()
+        }
+
         return cls(
             samples,
             config,
             d["id_map"],
             d["task_ids"],
-            d["job_ids"],
-            d["frame_id_map"],
+            job_ids,
+            frame_id_map,
             d["labels_task_map"],
             d["assigned_scalar_attrs"],
         )

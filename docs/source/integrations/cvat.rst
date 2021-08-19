@@ -143,7 +143,7 @@ FiftyOne:
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
 
-    # Delete run record (not the label) from FiftyOne
+    # Delete run record (not the labels) from FiftyOne
     dataset.delete_annotation_run(anno_key)
 
 .. _cvat-setup:
