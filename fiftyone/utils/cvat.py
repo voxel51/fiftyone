@@ -2971,22 +2971,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def create_task(
         self,
+        name,
         labels=None,
         segment_size=None,
         image_quality=75,
         task_assignee=None,
-        task_name="FiftyOne_annotation",
     ):
         """Creates a task on the CVAT server using the given label schema.
 
         Args:
+            name: a name for the task
             labels (None): the label schema to use for the created task
             segment_size (None): maximum number of images to load into a job.
                 Not applicable to videos
             image_quality (75): an int in `[0, 100]` determining the image
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
-            task_name ("FiftyOne_annotation"): a name for the CVAT task
 
         Returns:
             a tuple of
@@ -3000,16 +3000,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if labels is None:
             labels = []
 
-        data_task_create = {
-            "name": task_name,
+        task_json = {
+            "name": name,
             "image_quality": image_quality,
             "labels": labels,
         }
 
         if segment_size is not None:
-            data_task_create["segment_size"] = segment_size
+            task_json["segment_size"] = segment_size
 
-        task_creation_resp = self.post(self.tasks_url, json=data_task_create,)
+        task_creation_resp = self.post(self.tasks_url, json=task_json)
         task_json = task_creation_resp.json()
         task_id = task_json["id"]
 
@@ -3316,16 +3316,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             job_reviewers[job_reviewer_ind]
                         ]
 
-                task_name = "FiftyOne_annotation_%s" % label_field.replace(
-                    " ", "_"
+                task_name = "FiftyOne_%s_%s" % (
+                    samples._root_dataset.name.replace(" ", "_"),
+                    label_field.replace(" ", "_"),
                 )
+
                 # Create task and upload raw data
                 task_id, attribute_id_map, class_id_map = self.create_task(
-                    labels,
-                    segment_size,
-                    image_quality,
-                    task_assignee,
                     task_name,
+                    labels=labels,
+                    segment_size=segment_size,
+                    image_quality=image_quality,
+                    task_assignee=task_assignee,
                 )
                 task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
@@ -3333,7 +3335,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 current_job_ids = self.upload_data(
                     task_id,
                     paths,
-                    image_quality,
+                    image_quality=image_quality,
                     job_assignees=current_job_assignees,
                     job_reviewers=current_job_reviewers,
                 )

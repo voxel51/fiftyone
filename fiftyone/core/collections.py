@@ -1524,8 +1524,7 @@ class SampleCollection(object):
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Classification`
                 instances
-            eval_key (None): an evaluation key to use to refer to this
-                evaluation
+            eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
                 classes are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -1622,8 +1621,7 @@ class SampleCollection(object):
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            eval_key (None): an evaluation key to use to refer to this
-                evaluation
+            eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
                 classes are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -1715,8 +1713,7 @@ class SampleCollection(object):
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Segmentation`
                 instances
-            eval_key (None): an evaluation key to use to refer to this
-                evaluation
+            eval_key (None): a string key to use to refer to this evaluation
             mask_targets (None): a dict mapping mask values to labels. If not
                 provided, mask targets are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
@@ -5584,19 +5581,19 @@ class SampleCollection(object):
 
     def annotate(
         self,
+        anno_key,
         label_schema=None,
         label_field=None,
         label_type=None,
         classes=None,
         attributes=True,
         media_field="filepath",
-        anno_key=None,
         backend=None,
         launch_editor=False,
         **kwargs,
     ):
-        """Exports the samples and optional label field(s) to the given
-        annotation backend.
+        """Exports the samples and optional label field(s) in this collection
+        to the given annotation backend.
 
         The ``backend`` parameter controls which annotation backend to use.
         Depending on the backend you use, you may want/need to provide extra
@@ -5605,13 +5602,12 @@ class SampleCollection(object):
 
         -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATAnnotationAPI`
 
-        See :ref:`this page <cvat-annotation>` for more information about using
-        this method, including how to define label schemas using the
-        ``label_schema``, ``label_field``, ``label_type``, ``classes``, and
-        ``attributes`` parameters, and how to configure login credentials for
-        your annotation provider.
+        See :ref:`this page <annotation>` for more information about using this
+        method, including how to define label schemas and how to configure
+        login credentials for your annotation provider.
 
         Args:
+            anno_key: a string key to use to refer to this annotation run
             label_schema (None): a dictionary defining the label schema to use.
                 If this argument is provided, it takes precedence over
                 ``label_field`` and ``label_type``
@@ -5642,8 +5638,6 @@ class SampleCollection(object):
                 ``label_schema`` that do not define their attributes
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
-            anno_key (None): an annotation key to use to refer to this
-                annotation run
             backend (None): the annotation backend to use. The supported values
                 are ``fiftyone.annotation_config.backends.keys()`` and the
                 default is ``fiftyone.annotation_config.default_backend``
@@ -5657,13 +5651,13 @@ class SampleCollection(object):
         """
         return foua.annotate(
             self,
+            anno_key,
             label_schema=label_schema,
             label_field=label_field,
             label_type=label_type,
             classes=classes,
             attributes=attributes,
             media_field=media_field,
-            anno_key=anno_key,
             backend=backend,
             launch_editor=launch_editor,
             **kwargs,
@@ -5709,6 +5703,14 @@ class SampleCollection(object):
         """Loads the results for the annotation run with the given key on this
         collection.
 
+        The :class:`fiftyone.utils.annotations.AnnotationResults` object
+        returned by this method will provide a variety of backend-specific
+        methods allowing you to perform actions such as checking the status and
+        deleting this run from the annotation backend.
+
+        Use :meth:`load_annotations` to load the labels from an annotation
+        run onto your FiftyOne dataset.
+
         Args:
             anno_key: an annotation key
             **kwargs: optional keyword arguments for
@@ -5738,9 +5740,10 @@ class SampleCollection(object):
         )
 
     def load_annotations(self, anno_key, cleanup=False, **kwargs):
-        """Loads the labels from the given annotation run into this dataset.
+        """Downloads the labels from the given annotation run from the
+        annotation backend and merges them into this collection.
 
-        See :ref:`this page <cvat-loading-annotations>` for more information
+        See :ref:`this page <loading-annotations>` for more information
         about using this method to import annotations that you have scheduled
         by calling :meth:`annotate`.
 
@@ -5757,9 +5760,13 @@ class SampleCollection(object):
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
 
-        Calling this method only deletes the record of the annotation run; any
-        annotations loaded onto your dataset via :meth:`load_annotations` will
-        not be deleted.
+        Calling this method only deletes the **record** of the annotation run
+        from the collection; it will not delete any annotations loaded onto
+        your dataset via :meth:`load_annotations`, nor will it delete any
+        associated information from the annotation backend.
+
+        Use :meth:`load_annotation_results` to programmatically manage/delete
+        a run from the annotation backend.
 
         Args:
             anno_key: an annotation key
@@ -5769,9 +5776,13 @@ class SampleCollection(object):
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
 
-        Calling this method only deletes the records of the annotation runs;
-        any annotations loaded onto your dataset via :meth:`load_annotations`
-        will not be deleted.
+        Calling this method only deletes the **records** of the annotation runs
+        from this collection; it will not delete any annotations loaded onto
+        your dataset via :meth:`load_annotations`, nor will it delete any
+        associated information from the annotation backend.
+
+        Use :meth:`load_annotation_results` to programmatically manage/delete
+        runs in the annotation backend.
         """
         foan.AnnotationRun.delete_runs(self)
 
