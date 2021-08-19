@@ -1215,7 +1215,7 @@ const filterSample = <S extends Sample | FrameSample>(
             .map((label) => {
               if (MASK_LABELS.has(label._cls) && label.mask) {
                 label.mask = {
-                  shape: label.mask.sahpe,
+                  shape: label.mask.shape,
                 };
               }
 
