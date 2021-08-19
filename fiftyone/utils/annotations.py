@@ -79,7 +79,7 @@ def annotate(
 
             -   ``True``: export all label attributes
             -   ``False``: don't export any custom label attributes
-            -   a list of label attributes to export
+            -   an attribute or list of attributes to export
             -   a dict mapping attribute names to dicts specifying the details
                 of the attribute field
 
@@ -1124,6 +1124,9 @@ def _get_label_attributes(samples, backend, label_field):
 
 
 def _format_attributes(backend, attributes):
+    if etau.is_str(attributes):
+        attributes = [attributes]
+
     if isinstance(attributes, list):
         attributes = {a: {} for a in attributes}
 
