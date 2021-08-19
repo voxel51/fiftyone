@@ -131,12 +131,13 @@ Customizing label rendering
 ---------------------------
 
 You can customize the look-and-feel of the labels rendered by FiftyOne by
-providing a custom |DrawConfig| to the relevant drawing method, such as
+providing a custom :class:`DrawConfig <fiftyone.utils.annotations.DrawConfig>`
+to the relevant drawing method, such as
 :meth:`SampleCollection.draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
 or the underlying methods in the :mod:`fiftyone.utils.annotations` module.
 
-Consult the |DrawConfig| API docs for a complete description of the available
-parameters.
+Consult the :class:`DrawConfig <fiftyone.utils.annotations.DrawConfig>` docs
+for a complete description of the available parameters.
 
 For example, the snippet below increases the font size and line thickness of
 the labels in the example above and includes the confidence of the predictions:
