@@ -25,19 +25,19 @@ except ImportError:
 
 # arm64 is not available for ubuntu1604 and debian9
 MONGODB_DOWNLOAD_URLS = {
-    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
     "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.4.2.tgz",
-    "mac-arm": None,
-    "mac-intel": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
-    "win": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
-    "ubuntu1604": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
-    },
+    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
+    "mac-arm64": None,
+    "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
+    "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
     "debian9": {
         "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
     },
     "rhel7": {
         "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-4.4.2.tgz",
+    },
+    "ubuntu1604": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
     },
 }
 
@@ -64,24 +64,19 @@ def get_version():
 class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
-        # not pure Python
+
         self.root_is_pure = False
         self._plat_name = self.plat_name
-        # rewrite platform name to match what mongodb supports
-        if self.plat_name.startswith("mac-arm"):
-            self.plat_name = "macosx_11_0_arm64"
-        elif self.plat_name.startswith("mac-intel"):
-            # mongodb 4.4.6 supports macOS 10.13 or later
-            # https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/#platform-support
-            # also, we only distribute 64-bit binaries
-            self.plat_name = "macosx_10_12_x86_64"
-        elif self.plat_name.startswith("linux-x86_64"):
-            # we only distribute 64-bit binaries
-            self.plat_name = "manylinux1_x86_64"
-        elif self.plat_name.startswith("linux-aarch64"):
+
+        if self.plat_name.startswith("linux-aarch64"):
             self.plat_name = "manylinux2014_aarch64"
-        elif self.plat_name.startswith("win"):
-            # we only distribute 64-bit binaries
+        elif self.plat_name.startswith("linux-x86_64"):
+            self.plat_name = "manylinux1_x86_64"
+        elif self.plat_name.startswith("mac-arm64"):
+            self.plat_name = "macosx_11_0_arm64"
+        elif self.plat_name.startswith("mac-x86_64"):
+            self.plat_name = "macosx_10_13_x86_64"
+        elif self.plat_name.startswith("win-amd64"):
             self.plat_name = "win_amd64"
         else:
             raise ValueError(
@@ -89,7 +84,6 @@ class CustomBdistWheel(bdist_wheel):
             )
 
     def get_tag(self):
-        # no dependency on a specific CPython version
         impl = "py3"
         abi_tag = "none"
         return impl, abi_tag, self.plat_name
@@ -108,6 +102,9 @@ class CustomBdistWheel(bdist_wheel):
         )
 
         if mongo_zip_url is None:
+            print(
+                "Hollow wheel, no binaries available for %s" % self.plat_name
+            )
             return
 
         if LINUX_DISTRO:
@@ -116,21 +113,26 @@ class CustomBdistWheel(bdist_wheel):
                     "Cannot build for distro %r on platform %r"
                     % (LINUX_DISTRO, self.plat_name)
                 )
+
             if LINUX_DISTRO not in MONGODB_DOWNLOAD_URLS:
                 raise ValueError("Unrecognized distro: %r" % LINUX_DISTRO)
+
             mongo_zip_url = MONGODB_DOWNLOAD_URLS[LINUX_DISTRO][self.plat_name]
+
         mongo_zip_filename = os.path.basename(mongo_zip_url)
         mongo_zip_dest = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "cache",
             mongo_zip_filename,
         )
+
         if not os.path.exists(mongo_zip_dest):
             print("downloading MongoDB from %s" % mongo_zip_url)
             with urlopen(mongo_zip_url) as conn, open(
                 mongo_zip_dest, "wb"
             ) as dest:
                 shutil.copyfileobj(conn, dest)
+
         print("using MongoDB from %s" % mongo_zip_dest)
         if mongo_zip_dest.endswith(".zip"):
             # Windows
@@ -166,6 +168,7 @@ class CustomBdistWheel(bdist_wheel):
                     raise IOError(
                         "Could not find %r in MongoDB archive" % filename
                     )
+
                 tar_entry = mongo_tar.getmember(tar_entry_name)
                 print("copying %r" % tar_entry_name)
                 dest_path = os.path.join(bin_dir, filename)

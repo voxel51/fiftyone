@@ -64,16 +64,15 @@ class CustomBdistWheel(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # not pure Python
         self.root_is_pure = False
-        # rewrite platform name to match what Electron supports
-        # https://www.electronjs.org/docs/tutorial/support#supported-platforms
-        if self.plat_name.startswith("mac"):
-            self.plat_name = "macosx_10_10_x86_64"
-        elif self.plat_name.startswith("linux"):
-            # we only distribute 64-bit Linux binaries, even though Electron
-            # also provides 32-bit binaries
+        if self.plat_name.startswith("linux-aarch64"):
+            self.plat_name = "manylinux2014_aarch64"
+        elif self.plat_name.startswith("linux-x86_64"):
             self.plat_name = "manylinux1_x86_64"
-        elif self.plat_name.startswith("win"):
-            # we only distribute 64-bit Windows binaries
+        elif self.plat_name.startswith("mac-arm64"):
+            self.plat_name = "macosx_11_10_arm64"
+        elif self.plat_name.startswith("mac-x86_64"):
+            self.plat_name = "macosx_10_10_x86_64"
+        elif self.plat_name.startswith("win-amd64"):
             self.plat_name = "win_amd64"
         else:
             raise ValueError(
@@ -81,7 +80,6 @@ class CustomBdistWheel(bdist_wheel):
             )
 
     def get_tag(self):
-        # no dependency on a specific CPython version
         impl = "py3"
         abi_tag = "none"
         return impl, abi_tag, self.plat_name
@@ -139,7 +137,6 @@ class CustomBdistWheel(bdist_wheel):
             # use copy2 to maintain executable permission
             ext = os.path.splitext(app_path)[-1]
         elif os.path.isdir(app_path):
-            # Mac app bundle
             ext = ".app"
         else:
             raise RuntimeError("Unsupported file type: %r" % app_path)
