@@ -686,38 +686,38 @@ class DatasetsExportCommand(Command):
 
 
 class DatasetsDrawCommand(Command):
-    """Writes annotated versions of samples in FiftyOne datasets to disk.
+    """Renders annotated versions of samples in FiftyOne datasets to disk.
 
     Examples::
 
-        # Write annotated versions of the samples in the dataset with the
-        # specified labels overlaid to disk
+        # Write annotated versions of the media in the dataset with the
+        # specified label field(s) overlaid to disk
         fiftyone datasets draw <name> \\
-            --anno-dir <anno-dir> --label-fields <label-fields>
+            --output-dir <output-dir> --label-fields <list>,<of>,<fields>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset to annotate",
+            "name", metavar="NAME", help="the name of the dataset",
         )
         parser.add_argument(
             "-d",
-            "--anno-dir",
-            metavar="ANNO_DIR",
-            help="the directory in which to write the annotated data",
+            "--output-dir",
+            metavar="OUTPUT_DIR",
+            help="the directory to write the annotated media",
         )
         parser.add_argument(
             "-f",
             "--label-fields",
-            metavar="LABEL_FIELDs",
+            metavar="LABEL_FIELDS",
             help="a comma-separated list of label fields to export",
         )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
-        anno_dir = args.anno_dir
+        output_dir = args.output_dir
         label_fields = args.label_fields
 
         dataset = fod.load_dataset(name)
@@ -725,8 +725,8 @@ class DatasetsDrawCommand(Command):
         if label_fields is not None:
             label_fields = [f.strip() for f in label_fields.split(",")]
 
-        dataset.draw_labels(anno_dir, label_fields=label_fields)
-        print("Annotations written to '%s'" % anno_dir)
+        dataset.draw_labels(output_dir, label_fields=label_fields)
+        print("Rendered media written to '%s'" % output_dir)
 
 
 class DatasetsRenameCommand(Command):
@@ -805,7 +805,7 @@ class DatasetsDeleteCommand(Command):
 
 
 class AnnotationCommand(Command):
-    """Tools for working with the FiftyOne Annotations."""
+    """Tools for working with the FiftyOne annotation API."""
 
     @staticmethod
     def setup(parser):
@@ -818,17 +818,17 @@ class AnnotationCommand(Command):
 
 
 class AnnotationConfigCommand(Command):
-    """Tools for working with your FiftyOne Annotation config.
+    """Tools for working with your FiftyOne annotation config.
 
     Examples::
 
-        # Print your entire Annotation config
+        # Print your entire annotation config
         fiftyone annotation config
 
-        # Print a specific Annotation config field
+        # Print a specific annotation config field
         fiftyone annotation config <field>
 
-        # Print the location of your Annotation config on disk (if one exists)
+        # Print the location of your annotation config on disk (if one exists)
         fiftyone annotation config --locate
     """
 
@@ -838,13 +838,13 @@ class AnnotationConfigCommand(Command):
             "field",
             nargs="?",
             metavar="FIELD",
-            help="an Annotation config field to print",
+            help="an annotation config field to print",
         )
         parser.add_argument(
             "-l",
             "--locate",
             action="store_true",
-            help="print the location of your Annotation config on disk",
+            help="print the location of your annotation config on disk",
         )
 
     @staticmethod
@@ -855,7 +855,7 @@ class AnnotationConfigCommand(Command):
                 print(annotation_config_path)
             else:
                 print(
-                    "No Annotation config file found at '%s'"
+                    "No annotation config file found at '%s'"
                     % annotation_config_path
                 )
 

@@ -22,6 +22,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
@@ -1523,8 +1524,7 @@ class SampleCollection(object):
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Classification`
                 instances
-            eval_key (None): an evaluation key to use to refer to this
-                evaluation
+            eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
                 classes are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -1621,8 +1621,7 @@ class SampleCollection(object):
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            eval_key (None): an evaluation key to use to refer to this
-                evaluation
+            eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
                 classes are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -1714,8 +1713,7 @@ class SampleCollection(object):
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Segmentation`
                 instances
-            eval_key (None): an evaluation key to use to refer to this
-                evaluation
+            eval_key (None): a string key to use to refer to this evaluation
             mask_targets (None): a dict mapping mask values to labels. If not
                 provided, mask targets are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
@@ -1777,8 +1775,8 @@ class SampleCollection(object):
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
     def load_evaluation_results(self, eval_key):
-        """Loads the :class:`fiftyone.core.evaluation.EvaluationResults` for
-        the evaluation with the given key on this collection.
+        """Loads the results for the evaluation with the given key on this
+        collection.
 
         Args:
             eval_key: an evaluation key
@@ -1854,8 +1852,8 @@ class SampleCollection(object):
         return fob.BrainMethod.get_run_info(self, brain_key)
 
     def load_brain_results(self, brain_key):
-        """Loads the :class:`fiftyone.core.brain.BrainResults` for the run with
-        the given key on this collection.
+        """Loads the results for the brain method run with the given key on
+        this collection.
 
         Args:
             brain_key: a brain key
@@ -5278,43 +5276,40 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     def draw_labels(
-        self,
-        anno_dir,
-        label_fields=None,
-        overwrite=False,
-        annotation_config=None,
+        self, output_dir, label_fields=None, overwrite=False, config=None,
     ):
-        """Renders annotated versions of the samples in the collection with
-        label field(s) overlaid to the given directory.
+        """Renders annotated versions of the media in the collection with the
+        specified label data overlaid to the given directory.
 
-        The filenames of the sample data are maintained, unless a name conflict
-        would occur in ``anno_dir``, in which case an index of the form
-        ``"-%d" % count`` is appended to the base filename.
+        The filenames of the sample media are maintained, unless a name
+        conflict would occur in ``output_dir``, in which case an index of the
+        form ``"-%d" % count`` is appended to the base filename.
 
-        Images are written in format ``fo.config.default_image_ext``.
+        Images are written in format ``fo.config.default_image_ext``, and
+        videos are written in format ``fo.config.default_video_ext``.
 
         Args:
-            anno_dir: the directory to write the annotated files
+            output_dir: the directory to write the annotated media
             label_fields (None): a list of :class:`fiftyone.core.labels.Label`
                 fields to render. By default, all
                 :class:`fiftyone.core.labels.Label` fields are drawn
-            overwrite (False): whether to delete ``anno_dir`` if it exists
-                before rendering the labels
-            annotation_config (None): an
-                :class:`fiftyone.utils.annotations.AnnotationConfig` specifying
-                how to render the annotations
+            overwrite (False): whether to delete ``output_dir`` if it exists
+                before rendering
+            config (None): an optional
+                :class:`fiftyone.utils.annotations.DrawConfig` configuring how
+                to draw the labels
 
         Returns:
-            the list of paths to the labeled images
+            the list of paths to the rendered media
         """
-        if os.path.isdir(anno_dir):
+        if os.path.isdir(output_dir):
             if overwrite:
-                etau.delete_dir(anno_dir)
+                etau.delete_dir(output_dir)
             else:
                 logger.warning(
                     "Directory '%s' already exists; outputs will be merged "
                     "with existing files",
-                    anno_dir,
+                    output_dir,
                 )
 
         if self.media_type == fom.VIDEO:
@@ -5322,20 +5317,14 @@ class SampleCollection(object):
                 label_fields = _get_frame_label_fields(self)
 
                 return foua.draw_labeled_videos(
-                    self,
-                    anno_dir,
-                    label_fields=label_fields,
-                    annotation_config=annotation_config,
+                    self, output_dir, label_fields=label_fields, config=config
                 )
 
         if label_fields is None:
             label_fields = _get_image_label_fields(self)
 
         return foua.draw_labeled_images(
-            self,
-            anno_dir,
-            label_fields=label_fields,
-            annotation_config=annotation_config,
+            self, output_dir, label_fields=label_fields, config=config
         )
 
     def export(
@@ -5592,18 +5581,19 @@ class SampleCollection(object):
 
     def annotate(
         self,
-        backend="cvat",
+        anno_key,
         label_schema=None,
         label_field=None,
         label_type=None,
         classes=None,
         attributes=True,
         media_field="filepath",
+        backend=None,
         launch_editor=False,
         **kwargs,
     ):
-        """Exports the samples and optional label field(s) to the given
-        annotation backend.
+        """Exports the samples and optional label field(s) in this collection
+        to the given annotation backend.
 
         The ``backend`` parameter controls which annotation backend to use.
         Depending on the backend you use, you may want/need to provide extra
@@ -5612,15 +5602,12 @@ class SampleCollection(object):
 
         -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATAnnotationAPI`
 
-        See :ref:`this page <cvat-annotation>` for more information about using
-        this method, including how to define label schemas using the
-        ``label_schema``, ``label_field``, ``label_type``, ``classes``, and
-        ``attributes`` parameters, and how to configure login credentials for
-        your annotation provider.
+        See :ref:`this page <annotation>` for more information about using this
+        method, including how to define label schemas and how to configure
+        login credentials for your annotation provider.
 
         Args:
-            backend ("cvat"): the annotation backend to use. Supported values
-                are ``("cvat")``
+            anno_key: a string key to use to refer to this annotation run
             label_schema (None): a dictionary defining the label schema to use.
                 If this argument is provided, it takes precedence over
                 ``label_field`` and ``label_type``
@@ -5651,41 +5638,153 @@ class SampleCollection(object):
                 ``label_schema`` that do not define their attributes
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
+            backend (None): the annotation backend to use. The supported values
+                are ``fiftyone.annotation_config.backends.keys()`` and the
+                default is ``fiftyone.annotation_config.default_backend``
             launch_editor (False): whether to launch the annotation backend's
                 editor after uploading the samples
-            **kwargs: additional arguments to send to the annotation backend
+            **kwargs: keyword arguments for the
+                :class:`fiftyone.utils.annotations.AnnotationBackendConfig`
 
         Returns:
-            the :class:`fiftyone.utils.annotations.AnnotationInfo` for the
-            export
+            an :class:`fiftyone.utils.annotations.AnnnotationResults`
         """
         return foua.annotate(
             self,
-            backend=backend,
+            anno_key,
             label_schema=label_schema,
             label_field=label_field,
             label_type=label_type,
             classes=classes,
             attributes=attributes,
             media_field=media_field,
+            backend=backend,
             launch_editor=launch_editor,
             **kwargs,
         )
 
-    def load_annotations(self, info, **kwargs):
-        """Loads the labels from the given annotation run into this dataset.
+    @property
+    def has_annotation_runs(self):
+        """Whether this colection has any annotation runs."""
+        return bool(self.list_annotation_runs())
 
-        See :ref:`this page <cvat-loading-annotations>` for more information
+    def has_annotation_run(self, anno_key):
+        """Whether this collection has an annotation run with the given key.
+
+        Args:
+            anno_key: an annotation key
+
+        Returns:
+            True/False
+        """
+        return anno_key in self.list_annotation_runs()
+
+    def list_annotation_runs(self):
+        """Returns a list of all annotation keys on this collection.
+
+        Returns:
+            a list of annotation keys
+        """
+        return foan.AnnotationRun.list_runs(self)
+
+    def get_annotation_info(self, anno_key):
+        """Returns information about the annotation run with the given key on
+        this collection.
+
+        Args:
+            anno_key: an annotation key
+
+        Returns:
+            a :class:`fiftyone.core.annotation.AnnotationInfo`
+        """
+        return foan.AnnotationRun.get_run_info(self, anno_key)
+
+    def load_annotation_results(self, anno_key, **kwargs):
+        """Loads the results for the annotation run with the given key on this
+        collection.
+
+        The :class:`fiftyone.utils.annotations.AnnotationResults` object
+        returned by this method will provide a variety of backend-specific
+        methods allowing you to perform actions such as checking the status and
+        deleting this run from the annotation backend.
+
+        Use :meth:`load_annotations` to load the labels from an annotation
+        run onto your FiftyOne dataset.
+
+        Args:
+            anno_key: an annotation key
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+
+        Returns:
+            a :class:`fiftyone.utils.annotations.AnnotationResults`
+        """
+        results = foan.AnnotationRun.load_run_results(self, anno_key)
+        results.load_credentials(**kwargs)
+        return results
+
+    def load_annotation_view(self, anno_key, select_fields=False):
+        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
+        specified annotation run was performed on this collection.
+
+        Args:
+            anno_key: an annotation key
+            select_fields (False): whether to select only the fields involved
+                in the annotation run
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return foan.AnnotationRun.load_run_view(
+            self, anno_key, select_fields=select_fields
+        )
+
+    def load_annotations(self, anno_key, cleanup=False, **kwargs):
+        """Downloads the labels from the given annotation run from the
+        annotation backend and merges them into this collection.
+
+        See :ref:`this page <loading-annotations>` for more information
         about using this method to import annotations that you have scheduled
         by calling :meth:`annotate`.
 
         Args:
-            info: the :class:`fiftyone.utils.annotations.AnnotationInfo`
-                returned from a call to :meth:`annotate`
-            **kwargs: keyword arguments to pass to the ``load_annotations()``
-                method of the annotation backend
+            anno_key: an annotation key
+            cleanup (False): whether to delete any informtation regarding this
+                run from the annotation backend after loading the annotations
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
         """
-        foua.load_annotations(self, info, **kwargs)
+        results = self.load_annotation_results(anno_key, **kwargs)
+        foua.load_annotations(self, results, cleanup=cleanup)
+
+    def delete_annotation_run(self, anno_key):
+        """Deletes the annotation run with the given key from this collection.
+
+        Calling this method only deletes the **record** of the annotation run
+        from the collection; it will not delete any annotations loaded onto
+        your dataset via :meth:`load_annotations`, nor will it delete any
+        associated information from the annotation backend.
+
+        Use :meth:`load_annotation_results` to programmatically manage/delete
+        a run from the annotation backend.
+
+        Args:
+            anno_key: an annotation key
+        """
+        foan.AnnotationRun.delete_run(self, anno_key)
+
+    def delete_annotation_runs(self):
+        """Deletes all annotation runs from this collection.
+
+        Calling this method only deletes the **records** of the annotation runs
+        from this collection; it will not delete any annotations loaded onto
+        your dataset via :meth:`load_annotations`, nor will it delete any
+        associated information from the annotation backend.
+
+        Use :meth:`load_annotation_results` to programmatically manage/delete
+        runs in the annotation backend.
+        """
+        foan.AnnotationRun.delete_runs(self)
 
     def list_indexes(self):
         """Returns the list of index names on this collection.

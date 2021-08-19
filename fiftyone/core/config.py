@@ -198,33 +198,6 @@ class FiftyOneConfig(EnvConfig):
             self.default_ml_backend = self.default_ml_backend.lower()
 
 
-class AnnotationConfig(EnvConfig):
-    """FiftyOne Annotation configuration settings."""
-
-    def __init__(self, d=None):
-        if d is None:
-            d = {"cvat": {}}
-
-        self.cvat_username = self.parse_string(
-            d["cvat"],
-            "username",
-            env_var="FIFTYONE_CVAT_USERNAME",
-            default=None,
-        )
-        self.cvat_password = self.parse_string(
-            d["cvat"],
-            "password",
-            env_var="FIFTYONE_CVAT_PASSWORD",
-            default=None,
-        )
-        self.cvat_url = self.parse_string(
-            d["cvat"],
-            "url",
-            env_var="FIFTYONE_CVAT_URL",
-            default="https://cvat.org",
-        )
-
-
 class AppConfig(EnvConfig):
     """FiftyOne App configuration settings."""
 
@@ -299,6 +272,81 @@ class AppConfigError(etac.EnvConfigError):
     pass
 
 
+class AnnotationConfig(EnvConfig):
+    """FiftyOne annotation configuration settings."""
+
+    _BUILTIN_BACKENDS = {
+        "cvat": {
+            "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
+            "url": "https://cvat.org",
+        }
+    }
+
+    def __init__(self, d=None):
+        if d is None:
+            d = {}
+
+        self.default_backend = self.parse_string(
+            d,
+            "default_backend",
+            env_var="FIFTYONE_DEFAULT_BACKEND",
+            default="cvat",
+        )
+
+        self.backends = self._parse_backends(d)
+
+    def _parse_backends(self, d):
+        d = d.get("backends", {})
+        env_vars = dict(os.environ)
+
+        #
+        # `FIFTYONE_ANNOTATION_BACKENDS` can be used to declare which backends
+        # are exposed. This may exclude builtin backends and/or declare new
+        # backends
+        #
+
+        if "FIFTYONE_ANNOTATION_BACKENDS" in env_vars:
+            backends = env_vars["FIFTYONE_ANNOTATION_BACKENDS"].split(",")
+
+            # Declare new backends and omit any others not in `backends`
+            d = {backend: d.get(backend, {}) for backend in backends}
+        else:
+            backends = sorted(self._BUILTIN_BACKENDS.keys())
+
+            # Declare builtin backends if necessary
+            for backend in backends:
+                if backend not in d:
+                    d[backend] = {}
+
+        #
+        # Extract parameters from any environment variables of the form
+        # `FIFTYONE_<BACKEND>_<PARAMETER>`
+        #
+
+        for backend, parameters in d.items():
+            prefix = "FIFTYONE_%s_" % backend.upper()
+            for env_name, env_value in env_vars.items():
+                if env_name.startswith(prefix):
+                    name = env_name[len(prefix) :].lower()
+                    value = _parse_env_value(env_value)
+                    parameters[name] = value
+
+        #
+        # Set default parameters for builtin annotation backends
+        #
+
+        for backend, defaults in self._BUILTIN_BACKENDS.items():
+            if backend not in d:
+                continue
+
+            d_backend = d[backend]
+            for name, value in defaults.items():
+                if name not in d_backend:
+                    d_backend[name] = value
+
+        return d
+
+
 def locate_config():
     """Returns the path to the :class:`FiftyOneConfig` on disk.
 
@@ -321,33 +369,6 @@ def locate_config():
     config_path = os.environ["FIFTYONE_CONFIG_PATH"]
     if not os.path.isfile(config_path):
         raise OSError("Config file '%s' not found" % config_path)
-
-    return config_path
-
-
-def locate_annotation_config():
-    """Returns the path to the :class:`AnnotationConfig` on disk.
-
-    The default location is ``~/.fiftyone/annotation_config.json``, but you can
-    override this path by setting the ``FIFTYONE_ANNOTATION_CONFIG_PATH`` environment
-    variable.
-
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
-
-    Returns:
-        the path to the :class:`AnnotationConfig` on disk
-
-    Raises:
-        OSError: if the Annotation config path has been customized but the file does
-            not exist on disk
-    """
-    if "FIFTYONE_ANNOTATION_CONFIG_PATH" not in os.environ:
-        return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
-
-    config_path = os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("Annotation config file '%s' not found" % config_path)
 
     return config_path
 
@@ -379,6 +400,33 @@ def locate_app_config():
     return config_path
 
 
+def locate_annotation_config():
+    """Returns the path to the :class:`AnnotationConfig` on disk.
+
+    The default location is ``~/.fiftyone/annotation_config.json``, but you can
+    override this path by setting the ``FIFTYONE_ANNOTATION_CONFIG_PATH``
+    environment variable.
+
+    Note that a config file may not actually exist on disk in the default
+    location, in which case the default config settings will be used.
+
+    Returns:
+        the path to the :class:`AnnotationConfig` on disk
+
+    Raises:
+        OSError: if the annotation config path has been customized but the file
+            does not exist on disk
+    """
+    if "FIFTYONE_ANNOTATION_CONFIG_PATH" not in os.environ:
+        return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
+
+    config_path = os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
+    if not os.path.isfile(config_path):
+        raise OSError("Annotation config file '%s' not found" % config_path)
+
+    return config_path
+
+
 def load_config():
     """Loads the FiftyOne config.
 
@@ -392,19 +440,6 @@ def load_config():
     return FiftyOneConfig()
 
 
-def load_annotation_config():
-    """Loads the FiftyOne Annotation config.
-
-    Returns:
-        an :class:`AnnotationConfig` instance
-    """
-    annotation_config_path = locate_annotation_config()
-    if os.path.isfile(annotation_config_path):
-        return AnnotationConfig.from_json(annotation_config_path)
-
-    return AnnotationConfig()
-
-
 def load_app_config():
     """Loads the FiftyOne App config.
 
@@ -416,6 +451,19 @@ def load_app_config():
         return AppConfig.from_json(app_config_path)
 
     return AppConfig()
+
+
+def load_annotation_config():
+    """Loads the FiftyOne annotation config.
+
+    Returns:
+        an :class:`AnnotationConfig` instance
+    """
+    annotation_config_path = locate_annotation_config()
+    if os.path.isfile(annotation_config_path):
+        return AnnotationConfig.from_json(annotation_config_path)
+
+    return AnnotationConfig()
 
 
 def set_config_settings(**kwargs):
@@ -436,24 +484,6 @@ def set_config_settings(**kwargs):
     _set_settings(fo.config, kwargs)
 
 
-def set_annotation_config_settings(**kwargs):
-    """Sets the given FiftyOne Annotation config setting(s).
-
-    Args:
-        **kwargs: keyword arguments defining valid :class:`AnnotationConfig`
-            attributes and values
-
-    Raises:
-        EnvConfigError: if the settings were invalid
-    """
-    import fiftyone as fo
-
-    # Validiate settings
-    AnnotationConfig.from_dict(kwargs)
-
-    _set_settings(fo.annotation_config, kwargs)
-
-
 def set_app_config_settings(**kwargs):
     """Sets the given FiftyOne App config setting(s).
 
@@ -472,14 +502,57 @@ def set_app_config_settings(**kwargs):
     _set_settings(fo.app_config, kwargs)
 
 
+def set_annotation_config_settings(**kwargs):
+    """Sets the given FiftyOne annotation config setting(s).
+
+    Args:
+        **kwargs: keyword arguments defining valid :class:`AnnotationConfig`
+            attributes and values
+
+    Raises:
+        EnvConfigError: if the settings were invalid
+    """
+    import fiftyone as fo
+
+    # Validiate settings
+    AnnotationConfig.from_dict(kwargs)
+
+    _set_settings(fo.annotation_config, kwargs)
+
+
 def _set_settings(config, kwargs):
-    # Apply settings
     for field, val in kwargs.items():
         if not hasattr(config, field):
-            logger.warning("Skipping unknown config setting '%s'", field)
+            logger.warning("Skipping unknown parameter '%s'", field)
             continue
 
         setattr(config, field, val)
+
+
+def _parse_env_value(value):
+    try:
+        return int(value)
+    except:
+        pass
+
+    try:
+        return float(value)
+    except:
+        pass
+
+    if value in {"True", "true"}:
+        return True
+
+    if value in {"False", "false"}:
+        return False
+
+    if value == "None":
+        return None
+
+    if "," in value:
+        return [_parse_env_value(v) for v in value.split(",")]
+
+    return value
 
 
 def _get_installed_packages():
