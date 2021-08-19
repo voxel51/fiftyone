@@ -1778,8 +1778,8 @@ class SampleCollection(object):
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
     def load_evaluation_results(self, eval_key):
-        """Loads the :class:`fiftyone.core.evaluation.EvaluationResults` for
-        the evaluation with the given key on this collection.
+        """Loads the results for the evaluation with the given key on this
+        collection.
 
         Args:
             eval_key: an evaluation key
@@ -1855,8 +1855,8 @@ class SampleCollection(object):
         return fob.BrainMethod.get_run_info(self, brain_key)
 
     def load_brain_results(self, brain_key):
-        """Loads the :class:`fiftyone.core.brain.BrainResults` for the run with
-        the given key on this collection.
+        """Loads the results for the brain method run with the given key on
+        this collection.
 
         Args:
             brain_key: a brain key
