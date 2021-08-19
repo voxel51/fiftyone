@@ -198,6 +198,80 @@ class FiftyOneConfig(EnvConfig):
             self.default_ml_backend = self.default_ml_backend.lower()
 
 
+class AppConfig(EnvConfig):
+    """FiftyOne App configuration settings."""
+
+    def __init__(self, d=None):
+        if d is None:
+            d = {}
+
+        self.color_pool = self.parse_string_array(
+            d,
+            "color_pool",
+            env_var="FIFTYONE_APP_COLOR_POOL",
+            default=foc.DEFAULT_APP_COLOR_POOL,
+        )
+        self.default_grid_zoom = self.parse_int(
+            d,
+            "default_grid_zoom",
+            env_var="FIFTYONE_APP_GRID_ZOOM",
+            default=5,
+        )
+        self.loop_videos = self.parse_bool(
+            d,
+            "loop_videos",
+            env_var="FIFTYONE_APP_LOOP_VIDEOS",
+            default=False,
+        )
+        self.notebook_height = self.parse_int(
+            d,
+            "notebook_height",
+            env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
+            default=800,
+        )
+        self.show_confidence = self.parse_bool(
+            d,
+            "show_confidence",
+            env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
+            default=True,
+        )
+        self.show_index = self.parse_bool(
+            d, "show_index", env_var="FIFTYONE_APP_SHOW_INDEX", default=True,
+        )
+        self.show_label = self.parse_bool(
+            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
+        )
+        self.show_tooltip = self.parse_bool(
+            d,
+            "show_tooltip",
+            env_var="FIFTYONE_APP_SHOW_TOOLTIP",
+            default=True,
+        )
+        self.use_frame_number = self.parse_bool(
+            d,
+            "use_frame_number",
+            env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
+            default=False,
+        )
+
+        self._validate()
+
+    def _validate(self):
+        if self.default_grid_zoom < 0 or self.default_grid_zoom > 10:
+            raise AppConfigError(
+                "`default_grid_zoom` must be in [0, 10]; found %d"
+                % self.default_grid_zoom
+            )
+
+
+class AppConfigError(etac.EnvConfigError):
+    """Exception raised when an invalid :class:`AppConfig` instance is
+    encountered.
+    """
+
+    pass
+
+
 class AnnotationConfig(EnvConfig):
     """FiftyOne annotation configuration settings."""
 
@@ -273,80 +347,6 @@ class AnnotationConfig(EnvConfig):
         return d
 
 
-class AppConfig(EnvConfig):
-    """FiftyOne App configuration settings."""
-
-    def __init__(self, d=None):
-        if d is None:
-            d = {}
-
-        self.color_pool = self.parse_string_array(
-            d,
-            "color_pool",
-            env_var="FIFTYONE_APP_COLOR_POOL",
-            default=foc.DEFAULT_APP_COLOR_POOL,
-        )
-        self.default_grid_zoom = self.parse_int(
-            d,
-            "default_grid_zoom",
-            env_var="FIFTYONE_APP_GRID_ZOOM",
-            default=5,
-        )
-        self.loop_videos = self.parse_bool(
-            d,
-            "loop_videos",
-            env_var="FIFTYONE_APP_LOOP_VIDEOS",
-            default=False,
-        )
-        self.notebook_height = self.parse_int(
-            d,
-            "notebook_height",
-            env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
-            default=800,
-        )
-        self.show_confidence = self.parse_bool(
-            d,
-            "show_confidence",
-            env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
-            default=True,
-        )
-        self.show_index = self.parse_bool(
-            d, "show_index", env_var="FIFTYONE_APP_SHOW_INDEX", default=True,
-        )
-        self.show_label = self.parse_bool(
-            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
-        )
-        self.show_tooltip = self.parse_bool(
-            d,
-            "show_tooltip",
-            env_var="FIFTYONE_APP_SHOW_TOOLTIP",
-            default=True,
-        )
-        self.use_frame_number = self.parse_bool(
-            d,
-            "use_frame_number",
-            env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
-            default=False,
-        )
-
-        self._validate()
-
-    def _validate(self):
-        if self.default_grid_zoom < 0 or self.default_grid_zoom > 10:
-            raise AppConfigError(
-                "`default_grid_zoom` must be in [0, 10]; found %d"
-                % self.default_grid_zoom
-            )
-
-
-class AppConfigError(etac.EnvConfigError):
-    """Exception raised when an invalid :class:`AppConfig` instance is
-    encountered.
-    """
-
-    pass
-
-
 def locate_config():
     """Returns the path to the :class:`FiftyOneConfig` on disk.
 
@@ -369,33 +369,6 @@ def locate_config():
     config_path = os.environ["FIFTYONE_CONFIG_PATH"]
     if not os.path.isfile(config_path):
         raise OSError("Config file '%s' not found" % config_path)
-
-    return config_path
-
-
-def locate_annotation_config():
-    """Returns the path to the :class:`AnnotationConfig` on disk.
-
-    The default location is ``~/.fiftyone/annotation_config.json``, but you can
-    override this path by setting the ``FIFTYONE_ANNOTATION_CONFIG_PATH``
-    environment variable.
-
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
-
-    Returns:
-        the path to the :class:`AnnotationConfig` on disk
-
-    Raises:
-        OSError: if the annotation config path has been customized but the file
-            does not exist on disk
-    """
-    if "FIFTYONE_ANNOTATION_CONFIG_PATH" not in os.environ:
-        return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
-
-    config_path = os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("Annotation config file '%s' not found" % config_path)
 
     return config_path
 
@@ -427,6 +400,33 @@ def locate_app_config():
     return config_path
 
 
+def locate_annotation_config():
+    """Returns the path to the :class:`AnnotationConfig` on disk.
+
+    The default location is ``~/.fiftyone/annotation_config.json``, but you can
+    override this path by setting the ``FIFTYONE_ANNOTATION_CONFIG_PATH``
+    environment variable.
+
+    Note that a config file may not actually exist on disk in the default
+    location, in which case the default config settings will be used.
+
+    Returns:
+        the path to the :class:`AnnotationConfig` on disk
+
+    Raises:
+        OSError: if the annotation config path has been customized but the file
+            does not exist on disk
+    """
+    if "FIFTYONE_ANNOTATION_CONFIG_PATH" not in os.environ:
+        return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
+
+    config_path = os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
+    if not os.path.isfile(config_path):
+        raise OSError("Annotation config file '%s' not found" % config_path)
+
+    return config_path
+
+
 def load_config():
     """Loads the FiftyOne config.
 
@@ -440,19 +440,6 @@ def load_config():
     return FiftyOneConfig()
 
 
-def load_annotation_config():
-    """Loads the FiftyOne annotation config.
-
-    Returns:
-        an :class:`AnnotationConfig` instance
-    """
-    annotation_config_path = locate_annotation_config()
-    if os.path.isfile(annotation_config_path):
-        return AnnotationConfig.from_json(annotation_config_path)
-
-    return AnnotationConfig()
-
-
 def load_app_config():
     """Loads the FiftyOne App config.
 
@@ -464,6 +451,19 @@ def load_app_config():
         return AppConfig.from_json(app_config_path)
 
     return AppConfig()
+
+
+def load_annotation_config():
+    """Loads the FiftyOne annotation config.
+
+    Returns:
+        an :class:`AnnotationConfig` instance
+    """
+    annotation_config_path = locate_annotation_config()
+    if os.path.isfile(annotation_config_path):
+        return AnnotationConfig.from_json(annotation_config_path)
+
+    return AnnotationConfig()
 
 
 def set_config_settings(**kwargs):
@@ -484,24 +484,6 @@ def set_config_settings(**kwargs):
     _set_settings(fo.config, kwargs)
 
 
-def set_annotation_config_settings(**kwargs):
-    """Sets the given FiftyOne annotation config setting(s).
-
-    Args:
-        **kwargs: keyword arguments defining valid :class:`AnnotationConfig`
-            attributes and values
-
-    Raises:
-        EnvConfigError: if the settings were invalid
-    """
-    import fiftyone as fo
-
-    # Validiate settings
-    AnnotationConfig.from_dict(kwargs)
-
-    _set_settings(fo.annotation_config, kwargs)
-
-
 def set_app_config_settings(**kwargs):
     """Sets the given FiftyOne App config setting(s).
 
@@ -518,6 +500,24 @@ def set_app_config_settings(**kwargs):
     AppConfig.from_dict(kwargs)
 
     _set_settings(fo.app_config, kwargs)
+
+
+def set_annotation_config_settings(**kwargs):
+    """Sets the given FiftyOne annotation config setting(s).
+
+    Args:
+        **kwargs: keyword arguments defining valid :class:`AnnotationConfig`
+            attributes and values
+
+    Raises:
+        EnvConfigError: if the settings were invalid
+    """
+    import fiftyone as fo
+
+    # Validiate settings
+    AnnotationConfig.from_dict(kwargs)
+
+    _set_settings(fo.annotation_config, kwargs)
 
 
 def _set_settings(config, kwargs):
