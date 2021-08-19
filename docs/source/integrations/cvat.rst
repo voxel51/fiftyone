@@ -281,7 +281,7 @@ to manage the run in the future.
 .. note::
 
     When uploading existing labels to CVAT, their label IDs in FiftyOne are
-    uploaded as attriutes. This information is used to keep track of
+    uploaded as attributes. This information is used to keep track of
     modifications to existing labels in your FiftyOne datasets. Changing or
     deleting these ID attributes will result in labels being overwritten
     rather than merged when loading annotations back into FiftyOne.
