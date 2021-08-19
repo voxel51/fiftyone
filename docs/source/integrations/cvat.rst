@@ -30,13 +30,10 @@ datasets:
     you can use FiftyOne to upload your data to CVAT to create, delete, and fix
     annotations.
 
-Overview
-________
-
 .. _cvat-basic-recipe:
 
 Basic recipe
-------------
+____________
 
 The basic workflow to use CVAT with your FiftyOne datasets is as follows:
 
@@ -55,15 +52,15 @@ The basic workflow to use CVAT with your FiftyOne datasets is as follows:
 
 5) In CVAT, perform the necessary annotation work and save the tasks
 
-6) Back in FiftyOne, use the
+6) Back in FiftyOne, load your dataset and use the
    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-   method on your dataset to merge the annotations from CVAT back into your
-   FiftyOne dataset
+   method to merge the annotations from CVAT back into your FiftyOne dataset
 
 7) If desired, delete the CVAT tasks and the record of the annotation run from
    your FiftyOne dataset
 
-The example below demonstrates this workflow:
+The example below demonstrates this workflow. First, we create the annotation
+tasks in CVAT:
 
 .. code-block:: python
     :linenos:
@@ -73,12 +70,18 @@ The example below demonstrates this workflow:
     from fiftyone import ViewField as F
 
     # Step 1: Load your data into FiftyOne
-    dataset = foz.load_zoo_dataset("quickstart")
+
+    dataset = foz.load_zoo_dataset(
+        "quickstart", dataset_name="cvat-annotation-example"
+    )
+    dataset.persistent = True
+
     dataset.evaluate_detections(
         "predictions", gt_field="ground_truth", eval_key="eval"
     )
 
     # Step 2: Locate a subset of your data requiring annotation
+
     # Here we create a view that contains only the high confidence false
     # positive model predictions
     high_conf_view = dataset.filter_labels(
@@ -87,18 +90,35 @@ The example below demonstrates this workflow:
     )
 
     # Step 3: Create a view containing the samples and/or labels to annotate
+
     # In this example we'll select a single sample
     view = high_conf_view.limit(1)
 
     # Step 4: Send samples to CVAT
-    anno_key = "cvat_basic_recipe"  # a unique identifier for this run
+
+    # A unique identifier for this run
+    anno_key = "cvat_basic_recipe"
+
     view.annotate(anno_key, label_field="ground_truth", launch_editor=True)
     print(dataset.get_annotation_info(anno_key))
 
-    # Step 5: (in CVAT) perform annotation and save tasks
+    # Step 5: Perform annotation in CVAT and save tasks
 
-    # Step 6: Merge annotations back into FiftyOne
+Then, once the annotation work is complete, we merge the annotations back into
+FiftyOne:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Step 6: Merge annotations back into FiftyOne dataset
+    dataset = fo.load_dataset("cvat-annotation-example")
     dataset.load_annotations(anno_key)
+
+    # Bonus: load the view that was annotated and open it in the App
+    view = dataset.load_annotation_view(anno_key)
+    session = fo.launch_app(view=view)
 
     # Step 7: Cleanup
     results = dataset.load_annotation_results(anno_key)
@@ -108,7 +128,7 @@ The example below demonstrates this workflow:
 .. _cvat-overview:
 
 CVAT overview
--------------
+_____________
 
 `CVAT <https://github.com/openvinotoolkit/cvat>`_ is an open-source annotation
 software for images and videos.
