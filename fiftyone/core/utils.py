@@ -139,10 +139,10 @@ def split_frame_fields(fields):
             field names
 
     Returns:
-        a tuple of:
+        a tuple of
 
-        -   a list or dict of sample fields
-        -   a list or dict of frame fields
+        -   **sample_fields**: a list or dict of sample fields
+        -   **frame_fields**: a list or dict of frame fields
     """
     if isinstance(fields, dict):
         return _split_frame_fields_dict(fields)
