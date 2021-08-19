@@ -5649,10 +5649,11 @@ class SampleCollection(object):
                 default is ``fiftyone.annotation_config.default_backend``
             launch_editor (False): whether to launch the annotation backend's
                 editor after uploading the samples
-            **kwargs: additional arguments to send to the annotation backend
+            **kwargs: keyword arguments for the
+                :class:`fiftyone.utils.annotations.AnnotationBackendConfig`
 
         Returns:
-            an :class:`fiftyone.core.annotations.AnnnotationResults`
+            an :class:`fiftyone.utils.annotations.AnnnotationResults`
         """
         return foua.annotate(
             self,
@@ -5704,17 +5705,21 @@ class SampleCollection(object):
         """
         return foan.AnnotationRun.get_run_info(self, anno_key)
 
-    def load_annotation_results(self, anno_key):
-        """Loads the :class:`fiftyone.core.annotation.AnnotationResults` for
-        the run with the given key on this collection.
+    def load_annotation_results(self, anno_key, **kwargs):
+        """Loads the results for the annotation run with the given key on this
+        collection.
 
         Args:
             anno_key: an annotation key
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
 
         Returns:
-            a :class:`fiftyone.core.annotation.AnnotationResults`
+            a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        return foan.AnnotationRun.load_run_results(self, anno_key)
+        results = foan.AnnotationRun.load_run_results(self, anno_key)
+        results.load_credentials(**kwargs)
+        return results
 
     def load_annotation_view(self, anno_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -5732,7 +5737,7 @@ class SampleCollection(object):
             self, anno_key, select_fields=select_fields
         )
 
-    def load_annotations(self, anno_key, **kwargs):
+    def load_annotations(self, anno_key, cleanup=False, **kwargs):
         """Loads the labels from the given annotation run into this dataset.
 
         See :ref:`this page <cvat-loading-annotations>` for more information
@@ -5741,11 +5746,12 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
-            **kwargs: keyword arguments to pass to the ``load_annotations()``
-                method of the annotation backend
+            cleanup (False): whether to delete any informtation regarding this
+                run from the annotation backend after loading the annotations
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
         """
-        results = self.load_annotation_results(anno_key)
-        foua.load_annotations(self, results, **kwargs)
+        foua.load_annotations(self, anno_key, cleanup=cleanup, **kwargs)
 
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.

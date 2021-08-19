@@ -277,27 +277,30 @@ def annotate(
             is ``fiftyone.annotation_config.default_backend``
         launch_editor (False): whether to launch the annotation backend's
             editor after uploading the samples
-        **kwargs: additional arguments to send to the annotation backend
+        **kwargs: keyword arguments for the :class:`AnnotationBackendConfig`
 
     Returns:
-        an :class:`fiftyone.core.annotations.AnnnotationResults`
+        an :class:`AnnnotationResults`
     """
     config = _parse_config(backend, None, media_field, **kwargs)
 
     anno_backend = config.build()
     anno_backend.register_run(samples, anno_key, overwrite=False)
 
-    anno_backend.build_label_schema(
+    label_schema = _build_label_schema(
+        samples,
+        anno_backend,
         label_schema=label_schema,
         label_field=label_field,
+        label_type=label_type,
         classes=classes,
         attributes=attributes,
-        label_type=label_type,
-        samples=samples,
     )
 
-    results = anno_backend.annotate(
-        samples, anno_key=anno_key, launch_editor=launch_editor
+    anno_backend.label_schema = label_schema
+
+    results = anno_backend.upload_annotations(
+        samples, launch_editor=launch_editor
     )
 
     anno_backend.save_run_results(samples, anno_key, results)
@@ -305,33 +308,31 @@ def annotate(
     return results
 
 
-def _parse_config(backend, label_schema, media_field, **kwargs):
-    if backend is None:
-        backend = fo.annotation_config.default_backend
+def _parse_config(name, label_schema, media_field, **kwargs):
+    if name is None:
+        name = fo.annotation_config.default_backend
 
     backends = fo.annotation_config.backends
 
-    if backend not in backends:
+    if name not in backends:
         raise ValueError(
             "Unsupported backend '%s'. The available backends are %s"
-            % (backend, sorted(backends))
+            % (name, sorted(backends.keys()))
         )
 
-    parameters = deepcopy(backends[backend])
+    params = deepcopy(backends[name])
 
-    if "config_cls" not in parameters:
-        raise ValueError(
-            "Annotation backend '%s' has no `config_cls`" % backend
-        )
+    if "config_cls" not in params:
+        raise ValueError("Annotation backend '%s' has no `config_cls`" % name)
 
-    config_cls = etau.get_class(parameters.pop("config_cls"))
-    parameters.update(**kwargs)
+    config_cls = etau.get_class(params.pop("config_cls"))
+    params.update(**kwargs)
 
-    return config_cls(label_schema, media_field=media_field, **parameters)
+    return config_cls(name, label_schema, media_field=media_field, **params)
 
 
-def load_annotations(samples, results, **kwargs):
-    """Loads the labels from the given annotation run into this dataset.
+def load_annotations(samples, anno_key, cleanup=False, **kwargs):
+    """Loads the labels for the given annotation run onto the dataset.
 
     See :ref:`this page <cvat-loading-annotations>` for more information about
     using this method to import annotations that you have scheduled by calling
@@ -339,22 +340,23 @@ def load_annotations(samples, results, **kwargs):
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        results: an :class`AnnotationResults`
-        **kwargs: keyword arguments for the
-            :meth:`AnnotationBackend.load_annotations` method of
-            :attr:`AnnotationResults.backend`
+        anno_key: an annotation key
+        cleanup (False): whether to delete any informtation regarding this
+            run from the annotation backend after loading the annotations
+        **kwargs: optional keyword arguments for
+            :meth:`AnnotationResults.load_credentials`
     """
-    annotations_results, additional_results = results.backend.load_annotations(
-        **kwargs
-    )
+    results = samples.load_annotation_results(anno_key)
+    results.load_credentials(**kwargs)
+
+    (
+        annotations_results,
+        additional_results,
+    ) = results.backend.download_annotations(results)
 
     if not annotations_results:
         logger.warning("No annotations found")
         return
-
-    default_label_types_map_rev = {
-        v: k for k, v in AnnotationLabelSchema.DEFAULT_LABEL_TYPES_MAP.items()
-    }
 
     is_video = samples.media_type == fom.VIDEO
 
@@ -380,9 +382,9 @@ def load_annotations(samples, results, **kwargs):
                     )
                     if existing_field:
                         new_field_name = input(
-                            "\nField '%s' already exists.\nPlease enter a new field "
-                            "name in which to store these annotations, or an empty "
-                            "name to skip them: " % new_field_name
+                            "\nField '%s' already exists.\nPlease enter a new "
+                            "field name in which to store these annotations, "
+                            "or an empty name to skip them: " % new_field_name
                         )
                     else:
                         break
@@ -400,7 +402,7 @@ def load_annotations(samples, results, **kwargs):
                     new_field_name = "frames." + new_field_name
 
                 # Add new field
-                fo_label_type = default_label_types_map_rev[new_type]
+                fo_label_type = _LABEL_TYPES_MAP[new_type]
                 if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
                     is_list = True
                     list_field = fo_label_type._LABEL_LIST_FIELD
@@ -475,7 +477,7 @@ def load_annotations(samples, results, **kwargs):
 
         if not existing_field:
             # Add new field
-            fo_label_type = default_label_types_map_rev[label_type]
+            fo_label_type = _LABEL_TYPES_MAP[label_type]
             if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
                 is_list = True
                 list_field = fo_label_type._LABEL_LIST_FIELD
@@ -525,8 +527,6 @@ def load_annotations(samples, results, **kwargs):
                 annotation_label_ids.extend(list(sample.keys()))
 
         sample_ids = list(annotations.keys())
-
-        _, id_path = samples._get_label_field_path(label_field, "id")
 
         prev_label_ids = []
         for ids in results.id_map[label_field].values():
@@ -637,15 +637,18 @@ def load_annotations(samples, results, **kwargs):
 
             sample.save()
 
-    results.cleanup(**kwargs)
+    if cleanup:
+        results.cleanup()
 
 
 def _get_tracking_index_map(samples, label_field, annotations):
     _, index_path = samples._get_label_field_path(label_field, "index")
-    _, id_path = samples._get_label_field_path(label_field, "id")
-    indices = flatten_list(samples.values(index_path))
+    indices = samples.values(index_path, unwind=True)
     max_index = max([i for i in indices if i is not None]) + 1
-    ids = flatten_list(samples.values(id_path))
+
+    _, id_path = samples._get_label_field_path(label_field, "id")
+    ids = samples.values(id_path, unwind=True)
+
     existing_index_map = dict(zip(ids, indices))
     tracking_index_map = {}
     for sid, sample_annots in annotations.items():
@@ -666,6 +669,7 @@ class AnnotationBackendConfig(foa.AnnotationRunConfig):
     """Base class for configuring an :class:`AnnotationBackend` instances.
 
     Args:
+        name: the name of the backend
         label_schema: a dictionary containing the description of label fields,
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
@@ -674,7 +678,8 @@ class AnnotationBackendConfig(foa.AnnotationRunConfig):
             their parsing
     """
 
-    def __init__(self, label_schema, media_field="filepath", **kwargs):
+    def __init__(self, name, label_schema, media_field="filepath", **kwargs):
+        self.name = name
         self.label_schema = label_schema
         self.media_field = media_field
         super().__init__(**kwargs)
@@ -682,17 +687,125 @@ class AnnotationBackendConfig(foa.AnnotationRunConfig):
     @property
     def method(self):
         """The name of the annotation backend."""
-        raise NotImplementedError("subclass must implement method")
+        return self.name
 
 
 class AnnotationBackend(foa.AnnotationRun):
     """Base class for annotation backends."""
 
-    def annotate(self, samples, anno_key=None, launch_editor=False, **kwargs):
-        raise NotImplementedError("subclass must implement evaluate_samples()")
+    @property
+    def supported_label_types(self):
+        """The set of supported label types supported by the backend."""
+        raise NotImplementedError(
+            "subclass must implement supported_label_types"
+        )
 
-    def load_annotations(self, **kwargs):
-        raise NotImplementedError("subclass must implement load_annotations()")
+    @property
+    def supported_scalar_types(self):
+        """The set of supported scalar field types supported by the backend."""
+        raise NotImplementedError(
+            "subclass must implement supported_label_types"
+        )
+
+    @property
+    def supported_attr_types(self):
+        """The list of attribute types supported by the backend."""
+        raise NotImplementedError(
+            "subclass must implement supported_attr_types"
+        )
+
+    @property
+    def default_attr_type(self):
+        """The default type for attributes with values of unspecified type."""
+        raise NotImplementedError("subclass must implement default_attr_type")
+
+    @property
+    def default_categorical_attr_type(self):
+        """The default type for attributes with categorical values."""
+        raise NotImplementedError(
+            "subclass must implement default_categorical_attr_type"
+        )
+
+    def requires_attr_values(self, attr_type):
+        """Determines whether the list of possible values are required for
+        attributes of the given type.
+
+        Args:
+            attr_type: the attribute type string
+
+        Returns:
+            True/False
+        """
+        raise NotImplementedError(
+            "subclass must implement supported_attr_types"
+        )
+
+    def upload_annotations(self, samples, launch_editor=False):
+        """Uploads the samples and relevant existing labels from the label
+        schema to the annotation backend.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            launch_editor (False): whether to launch the annotation backend's
+                editor after uploading the samples
+
+        Returns:
+            an :class:`AnnotationResults`
+        """
+        raise NotImplementedError(
+            "subclass must implement upload_annotations()"
+        )
+
+    def download_annotations(self, results):
+        """Downloads the annotations from the annotation backend for the given
+        results.
+
+        Args:
+            results: an :class:`AnnotationResults`
+
+        Returns:
+            a tuple of
+
+            -   **results**: a dictionary of annotations
+            -   **additional_results**: a dictionary of additional annotations
+        """
+        raise NotImplementedError(
+            "subclass must implement download_annotations()"
+        )
+
+    def build_label_id_map(self, samples):
+        """Builds a label ID dictionary for the current label schema for the
+        given collection.
+
+        The dictionary is structured as follows::
+
+            {
+                "<label-field>": {
+                    "<sample-id>": "<label-id>" or ["<label-id>", ...],
+                    ...
+                },
+                ...
+            }
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            a dict
+        """
+        id_map = {}
+        for label_field, label_info in self.config.label_schema.items():
+            if (
+                not label_info["existing_field"]
+                or label_info["type"] == "scalar"
+            ):
+                continue
+
+            _, label_id_path = samples._get_label_field_path(label_field, "id")
+            sample_ids, label_ids = samples.values(["id", label_id_path])
+            id_map[label_field] = dict(zip(sample_ids, label_ids))
+
+        return id_map
 
     def get_fields(self, samples, anno_key):
         return list(self.config.label_schema.keys())
@@ -702,417 +815,354 @@ class AnnotationBackend(foa.AnnotationRun):
 
 
 class AnnotationResults(foa.AnnotationResults):
-    """Class that stores the results of an annotation run."""
+    """Base class for storing the results of an annotation run.
 
-    def __init__(self, label_schema, backend):
-        self.label_schema = label_schema
-        self.backend = backend
-        self.id_map = {}
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        config: a :class:`AnnotationBackendConfig`
+        backend (None): a :class:`AnnotationBackend`
+    """
 
-    def store_label_ids(self, samples):
-        if not self.label_schema:
-            return
+    def __init__(self, samples, config, backend=None):
+        if backend is None:
+            backend = config.build()
 
-        for label_field, schema in self.label_schema.items():
-            if schema["type"] == "scalar":
-                continue
+        self._samples = samples
+        self._backend = backend
+        self.config = config
 
-            try:
-                _, label_id_path = samples._get_label_field_path(
-                    label_field, "id"
-                )
-            except:
-                continue
+    @property
+    def backend(self):
+        """The :class:`AnnotationBackend` for these results."""
+        return self._backend
 
-            sample_ids, label_ids = samples.values(["id", label_id_path])
-            self.id_map[label_field] = dict(zip(sample_ids, label_ids))
+    def load_credentials(self, **kwargs):
+        """Loads any credentials from the given keyword arguments or the
+        FiftyOne annotation config.
+
+        Args:
+            **kwargs: subclass-specific credentials
+        """
+        raise NotImplementedError("subclass must implement load_credentials()")
 
     def cleanup(self):
-        pass
+        """Deletes all information for this run from the annotation backend."""
+        raise NotImplementedError("subclass must implement cleanup()")
 
-    @classmethod
-    def _from_dict(cls, d, samples, **kwargs):
-        return cls(**kwargs)
+    def _load_config_parameters(self, **kwargs):
+        config = self._backend.config
 
+        # make sure `config` and `_backend.config` are in-sync
+        self.config = config
 
-# @todo remove
-class AnnotationInfo(AnnotationResults):
-    pass
+        parameters = fo.annotation_config.backends.get(config.name, {})
 
+        for name, value in kwargs.items():
+            if value is None:
+                value = parameters.get(name, None)
 
-class BaseAnnotationAPI(object):
-    """Base class for annotation backend APIs.
-
-    Annotation APIs provide support for sending samples for annotation and
-    importing them back into FiftyOne.
-    """
-
-    def prompt_username_password(self, host=None):
-        prefix = "%s " % host if host else ""
-        username = input("%susername: " % prefix)
-        password = getpass.getpass(prompt="%spassword: " % prefix)
-        return {"username": username, "password": password}
-
-    def prompt_api_key(self, host=None):
-        prefix = "%s " % host if host else ""
-        return getpass.getpass(prompt="%sAPI key: " % prefix)
+            if value is not None:
+                setattr(config, name, value)
 
 
-class AnnotationLabelSchema(object):
-    """Class defining an annotation label schema for an annotation run
-    performed by :meth:`fiftyone.core.collections.SampleCollection.annotate`.
-    """
+class AnnotationAPI(object):
+    """Base class for APIs that connect to annotation backend."""
 
-    DEFAULT_LABEL_TYPES = [
-        "classifications",
-        "classification",
-        "detections",
-        "keypoints",
-        "polylines",
-        "scalar",
-    ]
-
-    DEFAULT_LABEL_TYPES_MAP = {
-        fol.Classification: "classification",
-        fol.Classifications: "classifications",
-        fol.Detection: "detection",
-        fol.Detections: "detections",
-        fol.Keypoint: "keypoint",
-        fol.Keypoints: "keypoints",
-        fol.Polyline: "polyline",
-        fol.Polylines: "polylines",
-    }
-
-    SUPPORTED_FIELD_TYPES = (
-        fof.IntField,
-        fof.FloatField,
-        fof.StringField,
-        fof.BooleanField,
-    )
-
-    def __init__(
-        self,
-        backend,
-        label_schema,
-        label_field,
-        classes,
-        attributes,
-        label_type,
-        samples,
-    ):
-        self.backend = backend
-        self.label_field = label_field
-        self.classes = classes
-        self.attributes = attributes
-        self.label_type = label_type
-        self.samples = samples
-
-        if label_schema is None:
-            label_schema = self._init_schema_from_kwargs()
-
-        self.label_schema = label_schema
-        self.complete_label_schema = self._build_complete_schema()
-
-    def backend_attr_types(self):
-        """The list of attribute types supported by the annotation backend."""
-        if self.backend == "cvat":
-            return list(fouc.ATTRIBUTE_TYPES_REQUIREMENTS.keys())
-
-        raise ValueError(
-            "Annotation backend '%s' is not supported" % self.backend
+    def _prompt_username_password(self, name, username=None, password=None):
+        prefix = "FIFTYONE_%s_" % name.upper()
+        logger.info(
+            "Please enter your login credentials.\nYou can avoid this in the "
+            "future by setting your `%s_USERNAME` and/or `%s_PASSWORD` "
+            "environment variables",
+            prefix,
+            prefix,
         )
 
-    def backend_default_attr_type(self):
-        """The default attribute type for the annotation backend."""
-        if self.backend == "cvat":
-            return "text"
+        if username is None:
+            username = input("Username: ")
 
-        raise ValueError(
-            "Annotation backend '%s' is not supported" % self.backend
+        if password is None:
+            password = getpass.getpass(prompt="Password: ")
+
+        return username, password
+
+    def _prompt_api_key(self, name):
+        prefix = "FIFTYONE_%s_" % name.upper()
+        logger.info(
+            "Please enter your API key.\nYou can avoid this in the future by "
+            "setting your `%s_KEY` environment variable",
+            prefix,
         )
 
-    def backend_selection_attr_type(self):
-        """The selection type for the annotation backend."""
-        if self.backend == "cvat":
-            return "select"
+        return getpass.getpass(prompt="API key: ")
 
-        raise ValueError(
-            "Annotation backend '%s' is not supported" % self.backend
+
+_LABEL_TYPES_MAP = {
+    "classification": fol.Classification,
+    "classifications": fol.Classifications,
+    "detection": fol.Detection,
+    "detections": fol.Detections,
+    "keypoint": fol.Keypoint,
+    "keypoints": fol.Keypoints,
+    "polyline": fol.Polyline,
+    "polylines": fol.Polylines,
+}
+
+_LABEL_TYPES_MAP_REV = {v: k for k, v in _LABEL_TYPES_MAP.items()}
+
+
+def _build_label_schema(
+    samples,
+    backend,
+    label_schema=None,
+    label_field=None,
+    label_type=None,
+    classes=None,
+    attributes=None,
+):
+    if label_schema is None and label_field is None:
+        raise ValueError("Either `label_schema` or `label_field` is required")
+
+    if label_schema is None:
+        label_schema = _init_label_schema(
+            label_field, label_type, classes, attributes
+        )
+    elif isinstance(label_schema, list):
+        label_schema = {lf: {} for lf in label_schema}
+
+    _label_schema = {}
+    for _label_field, _label_info in label_schema.items():
+        _label_type, _existing_field = _get_label_type(
+            samples, backend, label_type, _label_field, _label_info
         )
 
-    def backend_requires_attr_values(self, attr_type):
-        """Determines whether the annotation backend requires a list of values
-        for attributes of the given type.
-        """
-        if attr_type not in self.backend_attr_types():
+        _classes = _get_classes(
+            samples,
+            classes,
+            _label_field,
+            _label_info,
+            _existing_field,
+            _label_type,
+        )
+
+        if _label_type != "scalar":
+            _attributes = _get_attributes(
+                samples,
+                backend,
+                attributes,
+                _label_field,
+                _label_info,
+                _existing_field,
+                _label_type,
+            )
+        else:
+            _attributes = {}
+
+        _label_schema[_label_field] = {
+            "type": _label_type,
+            "classes": _classes,
+            "attributes": _attributes,
+            "existing_field": _existing_field,
+        }
+
+    return _label_schema
+
+
+def _init_label_schema(label_field, label_type, classes, attributes):
+    d = {}
+
+    if label_type is not None:
+        d["type"] = label_type
+
+    if classes is not None:
+        d["classes"] = classes
+
+    if attributes not in (True, False, None):
+        d["attributes"] = attributes
+
+    return {label_field: d}
+
+
+def _get_label_type(
+    samples, backend, label_type, label_field, label_info,
+):
+    if "type" in label_info:
+        label_type = label_info["type"]
+
+    field, is_frame_field = samples._handle_frame_field(label_field)
+
+    if is_frame_field:
+        schema = samples.get_frame_field_schema()
+    else:
+        schema = samples.get_field_schema()
+
+    if field in schema:
+        field_type = schema[field]
+        _label_type = _get_existing_label_type(
+            backend, label_field, field_type
+        )
+
+        if label_type is not None and _label_type != label_type:
             raise ValueError(
-                "Annotation backend '%s' does not support attribute type '%s'"
-                % (self.backend, attr_type)
+                "Manually reported label type '%s' for existing field '%s' "
+                "does not match its actual type '%s'"
+                % (_label_type, label_field, label_type)
             )
 
-        if self.backend == "cvat":
-            return "values" in fouc.ATTRIBUTE_TYPES_REQUIREMENTS[attr_type]
+        return _label_type, True
 
+    if label_type is None:
         raise ValueError(
-            "Annotation backend '%s' is not supported" % self.backend
+            "You must specify the type of new label field '%s'" % label_field
         )
 
-    def _init_schema_from_kwargs(self):
-        if self.label_field is None:
+    fo_label_type = _LABEL_TYPES_MAP[label_type]
+    if fo_label_type not in backend.supported_label_types:
+        raise ValueError(
+            "Unsupported label type '%s'. Supported values are %s"
+            % (fo_label_type, backend.supported_label_types)
+        )
+
+    return label_type, False
+
+
+def _get_existing_label_type(backend, label_field, field_type):
+    if isinstance(field_type, fof.EmbeddedDocumentField):
+        fo_label_type = field_type.document_type
+        if fo_label_type not in backend.supported_label_types:
             raise ValueError(
-                "Either `label_schema` or `label_field` is required"
+                "Field '%s' has unsupported label type %s. Supported "
+                "label types are %s"
+                % (label_field, fo_label_type, backend.supported_label_types,)
             )
 
-        schema = {}
+        return _LABEL_TYPES_MAP_REV[fo_label_type]
 
-        schema[self.label_field] = {}
-        if self.classes is not None:
-            schema[self.label_field]["classes"] = self.classes
-
-        if self.attributes not in (True, False, None):
-            schema[self.label_field]["attributes"] = self.attributes
-
-        if self.label_type is not None:
-            schema[self.label_field]["type"] = self.label_type
-
-        return schema
-
-    def _build_complete_schema(self):
-        d = self.label_schema
-
-        label_schema = {}
-        field_schema = self.samples.get_field_schema() or []
-        frame_field_schema = self.samples.get_frame_field_schema() or []
-
-        if isinstance(d, list):
-            d = {lf: {} for lf in d}
-
-        if not isinstance(d, dict):
-            raise ValueError("`label_schema` must be a dictionary or a list")
-
-        for label_field, label_info in d.items():
-            frame_field, is_frame_field = self.samples._handle_frame_field(
-                label_field
-            )
-
-            existing_field = (
-                label_field in field_schema
-                or frame_field in frame_field_schema
-            )
-
-            label_type = self._get_label_type(
+    if type(field_type) not in backend.supported_scalar_types:
+        raise TypeError(
+            "Field '%s' has unsupported type %s. Supported label types "
+            "are %s and supported scalar types are %s"
+            % (
                 label_field,
-                label_info,
-                existing_field,
-                frame_field,
-                is_frame_field,
+                field_type,
+                backend.supported_label_types,
+                backend.supported_scalar_types,
             )
-            classes = self._get_classes(
-                label_field, label_info, existing_field, label_type,
-            )
-            if label_type != "scalar":
-                attributes = self._get_attributes(
-                    label_field, label_info, existing_field, label_type
-                )
-            else:
-                attributes = {}
-
-            label_schema[label_field] = {}
-            label_schema[label_field]["type"] = label_type
-            label_schema[label_field]["classes"] = classes
-            label_schema[label_field]["attributes"] = attributes
-            label_schema[label_field]["existing_field"] = existing_field
-
-        return label_schema
-
-    def _get_label_type(
-        self,
-        label_field,
-        label_info,
-        existing_field,
-        frame_field,
-        is_frame_field,
-    ):
-        if existing_field:
-            self._field_label_type = None
-            is_supported_label = False
-            if label_field is not None:
-                if is_frame_field:
-                    field_type = self.samples.get_frame_field_schema()[
-                        frame_field
-                    ]
-                else:
-                    field_type = self.samples.get_field_schema()[label_field]
-
-                if isinstance(field_type, fof.EmbeddedDocumentField):
-                    doc_type = field_type.document_type
-                    if doc_type in self.DEFAULT_LABEL_TYPES_MAP:
-                        label_type = self.DEFAULT_LABEL_TYPES_MAP[doc_type]
-                    else:
-                        raise TypeError(
-                            "Label field %s of type %s is not supported"
-                            % (label_field, str(field_type.document_type))
-                        )
-
-                elif type(field_type) not in self.SUPPORTED_FIELD_TYPES:
-                    raise TypeError(
-                        "Field %s of type %s is not supported as a scalar type"
-                        % (label_field, str(field_type))
-                    )
-                else:
-                    label_type = "scalar"
-        else:
-            if "type" in label_info:
-                label_type = label_info["type"]
-            elif self.label_type is not None:
-                label_type = self.label_type
-            else:
-                raise ValueError(
-                    "The `label_type` argument of 'type' in the "
-                    "`label_schema` is required when defining a new label "
-                    "field"
-                )
-
-            if label_type not in self.DEFAULT_LABEL_TYPES:
-                raise ValueError(
-                    "Unrecognized label type '%s'. Supported values are %s"
-                    % (label_type, self.DEFAULT_LABEL_TYPES)
-                )
-
-        return label_type
-
-    def _get_classes(
-        self, label_field, label_info, existing_field, label_type
-    ):
-        if "classes" in label_info and label_info["classes"]:
-            return label_info["classes"]
-
-        if self.classes:
-            return self.classes
-
-        if label_type == "scalar":
-            return []
-
-        if not existing_field:
-            raise ValueError(
-                "You must provide a class list for new label field '%s'"
-                % label_field
-            )
-
-        classes = self.samples.classes.get(label_field, None)
-        if classes:
-            return classes
-
-        if self.samples.default_classes:
-            return self.samples.default_classes
-
-        _, label_path = self.samples._get_label_field_path(
-            label_field, "label"
         )
-        return self.samples._dataset.distinct(label_path)
 
-    def _get_attributes(
-        self, label_field, label_info, existing_field, label_type
-    ):
-        if "attributes" in label_info:
-            attributes = label_info["attributes"]
-        else:
-            attributes = self.attributes
+    return "scalar"
 
-        if attributes not in [True, False, None]:
-            pass
-        elif label_type == "scalar":
+
+def _get_classes(
+    samples, classes, label_field, label_info, existing_field, label_type
+):
+    if "classes" in label_info:
+        return label_info["classes"]
+
+    if classes:
+        return classes
+
+    if label_type == "scalar":
+        return []
+
+    if not existing_field:
+        raise ValueError(
+            "You must provide a class list for new label field '%s'"
+            % label_field
+        )
+
+    if label_field in samples.classes:
+        return samples.classes[label_field]
+
+    if samples.default_classes:
+        return samples.default_classes
+
+    _, label_path = samples._get_label_field_path(label_field, "label")
+    return samples._dataset.distinct(label_path)
+
+
+def _get_attributes(
+    samples,
+    backend,
+    attributes,
+    label_field,
+    label_info,
+    existing_field,
+    label_type,
+):
+    if "attributes" in label_info:
+        attributes = label_info["attributes"]
+
+    if attributes in [True, False, None]:
+        if label_type == "scalar":
             attributes = {}
         elif existing_field and attributes == True:
-            attributes = self._get_label_attributes(label_field)
+            attributes = _get_label_attributes(samples, backend, label_field)
         else:
             attributes = {}
 
-        return self._format_attributes(attributes)
+    return _format_attributes(backend, attributes)
 
-    def _format_attributes(self, attributes):
-        output_attrs = {}
-        if isinstance(attributes, list):
-            attributes = {a: {} for a in attributes}
 
-        for attr, attr_info in attributes.items():
-            formatted_info = {}
+def _get_label_attributes(samples, backend, label_field):
+    _, label_path = samples._get_label_field_path(label_field)
+    labels = samples.values(label_path, unwind=True)
 
-            attr_type = attr_info.get("type", None)
-            values = attr_info.get("values", None)
-            default = attr_info.get("default", None)
+    attributes = {}
+    for label in labels:
+        for name, _ in label.iter_attributes():
+            if name not in attributes:
+                attributes[name] = {"type": backend.default_attr_type}
 
-            if attr_type is None:
-                if values is None:
-                    formatted_info["type"] = self.backend_default_attr_type()
-                else:
-                    formatted_info["type"] = self.backend_selection_attr_type()
-                    formatted_info["values"] = values
-                    if default not in (None, "") and default in values:
-                        formatted_info["default"] = default
+    return attributes
+
+
+def _format_attributes(backend, attributes):
+    if isinstance(attributes, list):
+        attributes = {a: {} for a in attributes}
+
+    output_attrs = {}
+    for attr, attr_info in attributes.items():
+        formatted_info = {}
+
+        attr_type = attr_info.get("type", None)
+        values = attr_info.get("values", None)
+        default = attr_info.get("default", None)
+
+        if attr_type is None:
+            if values is None:
+                formatted_info["type"] = backend.default_attr_type
             else:
-                if attr_type in self.backend_attr_types():
-                    formatted_info["type"] = attr_type
-                else:
-                    raise ValueError(
-                        "Attribute type '%s' is not supported for backend '%s'"
-                        % (attr_type, self.backend)
-                    )
-
-                if values is not None:
-                    formatted_info["values"] = values
-                elif self.backend_requires_attr_values(attr_type):
-                    raise ValueError(
-                        "Attribute type '%s' requires a list of values"
-                        % attr_type
-                    )
-
-                if default not in (None, ""):
-                    if values is not None and default not in values:
-                        raise ValueError(
-                            "Default value '%s' does not appear in list of "
-                            "values '%s'" % (default, ", ".join(values))
-                        )
-
+                formatted_info["type"] = backend.default_categorical_attr_type
+                formatted_info["values"] = values
+                if default not in (None, "") and default in values:
                     formatted_info["default"] = default
+        else:
+            if attr_type in backend.supported_attr_types:
+                formatted_info["type"] = attr_type
+            else:
+                # @todo is `backend.config.method` correct?
+                raise ValueError(
+                    "Attribute type '%s' is not supported by backend '%s'"
+                    % (attr_type, backend.config.method)
+                )
 
-            output_attrs[attr] = formatted_info
+            if values is not None:
+                formatted_info["values"] = values
+            elif backend.requires_attr_values(attr_type):
+                raise ValueError(
+                    "Attribute type '%s' requires a list of values" % attr_type
+                )
 
-        return output_attrs
+            if default not in (None, ""):
+                if values is not None and default not in values:
+                    raise ValueError(
+                        "Default value '%s' does not appear in list of "
+                        "values '%s'" % (default, ", ".join(values))
+                    )
 
-    def _get_label_attributes(self, label_field):
-        attributes = {}
-        label_type, label_path = self.samples._get_label_field_path(
-            label_field
-        )
-        labels = self.samples.values(label_path)
-        labels = flatten_list(labels)
-        if len(labels) < 0:
-            return attributes
+                formatted_info["default"] = default
 
-        default_attr_fields = type(labels[0])._fields_ordered
-        for label in labels:
-            current_fields = label._fields_ordered
-            non_default = list(set(current_fields) - set(default_attr_fields))
-            for attr_field in non_default:
-                if attr_field not in attributes:
-                    attributes[attr_field] = {
-                        "type": self.backend_default_attr_type()
-                    }
+        output_attrs[attr] = formatted_info
 
-            if hasattr(label, "attributes"):
-                for attr in label.attributes.keys():
-                    attr_name = "attribute:" + attr
-                    if attr_name not in attributes:
-                        attributes[attr_name] = {
-                            "type": self.backend_default_attr_type()
-                        }
-
-        return attributes
-
-
-def flatten_list(x):
-    if isinstance(x, list):
-        return [a for i in x for a in flatten_list(i)]
-
-    return [x]
+    return output_attrs
