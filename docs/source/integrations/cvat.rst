@@ -60,6 +60,9 @@ The basic workflow to use CVAT with your FiftyOne datasets is as follows:
    method on your dataset to merge the annotations from CVAT back into your
    FiftyOne dataset
 
+7) If desired, delete the CVAT tasks and delete the record of the annotation
+   run (not the labels) from your FiftyOne dataset
+
 The example below demonstrates this workflow:
 
 .. code-block:: python
@@ -85,15 +88,21 @@ The example below demonstrates this workflow:
 
     # Step 3: Create a view containing the samples and/or labels to annotate
     # In this example we'll select a single sample
-    anno_view = high_conf_view.limit(1)
+    view = high_conf_view.limit(1)
 
     # Step 4: Send samples to CVAT
-    info = anno_view.annotate(label_field="ground_truth", launch_editor=True)
+    anno_key = "cvat_basic_recipe"  # a unique identifier for this run
+    view.annotate(anno_key, label_field="ground_truth", launch_editor=True)
 
     # Step 5: (in CVAT) perform annotation and save tasks
 
     # Step 6: Merge annotations back into FiftyOne
-    dataset.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key)
+
+    # Step 7: Cleanup
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+    dataset.delete_annotation_run(anno_key)
 
 .. _cvat-overview:
 
@@ -142,63 +151,48 @@ When using
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, the
 following attributes allow you to define the configuration of your CVAT server:
 
-- `url`: base url of the CVAT server (e.g. `cvat.org` or `localhost`)
-- `port`: four digit port of the custom CVAT server (if applicable)
-- `https`: boolean indicating whether the URL is `https` (`True`) or `http`
-  (`False`)
+- `url`: the base URL of the CVAT server (e.g., `https://cvat.org` or
+  `localhost`)
 
-Alternatively, you can set the `FIFTYONE_CVAT_URL`, `FIFTYONE_CVAT_PORT`, and
-`FIFTYONE_CVAT_HTTPS` environment variables or store them in your annotation
-config at `~/.fiftyone/annotation_config.json` in order to avoid providing
-these parameters each time you call
+Alternatively, you can set the `FIFTYONE_CVAT_URL` environment variable or
+store it in your annotation config at `~/.fiftyone/annotation_config.json` in
+order to avoid providing this parameter each time you call
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
 
-The easiest way to get started is to use the default
-`cvat.org <https://cvat.org>`_ server. This requires creating an account and
+The easiest way to get started is to use the default server
+`cvat.org <https://cvat.org>`_, which simply requires creating an account and
 providing the credentials as shown in the following section.
-
-.. note::
-
-    Calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    will currently always upload the source media files to the CVAT server.
 
 Authentication
 --------------
 
-In order to connect to the CVAT server, you must provide your username and
+In order to connect to a CVAT server, you must provide your username and
 password credentials. This can be done in any of the following ways:
 
 1) **(Recommended)** Store your login credentials in environment variables
 
 2) Enter your login credentials interactively in your shell each time you call
-   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+   :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
 
-3) Pass your credentials via the `auth` keyword argument to
-   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+3) Pass your credentials as keyword arguments to
+   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+   :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
 
 4) Store your login credentials in your FiftyOne annotation config
 
 1. Environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The recommended way to provide access to your CVAT username and password is to
-store them in the `FIFTYONE_CVAT_USERNAME` and `FIFTYONE_CVAT_PASSWORD`
-environment variables. These are automatically accessed by FiftyOne when
-calling
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+The recommended way to configure your CVAT login credentials is to store them
+in the `FIFTYONE_CVAT_USERNAME` and `FIFTYONE_CVAT_PASSWORD` environment
+variables. These are automatically accessed by FiftyOne whenever a connection
+to CVAT is made.
 
 .. code-block:: shell
 
     export FIFTYONE_CVAT_USERNAME=...
     export FIFTYONE_CVAT_PASSWORD=...
-
-.. note::
-
-    You can also set the `FIFTYONE_CVAT_URL`, `FIFTYONE_CVAT_PORT`, and
-    `FIFTYONE_CVAT_HTTPS` environment variables rather than providing them as
-    keyword arguments to
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
 
 2. Command line prompt
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -210,14 +204,14 @@ prompted to enter them interactively in your shell each time you call
 .. code:: python
     :linenos:
 
-    info = view.annotate(label_field="ground_truth", launch_editor=True)
+    view.annotate(anno_key, label_field="ground_truth", launch_editor=True)
 
 .. code-block:: text
 
-    Please enter CVAT login credentials.
-    You can avoid this in the future by setting your `FIFTYONE_CVAT_USERNAME` and `FIFTYONE_CVAT_PASSWORD` environment variables.
-    CVAT username: ...
-    CVAT password: ...
+    Please enter your login credentials.
+    You can avoid this in the future by setting your `FIFTYONE_CVAT_USERNAME` and/or `FIFTYONE_CVAT_PASSWORD` environment variables.
+    Username: ...
+    Password: ...
 
 3. Keyword arguments
 ~~~~~~~~~~~~~~~~~~~~
@@ -229,18 +223,12 @@ You can provide your login credentials at runtime as keyword arguments via the
 .. code:: python
     :linenos:
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    auth = {
-        "username": ...,
-        "password": ...,
-    }
-
-    info = view.annotate(label_field="ground_truth", auth=auth)
+    dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        username=...,
+        password=...,
+    )
 
 4. FiftyOne annotation config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -251,11 +239,9 @@ annotation config located at `~/.fiftyone/annotation_config.json`:
 .. code-block:: text
 
     {
+        "cvat_url": "localhost",
         "cvat_username": ...,
         "cvat_password": ...,
-        "cvat_url": "localhost",
-        "cvat_port": 8080,
-        "cvat_https": false
     }
 
 .. warning:
@@ -263,20 +249,34 @@ annotation config located at `~/.fiftyone/annotation_config.json`:
     Storing your username and password in plain text on disk is generally not
     recommended. Consider using environment variables instead.
 
-.. _cvat-annotation:
+.. _annotation:
 
 Annotation
 __________
 
 Use the
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` method
-to send samples and optionally existing labels to CVAT for annotation.
+to send the samples and optionally existing labels in a |Dataset| or
+|DatasetView| to CVAT for annotation.
 
-The :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-method provides various keyword arguments that you can use to customize the
-annotation tasks that you wish to be performed.
+You must provide a unique `anno_key` string argument to each call to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`. This
+key serves as the identifier for an annotation run, and you will provide it to
+methods like
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
+:meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.load_annotations>`,
+:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`, and
+:meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
+to manage the run in the future.
 
-**General arguments**
+In addition,
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+provides various parameters that you can use to customize the annotation tasks
+that you wish to be performed.
+
+**General parameters**
+
+The following parameters are supported by all annotation backends:
 
 - `backend`: the annotation backend to use. Use `"cvat"` for the CVAT backend
 - `media_field`: (`"filepath"`) the sample field containing the path to the
@@ -285,6 +285,9 @@ annotation tasks that you wish to be performed.
   uploading the samples
 
 **Label schema**
+
+The following parameters allow you to configure the labeling schema to use for
+your annotation tasks. See :ref:`this section <label-schema>` for more details:
 
 - `label_schema`: the complete dictionary description of the annotation schema
   to use
@@ -303,7 +306,9 @@ annotation tasks that you wish to be performed.
   will define the default attributes for any label fields in `label_schema`
   that do not otherwise have their attributes specified
 
-**CVAT-specific arguments**
+**Backend-specific arguments**
+
+The following CVAT-specific parameters can also be provided:
 
 - `segment_size`: the maximum number of images to upload per job. Not
   applicable to videos
@@ -313,7 +318,13 @@ annotation tasks that you wish to be performed.
 - `job_assignees`: a list of usernames to assign jobs
 - `job_reviewers`: a list of usernames to assign job reviews
 
-.. _cvat-label-schema:
+.. note::
+
+    Calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    will upload the source media files to the CVAT server.
+
+.. _label-schema:
 
 Label schema
 ------------
@@ -334,6 +345,8 @@ label field:
 
 .. code:: python
     :linenos:
+
+    anno_key = "..."
 
     label_schema = {
         "new_field": {
@@ -362,7 +375,7 @@ label field:
         },
     }
 
-    dataset.annotate(label_schema=label_schema)
+    dataset.annotate(anno_key, label_schema=label_schema)
 
 Alternatively, if you are only editing or creating a single label field, you
 can use the `label_field`, `label_type`, `classes`, and `attributes` parameters
@@ -371,11 +384,13 @@ to specify the components of the label schema individually:
 .. code:: python
     :linenos:
 
+    anno_key = "..."
+
     label_field = "new_field",
     label_type = "classifications"
     classes = ["class1", "class2"]
 
-    # these are optional
+    # These are optional
     attributes = {
         "attr1": {
             "type": "select",
@@ -390,6 +405,7 @@ to specify the components of the label schema individually:
     }
 
     dataset.annotate(
+        anno_key,
         label_field=label_field,
         label_type=label_type,
         classes=classes,
@@ -421,6 +437,8 @@ attribute that you wish to label:
 .. code:: python
     :linenos:
 
+    anno_key = "..."
+
     attributes = {
         "occluded": {
             "type": "radio",
@@ -436,7 +454,8 @@ attribute that you wish to label:
         }
     }
 
-    info = view.annotate(
+    view.annotate(
+        anno_key,
         label_field="new_field",
         label_type="detections",
         classes=["dog", "cat", "person"],
@@ -448,15 +467,17 @@ default ``label``.
 
 For CVAT, the following ``type`` values are supported:
 
--   `radio`: a radio button. In this case, `values` is required and `default`
-    is optional
--   `select`: a multiselect checkbox UI. In this case, `values` is required and
-    `default` is optional
 -   `text`: a free-form text box. In this case, `default` is optional and
     `values` is unused
+-   `select`: a multiselect checkbox UI. In this case, `values` is required and
+    `default` is optional
+-   `checkbox`: a checkbox UI. In this case, `default` is optional and `values`
+    is unused
+-   `radio`: a radio button. In this case, `values` is required and `default`
+    is optional
 
-When you are annotating existing label fields, the ``attributes`` key/parameter
-can take additional values:
+When you are annotating existing label fields, the `attributes` parameter can
+take additional values:
 
 -   ``True`` (default): export all custom attributes observed on the existing
     labels, using their observed values to determine the appropriate ``type``,
@@ -470,7 +491,7 @@ can take additional values:
     Only scalar-valued label attributes are supported. Other attribute types
     like lists, dictionaries, and arrays will be omitted.
 
-.. _cvat-loading-annotations:
+.. _loading-annotations:
 
 Loading annotations
 ___________________
@@ -483,13 +504,88 @@ method to download them and merge them back into your FiftyOne dataset.
 .. code:: python
     :linenos:
 
-    view.load_annotations(info)
+    view.load_annotations(anno_key)
 
-The :class:`CVATAnnotationInfo <fiftyone.utils.cvat.CVATAnnotationInfo>` object
-that is returned by
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-contains all of the information required to reconnect to the annotation backend
-and download the labels.
+The `anno_key` parameter is the unique identifier for the annotation run that
+you provided when calling
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
+
+You can use
+:meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`
+to see the available keys on a dataset.
+
+.. note::
+
+    By default, calling
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    will not delete any information for the run from the annotation backend.
+
+    However, you can pass `cleanup=True` to opt-in to deleting the run from the
+    backend after the annotations are deleted.
+
+.. _managing-annotation-runs:
+
+Managing annotation runs
+________________________
+
+FiftyOne provides a variety of methods that you can use to manage in-progress
+or completed annotation runs.
+
+For example, you can call
+:meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`
+to see the available annotation keys on a dataset:
+
+.. code:: python
+    :linenos:
+
+    dataset.list_annotation_runs()
+
+Or, you can use
+:meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.get_annotation_info>`
+to retrieve information about the configuration of an annotation run:
+
+.. code:: python
+    :linenos:
+
+    info = dataset.get_annotation_info(anno_key)
+    print(info)
+
+Use :meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`
+to load the :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
+instance for an annotation run.
+
+All results objects provide a :class:`cleanup() <fiftyone.utils.annotations.AnnotationResults.cleanup>`
+method that you can use to delete all information associated with a run from
+the annotation backend.
+
+.. code:: python
+    :linenos:
+
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+
+In addition, the
+:class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
+subclasses for each backend may provide additional utilities such as support
+for programmatically monitoring the status of the annotation tasks in the run.
+
+Finally, you can use
+:meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
+to delete the record of an annotation run from your FiftyOne dataset:
+
+.. code:: python
+    :linenos:
+
+    dataset.delete_annotation_run(anno_key)
+
+.. note::
+
+    Calling
+    :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
+    only deletes the **record** of the annotation run from your FiftyOne
+    dataset; it will not delete any annotations loaded onto your dataset via
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
+    nor will it delete any associated information from the annotation backend.
 
 .. _cvat-examples:
 
@@ -523,11 +619,15 @@ by simply passing the name of the field via the `label_field` parameter of
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    info = view.annotate(label_field="ground_truth", launch_editor=True)
+    anno_key = "cvat_existing_field"
+
+    view.annotate(anno_key, label_field="ground_truth", launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
 
     # Modify/add/delete bounding boxes and their attributes in CVAT
 
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 .. image:: /images/integrations/cvat_example.png
    :alt: cvat-example
@@ -546,6 +646,8 @@ can be used to annotate new classes and/or attributes:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
+    anno_key = "cvat_existing_field"
+
     # The list of possible `label` values
     classes = ["person", "dog", "cat", "helicopter"]
 
@@ -559,16 +661,19 @@ can be used to annotate new classes and/or attributes:
         }
     }
 
-    info = view.annotate(
+    view.annotate(
+        anno_key,
         label_field="ground_truth",
         classes=classes,
         attributes=attributes,
         launch_editor=True,
     )
+    print(dataset.get_annotation_info(anno_key))
 
     # Modify/add/delete bounding boxes and their attributes in CVAT
 
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 .. image:: /images/integrations/cvat_new_class.png
    :alt: cvat-new-class
@@ -599,16 +704,21 @@ define the annotation schema for the field:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    info = view.annotate(
+    anno_key = "cvat_new_field"
+
+    view.annotate(
+        anno_key,
         label_field="new_classifications",
         label_type="classifications",
         classes=["dog", "cat", "person"],
         launch_editor=True,
     )
+    print(dataset.get_annotation_info(anno_key))
 
     # Create annotations in CVAT
 
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 Alternatively, you can use the `label_schema` argument to define the same
 labeling task:
@@ -622,6 +732,8 @@ labeling task:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
+    anno_key = "cvat_new_field"
+
     label_schema = {
         "new_classifications": {
             "type": "classifications",
@@ -629,11 +741,13 @@ labeling task:
         }
     }
 
-    info = view.annotate(label_schema=label_schema, launch_editor=True)
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
 
     # Create annotations in CVAT
 
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 .. image:: /images/integrations/cvat_tag.png
    :alt: cvat-tag
@@ -654,6 +768,8 @@ fields at once:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
+    anno_key = "cvat_multiple_fields"
+
     # The details for existing `ground_truth` field are inferred
     # A new field `new_keypoints` is also added
     label_schema = {
@@ -670,11 +786,13 @@ fields at once:
         }
     }
 
-    info = view.annotate(label_schema=label_schema, launch_editor=True)
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
 
     # Add annotations in both CVAT tasks that were created
 
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 .. note:
 
@@ -707,12 +825,16 @@ these unexpected new labels in:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    info = view.annotate(label_field="ground_truth", launch_editor=True)
+    anno_key = "cvat_unexpected"
+
+    view.annotate(anno_key, label_field="ground_truth", launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
 
     # Add some polyline annotations in CVAT (wrong type!)
 
     # You will be prompted for a field in which to store the polylines
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 .. image:: /images/integrations/cvat_polyline.png
    :alt: cvat-polyline
@@ -725,15 +847,13 @@ When using the CVAT backend, you can provide the following optional parameters
 to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
 specify which users will be assigned to the created tasks:
 
-- `task_assignee`: a username to assign the generated tasks
-- `job_assignees`: a list of usernames to assign jobs
-- `job_reviewers`: a list of usernames to assign job reviews
+-   `segment_size`: the maximum number of images to include in a single job
+-   `task_assignee`: a username to assign the generated tasks
+-   `job_assignees`: a list of usernames to assign jobs
+-   `job_reviewers`: a list of usernames to assign job reviews
 
-If the number of usernames provided is less than the number of tasks or jobs,
-the last user will be assigned all excess jobs/reviews.
-
-You can also use the `segment_size` argument to define the maximum number of
-images to include in a single job.
+If the number of jobs exceeds the number of assignees or reviewers, the jobs
+will be assigned using a round-robin strategy.
 
 .. code:: python
     :linenos:
@@ -743,6 +863,8 @@ images to include in a single job.
 
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(5)
+
+    anno_key = "cvat_assign_users"
 
     task_assignee = "username1"
     job_assignees = ["username2", "username3"]
@@ -758,14 +880,21 @@ images to include in a single job.
         }
     }
 
-    info = view.annotate(
+    view.annotate(
+        anno_key,
         label_schema=label_schema,
+        segment_size=2,
         task_assignee=task_assignee,
         job_assignees=job_assignees,
         job_reviewers=job_reviewers,
-        segment_size=2,
         launch_editor=True,
     )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Cleanup
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+    dataset.delete_annotation_run(anno_key)
 
 Scalar labels
 -------------
@@ -792,6 +921,8 @@ enter the appropriate scalar in the `value` attribute of the tag.
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
+    anno_key = "cvat_scalar_fields"
+
     # Create two scalar fields, one with classes and one without
     label_schema = {
         "scalar1": {
@@ -803,10 +934,13 @@ enter the appropriate scalar in the `value` attribute of the tag.
         }
     }
 
-    info = view.annotate(
-        label_schema=label_schema,
-        launch_editor=True,
-    )
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Cleanup
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+    dataset.delete_annotation_run(anno_key)
 
 .. image:: /images/integrations/cvat_scalar.png
    :alt: cvat-scalar
@@ -839,6 +973,8 @@ For example, let's upload some blurred images to CVAT for annotation:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
+    anno_key = "cvat_alt_media"
+
     alt_dir = "/tmp/blurred"
     if not os.path.exists(alt_dir):
         os.makedirs(alt_dir)
@@ -854,15 +990,18 @@ For example, let's upload some blurred images to CVAT for annotation:
         sample["alt_filepath"] = alt_filepath
         sample.save()
 
-    info = view.annotate(
+    view.annotate(
+        anno_key,
         label_field="ground_truth",
         media_field="alt_filepath",
         launch_editor=True,
     )
+    print(dataset.get_annotation_info(anno_key))
 
     # Create annotations in CVAT
 
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 .. image:: /images/integrations/cvat_alt_media.png
    :alt: cvat-alt-media
@@ -901,14 +1040,19 @@ to record classifications for your video datasets.
     dataset = foz.load_zoo_dataset("quickstart-video")
     view = dataset.take(1)
 
-    info = view.annotate(
+    anno_key = "cvat_video"
+
+    view.annotate(
+        anno_key,
         label_field="frames.detections",
         launch_editor=True,
     )
+    print(dataset.get_annotation_info(anno_key))
 
     # Create annotations in CVAT
 
-    view.load_annotations(info, delete_tasks=True)
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 .. note:
 
@@ -920,7 +1064,7 @@ to record classifications for your video datasets.
    :alt: cvat-video
    :align: center
 
-.. cvat_utilities:
+.. _cvat_utilities:
 
 Additional CVAT utilities
 _________________________
@@ -929,35 +1073,8 @@ You can perform additional CVAT-specific operations to monitor the progress
 of an annotation task initiated by
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` via
 the returned
-:class:`CVATAnnotationInfo <fiftyone.utils.cvat.CVATAnnotationInfo>` instance.
-
-Specifically, call
-:meth:`CVATAnnotationInfo.connect_to_api() <fiftyone.utils.cvat.CVATAnnotationInfo.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
-instance, which is a wrapper around the
-`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
-that provides convenient methods for performing common actions on your CVAT
-tasks.
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    info = view.annotate(label_field="ground_truth")
-
-    api = info.connect_to_api()
-
-    # Launch CVAT in your browser
-    print(api.base_url)
-    api.launch_editor(api.base_url)
-
-    # Get info about all tasks currently on the CVAT server
-    response = api.get(api.tasks_url).json()
+:class:`CVATAnnotationResults <fiftyone.utils.cvat.CVATAnnotationResults>`
+instance.
 
 The sections below highlight some common actions that you may want to perform.
 
@@ -965,8 +1082,8 @@ Viewing task statuses
 ---------------------
 
 You can use the
-:meth:`get_status() <fiftyone.utils.cvat.CVATAnnotationInfo.print_status>` and
-:meth:`print_status() <fiftyone.utils.cvat.CVATAnnotationInfo.print_status>`
+:meth:`get_status() <fiftyone.utils.cvat.CVATAnnotationResults.print_status>` and
+:meth:`print_status() <fiftyone.utils.cvat.CVATAnnotationResults.print_status>`
 methods to get information about the current status of the task(s) and job(s)
 for that annotation run:
 
@@ -979,21 +1096,26 @@ for that annotation run:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(3)
 
-    info = view.annotate(
+    view.annotate(
+        anno_key,
         label_field="ground_truth",
+        segment_size=2,
         task_assignee="user1",
         job_assignees=["user1"],
         job_reviewers=["user2", "user3"],
-        segment_size=2,
     )
 
-    info.print_status()
+    results = dataset.load_annotation_results(anno_key)
+    results.print_status()
+
+    results.cleanup()
+    dataset.delete_annotation_run(anno_key)
 
 .. code-block:: text
 
     Status for label field 'ground_truth':
 
-        Task 331 (FiftyOne_annotation_ground_truth):
+        Task 331 (FiftyOne_quickstart_ground_truth):
             Status: annotation
             Assignee: user1
             Last updated: 2021-08-11T15:09:02.680181Z
@@ -1009,12 +1131,16 @@ for that annotation run:
                 Assignee: user1
                 Reviewer: user3
 
-Deleting tasks
---------------
+Using the CVAT API
+------------------
 
 You can use the
-:meth:`delete_task() <fiftyone.utils.cvat.CVATAnnotationAPI.delete_task>`
-method to delete CVAT tasks associated with the annotation run:
+:meth:`connect_to_api() <fiftyone.utils.cvat.CVATAnnotationResults.connect_to_api>`
+to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
+instance, which is a wrapper around the
+`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
+that provides convenient methods for performing common actions on your CVAT
+tasks.
 
 .. code:: python
     :linenos:
@@ -1025,10 +1151,43 @@ method to delete CVAT tasks associated with the annotation run:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    info = view.annotate(label_field="ground_truth")
+    anno_key = "cvat_api"
 
-    print(info.task_ids)
+    view.annotate(anno_key, label_field="ground_truth")
+
+    results = dataset.load_annotation_results(anno_key)
+    api = results.connect_to_api()
+
+    # Launch CVAT in your browser
+    api.launch_editor(api.base_url)
+
+    # Get info about all tasks currently on the CVAT server
+    response = api.get(api.tasks_url).json()
+
+Deleting tasks
+--------------
+
+You can use the
+:meth:`delete_task() <fiftyone.utils.cvat.CVATAnnotationAPI.delete_task>`
+method to delete specific CVAT tasks associated with an annotation run:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "cvat_delete_tasks"
+
+    view.annotate(anno_key, label_field="ground_truth")
+
+    results = dataset.load_annotation_results(anno_key)
+    api = results.connect_to_api()
+
+    print(results.task_ids)
     # [372]
 
-    api = info.connect_to_api()
     api.delete_task(372)
