@@ -126,18 +126,25 @@ FiftyOne:
 
     import fiftyone as fo
 
+    anno_key = "cvat_basic_recipe"
+
     # Step 6: Merge annotations back into FiftyOne dataset
+
     dataset = fo.load_dataset("cvat-annotation-example")
     dataset.load_annotations(anno_key)
 
-    # Bonus: Load the view that was annotated in the App
+    # Load the view that was annotated in the App
     view = dataset.load_annotation_view(anno_key)
     session = fo.launch_app(view=view)
 
     # Step 7: Cleanup
+
+    # Delete tasks from CVAT
     results = dataset.load_annotation_results(anno_key)
-    results.cleanup()  # delete CVAT tasks
-    dataset.delete_annotation_run(anno_key)  # delete run record from FiftyOne
+    results.cleanup()
+
+    # Delete run record (not the label) from FiftyOne
+    dataset.delete_annotation_run(anno_key)
 
 .. _cvat-setup:
 
