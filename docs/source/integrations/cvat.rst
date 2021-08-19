@@ -50,18 +50,18 @@ The basic workflow to use CVAT with your FiftyOne datasets is as follows:
 
 4) Use the
    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-   method on your dataset view to upload the samples and optionally their
+   method on your dataset or view to upload the samples and optionally their
    existing labels to CVAT
 
-5) Perform the necessary annotation work in CVAT and save the tasks
+5) In CVAT, perform the necessary annotation work and save the tasks
 
 6) Back in FiftyOne, use the
    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
    method on your dataset to merge the annotations from CVAT back into your
    FiftyOne dataset
 
-7) If desired, delete the CVAT tasks and delete the record of the annotation
-   run (not the labels) from your FiftyOne dataset
+7) If desired, delete the CVAT tasks and the record of the annotation run from
+   your FiftyOne dataset
 
 The example below demonstrates this workflow:
 
@@ -101,8 +101,8 @@ The example below demonstrates this workflow:
 
     # Step 7: Cleanup
     results = dataset.load_annotation_results(anno_key)
-    results.cleanup()
-    dataset.delete_annotation_run(anno_key)
+    results.cleanup()  # delete CVAT tasks
+    dataset.delete_annotation_run(anno_key)  # delete run record from FiftyOne
 
 .. _cvat-overview:
 

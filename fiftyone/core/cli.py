@@ -805,7 +805,7 @@ class DatasetsDeleteCommand(Command):
 
 
 class AnnotationCommand(Command):
-    """Tools for working with the FiftyOne Annotations."""
+    """Tools for working with the FiftyOne annotation API."""
 
     @staticmethod
     def setup(parser):
