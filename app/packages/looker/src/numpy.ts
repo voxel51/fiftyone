@@ -148,7 +148,7 @@ function parse(array: Uint8Array): NumpyResult {
   return {
     shape: header.shape,
     buffer: typedData.buffer,
-    arrayType: ArrayType.name,
+    arrayType: typedData.constructor.name,
   };
 }
 
