@@ -2567,7 +2567,7 @@ class CVATBackend(foua.AnnotationBackend):
 
         logger.info("Downloading labels from CVAT...")
         results, additional_results = api.download_annotations(
-            results.label_schema,
+            results.config.label_schema,
             results.task_ids,
             results.job_ids,
             results.frame_id_map,

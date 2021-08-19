@@ -101,9 +101,6 @@ def annotate(
 
     anno_backend = config.build()
 
-    # Don't allow overwriting an existing run with same `anno_key`
-    anno_backend.register_run(samples, anno_key, overwrite=False)
-
     config.label_schema = _build_label_schema(
         samples,
         anno_backend,
@@ -113,6 +110,9 @@ def annotate(
         classes=classes,
         attributes=attributes,
     )
+
+    # Don't allow overwriting an existing run with same `anno_key`
+    anno_backend.register_run(samples, anno_key, overwrite=False)
 
     results = anno_backend.upload_annotations(
         samples, launch_editor=launch_editor
@@ -177,10 +177,12 @@ def load_annotations(samples, results, cleanup=False):
 
     is_video = samples.media_type == fom.VIDEO
 
-    label_schema = results.label_schema
+    label_schema = results.config.label_schema
     for label_field in label_schema:
-
+        #
         # First add unexpected labels to new fields
+        #
+
         if label_field in additional_results:
             new_results = additional_results[label_field]
             for new_type, annotations in new_results.items():
@@ -257,7 +259,9 @@ def load_annotations(samples, results, cleanup=False):
 
                         sample.save()
 
+        #
         # Now import expected labels into their appropriate fields
+        #
 
         annotations = annotations_results.get(label_field, None)
 
