@@ -53,29 +53,49 @@ _REQUIREMENT_ERROR_SUFFIX = (
 
 
 def extract_kwargs_for_class(cls, kwargs):
-    """Extracts keyword arguments for a class from the given dictionary of
-    arguments.
+    """Extracts keyword arguments for the given class's constructor from the
+    given kwargs.
 
     Args:
         cls: a class
         kwargs: a dictionary of keyword arguments
 
     Returns:
-        a tuple of:
+        a tuple of
 
-        -   ``class_kwargs``: a dictionary of keyword arguments for ``cls``
-        -   ``other_kwargs``: a dictionary containing the remaining ``kwargs``
+        -   **class_kwargs**: a dictionary of keyword arguments for ``cls``
+        -   **other_kwargs**: a dictionary containing the remaining ``kwargs``
     """
-    class_kwargs = {}
+    return _extract_kwargs(cls, kwargs)
+
+
+def extract_kwargs_for_function(fcn, kwargs):
+    """Extracts keyword arguments for the given function from the given kwargs.
+
+    Args:
+        fcn: a function
+        kwargs: a dictionary of keyword arguments
+
+    Returns:
+        a tuple of
+
+        -   **fcn_kwargs**: a dictionary of keyword arguments for ``fcn``
+        -   **other_kwargs**: a dictionary containing the remaining ``kwargs``
+    """
+    return _extract_kwargs(fcn, kwargs)
+
+
+def _extract_kwargs(cls_or_fcn, kwargs):
+    this_kwargs = {}
     other_kwargs = {}
-    spec = inspect.getfullargspec(cls)
+    spec = inspect.getfullargspec(cls_or_fcn)
     for k, v in kwargs.items():
         if k in spec.args:
-            class_kwargs[k] = v
+            this_kwargs[k] = v
         else:
             other_kwargs[k] = v
 
-    return class_kwargs, other_kwargs
+    return this_kwargs, other_kwargs
 
 
 def pprint(obj, stream=None, indent=4, width=80, depth=None):
