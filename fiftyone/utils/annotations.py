@@ -331,8 +331,8 @@ def _parse_config(name, label_schema, media_field, **kwargs):
     return config_cls(name, label_schema, media_field=media_field, **params)
 
 
-def load_annotations(samples, anno_key, cleanup=False, **kwargs):
-    """Loads the labels for the given annotation run onto the dataset.
+def load_annotations(samples, results, cleanup=False):
+    """Loads the labels for the given annotation results onto the dataset.
 
     See :ref:`this page <cvat-loading-annotations>` for more information about
     using this method to import annotations that you have scheduled by calling
@@ -340,15 +340,10 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        anno_key: an annotation key
+        results: an :class:`AnnotationResults`
         cleanup (False): whether to delete any informtation regarding this
             run from the annotation backend after loading the annotations
-        **kwargs: optional keyword arguments for
-            :meth:`AnnotationResults.load_credentials`
     """
-    results = samples.load_annotation_results(anno_key)
-    results.load_credentials(**kwargs)
-
     (
         annotations_results,
         additional_results,

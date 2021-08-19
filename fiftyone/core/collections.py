@@ -5751,7 +5751,8 @@ class SampleCollection(object):
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
         """
-        foua.load_annotations(self, anno_key, cleanup=cleanup, **kwargs)
+        results = self.load_annotation_results(anno_key, **kwargs)
+        foua.load_annotations(self, results, cleanup=cleanup)
 
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
