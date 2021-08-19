@@ -93,6 +93,7 @@ The example below demonstrates this workflow:
     # Step 4: Send samples to CVAT
     anno_key = "cvat_basic_recipe"  # a unique identifier for this run
     view.annotate(anno_key, label_field="ground_truth", launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
 
     # Step 5: (in CVAT) perform annotation and save tasks
 

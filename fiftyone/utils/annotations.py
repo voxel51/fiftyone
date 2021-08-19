@@ -104,7 +104,7 @@ def annotate(
     # Don't allow overwriting an existing run with same `anno_key`
     anno_backend.register_run(samples, anno_key, overwrite=False)
 
-    label_schema = _build_label_schema(
+    config.label_schema = _build_label_schema(
         samples,
         anno_backend,
         label_schema=label_schema,
@@ -113,8 +113,6 @@ def annotate(
         classes=classes,
         attributes=attributes,
     )
-
-    anno_backend.label_schema = label_schema
 
     results = anno_backend.upload_annotations(
         samples, launch_editor=launch_editor
