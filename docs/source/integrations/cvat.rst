@@ -10,8 +10,22 @@ open-source image and video annotation tools available, and we've made it easy
 to upload your data and labels directly from FiftyOne to CVAT to create,
 delete, and modify annotations.
 
-This integration supports the following label types for both image and video
-datasets:
+You can use CVAT either through the hosted server at
+`cvat.org <https://cvat.org>`_ or through a
+`self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
+In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
+that you can use to specify the necessary account credentials and server
+endpoint to use.
+
+CVAT provides three levels of abstraction for annotation workflows: projects,
+tasks, and jobs. A job contains one or more images and can be assigned to a
+specfic annotator or reviewer. A task defines the label schema to use for
+annotation and contains one or more jobs. A project can optionally be created
+to group multiple tasks together under a shared label schema.
+
+FiftyOne provides an API to create tasks and jobs, upload data, define label
+schemas, and download annotations, all programmatically in Python. All of the
+following label types are supported, for both image and video datasets:
 
 - :ref:`Classifications <classification>`
 - :ref:`Detections <object-detection>`
@@ -116,7 +130,7 @@ FiftyOne:
     dataset = fo.load_dataset("cvat-annotation-example")
     dataset.load_annotations(anno_key)
 
-    # Bonus: load the view that was annotated and open it in the App
+    # Bonus: Load the view that was annotated in the App
     view = dataset.load_annotation_view(anno_key)
     session = fo.launch_app(view=view)
 
@@ -124,38 +138,6 @@ FiftyOne:
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()  # delete CVAT tasks
     dataset.delete_annotation_run(anno_key)  # delete run record from FiftyOne
-
-.. _cvat-overview:
-
-CVAT overview
-_____________
-
-`CVAT <https://github.com/openvinotoolkit/cvat>`_ is an open-source annotation
-software for images and videos.
-
-You can use CVAT either through the hosted server at
-`cvat.org <https://cvat.org>`_ or through a
-`self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
-In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
-that you can use to specify the necessary account credentials and server
-endpoint to use.
-
-CVAT provides three levels of abstraction for annotation workflows: projects,
-tasks, and jobs. A job contains one or more images and can be assigned to a
-specfic annotator or reviewer. A task defines the label schema to use for
-annotation and contains one or more jobs. A project can optionally be created
-to group multiple tasks together under a shared label schema.
-
-FiftyOne provides an API to create tasks and jobs, upload data, define label
-schemas, and download annotations, all programmatically in Python.
-
-.. note:
-
-    When uploading existing labels to CVAT, their label IDs in FiftyOne are
-    uploaded as attriutes. This information is used to keep track of
-    modifications to existing labels in your FiftyOne datasets. Changing or
-    deleting these ID attributes will result in labels being overwritten
-    rather than merged when loading annotations back into FiftyOne.
 
 .. _cvat-setup:
 
@@ -290,6 +272,20 @@ methods like
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
+.. note::
+
+    Calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    will upload the source media files to the CVAT server.
+
+.. note::
+
+    When uploading existing labels to CVAT, their label IDs in FiftyOne are
+    uploaded as attriutes. This information is used to keep track of
+    modifications to existing labels in your FiftyOne datasets. Changing or
+    deleting these ID attributes will result in labels being overwritten
+    rather than merged when loading annotations back into FiftyOne.
+
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 provides various parameters that you can use to customize the annotation tasks
@@ -338,12 +334,6 @@ The following CVAT-specific parameters can also be provided:
 - `task_assignee`: a username to assign the generated tasks
 - `job_assignees`: a list of usernames to assign jobs
 - `job_reviewers`: a list of usernames to assign job reviews
-
-.. note::
-
-    Calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    will upload the source media files to the CVAT server.
 
 .. _label-schema:
 
@@ -529,9 +519,8 @@ method to download them and merge them back into your FiftyOne dataset.
 
 The `anno_key` parameter is the unique identifier for the annotation run that
 you provided when calling
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
-
-You can use
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`. You
+can use
 :meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`
 to see the available keys on a dataset.
 
@@ -541,8 +530,8 @@ to see the available keys on a dataset.
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
     will not delete any information for the run from the annotation backend.
 
-    However, you can pass `cleanup=True` to opt-in to deleting the run from the
-    backend after the annotations are deleted.
+    However, you can pass `cleanup=True` to delete all information associated
+    with the run from the backend after the annotations are downloaded.
 
 .. _managing-annotation-runs:
 
