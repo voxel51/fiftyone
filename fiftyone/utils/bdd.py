@@ -523,6 +523,7 @@ def _parse_frame_labels(attrs_dict):
 
 def _parse_bdd_detection(d, frame_size, extra_attrs):
     label = d["category"]
+    confidence = d.get("score", None)
 
     width, height = frame_size
     box2d = d["box2d"]
@@ -536,11 +537,17 @@ def _parse_bdd_detection(d, frame_size, extra_attrs):
     attributes = d.get("attributes", {})
     attributes = _filter_attributes(attributes, extra_attrs)
 
-    return fol.Detection(label=label, bounding_box=bounding_box, **attributes)
+    return fol.Detection(
+        label=label,
+        bounding_box=bounding_box,
+        confidence=confidence,
+        **attributes,
+    )
 
 
 def _parse_bdd_polylines(d, frame_size, extra_attrs):
     label = d["category"]
+    confidence = d.get("score", None)
 
     attributes = d.get("attributes", {})
 
@@ -563,6 +570,7 @@ def _parse_bdd_polylines(d, frame_size, extra_attrs):
             fol.Polyline(
                 label=label,
                 points=[points],
+                confidence=confidence,
                 closed=closed,
                 filled=filled,
                 **_attributes,
@@ -651,7 +659,7 @@ def _detection_to_bdd(detection, frame_size, extra_attrs):
 
     attributes = _get_attributes(detection, extra_attrs)
 
-    return {
+    d = {
         "id": None,
         "category": detection.label,
         "manualAttributes": True,
@@ -659,6 +667,11 @@ def _detection_to_bdd(detection, frame_size, extra_attrs):
         "attributes": attributes,
         "box2d": box2d,
     }
+
+    if detection.confidence is not None:
+        d["score"] = detection.confidence
+
+    return d
 
 
 def _polyline_to_bdd(polyline, frame_size, extra_attrs):
@@ -677,7 +690,7 @@ def _polyline_to_bdd(polyline, frame_size, extra_attrs):
             {"types": types, "closed": polyline.closed, "vertices": vertices,}
         )
 
-    return {
+    d = {
         "id": None,
         "category": polyline.label,
         "manualAttributes": True,
@@ -685,6 +698,11 @@ def _polyline_to_bdd(polyline, frame_size, extra_attrs):
         "attributes": attributes,
         "poly2d": poly2d,
     }
+
+    if polyline.confidence is not None:
+        d["score"] = polyline.confidence
+
+    return d
 
 
 def _get_attributes(label, extra_attrs):
