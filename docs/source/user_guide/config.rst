@@ -253,7 +253,7 @@ can be configured via the `database_uri` setting, and FiftyOne will connect to
 your own MongoDB instance instead. FiftyOne requires MongoDB version `4.4`.
 
 Note that `database_uri` must be defined for Apple Silicon Macs as MongoDB is
-not yet supported.
+not yet supported on the platform.
 
 .. _configuring-fiftyone-app:
 

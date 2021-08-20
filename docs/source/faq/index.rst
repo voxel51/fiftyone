@@ -582,13 +582,13 @@ forwarding and open the App in your browser as follows:
 .. _faq-my-own-mongodb:
 
 Can I use my own MongoDB database?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------
 
 Yes, FiftyOne will connect to your own running MongoDB instance if
 `database_uri` is defined in your
 :ref:`FiftyOne config <configuring-fiftyone>`. See
-`Configuring a MongoDB connection <configuring-mongodb-connection>` for more
-information.
+:ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
+more information.
 
 .. _faq-too-many-files-open:
 
