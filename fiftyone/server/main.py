@@ -45,7 +45,6 @@ from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
 
 
-foo.establish_db_conn()
 db = foo.get_async_db_conn()
 
 
