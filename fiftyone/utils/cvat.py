@@ -3110,7 +3110,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if job_assignees is not None:
             for ind, job_id in enumerate(job_ids):
-                assignee_ind = min(ind, len(job_assignees) - 1)
+                assignee_ind = ind % len(job_assignees)
                 assignee = job_assignees[assignee_ind]
                 user_id = self.get_user_id(assignee)
                 if assignee is not None and user_id is not None:
@@ -3119,7 +3119,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if job_reviewers is not None:
             for ind, job_id in enumerate(job_ids):
-                reviewer_ind = min(ind, len(job_reviewers) - 1)
+                reviewer_ind = ind % len(job_reviewers)
                 reviewer = job_reviewers[reviewer_ind]
                 user_id = self.get_user_id(reviewer)
                 if reviewer is not None and user_id is not None:
@@ -3312,17 +3312,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # Videos are uploaded in multiple tasks with 1 job per task
                     # Assign the correct users for the current task
                     if job_assignees is not None:
-                        job_assignee_ind = min(
-                            task_index, len(job_assignees) - 1
-                        )
+                        job_assignee_ind = task_index % len(job_assignees)
                         current_job_assignees = [
                             job_assignees[job_assignee_ind]
                         ]
 
                     if job_reviewers is not None:
-                        job_reviewer_ind = min(
-                            task_index, len(job_reviewers) - 1
-                        )
+                        job_reviewer_ind = task_index % len(job_reviewers)
                         current_job_reviewers = [
                             job_reviewers[job_reviewer_ind]
                         ]
