@@ -250,8 +250,6 @@ class DatabaseService(MultiClientService):
     if sys.platform.startswith("win"):
         MONGOD_EXE_NAME += ".exe"
 
-    MIN_MONGO_VERSION = "4.4"
-
     @property
     def database_dir(self):
         config = focn.load_config()
@@ -329,10 +327,6 @@ class DatabaseService(MultiClientService):
 
         if not os.access(mongod, os.X_OK) and not is_colab:
             raise PermissionError("`mongod` is not executable")
-
-        cmd = [mongod, "--version"]
-        if focx._get_context() == focx._COLAB:
-            cmd = ["sudo"] + cmd
 
         return mongod
 

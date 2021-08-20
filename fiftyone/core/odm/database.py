@@ -10,7 +10,9 @@ import logging
 
 from bson import json_util
 from mongoengine import connect
+from mongoengine.errors import ValidationError
 import motor
+from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError
 
@@ -55,12 +57,10 @@ def establish_db_conn():
                 raise error
 
             raise FiftyOneConfigError(
-                """
-                MongoDB is not yet supported on Apple Silicon Macs. Please
-                define a `database_uri` in your
-                `fiftyone.core.config.FiftyOneConfig` to define a connection
-                to your own MongoDB instance or cluster.
-            """
+                "MongoDB is not yet supported on Apple Silicon Macs. Please"
+                "define a `database_uri` in your"
+                "`fiftyone.core.config.FiftyOneConfig` to define a connection"
+                "to your own MongoDB instance or cluster"
             )
 
     else:
@@ -73,8 +73,9 @@ def _connect():
     global _client
     if _client is None:
         global _connection_kwargs
-        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
         _client = pymongo.MongoClient(**_connection_kwargs)
+        _validate_db_version(_client)
+        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
 
 
 def _async_connect():
@@ -82,6 +83,31 @@ def _async_connect():
     if _async_client is None:
         global _connection_kwargs
         _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+        _validate_db_version(_async_client)
+
+
+def _validate_db_version(client):
+    try:
+        version_str = client.server_info()["verion"]
+    except:
+        raise RuntimeError("Failed to validate `mongod` version")
+
+    start, end = foc.MONGO_VERSION_RANGE
+    version = Version(version_str)
+    if start >= version < end:
+        return
+
+    if version >= end and fo.config.database_uri is not None:
+        raise ValidationError(
+            "`mongod` version is above the supported range [%s, %s), found %s."
+            "Your version of `fiftyone` (%s) may be out of date. Consider upgrading"
+            "`fiftyone`" % (start, end, version, foc.VERSION)
+        )
+
+    raise ValidationError(
+        "`mongod` version is invalid. Must be [%s, %s), found %s"
+        % (start, end, version)
+    )
 
 
 def aggregate(collection, pipeline):

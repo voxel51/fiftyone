@@ -8,6 +8,8 @@ Package-wide constants.
 from datetime import datetime
 import os
 
+from packaging.version import Version
+
 try:
     from importlib.metadata import metadata  # Python 3.8
 except ImportError:
@@ -73,6 +75,7 @@ MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
+MONGO_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # 4.5 excluded
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
