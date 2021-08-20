@@ -34,8 +34,8 @@ We encourage installing FiftyOne in a virtual environment. See
 .. note::
 
   MongoDB, FiftyOne's backing database, is not yet supported on Apple Silicon
-  Macs, so `database_uri` in your
-  :ref:`FiftyOne config <configuring-fiftyone>` needs to be defined in order
+  Macs. If on an Apple Silicon Mac, `database_uri` in your
+  :ref:`FiftyOne config <configuring-fiftyone>` must be defined in order
   to connect to your own MongoDB instance running in the cloud or on another
   machine. See
   :ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
@@ -143,7 +143,10 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
   install it via `xcode-select --install`, or see
   `this page <https://stackoverflow.com/q/9329243>`_ for other options.
 - MongoDB is not yet available on Apple Silicon Macs, and therefore you must define
-  a `database_uri` for FiftyOne to connect to. See the `Co<conf>
+  a `database_uri` in your :ref:`FiftyOne config <configuring-fiftyone>` for
+  FiftyOne to connect to. See
+  :ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
+  more information.
 
 **Linux users:**
 

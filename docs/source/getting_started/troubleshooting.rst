@@ -164,8 +164,11 @@ your distribution, you may encounter an error similar to:
 
     RuntimeError: Could not find mongod >= 4.4
 
-To resolve this, you can install an alternative package on some distributions,
-detailed below, or you declare .
+To resolve this, you can set up your own MongoDB service on your machine or
+elsewhere, and define a `database_uri` in your
+:ref:`FiftyOne config <configuring-fiftyone>`. See
+:ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
+more information.
 
 .. _alternative-builds:
 
