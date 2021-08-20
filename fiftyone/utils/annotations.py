@@ -459,6 +459,9 @@ def load_annotations(samples, results, cleanup=False):
                 is_video,
             )
 
+    # Update id map for loading future annotations
+    results.id_map = results.backend.build_label_id_map(samples)
+
     if cleanup:
         results.cleanup()
 
