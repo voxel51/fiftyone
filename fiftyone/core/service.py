@@ -48,6 +48,12 @@ class ServiceListenTimeout(ServiceException):
         return message
 
 
+class ServiceExecutableNotFound(ServiceException):
+    """Exception raised when the service executable is not found on disk."""
+
+    pass
+
+
 class Service(object):
     """Interface for FiftyOne services.
 
@@ -211,7 +217,9 @@ class MultiClientService(Service):
         for process in fosu.find_processes_by_args(self._service_args):
             desc = "Process %i (%s)" % (
                 process.pid,
-                " ".join(["service/main.py"] + self._service_args),
+                " ".join(
+                    [os.path.join("service", "main.py")] + self._service_args
+                ),
             )
             logger.debug("Connecting to %s", desc)
             try:
@@ -323,7 +331,7 @@ class DatabaseService(MultiClientService):
         is_colab = focx._get_context() == focx._COLAB
 
         if not os.path.isfile(mongod):
-            raise ServiceExecutableNotFoundError("Could not find `mongod`")
+            raise ServiceExecutableNotFound("Could not find `mongod`")
 
         if not os.access(mongod, os.X_OK) and not is_colab:
             raise PermissionError("`mongod` is not executable")
@@ -447,11 +455,3 @@ class AppService(Service):
                 # (specifying port 0 doesn't work here)
                 env["PORT"] = str(self.server_port + 1)
         return env
-
-
-class ServiceExecutableNotFoundError(etau.ExecutableNotFoundError):
-    pass
-
-
-class ServiceExecutableRuntimeError(etau.ExecutableRuntimeError):
-    pass

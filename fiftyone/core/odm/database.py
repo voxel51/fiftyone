@@ -14,11 +14,10 @@ from mongoengine.errors import ValidationError
 import motor
 from packaging.version import Version
 import pymongo
-from pymongo.errors import BulkWriteError
+from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
@@ -34,25 +33,32 @@ logger = logging.getLogger(__name__)
 _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
 
-def establish_db_conn():
+def establish_db_conn(config):
     """Establishes the database connection.
     
     If `fo.config.database_uri` is not defined, a
     :class:`fiftyone.core.service.DatabaseService` is created. Otherwise, the
     connection string URI is used.
 
+    Args:
+        config: a :class:`fiftyone.core.config.FiftyOneConfig`
+
     Raises:
+        ConnectionError: if the connection to `mongod` could not be established
         FiftyOneConfigError: if startup was attempted, but no binary was found
-        ServiceExecutableNotFoundError: if `fo.config.database_uri` is defined but a
-            connection cannot be established
+        ServiceExecutableNotFound: if `fo.config.database_uri` is defined but a
+            no `mongod` was found on disk
+        ValidationError: if the `mongod` version to meet FiftyOne's requirement,
+            or validation could not occur
     """
     global _connection_kwargs
-    if fo.config.database_uri is None:
+
+    if config.database_uri is None:
         try:
             service = fos.DatabaseService()
             service.start()
             _connection_kwargs["port"] = service.port
-        except fos.ServiceExecutableNotFoundError as error:
+        except fos.ServiceExecutableNotFound as error:
             if not fou.is_arm_mac():
                 raise error
 
@@ -64,9 +70,12 @@ def establish_db_conn():
             )
 
     else:
-        _connection_kwargs["host"] = fo.config.database_uri
+        _connection_kwargs["host"] = config.database_uri
 
-    get_db_conn()
+    global _client
+    _client = pymongo.MongoClient(**_connection_kwargs)
+    _validate_db_version(config, _client)
+    connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
 
 
 def _connect():
@@ -74,7 +83,6 @@ def _connect():
     if _client is None:
         global _connection_kwargs
         _client = pymongo.MongoClient(**_connection_kwargs)
-        _validate_db_version(_client)
         connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
 
 
@@ -83,21 +91,24 @@ def _async_connect():
     if _async_client is None:
         global _connection_kwargs
         _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
-        _validate_db_version(_async_client)
 
 
-def _validate_db_version(client):
+def _validate_db_version(config, client):
     try:
-        version_str = client.server_info()["verion"]
-    except:
-        raise RuntimeError("Failed to validate `mongod` version")
+        version_str = client.server_info()["version"]
+    except Exception as error:
+        if isinstance(error, ServerSelectionTimeoutError):
+            raise ConnectionError("Could not connect to mongodb")
 
-    start, end = foc.MONGO_VERSION_RANGE
+        raise ValidationError("Failed to validate `mongod` version")
+
     version = Version(version_str)
-    if start >= version < end:
+    start, end = foc.MONGO_VERSION_RANGE
+
+    if start <= version < end:
         return
 
-    if version >= end and fo.config.database_uri is not None:
+    if version >= end and config.database_uri is not None:
         raise ValidationError(
             "`mongod` version is above the supported range [%s, %s), found %s."
             "Your version of `fiftyone` (%s) may be out of date. Consider upgrading"

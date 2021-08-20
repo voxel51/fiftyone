@@ -6,12 +6,11 @@ FiftyOne's public interface.
 |
 """
 import fiftyone.core.config as foc
-import fiftyone.core.service as fos
-
-_database_service = fos.DatabaseService()
+import fiftyone.core.odm as foo
 
 config = foc.load_config()
 app_config = foc.load_app_config()
+foo.establish_db_conn(config)
 
 from .core.aggregations import (
     Bounds,
