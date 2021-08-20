@@ -1,10 +1,10 @@
 """
 Session class for interacting with the FiftyOne App.
+
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 from collections import defaultdict
 from functools import wraps
 import logging
@@ -63,11 +63,16 @@ Session launched. Run `session.show()` to open the App in a cell output.
 _REMOTE_INSTRUCTIONS = """
 You have launched a remote App on port {0}. To connect to this App from another
 machine, issue the following command to configure port forwarding:
+
 ssh -N -L 5151:127.0.0.1:{0} [<username>@]<hostname>
+
 where `[<username>@]<hostname>` refers to your current machine. The App can
 then be viewed in your browser at http://localhost:5151.
+
 Alternatively, if you have FiftyOne installed on your local machine, just run:
+
 fiftyone app connect --destination [<username>@]<hostname> --port {0}
+
 See https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions
 for more information about remote sessions.
 """
@@ -90,8 +95,10 @@ def launch_app(
     config=None,
 ):
     """Launches the FiftyOne App.
+    
     Note that only one App instance can be opened at a time. If this method is
     called when another App exists, the existing App will be closed.
+    
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
@@ -111,6 +118,7 @@ def launch_app(
             in notebook contexts
         config (None): an optional :class:`fiftyone.core.config.AppConfig` to
             control fine-grained default App settings
+            
     Returns:
         a :class:`Session`
     """
@@ -153,6 +161,7 @@ def launch_app(
 
 def close_app():
     """Closes the FiftyOne App, if necessary.
+    
     If no App is currently open, this method has no effect.
     """
     global _session  # pylint: disable=global-statement
@@ -179,30 +188,42 @@ def _update_state(auto_show=False):
 
 class Session(foc.HasClient):
     """Session that maintains a 1-1 shared state with the FiftyOne App.
+    
     **Basic Usage**
+    
     -   Use :func:`launch_app` to launch the App and retrieve its
         corresponding :class:`Session` instance.
+        
     -   To open a dataset in the App, simply set the
         :attr:`Session.dataset` property of the session to your
         :class:`fiftyone.core.dataset.Dataset`.
+        
     -   To load a specific view into your dataset, simply set the
         :attr:`Session.view` property of the session to your
         :class:`fiftyone.core.view.DatasetView`.
+        
     -   To attach/remove interactive plots, use the methods exposed on the
         :attr:`Session.plots` property of the session.
+        
     -   Use :meth:`Session.refresh` to refresh the App if you update a dataset
         outside of the App
+        
     -   Use :attr:`Session.selected` to retrieve the IDs of the currently
         selected samples in the App.
+        
     -   Use :attr:`Session.selected_labels` to retrieve the IDs of the
         currently selected labels in the App.
+        
     -   In notebook contexts, use :func:`Session.freeze` to replace the App and
         any attached plots with static images.
+        
     -   Use :func:`Session.close` and :func:`Session.open` to temporarily close
         and reopen the App without creating a new :class:`Session`
         instance.
+        
     -   Use :func:`close_app` to programmatically close the App and
         terminate the session.
+        
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
@@ -446,12 +467,17 @@ class Session(foc.HasClient):
     @property
     def config(self):
         """The current :class:`fiftyone.core.config.AppConfig`.
+        
         For changes to a session's config to take effect in the App,
         a call to :meth:`Session.refresh` or another state-updating action
         such as `session.view = my_view` must occur.
+        
         Example usage::
+        
             import fiftyone as fo
+            
             dataset, session = fo.quickstart()
+            
             # change the show confidence setting and push the change to the App
             session.config.show_confidence = False
             session.refresh()
@@ -592,6 +618,7 @@ class Session(foc.HasClient):
     @_update_state()
     def select_samples(self, ids=None, tags=None):
         """Selects the specified samples in the current view in the App,
+        
         Args:
             ids (None): an ID or iterable of IDs of samples to select
             tags (None): a tag or iterable of tags of samples to select
@@ -607,7 +634,9 @@ class Session(foc.HasClient):
     @property
     def selected_labels(self):
         """A list of labels currently selected in the App.
+        
         Items are dictionaries with the following keys:
+        
         -   ``label_id``: the ID of the label
         -   ``sample_id``: the ID of the sample containing the label
         -   ``field``: the field name containing the label
@@ -624,9 +653,11 @@ class Session(foc.HasClient):
     @_update_state()
     def select_labels(self, labels=None, ids=None, tags=None, fields=None):
         """Selects the specified labels in the current view in the App.
+        
         This method uses the same interface as
         :meth:`fiftyone.core.collections.SampleCollection.select_labels` to
         specify the labels to select.
+        
         Args:
             labels (None): a list of dicts specifying the labels to select
             ids (None): an ID or iterable of IDs of the labels to select
@@ -648,7 +679,9 @@ class Session(foc.HasClient):
     @_update_state()
     def tag_selected_samples(self, tag):
         """Adds the tag to the currently selected samples, if necessary.
+        
         The currently selected labels are :attr:`Session.selected`.
+        
         Args:
             tag: a tag
         """
@@ -657,7 +690,9 @@ class Session(foc.HasClient):
     @_update_state()
     def untag_selected_samples(self, tag):
         """Removes the tag from the currently selected samples, if necessary.
+        
         The currently selected labels are :attr:`Session.selected`.
+        
         Args:
             tag: a tag
         """
@@ -666,7 +701,9 @@ class Session(foc.HasClient):
     @_update_state()
     def tag_selected_labels(self, tag):
         """Adds the tag to the currently selected labels, if necessary.
+        
         The currently selected labels are :attr:`Session.selected_labels`.
+        
         Args:
             tag: a tag
         """
@@ -677,7 +714,9 @@ class Session(foc.HasClient):
     @_update_state()
     def untag_selected_labels(self, tag):
         """Removes the tag from the currently selected labels, if necessary.
+        
         The currently selected labels are :attr:`Session.selected_labels`.
+        
         Args:
             tag: a tag
         """
@@ -689,7 +728,9 @@ class Session(foc.HasClient):
     def selected_view(self):
         """A :class:`fiftyone.core.view.DatasetView` containing the currently
         selected content in the App.
+        
         The selected view is defined as follows:
+        
         -   If both samples and labels are selected, the view will contain only
             the :attr:`selected_labels` from within the :attr:`selected`
             samples
@@ -715,6 +756,7 @@ class Session(foc.HasClient):
     def summary(self):
         """Returns a string summary of the session.
         Returns:
+        
             a string summary
         """
         if self.dataset:
@@ -756,7 +798,9 @@ class Session(foc.HasClient):
 
     def open(self):
         """Opens the App, if necessary.
+        
         The behavior of this method depends on your context:
+        
         -   Notebooks: calls :meth:`Session.show` to open a new App window in
             the output of your current cell
         -   Desktop: opens the desktop App, if necessary
@@ -781,6 +825,7 @@ class Session(foc.HasClient):
 
     def open_tab(self):
         """Opens the App in a new tab of your browser.
+        
         This method can be called from Jupyter notebooks and in desktop App
         mode to override the default location of the App.
         """
@@ -803,7 +848,9 @@ class Session(foc.HasClient):
     @_update_state()
     def show(self, height=None):
         """Opens the App in the output of the current notebook cell.
+        
         This method has no effect in non-notebook contexts.
+        
         Args:
             height (None): a height, in pixels, for the App
         """
@@ -813,18 +860,27 @@ class Session(foc.HasClient):
         """Returns a context manager that temporarily prevents new App
         instances from being opened in the current notebook cell when methods
         are run that normally would show new App windows.
+        
         This method has no effect in non-notebook contexts.
+        
         Examples::
+        
             import fiftyone as fo
+            
             dataset = foz.load_zoo_dataset("quickstart")
             session = fo.launch_app(dataset)
+            
             # (new cell)
+            
             # Opens a new App instance
             session.view = dataset.take(100)
+            
             # (new cell)
+            
             # Does not open a new App instance
             with session.no_show():
                 session.view = dataset.take(100)
+                
         Returns:
             a context manager
         """
@@ -832,6 +888,7 @@ class Session(foc.HasClient):
 
     def wait(self):
         """Blocks execution until the App is closed by the user.
+        
         Closing a desktop App will always exit the wait. For browser Apps, all
         connected windows (tabs) must be closed.
         """
@@ -862,6 +919,7 @@ class Session(foc.HasClient):
 
     def freeze(self):
         """Screenshots the active App cell, replacing it with a static image.
+        
         Only applicable to notebook contexts.
         """
         if self._context == focx._NONE:
@@ -989,12 +1047,14 @@ def _display_ipython(session, handle, uuid, port, height, update=False):
 
 
 def _display_colab(session, handle, uuid, port, height, update=False):
-    """Display a FiftyOne instance in a Colab output frame.
+    """Display a FiftyOne instance in a Colab output frame
+    
     The Colab VM is not directly exposed to the network, so the Colab runtime
     provides a service worker tunnel to proxy requests from the end user's
     browser through to servers running on the Colab VM: the output frame may
     issue requests to https://localhost:<port> (HTTPS only), which will be
     forwarded to the specified port on the VM.
+    
     It does not suffice to create an `iframe` and let the service worker
     redirect its traffic (`<iframe src="https://localhost:6006">`), because for
     security reasons service workers cannot intercept iframe traffic. Instead,
