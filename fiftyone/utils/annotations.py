@@ -440,7 +440,6 @@ def load_annotations(samples, results, cleanup=False):
                         sample.save()
 
         elif not existing_field:
-            # Add new field
             _add_new_labels(
                 samples,
                 annotation_results,
@@ -1020,12 +1019,13 @@ def _get_label_type(
             "You must specify the type of new label field '%s'" % label_field
         )
 
-    fo_label_type = _LABEL_TYPES_MAP[label_type]
-    if fo_label_type not in backend.supported_label_types:
-        raise ValueError(
-            "Unsupported label type '%s'. Supported values are %s"
-            % (fo_label_type, backend.supported_label_types)
-        )
+    if label_type != "scalar":
+        fo_label_type = _LABEL_TYPES_MAP[label_type]
+        if fo_label_type not in backend.supported_label_types:
+            raise ValueError(
+                "Unsupported label type '%s'. Supported values are %s"
+                % (fo_label_type, backend.supported_label_types)
+            )
 
     return label_type, False
 
