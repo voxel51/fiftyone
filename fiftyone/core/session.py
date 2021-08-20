@@ -1047,7 +1047,7 @@ def _display_ipython(session, handle, uuid, port, height, update=False):
 
 
 def _display_colab(session, handle, uuid, port, height, update=False):
-    """Display a FiftyOne instance in a Colab output frame
+    """Display a FiftyOne instance in a Colab output frame.
     
     The Colab VM is not directly exposed to the network, so the Colab runtime
     provides a service worker tunnel to proxy requests from the end user's
