@@ -7,6 +7,8 @@ Database utilities.
 """
 from copy import copy
 import logging
+import multiprocessing
+import os
 
 from bson import json_util
 from mongoengine import connect
@@ -55,9 +57,17 @@ def establish_db_conn(config):
 
     if config.database_uri is None:
         try:
+            disabled = (
+                os.environ.get("FIFTYONE_SERVER", False)
+                or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+                or multiprocessing.current_process().name != "MainProcess"
+            )
+            if disabled:
+                return
+
             service = fos.DatabaseService()
-            service.start()
             _connection_kwargs["port"] = service.port
+
         except fos.ServiceExecutableNotFound as error:
             if not fou.is_arm_mac():
                 raise error
@@ -143,7 +153,7 @@ def get_db_client():
         a ``pymongo.mongo_client.MongoClient``
     """
     _connect()
-    return _client[foc.DEFAULT_DATABASE]
+    return _client
 
 
 def get_db_conn():

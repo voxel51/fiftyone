@@ -114,6 +114,7 @@ class Service(object):
             "service",
             "main.py",
         )
+        print(" ".join(self.command))
 
         # use psutil's Popen wrapper because its wait() more reliably waits
         # for the process to exit on Windows
@@ -203,9 +204,6 @@ class MultiClientService(Service):
     # set when attaching to an existing process
     attached = False
 
-    def __init__(self):
-        super().__init__()
-
     @property
     def _service_args(self):
         return super()._service_args + ["--multi"]
@@ -235,6 +233,7 @@ class MultiClientService(Service):
 
             except IOError:
                 logger.warning("%s did not respond", desc)
+
         super().start()
 
     def stop(self):
@@ -259,18 +258,14 @@ class DatabaseService(MultiClientService):
         MONGOD_EXE_NAME += ".exe"
 
     @property
-    def database_dir(self):
-        config = focn.load_config()
-        return config.database_dir
-
-    @property
     def command(self):
-        log_path = os.path.join(self.database_dir, "log", "mongo.log")
+        database_dir = focn.load_config().database_dir
+        log_path = os.path.join(database_dir, "log", "mongo.log")
 
         args = [
             DatabaseService.find_mongod(),
             "--dbpath",
-            self.database_dir,
+            database_dir,
             "--logpath",
             log_path,
             "--port",
@@ -283,15 +278,17 @@ class DatabaseService(MultiClientService):
             return ["sudo"] + args
 
         try:
-            etau.ensure_dir(self.database_dir)
+            etau.ensure_dir(database_dir)
         except:
             raise PermissionError(
-                "Database directory `%s` cannot be written to"
-                % self.database_dir
+                "Database directory `%s` cannot be written to" % database_dir
             )
 
         try:
             etau.ensure_basedir(log_path)
+
+            if not os.path.isfile(log_path):
+                etau.ensure_empty_file(log_path)
         except:
             raise PermissionError(
                 "Database log path `%s` cannot be written to" % log_path
@@ -302,11 +299,6 @@ class DatabaseService(MultiClientService):
     @property
     def port(self):
         return self._wait_for_child_port()
-
-    def start(self):
-        """Starts the DatabaseService."""
-        etau.ensure_dir(os.path.join(self.database_dir, "log"))
-        super().start()
 
     @staticmethod
     def cleanup():
