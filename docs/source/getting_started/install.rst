@@ -23,10 +23,6 @@ Prerequisites
 You will need a working Python installation. FiftyOne currently requires
 **Python 3.6 - 3.9**.
 
-Although Python 3.9 is supported, note that some dependencies, notably
-`scikit-image` and `scikit-learn`, will need to be built from source. Also
-note that `tensorflow` does not yet support 3.9.
-
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
 downloaded `from python.org <https://www.python.org/downloads>`_. To verify that
@@ -34,6 +30,16 @@ a suitable Python version is installed and accessible, run `python --version`.
 
 We encourage installing FiftyOne in a virtual environment. See
 :doc:`setting up a virtual environment <virtualenv>` for more details.
+
+.. note::
+
+  MongoDB, FiftyOne's backing database, is not yet supported on Apple Silicon
+  Macs, so `database_uri` in your
+  :ref:`FiftyOne config <configuring-fiftyone>` needs to be defined in order
+  to connect to your own MongoDB instance running in the cloud or on another
+  machine. See
+  :ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
+  more information.
 
 .. _installing-fiftyone:
 

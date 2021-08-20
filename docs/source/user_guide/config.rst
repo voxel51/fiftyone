@@ -20,8 +20,9 @@ FiftyOne supports the configuration options described below:
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                               |                                     |                               | `database_uri` is not defined.                                                         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB connection string URI <MONGODB_URI>`_ to defer connections to. This value  |
-|                               |                                     |                               | is required if MongoDB is not availble on your system, e.g. Apple Silicon Macs.        |                                                      |
+| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
+|                               |                                     |                               | defer connections to. This value is required if MongoDB is not availble on your        |
+|                               |                                     |                               | system, e.g. Apple Silicon Macs. Note that only MongoDB version `4.4` is supported.    |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
@@ -73,8 +74,6 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | operations such reading/writing large datasets or activiating FiftyOne                 |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-
-.. _MONGODB_URI: https://docs.mongodb.com/manual/reference/connection-string/
 
 Viewing your config
 -------------------
@@ -238,6 +237,23 @@ For example, you can customize your FiftyOne config at runtime as follows:
         default_ml_backend="tensorflow",
         show_progress_bars=True,
     )
+
+.. _configuring-mongodb-connection:
+
+Configuring a MongoDB connection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, FiftyOne is installed with it's own `mongod` database
+distribution. This database is managed by FiftyOne automatically as a service
+that runs whenever at least one FiftyOne Python client is alive.
+
+As an alternative to this managed database service, a valid
+`MongoDB connection string URI <https://docs.mongodb.com/manual/reference/connection-string/>`_
+can be configured via the `database_uri` setting, and FiftyOne will connect to
+your own MongoDB instance instead. FiftyOne requires MongoDB version `4.4`.
+
+Note that `database_uri` must be defined for Apple Silicon Macs as MongoDB is
+not yet supported.
 
 .. _configuring-fiftyone-app:
 

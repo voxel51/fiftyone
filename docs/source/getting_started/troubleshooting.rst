@@ -165,7 +165,7 @@ your distribution, you may encounter an error similar to:
     RuntimeError: Could not find mongod >= 4.4
 
 To resolve this, you can install an alternative package on some distributions,
-detailed below, or install a compatible version of MongoDB system-wide.
+detailed below, or you declare .
 
 .. _alternative-builds:
 
@@ -199,35 +199,3 @@ installation by adding `--force-reinstall` to the commands below.
     .. code-block:: shell
 
       pip install fiftyone-db-rhel7
-
-Manual installation
-~~~~~~~~~~~~~~~~~~~
-
-FiftyOne also supports using an existing MongoDB installation (version 4.4 or
-newer). This can be installed through many distributions' package managers.
-Note that only the `mongod` (server) binary is required, so you may not need
-the complete MongoDB package. For example, Debian-based distributions make this
-available in the `mongodb-server` package.
-
-If your distribution does not provide a new-enough version of MongoDB, or if
-you would like to install a newer version, see
-`the MongoDB documentation <https://docs.mongodb.com/manual/administration/install-on-linux/>`_
-for instructions on installing MongoDB on your distribution. Note that you only
-need the `mongodb-org-server` package in this case.
-
-To verify the version of your MongoDB installation, run `mongod --version`,
-which should produce output that looks like this:
-
-.. code-block:: text
-
-   db version v4.2.6
-   git version: 20364840b8f1af16917e4c23c1b5f5efd8b352f8
-   OpenSSL version: OpenSSL 1.1.1  11 Sep 2018
-   allocator: tcmalloc
-   modules: none
-   build environment:
-       distmod: ubuntu1804
-       distarch: x86_64
-       target_arch: x86_64
-
-Verify that the version after "db version" is at least 4.4.
