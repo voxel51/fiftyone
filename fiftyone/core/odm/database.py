@@ -18,6 +18,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
@@ -39,15 +40,29 @@ def establish_db_conn():
     connection string URI is used.
 
     Raises:
-        RuntimeError: if startup was attempted, but no binary was found
-        ConnectionError: if `fo.config.database_uri` is defined but a
+        FiftyOneConfigError: if startup was attempted, but no binary was found
+        ServiceExecutableNotFoundError: if `fo.config.database_uri` is defined but a
             connection cannot be established
     """
     global _connection_kwargs
     if fo.config.database_uri is None:
-        service = fos.DatabaseService()
-        service.start()
-        _connection_kwargs["port"] = service.port
+        try:
+            service = fos.DatabaseService()
+            service.start()
+            _connection_kwargs["port"] = service.port
+        except fos.ServiceExecutableNotFoundError as error:
+            if not fou.is_arm_mac():
+                raise error
+
+            raise FiftyOneConfigError(
+                """
+                MongoDB is not yet supported on Apple Silicon Macs. Please
+                define a `database_uri` in your
+                `fiftyone.core.config.FiftyOneConfig` to define a connection
+                to your own MongoDB instance or cluster.
+            """
+            )
+
     else:
         _connection_kwargs["host"] = fo.config.database_uri
 

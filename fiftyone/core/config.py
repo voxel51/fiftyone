@@ -201,6 +201,14 @@ class FiftyOneConfig(EnvConfig):
             self.default_ml_backend = self.default_ml_backend.lower()
 
 
+class FiftyOneConfigError(etac.EnvConfigError):
+    """Exception raised when an invalid :class:`FiftyOneConfigError` instance is
+    encountered.
+    """
+
+    pass
+
+
 class AppConfig(EnvConfig):
     """FiftyOne App configuration settings."""
 

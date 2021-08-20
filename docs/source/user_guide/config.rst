@@ -17,10 +17,11 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | Config field                  | Environment variable                | Default value                 | Description                                                                            |
 +===============================+=====================================+===============================+========================================================================================+
-| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A MongoDB connection string URI to defer connections to. This value is required if     |
-|                               |                                     |                               | your system                                                                                        |
+| `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
+|                               |                                     |                               | `database_uri` is not defined.                                                         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database.                           |
+| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB connection string URI <MONGODB_URI>`_ to defer connections to. This value  |
+|                               |                                     |                               | is required if MongoDB is not availble on your system, e.g. Apple Silicon Macs.        |                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
@@ -73,6 +74,8 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | Brain methods on datasets.                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 
+.. _MONGODB_URI: https://docs.mongodb.com/manual/reference/connection-string/
+
 Viewing your config
 -------------------
 
@@ -97,6 +100,7 @@ described in the next section) at any time via the Python library and the CLI.
 
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_uri": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -131,6 +135,7 @@ described in the next section) at any time via the Python library and the CLI.
 
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_uri": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",

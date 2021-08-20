@@ -136,6 +136,8 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
   `error: command 'clang' failed with exit status 1`, then you may need to
   install it via `xcode-select --install`, or see
   `this page <https://stackoverflow.com/q/9329243>`_ for other options.
+- MongoDB is not yet available on Apple Silicon Macs, and therefore you must define
+  a `database_uri` for FiftyOne to connect to. See the `Co<conf>
 
 **Linux users:**
 

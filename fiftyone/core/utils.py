@@ -46,6 +46,8 @@ import fiftyone.core.context as foc
 logger = logging.getLogger(__name__)
 
 
+_DARWIN = "Darwin"
+_DARWIN_ARM = {"aarch64", "arm64"}
 _REQUIREMENT_ERROR_SUFFIX = (
     "If you think this error is inaccurate, you can set "
     "`fiftyone.config.requirement_error_level` to 1 (warning) or 2 (ignore).\n"
@@ -1199,4 +1201,7 @@ def is_arm_mac():
     Returns:
         bool
     """
-    return platform.system() == "Darwin" and "arm" in platform.platform()
+    plat = platform.platform()
+    return platform.system() == _DARWIN and any(
+        proc in plat for proc in _DARWIN_ARM
+    )
