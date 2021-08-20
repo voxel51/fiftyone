@@ -187,6 +187,6 @@ setup(
         "Programming Language :: Python :: 3.9",
     ],
     python_requires=">=3.6",
-    install_requires=['fiftyone']
+    install_requires=['fiftyone'],
     cmdclass=cmdclass,
 )
