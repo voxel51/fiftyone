@@ -10,6 +10,7 @@ from functools import wraps
 import logging
 import time
 from uuid import uuid4
+import pkg_resources
 import webbrowser
 
 from jinja2 import Template
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 _session = None
 _server_services = {}
 _subscribed_sessions = defaultdict(set)
+
 
 _APP_DESKTOP_MESSAGE = """
 Desktop App launched.
@@ -340,14 +342,7 @@ class Session(foc.HasClient):
                     "Cannot open a Desktop App instance from a Colab notebook"
                 )
 
-            try:
-                import fiftyone.desktop  # pylint: disable=unused-import
-            except ImportError as e:
-                if not focn.DEV_INSTALL:
-                    raise ValueError(
-                        "You must install the 'fiftyone-desktop' package "
-                        "in order to launch a desktop App instance"
-                    ) from e
+            self.import_desktop()
 
             self._app_service = fos.AppService(server_port=port)
             return
@@ -355,6 +350,37 @@ class Session(foc.HasClient):
         if self._context == focx._NONE:
             self.open()
             return
+    
+    def import_desktop():
+        """Imports the `fiftyone-desktop` package and verifies that the correct
+        version is installed.
+        """
+        try:
+            import fiftyone.desktop
+        except ImportError as e:
+            raise ValueError(
+                "You must `pip install fiftyone[desktop]` in order to launch the "
+                "desktop App"
+            ) from e
+
+        # Get `fiftyone-desktop` requirement for current `fiftyone` install
+        fiftyone_dist = pkg_resources.get_distribution("fiftyone")
+        requirements = fiftyone_dist.requires(extras=["desktop"])
+        desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
+
+        desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
+
+        if not desktop_req.specifier.contains(desktop_dist.version):
+            raise ValueError(
+                "fiftyone==%s requires fiftyone-desktop%s, but you have "
+                "fiftyone-desktop==%s installed.\n"
+                "Run `pip install fiftyone[desktop]` to install the proper "
+                "desktop package version" % (
+                    fiftyone_dist.version,
+                    desktop_req.specifier,
+                    desktop_dist.version
+                )
+            )
 
     def _validate(self, dataset, view, plots, config):
         if dataset is not None and not isinstance(dataset, fod.Dataset):
@@ -510,6 +536,7 @@ class Session(foc.HasClient):
         """
         self.dataset = None
 
+    
     @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` connected to the
@@ -613,11 +640,11 @@ class Session(foc.HasClient):
 
         Items are dictionaries with the following keys:
 
-        -   ``label_id``: the ID of the label
-        -   ``sample_id``: the ID of the sample containing the label
-        -   ``field``: the field name containing the label
-        -   ``frame_number``: the frame number containing the label (only
-            applicable to video samples)
+            -   ``label_id``: the ID of the label
+            -   ``sample_id``: the ID of the sample containing the label
+            -   ``field``: the field name containing the label
+            -   ``frame_number``: the frame number containing the label (only
+                applicable to video samples)
         """
         return list(self.state.selected_labels)
 
@@ -656,7 +683,7 @@ class Session(foc.HasClient):
     def tag_selected_samples(self, tag):
         """Adds the tag to the currently selected samples, if necessary.
 
-        The currently selected labels are :attr:`Session.selected`.
+        The currently selected labels are :meth:`Sesssion.selected`.
 
         Args:
             tag: a tag
@@ -667,7 +694,7 @@ class Session(foc.HasClient):
     def untag_selected_samples(self, tag):
         """Removes the tag from the currently selected samples, if necessary.
 
-        The currently selected labels are :attr:`Session.selected`.
+        The currently selected labels are :meth:`Sesssion.selected`.
 
         Args:
             tag: a tag
@@ -678,7 +705,7 @@ class Session(foc.HasClient):
     def tag_selected_labels(self, tag):
         """Adds the tag to the currently selected labels, if necessary.
 
-        The currently selected labels are :attr:`Session.selected_labels`.
+        The currently selected labels are :meth:`Sesssion.selected_labels`.
 
         Args:
             tag: a tag
@@ -691,7 +718,7 @@ class Session(foc.HasClient):
     def untag_selected_labels(self, tag):
         """Removes the tag from the currently selected labels, if necessary.
 
-        The currently selected labels are :attr:`Session.selected_labels`.
+        The currently selected labels are :meth:`Sesssion.selected_labels`.
 
         Args:
             tag: a tag
@@ -699,35 +726,6 @@ class Session(foc.HasClient):
         self._collection.select_labels(
             labels=self.selected_labels
         ).untag_labels(tag)
-
-    @property
-    def selected_view(self):
-        """A :class:`fiftyone.core.view.DatasetView` containing the currently
-        selected content in the App.
-
-        The selected view is defined as follows:
-
-        -   If both samples and labels are selected, the view will contain only
-            the :attr:`selected_labels` from within the :attr:`selected`
-            samples
-        -   If samples are selected, the view will only contain the
-            :attr:`selected` samples
-        -   If labels are selected, the view will only contain the
-            :attr:`selected_labels`
-        -   If no samples or labels are selected, the view will be ``None``
-        """
-        if self.selected:
-            view = self._collection.select(self.selected)
-
-            if self.selected_labels:
-                return view.select_labels(labels=self.selected_labels)
-
-            return view
-
-        if self.selected_labels:
-            return self._collection.select_labels(labels=self.selected_labels)
-
-        return None
 
     def summary(self):
         """Returns a string summary of the session.
@@ -920,8 +918,7 @@ class Session(foc.HasClient):
             return
 
         handle = data["handle"]
-        if handle in self._handles and self._handles[handle]["active"]:
-            self._handles[handle]["active"] = False
+        if data["handle"] in self._handles:
             self._handles[handle]["target"].update(
                 HTML(
                     fout._SCREENSHOT_HTML.render(
@@ -952,7 +949,6 @@ class Session(foc.HasClient):
         self.state.active_handle = handle
         if handle in self._handles:
             source = self._handles[handle]
-            source["active"] = True
             _display(
                 self,
                 source["target"],
@@ -978,8 +974,8 @@ class Session(foc.HasClient):
 
         import IPython.display
 
+        handle = IPython.display.display(display_id=True)
         uuid = str(uuid4())
-        handle = IPython.display.DisplayHandle(display_id=uuid)
 
         # @todo isn't it bad to set this here? The first time this is called
         # is before `self.state` has been initialized
@@ -988,11 +984,7 @@ class Session(foc.HasClient):
         if height is None:
             height = self.config.notebook_height
 
-        self._handles[uuid] = {
-            "target": handle,
-            "height": height,
-            "active": True,
-        }
+        self._handles[uuid] = {"target": handle, "height": height}
 
         _display(self, handle, uuid, self._port, height)
         return uuid
