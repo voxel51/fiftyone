@@ -27,6 +27,7 @@ import fiftyone.core.view as fov
 import fiftyone.utils.templates as fout
 from fiftyone.core.state import StateDescription
 
+import pkg_resources
 
 logger = logging.getLogger(__name__)
 
@@ -340,14 +341,7 @@ class Session(foc.HasClient):
                     "Cannot open a Desktop App instance from a Colab notebook"
                 )
 
-            try:
-                import fiftyone.desktop  # pylint: disable=unused-import
-            except ImportError as e:
-                if not focn.DEV_INSTALL:
-                    raise ValueError(
-                        "You must install the 'fiftyone-desktop' package "
-                        "in order to launch a desktop App instance"
-                    ) from e
+            self.import_desktop()
 
             self._app_service = fos.AppService(server_port=port)
             return
@@ -356,6 +350,40 @@ class Session(foc.HasClient):
             self.open()
             return
 
+    def import_desktop():
+
+        """Imports the `fiftyone-desktop` package and verifies that the correct
+        version is installed.
+        """
+        try:
+            import fiftyone.desktop
+        except ImportError as e:
+            raise ValueError(
+                "You must `pip install fiftyone[desktop]` in order to launch the "
+                "desktop App"
+            ) from e
+
+        # Get `fiftyone-desktop` requirement for current `fiftyone` install
+        fiftyone_dist = pkg_resources.get_distribution("fiftyone")
+        requirements = fiftyone_dist.requires(extras=["desktop"])
+        desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
+
+        desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
+
+        if not desktop_req.specifier.contains(desktop_dist.version):
+            raise ValueError(
+                "fiftyone==%s requires fiftyone-desktop%s, but you have "
+                "fiftyone-desktop==%s installed.\n"
+                "Run `pip install fiftyone[desktop]` to install the proper "
+                "desktop package version" % (
+                    fiftyone_dist.version,
+                    desktop_req.specifier,
+                    desktop_dist.version
+                )
+            )
+
+        
+        
     def _validate(self, dataset, view, plots, config):
         if dataset is not None and not isinstance(dataset, fod.Dataset):
             raise ValueError(
