@@ -2895,7 +2895,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.get(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def patch(self, url, **kwargs):
@@ -2909,7 +2909,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.patch(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def post(self, url, **kwargs):
@@ -2923,7 +2923,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.post(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def put(self, url, **kwargs):
@@ -2937,7 +2937,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.put(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def delete(self, url, **kwargs):
@@ -2951,7 +2951,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.delete(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def get_user_id(self, username):
@@ -3496,7 +3496,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 class_map,
                 attr_id_map,
                 frames,
-                assigned_scalar_attrs.get(label_field, False),
+                assigned_scalar_attrs=assigned_scalar_attrs.get(
+                    label_field, False
+                ),
             )
             label_field_results = self._merge_results(
                 label_field_results, tag_results
@@ -3510,6 +3512,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 class_map,
                 attr_id_map,
                 frames,
+                assigned_scalar_attrs=assigned_scalar_attrs.get(
+                    label_field, False
+                ),
             )
             label_field_results = self._merge_results(
                 label_field_results, shape_results
@@ -3524,6 +3529,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     class_map,
                     attr_id_map,
                     frames,
+                    assigned_scalar_attrs=assigned_scalar_attrs.get(
+                        label_field, False
+                    ),
                     track_index=track_index,
                 )
                 label_field_results = self._merge_results(
@@ -3599,10 +3607,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if annot_type == "shapes":
                 shape_type = annot["type"]
-
                 if label_type == "scalar" and assigned_scalar_attrs:
-                    # TODO Shapes created with values, set class to value
-                    pass
+                    # Shapes created with values, set class to value
+                    annot_attrs = annot["attributes"]
+                    class_val = False
+                    if len(annot_attrs) > 0 and "value" in annot_attrs[0]:
+                        class_val = annot_attrs[0]["value"]
+                        annot["attributes"] = []
 
                 cvat_shape = CVATShape(
                     annot, class_map, attr_id_map, metadata, index=track_index
@@ -3623,6 +3634,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 elif shape_type == "points":
                     field_type = "keypoints"
                     label = cvat_shape.to_keypoint()
+
+                if label_type == "scalar" and assigned_scalar_attrs:
+                    if class_val:
+                        # Shapes created with values, set class to value
+                        label.label = class_val
 
             if annot_type == "tags":
                 if label_type == "scalar":
@@ -4126,14 +4142,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_attrs.append({"spec_id": "label_id", "value": label.id})
         for attribute in attributes:
             value = None
-            if attribute in label.attributes:
-                value = label.get_attribute_value(attribute, None)
-                new_attribute = "attribute:" + attribute
-                remapped_attr_names[attribute] = new_attribute
-                attribute = new_attribute
-
-            elif attribute in label:
+            if attribute in label:
                 value = label[attribute]
+
+            elif "attributes" in label:
+                if attribute in label.attributes:
+                    value = label.get_attribute_value(attribute, None)
+                    new_attribute = "attribute:" + attribute
+                    remapped_attr_names[attribute] = new_attribute
+                    attribute = new_attribute
 
             if value is not None:
                 label_attrs.append({"spec_id": attribute, "value": str(value)})
@@ -4170,11 +4187,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return tracks
 
-    def _validate(self, response):
+    def _validate(self, response, kwargs):
         try:
             response.raise_for_status()
         except:
             d = response.__dict__
+            logger.info("Arguments the caused this error were:")
+            logger.info(kwargs)
             raise Exception(
                 "%d error for request %s to url %s with the reason %s. Error "
                 "content: %s"
