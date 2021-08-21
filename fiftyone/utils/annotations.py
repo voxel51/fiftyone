@@ -206,6 +206,7 @@ def _merge_existing_labels(
         if is_video:
             for frame in sample.values():
                 annotation_label_ids.extend(list(frame.keys()))
+
         else:
             annotation_label_ids.extend(list(sample.keys()))
 
@@ -246,6 +247,7 @@ def _merge_existing_labels(
     )
 
     logger.info("Merging labels for '%s'..." % label_field)
+    added_id_map = {}
     with fou.ProgressBar() as pb:
         for sample in pb(annotated_samples):
             sample_id = sample.id
@@ -269,8 +271,14 @@ def _merge_existing_labels(
                 image_label = image[formatted_label_field]
 
                 if image_label is None:
+                    # A previously unlabeled image is being labeled
+                    # Or a singular label was deleted (e.g. classification)
+                    # either in CVAT or FiftyOne
                     # TODO
-                    pass
+
+                    # Update added_id_map, for singular labels adds list for
+                    # videos for each frame
+                    continue
 
                 if isinstance(image_label, fol._HasLabelList):
                     has_label_list = True
@@ -279,24 +287,21 @@ def _merge_existing_labels(
                 else:
                     labels = [image_label]
 
+                # Merge label or labels that existed before and after
+                # annotation
                 for label in labels:
                     label_id = label.id
                     if label_id in labels_to_merge:
                         annot_label = image_annots[label_id]
                         if is_video and "index" in annot_label:
-                            if (
-                                annot_label.index
-                                in tracking_index_map[sample_id]
-                            ):
-                                annot_label.index = tracking_index_map[
-                                    sample_id
-                                ][annot_label.index]
-                            else:
-                                tracking_index_map[sample_id][
-                                    annot_label.index
-                                ] = max_tracking_index
-                                annot_label.index = max_tracking_index
-                                max_tracking_index += 1
+                            (
+                                annot_label,
+                                max_tracking_index,
+                            ) = _update_tracking_index(
+                                annot_label,
+                                tracking_index_map[sample_id],
+                                max_tracking_index,
+                            )
 
                         for field in annot_label._fields_ordered:
                             if (
@@ -307,27 +312,45 @@ def _merge_existing_labels(
                             else:
                                 label[field] = annot_label[field]
 
+                # Add new labels for label list fields only
+                # Non-list fields would have been deleted and replaced above
                 if has_label_list:
                     for annot_label_id, annot_label in image_annots.items():
                         if annot_label_id in added_labels:
                             if is_video and "index" in annot_label:
-                                if (
-                                    annot_label.index
-                                    in tracking_index_map[sample_id]
-                                ):
-                                    annot_label.index = tracking_index_map[
-                                        sample_id
-                                    ][annot_label.index]
-                                else:
-                                    tracking_index_map[sample_id][
-                                        annot_label.index
-                                    ] = max_tracking_index
-                                    annot_label.index = max_tracking_index
-                                    max_tracking_index += 1
+                                (
+                                    annot_label,
+                                    max_tracking_index,
+                                ) = _update_tracking_index(
+                                    annot_label,
+                                    tracking_index_map[sample_id],
+                                    max_tracking_index,
+                                )
 
                             labels.append(annot_label)
 
+                            if sample.id not in added_id_map:
+                                added_id_map[sample.id] = []
+                            added_id_map[sample.id].append(annot_label.id)
+
             sample.save()
+
+    return added_id_map
+
+
+def _update_tracking_index(annot_label, sample_index_map, max_tracking_index):
+    """Remaps the object tracking index of annotations to existing indices if
+    possible. For new object tracks, the previous maximum index is used to
+    assign a new index.
+    """
+    if annot_label.index in sample_index_map:
+        annot_label.index = sample_index_map[annot_label.index]
+    else:
+        sample_index_map[annot_label.index] = max_tracking_index
+        annot_label.index = max_tracking_index
+        max_tracking_index += 1
+
+    return annot_label, max_tracking_index
 
 
 def load_annotations(samples, anno_key, cleanup=False, **kwargs):
@@ -454,7 +477,7 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
             )
 
         else:
-            _merge_existing_labels(
+            added_id_map = _merge_existing_labels(
                 samples,
                 annotation_results,
                 results,
@@ -463,14 +486,33 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
                 is_video,
             )
 
-    # Update id map for loading future annotations
-    # results.id_map = results.backend.update_label_id_map(samples)
+            # Update id map for loading future annotations
+            results.id_map = results.backend.update_label_id_map(
+                results.id_map, added_id_map, label_field,
+            )
+
+    # Store the id map updates in the database
+    backend.save_run_results(samples, anno_key, results)
 
     if cleanup:
         results.cleanup()
 
 
 def _get_tracking_index_map(samples, label_field, annotations):
+    """Maps the object tracking indices of incoming annotations to existing 
+    indices for every sample. Also finds the absolute maximum index that is
+    then used to assign new indices if needed in the future.
+
+    The tracking_index_map is structured as follows::
+
+        {
+            "<sample-id>": {
+                "<new-index>": "<existing-index>",
+                ...
+            },
+            ...
+        }
+    """
     _, index_path = samples._get_label_field_path(label_field, "index")
     indices = samples.values(index_path, unwind=True)
     max_index = max([i for i in indices if i is not None]) + 1
@@ -636,7 +678,42 @@ class AnnotationBackend(foa.AnnotationRun):
 
         return id_map
 
-    # def update_label_id_map(self, samples, id_map, id_map_updates):
+    def update_label_id_map(self, id_map, id_map_updates, label_field):
+        """Updates a label ID dictionary adding in the given label ids.
+
+        The dictionary is structured as follows::
+
+            {
+                "<label-field>": {
+                    "<sample-id>": "<label-id>" or ["<label-id>", ...],
+                    ...
+                },
+                ...
+            }
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            id_map: a dict storing the sample id map to label ids for every
+                label field
+            id_map_updates: a dict storing the sample id map to newly added
+                label ids for the given label field
+            label_field: the name of the label field being updated
+
+        Returns:
+            a dict
+        """
+        for sample_id, label_ids in id_map_updates.items():
+            if isinstance(label_ids, list):
+                if id_map[label_field][sample_id] is None:
+                    id_map[label_field][sample_id] = []
+
+                id_map[label_field][sample_id] += label_ids
+
+            elif label_ids is not None:
+                # Set a single label id instead of list
+                id_map[label_field][sample_id] = label_ids
+
+        return id_map
 
     def get_fields(self, samples, anno_key):
         return list(self.config.label_schema.keys())

@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import ObjectId
 from collections import defaultdict
 from copy import copy
 from copy import deepcopy
@@ -15,7 +16,6 @@ import logging
 import os
 import requests
 import urllib3
-from uuid import UUID
 import warnings
 import webbrowser
 
@@ -3059,6 +3059,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_ids: an iterable of task IDs
         """
+        logger.info("Deleting tasks...")
         with fou.ProgressBar() as pb:
             for task_id in pb(list(task_ids)):
                 self.delete_task(task_id)
@@ -4239,7 +4240,7 @@ class CVATLabel(object):
             label_id = self.attributes["label_id"].value
             is_uuid = False
             try:
-                label_id = UUID(label_id)
+                label_id = ObjectId(label_id)
                 is_uuid = True
             except:
                 pass
