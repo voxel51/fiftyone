@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import ObjectId
 from collections import defaultdict
 from copy import copy
 from copy import deepcopy
@@ -15,7 +16,6 @@ import logging
 import os
 import requests
 import urllib3
-from uuid import UUID
 import warnings
 import webbrowser
 
@@ -3059,6 +3059,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_ids: an iterable of task IDs
         """
+        logger.info("Deleting tasks...")
         with fou.ProgressBar() as pb:
             for task_id in pb(list(task_ids)):
                 self.delete_task(task_id)
@@ -3723,7 +3724,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if is_shape:
             samples.compute_metadata()
 
-        frame_id = 0
+        frame_id = -1
         for sample in samples:
             metadata = sample.metadata
             sample_id = sample.id
@@ -3743,6 +3744,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     height = metadata.height
 
             for image in images:
+                frame_id += 1
                 try:
                     image_label = image[label_field]
                 except:
@@ -3841,8 +3843,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     remapped_attr_names.update(remapped_attrs)
                     tags_or_shapes.extend(shapes)
                     tracks = self._update_tracks(tracks, new_tracks)
-
-                frame_id += 1
 
         if load_tracks:
             formatted_tracks = self._format_tracks(tracks, frame_id)
@@ -4239,7 +4239,7 @@ class CVATLabel(object):
             label_id = self.attributes["label_id"].value
             is_uuid = False
             try:
-                label_id = UUID(label_id)
+                label_id = ObjectId(label_id)
                 is_uuid = True
             except:
                 pass

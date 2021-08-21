@@ -49,6 +49,83 @@ class Label(DynamicEmbeddedDocument):
 
     meta = {"allow_inheritance": True}
 
+    def iter_attributes(self):
+        """Returns an iterator over the custom attributes of the label.
+
+        Returns:
+            a generator that emits ``(name, value)`` tuples
+        """
+        # pylint: disable=no-member
+        custom_fields = set(self._fields_ordered) - set(self._fields.keys())
+
+        for field in custom_fields:
+            yield field, self.get_attribute_value(field)
+
+    def has_attribute(self, name):
+        """Determines whether the label has an attribute with the given name.
+
+        Args:
+            name: the attribute name
+
+        Returns:
+            True/False
+        """
+        return hasattr(self, name)
+
+    def get_attribute_value(self, name, default=no_default):
+        """Gets the value of the attribute with the given name.
+
+        Args:
+            name: the attribute name
+            default (no_default): a default value to return if the attribute
+                does not exist. Can be ``None``
+
+        Returns:
+            the attribute value
+
+        Raises:
+            AttributeError: if the attribute does not exist and no default
+                value was provided
+        """
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            pass
+
+        if default is not no_default:
+            return default
+
+        raise AttributeError(
+            "%s has no attribute '%s'" % (self.__class__.__name__, name)
+        )
+
+    def set_attribute_value(self, name, value):
+        """Sets the value of the attribute with the given name.
+
+        The attribute will be declared if it does not exist.
+
+        Args:
+            name: the attribute name
+            value: the value
+        """
+        setattr(self, name, value)
+
+    def delete_attribute(self, name):
+        """Deletes the attribute with the given name.
+
+        Args:
+            name: the attribute name
+
+        Raises:
+            AttributeError: if the attribute does not exist
+        """
+        try:
+            delattr(self, name)
+        except AttributeError:
+            raise AttributeError(
+                "%s has no attribute '%s'" % (self.__class__.__name__, name)
+            )
+
 
 class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
@@ -112,7 +189,8 @@ class ListAttribute(Attribute):
     value = fof.ListField()
 
 
-class _HasAttributes(Label):
+# @todo remove this in favor of dynamic-only attributes
+class _HasAttributesDict(Label):
     """Mixin for :class:`Label` classes that have an :attr:`attributes` field
     that contains a dict of of :class:`Attribute` instances.
     """
@@ -138,8 +216,7 @@ class _HasAttributes(Label):
             yield field, self.get_attribute_value(field)
 
     def has_attribute(self, name):
-        """Determines whether the detection has an attribute with the given
-        name.
+        """Determines whether the label has an attribute with the given name.
 
         The specified attribute may either exist in the :attr:`attributes` dict
         or as a dynamic attribute.
@@ -194,7 +271,7 @@ class _HasAttributes(Label):
 
         If the specified attribute already exists in the :attr:`attributes`
         dict, its value is updated there. Otherwise, the attribute is
-        set as a dynamic attribute.
+        set (or created) as a dynamic attribute.
 
         Args:
             name: the attribute name
@@ -222,9 +299,21 @@ class _HasAttributes(Label):
         # pylint: disable=unsupported-membership-test
         if name in self.attributes:
             # pylint: disable=unsupported-delete-operation
-            del self.attributes[name]
+            try:
+                del self.attributes[name]
+            except KeyError:
+                raise AttributeError(
+                    "%s has no attribute '%s'"
+                    % (self.__class__.__name__, name)
+                )
         else:
-            delattr(self, name)
+            try:
+                delattr(self, name)
+            except AttributeError:
+                raise AttributeError(
+                    "%s has no attribute '%s'"
+                    % (self.__class__.__name__, name)
+                )
 
 
 class _HasID(Label):
@@ -396,7 +485,7 @@ class Classifications(ImageLabel, _HasLabelList):
         return cls(classifications=classifications)
 
 
-class Detection(ImageLabel, _HasID, _HasAttributes):
+class Detection(ImageLabel, _HasID, _HasAttributesDict):
     """An object detection.
 
     Args:
@@ -688,7 +777,7 @@ class Detections(ImageLabel, _HasLabelList):
         )
 
 
-class Polyline(ImageLabel, _HasID, _HasAttributes):
+class Polyline(ImageLabel, _HasID, _HasAttributesDict):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -1021,7 +1110,7 @@ class Polylines(ImageLabel, _HasLabelList):
         )
 
 
-class Keypoint(ImageLabel, _HasID, _HasAttributes):
+class Keypoint(ImageLabel, _HasID, _HasAttributesDict):
     """A list of keypoints in an image.
 
     Args:
@@ -1202,7 +1291,7 @@ class Segmentation(ImageLabel, _HasID):
         return cls(mask=mask)
 
 
-class GeoLocation(ImageLabel, _HasID):
+class GeoLocation(_HasID, Label):
     """Location data in GeoJSON format.
 
     Args:
@@ -1251,7 +1340,7 @@ class GeoLocation(ImageLabel, _HasID):
         return cls(point=point, line=line, polygon=polygon)
 
 
-class GeoLocations(ImageLabel, _HasID):
+class GeoLocations(_HasID, Label):
     """A batch of location data in GeoJSON format.
 
     The attributes of this class accept lists of data in the format of the
