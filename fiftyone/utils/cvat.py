@@ -2895,7 +2895,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.get(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def patch(self, url, **kwargs):
@@ -2909,7 +2909,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.patch(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def post(self, url, **kwargs):
@@ -2923,7 +2923,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.post(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def put(self, url, **kwargs):
@@ -2937,7 +2937,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.put(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def delete(self, url, **kwargs):
@@ -2951,7 +2951,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the request response
         """
         response = self._session.delete(url, verify=False, **kwargs)
-        self._validate(response)
+        self._validate(response, kwargs)
         return response
 
     def get_user_id(self, username):
@@ -4126,14 +4126,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_attrs.append({"spec_id": "label_id", "value": label.id})
         for attribute in attributes:
             value = None
-            if attribute in label.attributes:
-                value = label.get_attribute_value(attribute, None)
-                new_attribute = "attribute:" + attribute
-                remapped_attr_names[attribute] = new_attribute
-                attribute = new_attribute
-
-            elif attribute in label:
+            if attribute in label:
                 value = label[attribute]
+
+            elif "attributes" in label:
+                if attribute in label.attributes:
+                    value = label.get_attribute_value(attribute, None)
+                    new_attribute = "attribute:" + attribute
+                    remapped_attr_names[attribute] = new_attribute
+                    attribute = new_attribute
 
             if value is not None:
                 label_attrs.append({"spec_id": attribute, "value": str(value)})
@@ -4170,11 +4171,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return tracks
 
-    def _validate(self, response):
+    def _validate(self, response, kwargs):
         try:
             response.raise_for_status()
         except:
             d = response.__dict__
+            logger.info("Arguments the caused this error were:")
+            logger.info(kwargs)
             raise Exception(
                 "%d error for request %s to url %s with the reason %s. Error "
                 "content: %s"

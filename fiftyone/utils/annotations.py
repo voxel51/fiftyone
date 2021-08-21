@@ -435,11 +435,20 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
         label_type = label_info["type"]
         existing_field = label_info["existing_field"]
 
+        fo_label_type = _LABEL_TYPES_MAP[label_type]
+        if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+            is_list = True
+            list_field = fo_label_type._LABEL_LIST_FIELD
+            label_type_list = label_type
+        else:
+            is_list = False
+            label_type_list = _LABEL_TYPES_LIST_MAP[label_type]
+
         #
         # First add unexpected labels to new fields
         #
         for new_type, new_annotations in annotation_results.items():
-            if new_type == label_type:
+            if new_type == label_type_list:
                 continue
 
             new_field_name = input(
@@ -486,7 +495,7 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
         #
         # Now import expected labels into their appropriate fields
         #
-        annotation_results = annotation_results[label_type]
+        annotation_results = annotation_results[label_type_list]
 
         formatted_label_field = label_field
         if is_video and label_field.startswith("frames."):
@@ -1044,6 +1053,13 @@ _LABEL_TYPES_MAP = {
 
 _LABEL_TYPES_MAP_REV = {v: k for k, v in _LABEL_TYPES_MAP.items()}
 
+_LABEL_TYPES_LIST_MAP = {
+    "classification": "classifications",
+    "detection": "detections",
+    "keypoint": "keypoints",
+    "polyline": "polylines",
+}
+
 
 def _build_label_schema(
     samples,
@@ -1245,9 +1261,10 @@ def _get_label_attributes(samples, backend, label_field):
 
     attributes = {}
     for label in labels:
-        for name, _ in label.iter_attributes():
-            if name not in attributes:
-                attributes[name] = {"type": backend.default_attr_type}
+        if label is not None:
+            for name, _ in label.iter_attributes():
+                if name not in attributes:
+                    attributes[name] = {"type": backend.default_attr_type}
 
     return attributes
 
