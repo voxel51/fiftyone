@@ -3496,7 +3496,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 class_map,
                 attr_id_map,
                 frames,
-                assigned_scalar_attrs.get(label_field, False),
+                assigned_scalar_attrs=assigned_scalar_attrs.get(
+                    label_field, False
+                ),
             )
             label_field_results = self._merge_results(
                 label_field_results, tag_results
@@ -3510,6 +3512,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 class_map,
                 attr_id_map,
                 frames,
+                assigned_scalar_attrs=assigned_scalar_attrs.get(
+                    label_field, False
+                ),
             )
             label_field_results = self._merge_results(
                 label_field_results, shape_results
@@ -3524,6 +3529,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     class_map,
                     attr_id_map,
                     frames,
+                    assigned_scalar_attrs=assigned_scalar_attrs.get(
+                        label_field, False
+                    ),
                     track_index=track_index,
                 )
                 label_field_results = self._merge_results(
@@ -3599,10 +3607,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if annot_type == "shapes":
                 shape_type = annot["type"]
-
                 if label_type == "scalar" and assigned_scalar_attrs:
-                    # TODO Shapes created with values, set class to value
-                    pass
+                    # Shapes created with values, set class to value
+                    annot_attrs = annot["attributes"]
+                    class_val = False
+                    if len(annot_attrs) > 0 and "value" in annot_attrs[0]:
+                        class_val = annot_attrs[0]["value"]
+                        annot["attributes"] = []
 
                 cvat_shape = CVATShape(
                     annot, class_map, attr_id_map, metadata, index=track_index
@@ -3623,6 +3634,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 elif shape_type == "points":
                     field_type = "keypoints"
                     label = cvat_shape.to_keypoint()
+
+                if label_type == "scalar" and assigned_scalar_attrs:
+                    if class_val:
+                        # Shapes created with values, set class to value
+                        label.label = class_val
 
             if annot_type == "tags":
                 if label_type == "scalar":
