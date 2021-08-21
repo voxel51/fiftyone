@@ -79,7 +79,7 @@ def annotate(
 
             -   ``True``: export all label attributes
             -   ``False``: don't export any custom label attributes
-            -   a list of label attributes to export
+            -   an attribute or list of attributes to export
             -   a dict mapping attribute names to dicts specifying the details
                 of the attribute field
 
@@ -330,7 +330,7 @@ def _merge_existing_labels(
             sample.save()
 
 
-def load_annotations(samples, results, cleanup=False):
+def load_annotations(samples, anno_key, cleanup=False, **kwargs):
     """Downloads the labels from the given annotation run from the annotation
     backend and merges them into the collection.
 
@@ -340,10 +340,14 @@ def load_annotations(samples, results, cleanup=False):
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        results: an :class:`AnnotationResults`
+        anno_key: an annotation key
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
+        **kwargs: optional keyword arguments for
+            :meth:`AnnotationResults.load_credentials`
     """
+    results = samples.load_annotation_results(anno_key, **kwargs)
+    backend = results.backend
     annotations = results.backend.download_annotations(results)
 
     if not annotations:
@@ -1127,6 +1131,9 @@ def _get_label_attributes(samples, backend, label_field):
 
 
 def _format_attributes(backend, attributes):
+    if etau.is_str(attributes):
+        attributes = [attributes]
+
     if isinstance(attributes, list):
         attributes = {a: {} for a in attributes}
 

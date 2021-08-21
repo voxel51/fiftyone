@@ -57,20 +57,18 @@ The basic workflow to use CVAT with your FiftyOne datasets is as follows:
    :ref:`dataset views <using-views>` to locate either unlabeled samples that
    you wish to annotate or labeled samples whose annotations you want to edit
 
-3) Create a |DatasetView| containing the samples that need to be annotated
-
-4) Use the
+3) Use the
    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
    method on your dataset or view to upload the samples and optionally their
    existing labels to CVAT
 
-5) In CVAT, perform the necessary annotation work and save the tasks
+4) In CVAT, perform the necessary annotation work and save the tasks
 
-6) Back in FiftyOne, load your dataset and use the
+5) Back in FiftyOne, load your dataset and use the
    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
    method to merge the annotations from CVAT back into your FiftyOne dataset
 
-7) If desired, delete the CVAT tasks and the record of the annotation run from
+6) If desired, delete the CVAT tasks and the record of the annotation run from
    your FiftyOne dataset
 
 The example below demonstrates this workflow. First, we create the annotation
@@ -96,27 +94,33 @@ tasks in CVAT:
 
     # Step 2: Locate a subset of your data requiring annotation
 
-    # Here we create a view that contains only the high confidence false
-    # positive model predictions
-    high_conf_view = dataset.filter_labels(
-        "predictions",
-        (F("confidence") > 0.8) & (F("eval") == "fp"),
+    # Create a view that contains only high confidence false positive model
+    # predictions, with samples containing the most false positives first
+    most_fp_view = (
+        dataset
+        .filter_labels("predictions", (F("confidence") > 0.8) & (F("eval") == "fp"))
+        .sort_by(F("predictions.detections").length(), reverse=True)
     )
 
-    # Step 3: Create a view containing the samples and/or labels to annotate
+    # Let's edit the ground truth annotations for the sample with the most
+    # high confidence false positives
+    sample_id = most_fp_view.first().id
+    view = dataset.select(sample_id)
 
-    # In this example we'll select a single sample
-    view = high_conf_view.limit(1)
-
-    # Step 4: Send samples to CVAT
+    # Step 3: Send samples to CVAT
 
     # A unique identifier for this run
     anno_key = "cvat_basic_recipe"
 
-    view.annotate(anno_key, label_field="ground_truth", launch_editor=True)
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        attributes=["iscrowd"],
+        launch_editor=True,
+    )
     print(dataset.get_annotation_info(anno_key))
 
-    # Step 5: Perform annotation in CVAT and save tasks
+    # Step 4: Perform annotation in CVAT and save tasks
 
 Then, once the annotation work is complete, we merge the annotations back into
 FiftyOne:
@@ -128,7 +132,7 @@ FiftyOne:
 
     anno_key = "cvat_basic_recipe"
 
-    # Step 6: Merge annotations back into FiftyOne dataset
+    # Step 5: Merge annotations back into FiftyOne dataset
 
     dataset = fo.load_dataset("cvat-annotation-example")
     dataset.load_annotations(anno_key)
@@ -137,7 +141,7 @@ FiftyOne:
     view = dataset.load_annotation_view(anno_key)
     session = fo.launch_app(view=view)
 
-    # Step 7: Cleanup
+    # Step 6: Cleanup
 
     # Delete tasks from CVAT
     results = dataset.load_annotation_results(anno_key)
