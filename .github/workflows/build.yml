@@ -124,7 +124,6 @@ jobs:
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets torch torchvision
-          sudo apt install ffmpeg
       - name: Install fiftyone
         run: |
           pip install scikit-learn scikit-image shapely pydicom

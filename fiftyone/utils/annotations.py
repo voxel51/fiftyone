@@ -152,239 +152,102 @@ def _parse_config(name, label_schema, media_field, **kwargs):
     return config_cls(name, label_schema, media_field=media_field, **params)
 
 
-def load_annotations(samples, anno_key, cleanup=False, **kwargs):
-    """Downloads the labels from the given annotation run from the annotation
-    backend and merges them into the collection.
+def _add_new_labels(
+    samples, annotation_results, results, label_type, label_field, is_video
+):
+    fo_label_type = _LABEL_TYPES_MAP[label_type]
+    if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+        is_list = True
+        list_field = fo_label_type._LABEL_LIST_FIELD
+    else:
+        is_list = False
 
-    See :ref:`this page <loading-annotations>` for more information about
-    using this method to import annotations that you have scheduled by calling
-    :func:`annotate`.
+    samples = samples.select_fields([])
+    logger.info("Adding labels for '%s'..." % label_field)
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            sample_id = sample.id
+            if sample_id in annotation_results:
+                sample_annots = annotation_results[sample_id]
+                if is_video:
+                    images = sample.frames.values()
+                else:
+                    images = [sample]
 
-    Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        anno_key: an annotation key
-        cleanup (False): whether to delete any informtation regarding this run
-            from the annotation backend after loading the annotations
-        **kwargs: optional keyword arguments for
-            :meth:`AnnotationResults.load_credentials`
-    """
-    results = samples.load_annotation_results(anno_key, **kwargs)
-    backend = results.backend
+                for image in images:
+                    if is_video:
+                        if image.id not in sample_annots:
+                            continue
 
-    annotations_results, additional_results = backend.download_annotations(
-        results
+                        image_annots = sample_annots[image.id]
+                    else:
+                        image_annots = sample_annots
+
+                    if is_list:
+                        new_label = fo_label_type()
+                        annot_list = list(image_annots.values())
+                        new_label[list_field] = annot_list
+                    elif not image_annots:
+                        continue
+                    else:
+                        new_label = list(image_annots.values())[0]
+
+                    image[label_field] = new_label
+
+                sample.save()
+
+
+def _merge_existing_labels(
+    samples, annotation_results, results, label_type, label_field, is_video
+):
+    # Setting a label field, need to parse, add, delete, and merge labels
+    annotation_label_ids = []
+    for sample in annotation_results.values():
+        if is_video:
+            for frame in sample.values():
+                annotation_label_ids.extend(list(frame.keys()))
+        else:
+            annotation_label_ids.extend(list(sample.keys()))
+
+    sample_ids = list(annotation_results.keys())
+
+    prev_label_ids = []
+    for ids in results.id_map[label_field].values():
+        if ids is None:
+            continue
+
+        if len(ids) > 0 and type(ids[0]) == list:
+            for frame_ids in ids:
+                prev_label_ids.extend(frame_ids)
+        else:
+            prev_label_ids.extend(ids)
+
+    prev_ids = set(prev_label_ids)
+    ann_ids = set(annotation_label_ids)
+    deleted_labels = prev_ids - ann_ids
+    added_labels = ann_ids - prev_ids
+    labels_to_merge = ann_ids - deleted_labels - added_labels
+
+    # Remove deleted labels
+    deleted_view = samples.select_labels(ids=list(deleted_labels))
+    samples._dataset.delete_labels(view=deleted_view, fields=label_field)
+
+    if is_video and label_type in ("detections", "keypoints", "polylines"):
+        tracking_index_map, max_tracking_index = _get_tracking_index_map(
+            samples, label_field, annotation_results
+        )
+    else:
+        tracking_index_map = {}
+        max_tracking_index = 0
+
+    # Add or merge remaining labels
+    annotated_samples = samples._dataset.select(sample_ids).select_fields(
+        [label_field]
     )
 
-    if not annotations_results:
-        logger.warning("No annotations found")
-        return
-
-    is_video = samples.media_type == fom.VIDEO
-
-    label_schema = results.config.label_schema
-    for label_field in label_schema:
-        #
-        # First add unexpected labels to new fields
-        #
-
-        if label_field in additional_results:
-            new_results = additional_results[label_field]
-            for new_type, annotations in new_results.items():
-                new_field_name = input(
-                    "\nFound unexpected labels of type '%s' when loading "
-                    "annotations for field '%s'.\nPlease enter a new field "
-                    "name in which to store these annotations, or an empty "
-                    "name to skip them: " % (new_type, label_field)
-                )
-                while True:
-                    frame_fields = samples.get_frame_field_schema() or []
-                    fields = samples.get_field_schema() or []
-                    existing_field = (
-                        new_field_name in frame_fields
-                        or new_field_name in fields
-                    )
-                    if existing_field:
-                        new_field_name = input(
-                            "\nField '%s' already exists.\nPlease enter a new "
-                            "field name in which to store these annotations, "
-                            "or an empty name to skip them: " % new_field_name
-                        )
-                    else:
-                        break
-
-                if not new_field_name:
-                    logger.info(
-                        "Skipping unexpected labels of type '%s' in field "
-                        "'%s'",
-                        new_type,
-                        label_field,
-                    )
-                    continue
-
-                if is_video and not new_field_name.startswith("frames."):
-                    new_field_name = "frames." + new_field_name
-
-                # Add new field
-                fo_label_type = _LABEL_TYPES_MAP[new_type]
-                if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
-                    is_list = True
-                    list_field = fo_label_type._LABEL_LIST_FIELD
-                else:
-                    is_list = False
-
-                for sample in samples:
-                    sample_id = sample.id
-                    if sample_id in annotations:
-                        sample_annots = annotations[sample_id]
-                        if is_video:
-                            images = sample.frames.values()
-                        else:
-                            images = [sample]
-
-                        for image in images:
-                            if is_video:
-                                if image.id not in sample_annots:
-                                    continue
-
-                                image_annots = sample_annots[image.id]
-                            else:
-                                image_annots = sample_annots
-
-                            if is_list:
-                                new_label = fo_label_type()
-                                annot_list = list(image_annots.values())
-                                new_label[list_field] = annot_list
-                            elif not image_annots:
-                                continue
-                            else:
-                                new_label = list(image_annots.values())[0]
-
-                            image[new_field_name] = new_label
-
-                        sample.save()
-
-        #
-        # Now import expected labels into their appropriate fields
-        #
-
-        annotations = annotations_results.get(label_field, None)
-
-        if not annotations:
-            logger.info("No annotations found for field '%s'", label_field)
-            continue
-
-        label_info = label_schema[label_field]
-        label_type = label_info["type"]
-        existing_field = label_info["existing_field"]
-
-        formatted_label_field = label_field
-        if is_video and label_field.startswith("frames."):
-            formatted_label_field = label_field[len("frames.") :]
-
-        if not isinstance(list(annotations.values())[0], dict):
-            # Only setting top-level sample or frame field, label parsing is
-            # not required
-            for sample_id, value in annotations.items():
-                sample = samples[sample_id]
-                if type(value) == dict:
-                    frame_ids = list(value.keys())
-                    frames = samples.select_frames(frame_ids).first()
-                    for frame in frames.values():
-                        if frame.id in value:
-                            frame_value = value[frame.id]
-                            frame[formatted_label_field] = frame_value
-                            frame.save()
-                else:
-                    sample[label_field] = value
-                    sample.save()
-
-            continue
-
-        if not existing_field:
-            # Add new field
-            fo_label_type = _LABEL_TYPES_MAP[label_type]
-            if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
-                is_list = True
-                list_field = fo_label_type._LABEL_LIST_FIELD
-            else:
-                is_list = False
-
-            for sample in samples:
-                sample_id = sample.id
-                if sample_id in annotations:
-                    sample_annots = annotations[sample_id]
-                    if is_video:
-                        images = sample.frames.values()
-                    else:
-                        images = [sample]
-
-                    for image in images:
-                        if is_video:
-                            if image.id not in sample_annots:
-                                continue
-
-                            image_annots = sample_annots[image.id]
-                        else:
-                            image_annots = sample_annots
-
-                        if is_list:
-                            new_label = fo_label_type()
-                            annot_list = list(image_annots.values())
-                            new_label[list_field] = annot_list
-                        elif not image_annots:
-                            continue
-                        else:
-                            new_label = list(image_annots.values())[0]
-
-                        image[formatted_label_field] = new_label
-
-                    sample.save()
-
-            continue
-
-        # Setting a label field, need to parse, add, delete, and merge labels
-        annotation_label_ids = []
-        for sample in annotations.values():
-            if is_video:
-                for frame in sample.values():
-                    annotation_label_ids.extend(list(frame.keys()))
-            else:
-                annotation_label_ids.extend(list(sample.keys()))
-
-        sample_ids = list(annotations.keys())
-
-        prev_label_ids = []
-        for ids in results.id_map[label_field].values():
-            if ids is None:
-                continue
-
-            if len(ids) > 0 and type(ids[0]) == list:
-                for frame_ids in ids:
-                    prev_label_ids.extend(frame_ids)
-            else:
-                prev_label_ids.extend(ids)
-
-        prev_ids = set(prev_label_ids)
-        ann_ids = set(annotation_label_ids)
-        deleted_labels = prev_ids - ann_ids
-        added_labels = ann_ids - prev_ids
-        labels_to_merge = ann_ids - deleted_labels - added_labels
-
-        # Remove deleted labels
-        deleted_view = samples.select_labels(ids=list(deleted_labels))
-        samples._dataset.delete_labels(view=deleted_view, fields=label_field)
-
-        if is_video and label_type in ("detections", "keypoints", "polylines"):
-            tracking_index_map, max_tracking_index = _get_tracking_index_map(
-                samples, label_field, annotations
-            )
-        else:
-            tracking_index_map = {}
-            max_tracking_index = 0
-
-        # Add or merge remaining labels
-        annotated_samples = samples._dataset.select(sample_ids)
-        for sample in annotated_samples:
+    logger.info("Merging labels for '%s'..." % label_field)
+    with fou.ProgressBar() as pb:
+        for sample in pb(annotated_samples):
             sample_id = sample.id
             formatted_label_field = label_field
             if is_video:
@@ -395,7 +258,7 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
             else:
                 images = [sample]
 
-            sample_annots = annotations[sample_id]
+            sample_annots = annotation_results[sample_id]
             for image in images:
                 if is_video:
                     image_annots = sample_annots[image.id]
@@ -404,6 +267,10 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
 
                 has_label_list = False
                 image_label = image[formatted_label_field]
+
+                if image_label is None:
+                    # TODO
+                    pass
 
                 if isinstance(image_label, fol._HasLabelList):
                     has_label_list = True
@@ -461,6 +328,143 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
                             labels.append(annot_label)
 
             sample.save()
+
+
+def load_annotations(samples, anno_key, cleanup=False, **kwargs):
+    """Downloads the labels from the given annotation run from the annotation
+    backend and merges them into the collection.
+
+    See :ref:`this page <loading-annotations>` for more information about
+    using this method to import annotations that you have scheduled by calling
+    :func:`annotate`.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        anno_key: an annotation key
+        cleanup (False): whether to delete any informtation regarding this run
+            from the annotation backend after loading the annotations
+        **kwargs: optional keyword arguments for
+            :meth:`AnnotationResults.load_credentials`
+    """
+    results = samples.load_annotation_results(anno_key, **kwargs)
+    backend = results.backend
+    annotations = results.backend.download_annotations(results)
+
+    if not annotations:
+        logger.warning("No annotations found")
+        return
+
+    is_video = samples.media_type == fom.VIDEO
+
+    label_schema = results.config.label_schema
+    for label_field in label_schema:
+        annotation_results = annotations.get(label_field, {})
+        if not annotation_results:
+            logger.info("No annotations found for field '%s'", label_field)
+            continue
+
+        label_info = label_schema[label_field]
+        label_type = label_info["type"]
+        existing_field = label_info["existing_field"]
+
+        #
+        # First add unexpected labels to new fields
+        #
+        for new_type, new_annotations in annotation_results.items():
+            if new_type == label_type:
+                continue
+
+            new_field_name = input(
+                "\nFound unexpected labels of type '%s' when loading "
+                "annotations for field '%s'.\nPlease enter a new field "
+                "name in which to store these annotations, or an empty "
+                "name to skip them: " % (new_type, label_field)
+            )
+            while True:
+                frame_fields = samples.get_frame_field_schema() or []
+                fields = samples.get_field_schema() or []
+                existing_field = (
+                    new_field_name in frame_fields or new_field_name in fields
+                )
+                if existing_field:
+                    new_field_name = input(
+                        "\nField '%s' already exists.\nPlease enter a new "
+                        "field name in which to store these annotations, "
+                        "or an empty name to skip them: " % new_field_name
+                    )
+                else:
+                    break
+
+            if not new_field_name:
+                logger.info(
+                    "Skipping unexpected labels of type '%s' in field " "'%s'",
+                    new_type,
+                    label_field,
+                )
+                continue
+
+            if is_video and not new_field_name.startswith("frames."):
+                new_field_name = "frames." + new_field_name
+
+            _add_new_labels(
+                samples,
+                new_annotations,
+                results,
+                new_type,
+                new_field_name,
+                is_video,
+            )
+
+        #
+        # Now import expected labels into their appropriate fields
+        #
+        annotation_results = annotation_results[label_type]
+
+        formatted_label_field = label_field
+        if is_video and label_field.startswith("frames."):
+            formatted_label_field = label_field[len("frames.") :]
+
+        if not isinstance(list(annotation_results.values())[0], dict):
+            # Only setting top-level sample or frame field, label parsing is
+            # not required
+            logger.info("Adding labels for '%s'..." % formatted_label_field)
+            with fou.ProgressBar() as pb:
+                for sample_id, value in pb(annotation_results.items()):
+                    sample = samples[sample_id]
+                    if type(value) == dict:
+                        frame_ids = list(value.keys())
+                        frames = samples.select_frames(frame_ids).first()
+                        for frame in frames.values():
+                            if frame.id in value:
+                                frame_value = value[frame.id]
+                                frame[formatted_label_field] = frame_value
+                                frame.save()
+                    else:
+                        sample[label_field] = value
+                        sample.save()
+
+        elif not existing_field:
+            _add_new_labels(
+                samples,
+                annotation_results,
+                results,
+                label_type,
+                formatted_label_field,
+                is_video,
+            )
+
+        else:
+            _merge_existing_labels(
+                samples,
+                annotation_results,
+                results,
+                label_type,
+                label_field,
+                is_video,
+            )
+
+    # Update id map for loading future annotations
+    results.id_map = results.backend.build_label_id_map(samples)
 
     if cleanup:
         results.cleanup()
@@ -697,7 +701,7 @@ class AnnotationAPI(object):
         prefix = "FIFTYONE_%s_" % name.upper()
         logger.info(
             "Please enter your login credentials.\nYou can avoid this in the "
-            "future by setting your `%s_USERNAME` and/or `%s_PASSWORD` "
+            "future by setting your `%sUSERNAME` and/or `%sPASSWORD` "
             "environment variables",
             prefix,
             prefix,
@@ -715,7 +719,7 @@ class AnnotationAPI(object):
         prefix = "FIFTYONE_%s_" % name.upper()
         logger.info(
             "Please enter your API key.\nYou can avoid this in the future by "
-            "setting your `%s_KEY` environment variable",
+            "setting your `%sKEY` environment variable",
             prefix,
         )
 
@@ -1022,12 +1026,13 @@ def _get_label_type(
             "You must specify the type of new label field '%s'" % label_field
         )
 
-    fo_label_type = _LABEL_TYPES_MAP[label_type]
-    if fo_label_type not in backend.supported_label_types:
-        raise ValueError(
-            "Unsupported label type '%s'. Supported values are %s"
-            % (fo_label_type, backend.supported_label_types)
-        )
+    if label_type != "scalar":
+        fo_label_type = _LABEL_TYPES_MAP[label_type]
+        if fo_label_type not in backend.supported_label_types:
+            raise ValueError(
+                "Unsupported label type '%s'. Supported values are %s"
+                % (fo_label_type, backend.supported_label_types)
+            )
 
     return label_type, False
 
@@ -1118,6 +1123,8 @@ def _get_label_attributes(samples, backend, label_field):
     for label in labels:
         for name, _ in label.iter_attributes():
             if name not in attributes:
+                if name in label.attributes:
+                    name = "attribute:" + name
                 attributes[name] = {"type": backend.default_attr_type}
 
     return attributes

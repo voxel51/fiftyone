@@ -3,9 +3,8 @@
  */
 
 import { getSegmentationColorArray } from "../color";
-import { NumpyResult } from "../numpy";
+import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
-import { ensureCanvasSize } from "../util";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
 import { sizeBytes, t } from "./util";
 
@@ -17,8 +16,7 @@ export default class SegmentationOverlay<State extends BaseState>
   implements Overlay<State> {
   readonly field: string;
   private readonly label: SegmentationLabel;
-  private targets?: Uint32Array;
-  private imageColors?: Uint32Array;
+  private targets?: TypedArray;
   private colorMap?: (key: string | number) => string;
   private selected?: boolean;
   private canvas: HTMLCanvasElement;
@@ -28,7 +26,9 @@ export default class SegmentationOverlay<State extends BaseState>
     this.field = field;
     this.label = label;
     if (this.label.mask) {
-      this.targets = new Uint32Array(this.label.mask.buffer);
+      this.targets = new ARRAY_TYPES[this.label.mask.arrayType](
+        this.label.mask.buffer
+      );
 
       const [height, width] = this.label.mask.shape;
       this.canvas = document.createElement("canvas");

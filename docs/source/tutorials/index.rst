@@ -57,6 +57,13 @@ your datasets and turn your good models into *great models*.
     :tags: Visualization,Brain
 
 .. customcarditem::
+    :header: Annotating with CVAT 
+    :description: You've loaded in and explored your data in FiftyOne, now what? Send it off to CVAT for annotation in just one line of code.
+    :link: cvat_annotation.html
+    :image: ../_static/images/tutorials/cvat_segmentation.png
+    :tags: Annotation,Dataset-Evaluation
+
+.. customcarditem::
     :header: Downloading and evaluating Open Images
     :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol, all natively within FiftyOne.
     :link: open_images.html
@@ -111,6 +118,7 @@ your datasets and turn your good models into *great models*.
    Evaluating object detections <evaluate_detections.ipynb>
    Evaluating a classifier <evaluate_classifications.ipynb>
    Using image embeddings <image_embeddings.ipynb>
+   Annotating with CVAT <cvat_annotation.ipynb>
    Working with Open Images <open_images.ipynb>
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
