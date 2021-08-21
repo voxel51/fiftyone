@@ -62,7 +62,9 @@ datasets is as follows:
 3) Use the
    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
    method on your dataset or view to upload the samples and optionally their
-   existing labels to CVAT
+   existing labels to CVAT. See
+   :ref:`this section <cvat-requesting-annotations>` for more information about
+   using this method.
 
 4) In CVAT, perform the necessary annotation work and save the tasks
 
@@ -132,7 +134,7 @@ First, we create the annotation tasks in CVAT:
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Step 4: Perform annotation in CVAT and save tasks
+    # Step 4: Perform annotation in CVAT and save the tasks
 
 Then, once the annotation work is complete, we merge the annotations back into
 FiftyOne:
@@ -292,10 +294,10 @@ server (e.g., `localhost`) in any of the following ways:
         password=...,
     )
 
-.. _annotation:
+.. _cvat-requesting-annotations:
 
-Annotation
-__________
+Requesting annotations
+______________________
 
 Use the
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` method
@@ -353,7 +355,8 @@ The following parameters are supported by all annotation backends:
 **Label schema**
 
 The following parameters allow you to configure the labeling schema to use for
-your annotation tasks. See :ref:`this section <label-schema>` for more details:
+your annotation tasks. See :ref:`this section <cvat-label-schema>` for more
+details:
 
 -   **label_schema** (*None*): a dictionary defining the label schema to use.
     If this argument is provided, it takes precedence over `label_field` and
@@ -392,7 +395,7 @@ The following CVAT-specific parameters can also be provided:
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
 
-.. _label-schema:
+.. _cvat-label-schema:
 
 Label schema
 ------------
@@ -561,7 +564,7 @@ take additional values:
     Only scalar-valued label attributes are supported. Other attribute types
     like lists, dictionaries, and arrays will be omitted.
 
-.. _loading-annotations:
+.. _cvat-loading-annotations:
 
 Loading annotations
 ___________________
@@ -592,7 +595,7 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
-.. _managing-annotation-runs:
+.. _cvat-managing-annotation-runs:
 
 Managing annotation runs
 ________________________
@@ -1133,10 +1136,10 @@ to record classifications for your video datasets.
    :alt: cvat-video
    :align: center
 
-.. _cvat_utilities:
+.. _cvat-utils:
 
-Additional CVAT utilities
-_________________________
+Additional utilities
+____________________
 
 You can perform additional CVAT-specific operations to monitor the progress
 of an annotation task initiated by

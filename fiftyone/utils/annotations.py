@@ -45,13 +45,15 @@ def annotate(
     The ``backend`` parameter controls which annotation backend to use.
     Depending on the backend you use, you may want/need to provide extra
     keyword arguments to this function for the constructor of the backend's
-    annotation API:
+    :class:`AnnotationBackendConfig` class.
 
-    -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATAnnotationAPI`
+    The natively provided backends and their associated config classes are:
 
-    See :ref:`this page <annotation>` for more information about using this
-    method, including how to define label schemas and how to configure login
-    credentials for your annotation provider.
+    -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+
+    See :ref:`this page <requesting-annotations>` for more information about
+    using this method, including how to define label schemas and how to
+    configure login credentials for your annotation provider.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
