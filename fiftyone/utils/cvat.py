@@ -3724,7 +3724,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if is_shape:
             samples.compute_metadata()
 
-        frame_id = 0
+        frame_id = -1
         for sample in samples:
             metadata = sample.metadata
             sample_id = sample.id
@@ -3744,6 +3744,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     height = metadata.height
 
             for image in images:
+                frame_id += 1
                 try:
                     image_label = image[label_field]
                 except:
@@ -3842,8 +3843,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     remapped_attr_names.update(remapped_attrs)
                     tags_or_shapes.extend(shapes)
                     tracks = self._update_tracks(tracks, new_tracks)
-
-                frame_id += 1
 
         if load_tracks:
             formatted_tracks = self._format_tracks(tracks, frame_id)
