@@ -2493,7 +2493,7 @@ class CVATBackend(foua.AnnotationBackend):
 
     @property
     def supported_attr_types(self):
-        return {"text", "select", "checkbox", "radio"}
+        return {"text", "select", "radio", "checkbox"}
 
     @property
     def default_attr_type(self):

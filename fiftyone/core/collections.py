@@ -5615,7 +5615,7 @@ class SampleCollection(object):
                 label field to annotate
             label_type (None): a string indicating the type of labels to expect
                 when creating a new ``label_field``. Supported values are
-                ``("detections", "classifications", "polylines", "keypoints", "scalar")``
+                ``("classification", "classifications", "detections", "polylines", "keypoints", "scalar")``
             classes (None): a list of strings indicating the class options for
                 either ``label_field`` or all fields in ``label_schema``
                 without classes specified. All new label fields must have a

@@ -10,7 +10,7 @@ open-source image and video annotation tools available, and we've made it easy
 to upload your data and labels directly from FiftyOne to CVAT to create,
 delete, and modify annotations.
 
-You can use CVAT either through the hosted server at
+You can use CVAT either through the demo server at
 `cvat.org <https://cvat.org>`_ or through a
 `self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
 In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
@@ -24,8 +24,9 @@ annotation and contains one or more jobs. A project can optionally be created
 to group multiple tasks together under a shared label schema.
 
 FiftyOne provides an API to create tasks and jobs, upload data, define label
-schemas, and download annotations, all programmatically in Python. All of the
-following label types are supported, for both image and video datasets:
+schemas, and download annotations using CVAT, all programmatically in Python.
+All of the following label types are supported, for both image and video
+datasets:
 
 - :ref:`Classifications <classification>`
 - :ref:`Detections <object-detection>`
@@ -49,9 +50,10 @@ following label types are supported, for both image and video datasets:
 Basic recipe
 ____________
 
-The basic workflow to use CVAT with your FiftyOne datasets is as follows:
+The basic workflow to use CVAT to add/edit/delete labels on your FiftyOne
+datasets is as follows:
 
-1) Load a :ref:`labeled or unlabeled dataset<loading-datasets>` into FiftyOne
+1) Load a :ref:`labeled or unlabeled dataset <loading-datasets>` into FiftyOne
 
 2) Explore the dataset using the :ref:`App <fiftyone-app>` or
    :ref:`dataset views <using-views>` to locate either unlabeled samples that
@@ -71,8 +73,18 @@ The basic workflow to use CVAT with your FiftyOne datasets is as follows:
 6) If desired, delete the CVAT tasks and the record of the annotation run from
    your FiftyOne dataset
 
-The example below demonstrates this workflow. First, we create the annotation
-tasks in CVAT:
+The example below demonstrates this workflow.
+
+.. note::
+
+    You must create an account at `cvat.org <https://cvat.org>`_ in order to
+    run this example.
+
+    Note that you can store your credentials as described in
+    :ref:`this section <cvat-setup>` to avoid entering them manually each time
+    you interact with CVAT.
+
+First, we create the annotation tasks in CVAT:
 
 .. code-block:: python
     :linenos:
@@ -155,48 +167,20 @@ FiftyOne:
 Setup
 _____
 
-Server URL
-----------
-
 FiftyOne supports both `cvat.org <https://cvat.org>`_ and self-hosted CVAT
 servers.
 
-When using
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, the
-following attributes allow you to define the configuration of your CVAT server:
-
-- `url`: the base URL of the CVAT server (e.g., `https://cvat.org` or
-  `localhost`)
-
-Alternatively, you can set the `FIFTYONE_CVAT_URL` environment variable or
-store it in your annotation config at `~/.fiftyone/annotation_config.json` in
-order to avoid providing this parameter each time you call
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
-
 The easiest way to get started is to use the default server
 `cvat.org <https://cvat.org>`_, which simply requires creating an account and
-providing the credentials as shown in the following section.
+then providing your authentication credentials as shown below.
 
 Authentication
 --------------
 
-In order to connect to a CVAT server, you must provide your username and
-password credentials. This can be done in any of the following ways:
+In order to connect to a CVAT server, you must provide your `username` and
+`password` credentials, which can be done in a variety of ways.
 
-1) **(Recommended)** Store your login credentials in environment variables
-
-2) Enter your login credentials interactively in your shell each time you call
-   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
-   :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-
-3) Pass your credentials as keyword arguments to
-   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
-   :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-
-4) Store your login credentials in your FiftyOne annotation config
-
-1. Environment variables
-~~~~~~~~~~~~~~~~~~~~~~~~
+** (Recommended) Environment variables **
 
 The recommended way to configure your CVAT login credentials is to store them
 in the `FIFTYONE_CVAT_USERNAME` and `FIFTYONE_CVAT_PASSWORD` environment
@@ -208,12 +192,53 @@ to CVAT is made.
     export FIFTYONE_CVAT_USERNAME=...
     export FIFTYONE_CVAT_PASSWORD=...
 
-2. Command line prompt
-~~~~~~~~~~~~~~~~~~~~~~
+**FiftyOne annotation config**
+
+You can also store your credentials in your
+:ref:`annotation config <annotation-config>` located at
+`~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "backends": {
+            "cvat": {
+                "username": ...,
+                "password": ...
+            }
+        }
+    }
+
+Note that this file will not exist until you create it.
+
+.. warning::
+
+    Storing your username and password in plain text on disk is generally not
+    recommended. Consider using environment variables instead.
+
+**Keyword arguments**
+
+You can manually provide your login credentials as keyword arguments each time
+you call methods like
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+that require connections to CVAT:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        username=...,
+        password=...,
+    )
+
+**Command line prompt**
 
 If you have not stored your login credentials via another method, you will be
-prompted to enter them interactively in your shell each time you call
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+prompted to enter them interactively in your shell each time you call a method
+that requires a connection to CVAT:
 
 .. code:: python
     :linenos:
@@ -227,41 +252,45 @@ prompted to enter them interactively in your shell each time you call
     Username: ...
     Password: ...
 
-3. Keyword arguments
-~~~~~~~~~~~~~~~~~~~~
+Self-hosted servers
+-------------------
 
-You can provide your login credentials at runtime as keyword arguments via the
-`auth` parameter of
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+If you wish to use a self-hosted server, you can configure the URL of your
+server (e.g., `localhost`) in any of the following ways:
 
-.. code:: python
-    :linenos:
+-   Set the `FIFTYONE_CVAT_URL` environment variable
 
-    dataset.annotate(
-        anno_key,
-        label_field="ground_truth",
-        username=...,
-        password=...,
-    )
+.. code-block:: shell
 
-4. FiftyOne annotation config
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    export FIFTYONE_CVAT_URL=...
 
-You can store any CVAT configuration setting or credentials in your FiftyOne
-annotation config located at `~/.fiftyone/annotation_config.json`:
+-   Store the `url` of your server in your
+    :ref:`annotation config <annotation-config>` at
+    `~/.fiftyone/annotation_config.json`:
 
 .. code-block:: text
 
     {
-        "cvat_url": "localhost",
-        "cvat_username": ...,
-        "cvat_password": ...,
+        "backends": {
+            "cvat": {
+                "url": "localhost"
+            }
+        }
     }
 
-.. warning:
+-   Pass the `url` parameter manually each time you call
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 
-    Storing your username and password in plain text on disk is generally not
-    recommended. Consider using environment variables instead.
+.. code:: python
+    :linenos:
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        url="localshot",
+        username=...,
+        password=...,
+    )
 
 .. _annotation:
 
@@ -273,10 +302,16 @@ Use the
 to send the samples and optionally existing labels in a |Dataset| or
 |DatasetView| to CVAT for annotation.
 
-You must provide a unique `anno_key` string argument to each call to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`. This
-key serves as the identifier for an annotation run, and you will provide it to
-methods like
+The basic syntax is:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+    view.annotate(anno_key, ...)
+
+The `anno_key` argument defines a unique identifier for the annotation run, and
+you will provide it to methods like
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
 :meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.load_annotations>`,
 :meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`, and
@@ -306,45 +341,56 @@ that you wish to be performed.
 
 The following parameters are supported by all annotation backends:
 
-- `backend`: the annotation backend to use. Use `"cvat"` for the CVAT backend
-- `media_field`: (`"filepath"`) the sample field containing the path to the
-  source media to upload
-- `launch_editor`: whether to launch the annotation backend's editor after
-  uploading the samples
+-   **backend** (*None*): the annotation backend to use. Use `"cvat"` for the
+    CVAT backend. The supported values are
+    `fiftyone.annotation_config.backends.keys()` and the default is
+    `fiftyone.annotation_config.default_backend`
+-   **media_field** (*"filepath"*): the sample field containing the path to the
+    source media to upload
+-   **launch_editor** (*False*): whether to launch the annotation backend's
+    editor after uploading the samples
 
 **Label schema**
 
 The following parameters allow you to configure the labeling schema to use for
 your annotation tasks. See :ref:`this section <label-schema>` for more details:
 
-- `label_schema`: the complete dictionary description of the annotation schema
-  to use
-- `label_field`: the name of a single label field to upload or create
-- `label_type`: if `label_field` is used to create a new field, this specifies
-  the type of field to create. Supported values are (`classification`,
-  `classifications`, `detections`, `keypoints`, `polylines`, `scalar`). If
-  provided, this will be the default type for any label fields in
-  `label_schema` whose types are not otherwise specified
-- `classes`: a list of classes to upload or create when `label_field` is given.
-  If provided, this will be used to define the classes list for any label
-  fields in `label_schema` that do not otherwise have class lists specified
-- `attributes`: a list of label attributes to upload or create when
-  `label_field` is given, or a dict mapping attribute names to the type of
-  annotation widget to use (e.g., `text`, `select`, etc). If provided, this
-  will define the default attributes for any label fields in `label_schema`
-  that do not otherwise have their attributes specified
+-   **label_schema** (*None*): a dictionary defining the label schema to use.
+    If this argument is provided, it takes precedence over `label_field` and
+    `label_type`
+-   **label_field** (*None*): a string indicating either a new or existing
+    label field to annotate
+-   **label_type** (*None*): a string indicating the type of labels to expect
+    when creating a new `label_field`. Supported values are
+    `("classification", "classifications", "detections", "polylines", "keypoints", "scalar")`
+-   **classes** (*None*): a list of strings indicating the class options for
+    either `label_field` or all fields in `label_schema` without classes
+    specified. All new label fields must have a class list provided via one of
+    the supported methods. For existing label fields, if classes are not
+    provided by this argument nor `label_schema`, they are parsed from
+    :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
+    :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+-   **attributes** (*True*): specifies the label attributes of each label field
+    to include (other than their `label`, which is always included) in the
+    annotation export. Can be any of the following:
+
+    -   `True`: export all label attributes
+    -   `False`: don't export any custom label attributes
+    -   a list of label attributes to export
+    -   a dict mapping attribute names to dicts specifying the `type`,
+        `values`, and `default` for each attribute
 
 **Backend-specific arguments**
 
 The following CVAT-specific parameters can also be provided:
 
-- `segment_size`: the maximum number of images to upload per job. Not
-  applicable to videos
-- `image_quality`: an int in `[0, 100]` determining the image quality to upload
-  to CVAT
-- `task_assignee`: a username to assign the generated tasks
-- `job_assignees`: a list of usernames to assign jobs
-- `job_reviewers`: a list of usernames to assign job reviews
+-   **segment_size** (*None*): the maximum number of images to upload per job.
+    Not applicable to videos
+-   **image_quality** (*75*): an int in `[0, 100]` determining the image
+    quality to upload to CVAT
+-   **task_assignee** (*None*): a username to assign the generated tasks
+-   **job_assignees** (*None*): a list of usernames to assign jobs
+-   **job_reviewers** (*None*): a list of usernames to assign job reviews
 
 .. _label-schema:
 
@@ -434,23 +480,25 @@ to specify the components of the label schema individually:
         attributes=attributes,
     )
 
-When you are annotating existing label fields, you can omit some of this
-information, as FiftyOne can infer the appropriate values to use:
+When you are annotating existing label fields, you can omit some of these
+parameters from
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, as
+FiftyOne can infer the appropriate values to use:
 
--   ``label_type``: if omitted, the |Label| type of the field will be used to
-    infer the appropriate value for this field
--   ``classes``: if omitted, the class lists from the
+-   **label_type**: if omitted, the |Label| type of the field will be used to
+    infer the appropriate value for this parameter
+-   **classes**: if omitted, the class lists from the
     :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    properties of your dataset will be used if available. Otherwise, the observed
-    labels on your dataset will be used as a classes list
+    properties of your dataset will be used, if available. Otherwise, the
+    observed labels on your dataset will be used to construct a classes list
 
 Label attributes
 ~~~~~~~~~~~~~~~~
 
-The ``attributes`` parameter (or key in ``label_schema``) allows you to
-configure whether :ref:`custom attributes <label-attributes>` beyond the
-default ``label`` attribute are included in the annotation tasks.
+The `attributes` parameter allows you to configure whether
+:ref:`custom attributes <label-attributes>` beyond the default `label`
+attribute are included in the annotation tasks.
 
 When adding new label fields for which you want to include attributes, you must
 use the dictionary syntax demonstrated below to define the schema of each
@@ -485,26 +533,26 @@ attribute that you wish to label:
     )
 
 You can always omit this parameter if you do not require attributes beyond the
-default ``label``.
+default `label`.
 
-For CVAT, the following ``type`` values are supported:
+For CVAT, the following `type` values are supported:
 
 -   `text`: a free-form text box. In this case, `default` is optional and
     `values` is unused
--   `select`: a multiselect checkbox UI. In this case, `values` is required and
+-   `select`: a selection dropdown. In this case, `values` is required and
     `default` is optional
--   `checkbox`: a checkbox UI. In this case, `default` is optional and `values`
-    is unused
--   `radio`: a radio button. In this case, `values` is required and `default`
-    is optional
+-   `radio`: a radio button list UI. In this case, `values` is required and
+    `default` is optional
+-   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
+    `values` is unused
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
 
--   ``True`` (default): export all custom attributes observed on the existing
-    labels, using their observed values to determine the appropriate ``type``,
-    ``values``, and ``default`` to use for the annotation tasks
--   ``False``: do not include any custom attributes in the export
+-   `True` (default): export all custom attributes observed on the existing
+    labels, using their observed values to determine the appropriate UI type
+    and possible values, if applicable
+-   `False`: do not include any custom attributes in the export
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 

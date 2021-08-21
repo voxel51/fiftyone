@@ -289,7 +289,7 @@ class AnnotationConfig(EnvConfig):
         self.default_backend = self.parse_string(
             d,
             "default_backend",
-            env_var="FIFTYONE_DEFAULT_BACKEND",
+            env_var="FIFTYONE_ANNOTATION_DEFAULT_BACKEND",
             default="cvat",
         )
 

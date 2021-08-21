@@ -441,9 +441,8 @@ as per the order of precedence described above.
 Setting App environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne App config settings may be customized on a per-session basis by
-setting the `FIFTYONE_APP_XXX` environment variable(s) for the desired App
-config settings.
+App config settings may be customized on a per-session basis by setting the
+`FIFTYONE_APP_XXX` environment variable(s) for the desired App config settings.
 
 When `fiftyone` is imported, all App config environment variables are applied,
 as per the order of precedence described above.
