@@ -124,6 +124,9 @@ class _HasAttributes(Label):
     def iter_attributes(self):
         """Returns an iterator over the custom attributes of the label.
 
+        Attribute may either exist in the :attr:`attributes` dict or as dynamic
+        attributes.
+
         Returns:
             a generator that emits ``(name, value)`` tuples
         """
@@ -139,7 +142,7 @@ class _HasAttributes(Label):
         name.
 
         The specified attribute may either exist in the :attr:`attributes` dict
-        or as a dynamic instance attribute.
+        or as a dynamic attribute.
 
         Args:
             name: the attribute name
@@ -154,11 +157,11 @@ class _HasAttributes(Label):
         """Gets the value of the attribute with the given name.
 
         The specified attribute may either exist in the :attr:`attributes` dict
-        or as a dynamic instance attribute.
+        or as a dynamic attribute.
 
         Args:
             name: the attribute name
-            default (no_default): the default value to return if the attribute
+            default (no_default): a default value to return if the attribute
                 does not exist. Can be ``None``
 
         Returns:
@@ -185,6 +188,43 @@ class _HasAttributes(Label):
         raise AttributeError(
             "%s has no attribute '%s'" % (self.__class__.__name__, name)
         )
+
+    def set_attribute_value(self, name, value):
+        """Sets the value of the attribute with the given name.
+
+        If the specified attribute already exists in the :attr:`attributes`
+        dict, its value is updated there. Otherwise, the attribute is
+        set as a dynamic attribute.
+
+        Args:
+            name: the attribute name
+            value: the value
+        """
+        # pylint: disable=unsupported-membership-test
+        if name in self.attributes:
+            # pylint: disable=unsubscriptable-object
+            self.attributes[name].value = value
+        else:
+            setattr(self, name, value)
+
+    def delete_attribute(self, name):
+        """Deletes the attribute with the given name.
+
+        The specified attribute may either exist in the :attr:`attributes` dict
+        or as a dynamic attribute.
+
+        Args:
+            name: the attribute name
+
+        Raises:
+            AttributeError: if the attribute does not exist
+        """
+        # pylint: disable=unsupported-membership-test
+        if name in self.attributes:
+            # pylint: disable=unsupported-delete-operation
+            del self.attributes[name]
+        else:
+            delattr(self, name)
 
 
 class _HasID(Label):
