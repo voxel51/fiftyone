@@ -7,8 +7,7 @@ CVAT Integration
 
 `CVAT <https://github.com/openvinotoolkit/cvat>`_ is one of the most popular
 open-source image and video annotation tools available, and we've made it easy
-to upload your data and labels directly from FiftyOne to CVAT to create,
-delete, and modify annotations.
+to upload your data directly from FiftyOne to CVAT to add or edit labels.
 
 You can use CVAT either through the demo server at
 `cvat.org <https://cvat.org>`_ or through a
@@ -41,7 +40,7 @@ datasets:
 
 .. note::
 
-    Check out :doc:`this tutorial </tutorials/fixing_annotations>` to see how
+    Check out :doc:`this tutorial </tutorials/cvat_annotation>` to see how
     you can use FiftyOne to upload your data to CVAT to create, delete, and fix
     annotations.
 
@@ -50,8 +49,8 @@ datasets:
 Basic recipe
 ____________
 
-The basic workflow to use CVAT to add/edit/delete labels on your FiftyOne
-datasets is as follows:
+The basic workflow to use CVAT to add or edit labels on your FiftyOne datasets
+is as follows:
 
 1) Load a :ref:`labeled or unlabeled dataset <loading-datasets>` into FiftyOne
 
@@ -62,15 +61,13 @@ datasets is as follows:
 3) Use the
    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
    method on your dataset or view to upload the samples and optionally their
-   existing labels to CVAT. See
-   :ref:`this section <cvat-requesting-annotations>` for more information about
-   using this method.
+   existing labels to CVAT
 
-4) In CVAT, perform the necessary annotation work and save the tasks
+4) In CVAT, perform the necessary annotation work
 
 5) Back in FiftyOne, load your dataset and use the
    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-   method to merge the annotations from CVAT back into your FiftyOne dataset
+   method to merge the annotations back into your FiftyOne dataset
 
 6) If desired, delete the CVAT tasks and the record of the annotation run from
    your FiftyOne dataset
@@ -255,6 +252,8 @@ that requires a connection to CVAT:
     Username: ...
     Password: ...
 
+.. _cvat-self-hosted-server:
+
 Self-hosted servers
 -------------------
 
@@ -340,8 +339,6 @@ In addition,
 provides various parameters that you can use to customize the annotation tasks
 that you wish to be performed.
 
-**General parameters**
-
 The following parameters are supported by all annotation backends:
 
 -   **backend** (*None*): the annotation backend to use. Use `"cvat"` for the
@@ -352,8 +349,6 @@ The following parameters are supported by all annotation backends:
     source media to upload
 -   **launch_editor** (*False*): whether to launch the annotation backend's
     editor after uploading the samples
-
-**Label schema**
 
 The following parameters allow you to configure the labeling schema to use for
 your annotation tasks. See :ref:`this section <cvat-label-schema>` for more
@@ -384,9 +379,9 @@ details:
     -   a dict mapping attribute names to dicts specifying the `type`,
         `values`, and `default` for each attribute
 
-**Backend-specific arguments**
-
-The following CVAT-specific parameters can also be provided:
+In addition, the following CVAT-specific parameters from
+:class:`CVATBackendConfig <fiftyone.utils.cvat.CVATBackendConfig>` can also be
+provided:
 
 -   **segment_size** (*None*): the maximum number of images to upload per job.
     Not applicable to videos
@@ -497,8 +492,10 @@ FiftyOne can infer the appropriate values to use:
     properties of your dataset will be used, if available. Otherwise, the
     observed labels on your dataset will be used to construct a classes list
 
+.. _cvat-label-attributes:
+
 Label attributes
-~~~~~~~~~~~~~~~~
+----------------
 
 The `attributes` parameter allows you to configure whether
 :ref:`custom attributes <label-attributes>` beyond the default `label`

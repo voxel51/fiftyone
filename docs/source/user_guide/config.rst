@@ -222,8 +222,6 @@ Any changes to your FiftyOne config applied via this manner will immediately
 take effect for all subsequent calls to `fiftyone.config` during your current
 session.
 
-For example, you can customize your FiftyOne config at runtime as follows:
-
 .. code-block:: python
     :linenos:
 
@@ -470,8 +468,6 @@ You can dynamically modify your App config at runtime by editing the
 Any changes to your App config applied via this manner will immediately
 take effect for all subsequent calls to `fiftyone.app_config` during your
 current session.
-
-For example, you can customize your App config at runtime as follows:
 
 .. code-block:: python
     :linenos:
