@@ -549,8 +549,6 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
                 results.id_map, added_id_map, label_field,
             )
 
-        samples.reload()
-
     # Store the id map updates in the database
     backend.save_run_results(samples, anno_key, results)
 
