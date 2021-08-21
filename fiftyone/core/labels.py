@@ -1291,7 +1291,7 @@ class Segmentation(ImageLabel, _HasID):
         return cls(mask=mask)
 
 
-class GeoLocation(ImageLabel, _HasID):
+class GeoLocation(_HasID, Label):
     """Location data in GeoJSON format.
 
     Args:
@@ -1340,7 +1340,7 @@ class GeoLocation(ImageLabel, _HasID):
         return cls(point=point, line=line, polygon=polygon)
 
 
-class GeoLocations(ImageLabel, _HasID):
+class GeoLocations(_HasID, Label):
     """A batch of location data in GeoJSON format.
 
     The attributes of this class accept lists of data in the format of the

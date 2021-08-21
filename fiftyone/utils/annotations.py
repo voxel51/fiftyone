@@ -553,7 +553,7 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
 
 
 def _get_tracking_index_map(samples, label_field, annotations):
-    """Maps the object tracking indices of incoming annotations to existing 
+    """Maps the object tracking indices of incoming annotations to existing
     indices for every sample. Also finds the absolute maximum index that is
     then used to assign new indices if needed in the future.
 
