@@ -70,10 +70,12 @@ except ImportError:
     FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
 
 DEFAULT_DATABASE = "fiftyone"
-DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
+DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var", "lib", "mongo")
 MIGRATIONS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "migrations")
 MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
-MIGRATIONS_REVISIONS_DIR = os.path.join(FIFTYONE_DIR, "migrations/revisions")
+MIGRATIONS_REVISIONS_DIR = os.path.join(
+    FIFTYONE_DIR, "migrations", "revisions"
+)
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
