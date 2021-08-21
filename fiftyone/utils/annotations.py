@@ -162,7 +162,7 @@ def _add_new_labels(
     else:
         is_list = False
 
-    samples = samples.select_fields([label_field])
+    samples = samples.select_fields([])
     logger.info("Adding labels for '%s'..." % label_field)
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
@@ -1119,6 +1119,8 @@ def _get_label_attributes(samples, backend, label_field):
     for label in labels:
         for name, _ in label.iter_attributes():
             if name not in attributes:
+                if name in label.attributes:
+                    name = "attribute:" + name
                 attributes[name] = {"type": backend.default_attr_type}
 
     return attributes
