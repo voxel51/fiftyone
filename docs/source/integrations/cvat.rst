@@ -75,6 +75,7 @@ datasets is as follows:
 6) If desired, delete the CVAT tasks and the record of the annotation run from
    your FiftyOne dataset
 
+|br|
 The example below demonstrates this workflow.
 
 .. note::
@@ -705,6 +706,7 @@ by simply passing the name of the field via the `label_field` parameter of
    :alt: cvat-example
    :align: center
 
+|br|
 The above code snippet will infer the possible classes and label attributes
 from your FiftyOne dataset. However, the `classes` and `attributes` parameters
 can be used to annotate new classes and/or attributes:

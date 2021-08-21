@@ -433,6 +433,7 @@ select some samples in the App:
     :alt: app-selection
     :align: center
 
+|br|
 The selected samples checkmark in the options row in the upper-left corner of
 the sample grid records the number of samples that you have currently selected.
 You can also take actions such as updating the view to only show (or exclude)
@@ -477,6 +478,7 @@ in the App. Then click on individual labels to select them:
     :alt: app-label-selection
     :align: center
 
+|br|
 Selected labels will appear with dotted lines around them. The example above
 shows selecting an object detection, but classifications, polygons, polylines,
 segmentations, and keypoints can be selected as well.
@@ -559,6 +561,7 @@ You can also use the tag menu to remove existing tags.
     :alt: app-tagging-samples
     :align: center
 
+|br|
 The App also supports tagging data in individual samples when you have opened
 the expanded sample view by clicking on a sample. The tag icon is located in
 the top-right corner of the modal.
@@ -575,6 +578,7 @@ the top-right corner of the modal.
     :alt: app-tagging-expanded
     :align: center
 
+|br|
 If your dataset has sample or label tags, you can use the ``SAMPLE TAGS`` and
 ``LABEL TAGS`` sections of the filters sidebar to filter by your tags.
 
@@ -624,6 +628,7 @@ expanded sample view.
     :alt: object-patches
     :align: center
 
+|br|
 You can interact with object patches views in the App just like you would with
 any other view, including:
 
@@ -677,6 +682,7 @@ expanded sample view.
     :alt: evaluation-patches
     :align: center
 
+|br|
 You can interact with evaluation patches views in the App just like you would
 with any other view, including:
 
@@ -777,6 +783,7 @@ similarity (``reverse``).
     :alt: object-similarity
     :align: center
 
+|br|
 You can also sort by visual similarity to an object from the expanded sample
 view in the App by selecting an object and then using the similarity menu that
 appears in the upper-right corner of the modal:

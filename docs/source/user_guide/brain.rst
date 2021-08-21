@@ -234,6 +234,7 @@ Each block in the example code below denotes a separate cell in a
    :alt: visualization
    :align: center
 
+|br|
 The GIF shows the variety of insights that are revealed by running this simple
 protocol:
 
@@ -328,6 +329,7 @@ order of least similarity (``reverse``):
    :alt: image-similarity
    :align: center
 
+|br|
 Alternatively, you can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to programmatically :ref:`construct a view <using-views>` that
@@ -417,6 +419,7 @@ return (``k``) and whether to sort in order of least similarity (``reverse``):
    :alt: object-similarity
    :align: center
 
+|br|
 Alternatively, you can directly use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to programmatically :ref:`construct a view <using-views>` that
