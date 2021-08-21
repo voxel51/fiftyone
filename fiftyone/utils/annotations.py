@@ -464,7 +464,7 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
             )
 
     # Update id map for loading future annotations
-    results.id_map = results.backend.build_label_id_map(samples)
+    # results.id_map = results.backend.update_label_id_map(samples)
 
     if cleanup:
         results.cleanup()
@@ -635,6 +635,8 @@ class AnnotationBackend(foa.AnnotationRun):
             id_map[label_field] = dict(zip(sample_ids, label_ids))
 
         return id_map
+
+    # def update_label_id_map(self, samples, id_map, id_map_updates):
 
     def get_fields(self, samples, anno_key):
         return list(self.config.label_schema.keys())
@@ -1123,8 +1125,6 @@ def _get_label_attributes(samples, backend, label_field):
     for label in labels:
         for name, _ in label.iter_attributes():
             if name not in attributes:
-                if name in label.attributes:
-                    name = "attribute:" + name
                 attributes[name] = {"type": backend.default_attr_type}
 
     return attributes
