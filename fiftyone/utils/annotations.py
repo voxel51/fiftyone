@@ -217,17 +217,20 @@ def _merge_existing_labels(
         if ids is None:
             continue
 
-        if len(ids) > 0 and type(ids[0]) == list:
-            for frame_ids in ids:
-                prev_label_ids.extend(frame_ids)
+        if isinstance(ids, list):
+            if len(ids) > 0 and isinstance(ids[0], list):
+                for frame_ids in ids:
+                    prev_label_ids.extend(frame_ids)
+            else:
+                prev_label_ids.extend(ids)
         else:
-            prev_label_ids.extend(ids)
+            prev_label_ids.append(ids)
 
     prev_ids = set(prev_label_ids)
     ann_ids = set(annotation_label_ids)
     deleted_labels = prev_ids - ann_ids
     added_labels = ann_ids - prev_ids
-    labels_to_merge = ann_ids - deleted_labels - added_labels
+    labels_to_merge = ann_ids - added_labels
 
     # Remove deleted labels
     deleted_view = samples.select_labels(ids=list(deleted_labels))
@@ -242,6 +245,13 @@ def _merge_existing_labels(
         max_tracking_index = 0
 
     # Add or merge remaining labels
+    fo_label_type = _LABEL_TYPES_MAP[label_type]
+    if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+        is_list = True
+        list_field = fo_label_type._LABEL_LIST_FIELD
+    else:
+        is_list = False
+
     annotated_samples = samples._dataset.select(sample_ids).select_fields(
         [label_field]
     )
@@ -267,17 +277,44 @@ def _merge_existing_labels(
                 else:
                     image_annots = sample_annots
 
-                has_label_list = False
                 image_label = image[formatted_label_field]
 
                 if image_label is None:
                     # A previously unlabeled image is being labeled
                     # Or a singular label was deleted (e.g. classification)
                     # either in CVAT or FiftyOne
-                    # TODO
 
-                    # Update added_id_map, for singular labels adds list for
-                    # videos for each frame
+                    if is_list:
+                        new_label = fo_label_type()
+                        new_label[list_field] = list(image_annots.values())
+                        image[formatted_label_field] = new_label
+
+                        new_label_ids = list(image_annots.keys())
+                        if sample_id not in added_id_map:
+                            added_id_map[sample_id] = []
+
+                        added_id_map[sample_id].extend(new_label_ids)
+                    else:
+                        # Singular label, check if any annotations are new, set
+                        # the field to the first annotation if it exists
+                        for (
+                            annot_label_id,
+                            annot_label,
+                        ) in image_annots.items():
+                            if annot_label_id in added_labels:
+                                image[formatted_label_field] = annot_label
+
+                                if is_video:
+                                    if sample_id not in added_id_map:
+                                        added_id_map[sample_id] = []
+                                    added_id_map[sample_id].append(
+                                        annot_label_id
+                                    )
+                                else:
+                                    added_id_map[sample_id] = annot_label_id
+
+                                break
+
                     continue
 
                 if isinstance(image_label, fol._HasLabelList):
@@ -285,6 +322,7 @@ def _merge_existing_labels(
                     list_field = image_label._LABEL_LIST_FIELD
                     labels = image_label[list_field]
                 else:
+                    has_label_list = False
                     labels = [image_label]
 
                 # Merge label or labels that existed before and after
@@ -714,7 +752,7 @@ class AnnotationBackend(foa.AnnotationRun):
                 if id_map[label_field][sample_id] is None:
                     id_map[label_field][sample_id] = []
 
-                id_map[label_field][sample_id] += label_ids
+                id_map[label_field][sample_id].extend(label_ids)
 
             elif label_ids is not None:
                 # Set a single label id instead of list
