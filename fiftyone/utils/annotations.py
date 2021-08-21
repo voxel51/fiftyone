@@ -427,22 +427,23 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
     label_schema = results.config.label_schema
     for label_field in label_schema:
         annotation_results = annotations.get(label_field, {})
-        if not annotation_results:
-            logger.info("No annotations found for field '%s'", label_field)
-            continue
 
         label_info = label_schema[label_field]
         label_type = label_info["type"]
         existing_field = label_info["existing_field"]
 
-        fo_label_type = _LABEL_TYPES_MAP[label_type]
-        if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
-            is_list = True
-            list_field = fo_label_type._LABEL_LIST_FIELD
-            label_type_list = label_type
-        else:
+        if label_type == "scalar":
             is_list = False
-            label_type_list = _LABEL_TYPES_LIST_MAP[label_type]
+            label_type_list = "scalar"
+        else:
+            fo_label_type = _LABEL_TYPES_MAP[label_type]
+            if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+                is_list = True
+                list_field = fo_label_type._LABEL_LIST_FIELD
+                label_type_list = label_type
+            else:
+                is_list = False
+                label_type_list = _LABEL_TYPES_LIST_MAP[label_type]
 
         #
         # First add unexpected labels to new fields
@@ -460,10 +461,10 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
             while True:
                 frame_fields = samples.get_frame_field_schema() or []
                 fields = samples.get_field_schema() or []
-                existing_field = (
+                is_existing_field = (
                     new_field_name in frame_fields or new_field_name in fields
                 )
-                if existing_field:
+                if is_existing_field:
                     new_field_name = input(
                         "\nField '%s' already exists.\nPlease enter a new "
                         "field name in which to store these annotations, "
@@ -495,13 +496,13 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
         #
         # Now import expected labels into their appropriate fields
         #
-        annotation_results = annotation_results[label_type_list]
+        annotation_results = annotation_results.get(label_type_list, {})
 
         formatted_label_field = label_field
         if is_video and label_field.startswith("frames."):
             formatted_label_field = label_field[len("frames.") :]
 
-        if not isinstance(list(annotation_results.values())[0], dict):
+        if label_type == "scalar":
             # Only setting top-level sample or frame field, label parsing is
             # not required
             logger.info("Adding labels for '%s'..." % formatted_label_field)
@@ -521,6 +522,9 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
                         sample.save()
 
         elif not existing_field:
+            if not annotation_results:
+                logger.info("No annotations found for field '%s'", label_field)
+                continue
             _add_new_labels(
                 samples,
                 annotation_results,
@@ -544,6 +548,8 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
             results.id_map = results.backend.update_label_id_map(
                 results.id_map, added_id_map, label_field,
             )
+
+        samples.reload()
 
     # Store the id map updates in the database
     backend.save_run_results(samples, anno_key, results)
