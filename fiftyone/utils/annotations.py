@@ -310,7 +310,14 @@ def _merge_existing_labels(
                             ):
                                 pass
                             else:
-                                label[field] = annot_label[field]
+                                if field == "attributes":
+                                    for (
+                                        attr,
+                                        val,
+                                    ) in annot_label.attributes.items():
+                                        label.attributes[attr] = val
+                                else:
+                                    label[field] = annot_label[field]
 
                 # Add new labels for label list fields only
                 # Non-list fields would have been deleted and replaced above
