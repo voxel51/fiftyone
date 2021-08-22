@@ -192,8 +192,11 @@ class DatasetDocument(Document):
     sample_collection_name = StringField(unique=True, required=True)
     persistent = BooleanField(default=False)
     info = DictField()
-    evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    annotation_runs = DictField(
+        EmbeddedDocumentField(document_type=RunDocument)
+    )
     brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )

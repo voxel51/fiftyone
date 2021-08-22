@@ -54,13 +54,14 @@ on the cards below to see how!
     :image: ../_static/images/integrations/coco.png
     :tags: Dataset,Model-Evaluation
 
-.. Upcoming integrations :)
+.. customcarditem::
+    :header: CVAT
+    :description: Use our CVAT integration to easily annotate and edit your FiftyOne datasets.
+    :link: cvat.html
+    :image: ../_static/images/integrations/cvat.png
+    :tags: Annotation
 
-    .. customcarditem::
-        :header: CVAT
-        :description: Use our CVAT integration to easily annotate and edit your FiftyOne datasets.
-        :link: ../user_guide/dataset_creation/datasets.html#cvatimagedataset
-        :tags: Annotation
+.. Upcoming integrations :)
 
     .. customcarditem::
         :header: Labelbox
@@ -97,3 +98,4 @@ on the cards below to see how!
     Lightning Flash <lightning_flash.rst>
     Open Images <open_images.rst>
     COCO <coco.rst>
+    CVAT <cvat.rst>
