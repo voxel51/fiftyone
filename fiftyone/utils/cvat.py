@@ -2493,7 +2493,7 @@ class CVATBackend(foua.AnnotationBackend):
 
     @property
     def supported_attr_types(self):
-        return {"text", "select", "radio", "checkbox"}
+        return {"text", "select", "checkbox", "radio"}
 
     @property
     def default_attr_type(self):
@@ -3260,7 +3260,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 annot_tags = []
                 annot_shapes = []
                 annot_tracks = []
-                id_mapping = self._create_id_mapping(samples)
+                id_mapping = self._create_id_mapping(batch_samples)
 
                 if is_existing_field:
                     if is_video and label_type in [
@@ -3341,7 +3341,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         ]
 
                 task_name = "FiftyOne_%s_%s" % (
-                    samples._root_dataset.name.replace(" ", "_"),
+                    batch_samples._root_dataset.name.replace(" ", "_"),
                     label_field.replace(" ", "_"),
                 )
 
@@ -3439,7 +3439,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 through an attribute with a text input box named "value"
 
         Returns:
-            the label results dict
+            a tuple of
+
+            -   **results**: a dictionary mapping every label field, label
+                type, sample id, frame id
         """
         results = {}
 
@@ -3465,6 +3468,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     [(i["name"], i["id"]) for i in label["attributes"]]
                 )
 
+            if task_json["data_original_chunk_type"] == "video":
+                media_type = "video"
+            else:
+                media_type = "image"
+
             response = self.get(self.task_annotation_url(task_id))
             resp_json = response.json()
             shapes = resp_json["shapes"]
@@ -3477,7 +3485,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Parse annotations into FiftyOne labels
             label_field_results = {}
 
-            tag_results = self._parse_shapes_or_tags(
+            tag_results = self._parse_shapes_tags(
                 "tags",
                 tags,
                 frame_id_map[task_id],
@@ -3489,9 +3497,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field, False
                 ),
             )
-            _merge_results(label_field_results, tag_results)
+            label_field_results = self._merge_results(
+                label_field_results, tag_results
+            )
 
-            shape_results = self._parse_shapes_or_tags(
+            shape_results = self._parse_shapes_tags(
                 "shapes",
                 shapes,
                 frame_id_map[task_id],
@@ -3503,11 +3513,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field, False
                 ),
             )
-            _merge_results(label_field_results, shape_results)
+            label_field_results = self._merge_results(
+                label_field_results, shape_results
+            )
 
             for track_index, track in enumerate(tracks):
-                track_shape_results = self._parse_shapes_or_tags(
-                    "shapes",
+                label_id = track["label_id"]
+                shapes = track["shapes"]
+                for shape in shapes:
+                    shape["label_id"] = label_id
+                track_shape_results = self._parse_shapes_tags(
+                    "track",
                     track["shapes"],
                     frame_id_map[task_id],
                     label_type,
@@ -3519,34 +3535,45 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     ),
                     track_index=track_index,
                 )
-                _merge_results(label_field_results, track_shape_results)
+                label_field_results = self._merge_results(
+                    label_field_results, track_shape_results
+                )
 
-            results[label_field] = label_field_results
+            results = self._merge_results(
+                results, {label_field: label_field_results}
+            )
 
         return results
 
-    def _parse_shapes_or_tags(
+    def _merge_results(self, results, new_results):
+        if isinstance(new_results, dict):
+            for key, val in new_results.items():
+                if key not in results:
+                    results[key] = val
+                else:
+                    results[key] = self._merge_results(results[key], val)
+
+        return results
+
+    def _parse_shapes_tags(
         self,
         annot_type,
         annots,
         frame_id_map,
-        expected_label_type,
+        label_type,
         class_map,
         attr_id_map,
         frames,
         assigned_scalar_attrs=False,
         track_index=None,
     ):
-        """Parses the shapes or tags from the given CVAT annotations into a
-        label results dict.
-
+        """
         Args:
-            annot_type: the type of annotations to parse ("shapes", "tags")
+            annot_type: the type of annotations to parse ("shapes", "tags", "track")
             annots: list of shapes or tags
-            frame_id_map: dict mapping CVAT frame ids to FiftyOne
+            frame_id_map: dict mapping CVAT frame ids to FiftyOne 
                 sample and frame uuids
-            expected_label_type: expected label type to parse from the given
-                annotations
+            label_type: expected label type to parse from the given annotations
             class_map: dict mapping CVAT class id to class name
             attr_id_map: dict mapping CVAT class id to a map of attr name to
                 attr id
@@ -3554,121 +3581,213 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             assign_scalar_attrs (False): boolean indicating whether scalars are
                 annotated as text field attributes or a dropdown of classes
             track_index (None): object index to assign to all shapes in `annots`
-
-        Returns:
-            a label results dict
         """
+        if annot_type not in ["shapes", "tags", "track"]:
+            raise ValueError(
+                "Annotation type %s is not in ('shapes', 'tags', 'track') "
+                "and cannot be parsed." % annot_type
+            )
         results = {}
         prev_type = None
+
+        # For filling in tracked objects
+        prev_frame = None
+        prev_outside = True
+        filled_annots = []
+
         for annot in annots:
-            if "outside" in annot and annot["outside"]:
-                # If a tracked object is not in the frame, skip
-                continue
-
+            # Iterate through all keyframes in this track
+            # Fill in shapes for all frames between keyframes that are not
+            # outside of the frame
+            # For non-track annotation, this is skipped
             frame = annot["frame"]
-            if len(frames) > frame:
-                metadata = frames[frame]
+            if (
+                prev_frame is not None
+                and (frame - 1) > prev_frame
+                and not prev_outside
+            ):
+                # For tracks, fill in previous missing frames if shape was not
+                # outside
+                for f in range(prev_frame + 1, frame):
+                    filled_annot = deepcopy(prev_annot)
+                    filled_annot["frame"] = f
+                    filled_annots.append(filled_annot)
+
+            prev_annot = annot
+            prev_frame = frame
+            if "outside" in annot:
+                prev_outside = annot["outside"]
             else:
-                metadata = frames[0]
+                prev_outside = True
 
-            sample_id = frame_id_map[frame]["sample_id"]
-
-            if "frame_id" in frame_id_map[frame]:
-                store_frame = True
-                frame_id = frame_id_map[frame]["frame_id"]
-            else:
-                store_frame = False
-
-            label = None
-
-            if annot_type == "shapes":
-                shape_type = annot["type"]
-                if expected_label_type == "scalar" and assigned_scalar_attrs:
-                    # Shapes created with values, set class to value
-                    annot_attrs = annot["attributes"]
-                    class_val = False
-                    if len(annot_attrs) > 0 and "value" in annot_attrs[0]:
-                        class_val = annot_attrs[0]["value"]
-                        annot["attributes"] = []
-
-                cvat_shape = CVATShape(
-                    annot, class_map, attr_id_map, metadata, index=track_index
-                )
-                if shape_type == "rectangle":
-                    label_type = "detections"
-                    label = cvat_shape.to_detection()
-                elif shape_type == "polygon":
-                    label_type = "polylines"
-                    label = cvat_shape.to_polyline(closed=True, filled=True)
-                    if expected_label_type in ("detection", "detections"):
-                        label_type = "detections"
-                        label = cvat_shape.polyline_to_detection(label)
-                elif shape_type == "polyline":
-                    label_type = "polylines"
-                    label = cvat_shape.to_polyline()
-                elif shape_type == "points":
-                    label_type = "keypoints"
-                    label = cvat_shape.to_keypoint()
-
-                if expected_label_type == "scalar" and assigned_scalar_attrs:
-                    if class_val:
-                        # Shapes created with values, set class to value
-                        label.label = class_val
-
-            if annot_type == "tags":
-                if expected_label_type == "scalar":
-                    label_type = "scalar"
-                    if assigned_scalar_attrs:
-                        attrs = annot["attributes"]
-                        label = _parse_attribute(attrs[0]["value"])
-                        if (
-                            prev_type is not None
-                            and label is not None
-                            and type(label) != prev_type
-                        ):
-                            if prev_type == str:
-                                label = str(label)
-                            else:
-                                logger.warning(
-                                    "Skipping scalar '%s' that does not match "
-                                    "previous scalars of type %s",
-                                    label,
-                                    str(prev_type),
-                                )
-                                label = None
-                        else:
-                            prev_type = type(label)
-                    else:
-                        label = class_map[annot["label_id"]]
-                else:
-                    label_type = "classifications"
-                    cvat_tag = CVATTag(annot, class_map, attr_id_map)
-                    label = cvat_tag.to_classification()
-
-            if label is None:
+            if "outside" in annot and annot["outside"]:
+                # If a tracked object is not in the frame
                 continue
 
-            if label_type not in results:
-                results[label_type] = {}
+            results, prev_type = self._parse_annot_label(
+                annot,
+                results,
+                annot_type,
+                prev_type,
+                frame_id_map,
+                label_type,
+                class_map,
+                attr_id_map,
+                frames,
+                assigned_scalar_attrs=assigned_scalar_attrs,
+                track_index=track_index,
+            )
 
-            if sample_id not in results[label_type]:
-                results[label_type][sample_id] = {}
+        if (
+            prev_frame is not None
+            and prev_frame + 1 < len(frame_id_map)
+            and not prev_outside
+        ):
+            # The last track annotation goes to the end of the video, fill all
+            # remaining frames
+            for f in range(prev_frame + 1, len(frame_id_map)):
+                filled_annot = deepcopy(prev_annot)
+                filled_annot["frame"] = f
+                filled_annots.append(filled_annot)
 
-            if store_frame:
-                if frame_id not in results[label_type][sample_id]:
-                    results[label_type][sample_id][frame_id] = {}
-
-                if label_type == "scalar":
-                    results[label_type][sample_id][frame_id] = label
-                else:
-                    results[label_type][sample_id][frame_id][label.id] = label
-            else:
-                if label_type == "scalar":
-                    results[label_type][sample_id] = label
-                else:
-                    results[label_type][sample_id][label.id] = label
+        for annot in filled_annots:
+            # Go through and create labels for all of the non-key frames of
+            # this track
+            # This is skipped for non-track annotations
+            results, prev_type = self._parse_annot_label(
+                annot,
+                results,
+                annot_type,
+                prev_type,
+                frame_id_map,
+                label_type,
+                class_map,
+                attr_id_map,
+                frames,
+                assigned_scalar_attrs=assigned_scalar_attrs,
+                track_index=track_index,
+            )
 
         return results
+
+    def _parse_annot_label(
+        self,
+        annot,
+        results,
+        annot_type,
+        prev_type,
+        frame_id_map,
+        label_type,
+        class_map,
+        attr_id_map,
+        frames,
+        assigned_scalar_attrs=False,
+        track_index=None,
+    ):
+        frame = annot["frame"]
+        if len(frames) > frame:
+            metadata = frames[frame]
+        else:
+            metadata = frames[0]
+
+        sample_id = frame_id_map[frame]["sample_id"]
+        store_frame = False
+        if "frame_id" in frame_id_map[frame]:
+            store_frame = True
+            frame_id = frame_id_map[frame]["frame_id"]
+
+        label = None
+
+        if annot_type in ("shapes", "track"):
+            shape_type = annot["type"]
+            if label_type == "scalar" and assigned_scalar_attrs:
+                # Shapes created with values, set class to value
+                annot_attrs = annot["attributes"]
+                class_val = False
+                if len(annot_attrs) > 0 and "value" in annot_attrs[0]:
+                    class_val = annot_attrs[0]["value"]
+                    annot["attributes"] = []
+
+            cvat_shape = CVATShape(
+                annot, class_map, attr_id_map, metadata, index=track_index
+            )
+            if shape_type == "rectangle":
+                label = cvat_shape.to_detection()
+                field_type = "detections"
+            elif shape_type == "polygon":
+                label = cvat_shape.to_polyline(closed=True, filled=True)
+                field_type = "polylines"
+                if label_type in ("detections", "detection"):
+                    field_type = "detections"
+                    label = cvat_shape.polyline_to_detection(label)
+
+            elif shape_type == "polyline":
+                field_type = "polylines"
+                label = cvat_shape.to_polyline()
+            elif shape_type == "points":
+                field_type = "keypoints"
+                label = cvat_shape.to_keypoint()
+
+            if label_type == "scalar" and assigned_scalar_attrs:
+                if class_val and label is not None:
+                    # Shapes created with values, set class to value
+                    label.label = class_val
+
+        if annot_type == "tags":
+            if label_type == "scalar":
+                if assigned_scalar_attrs:
+                    attrs = annot["attributes"]
+                    label = _parse_attribute(attrs[0]["value"])
+                    if (
+                        prev_type is not None
+                        and label is not None
+                        and type(label) != prev_type
+                    ):
+                        if prev_type == str:
+                            label = str(label)
+                        else:
+                            logger.warning(
+                                "Skipping scalar '%s' that does not match "
+                                "previous scalars of type %s",
+                                label,
+                                str(prev_type),
+                            )
+                            label = None
+                    else:
+                        prev_type = type(label)
+                else:
+                    label = class_map[annot["label_id"]]
+                field_type = "scalar"
+
+            else:
+                cvat_tag = CVATTag(annot, class_map, attr_id_map)
+                label = cvat_tag.to_classification()
+                field_type = "classifications"
+
+        if label is None:
+            return results, prev_type
+
+        if field_type not in results:
+            results[field_type] = {}
+
+        if sample_id not in results[field_type]:
+            results[field_type][sample_id] = {}
+
+        if store_frame:
+            if frame_id not in results[field_type][sample_id]:
+                results[field_type][sample_id][frame_id] = {}
+
+            if field_type == "scalar":
+                results[field_type][sample_id][frame_id] = label
+            else:
+                results[field_type][sample_id][frame_id][label.id] = label
+        else:
+            if field_type == "scalar":
+                results[field_type][sample_id] = label
+            else:
+                results[field_type][sample_id][label.id] = label
+
+        return results, prev_type
 
     def _parse_arg(self, arg, config_arg):
         if arg is None:
@@ -3707,8 +3826,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         tracks = {}
 
         # If a FiftyOne Attribute is being uploaded, "attribute:" is prepended
-        # to the name. This needs to be updated in the labels when creating a
-        # new task
+        # to the name. This needs to be updated in the labels when
+        # creating a new task
         remapped_attr_names = {}
 
         if is_shape:
@@ -3717,11 +3836,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id = -1
         for sample in samples:
             metadata = sample.metadata
+            sample_id = sample.id
+            is_video = False
             if samples.media_type == fom.VIDEO:
+                is_video = True
                 images = sample.frames.values()
                 if label_field.startswith("frames."):
                     label_field = label_field[len("frames.") :]
-
                 if is_shape:
                     width = metadata.frame_width
                     height = metadata.frame_height
@@ -3741,7 +3862,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if image_label is None:
                     continue
 
-                if label_type in ("classification", "classifications"):
+                if label_type in ("classifications", "classification"):
                     if label_type == "classifications":
                         classifications = image_label.classifications
                     else:
@@ -3789,24 +3910,30 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         }
                     )
                 else:
-                    if label_type == "detection":
-                        labels = [image_label]
-                        func = self._create_detection_shapes
-                    elif label_type == "detections":
+                    if label_type == "detections":
                         labels = image_label.detections
                         func = self._create_detection_shapes
-                    elif label_type == "polyline":
+
+                    elif label_type == "detection":
                         labels = [image_label]
-                        func = self._create_polyline_shapes
+                        func = self._create_detection_shapes
+
                     elif label_type == "polylines":
                         labels = image_label.polylines
                         func = self._create_polyline_shapes
-                    elif label_type == "keypoint":
+
+                    elif label_type == "polyline":
                         labels = [image_label]
-                        func = self._create_keypoint_shapes
+                        func = self._create_polyline_shapes
+
                     elif label_type == "keypoints":
                         labels = image_label.keypoints
                         func = self._create_keypoint_shapes
+
+                    elif label_type == "keypoint":
+                        labels = [image_label]
+                        func = self._create_keypoint_shapes
+
                     else:
                         raise ValueError(
                             "Label type %s of field %s is not supported"
@@ -4171,15 +4298,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     d["_content"],
                 )
             )
-
-
-def _merge_results(results, new_results):
-    if isinstance(new_results, dict):
-        for key, val in new_results.items():
-            if key not in results:
-                results[key] = val
-            else:
-                _merge_results(results[key], val)
 
 
 class CVATLabel(object):

@@ -172,8 +172,10 @@ def _add_new_labels(
         sample_annots = annotation_results[sample.id]
 
         if is_video:
+            formatted_label_field, _ = samples._handle_frame_field(label_field)
             images = sample.frames.values()
         else:
+            formatted_label_field = label_field
             images = [sample]
 
         for image in images:
@@ -194,7 +196,7 @@ def _add_new_labels(
             else:
                 new_label = list(image_annots.values())[0]
 
-            image[label_field] = new_label
+            image[formatted_label_field] = new_label
 
         sample.save()
 
@@ -501,8 +503,10 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
                     sample = samples[sample_id]
                     if type(value) == dict:
                         frame_ids = list(value.keys())
-                        frames = samples.select_frames(frame_ids).first()
-                        for frame in frames.values():
+                        samples_frames = samples.select_frames(
+                            frame_ids
+                        ).first()
+                        for frame in samples_frames.frames.values():
                             if frame.id in value:
                                 frame_value = value[frame.id]
                                 frame[formatted_label_field] = frame_value
