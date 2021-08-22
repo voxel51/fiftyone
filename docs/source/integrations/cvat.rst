@@ -1,4 +1,4 @@
-.. _cvat:
+.. _cvat-integration:
 
 CVAT Integration
 ================
