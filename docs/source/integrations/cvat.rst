@@ -182,10 +182,10 @@ then providing your authentication credentials as shown below.
 Authentication
 --------------
 
-In order to connect to a CVAT server, you must provide your `username` and
-`password` credentials, which can be done in a variety of ways.
+In order to connect to a CVAT server, you must provide your login credentials,
+which can be done in a variety of ways.
 
-** (Recommended) Environment variables **
+**Environment variables (recommended)**
 
 The recommended way to configure your CVAT login credentials is to store them
 in the `FIFTYONE_CVAT_USERNAME` and `FIFTYONE_CVAT_PASSWORD` environment
@@ -253,7 +253,7 @@ that requires a connection to CVAT:
 .. code-block:: text
 
     Please enter your login credentials.
-    You can avoid this in the future by setting your `FIFTYONE_CVAT_USERNAME` and/or `FIFTYONE_CVAT_PASSWORD` environment variables.
+    You can avoid this in the future by setting your `FIFTYONE_CVAT_USERNAME` and `FIFTYONE_CVAT_PASSWORD` environment variables.
     Username: ...
     Password: ...
 
@@ -263,9 +263,9 @@ Self-hosted servers
 -------------------
 
 If you wish to use a self-hosted server, you can configure the URL of your
-server (e.g., `localhost`) in any of the following ways:
+server (e.g., `localhost`) in any of the following ways.
 
--   Set the `FIFTYONE_CVAT_URL` environment variable
+-   Set the `FIFTYONE_CVAT_URL` environment variable:
 
 .. code-block:: shell
 
@@ -286,7 +286,7 @@ server (e.g., `localhost`) in any of the following ways:
     }
 
 -   Pass the `url` parameter manually each time you call
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
 
 .. code:: python
     :linenos:
@@ -330,14 +330,6 @@ to manage the run in the future.
     Calling
     :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
     will upload the source media files to the CVAT server.
-
-.. note::
-
-    When uploading existing labels to CVAT, their label IDs in FiftyOne are
-    uploaded as attributes. This information is used to keep track of
-    modifications to existing labels in your FiftyOne datasets. Changing or
-    deleting these ID attributes will result in labels being overwritten
-    rather than merged when loading annotations back into FiftyOne.
 
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
@@ -401,10 +393,10 @@ provided:
 Label schema
 ------------
 
-You can provide the `label_schema`, `label_field`, `label_type`, `classes`,
-and `attributes` parameters to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
-define the annotation schema that you wish to be used.
+The `label_schema`, `label_field`, `label_type`, `classes`, and `attributes`
+parameters to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
+you to define the annotation schema that you wish to be used.
 
 The label schema may define new label field(s) that you wish to populate, and
 it may also include existing label field(s), in which case you can add, delete,
@@ -566,6 +558,14 @@ take additional values:
 
     Only scalar-valued label attributes are supported. Other attribute types
     like lists, dictionaries, and arrays will be omitted.
+
+.. note::
+
+    When uploading existing labels to CVAT, their label IDs in FiftyOne are
+    always uploaded as attributes. This information is used to keep track of
+    modifications to existing labels, and changing or deleting these ID
+    attributes in CVAT will result in labels being overwritten rather than
+    merged when loading annotations back into FiftyOne.
 
 .. _cvat-loading-annotations:
 

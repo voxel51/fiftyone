@@ -465,10 +465,10 @@ for more details.
 Label schema
 ------------
 
-You can provide the `label_schema`, `label_field`, `label_type`, `classes`,
-and `attributes` parameters to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
-define the annotation schema that you wish to be used.
+The `label_schema`, `label_field`, `label_type`, `classes`, and `attributes`
+parameters to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
+you to define the annotation schema that you wish to be used.
 
 The label schema may define new label field(s) that you wish to populate, and
 it may also include existing label field(s), in which case you can add, delete,
