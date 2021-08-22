@@ -704,12 +704,13 @@ class SampleCollection(object):
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         view = self.select_labels(ids=ids, tags=tags, fields=fields)
 
+        sample_ids = view.values("id")
+
         labels = []
         for label_field in view._get_label_fields():
-            sample_ids = view.values("id")
-
             label_type, id_path = view._get_label_field_path(label_field, "id")
-            list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
             label_ids = view.values(id_path)
 
             if self._is_frame_field(label_field):
@@ -723,7 +724,7 @@ class SampleCollection(object):
                         if not frame_label_ids:
                             continue
 
-                        if not list_field:
+                        if not is_list_field:
                             frame_label_ids = [frame_label_ids]
 
                         for label_id in frame_label_ids:
@@ -740,7 +741,7 @@ class SampleCollection(object):
                     if not sample_label_ids:
                         continue
 
-                    if not list_field:
+                    if not is_list_field:
                         sample_label_ids = [sample_label_ids]
 
                     for label_id in sample_label_ids:
@@ -5611,20 +5612,40 @@ class SampleCollection(object):
         Args:
             anno_key: a string key to use to refer to this annotation run
             label_schema (None): a dictionary defining the label schema to use.
-                If this argument is provided, it takes precedence over
-                ``label_field`` and ``label_type``
-            label_field (None): a string indicating either a new or existing
-                label field to annotate
-            label_type (None): a string indicating the type of labels to expect
-                when creating a new ``label_field``. Supported values are
-                ``("classification", "classifications", "detections", "polylines", "keypoints", "scalar")``
+                If this argument is provided, it takes precedence over the
+                other schema-related arguments
+            label_field (None): a string indicating a new or existing label
+                field to annotate
+            label_type (None): a string or type indicating the type of labels
+                to annotate. The possible label strings/types are:
+
+                -   ``"classification"``: :class:`fiftyone.core.labels.Classification`
+                -   ``"classifications"``: :class:`fiftyone.core.labels.Classifications`
+                -   ``"detection"``: :class:`fiftyone.core.labels.Detection`
+                -   ``"detections"``: :class:`fiftyone.core.labels.Detections`
+                -   ``"polyline"``: :class:`fiftyone.core.labels.Polyline`
+                -   ``"polylines"``: :class:`fiftyone.core.labels.Polylines`
+                -   ``"keypoint"``: :class:`fiftyone.core.labels.Keypoint`
+                -   ``"keypoints"``: :class:`fiftyone.core.labels.Keypoints`
+
+                You can also specify ``"scalar"`` for a primitive scalar field
+                or pass any of the supported scalar field types:
+
+                -   :class:`fiftyone.core.fields.IntField`
+                -   :class:`fiftyone.core.fields.FloatField`
+                -   :class:`fiftyone.core.fields.StringField`
+                -   :class:`fiftyone.core.fields.BooleanField`
+
+                All new label fields must have their type specified via this
+                argument or in ``label_schema``. Note that annotation backends
+                may not support all label types
             classes (None): a list of strings indicating the class options for
-                either ``label_field`` or all fields in ``label_schema``
-                without classes specified. All new label fields must have a
-                class list provided via one of the supported methods. For
-                existing label fields, if classes are not provided by this
-                argument nor ``label_schema``, they are parsed from
-                :meth:`classes` or :meth:`default_classes`
+                ``label_field`` or all fields in ``label_schema`` without
+                classes specified. All new label fields must have a class list
+                provided via one of the supported methods. For existing label
+                fields, if classes are not provided by this argument nor
+                ``label_schema``, they are parsed from :meth:`classes` or
+                :meth:`default_classes`
             attributes (True): specifies the label attributes of each label
                 field to include (other than their ``label``, which is always
                 included) in the annotation export. Can be any of the
@@ -5741,7 +5762,9 @@ class SampleCollection(object):
             self, anno_key, select_fields=select_fields
         )
 
-    def load_annotations(self, anno_key, cleanup=False, **kwargs):
+    def load_annotations(
+        self, anno_key, skip_unexpected=False, cleanup=False, **kwargs
+    ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
 
@@ -5751,12 +5774,22 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
+            skip_unexpected (False): whether to skip any unexpected labels that
+                don't match the run's label schema when merging. If False and
+                unexpected labels are encountered, you will be presented an
+                interactive prompt to deal with them
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
         """
-        foua.load_annotations(self, anno_key, cleanup=cleanup, **kwargs)
+        foua.load_annotations(
+            self,
+            anno_key,
+            skip_unexpected=skip_unexpected,
+            cleanup=cleanup,
+            **kwargs,
+        )
 
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
@@ -6459,6 +6492,13 @@ class SampleCollection(object):
         return _parse_field_name(
             self, field_name, auto_unwind, omit_terminal_lists, allow_missing
         )
+
+    def _has_field(self, field_name):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
+            return field_name in self.get_frame_field_schema()
+
+        return field_name in self.get_field_schema()
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)

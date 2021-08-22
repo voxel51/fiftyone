@@ -354,16 +354,35 @@ details:
 -   **label_schema** (*None*): a dictionary defining the label schema to use.
     If this argument is provided, it takes precedence over `label_field` and
     `label_type`
--   **label_field** (*None*): a string indicating either a new or existing
-    label field to annotate
--   **label_type** (*None*): a string indicating the type of labels to expect
-    when creating a new `label_field`. Supported values are
-    `("classification", "classifications", "detections", "polylines", "keypoints", "scalar")`
+-   **label_field** (*None*): a string indicating a new or existing label field
+    to annotate
+-   **label_type** (*None*): a string or type indicating the type of labels to
+    annotate. The possible label strings/types are:
+
+    -   `"classification"`: :class:`fiftyone.core.labels.Classification`
+    -   `"classifications"`: :class:`fiftyone.core.labels.Classifications`
+    -   `"detection"`: :class:`fiftyone.core.labels.Detection`
+    -   `"detections"`: :class:`fiftyone.core.labels.Detections`
+    -   `"polyline"`: :class:`fiftyone.core.labels.Polyline`
+    -   `"polylines"`: :class:`fiftyone.core.labels.Polylines`
+    -   `"keypoint"`: :class:`fiftyone.core.labels.Keypoint`
+    -   `"keypoints"`: :class:`fiftyone.core.labels.Keypoints`
+
+    You can also specify `"scalar"` for a primitive scalar field or pass any of
+    the supported scalar field types:
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.StringField`
+    -   :class:`fiftyone.core.fields.BooleanField`
+
+    All new label fields must have their type specified via this argument or in
+    `label_schema`
 -   **classes** (*None*): a list of strings indicating the class options for
-    either `label_field` or all fields in `label_schema` without classes
-    specified. All new label fields must have a class list provided via one of
-    the supported methods. For existing label fields, if classes are not
-    provided by this argument nor `label_schema`, they are parsed from
+    `label_field` or all fields in `label_schema` without classes specified.
+    All new label fields must have a class list provided via one of the
+    supported methods. For existing label fields, if classes are not provided
+    by this argument nor `label_schema`, they are parsed from
     :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
 -   **attributes** (*True*): specifies the label attributes of each label field
@@ -1118,6 +1137,7 @@ to record classifications for your video datasets.
 
     anno_key = "cvat_video"
 
+    # Send frame-level detections to CVAT
     view.annotate(
         anno_key,
         label_field="frames.detections",
@@ -1125,9 +1145,18 @@ to record classifications for your video datasets.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Create annotations in CVAT
+    # Edit annotations in CVAT...
 
-    dataset.load_annotations(anno_key, cleanup=True)
+    # Merge edits back in
+    dataset.load_annotations(anno_key)
+
+    # Load the view that was annotated in the App
+    view = dataset.load_annotation_view(anno_key)
+    session = fo.launch_app(view=view)
+
+    # Cleanup
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
 .. note:

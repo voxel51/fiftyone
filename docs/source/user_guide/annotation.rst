@@ -432,18 +432,36 @@ your annotation tasks. See :ref:`this section <annotation-label-schema>` for
 more details:
 
 -   **label_schema** (*None*): a dictionary defining the label schema to use.
-    If this argument is provided, it takes precedence over `label_field` and
-    `label_type`
--   **label_field** (*None*): a string indicating either a new or existing
-    label field to annotate
--   **label_type** (*None*): a string indicating the type of labels to expect
-    when creating a new `label_field`. Supported values are
-    `("classification", "classifications", "detections", "polylines", "keypoints", "scalar")`
+    If this argument is provided, it takes precedence over the remaining fields
+-   **label_field** (*None*): a string indicating a new or existing label field
+    to annotate
+-   **label_type** (*None*): a string or type indicating the type of labels to
+    annotate. The possible label strings/types are:
+
+    -   `"classification"`: :class:`fiftyone.core.labels.Classification`
+    -   `"classifications"`: :class:`fiftyone.core.labels.Classifications`
+    -   `"detection"`: :class:`fiftyone.core.labels.Detection`
+    -   `"detections"`: :class:`fiftyone.core.labels.Detections`
+    -   `"polyline"`: :class:`fiftyone.core.labels.Polyline`
+    -   `"polylines"`: :class:`fiftyone.core.labels.Polylines`
+    -   `"keypoint"`: :class:`fiftyone.core.labels.Keypoint`
+    -   `"keypoints"`: :class:`fiftyone.core.labels.Keypoints`
+
+    You can also specify `"scalar"` for a primitive scalar field or pass any of
+    the supported scalar field types:
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.StringField`
+    -   :class:`fiftyone.core.fields.BooleanField`
+
+    All new label fields must have their type specified via this argument or in
+    `label_schema`
 -   **classes** (*None*): a list of strings indicating the class options for
-    either `label_field` or all fields in `label_schema` without classes
-    specified. All new label fields must have a class list provided via one of
-    the supported methods. For existing label fields, if classes are not
-    provided by this argument nor `label_schema`, they are parsed from
+    `label_field` or all fields in `label_schema` without classes specified.
+    All new label fields must have a class list provided via one of the
+    supported methods. For existing label fields, if classes are not provided
+    by this argument nor `label_schema`, they are parsed from
     :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
 -   **attributes** (*True*): specifies the label attributes of each label field
@@ -459,6 +477,10 @@ more details:
 In addition, each annotation backend can typically be configured in a variety
 of backend-specific ways. See :ref:`this section <configuring-your-backend>`
 for more details.
+
+.. note::
+
+    Specific annotation backends may not support all ``label_type`` options.
 
 .. _annotation-label-schema:
 
