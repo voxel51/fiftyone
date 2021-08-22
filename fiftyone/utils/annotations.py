@@ -169,7 +169,11 @@ def _add_new_labels(
             sample_id = sample.id
             if sample_id in annotation_results:
                 sample_annots = annotation_results[sample_id]
+                formatted_label_field = label_field
                 if is_video:
+                    formatted_label_field, _ = samples._handle_frame_field(
+                        label_field
+                    )
                     images = sample.frames.values()
                 else:
                     images = [sample]
@@ -192,7 +196,7 @@ def _add_new_labels(
                     else:
                         new_label = list(image_annots.values())[0]
 
-                    image[label_field] = new_label
+                    image[formatted_label_field] = new_label
 
                 sample.save()
 

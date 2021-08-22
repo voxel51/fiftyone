@@ -3521,6 +3521,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
             for track_index, track in enumerate(tracks):
+                label_id = track["label_id"]
+                shapes = track["shapes"]
+                for shape in shapes:
+                    shape["label_id"] = label_id
                 track_shape_results = self._parse_shapes_tags(
                     "shapes",
                     track["shapes"],
@@ -3586,115 +3590,193 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
         results = {}
         prev_type = None
+
+        # For filling in tracked objects
+        prev_frame = None
+        prev_outside = False
+        filled_annots = []
+
         for annot in annots:
-            if "outside" in annot and annot["outside"]:
-                # If a tracked object is not in the frame, skip
-                continue
-
+            # Iterate through all keyframes in this track
+            # Fill in shapes for all frames between keyframes that are not
+            # outside of the frame
+            # For non-track annotation, this is skipped
             frame = annot["frame"]
-            if len(frames) > frame:
-                metadata = frames[frame]
+            if (
+                prev_frame is not None
+                and (frame - 1) > prev_frame
+                and not prev_outside
+            ):
+                # For tracks, fill in previous missing frames if shape was not
+                # outside
+                for f in range(prev_frame + 1, frame):
+                    filled_annot = deepcopy(prev_annot)
+                    filled_annot["frame"] = f
+                    filled_annots.append(filled_annot)
+
+            prev_annot = annot
+            prev_frame = frame
+            if "outside" in annot:
+                prev_outside = annot["outside"]
             else:
-                metadata = frames[0]
+                prev_outside = True
 
-            sample_id = frame_id_map[frame]["sample_id"]
-            store_frame = False
-            if "frame_id" in frame_id_map[frame]:
-                store_frame = True
-                frame_id = frame_id_map[frame]["frame_id"]
-
-            label = None
-
-            if annot_type == "shapes":
-                shape_type = annot["type"]
-                if label_type == "scalar" and assigned_scalar_attrs:
-                    # Shapes created with values, set class to value
-                    annot_attrs = annot["attributes"]
-                    class_val = False
-                    if len(annot_attrs) > 0 and "value" in annot_attrs[0]:
-                        class_val = annot_attrs[0]["value"]
-                        annot["attributes"] = []
-
-                cvat_shape = CVATShape(
-                    annot, class_map, attr_id_map, metadata, index=track_index
-                )
-                if shape_type == "rectangle":
-                    label = cvat_shape.to_detection()
-                    field_type = "detections"
-                elif shape_type == "polygon":
-                    label = cvat_shape.to_polyline(closed=True, filled=True)
-                    field_type = "polylines"
-                    if label_type in ("detections", "detection"):
-                        field_type = "detections"
-                        label = cvat_shape.polyline_to_detection(label)
-
-                elif shape_type == "polyline":
-                    field_type = "polylines"
-                    label = cvat_shape.to_polyline()
-                elif shape_type == "points":
-                    field_type = "keypoints"
-                    label = cvat_shape.to_keypoint()
-
-                if label_type == "scalar" and assigned_scalar_attrs:
-                    if class_val:
-                        # Shapes created with values, set class to value
-                        label.label = class_val
-
-            if annot_type == "tags":
-                if label_type == "scalar":
-                    if assigned_scalar_attrs:
-                        attrs = annot["attributes"]
-                        label = _parse_attribute(attrs[0]["value"])
-                        if (
-                            prev_type is not None
-                            and label is not None
-                            and type(label) != prev_type
-                        ):
-                            if prev_type == str:
-                                label = str(label)
-                            else:
-                                logger.warning(
-                                    "Skipping scalar '%s' that does not match "
-                                    "previous scalars of type %s",
-                                    label,
-                                    str(prev_type),
-                                )
-                                label = None
-                        else:
-                            prev_type = type(label)
-                    else:
-                        label = class_map[annot["label_id"]]
-                    field_type = "scalar"
-
-                else:
-                    cvat_tag = CVATTag(annot, class_map, attr_id_map)
-                    label = cvat_tag.to_classification()
-                    field_type = "classifications"
-
-            if label is None:
+            if "outside" in annot and annot["outside"]:
+                # If a tracked object is not in the frame
                 continue
 
-            if field_type not in results:
-                results[field_type] = {}
+            results, prev_type = self._parse_annot_label(
+                annot,
+                results,
+                annot_type,
+                prev_type,
+                frame_id_map,
+                label_type,
+                class_map,
+                attr_id_map,
+                frames,
+                assigned_scalar_attrs=assigned_scalar_attrs,
+                track_index=track_index,
+            )
 
-            if sample_id not in results[field_type]:
-                results[field_type][sample_id] = {}
-
-            if store_frame:
-                if frame_id not in results[field_type][sample_id]:
-                    results[field_type][sample_id][frame_id] = {}
-
-                if field_type == "scalar":
-                    results[field_type][sample_id][frame_id] = label
-                else:
-                    results[field_type][sample_id][frame_id][label.id] = label
-            else:
-                if field_type == "scalar":
-                    results[field_type][sample_id] = label
-                else:
-                    results[field_type][sample_id][label.id] = label
+        for annot in filled_annots:
+            # Go through and create labels for all of the non-key frames of
+            # this track
+            # This is skipped for non-track annotations
+            results, prev_type = self._parse_annot_label(
+                annot,
+                results,
+                annot_type,
+                prev_type,
+                frame_id_map,
+                label_type,
+                class_map,
+                attr_id_map,
+                frames,
+                assigned_scalar_attrs=assigned_scalar_attrs,
+                track_index=track_index,
+            )
 
         return results
+
+    def _parse_annot_label(
+        self,
+        annot,
+        results,
+        annot_type,
+        prev_type,
+        frame_id_map,
+        label_type,
+        class_map,
+        attr_id_map,
+        frames,
+        assigned_scalar_attrs=False,
+        track_index=None,
+    ):
+        frame = annot["frame"]
+        if len(frames) > frame:
+            metadata = frames[frame]
+        else:
+            metadata = frames[0]
+
+        sample_id = frame_id_map[frame]["sample_id"]
+        store_frame = False
+        if "frame_id" in frame_id_map[frame]:
+            store_frame = True
+            frame_id = frame_id_map[frame]["frame_id"]
+
+        label = None
+
+        if annot_type == "shapes":
+            shape_type = annot["type"]
+            if label_type == "scalar" and assigned_scalar_attrs:
+                # Shapes created with values, set class to value
+                annot_attrs = annot["attributes"]
+                class_val = False
+                if len(annot_attrs) > 0 and "value" in annot_attrs[0]:
+                    class_val = annot_attrs[0]["value"]
+                    annot["attributes"] = []
+
+            cvat_shape = CVATShape(
+                annot, class_map, attr_id_map, metadata, index=track_index
+            )
+            if shape_type == "rectangle":
+                label = cvat_shape.to_detection()
+                field_type = "detections"
+            elif shape_type == "polygon":
+                label = cvat_shape.to_polyline(closed=True, filled=True)
+                field_type = "polylines"
+                if label_type in ("detections", "detection"):
+                    field_type = "detections"
+                    label = cvat_shape.polyline_to_detection(label)
+
+            elif shape_type == "polyline":
+                field_type = "polylines"
+                label = cvat_shape.to_polyline()
+            elif shape_type == "points":
+                field_type = "keypoints"
+                label = cvat_shape.to_keypoint()
+
+            if label_type == "scalar" and assigned_scalar_attrs:
+                if class_val:
+                    # Shapes created with values, set class to value
+                    label.label = class_val
+
+        if annot_type == "tags":
+            if label_type == "scalar":
+                if assigned_scalar_attrs:
+                    attrs = annot["attributes"]
+                    label = _parse_attribute(attrs[0]["value"])
+                    if (
+                        prev_type is not None
+                        and label is not None
+                        and type(label) != prev_type
+                    ):
+                        if prev_type == str:
+                            label = str(label)
+                        else:
+                            logger.warning(
+                                "Skipping scalar '%s' that does not match "
+                                "previous scalars of type %s",
+                                label,
+                                str(prev_type),
+                            )
+                            label = None
+                    else:
+                        prev_type = type(label)
+                else:
+                    label = class_map[annot["label_id"]]
+                field_type = "scalar"
+
+            else:
+                cvat_tag = CVATTag(annot, class_map, attr_id_map)
+                label = cvat_tag.to_classification()
+                field_type = "classifications"
+
+        if label is None:
+            return results, prev_type
+
+        if field_type not in results:
+            results[field_type] = {}
+
+        if sample_id not in results[field_type]:
+            results[field_type][sample_id] = {}
+
+        if store_frame:
+            if frame_id not in results[field_type][sample_id]:
+                results[field_type][sample_id][frame_id] = {}
+
+            if field_type == "scalar":
+                results[field_type][sample_id][frame_id] = label
+            else:
+                results[field_type][sample_id][frame_id][label.id] = label
+        else:
+            if field_type == "scalar":
+                results[field_type][sample_id] = label
+            else:
+                results[field_type][sample_id][label.id] = label
+
+        return results, prev_type
 
     def _parse_arg(self, arg, config_arg):
         if arg is None:
