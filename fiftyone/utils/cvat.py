@@ -3729,7 +3729,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label = cvat_shape.to_keypoint()
 
             if label_type == "scalar" and assigned_scalar_attrs:
-                if class_val:
+                if class_val and label is not None:
                     # Shapes created with values, set class to value
                     label.label = class_val
 
