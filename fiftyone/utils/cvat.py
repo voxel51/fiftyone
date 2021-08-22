@@ -3260,7 +3260,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 annot_tags = []
                 annot_shapes = []
                 annot_tracks = []
-                id_mapping = self._create_id_mapping(samples)
+                id_mapping = self._create_id_mapping(batch_samples)
 
                 if is_existing_field:
                     if is_video and label_type in [
@@ -3341,7 +3341,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         ]
 
                 task_name = "FiftyOne_%s_%s" % (
-                    samples._root_dataset.name.replace(" ", "_"),
+                    batch_samples._root_dataset.name.replace(" ", "_"),
                     label_field.replace(" ", "_"),
                 )
 
@@ -3443,11 +3443,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             -   **results**: a dictionary mapping every label field, label
                 type, sample id, frame id
-            -   **additional_results**: a dictionary of additional annotations
         """
         results = {}
-        additional_results = {}
-        scalar_types = {}
 
         rev_labels_task_map = {}
         for lf, tasks in labels_task_map.items():
@@ -3542,7 +3539,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field_results, track_shape_results
                 )
 
-            results[label_field] = label_field_results
+            results = self._merge_results(
+                results, {label_field: label_field_results}
+            )
 
         return results
 
