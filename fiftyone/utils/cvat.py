@@ -3465,11 +3465,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     [(i["name"], i["id"]) for i in label["attributes"]]
                 )
 
-            if task_json["data_original_chunk_type"] == "video":
-                media_type = "video"
-            else:
-                media_type = "image"
-
             response = self.get(self.task_annotation_url(task_id))
             resp_json = response.json()
             shapes = resp_json["shapes"]
@@ -3712,8 +3707,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         tracks = {}
 
         # If a FiftyOne Attribute is being uploaded, "attribute:" is prepended
-        # to the name. This needs to be updated in the labels when
-        # creating a new task
+        # to the name. This needs to be updated in the labels when creating a
+        # new task
         remapped_attr_names = {}
 
         if is_shape:
@@ -3722,13 +3717,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id = -1
         for sample in samples:
             metadata = sample.metadata
-            sample_id = sample.id
-            is_video = False
             if samples.media_type == fom.VIDEO:
-                is_video = True
                 images = sample.frames.values()
                 if label_field.startswith("frames."):
                     label_field = label_field[len("frames.") :]
+
                 if is_shape:
                     width = metadata.frame_width
                     height = metadata.frame_height
@@ -3748,7 +3741,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if image_label is None:
                     continue
 
-                if label_type in ("classifications", "classification"):
+                if label_type in ("classification", "classifications"):
                     if label_type == "classifications":
                         classifications = image_label.classifications
                     else:
@@ -3796,23 +3789,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         }
                     )
                 else:
-                    if label_type == "detections":
-                        labels = image_label.detections
-                        func = self._create_detection_shapes
-                    elif label_type == "detection":
+                    if label_type == "detection":
                         labels = [image_label]
                         func = self._create_detection_shapes
-                    elif label_type == "polylines":
-                        labels = image_label.polylines
-                        func = self._create_polyline_shapes
+                    elif label_type == "detections":
+                        labels = image_label.detections
+                        func = self._create_detection_shapes
                     elif label_type == "polyline":
                         labels = [image_label]
                         func = self._create_polyline_shapes
-                    elif label_type == "keypoints":
-                        labels = image_label.keypoints
-                        func = self._create_keypoint_shapes
+                    elif label_type == "polylines":
+                        labels = image_label.polylines
+                        func = self._create_polyline_shapes
                     elif label_type == "keypoint":
                         labels = [image_label]
+                        func = self._create_keypoint_shapes
+                    elif label_type == "keypoints":
+                        labels = image_label.keypoints
                         func = self._create_keypoint_shapes
                     else:
                         raise ValueError(

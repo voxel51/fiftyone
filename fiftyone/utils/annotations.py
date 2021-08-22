@@ -470,16 +470,12 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
         existing_field = label_info["existing_field"]
 
         if label_type == "scalar":
-            is_list = False
             label_type_list = "scalar"
         else:
             fo_label_type = _LABEL_TYPES_MAP[label_type]
             if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
-                is_list = True
-                list_field = fo_label_type._LABEL_LIST_FIELD
                 label_type_list = label_type
             else:
-                is_list = False
                 label_type_list = _LABEL_TYPES_LIST_MAP[label_type]
 
         #
@@ -544,7 +540,7 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
         if label_type == "scalar":
             # Only setting top-level sample or frame field, label parsing is
             # not required
-            logger.info("Adding labels for '%s'..." % formatted_label_field)
+            logger.info("Adding labels for '%s'...", formatted_label_field)
             with fou.ProgressBar() as pb:
                 for sample_id, value in pb(annotation_results.items()):
                     sample = samples[sample_id]
@@ -603,39 +599,39 @@ def _add_new_labels(
     else:
         is_list = False
 
-    samples = samples.select_fields([])
-    logger.info("Adding labels for '%s'..." % label_field)
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            sample_id = sample.id
-            if sample_id in annotation_results:
-                sample_annots = annotation_results[sample_id]
-                if is_video:
-                    images = sample.frames.values()
-                else:
-                    images = [sample]
+    logger.info("Adding labels for '%s'...", label_field)
+    for sample in samples.select_fields().iter_samples(progress=True):
+        if sample.id not in annotation_results:
+            continue
 
-                for image in images:
-                    if is_video:
-                        if image.id not in sample_annots:
-                            continue
+        sample_annots = annotation_results[sample.id]
 
-                        image_annots = sample_annots[image.id]
-                    else:
-                        image_annots = sample_annots
+        if is_video:
+            images = sample.frames.values()
+        else:
+            images = [sample]
 
-                    if is_list:
-                        new_label = fo_label_type()
-                        annot_list = list(image_annots.values())
-                        new_label[list_field] = annot_list
-                    elif not image_annots:
-                        continue
-                    else:
-                        new_label = list(image_annots.values())[0]
+        for image in images:
+            if is_video:
+                if image.id not in sample_annots:
+                    continue
 
-                    image[label_field] = new_label
+                image_annots = sample_annots[image.id]
+            else:
+                image_annots = sample_annots
 
-                sample.save()
+            if is_list:
+                new_label = fo_label_type()
+                annot_list = list(image_annots.values())
+                new_label[list_field] = annot_list
+            elif not image_annots:
+                continue
+            else:
+                new_label = list(image_annots.values())[0]
+
+            image[label_field] = new_label
+
+        sample.save()
 
 
 def _merge_existing_labels(
@@ -696,80 +692,104 @@ def _merge_existing_labels(
     annotated_samples = samples._dataset.select(sample_ids).select_fields(
         [label_field]
     )
-
-    logger.info("Merging labels for '%s'..." % label_field)
     added_id_map = {}
-    with fou.ProgressBar() as pb:
-        for sample in pb(annotated_samples):
-            sample_id = sample.id
+
+    logger.info("Merging labels for '%s'...", label_field)
+    for sample in annotated_samples.iter_samples(progress=True):
+        sample_id = sample.id
+        sample_annots = annotation_results[sample_id]
+
+        if is_video:
+            formatted_label_field, _ = samples._handle_frame_field(label_field)
+            images = sample.frames.values()
+        else:
             formatted_label_field = label_field
+            images = [sample]
+
+        for image in images:
             if is_video:
-                formatted_label_field, _ = samples._handle_frame_field(
-                    label_field
-                )
-                images = sample.frames.values()
+                image_annots = sample_annots[image.id]
             else:
-                images = [sample]
+                image_annots = sample_annots
 
-            sample_annots = annotation_results[sample_id]
-            for image in images:
-                if is_video:
-                    image_annots = sample_annots[image.id]
+            image_label = image[formatted_label_field]
+
+            if image_label is None:
+                # A previously unlabeled image is being labeled
+                # Or a singular label was deleted (e.g. classification)
+                # either in CVAT or FiftyOne
+                if is_list:
+                    new_label = fo_label_type()
+                    new_label[list_field] = list(image_annots.values())
+                    image[formatted_label_field] = new_label
+
+                    new_label_ids = list(image_annots.keys())
+                    if sample_id not in added_id_map:
+                        added_id_map[sample_id] = []
+
+                    added_id_map[sample_id].extend(new_label_ids)
                 else:
-                    image_annots = sample_annots
+                    # Singular label, check if any annotations are new, set
+                    # the field to the first annotation if it exists
+                    for (annot_label_id, annot_label,) in image_annots.items():
+                        if annot_label_id in added_labels:
+                            image[formatted_label_field] = annot_label
 
-                image_label = image[formatted_label_field]
+                            if is_video:
+                                if sample_id not in added_id_map:
+                                    added_id_map[sample_id] = []
+                                added_id_map[sample_id].append(annot_label_id)
+                            else:
+                                added_id_map[sample_id] = annot_label_id
 
-                if image_label is None:
-                    # A previously unlabeled image is being labeled
-                    # Or a singular label was deleted (e.g. classification)
-                    # either in CVAT or FiftyOne
-                    if is_list:
-                        new_label = fo_label_type()
-                        new_label[list_field] = list(image_annots.values())
-                        image[formatted_label_field] = new_label
+                            break
 
-                        new_label_ids = list(image_annots.keys())
-                        if sample_id not in added_id_map:
-                            added_id_map[sample_id] = []
+                continue
 
-                        added_id_map[sample_id].extend(new_label_ids)
-                    else:
-                        # Singular label, check if any annotations are new, set
-                        # the field to the first annotation if it exists
-                        for (
-                            annot_label_id,
+            if isinstance(image_label, fol._HasLabelList):
+                has_label_list = True
+                list_field = image_label._LABEL_LIST_FIELD
+                labels = image_label[list_field]
+            else:
+                has_label_list = False
+                labels = [image_label]
+
+            # Merge label(s) that existed before and after annotation
+            for label in labels:
+                label_id = label.id
+                if label_id in labels_to_merge:
+                    annot_label = image_annots[label_id]
+                    if is_video and "index" in annot_label:
+                        (
                             annot_label,
-                        ) in image_annots.items():
-                            if annot_label_id in added_labels:
-                                image[formatted_label_field] = annot_label
+                            max_tracking_index,
+                        ) = _update_tracking_index(
+                            annot_label,
+                            tracking_index_map[sample_id],
+                            max_tracking_index,
+                        )
 
-                                if is_video:
-                                    if sample_id not in added_id_map:
-                                        added_id_map[sample_id] = []
-                                    added_id_map[sample_id].append(
-                                        annot_label_id
-                                    )
-                                else:
-                                    added_id_map[sample_id] = annot_label_id
+                    for field in annot_label._fields_ordered:
+                        if (
+                            field in label._fields_ordered
+                            and label[field] == annot_label[field]
+                        ):
+                            pass
+                        else:
+                            if field == "attributes":
+                                for (
+                                    attr,
+                                    val,
+                                ) in annot_label.attributes.items():
+                                    label.attributes[attr] = val
+                            else:
+                                label[field] = annot_label[field]
 
-                                break
-
-                    continue
-
-                if isinstance(image_label, fol._HasLabelList):
-                    has_label_list = True
-                    list_field = image_label._LABEL_LIST_FIELD
-                    labels = image_label[list_field]
-                else:
-                    has_label_list = False
-                    labels = [image_label]
-
-                # Merge label(s) that existed before and after annotation
-                for label in labels:
-                    label_id = label.id
-                    if label_id in labels_to_merge:
-                        annot_label = image_annots[label_id]
+            # Add new labels for label list fields only
+            # Non-list fields would have been deleted and replaced above
+            if has_label_list:
+                for annot_label_id, annot_label in image_annots.items():
+                    if annot_label_id in added_labels:
                         if is_video and "index" in annot_label:
                             (
                                 annot_label,
@@ -780,44 +800,13 @@ def _merge_existing_labels(
                                 max_tracking_index,
                             )
 
-                        for field in annot_label._fields_ordered:
-                            if (
-                                field in label._fields_ordered
-                                and label[field] == annot_label[field]
-                            ):
-                                pass
-                            else:
-                                if field == "attributes":
-                                    for (
-                                        attr,
-                                        val,
-                                    ) in annot_label.attributes.items():
-                                        label.attributes[attr] = val
-                                else:
-                                    label[field] = annot_label[field]
+                        labels.append(annot_label)
 
-                # Add new labels for label list fields only
-                # Non-list fields would have been deleted and replaced above
-                if has_label_list:
-                    for annot_label_id, annot_label in image_annots.items():
-                        if annot_label_id in added_labels:
-                            if is_video and "index" in annot_label:
-                                (
-                                    annot_label,
-                                    max_tracking_index,
-                                ) = _update_tracking_index(
-                                    annot_label,
-                                    tracking_index_map[sample_id],
-                                    max_tracking_index,
-                                )
+                        if sample.id not in added_id_map:
+                            added_id_map[sample.id] = []
+                        added_id_map[sample.id].append(annot_label.id)
 
-                            labels.append(annot_label)
-
-                            if sample.id not in added_id_map:
-                                added_id_map[sample.id] = []
-                            added_id_map[sample.id].append(annot_label.id)
-
-            sample.save()
+        sample.save()
 
     return added_id_map
 
