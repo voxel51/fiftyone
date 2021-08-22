@@ -12,6 +12,8 @@ import warnings
 
 import eta.core.utils as etau
 
+import fiftyone.core.patches as fop
+
 from .base import ResponsivePlot, ViewPlot, InteractivePlot
 
 
@@ -384,8 +386,9 @@ class PlotManager(object):
         if not self._ready_for_update(name):
             return
 
-        if plot.init_view is not None:
-            plot_view = plot.init_view.view()
+        plot_view = plot.init_view
+        if plot_view is not None:
+            plot_view = plot_view.view()
         else:
             plot_view = self._session.dataset.view()
 
@@ -394,10 +397,30 @@ class PlotManager(object):
             self._current_sample_ids = None
             self._current_labels = None
         elif plot.link_type == "labels":
-            # Create a view that contains only the selected labels in the plot
-            plot_view = plot_view.select_labels(
-                ids=ids, fields=plot.label_fields
-            )
+            if plot.selection_mode == "select":
+                # Create a view that contains only the selected labels in the
+                # plot
+                plot_view = plot_view.select_labels(
+                    ids=ids, fields=plot.label_fields
+                )
+            elif plot.selection_mode == "match":
+                # Create a view that only contains unfiltered samples with at
+                # least one selected label
+                plot_view = plot_view.match_labels(
+                    ids=ids, fields=plot.label_fields
+                )
+            elif plot.selection_mode == "patches":
+                # Create a patches view that contains only the selected patches
+                if isinstance(plot_view, fop.PatchesView):
+                    plot_view = plot_view.select(ids)
+                else:
+                    plot_view = plot_view.match_labels(
+                        ids=ids, fields=plot.label_fields
+                    )
+            else:
+                raise ValueError(
+                    "Unsupported `selection_mode=%s`" % plot.selection_mode
+                )
 
             field = plot.label_fields
             if field is not None and not etau.is_str(field):
