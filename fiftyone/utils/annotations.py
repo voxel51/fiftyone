@@ -515,8 +515,10 @@ def load_annotations(samples, anno_key, cleanup=False, **kwargs):
                     sample = samples[sample_id]
                     if type(value) == dict:
                         frame_ids = list(value.keys())
-                        frames = samples.select_frames(frame_ids).first()
-                        for frame in frames.values():
+                        samples_frames = samples.select_frames(
+                            frame_ids
+                        ).first()
+                        for frame in samples_frames.frames.values():
                             if frame.id in value:
                                 frame_value = value[frame.id]
                                 frame[formatted_label_field] = frame_value

@@ -3526,7 +3526,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for shape in shapes:
                     shape["label_id"] = label_id
                 track_shape_results = self._parse_shapes_tags(
-                    "shapes",
+                    "track",
                     track["shapes"],
                     frame_id_map[task_id],
                     label_type,
@@ -3570,7 +3570,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     ):
         """
         Args:
-            annot_type: the type of annotations to parse ("shapes", "tags")
+            annot_type: the type of annotations to parse ("shapes", "tags", "track")
             annots: list of shapes or tags
             frame_id_map: dict mapping CVAT frame ids to FiftyOne 
                 sample and frame uuids
@@ -3583,9 +3583,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 annotated as text field attributes or a dropdown of classes
             track_index (None): object index to assign to all shapes in `annots`
         """
-        if annot_type not in ["shapes", "tags"]:
+        if annot_type not in ["shapes", "tags", "track"]:
             raise ValueError(
-                "Annotation type %s is not in ('shapes', 'tags') "
+                "Annotation type %s is not in ('shapes', 'tags', 'track') "
                 "and cannot be parsed." % annot_type
             )
         results = {}
@@ -3593,7 +3593,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # For filling in tracked objects
         prev_frame = None
-        prev_outside = False
+        prev_outside = True
         filled_annots = []
 
         for annot in annots:
@@ -3638,6 +3638,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
             )
+
+        if (
+            prev_frame is not None
+            and prev_frame + 1 < len(frame_id_map)
+            and not prev_outside
+        ):
+            # The last track annotation goes to the end of the video, fill all
+            # remaining frames
+            for f in range(prev_frame + 1, len(frame_id_map)):
+                filled_annot = deepcopy(prev_annot)
+                filled_annot["frame"] = f
+                filled_annots.append(filled_annot)
 
         for annot in filled_annots:
             # Go through and create labels for all of the non-key frames of
@@ -3687,7 +3699,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         label = None
 
-        if annot_type == "shapes":
+        if annot_type in ("shapes", "track"):
             shape_type = annot["type"]
             if label_type == "scalar" and assigned_scalar_attrs:
                 # Shapes created with values, set class to value
