@@ -767,8 +767,10 @@ three classes with the appropriate abstract methods implemented:
 
 .. note::
 
-    Refer to the :mod:`fiftyone.utils.cvat` module for an example of how the
-    above subclasses are implemented for the CVAT backend.
+    Refer to the
+    `fiftyone.utils.cvat <https://github.com/voxel51/fiftyone/blob/develop/fiftyone/utils/cvat.py>`_
+    module for an example of how the above subclasses are implemented for the
+    CVAT backend.
 
 The recommended way to expose a custom backend is to add it to your
 :ref:`annotation config <annotation-config>` at
