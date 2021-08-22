@@ -3439,15 +3439,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 through an attribute with a text input box named "value"
 
         Returns:
-            a tuple of
-
-            -   **results**: a dictionary mapping every label field, label
-                type, sample id, frame id
-            -   **additional_results**: a dictionary of additional annotations
+            the label results dict
         """
         results = {}
-        additional_results = {}
-        scalar_types = {}
 
         rev_labels_task_map = {}
         for lf, tasks in labels_task_map.items():
@@ -3488,7 +3482,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Parse annotations into FiftyOne labels
             label_field_results = {}
 
-            tag_results = self._parse_shapes_tags(
+            tag_results = self._parse_shapes_or_tags(
                 "tags",
                 tags,
                 frame_id_map[task_id],
@@ -3500,11 +3494,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field, False
                 ),
             )
-            label_field_results = self._merge_results(
-                label_field_results, tag_results
-            )
+            _merge_results(label_field_results, tag_results)
 
-            shape_results = self._parse_shapes_tags(
+            shape_results = self._parse_shapes_or_tags(
                 "shapes",
                 shapes,
                 frame_id_map[task_id],
@@ -3516,12 +3508,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field, False
                 ),
             )
-            label_field_results = self._merge_results(
-                label_field_results, shape_results
-            )
+            _merge_results(label_field_results, shape_results)
 
             for track_index, track in enumerate(tracks):
-                track_shape_results = self._parse_shapes_tags(
+                track_shape_results = self._parse_shapes_or_tags(
                     "shapes",
                     track["shapes"],
                     frame_id_map[task_id],
@@ -3534,43 +3524,34 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     ),
                     track_index=track_index,
                 )
-                label_field_results = self._merge_results(
-                    label_field_results, track_shape_results
-                )
+                _merge_results(label_field_results, track_shape_results)
 
             results[label_field] = label_field_results
 
         return results
 
-    def _merge_results(self, results, new_results):
-        if isinstance(new_results, dict):
-            for key, val in new_results.items():
-                if key not in results:
-                    results[key] = val
-                else:
-                    results[key] = self._merge_results(results[key], val)
-
-        return results
-
-    def _parse_shapes_tags(
+    def _parse_shapes_or_tags(
         self,
         annot_type,
         annots,
         frame_id_map,
-        label_type,
+        expected_label_type,
         class_map,
         attr_id_map,
         frames,
         assigned_scalar_attrs=False,
         track_index=None,
     ):
-        """
+        """Parses the shapes or tags from the given CVAT annotations into a
+        label results dict.
+
         Args:
             annot_type: the type of annotations to parse ("shapes", "tags")
             annots: list of shapes or tags
-            frame_id_map: dict mapping CVAT frame ids to FiftyOne 
+            frame_id_map: dict mapping CVAT frame ids to FiftyOne
                 sample and frame uuids
-            label_type: expected label type to parse from the given annotations
+            expected_label_type: expected label type to parse from the given
+                annotations
             class_map: dict mapping CVAT class id to class name
             attr_id_map: dict mapping CVAT class id to a map of attr name to
                 attr id
@@ -3578,12 +3559,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             assign_scalar_attrs (False): boolean indicating whether scalars are
                 annotated as text field attributes or a dropdown of classes
             track_index (None): object index to assign to all shapes in `annots`
+
+        Returns:
+            a label results dict
         """
-        if annot_type not in ["shapes", "tags"]:
-            raise ValueError(
-                "Annotation type %s is not in ('shapes', 'tags') "
-                "and cannot be parsed." % annot_type
-            )
         results = {}
         prev_type = None
         for annot in annots:
@@ -3598,16 +3577,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 metadata = frames[0]
 
             sample_id = frame_id_map[frame]["sample_id"]
-            store_frame = False
+
             if "frame_id" in frame_id_map[frame]:
                 store_frame = True
                 frame_id = frame_id_map[frame]["frame_id"]
+            else:
+                store_frame = False
 
             label = None
 
             if annot_type == "shapes":
                 shape_type = annot["type"]
-                if label_type == "scalar" and assigned_scalar_attrs:
+                if expected_label_type == "scalar" and assigned_scalar_attrs:
                     # Shapes created with values, set class to value
                     annot_attrs = annot["attributes"]
                     class_val = False
@@ -3619,29 +3600,29 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     annot, class_map, attr_id_map, metadata, index=track_index
                 )
                 if shape_type == "rectangle":
+                    label_type = "detections"
                     label = cvat_shape.to_detection()
-                    field_type = "detections"
                 elif shape_type == "polygon":
+                    label_type = "polylines"
                     label = cvat_shape.to_polyline(closed=True, filled=True)
-                    field_type = "polylines"
-                    if label_type in ("detections", "detection"):
-                        field_type = "detections"
+                    if expected_label_type in ("detection", "detections"):
+                        label_type = "detections"
                         label = cvat_shape.polyline_to_detection(label)
-
                 elif shape_type == "polyline":
-                    field_type = "polylines"
+                    label_type = "polylines"
                     label = cvat_shape.to_polyline()
                 elif shape_type == "points":
-                    field_type = "keypoints"
+                    label_type = "keypoints"
                     label = cvat_shape.to_keypoint()
 
-                if label_type == "scalar" and assigned_scalar_attrs:
+                if expected_label_type == "scalar" and assigned_scalar_attrs:
                     if class_val:
                         # Shapes created with values, set class to value
                         label.label = class_val
 
             if annot_type == "tags":
-                if label_type == "scalar":
+                if expected_label_type == "scalar":
+                    label_type = "scalar"
                     if assigned_scalar_attrs:
                         attrs = annot["attributes"]
                         label = _parse_attribute(attrs[0]["value"])
@@ -3664,35 +3645,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             prev_type = type(label)
                     else:
                         label = class_map[annot["label_id"]]
-                    field_type = "scalar"
-
                 else:
+                    label_type = "classifications"
                     cvat_tag = CVATTag(annot, class_map, attr_id_map)
                     label = cvat_tag.to_classification()
-                    field_type = "classifications"
 
             if label is None:
                 continue
 
-            if field_type not in results:
-                results[field_type] = {}
+            if label_type not in results:
+                results[label_type] = {}
 
-            if sample_id not in results[field_type]:
-                results[field_type][sample_id] = {}
+            if sample_id not in results[label_type]:
+                results[label_type][sample_id] = {}
 
             if store_frame:
-                if frame_id not in results[field_type][sample_id]:
-                    results[field_type][sample_id][frame_id] = {}
+                if frame_id not in results[label_type][sample_id]:
+                    results[label_type][sample_id][frame_id] = {}
 
-                if field_type == "scalar":
-                    results[field_type][sample_id][frame_id] = label
+                if label_type == "scalar":
+                    results[label_type][sample_id][frame_id] = label
                 else:
-                    results[field_type][sample_id][frame_id][label.id] = label
+                    results[label_type][sample_id][frame_id][label.id] = label
             else:
-                if field_type == "scalar":
-                    results[field_type][sample_id] = label
+                if label_type == "scalar":
+                    results[label_type][sample_id] = label
                 else:
-                    results[field_type][sample_id][label.id] = label
+                    results[label_type][sample_id][label.id] = label
 
         return results
 
@@ -3820,27 +3799,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if label_type == "detections":
                         labels = image_label.detections
                         func = self._create_detection_shapes
-
                     elif label_type == "detection":
                         labels = [image_label]
                         func = self._create_detection_shapes
-
                     elif label_type == "polylines":
                         labels = image_label.polylines
                         func = self._create_polyline_shapes
-
                     elif label_type == "polyline":
                         labels = [image_label]
                         func = self._create_polyline_shapes
-
                     elif label_type == "keypoints":
                         labels = image_label.keypoints
                         func = self._create_keypoint_shapes
-
                     elif label_type == "keypoint":
                         labels = [image_label]
                         func = self._create_keypoint_shapes
-
                     else:
                         raise ValueError(
                             "Label type %s of field %s is not supported"
@@ -4205,6 +4178,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     d["_content"],
                 )
             )
+
+
+def _merge_results(results, new_results):
+    if isinstance(new_results, dict):
+        for key, val in new_results.items():
+            if key not in results:
+                results[key] = val
+            else:
+                _merge_results(results[key], val)
 
 
 class CVATLabel(object):
