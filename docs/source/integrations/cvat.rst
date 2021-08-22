@@ -162,6 +162,11 @@ FiftyOne:
     # Delete run record (not the labels) from FiftyOne
     dataset.delete_annotation_run(anno_key)
 
+.. note::
+
+    Skip to :ref:`this section <cvat-examples>` to see a variety of common CVAT
+    annotation patterns.
+
 .. _cvat-setup:
 
 Setup
@@ -289,7 +294,7 @@ server (e.g., `localhost`) in any of the following ways:
     view.annotate(
         anno_key,
         label_field="ground_truth",
-        url="localshot",
+        url="localhost",
         username=...,
         password=...,
     )

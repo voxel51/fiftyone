@@ -12,7 +12,7 @@ labels on your :ref:`datasets <using-datasets>` or specific
 By default, all annotation is performend via a native
 :ref:`CVAT integration <cvat>` that uses `cvat.org <https://cvat.org>`_, but
 you can use a :ref:`self-hosted server <cvat-setup>` or even use a
-:ref:`custom annotation backend <annotation-custom-backend>`.
+:ref:`custom annotation backend <custom-annotation-backend>`.
 
 .. note::
 
@@ -139,6 +139,11 @@ FiftyOne:
     # Delete run record (not the labels) from FiftyOne
     dataset.delete_annotation_run(anno_key)
 
+.. note::
+
+    Check out :ref:`this page <cvat-examples>` to see a variety of common
+    annotation patterns using the CVAT backend to illustrate the full process.
+
 .. _annotation-setup:
 
 Setup
@@ -150,7 +155,7 @@ username and password credentials.
 
 However, you can configure FiftyOne to use a
 :ref:`self-hosted CVAT server <cvat-self-hosted-server>`, or you can even use a
-completely :ref:`custom backend <annotation-custom-backend>`.
+completely :ref:`custom backend <custom-annotation-backend>`.
 
 .. note::
 
@@ -214,7 +219,7 @@ simply passing supported config parameters as keyword arguments each time you ca
     view.annotate(
         ...
         backend="cvat",
-        url="localshot",
+        url="localhost",
         username=...,
         password=...,
     )
@@ -423,7 +428,8 @@ The following parameters are supported by all annotation backends:
     editor after uploading the samples
 
 The following parameters allow you to configure the labeling schema to use for
-your annotation tasks. See :ref:`this section <label-schema>` for more details:
+your annotation tasks. See :ref:`this section <annotation-label-schema>` for
+more details:
 
 -   **label_schema** (*None*): a dictionary defining the label schema to use.
     If this argument is provided, it takes precedence over `label_field` and
@@ -454,7 +460,7 @@ In addition, each annotation backend can typically be configured in a variety
 of backend-specific ways. See :ref:`this section <configuring-your-backend>`
 for more details.
 
-.. _label-schema:
+.. _annotation-label-schema:
 
 Label schema
 ------------
@@ -555,7 +561,7 @@ FiftyOne can infer the appropriate values to use:
     properties of your dataset will be used, if available. Otherwise, the
     observed labels on your dataset will be used to construct a classes list
 
-.. _label-attributes:
+.. _annotation-label-attributes:
 
 Label attributes
 ----------------
@@ -724,7 +730,80 @@ to delete the record of an annotation run from your FiftyOne dataset:
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
     nor will it delete any associated information from the annotation backend.
 
-.. _annotation-custom-backend:
+.. _custom-annotation-backend:
 
 Custom annotation backends
 __________________________
+
+If you would like to use an annotation tool that is not natively supported by
+FiftyOne, you can follow the instructions below to implement an interface for
+your tool and then configure your environment so that the
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+methods will use your custom backend.
+
+Annotation backends are defined by writing subclasses of the following
+three classes with the appropriate abstract methods implemented:
+
+-   :class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>`:
+    this class implements the logic required for your annotation backend to
+    declare the types of labeling tasks that it supports, as well as the core
+    :meth:`upload_annotations() <fiftyone.utils.annotations.AnnotationBackend.upload_annotations>`
+    and
+    :meth:`download_annotations() <fiftyone.utils.annotations.AnnotationBackend.download_annotations>`
+    methods, which handle uploading and downloading data and labels to your
+    annotation tool
+
+-   :class:`AnnotationBackendConfig <fiftyone.utils.annotations.AnnotationBackendConfig>`:
+    this class defines the available parameters that users can pass as keyword
+    arguments to
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+    customize the behavior of the annotation run
+
+-   :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`:
+    this class stores any intermediate information necessary to track the
+    progress of an annotation run that has been created and is now waiting for
+    its results to be merged back into the FiftyOne dataset
+
+.. note::
+
+    Refer to the :mod:`fiftyone.utils.cvat` module for an example of how the
+    above subclasses are implemented for the CVAT backend.
+
+The recommended way to expose a custom backend is to add it to your
+:ref:`annotation config <annotation-config>` at
+`~/.fiftyone/annotation_config.json` as follows:
+
+.. code-block:: text
+
+    {
+        "default_backend": "<backend>",
+        "backends": {
+            "<backend>": {
+                "config_cls": "your.custom.AnnotationBackendConfigSubclass",
+
+                # custom parameters here
+                ...
+            }
+        }
+    }
+
+In the above, `<backend>` defines the name of your custom backend, which you
+can henceforward pass as the `backend` parameter to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, and
+the `config_cls` parameter specifies the fully-qualified name of the
+:class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>`
+subclass for your annotation backend.
+
+With the `default_backend` parameter set to your custom backend as shown above,
+calling
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` will
+automatically use your backend.
+
+Alternatively, you can manually opt to use your custom backend on a per-run
+basis by passing the `backend` parameter:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(..., backend="<backend>", ...)
