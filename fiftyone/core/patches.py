@@ -321,34 +321,6 @@ class _PatchesView(fov.DatasetView):
                 ids=delete_ids, fields=field
             )
 
-    def _get_ids_map(self, field):
-        # this method is used by `fiftyone.brain.compute_similarity()`
-
-        label_type = self._patches_dataset._get_label_field_type(field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-
-        _, id_path = self._get_label_field_path(field, "id")
-
-        sample_ids, label_ids = self.values(["id", id_path])
-
-        ids_map = {}
-        if is_list_field:
-            for sample_id, _label_ids in zip(sample_ids, label_ids):
-                if not _label_ids:
-                    continue
-
-                for label_id in _label_ids:
-                    ids_map[label_id] = sample_id
-
-        else:
-            for sample_id, label_id in zip(sample_ids, label_ids):
-                if not label_id:
-                    continue
-
-                ids_map[label_id] = sample_id
-
-        return ids_map
-
 
 class PatchesView(_PatchesView):
     """A :class:`fiftyone.core.view.DatasetView` of patches from a

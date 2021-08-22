@@ -41,6 +41,7 @@ def plot_confusion_matrix(
     labels,
     ids=None,
     samples=None,
+    eval_key=None,
     gt_field=None,
     pred_field=None,
     colorscale="oranges",
@@ -62,6 +63,7 @@ def plot_confusion_matrix(
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the confusion matrix was generated. Only used when
             ``ids`` are also provided to update an attached session
+        eval_key (None): the evaluation key of the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         colorscale ("oranges"): a plotly colorscale to use. See
@@ -87,6 +89,7 @@ def plot_confusion_matrix(
         labels,
         ids,
         samples=samples,
+        eval_key=eval_key,
         gt_field=gt_field,
         pred_field=pred_field,
         colorscale=colorscale,
@@ -156,6 +159,7 @@ def _plot_confusion_matrix_interactive(
     labels,
     ids,
     samples=None,
+    eval_key=None,
     gt_field=None,
     pred_field=None,
     colorscale=None,
@@ -181,16 +185,25 @@ def _plot_confusion_matrix_interactive(
     ids = np.flip(ids, axis=0)
     ylabels = np.flip(ylabels)
 
+    if eval_key is not None:
+        selection_mode = "patches"
+        init_patches_fcn = lambda view: view.to_evaluation_patches(eval_key)
+    else:
+        selection_mode = "select"
+        init_patches_fcn = None
+
     plot = InteractiveHeatmap(
         confusion_matrix,
         ids,
-        link_type="labels",
-        label_fields=label_fields,
-        init_view=samples,
         xlabels=xlabels,
         ylabels=ylabels,
         zlim=zlim,
         colorscale=colorscale,
+        link_type="labels",
+        init_view=samples,
+        label_fields=label_fields,
+        selection_mode=selection_mode,
+        init_patches_fcn=init_patches_fcn,
     )
 
     plot.update_layout(**_DEFAULT_LAYOUT)
@@ -587,12 +600,22 @@ def scatterplot(
 
         return figure
 
-    link_type = "labels" if link_field is not None else "samples"
+    if link_field is not None:
+        link_type = "labels"
+        selection_mode = "patches"
+        init_patches_fcn = lambda view: view.to_patches(link_field)
+    else:
+        link_type = "samples"
+        selection_mode = None
+        init_patches_fcn = None
+
     return InteractiveScatter(
         figure,
         link_type=link_type,
-        label_fields=link_field,
         init_view=samples,
+        label_fields=link_field,
+        selection_mode=selection_mode,
+        init_patches_fcn=init_patches_fcn,
     )
 
 
@@ -1125,6 +1148,11 @@ class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
 class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
     """Base class for :class:`fiftyone.core.plots.base.InteractivePlot`
     instances with Plotly backends.
+
+    Args:
+        widget: a ``plotly.graph_objects.FigureWidget``
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(self, widget, **kwargs):
@@ -1164,36 +1192,21 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
     Args:
         figure: a ``plotly.graph_objects.Figure``
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional label field or list of label fields to
-            which points in this plot correspond. Only applicable when linked
-            to labels
-        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            defining an initial view from which to derive selection views when
-            points are selected in the plot. This view will also be shown when
-            the plot is in its default state (no selection)
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
-    def __init__(
-        self, figure, link_type="samples", label_fields=None, init_view=None
-    ):
+    def __init__(self, figure, **kwargs):
         self._figure = figure
         self._traces = None
         self._trace_ids = {}
         self._ids_to_traces = {}
         self._ids_to_inds = {}
         self._callback_flags = {}
-        self._select_callback = None
 
         widget = self._make_widget()
 
-        super().__init__(
-            widget,
-            link_type=link_type,
-            label_fields=label_fields,
-            init_view=init_view,
-        )
+        super().__init__(widget, **kwargs)
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
@@ -1210,9 +1223,6 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
     def _init_callback_flags(self):
         self._callback_flags = {t.name: False for t in self._traces}
-
-    def _register_selection_callback(self, callback):
-        self._select_callback = callback
 
     @property
     def supports_session_updates(self):
@@ -1294,13 +1304,13 @@ class InteractiveScatter(PlotlyInteractivePlot):
                 trace.update(selectedpoints=trace_inds)
 
     def _on_select(self, trace, selector=None):
-        if self._select_callback is None:
+        if self._selection_callback is None:
             return
 
         if not self._ready_for_callback(trace):
             return
 
-        self._select_callback(self.selected_ids)
+        self._selection_callback(self.selected_ids)
 
     def _ready_for_callback(self, trace):
         if trace.visible == True:
@@ -1347,15 +1357,6 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         Z: a ``num_cols x num_rows`` array of heatmap values
         ids: an array of same shape as ``Z`` whose elements contain lists
             of IDs for the heatmap cells
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
-        label_fields (None): an optional label field or list of label fields to
-            which points in this plot correspond. Only applicable when linked
-            to labels
-        init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
-            defining an initial view from which to derive selection views when
-            cells are selected in the plot. This view will also be shown when
-            the plot is in its default state (no selection)
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
         zlim (None): a ``[zmin, zmax]`` limit to use for the colorbar
@@ -1364,15 +1365,14 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         colorscale (None): a plotly colorscale to use
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
+        **kwargs: keyword arguments for the
+            :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
 
     def __init__(
         self,
         Z,
         ids,
-        link_type="samples",
-        label_fields=None,
-        init_view=None,
         xlabels=None,
         ylabels=None,
         zlim=None,
@@ -1380,6 +1380,7 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         colorscale=None,
         grid_opacity=0.1,
         bg_opacity=0.25,
+        **kwargs,
     ):
         Z = np.asarray(Z)
         ids = np.asarray(ids)
@@ -1402,7 +1403,6 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         self._selectedw = None
         self._bgw = None
         self._selected_cells = []
-        self._select_callback = None
 
         # Lower bound at 1 to avoid zero division errors
         self._ids_counts = np.vectorize(lambda a: max(1, len(a)))(ids)
@@ -1411,12 +1411,7 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         widget = self._make_widget()
         self._init_cells_map()
 
-        super().__init__(
-            widget,
-            link_type=link_type,
-            label_fields=label_fields,
-            init_view=init_view,
-        )
+        super().__init__(widget, **kwargs)
 
     @property
     def supports_session_updates(self):
@@ -1432,9 +1427,6 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
                 self.ids[y, x] for x, y in self._selected_cells
             )
         )
-
-    def _register_selection_callback(self, callback):
-        self._select_callback = callback
 
     def _make_widget(self):
         widget = go.FigureWidget(self._figure)
@@ -1572,8 +1564,8 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
             self._bgw.zmin = zlim[0]
             self._bgw.zmax = zlim[1]
 
-        if self._select_callback is not None:
-            self._select_callback(self.selected_ids)
+        if self._selection_callback is not None:
+            self._selection_callback(self.selected_ids)
 
     def _init_cells_map(self):
         num_rows, num_cols = self.Z.shape
@@ -2283,7 +2275,7 @@ def _make_edges_scatter(points, edges, edges_title):
 
     kwargs = dict(
         line=dict(width=0.5, color="#888"),
-        hoverinfo="none",
+        hoverinfo="skip",
         mode="lines",
         customdata=None,
         showlegend=edges_title is not None,
@@ -2305,7 +2297,7 @@ def _make_edges_scatter_mapbox(coords, edges, edges_title):
 
     kwargs = dict(
         line=dict(width=0.5, color="#888"),
-        hoverinfo="none",
+        hoverinfo="skip",
         mode="lines",
         customdata=None,
         showlegend=edges_title is not None,
