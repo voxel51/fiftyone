@@ -14,6 +14,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 
 
@@ -1442,6 +1443,9 @@ class Values(Aggregation):
                 self._field_name, ignore_primitives=True
             )
             if field_type is not None:
+                if self._unwind and isinstance(field_type, fof.ListField):
+                    field_type = field_type.field
+
                 parse_fcn = field_type.to_python
 
         self._big_field = big_field

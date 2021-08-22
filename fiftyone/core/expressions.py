@@ -204,6 +204,32 @@ class ViewExpression(object):
 
         return _do_to_mongo(self._expr, prefix)
 
+    def __call__(self, field):
+        """Retrieves the specified field or embedded field of this expression,
+        which must resolve to a document.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Sort samples alphabetically by the label of their first ground
+            # truth object
+            view = dataset.sort_by(F("ground_truth.detections")[0]("label"))
+
+            print(view.values(F("ground_truth.detections")[0]("label")))
+
+        Args:
+            field: a "field" or "embedded.field.name"
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return self.apply(ViewField(field))
+
     # Comparison operators ####################################################
 
     def __eq__(self, other):
