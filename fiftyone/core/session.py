@@ -341,7 +341,7 @@ class Session(foc.HasClient):
                     "Cannot open a Desktop App instance from a Colab notebook"
                 )
 
-            import_desktop()
+            _import_desktop()
 
             self._app_service = fos.AppService(server_port=port)
             return
