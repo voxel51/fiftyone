@@ -203,6 +203,7 @@ def _parse_config(name, label_schema, media_field, **kwargs):
     return config_cls(name, label_schema, media_field=media_field, **params)
 
 
+# The supported label field types and their string names
 _LABEL_TYPES_MAP = {
     "classification": fol.Classification,
     "classifications": fol.Classifications,
@@ -213,9 +214,17 @@ _LABEL_TYPES_MAP = {
     "polyline": fol.Polyline,
     "polylines": fol.Polylines,
 }
-
 _LABEL_TYPES_MAP_REV = {v: k for k, v in _LABEL_TYPES_MAP.items()}
 
+# The label fields that are *always* annotated
+_DEFAULT_LABEL_FIELDS_MAP = {
+    fol.Classification: ["label"],
+    fol.Detection: ["label", "bounding_box", "index"],
+    fol.Polyline: ["label", "points", "index"],
+    fol.Keypoint: ["label", "points", "index"],
+}
+
+# The supported scalar field types
 _SCALAR_TYPES = {
     fof.IntField,
     fof.FloatField,
@@ -560,6 +569,7 @@ def load_annotations(
     for label_field, label_info in label_schema.items():
         label_type = label_info["type"]
         existing_field = label_info["existing_field"]
+
         anno_dict = annotations.get(label_field, {})
 
         if label_type == "scalar":
@@ -604,7 +614,7 @@ def load_annotations(
         if label_type == "scalar":
             _load_scalars(samples, anno_dict, label_field)
         elif existing_field:
-            _merge_labels(samples, anno_dict, results, label_field, label_type)
+            _merge_labels(samples, anno_dict, results, label_field, label_info)
         else:
             _add_new_labels(samples, anno_dict, label_field, label_type)
 
@@ -620,6 +630,9 @@ def _prompt_new_field(samples, new_type, label_field):
         "field '%s'.\nPlease enter a new field name in which to store these "
         "annotations, or empty to skip them: " % (new_type, label_field)
     )
+
+    if not new_field:
+        return
 
     while samples._has_field(new_field):
         new_field = input(
@@ -715,7 +728,10 @@ def _add_new_labels(samples, anno_dict, label_field, label_type):
         sample.save()
 
 
-def _merge_labels(samples, anno_dict, results, label_field, label_type):
+def _merge_labels(samples, anno_dict, results, label_field, label_info):
+    label_type = label_info["type"]
+    attributes = label_info.get("attributes", {})
+
     is_video = samples.media_type == fom.VIDEO
 
     id_map = results.id_map
@@ -833,35 +849,15 @@ def _merge_labels(samples, anno_dict, results, label_field, label_type):
             for label in labels:
                 if label.id in merge_ids:
                     anno_label = image_annos[label.id]
+
                     if is_video and "index" in anno_label:
-                        (
-                            anno_label,
-                            max_tracking_index,
-                        ) = _update_tracking_index(
+                        max_tracking_index = _update_tracking_index(
                             anno_label,
                             tracking_index_map[sample_id],
                             max_tracking_index,
                         )
 
-                    # @todo this needs to only merge `label`, `bounding_box`,
-                    # and any explicitly included attributes, but not things
-                    # like `confidnece` if that field was not included in the
-                    # annotation run
-                    for field in anno_label._fields_ordered:
-                        if (
-                            field in label._fields_ordered
-                            and label[field] == anno_label[field]
-                        ):
-                            pass
-                        else:
-                            if field == "attributes":
-                                for (
-                                    attr,
-                                    val,
-                                ) in anno_label.attributes.items():
-                                    label.attributes[attr] = val
-                            else:
-                                label[field] = anno_label[field]
+                    _merge_label(label, anno_label, attributes)
 
             # Add new labels for label list fields
             # Non-list fields would have been deleted and replaced above
@@ -869,10 +865,7 @@ def _merge_labels(samples, anno_dict, results, label_field, label_type):
                 for anno_id, anno_label in image_annos.items():
                     if anno_id in new_ids:
                         if is_video and "index" in anno_label:
-                            (
-                                anno_label,
-                                max_tracking_index,
-                            ) = _update_tracking_index(
+                            max_tracking_index = _update_tracking_index(
                                 anno_label,
                                 tracking_index_map[sample_id],
                                 max_tracking_index,
@@ -886,6 +879,15 @@ def _merge_labels(samples, anno_dict, results, label_field, label_type):
     # Update ID map on results object so that re-imports of this run will be
     # properly processed
     results.backend.update_label_id_map(id_map, added_id_map, label_field)
+
+
+def _merge_label(label, anno_label, attributes):
+    for field in _DEFAULT_LABEL_FIELDS_MAP.get(type(label), []):
+        label[field] = anno_label[field]
+
+    for name in attributes:
+        value = anno_label.get_attribute_value(name, None)
+        label.set_attribute_value(name, value)
 
 
 def _make_tracking_index(samples, label_field, annotations):
@@ -938,7 +940,7 @@ def _update_tracking_index(anno_label, sample_index_map, max_tracking_index):
         anno_label.index = max_tracking_index
         max_tracking_index += 1
 
-    return anno_label, max_tracking_index
+    return max_tracking_index
 
 
 class AnnotationBackendConfig(foa.AnnotationMethodConfig):
