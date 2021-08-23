@@ -252,8 +252,16 @@ As an alternative to this managed database service, a valid
 can be configured via the `database_uri` setting, and FiftyOne will connect to
 your own MongoDB instance instead. FiftyOne requires MongoDB version `4.4`.
 
-Note that `database_uri` must be defined for Apple Silicon Macs as MongoDB is
-not yet supported on the platform.
+.. note::
+
+    Very rarerly, FiftyOne runs database admin migrations after an upgrade of the
+    `fiftyone` package. For these migrations to run, the `database_uri` must
+    establish a connection with administrative privileges.
+
+.. note::
+
+    `database_uri` must be defined for Apple Silicon Macs as MongoDB is not
+    yet supported on the platform.
 
 .. _configuring-fiftyone-app:
 

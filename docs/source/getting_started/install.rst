@@ -41,6 +41,10 @@ We encourage installing FiftyOne in a virtual environment. See
   :ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
   more information.
 
+  .. note::
+
+  FiftyOne does not support 32-bit platforms.
+
 .. _installing-fiftyone:
 
 Installing FiftyOne
@@ -277,7 +281,7 @@ reinstall the newer version of FiftyOne and then follow these instructions.
         pip install --index https://pypi.voxel51.com fiftyone==<version>
 
 .. _uninstalling-fiftyone:
-
+/
 Uninstalling FiftyOne
 ---------------------
 
