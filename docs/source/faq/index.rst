@@ -585,7 +585,7 @@ Can I use my own MongoDB database?
 ----------------------------------
 
 Yes, you can configure FiftyOne to connect to your own MongoDB instance by
-setting `database_uri` property of your
+setting the `database_uri` property of your
 :ref:`FiftyOne config <configuring-fiftyone>`. Refer to
 :ref:`this page <configuring-mongodb-connection>` for more information.
 
