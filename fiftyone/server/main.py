@@ -11,7 +11,6 @@ from collections import defaultdict
 import math
 import os
 import traceback
-from fiftyone.core.odm.database import aggregate
 
 import tornado.escape
 import tornado.ioloop
@@ -23,7 +22,8 @@ import tornado.websocket
 
 import eta.core.serial as etas
 
-os.environ["FIFTYONE_SERVER"] = "1"
+if os.environ["FIFTYONE_DISABLE_SERVICES"]:
+    del os.environ["FIFTYONE_DISABLE_SERVICES"]
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
@@ -34,7 +34,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.stages import Select, _STAGES
+from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.uid as fou

@@ -58,15 +58,14 @@ def establish_db_conn(config):
 
     if config.database_uri is None:
         global _db_service
-        try:
-            disabled = (
-                os.environ.get("FIFTYONE_SERVER", False)
-                or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
-                or _db_service is not None
-            )
-            if disabled:
-                return
 
+        if _db_service is not None:
+            return
+
+        if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
+            return
+
+        try:
             _db_service = fos.DatabaseService()
             _connection_kwargs["port"] = _db_service.port
 

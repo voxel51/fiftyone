@@ -72,8 +72,7 @@ class Service(object):
     def __init__(self):
         self._system = os.system
         self._disabled = (
-            os.environ.get("FIFTYONE_SERVER", False)
-            or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+            os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
             or multiprocessing.current_process().name != "MainProcess"
             or (
                 os.environ.get("FIFTYONE_HEADLESS", False)
