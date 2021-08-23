@@ -7,12 +7,10 @@ Database utilities.
 """
 from copy import copy
 import logging
-import multiprocessing
 import os
 
 from bson import json_util
 from mongoengine import connect
-from mongoengine.errors import ValidationError
 import motor
 from packaging.version import Version
 import pymongo
@@ -47,12 +45,14 @@ def establish_db_conn(config):
         config: a :class:`fiftyone.core.config.FiftyOneConfig`
 
     Raises:
-        ConnectionError: if the connection to `mongod` could not be established
-        FiftyOneConfigError: if startup was attempted, but no binary was found
-        ServiceExecutableNotFound: if `fo.config.database_uri` is defined but a
-            no `mongod` was found on disk
-        ValidationError: if the `mongod` version to meet FiftyOne's requirement,
-            or validation could not occur
+        ConnectionError: if a connection to `mongod` could not be established
+        FiftyOneConfigError: if `fo.config.database_uri` is not defined,
+            but `mongod` is not available on the system
+        ServiceExecutableNotFound: if
+            :class:`fiftyone.core.service.DatabaseService` startup was
+            attempted, but `mongod` was not found in :mod:`fiftyone.db.bin`
+        RuntimeError: if the `mongod` version does not meet FiftyOne's
+            requirement, or validation could not occur
     """
     global _connection_kwargs
 
@@ -110,9 +110,9 @@ def _validate_db_version(config, client):
         version_str = client.server_info()["version"]
     except Exception as error:
         if isinstance(error, ServerSelectionTimeoutError):
-            raise ConnectionError("Could not connect to mongodb")
+            raise ConnectionError("Could not connect to `mongod`")
 
-        raise ValidationError("Failed to validate `mongod` version")
+        raise RuntimeError("Failed to validate `mongod` version")
 
     version = Version(version_str)
     start, end = foc.MONGO_VERSION_RANGE
@@ -121,13 +121,13 @@ def _validate_db_version(config, client):
         return
 
     if version >= end and config.database_uri is not None:
-        raise ValidationError(
+        raise RuntimeError(
             "`mongod` version is above the supported range [%s, %s), found %s."
             "Your version of `fiftyone` (%s) may be out of date. Consider upgrading"
             "`fiftyone`" % (start, end, version, foc.VERSION)
         )
 
-    raise ValidationError(
+    raise RuntimeError(
         "`mongod` version is invalid. Must be [%s, %s), found %s"
         % (start, end, version)
     )

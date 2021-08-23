@@ -114,7 +114,6 @@ class Service(object):
             "service",
             "main.py",
         )
-        print(" ".join(self.command))
 
         # use psutil's Popen wrapper because its wait() more reliably waits
         # for the process to exit on Windows

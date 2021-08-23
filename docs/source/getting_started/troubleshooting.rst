@@ -152,7 +152,8 @@ MongoDB compatibility issues on Linux
 
 The ``fiftyone-db`` package includes a build of MongoDB that works on Ubuntu
 18.04 and several other modern distributions. If this build does not work on
-your distribution, you may encounter an error similar to:
+your distribution, you may encounter a `ServerSelectionTimeoutError` with
+other output similar to:
 
 .. code-block:: text
 
@@ -160,15 +161,12 @@ your distribution, you may encounter an error similar to:
     /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
     libcrypto.so.1.1: cannot open shared object file: No such file or directory
 
-.. code-block:: text
-
-    RuntimeError: Could not find mongod >= 4.4
-
 To resolve this, you can set up your own MongoDB service on your machine or
 elsewhere, and define a `database_uri` in your
 :ref:`FiftyOne config <configuring-fiftyone>`. See
 :ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
-more information.
+more information. On Linux, :ref:`alternative fiftyone-db builds
+<alternative-builds>` are available, as well.
 
 .. _alternative-builds:
 
