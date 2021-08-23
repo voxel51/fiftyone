@@ -1073,7 +1073,7 @@ def _display_colab(session, handle, uuid, port, height, update=False):
     output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
 
 
-def import_desktop():
+def _import_desktop():
         try:
             import fiftyone.desktop
         except ImportError as e:
