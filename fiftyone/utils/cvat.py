@@ -2832,12 +2832,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return "%s/annotations" % self.task_url(task_id)
 
     def task_annotation_formatted_url(
-        self, task_id, annot_filepath, annot_format="CVAT 1.1",
+        self, task_id, anno_filepath, anno_format="CVAT 1.1",
     ):
         return "%s/annotations?format=%s&filename=%s" % (
             self.task_url(task_id),
-            annot_format,
-            annot_filepath,
+            anno_format,
+            anno_filepath,
         )
 
     def jobs_url(self, task_id):
@@ -3183,6 +3183,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             media_field = "filepath"
 
         samples = samples.sort_by(media_field)
+
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3248,6 +3249,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             }
                         ]
                         attr_names = ["value"]
+
                 for ln in label_names:
                     labels.append({"name": ln, "attributes": attributes})
 
@@ -3257,9 +3259,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     assigned_scalar_attrs[label_field] = assign_scalar_attrs
 
                 # Parse label data into format expected by CVAT
-                annot_tags = []
-                annot_shapes = []
-                annot_tracks = []
+                anno_tags = []
+                anno_shapes = []
+                anno_tracks = []
                 id_mapping = self._create_id_mapping(batch_samples)
 
                 if is_existing_field:
@@ -3272,8 +3274,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "detection",
                     ]:
                         (
-                            annot_shapes,
-                            annot_tracks,
+                            anno_shapes,
+                            anno_tracks,
                             remapped_attr_names,
                         ) = self._create_shapes_tags_tracks(
                             batch_samples,
@@ -3290,7 +3292,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "scalar",
                     ]:
                         (
-                            annot_tags,
+                            anno_tags,
                             remapped_attr_names,
                         ) = self._create_shapes_tags_tracks(
                             batch_samples,
@@ -3303,7 +3305,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         )
                     else:
                         (
-                            annot_shapes,
+                            anno_shapes,
                             remapped_attr_names,
                         ) = self._create_shapes_tags_tracks(
                             batch_samples,
@@ -3368,34 +3370,34 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 # Creating task assigned ids to classes and attributes
                 # Remap annotations to these ids before uploading
-                annot_shapes = self._remap_ids(
-                    annot_shapes, attribute_id_map, class_id_map
+                anno_shapes = self._remap_ids(
+                    anno_shapes, attribute_id_map, class_id_map
                 )
-                annot_tags = self._remap_ids(
-                    annot_tags, attribute_id_map, class_id_map
+                anno_tags = self._remap_ids(
+                    anno_tags, attribute_id_map, class_id_map
                 )
-                annot_tracks = self._remap_track_ids(
-                    annot_tracks, attribute_id_map, class_id_map
+                anno_tracks = self._remap_track_ids(
+                    anno_tracks, attribute_id_map, class_id_map
                 )
 
-                annot_json = {
+                anno_json = {
                     "version": 0,
-                    "tags": annot_tags,
-                    "shapes": annot_shapes,
-                    "tracks": annot_tracks,
+                    "tags": anno_tags,
+                    "shapes": anno_shapes,
+                    "tracks": anno_tracks,
                 }
 
                 len_shapes = 0
                 len_tags = 0
                 len_tracks = 0
                 while (
-                    len(annot_shapes) != len_shapes
-                    or len(annot_tags) != len_tags
-                    or len(annot_tracks) != len_tracks
+                    len(anno_shapes) != len_shapes
+                    or len(anno_tags) != len_tags
+                    or len(anno_tracks) != len_tracks
                 ):
                     # Upload annotations
                     resp = self.put(
-                        self.task_annotation_url(task_id), json=annot_json
+                        self.task_annotation_url(task_id), json=anno_json
                     )
                     resp_json = resp.json()
                     len_shapes = len(resp_json["shapes"])
@@ -3545,8 +3547,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _parse_shapes_tags(
         self,
-        annot_type,
-        annots,
+        anno_type,
+        annos,
         frame_id_map,
         label_type,
         class_map,
@@ -3559,9 +3561,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label results dict.
 
         Args:
-            annot_type: the type of annotations to parse, in
+            anno_type: the type of annotations to parse, in
                 ``("shapes", "tags", "track")``
-            annots: list of shapes or tags
+            annos: list of shapes or tags
             frame_id_map: dict mapping CVAT frame ids to FiftyOne sample and
                 frame uuids
             label_type: expected label type to parse from the given annotations
@@ -3572,7 +3574,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             assign_scalar_attrs (False): boolean indicating whether scalars are
                 annotated as text field attributes or a dropdown of classes
             track_index (None): object index to assign to all shapes in
-                `annots`
+                ``annos``
 
         Returns:
             a label results dict
@@ -3584,14 +3586,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # For filling in tracked objects
         prev_frame = None
         prev_outside = True
-        filled_annots = []
+        filled_annos = []
 
-        for annot in annots:
+        for anno in annos:
             # Iterate through all keyframes in this track
             # Fill in shapes for all frames between keyframes that are not
             # outside of the frame
             # For non-track annotation, this is skipped
-            frame = annot["frame"]
+            frame = anno["frame"]
             if (
                 prev_frame is not None
                 and (frame - 1) > prev_frame
@@ -3600,25 +3602,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # For tracks, fill in previous missing frames if shape was not
                 # outside
                 for f in range(prev_frame + 1, frame):
-                    filled_annot = deepcopy(prev_annot)
-                    filled_annot["frame"] = f
-                    filled_annots.append(filled_annot)
+                    filled_anno = deepcopy(prev_anno)
+                    filled_anno["frame"] = f
+                    filled_annos.append(filled_anno)
 
-            prev_annot = annot
+            prev_anno = anno
             prev_frame = frame
-            if "outside" in annot:
-                prev_outside = annot["outside"]
+            if "outside" in anno:
+                prev_outside = anno["outside"]
             else:
                 prev_outside = True
 
-            if "outside" in annot and annot["outside"]:
+            if "outside" in anno and anno["outside"]:
                 # If a tracked object is not in the frame
                 continue
 
             results, prev_type = self._parse_annotation(
-                annot,
+                anno,
                 results,
-                annot_type,
+                anno_type,
                 prev_type,
                 frame_id_map,
                 label_type,
@@ -3637,17 +3639,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # The last track annotation goes to the end of the video, so fill
             # all remaining frames
             for f in range(prev_frame + 1, len(frame_id_map)):
-                filled_annot = deepcopy(prev_annot)
-                filled_annot["frame"] = f
-                filled_annots.append(filled_annot)
+                filled_anno = deepcopy(prev_anno)
+                filled_anno["frame"] = f
+                filled_annos.append(filled_anno)
 
-        for annot in filled_annots:
+        for anno in filled_annos:
             # Create labels for all non-key frames of this track
             # This is skipped for non-track annotations
             results, prev_type = self._parse_annotation(
-                annot,
+                anno,
                 results,
-                annot_type,
+                anno_type,
                 prev_type,
                 frame_id_map,
                 label_type,
@@ -3662,9 +3664,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _parse_annotation(
         self,
-        annot,
+        anno,
         results,
-        annot_type,
+        anno_type,
         prev_type,
         frame_id_map,
         expected_label_type,
@@ -3674,7 +3676,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         assigned_scalar_attrs=False,
         track_index=None,
     ):
-        frame = annot["frame"]
+        frame = anno["frame"]
         if len(frames) > frame:
             metadata = frames[frame]
         else:
@@ -3688,18 +3690,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         label = None
 
-        if annot_type in ("shapes", "track"):
-            shape_type = annot["type"]
+        if anno_type in ("shapes", "track"):
+            shape_type = anno["type"]
             if expected_label_type == "scalar" and assigned_scalar_attrs:
                 # Shapes created with values, set class to value
-                annot_attrs = annot["attributes"]
+                anno_attrs = anno["attributes"]
                 class_val = False
-                if len(annot_attrs) > 0 and "value" in annot_attrs[0]:
-                    class_val = annot_attrs[0]["value"]
-                    annot["attributes"] = []
+                if len(anno_attrs) > 0 and "value" in anno_attrs[0]:
+                    class_val = anno_attrs[0]["value"]
+                    anno["attributes"] = []
 
             cvat_shape = CVATShape(
-                annot, class_map, attr_id_map, metadata, index=track_index
+                anno, class_map, attr_id_map, metadata, index=track_index
             )
             if shape_type == "rectangle":
                 label_type = "detections"
@@ -3722,11 +3724,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # Shapes created with values, set class to value
                     label.label = class_val
 
-        if annot_type == "tags":
+        if anno_type == "tags":
             if expected_label_type == "scalar":
                 label_type = "scalar"
                 if assigned_scalar_attrs:
-                    attrs = annot["attributes"]
+                    attrs = anno["attributes"]
                     label = _parse_attribute(attrs[0]["value"])
                     if (
                         prev_type is not None
@@ -3746,10 +3748,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     else:
                         prev_type = type(label)
                 else:
-                    label = class_map[annot["label_id"]]
+                    label = class_map[anno["label_id"]]
             else:
                 label_type = "classifications"
-                cvat_tag = CVATTag(annot, class_map, attr_id_map)
+                cvat_tag = CVATTag(anno, class_map, attr_id_map)
                 label = cvat_tag.to_classification()
 
         if label is None:
@@ -4445,7 +4447,7 @@ class CVATShape(CVATLabel):
     def polyline_to_detection(self, label):
         """Converts the `CVATLabel` to a
         :class:`fiftyone.core.labels.Detection` with a segmentation mask
-        created from the polyline annotation
+        created from the polyline annotation.
 
         Returns:
             a :class:`fiftyone.core.labels.Detection`
