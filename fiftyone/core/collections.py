@@ -5708,7 +5708,7 @@ class SampleCollection(object):
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationRun.list_runs(self)
+        return foan.AnnotationMethod.list_runs(self)
 
     def get_annotation_info(self, anno_key):
         """Returns information about the annotation run with the given key on
@@ -5720,7 +5720,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.annotation.AnnotationInfo`
         """
-        return foan.AnnotationRun.get_run_info(self, anno_key)
+        return foan.AnnotationMethod.get_run_info(self, anno_key)
 
     def load_annotation_results(self, anno_key, **kwargs):
         """Loads the results for the annotation run with the given key on this
@@ -5742,7 +5742,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        results = foan.AnnotationRun.load_run_results(self, anno_key)
+        results = foan.AnnotationMethod.load_run_results(self, anno_key)
         results.load_credentials(**kwargs)
         return results
 
@@ -5758,7 +5758,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return foan.AnnotationRun.load_run_view(
+        return foan.AnnotationMethod.load_run_view(
             self, anno_key, select_fields=select_fields
         )
 
@@ -5805,7 +5805,7 @@ class SampleCollection(object):
         Args:
             anno_key: an annotation key
         """
-        foan.AnnotationRun.delete_run(self, anno_key)
+        foan.AnnotationMethod.delete_run(self, anno_key)
 
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
@@ -5818,7 +5818,7 @@ class SampleCollection(object):
         Use :meth:`load_annotation_results` to programmatically manage/delete
         runs in the annotation backend.
         """
-        foan.AnnotationRun.delete_runs(self)
+        foan.AnnotationMethod.delete_runs(self)
 
     def list_indexes(self):
         """Returns the list of index names on this collection.

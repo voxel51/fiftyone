@@ -376,6 +376,200 @@ def delete_dataset(name, dry_run=False):
             _delete_run_results(delete_results)
 
 
+def delete_annotation_run(name, anno_key, dry_run=False):
+    """Deletes the annotation run with the given key from the dataset with
+    the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_annotation_run`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        anno_key: the annotation key
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    annotation_runs = dataset_dict.get("annotation_runs", {})
+    if anno_key not in annotation_runs:
+        logger.warning(
+            "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
+        )
+        return
+
+    run_doc = annotation_runs.pop(anno_key)
+    result_id = run_doc.get("results", None)
+
+    if result_id is not None:
+        logger.info("Deleting run result '%s'", result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    logger.info(
+        "Deleting annotation run '%s' from dataset '%s'", anno_key, name
+    )
+    if not dry_run:
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
+def delete_annotation_runs(name, dry_run=False):
+    """Deletes all annotation runs from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_annotation_runs`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    anno_keys = []
+    result_ids = []
+    for anno_key, run_doc in dataset_dict.get("annotation_runs", {}).items():
+        anno_keys.append(anno_key)
+
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    if result_ids:
+        logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            _delete_run_results(result_ids)
+
+    logger.info(
+        "Deleting annotation runs %s from dataset '%s'", anno_keys, name
+    )
+    if not dry_run:
+        dataset_dict["annotation_runs"] = {}
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
+def delete_brain_run(name, brain_key, dry_run=False):
+    """Deletes the brain method run with the given key from the dataset with
+    the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_run`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        brain_key: the brain key
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    brain_methods = dataset_dict.get("brain_methods", {})
+    if brain_key not in brain_methods:
+        logger.warning(
+            "Dataset '%s' has no brain method run with key '%s'",
+            name,
+            brain_key,
+        )
+        return
+
+    run_doc = brain_methods.pop(brain_key)
+    result_id = run_doc.get("results", None)
+
+    if result_id is not None:
+        logger.info("Deleting run result '%s'", result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    logger.info(
+        "Deleting brain method run '%s' from dataset '%s'", brain_key, name
+    )
+    if not dry_run:
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
+def delete_brain_runs(name, dry_run=False):
+    """Deletes all brain method runs from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_runs`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    brain_keys = []
+    result_ids = []
+    for brain_key, run_doc in dataset_dict.get("brain_methods", {}).items():
+        brain_keys.append(brain_key)
+
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    if result_ids:
+        logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            _delete_run_results(result_ids)
+
+    logger.info(
+        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
+    )
+    if not dry_run:
+        dataset_dict["brain_methods"] = {}
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
 def delete_evaluation(name, eval_key, dry_run=False):
     """Deletes the evaluation run with the given key from the dataset with the
     given name.
@@ -468,113 +662,20 @@ def delete_evaluations(name, dry_run=False):
         conn.datasets.replace_one(match_d, dataset_dict)
 
 
-def delete_brain_run(name, brain_key, dry_run=False):
-    """Deletes the brain method run with the given key from the dataset with
-    the given name.
-
-    This is a low-level implementation of deletion that does not call
-    :meth:`fiftyone.core.dataset.load_dataset` or
-    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_run`,
-    which is helpful if a dataset's backing document or collections are
-    corrupted and cannot be loaded via the normal pathways.
-
-    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
-    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
-
-    Args:
-        name: the name of the dataset
-        brain_key: the brain key
-        dry_run (False): whether to log the actions that would be taken but not
-            perform them
-    """
-    conn = get_db_conn()
-
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
-    if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
-        return
-
-    brain_methods = dataset_dict.get("brain_methods", {})
-    if brain_key not in brain_methods:
-        logger.warning(
-            "Dataset '%s' has no brain method run with key '%s'",
-            name,
-            brain_key,
-        )
-        return
-
-    run_doc = brain_methods.pop(brain_key)
-    result_id = run_doc.get("results", None)
-
-    if result_id is not None:
-        logger.info("Deleting run result '%s'", result_id)
-        if not dry_run:
-            _delete_run_results([result_id])
-
-    logger.info(
-        "Deleting brain method run '%s' from dataset '%s'", brain_key, name,
-    )
-    if not dry_run:
-        conn.datasets.replace_one(match_d, dataset_dict)
-
-
-def delete_brain_runs(name, dry_run=False):
-    """Deletes all brain method runs from the dataset with the given name.
-
-    This is a low-level implementation of deletion that does not call
-    :meth:`fiftyone.core.dataset.load_dataset` or
-    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_runs`,
-    which is helpful if a dataset's backing document or collections are
-    corrupted and cannot be loaded via the normal pathways.
-
-    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
-    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
-
-    Args:
-        name: the name of the dataset
-        dry_run (False): whether to log the actions that would be taken but not
-            perform them
-    """
-    conn = get_db_conn()
-
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
-    if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
-        return
-
-    brain_keys = []
-    result_ids = []
-    for brain_key, run_doc in dataset_dict.get("brain_methods", {}).items():
-        brain_keys.append(brain_key)
-
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
-
-    if result_ids:
-        logger.info("Deleting %d run result(s)", len(result_ids))
-        if not dry_run:
-            _delete_run_results(result_ids)
-
-    logger.info(
-        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
-    )
-    if not dry_run:
-        dataset_dict["brain_methods"] = {}
-        conn.datasets.replace_one(match_d, dataset_dict)
-
-
 def _get_result_ids(dataset_dict):
     result_ids = []
 
-    for run_doc in dataset_dict.get("evaluations", {}).values():
+    for run_doc in dataset_dict.get("annotation_runs", {}).values():
         result_id = run_doc.get("results", None)
         if result_id is not None:
             result_ids.append(result_id)
 
     for run_doc in dataset_dict.get("brain_methods", {}).values():
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    for run_doc in dataset_dict.get("evaluations", {}).values():
         result_id = run_doc.get("results", None)
         if result_id is not None:
             result_ids.append(result_id)

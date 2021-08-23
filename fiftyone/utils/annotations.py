@@ -967,7 +967,7 @@ def _update_tracking_index(annot_label, sample_index_map, max_tracking_index):
     return annot_label, max_tracking_index
 
 
-class AnnotationBackendConfig(foa.AnnotationRunConfig):
+class AnnotationBackendConfig(foa.AnnotationMethodConfig):
     """Base class for configuring an :class:`AnnotationBackend` instances.
 
     Subclasses are free to define additional keyword arguments if they desire.
@@ -994,7 +994,7 @@ class AnnotationBackendConfig(foa.AnnotationRunConfig):
         return self.name
 
 
-class AnnotationBackend(foa.AnnotationRun):
+class AnnotationBackend(foa.AnnotationMethod):
     """Base class for annotation backends.
 
     Args:
