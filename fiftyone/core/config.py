@@ -202,9 +202,7 @@ class FiftyOneConfig(EnvConfig):
 
 
 class FiftyOneConfigError(etac.EnvConfigError):
-    """Exception raised when an invalid :class:`FiftyOneConfigError` instance is
-    encountered.
-    """
+    """Exception raised when a FiftyOne configuration issue is encountered."""
 
     pass
 

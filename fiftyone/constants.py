@@ -60,7 +60,6 @@ DEFAULT_APP_COLOR_POOL = {
     "#777799",
 }
 
-
 # MongoDB setup
 try:
     from fiftyone.db import FIFTYONE_DB_BIN_DIR
@@ -75,7 +74,7 @@ MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
-MONGO_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # 4.5 excluded
+MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")

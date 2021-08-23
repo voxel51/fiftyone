@@ -36,27 +36,29 @@ _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
 def establish_db_conn(config):
     """Establishes the database connection.
-    
-    If `fo.config.database_uri` is not defined, a
-    :class:`fiftyone.core.service.DatabaseService` is created. Otherwise, the
-    connection string URI is used.
+
+    If ``fiftyone.config.database_uri`` is defined, then we connect to that
+    URI. Otherwise, a :class:`fiftyone.core.service.DatabaseService` is
+    created.
 
     Args:
         config: a :class:`fiftyone.core.config.FiftyOneConfig`
 
     Raises:
-        ConnectionError: if a connection to `mongod` could not be established
-        FiftyOneConfigError: if `fo.config.database_uri` is not defined,
-            but `mongod` is not available on the system
+        ConnectionError: if a connection to ``mongod`` could not be established
+        FiftyOneConfigError: if ``fiftyone.config.database_uri`` is not
+            defined and ``mongod`` could not be found
         ServiceExecutableNotFound: if
             :class:`fiftyone.core.service.DatabaseService` startup was
-            attempted, but `mongod` was not found in :mod:`fiftyone.db.bin`
-        RuntimeError: if the `mongod` version does not meet FiftyOne's
-            requirement, or validation could not occur
+            attempted, but ``mongod`` was not found in :mod:`fiftyone.db.bin`
+        RuntimeError: if the ``mongod`` found does not meet FiftyOne's
+            requirements, or validation could not occur
     """
     global _connection_kwargs
 
-    if config.database_uri is None:
+    if config.database_uri is not None:
+        _connection_kwargs["host"] = config.database_uri
+    else:
         global _db_service
 
         if _db_service is not None:
@@ -80,12 +82,11 @@ def establish_db_conn(config):
                 "to your own MongoDB instance or cluster"
             )
 
-    else:
-        _connection_kwargs["host"] = config.database_uri
-
     global _client
+
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)
+
     connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
 
 
@@ -106,29 +107,28 @@ def _async_connect():
 
 def _validate_db_version(config, client):
     try:
-        version_str = client.server_info()["version"]
-    except Exception as error:
-        if isinstance(error, ServerSelectionTimeoutError):
-            raise ConnectionError("Could not connect to `mongod`")
+        version = Version(client.server_info()["version"])
+    except Exception as e:
+        if isinstance(e, ServerSelectionTimeoutError):
+            raise ConnectionError("Could not connect to `mongod`") from e
 
-        raise RuntimeError("Failed to validate `mongod` version")
+        raise RuntimeError("Failed to validate `mongod` version") from e
 
-    version = Version(version_str)
-    start, end = foc.MONGO_VERSION_RANGE
+    min_ver, max_ver = foc.MONGODB_VERSION_RANGE
 
-    if start <= version < end:
+    if min_ver <= version < max_ver:
         return
 
-    if version >= end and config.database_uri is not None:
+    if version >= max_ver and config.database_uri is not None:
         raise RuntimeError(
-            "`mongod` version is above the supported range [%s, %s), found %s."
-            "Your version of `fiftyone` (%s) may be out of date. Consider upgrading"
-            "`fiftyone`" % (start, end, version, foc.VERSION)
+            "Found `mongod` version %s, but [%s, %s) is required. Your "
+            "FiftyOne installation may be outdated; try upgrading it"
+            % (version, min_ver, max_ver)
         )
 
     raise RuntimeError(
-        "`mongod` version is invalid. Must be [%s, %s), found %s"
-        % (start, end, version)
+        "Found `mongod` version %s, but [%s, %s) is required"
+        % (version, min_ver, max_ver)
     )
 
 
