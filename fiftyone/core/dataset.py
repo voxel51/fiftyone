@@ -4447,9 +4447,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     clone_dataset = load_dataset(name)
 
-    # Clone RunResults
-    if dataset.has_evaluations or dataset.has_brain_runs:
-        _clone_runs(clone_dataset, dataset._doc)
+    # Clone run results
+    _clone_runs(clone_dataset, dataset._doc)
 
     return clone_dataset
 
