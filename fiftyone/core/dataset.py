@@ -352,10 +352,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @name.setter
     def name(self, name):
+        _name = self._doc.name
+
+        if name == _name:
+            return
+
         if name in list_datasets():
             raise ValueError("A dataset with name '%s' already exists" % name)
 
-        _name = self._doc.name
         try:
             self._doc.name = name
             self._doc.save()
