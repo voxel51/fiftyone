@@ -31,20 +31,6 @@ a suitable Python version is installed and accessible, run `python --version`.
 We encourage installing FiftyOne in a virtual environment. See
 :doc:`setting up a virtual environment <virtualenv>` for more details.
 
-.. note::
-
-  MongoDB, FiftyOne's backing database, is not yet supported on Apple Silicon
-  Macs. If on an Apple Silicon Mac, `database_uri` in your
-  :ref:`FiftyOne config <configuring-fiftyone>` must be defined in order
-  to connect to your own MongoDB instance running in the cloud or on another
-  machine. See
-  :ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
-  more information.
-
-  .. note::
-
-  FiftyOne does not support 32-bit platforms.
-
 .. _installing-fiftyone:
 
 Installing FiftyOne
@@ -69,7 +55,8 @@ environment by importing the `fiftyone` package:
     >>>
 
 A successful installation of FiftyOne should result in no output when
-`fiftyone` is imported.
+`fiftyone` is imported. See :ref:`this section <install-troubleshooting>` for
+install troubleshooting tips.
 
 .. _fiftyone-quickstart:
 
@@ -137,6 +124,13 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
 
+**Apple Silicon users**:
+
+- MongoDB does not yet provide a native build for Apple Silicon, so you must
+  follow :ref:`these instructions <configuring-mongodb-connection>` to
+  configure FiftyOne to use a MongoDB instance that you have installed
+  yourself.
+
 **Mac users:**
 
 - You must have the
@@ -146,11 +140,6 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
   `error: command 'clang' failed with exit status 1`, then you may need to
   install it via `xcode-select --install`, or see
   `this page <https://stackoverflow.com/q/9329243>`_ for other options.
-- MongoDB is not yet available on Apple Silicon Macs, and therefore you must define
-  a `database_uri` in your :ref:`FiftyOne config <configuring-fiftyone>` for
-  FiftyOne to connect to. See
-  :ref:`Configuring a MongoDB connection <configuring-mongodb-connection>` for
-  more information.
 
 **Linux users:**
 
@@ -159,7 +148,7 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
   ``python3-dev`` package.
 - If you encounter an error related to MongoDB failing to start, such as `Could
   not find mongod`, you may need to install additional packages. See the
-  :ref:`troubleshooting page <troubleshooting-mongodb-linux>` for details.
+  :ref:`troubleshooting page <troubleshooting-mongodb>` for details.
 
 **Windows users:**
 
@@ -170,8 +159,8 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
 
 .. _installing-extras:
 
-Installing extra packages
--------------------------
+Installing extras
+-----------------
 
 Various tutorials and guides that we provide on this site require additional
 packages in order to run. If you encounter a missing package, you will see
@@ -281,7 +270,7 @@ reinstall the newer version of FiftyOne and then follow these instructions.
         pip install --index https://pypi.voxel51.com fiftyone==<version>
 
 .. _uninstalling-fiftyone:
-/
+
 Uninstalling FiftyOne
 ---------------------
 

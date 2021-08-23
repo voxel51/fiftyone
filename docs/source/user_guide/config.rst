@@ -21,8 +21,8 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | `database_uri` is not defined.                                                         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
-|                               |                                     |                               | defer connections to. This value is required if MongoDB is not availble on your        |
-|                               |                                     |                               | system, e.g. Apple Silicon Macs. Note that only MongoDB version `4.4` is supported.    |
+|                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
+|                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
@@ -241,27 +241,45 @@ For example, you can customize your FiftyOne config at runtime as follows:
 .. _configuring-mongodb-connection:
 
 Configuring a MongoDB connection
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
-By default, FiftyOne is installed with it's own `mongod` database
-distribution. This database is managed by FiftyOne automatically as a service
-that runs whenever at least one FiftyOne Python client is alive.
+By default, FiftyOne is installed with its own `mongod` database distribution.
+This database is managed by FiftyOne automatically as a service that runs
+whenever at least one FiftyOne Python client is alive.
 
-As an alternative to this managed database service, a valid
-`MongoDB connection string URI <https://docs.mongodb.com/manual/reference/connection-string/>`_
-can be configured via the `database_uri` setting, and FiftyOne will connect to
-your own MongoDB instance instead. FiftyOne requires MongoDB version `4.4`.
+Alternatively, you can configure FiftyOne to connect to your own self-managed
+MongoDB instance. To do so, simply set the `database_uri` property of your
+FiftyOne config to any valid
+`MongoDB connection string URI <https://docs.mongodb.com/manual/reference/connection-string/>`_.
+
+For example, you can create a `~/.fiftyone/config.json` file with the following
+entry:
+
+.. code-block:: json
+
+    {
+        "database_uri": "..."
+    }
+
+Very rarerly, upgrading your FiftyOne package may require running a database
+admin migration, in which case the `database_uri` must establish a connection
+with administrative privileges.
+
+.. warning::
+
+    FiftyOne requires MongoDB v4.4.
 
 .. note::
 
-    Very rarerly, FiftyOne runs database admin migrations after an upgrade of the
-    `fiftyone` package. For these migrations to run, the `database_uri` must
-    establish a connection with administrative privileges.
+    **Apple Silicon users**: MongoDB does not yet provide a native build for
+    Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
+    distribution that you have installed yourself.
 
-.. note::
+    Users have reported success installing MongoDB on Apple Silicon as follows:
 
-    `database_uri` must be defined for Apple Silicon Macs as MongoDB is not
-    yet supported on the platform.
+    .. code-block:: shell
+
+        brew install mongodb-community@4.4
 
 .. _configuring-fiftyone-app:
 
