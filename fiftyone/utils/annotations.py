@@ -559,7 +559,7 @@ def load_annotations(
     for label_field, label_info in label_schema.items():
         label_type = label_info["type"]
         existing_field = label_info["existing_field"]
-        annotation_results = annotations.get(label_field, {})
+        anno_dict = annotations.get(label_field, {})
 
         if label_type == "scalar":
             expected_type = "scalar"
@@ -576,74 +576,36 @@ def load_annotations(
         # First add unexpected labels to new fields, if necessary
         #
 
-        for new_type, new_annotations in annotation_results.items():
+        for new_type, new_annos in anno_dict.items():
             if new_type == expected_type:
                 continue
 
             if skip_unexpected:
-                new_field_name = None
+                new_field = None
             else:
-                new_field_name = _prompt_new_field(
-                    samples, new_type, label_field
-                )
+                new_field = _prompt_new_field(samples, new_type, label_field)
 
-            if not new_field_name:
+            if new_field:
+                _add_new_labels(samples, new_annos, new_field, new_type)
+            else:
                 logger.info(
                     "Skipping unexpected labels of type '%s' in field '%s'",
                     new_type,
                     label_field,
                 )
-                continue
-
-            _add_new_labels(
-                samples, new_annotations, results, new_type, new_field_name,
-            )
 
         #
         # Now import expected labels into their appropriate fields
         #
 
-        annotation_results = annotation_results.get(expected_type, {})
+        anno_dict = anno_dict.get(expected_type, {})
 
         if label_type == "scalar":
-            logger.info("Loading annotations for field '%s'...", label_field)
-            with fou.ProgressBar() as pb:
-                for sample_id, value in pb(annotation_results.items()):
-                    if type(value) == dict:
-                        _field, _ = samples._handle_frame_field(label_field)
-                        sample = (
-                            samples.select(sample_id)
-                            .select_frames(list(value.keys()))
-                            .first()
-                        )
-                        for frame in sample.frames.values():
-                            frame[_field] = value[frame.id]
-
-                        sample.save()
-                    else:
-                        sample = samples[sample_id]
-                        sample[label_field] = value
-                        sample.save()
-
-        elif not existing_field:
-            if not annotation_results:
-                logger.warning(
-                    "No annotations found for field '%s'", label_field
-                )
-                continue
-
-            _add_new_labels(
-                samples, annotation_results, results, label_type, label_field,
-            )
+            _load_scalars(samples, anno_dict, label_field)
+        elif existing_field:
+            _merge_labels(samples, anno_dict, results, label_field, label_type)
         else:
-            added_id_map = _merge_existing_labels(
-                samples, annotation_results, results, label_type, label_field,
-            )
-
-            # This is necessary to properly handle multiple loads of a run
-            results.backend.update_label_id_map(
-                results.id_map, added_id_map, label_field
-            )
+            _add_new_labels(samples, anno_dict, label_field, label_type)
 
     results.backend.save_run_results(samples, anno_key, results)
 
@@ -652,26 +614,53 @@ def load_annotations(
 
 
 def _prompt_new_field(samples, new_type, label_field):
-    new_field_name = input(
+    new_field = input(
         "Found unexpected labels of type '%s' when loading annotations for "
         "field '%s'.\nPlease enter a new field name in which to store these "
         "annotations, or empty to skip them: " % (new_type, label_field)
     )
 
-    while samples._has_field(new_field_name):
-        new_field_name = input(
+    while samples._has_field(new_field):
+        new_field = input(
             "Field '%s' already exists.\nPlease enter a new field name, or "
-            "empty to skip them: " % new_field_name
+            "empty to skip them: " % new_field
         )
-        if not new_field_name:
+        if not new_field:
             break
 
-    return new_field_name
+    return new_field
 
 
-def _add_new_labels(
-    samples, annotation_results, results, label_type, label_field
-):
+def _load_scalars(samples, anno_dict, label_field):
+    if not anno_dict:
+        logger.warning("No annotations found for field '%s'", label_field)
+        return
+
+    logger.info("Loading annotations for field '%s'...", label_field)
+    with fou.ProgressBar(total=len(anno_dict)) as pb:
+        for sample_id, value in pb(anno_dict.items()):
+            if type(value) == dict:
+                field, _ = samples._handle_frame_field(label_field)
+                sample = (
+                    samples.select(sample_id)
+                    .select_frames(list(value.keys()))
+                    .first()
+                )
+                for frame in sample.frames.values():
+                    frame[field] = value[frame.id]
+
+                sample.save()
+            else:
+                sample = samples[sample_id]
+                sample[label_field] = value
+                sample.save()
+
+
+def _add_new_labels(samples, anno_dict, label_field, label_type):
+    if not anno_dict:
+        logger.warning("No labels found for field '%s'", label_field)
+        return
+
     if label_type not in _LABEL_TYPES_MAP:
         logger.warning(
             "Ignoring unsuported labels of type '%s' for field '%s'",
@@ -691,10 +680,10 @@ def _add_new_labels(
 
     logger.info("Loading labels for field '%s'...", label_field)
     for sample in samples.select_fields().iter_samples(progress=True):
-        if sample.id not in annotation_results:
+        if sample.id not in anno_dict:
             continue
 
-        sample_annots = annotation_results[sample.id]
+        sample_annots = anno_dict[sample.id]
 
         if is_video:
             field, _ = samples._handle_frame_field(label_field)
@@ -725,24 +714,22 @@ def _add_new_labels(
         sample.save()
 
 
-def _merge_existing_labels(
-    samples, annotation_results, results, label_type, label_field
-):
+def _merge_labels(samples, anno_dict, results, label_field, label_type):
     is_video = samples.media_type == fom.VIDEO
 
-    # Setting a label field, need to parse, add, delete, and merge labels
+    id_map = results.id_map
+    added_id_map = {}
+
     annotation_label_ids = []
-    for sample in annotation_results.values():
+    for sample in anno_dict.values():
         if is_video:
             for frame in sample.values():
                 annotation_label_ids.extend(list(frame.keys()))
         else:
             annotation_label_ids.extend(list(sample.keys()))
 
-    sample_ids = list(annotation_results.keys())
-
     prev_label_ids = []
-    for ids in results.id_map[label_field].values():
+    for ids in id_map[label_field].values():
         if ids is None:
             continue
 
@@ -767,13 +754,11 @@ def _merge_existing_labels(
 
     if is_video and label_type in ("detections", "keypoints", "polylines"):
         tracking_index_map, max_tracking_index = _make_tracking_index(
-            samples, label_field, annotation_results
+            samples, label_field, anno_dict
         )
     else:
         tracking_index_map = {}
         max_tracking_index = 0
-
-    added_id_map = {}
 
     if label_type not in _LABEL_TYPES_MAP:
         logger.warning(
@@ -781,7 +766,7 @@ def _merge_existing_labels(
             label_type,
             label_field,
         )
-        return added_id_map
+        return
 
     # Add or merge remaining labels
     fo_label_type = _LABEL_TYPES_MAP[label_type]
@@ -791,6 +776,7 @@ def _merge_existing_labels(
     else:
         is_list = False
 
+    sample_ids = list(anno_dict.keys())
     annotated_samples = samples._dataset.select(sample_ids).select_fields(
         label_field
     )
@@ -798,13 +784,13 @@ def _merge_existing_labels(
     logger.info("Merging labels for field '%s'...", label_field)
     for sample in annotated_samples.iter_samples(progress=True):
         sample_id = sample.id
-        sample_annots = annotation_results[sample_id]
+        sample_annots = anno_dict[sample_id]
 
         if is_video:
-            formatted_label_field, _ = samples._handle_frame_field(label_field)
+            field, _ = samples._handle_frame_field(label_field)
             images = sample.frames.values()
         else:
-            formatted_label_field = label_field
+            field = label_field
             images = [sample]
 
         for image in images:
@@ -813,16 +799,15 @@ def _merge_existing_labels(
             else:
                 image_annots = sample_annots
 
-            image_label = image[formatted_label_field]
+            image_label = image[field]
 
             if image_label is None:
-                # A previously unlabeled image is being labeled
-                # Or a singular label was deleted (e.g. classification)
-                # either in CVAT or FiftyOne
+                # A previously unlabeled image is being labeled, or a single
+                # label (e.g. Classification) was deleted in CVAT or FiftyOne
                 if is_list:
                     new_label = fo_label_type()
                     new_label[list_field] = list(image_annots.values())
-                    image[formatted_label_field] = new_label
+                    image[field] = new_label
 
                     new_label_ids = list(image_annots.keys())
                     if sample_id not in added_id_map:
@@ -832,9 +817,9 @@ def _merge_existing_labels(
                 else:
                     # Singular label, check if any annotations are new, set
                     # the field to the first annotation if it exists
-                    for (annot_label_id, annot_label,) in image_annots.items():
+                    for annot_label_id, annot_label in image_annots.items():
                         if annot_label_id in added_ids:
-                            image[formatted_label_field] = annot_label
+                            image[field] = annot_label
 
                             if is_video:
                                 if sample_id not in added_id_map:
@@ -856,7 +841,7 @@ def _merge_existing_labels(
                 has_label_list = False
                 labels = [image_label]
 
-            # Merge label(s) that existed before and after annotation
+            # Merge labels that existed before and after annotation
             for label in labels:
                 label_id = label.id
                 if label_id in labels_to_merge:
@@ -871,6 +856,10 @@ def _merge_existing_labels(
                             max_tracking_index,
                         )
 
+                    # @todo this needs to only merge `label`, `bounding_box`,
+                    # and any explicitly included attributes, but not things
+                    # like `confidnece` if that field was not included in the
+                    # annotation run
                     for field in annot_label._fields_ordered:
                         if (
                             field in label._fields_ordered
@@ -887,7 +876,7 @@ def _merge_existing_labels(
                             else:
                                 label[field] = annot_label[field]
 
-            # Add new labels for label list fields only
+            # Add new labels for label list fields
             # Non-list fields would have been deleted and replaced above
             if has_label_list:
                 for annot_label_id, annot_label in image_annots.items():
@@ -911,7 +900,9 @@ def _merge_existing_labels(
 
         sample.save()
 
-    return added_id_map
+    # Update ID map on results object so that re-imports of this run will be
+    # properly processed
+    results.backend.update_label_id_map(id_map, added_id_map, label_field)
 
 
 def _make_tracking_index(samples, label_field, annotations):
