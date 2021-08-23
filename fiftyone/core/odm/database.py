@@ -29,6 +29,7 @@ import fiftyone.core.utils as fou
 _client = None
 _async_client = None
 _connection_kwargs = {}
+_db_service = None
 
 logger = logging.getLogger(__name__)
 
@@ -56,17 +57,18 @@ def establish_db_conn(config):
     global _connection_kwargs
 
     if config.database_uri is None:
+        global _db_service
         try:
             disabled = (
                 os.environ.get("FIFTYONE_SERVER", False)
                 or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
-                or multiprocessing.current_process().name != "MainProcess"
+                or _db_service is not None
             )
             if disabled:
                 return
 
-            service = fos.DatabaseService()
-            _connection_kwargs["port"] = service.port
+            _db_service = fos.DatabaseService()
+            _connection_kwargs["port"] = _db_service.port
 
         except fos.ServiceExecutableNotFound as error:
             if not fou.is_arm_mac():
