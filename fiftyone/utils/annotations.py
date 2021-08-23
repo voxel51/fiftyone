@@ -5,6 +5,7 @@ Annotation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from copy import deepcopy
 import getpass
 import logging
@@ -718,7 +719,7 @@ def _merge_labels(samples, anno_dict, results, label_field, label_type):
     is_video = samples.media_type == fom.VIDEO
 
     id_map = results.id_map
-    added_id_map = {}
+    added_id_map = defaultdict(list)
 
     prev_ids = set()
     for ids in id_map[label_field].values():
@@ -803,11 +804,7 @@ def _merge_labels(samples, anno_dict, results, label_field, label_type):
                     new_label[list_field] = list(image_annos.values())
                     image[field] = new_label
 
-                    new_label_ids = list(image_annos.keys())
-                    if sample_id not in added_id_map:
-                        added_id_map[sample_id] = []
-
-                    added_id_map[sample_id].extend(new_label_ids)
+                    added_id_map[sample_id].extend(list(image_annos.keys()))
                 else:
                     # Singular label, check if any annotations are new, set
                     # the field to the first annotation if it exists
@@ -816,9 +813,6 @@ def _merge_labels(samples, anno_dict, results, label_field, label_type):
                             image[field] = anno_label
 
                             if is_video:
-                                if sample_id not in added_id_map:
-                                    added_id_map[sample_id] = []
-
                                 added_id_map[sample_id].append(anno_id)
                             else:
                                 added_id_map[sample_id] = anno_id
@@ -885,10 +879,6 @@ def _merge_labels(samples, anno_dict, results, label_field, label_type):
                             )
 
                         labels.append(anno_label)
-
-                        if sample.id not in added_id_map:
-                            added_id_map[sample.id] = []
-
                         added_id_map[sample.id].append(anno_label.id)
 
         sample.save()
