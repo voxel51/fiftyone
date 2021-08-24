@@ -434,10 +434,11 @@ class COCODetectionResults(DetectionResults):
         return np.mean(classwise_AP)
 
     @classmethod
-    def _from_dict(cls, d, samples, **kwargs):
+    def _from_dict(cls, d, samples, config, **kwargs):
         return super()._from_dict(
             d,
             samples,
+            config,
             precision=d["precision"],
             recall=d["recall"],
             iou_threshs=d["iou_threshs"],

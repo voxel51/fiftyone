@@ -25,6 +25,8 @@ import eta.core.serial as etas
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
     del os.environ["FIFTYONE_DISABLE_SERVICES"]
 
+os.environ["FIFTYONE_SERVER"] = "1"
+
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc

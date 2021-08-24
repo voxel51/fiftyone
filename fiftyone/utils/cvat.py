@@ -2603,7 +2603,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
     ):
         super().__init__(samples, config, backend=backend)
 
-        self.config = config
         self.id_map = id_map
         self.task_ids = task_ids
         self.job_ids = job_ids
@@ -2737,9 +2736,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return status
 
     @classmethod
-    def _from_dict(cls, d, samples):
-        config = CVATBackendConfig.from_dict(d["config"])
-
+    def _from_dict(cls, d, samples, config):
         # int keys were serialized as strings...
         job_ids = {int(task_id): ids for task_id, ids in d["job_ids"].items()}
         frame_id_map = {

@@ -52,7 +52,7 @@ jobs:
       - name: Package App (Non-Windows)
         if: ${{ matrix.platform != 'win-amd64' }}
         working-directory: app/packages/desktop
-        run: yarn package-${{ platform }} --publish never
+        run: yarn package-${{ matrix.platform }} --publish never
       - name: Package App (Windows)
         if: ${{ matrix.platform == 'win-amd64' }}
         working-directory: app/

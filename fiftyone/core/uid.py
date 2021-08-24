@@ -64,6 +64,12 @@ def log_import_if_allowed(test=False):
     if fo.config.do_not_track:
         return
 
+    if os.environ.get("FIFTYONE_DISABLE_SERVICES", None):
+        return
+
+    if os.environ.get("FIFTYONE_SERVER", None):
+        return
+
     if test:
         uid, first_import = "test", False
     else:

@@ -341,7 +341,8 @@ class Session(foc.HasClient):
                     "Cannot open a Desktop App instance from a Colab notebook"
                 )
 
-            _import_desktop()
+            if not focn.DEV_INSTALL:
+                _import_desktop()
 
             self._app_service = fos.AppService(server_port=port)
             return
@@ -350,9 +351,6 @@ class Session(foc.HasClient):
             self.open()
             return
 
-    
-        
-        
     def _validate(self, dataset, view, plots, config):
         if dataset is not None and not isinstance(dataset, fod.Dataset):
             raise ValueError(
@@ -1074,29 +1072,31 @@ def _display_colab(session, handle, uuid, port, height, update=False):
 
 
 def _import_desktop():
-        try:
-            import fiftyone.desktop
-        except ImportError as e:
-            raise ValueError(
-                "You must `pip install fiftyone[desktop]` in order to launch the "
-                "desktop App"
-            ) from e
+    try:
+        # pylint: disable=unused-import
+        import fiftyone.desktop
+    except ImportError as e:
+        raise ValueError(
+            "You must `pip install fiftyone[desktop]` in order to launch the "
+            "desktop App"
+        ) from e
 
-        # Get `fiftyone-desktop` requirement for current `fiftyone` install
-        fiftyone_dist = pkg_resources.get_distribution("fiftyone")
-        requirements = fiftyone_dist.requires(extras=["desktop"])
-        desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
+    # Get `fiftyone-desktop` requirement for current `fiftyone` install
+    fiftyone_dist = pkg_resources.get_distribution("fiftyone")
+    requirements = fiftyone_dist.requires(extras=["desktop"])
+    desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
 
-        desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
+    desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
 
-        if not desktop_req.specifier.contains(desktop_dist.version):
-            raise ValueError(
-                "fiftyone==%s requires fiftyone-desktop%s, but you have "
-                "fiftyone-desktop==%s installed.\n"
-                "Run `pip install fiftyone[desktop]` to install the proper "
-                "desktop package version" % (
-                    fiftyone_dist.version,
-                    desktop_req.specifier,
-                    desktop_dist.version
-                )
+    if not desktop_req.specifier.contains(desktop_dist.version):
+        raise ValueError(
+            "fiftyone==%s requires fiftyone-desktop%s, but you have "
+            "fiftyone-desktop==%s installed.\n"
+            "Run `pip install fiftyone[desktop]` to install the proper "
+            "desktop package version"
+            % (
+                fiftyone_dist.version,
+                desktop_req.specifier,
+                desktop_dist.version,
             )
+        )

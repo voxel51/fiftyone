@@ -14,6 +14,14 @@ def up(db, dataset_name):
     if "annotation_runs" not in dataset_dict:
         dataset_dict["annotation_runs"] = {}
 
+    brain_methods = dataset_dict.get("brain_methods", {})
+    for run_doc in brain_methods.values():
+        config = run_doc.get("config", {})
+        config_cls = config.get("cls", "")
+        if config_cls == "fiftyone.brain.similarity.SimilarityConfig":
+            config["model"] = None
+            config["metric"] = "euclidean"
+
     db.datasets.replace_one(match_d, dataset_dict)
 
 
@@ -22,5 +30,13 @@ def down(db, dataset_name):
     dataset_dict = db.datasets.find_one(match_d)
 
     dataset_dict.pop("annotation_runs", None)
+
+    brain_methods = dataset_dict.get("brain_methods", {})
+    for run_doc in brain_methods.values():
+        config = run_doc.get("config", {})
+        config_cls = config.get("cls", "")
+        if config_cls == "fiftyone.brain.similarity.SimilarityConfig":
+            config.pop("model")
+            config.pop("metric")
 
     db.datasets.replace_one(match_d, dataset_dict)
