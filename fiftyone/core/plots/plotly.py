@@ -69,7 +69,7 @@ def plot_confusion_matrix(
         colorscale ("oranges"): a plotly colorscale to use. See
             https://plotly.com/python/builtin-colorscales for options
         **kwargs: optional keyword arguments for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
         one of the following:
@@ -222,7 +222,7 @@ def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
         **kwargs: optional keyword arguments for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
         one of the following:
@@ -278,7 +278,7 @@ def plot_pr_curves(precisions, recall, classes, **kwargs):
         recall: an array of recall values
         classes: the list of classes
         **kwargs: optional keyword arguments for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
         one of the following:
@@ -354,7 +354,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", **kwargs):
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
         **kwargs: optional keyword arguments for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
         one of the following:
@@ -499,7 +499,7 @@ def scatterplot(
             the ``labels`` parameter
         axis_equal (False): whether to set the axes to equal scale
         **kwargs: optional keyword arguments for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
         one of the following:
@@ -849,7 +849,7 @@ def location_scatterplot(
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
         **kwargs: optional keyword arguments for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
         one of the following:
@@ -994,7 +994,7 @@ class PlotlyWidgetMixin(object):
     resulting figures will not be interactive.
 
     Args:
-        widget: a ``plotly.graph_objects.FigureWidget``
+        widget: a :class:`plotly:plotly.graph_objects.FigureWidget`
     """
 
     def __init__(self, widget):
@@ -1090,7 +1090,7 @@ class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
     it to be replaced with a screenshot by calling :meth:`freeze`.
 
     Args:
-        figure: a ``plotly.graph_objects.Figure``
+        figure: a :class:`plotly:plotly.graph_objects.Figure`
     """
 
     def __init__(self, figure):
@@ -1111,7 +1111,7 @@ class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
 
         Args:
             **kwargs: valid arguments for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+                :meth:`plotly:plotly.graph_objects.Figure.update_layout`
         """
         self._update_layout(**kwargs)
 
@@ -1120,7 +1120,7 @@ class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
 
         Args:
             **kwargs: optional parameters for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+                :meth:`plotly:plotly.graph_objects.Figure.update_layout`
         """
         if self._frozen:
             self._reopen()
@@ -1150,7 +1150,7 @@ class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
     instances with Plotly backends.
 
     Args:
-        widget: a ``plotly.graph_objects.FigureWidget``
+        widget: a :class:`plotly:plotly.graph_objects.FigureWidget`
         **kwargs: keyword arguments for the
             :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
@@ -1164,7 +1164,7 @@ class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
 
         Args:
             **kwargs: valid arguments for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+                :meth:`plotly:plotly.graph_objects.Figure.update_layout`
         """
         self._update_layout(**kwargs)
 
@@ -1173,7 +1173,7 @@ class PlotlyInteractivePlot(PlotlyWidgetMixin, InteractivePlot):
 
         Args:
             **kwargs: optional parameters for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+                :meth:`plotly:plotly.graph_objects.Figure.update_layout`
         """
         super().show(**kwargs)
 
@@ -1191,7 +1191,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
     are allowed, but will not have any selection events.
 
     Args:
-        figure: a ``plotly.graph_objects.Figure``
+        figure: a :class:`plotly:plotly.graph_objects.Figure`
         **kwargs: keyword arguments for the
             :class:`fiftyone.core.plots.base.InteractivePlot` constructor
     """
