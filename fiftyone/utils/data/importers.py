@@ -20,6 +20,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.annotation as foa
 import fiftyone.core.brain as fob
 import fiftyone.core.dataset as fod
 import fiftyone.core.evaluation as foe
@@ -1198,8 +1199,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         )
 
         self._metadata = None
-        self._eval_dir = None
+        self._anno_dir = None
         self._brain_dir = None
+        self._eval_dir = None
         self._frame_labels_dir = None
         self._samples = None
         self._iter_samples = None
@@ -1251,8 +1253,9 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         else:
             self._metadata = {}
 
-        self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
+        self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
+        self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
@@ -1270,25 +1273,36 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def import_run_results(self, sample_collection):
         dataset = sample_collection._dataset
 
-        evaluations = self._metadata.get("evaluations", None)
-        if evaluations:
-            d = {k: json_util.loads(v) for k, v in evaluations.items()}
-            d = dataset._doc.field_to_python("evaluations", d)
-            for eval_key, run_doc in d.items():
+        #
+        # Import annotation runs
+        #
+
+        annotation_runs = self._metadata.get("annotation_runs", None)
+        if annotation_runs:
+            d = {k: json_util.loads(v) for k, v in annotation_runs.items()}
+            d = dataset._doc.field_to_python("annotation_runs", d)
+            for anno_key, run_doc in d.items():
                 # Results are stored in GridFS, which we import separately next
                 run_doc["results"] = None
 
-                if dataset.has_evaluation(eval_key):
+                if dataset.has_annotation_run(anno_key):
                     logger.warning(
-                        "Overwriting existing evaluation '%s'", eval_key
+                        "Overwriting existing annotation run '%s'", anno_key
                     )
-                    dataset.delete_evaluation(eval_key)
+                    dataset.delete_annotation_run(anno_key)
 
-            dataset._doc.evaluations.update(d)
-            _import_evaluation_results(
-                dataset, self._eval_dir, eval_keys=list(d.keys())
+            dataset._doc.annotation_runs.update(d)
+            _import_run_results(
+                dataset,
+                self._anno_dir,
+                foa.AnnotationMethod,
+                keys=list(d.keys()),
             )
             dataset._doc.save()
+
+        #
+        # Import brain method runs
+        #
 
         brain_methods = self._metadata.get("brain_methods", None)
         if brain_methods:
@@ -1305,8 +1319,35 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
                     dataset.delete_brain_run(brain_key)
 
             dataset._doc.brain_methods.update(d)
-            _import_brain_results(
-                dataset, self._brain_dir, brain_keys=list(d.keys())
+            _import_run_results(
+                dataset, self._brain_dir, fob.BrainMethod, keys=list(d.keys())
+            )
+            dataset._doc.save()
+
+        #
+        # Import evaluations
+        #
+
+        evaluations = self._metadata.get("evaluations", None)
+        if evaluations:
+            d = {k: json_util.loads(v) for k, v in evaluations.items()}
+            d = dataset._doc.field_to_python("evaluations", d)
+            for eval_key, run_doc in d.items():
+                # Results are stored in GridFS, which we import separately next
+                run_doc["results"] = None
+
+                if dataset.has_evaluation(eval_key):
+                    logger.warning(
+                        "Overwriting existing evaluation '%s'", eval_key
+                    )
+                    dataset.delete_evaluation(eval_key)
+
+            dataset._doc.evaluations.update(d)
+            _import_run_results(
+                dataset,
+                self._eval_dir,
+                foe.EvaluationMethod,
+                keys=list(d.keys()),
             )
             dataset._doc.save()
 
@@ -1375,16 +1416,18 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self.rel_dir = rel_dir
 
         self._data_dir = None
-        self._eval_dir = None
+        self._anno_dir = None
         self._brain_dir = None
+        self._eval_dir = None
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
-        self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
+        self._anno_dir = os.path.join(self.dataset_dir, "annotations")
         self._brain_dir = os.path.join(self.dataset_dir, "brain")
+        self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         self._samples_path = os.path.join(self.dataset_dir, "samples.json")
         self._frames_path = os.path.join(self.dataset_dir, "frames.json")
@@ -1513,11 +1556,18 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #
 
         if empty_import:
-            if os.path.isdir(self._eval_dir):
-                _import_evaluation_results(dataset, self._eval_dir)
+            if os.path.isdir(self._anno_dir):
+                _import_run_results(
+                    dataset, self._anno_dir, foa.AnnotationMethod
+                )
 
             if os.path.isdir(self._brain_dir):
-                _import_brain_results(dataset, self._brain_dir)
+                _import_run_results(dataset, self._brain_dir, fob.BrainMethod)
+
+            if os.path.isdir(self._eval_dir):
+                _import_run_results(
+                    dataset, self._eval_dir, foe.EvaluationMethod
+                )
 
         #
         # Migrate dataset if necessary
@@ -1571,28 +1621,15 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         )
 
 
-def _import_evaluation_results(dataset, eval_dir, eval_keys=None):
-    if eval_keys is None:
-        eval_keys = [os.path.splitext(f)[0] for f in etau.list_files(eval_dir)]
+def _import_run_results(dataset, run_dir, run_cls, keys=None):
+    if keys is None:
+        keys = [os.path.splitext(f)[0] for f in etau.list_files(run_dir)]
 
-    for eval_key in eval_keys:
-        json_path = os.path.join(eval_dir, eval_key + ".json")
+    for key in keys:
+        json_path = os.path.join(run_dir, key + ".json")
         if os.path.exists(json_path):
             results = fors.RunResults.from_json(json_path, dataset)
-            foe.EvaluationMethod.save_run_results(dataset, eval_key, results)
-
-
-def _import_brain_results(dataset, brain_dir, brain_keys=None):
-    if brain_keys is None:
-        brain_keys = [
-            os.path.splitext(f)[0] for f in etau.list_files(brain_dir)
-        ]
-
-    for brain_key in brain_keys:
-        json_path = os.path.join(brain_dir, brain_key + ".json")
-        if os.path.exists(json_path):
-            results = fors.RunResults.from_json(json_path, dataset)
-            fob.BrainMethod.save_run_results(dataset, brain_key, results)
+            run_cls.save_run_results(dataset, key, results)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):

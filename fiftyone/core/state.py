@@ -12,13 +12,10 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-import fiftyone.core.config as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.sample as fosa
-import fiftyone.core.stages as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -137,7 +134,8 @@ class StateDescription(etas.Serializable):
         selected_labels = d.get("selected_labels", [])
 
         config = with_config or fo.app_config.copy()
-        foc._set_settings(config, d.get("config", {}))
+        for field, value in d.get("config", {}).items():
+            setattr(config, field, value)
 
         close = d.get("close", False)
         refresh = d.get("refresh", False)

@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { CHUNK_SIZE } from "./constants";
+import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { deserialize } from "./numpy";
 import { FrameChunk } from "./state";
 
@@ -29,7 +29,13 @@ const DESERIALIZE = {
   },
 };
 
-const processMasks = (sample: { [key: string]: any }): ArrayBuffer[] => {
+const mapId = (obj) => {
+  obj.id = obj._id;
+  delete obj._id;
+  return obj;
+};
+
+const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
   let buffers: ArrayBuffer[] = [];
   for (const field in sample) {
     const label = sample[field];
@@ -38,6 +44,17 @@ const processMasks = (sample: { [key: string]: any }): ArrayBuffer[] => {
     }
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
+    }
+
+    if (label._cls in LABELS) {
+      if (label._cls in LABEL_LISTS) {
+        const list = label[LABEL_LISTS[label._cls]];
+        if (Array.isArray(list)) {
+          label[LABEL_LISTS[label._cls]] = list.map(mapId);
+        }
+      } else {
+        mapId(label);
+      }
     }
   }
 
@@ -69,17 +86,18 @@ interface ProcessSample {
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = ({ sample, uuid }: ProcessSample) => {
-  let buffers = processMasks(sample);
+  let buffers = processLabels(sample);
 
   if (sample.frames && sample.frames.length) {
     buffers = [
       ...buffers,
       ...sample.frames
-        .map<ArrayBuffer[]>((frame) => processMasks(frame))
+        .map<ArrayBuffer[]>((frame) => processLabels(frame))
         .flat(),
     ];
   }
 
+  mapId(sample);
   postMessage(
     {
       method: "processSample",
@@ -169,7 +187,7 @@ const getSendChunk = (uuid: string) => ({
     let buffers: ArrayBuffer[] = [];
 
     value.frames.forEach((frame) => {
-      buffers = [...buffers, ...processMasks(frame)];
+      buffers = [...buffers, ...processLabels(frame)];
     });
     postMessage(
       {

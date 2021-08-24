@@ -123,6 +123,7 @@ For example, you can render an annotated version of an image sample with
    :alt: image-annotated.jpg
    :align: center
 
+|br|
 Similarly, you can draw an annotated version of a video sample with its frame
 labels overlaid via
 :func:`draw_labeled_video() <fiftyone.utils.annotations.draw_labeled_video>`.

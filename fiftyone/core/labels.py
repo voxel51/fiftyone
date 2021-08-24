@@ -1405,6 +1405,13 @@ _PATCHES_FIELDS = (
     Polylines,
 )
 
+_SINGLE_LABEL_TO_LIST_MAP = {
+    Classification: Classifications,
+    Detection: Detections,
+    Keypoint: Keypoints,
+    Polyline: Polylines,
+}
+
 _LABEL_LIST_TO_SINGLE_MAP = {
     Classifications: Classification,
     Detections: Detection,

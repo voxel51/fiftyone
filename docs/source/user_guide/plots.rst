@@ -237,6 +237,7 @@ ground truth label:
    :alt: mnist-scatterplot
    :align: center
 
+|br|
 As you can see, the 2D embeddings are naturally clustered according to their
 ground truth label!
 
@@ -315,6 +316,7 @@ digit images in the App that are likely to be confused as zeros:
    :alt: mnist-interactive1
    :align: center
 
+|br|
 Alternatively, let's hide all classes except the zero digits, and then select
 the zero digits that are *not* in the zero cluster; this isolates the zero
 digit images in the App that are likely to be confused as other digits:
@@ -393,6 +395,7 @@ contains |GeoLocation| data in its ``location`` field:
    :alt: location-scatterplot
    :align: center
 
+|br|
 You can also change the style to ``style="density"`` in order to view the data
 as a density plot:
 
@@ -834,7 +837,7 @@ the supported parameters.
 
 If you are using the default :ref:`plotly backend <plotting-backend>`,
 :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` will accept any valid
-keyword arguments for ``plotly.graph_objects.Figure.update_layout(**kwargs)``.
+keyword arguments for :meth:`plotly:plotly.graph_objects.Figure.update_layout`.
 
 The examples below demonstrate some common layout customizations that you may
 wish to perform:
@@ -853,6 +856,136 @@ wish to perform:
     Refer to the
     `plotly layout documentation <https://plotly.com/python/reference/layout>`_
     for a full list of the supported options.
+
+.. _plot-selection-modes:
+
+Plot selection modes
+--------------------
+
+When working with :ref:`scatterplots <embeddings-plots>` and
+:ref:`interactive heatmaps <confusion-matrix-plots>` that are linked to labels,
+you may prefer to see different views loaded in the App when you make a
+selection in the plot. For example, you may want to see the corresponding
+objects in a :ref:`patches view <object-patches-views>`, or you may wish to see
+the samples containing the objects but with all other labels also visible.
+
+You can use the
+:meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+property of |InteractivePlot| instances to change the behavior of App updates
+when selections are made in :ref:`connected plots <attaching-plots>`.
+
+The available options for
+:meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+are:
+
+-   `"patches"` (*default*): show the selected labels in a patches view
+-   `"select"`: show only the selected labels
+-   `"match"`: show unfiltered samples containing the selected labels
+
+For example, by default, clicking on cells in a confusion matrix for a
+:ref:`detection evaluation <evaluating-detections-coco>` will show the
+corresponding ground truth and predicted objects in an
+:ref:`evaluation patches view <evaluation-patches>` view in the App. Run the
+code blocks below in Jupyter notebook cells to see this:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    results = dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    # Get the 10 most common classes in the dataset
+    counts = dataset.count_values("ground_truth.detections.label")
+    classes = sorted(counts, key=counts.get, reverse=True)[:10]
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show(height=600)
+
+    session.plots.attach(plot, name="eval")
+
+However, you can change this behavior by updating the
+:meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+property of the plot like so:
+
+.. code-block:: python
+    :linenos:
+
+    # Selecting cells will now show unfiltered samples containing selected objects
+    plot.selection_mode = "match"
+
+.. code-block:: python
+    :linenos:
+
+    # Selecting cells will now show filtered samples containing only selected objects
+    plot.selection_mode = "select"
+
+Similarly, selecting scatter points in an
+:ref:`object embeddings visualization <brain-embeddings-visualization>` will
+show the corresponding objects in the App as a
+:ref:`patches view <object-patches-views>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Continuing from the code above
+    session.freeze()
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.brain as fob
+
+    results = fob.compute_visualization(
+        dataset, patches_field="ground_truth", brain_key="gt_viz"
+    )
+
+    # Restrict visualization to the 10 most common classes
+    view = dataset.filter_labels("ground_truth", F("label").is_in(classes))
+    results.use_view(view)
+
+    session.show()
+
+.. code-block:: python
+    :linenos:
+
+    plot = results.visualize(labels="ground_truth.detections.label")
+    plot.show(height=800)
+
+    session.plots.attach(plot, name="gt_viz")
+
+However, you can change this behavior by updating the
+:meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+property of the plot:
+
+.. code-block:: python
+    :linenos:
+
+    # Selecting points will now show unfiltered samples containing selected objects
+    plot.selection_mode = "match"
+
+.. code-block:: python
+    :linenos:
+
+    # Selecting points will now show filtered samples containing only selected objects
+    plot.selection_mode = "select"
+
+.. note::
+
+    The App will immediately update when you set the
+    :meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+    property of an |InteractivePlot| connected to the App.
 
 .. _plotting-backend:
 

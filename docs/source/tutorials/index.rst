@@ -57,8 +57,8 @@ your datasets and turn your good models into *great models*.
     :tags: Visualization,Brain
 
 .. customcarditem::
-    :header: Annotating with CVAT 
-    :description: You've loaded in and explored your data in FiftyOne, now what? Send it off to CVAT for annotation in just one line of code.
+    :header: Annotating with CVAT
+    :description: So you've loaded and explored your data in FiftyOne... but now what? See how to send it off to CVAT for annotation in just one line of code.
     :link: cvat_annotation.html
     :image: ../_static/images/tutorials/cvat_segmentation.png
     :tags: Annotation,Dataset-Evaluation
