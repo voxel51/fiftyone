@@ -67,6 +67,9 @@ def log_import_if_allowed(test=False):
     if os.environ.get("FIFTYONE_DISABLE_SERVICES", None):
         return
 
+    if os.environ.get("FIFTYONE_SERVER", None):
+        return
+
     if test:
         uid, first_import = "test", False
     else:
