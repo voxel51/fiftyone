@@ -64,15 +64,21 @@ class CustomBdistWheel(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # not pure Python
         self.root_is_pure = False
-        if self.plat_name.startswith("linux-aarch64"):
+
+        platform = self.plat_name
+        is_platform = lambda os, isa=None: platform.startswith(os) and (
+            not isa or platform.endswith(isa)
+        )
+
+        if is_platform("linux", "aarch64"):
             self.plat_name = "manylinux2014_aarch64"
-        elif self.plat_name.startswith("linux-x86_64"):
+        elif is_platform("linux", "x86_64"):
             self.plat_name = "manylinux1_x86_64"
-        elif self.plat_name.startswith("mac-arm64"):
+        elif is_platform("mac", "arm64"):
             self.plat_name = "macosx_11_10_arm64"
-        elif self.plat_name.startswith("mac-x86_64"):
+        elif is_platform("mac", "x86_64"):
             self.plat_name = "macosx_10_10_x86_64"
-        elif self.plat_name.startswith("win-amd64"):
+        elif is_platform("win"):
             self.plat_name = "win_amd64"
         else:
             raise ValueError(
