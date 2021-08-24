@@ -1,8 +1,12 @@
 import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 import { atom, atomFamily } from "recoil";
 
+interface AppSample extends Sample {
+  _id: string;
+}
+
 export interface SampleData {
-  sample: Sample;
+  sample: AppSample;
   dimensions: Dimensions;
   frameRate?: number;
   frameNumber?: number;

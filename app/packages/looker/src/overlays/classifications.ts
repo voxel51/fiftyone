@@ -4,7 +4,6 @@
 
 import { DASH_COLOR, TEXT_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates } from "../state";
-import { getRenderedScale } from "../util";
 import {
   CONTAINS,
   isShown,
@@ -44,7 +43,7 @@ export default class ClassificationsOverlay<State extends BaseState>
 
   getSelectData(state: Readonly<State>): SelectData {
     const {
-      label: { _id: id },
+      label: { id },
       field,
     } = this.getPointInfo(state);
     return { id, field };
@@ -69,7 +68,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     const [w, h] = state.config.dimensions;
 
     for (const [field, label] of filtered) {
-      const box = this.labelBoundingBoxes[label._id];
+      const box = this.labelBoundingBoxes[label.id];
 
       if (box) {
         let [bx, by, bw, bh] = box;
@@ -110,7 +109,7 @@ export default class ClassificationsOverlay<State extends BaseState>
       );
       top = result.top;
       if (result.box) {
-        newBoxes[label._id] = result.box;
+        newBoxes[label.id] = result.box;
       }
     });
 
@@ -190,7 +189,7 @@ export default class ClassificationsOverlay<State extends BaseState>
   }
 
   isSelected(state: Readonly<State>, label: ClassificationLabel): boolean {
-    return state.options.selectedLabels.includes(label._id);
+    return state.options.selectedLabels.includes(label.id);
   }
 
   private strokeClassification(
