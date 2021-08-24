@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - develop
-      - rel-*
-      - release-*
       - github-actions-*
     tags:
       - v*
@@ -13,8 +11,6 @@ on:
     types: [opened, synchronize]
     branches:
       - develop
-      - rel-*
-      - release-*
 
 jobs:
   build:
@@ -72,22 +68,22 @@ jobs:
         os:
           - ubuntu-20.04
           - windows-latest
-        python-version:
+        python:
           - 3.6
           - 3.8
         exclude:
           - os: windows-latest
-            python-version: 3.6
+            python: 3.6
     defaults:
       run:
         shell: bash
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python }}
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python }}
       - name: Install pip dependencies
         # use `python -m pip` to work around Windows permission issues when
         # upgrading pip
@@ -99,11 +95,11 @@ jobs:
         uses: actions/cache@v2
         with:
           path: pip-cache
-          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+          key: pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
           restore-keys: |
-            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
-            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-
-            pip-${{ runner.os }}-${{ matrix.python-version }}-
+            pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+            pip-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('setup.py') }}-
+            pip-${{ runner.os }}-${{ matrix.python }}-
       - name: Download fiftyone dist
         uses: actions/download-artifact@v2
         with:

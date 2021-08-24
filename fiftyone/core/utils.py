@@ -17,6 +17,7 @@ import io
 import itertools
 import logging
 import os
+import platform
 import signal
 import subprocess
 import timeit
@@ -1210,3 +1211,15 @@ class SetAttributes(object):
     def __exit__(self, *args):
         for k, v in self._orig_kwargs.items():
             setattr(self._obj, k, v)
+
+
+def is_arm_mac():
+    """Determines whether the system is an ARM-based Mac (Apple Silicon).
+
+    Returns:
+        True/False
+    """
+    plat = platform.platform()
+    return platform.system() == "Darwin" and any(
+        proc in plat for proc in {"aarch64", "arm64"}
+    )

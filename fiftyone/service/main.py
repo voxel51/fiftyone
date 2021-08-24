@@ -266,6 +266,8 @@ child_stderr = ChildStreamMonitor(child.stderr)
 
 def monitor_stdin():
     """Trigger shutdown when the parent process closes this process's stdin.
+    This will occur if the :class:`fiftyone.core.service.DatabaseService`
+    singleton destroyed.
 
     This should only occur when the parent process has exited.
     """

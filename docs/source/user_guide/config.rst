@@ -17,7 +17,12 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | Config field                  | Environment variable                | Default value                 | Description                                                                            |
 +===============================+=====================================+===============================+========================================================================================+
-| `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database.                           |
+| `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
+|                               |                                     |                               | `database_uri` is not defined.                                                         |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
+|                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
+|                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
@@ -94,6 +99,7 @@ and the CLI:
 
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_uri": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -128,6 +134,7 @@ and the CLI:
 
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_uri": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -229,6 +236,49 @@ session.
 
     fo.config.default_ml_backend = "tensorflow"
     fo.config.show_progress_bars = True
+
+.. _configuring-mongodb-connection:
+
+Configuring a MongoDB connection
+--------------------------------
+
+By default, FiftyOne is installed with its own `mongod` database distribution.
+This database is managed by FiftyOne automatically as a service that runs
+whenever at least one FiftyOne Python client is alive.
+
+Alternatively, you can configure FiftyOne to connect to your own self-managed
+MongoDB instance. To do so, simply set the `database_uri` property of your
+FiftyOne config to any valid
+`MongoDB connection string URI <https://docs.mongodb.com/manual/reference/connection-string/>`_.
+
+For example, you can create a `~/.fiftyone/config.json` file with the following
+entry:
+
+.. code-block:: json
+
+    {
+        "database_uri": "..."
+    }
+
+Very rarerly, upgrading your FiftyOne package may require running a database
+admin migration, in which case the `database_uri` must establish a connection
+with administrative privileges.
+
+.. warning::
+
+    FiftyOne requires MongoDB v4.4.
+
+.. note::
+
+    **Apple Silicon users**: MongoDB does not yet provide a native build for
+    Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
+    distribution that you have installed yourself.
+
+    Users have reported success installing MongoDB on Apple Silicon as follows:
+
+    .. code-block:: shell
+
+        brew install mongodb-community@4.4
 
 .. _configuring-fiftyone-app:
 

@@ -8,11 +8,9 @@ FiftyOne Services.
 import logging
 import multiprocessing
 import os
-import re
 import subprocess
 import sys
 
-from packaging.version import Version
 import psutil
 import requests
 from retrying import retry
@@ -50,6 +48,12 @@ class ServiceListenTimeout(ServiceException):
         return message
 
 
+class ServiceExecutableNotFound(ServiceException):
+    """Exception raised when the service executable is not found on disk."""
+
+    pass
+
+
 class Service(object):
     """Interface for FiftyOne services.
 
@@ -68,8 +72,7 @@ class Service(object):
     def __init__(self):
         self._system = os.system
         self._disabled = (
-            os.environ.get("FIFTYONE_SERVER", False)
-            or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+            os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
             or multiprocessing.current_process().name != "MainProcess"
             or (
                 os.environ.get("FIFTYONE_HEADLESS", False)
@@ -199,9 +202,6 @@ class MultiClientService(Service):
     # set when attaching to an existing process
     attached = False
 
-    def __init__(self):
-        super().__init__()
-
     @property
     def _service_args(self):
         return super()._service_args + ["--multi"]
@@ -213,7 +213,9 @@ class MultiClientService(Service):
         for process in fosu.find_processes_by_args(self._service_args):
             desc = "Process %i (%s)" % (
                 process.pid,
-                " ".join(["service/main.py"] + self._service_args),
+                " ".join(
+                    [os.path.join("service", "main.py")] + self._service_args
+                ),
             )
             logger.debug("Connecting to %s", desc)
             try:
@@ -229,6 +231,7 @@ class MultiClientService(Service):
 
             except IOError:
                 logger.warning("%s did not respond", desc)
+
         super().start()
 
     def stop(self):
@@ -252,21 +255,17 @@ class DatabaseService(MultiClientService):
     if sys.platform.startswith("win"):
         MONGOD_EXE_NAME += ".exe"
 
-    MIN_MONGO_VERSION = "4.4"
-
-    @property
-    def database_dir(self):
-        config = focn.load_config()
-        return config.database_dir
-
     @property
     def command(self):
+        database_dir = focn.load_config().database_dir
+        log_path = os.path.join(database_dir, "log", "mongo.log")
+
         args = [
             DatabaseService.find_mongod(),
             "--dbpath",
-            self.database_dir,
+            database_dir,
             "--logpath",
-            os.path.join(self.database_dir, "log", "mongo.log"),
+            log_path,
             "--port",
             "0",
         ]
@@ -274,24 +273,30 @@ class DatabaseService(MultiClientService):
             args.append("--nounixsocket")
 
         if focx._get_context() == focx._COLAB:
-            args = ["sudo"] + args
+            return ["sudo"] + args
+
+        try:
+            etau.ensure_dir(database_dir)
+        except:
+            raise PermissionError(
+                "Database directory `%s` cannot be written to" % database_dir
+            )
+
+        try:
+            etau.ensure_basedir(log_path)
+
+            if not os.path.isfile(log_path):
+                etau.ensure_empty_file(log_path)
+        except:
+            raise PermissionError(
+                "Database log path `%s` cannot be written to" % log_path
+            )
 
         return args
 
     @property
     def port(self):
         return self._wait_for_child_port()
-
-    def start(self):
-        """Starts the DatabaseService."""
-        etau.ensure_dir(os.path.join(self.database_dir, "log"))
-        super().start()
-
-        # Set up a default connection
-        import fiftyone.core.odm.database as food
-
-        food.set_default_port(self.port)
-        food.get_db_conn()
 
     @staticmethod
     def cleanup():
@@ -306,13 +311,14 @@ class DatabaseService(MultiClientService):
                 for child in psutil.Process().children()
                 for port in fosu.get_listening_tcp_ports(child)
             )
+            food._connection_kwargs["port"] = port
+            food._connect()
         except (StopIteration, psutil.Error):
             # mongod may have exited - ok to wait until next time
             return
 
         try:
-            food.set_default_port(port)
-            food.get_db_conn()
+
             fod.delete_non_persistent_datasets()
             food.sync_database()
         except:
@@ -323,54 +329,18 @@ class DatabaseService(MultiClientService):
     @staticmethod
     def find_mongod():
         """Returns the path to the `mongod` executable."""
-        search_paths = [
-            foc.FIFTYONE_DB_BIN_DIR,
-            os.path.join(foc.FIFTYONE_CONFIG_DIR, "bin"),
-        ] + os.environ["PATH"].split(os.pathsep)
-        searched = set()
-        attempts = []
-        for folder in search_paths:
-            if folder in searched:
-                continue
-
-            searched.add(folder)
-            mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
-            if os.path.isfile(mongod_path):
-                cmd = [mongod_path, "--version"]
-                if focx._get_context() == focx._COLAB:
-                    cmd = ["sudo"] + cmd
-
-                logger.debug("Trying %s", mongod_path)
-                p = psutil.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                )
-                out, err = p.communicate()
-                out = out.decode(errors="ignore").strip()
-                err = err.decode(errors="ignore").strip()
-                mongod_version = None
-                if p.returncode == 0:
-                    match = re.search(r"db version.+?([\d\.]+)", out, re.I)
-                    if match:
-                        mongod_version = match.group(1)
-                        if Version(mongod_version) >= Version(
-                            DatabaseService.MIN_MONGO_VERSION
-                        ):
-                            return mongod_path
-
-                attempts.append(
-                    (mongod_path, mongod_version, p.returncode, err)
-                )
-
-        for path, version, code, err in attempts:
-            if version is not None:
-                logger.warning("%s: incompatible version %s", path, version)
-            else:
-                logger.error(
-                    "%s: failed to launch (code %r): %s", path, code, err
-                )
-        raise RuntimeError(
-            "Could not find mongod>=%s" % DatabaseService.MIN_MONGO_VERSION
+        mongod = os.path.join(
+            foc.FIFTYONE_DB_BIN_DIR, DatabaseService.MONGOD_EXE_NAME
         )
+        is_colab = focx._get_context() == focx._COLAB
+
+        if not os.path.isfile(mongod):
+            raise ServiceExecutableNotFound("Could not find `mongod`")
+
+        if not os.access(mongod, os.X_OK) and not is_colab:
+            raise PermissionError("`mongod` is not executable")
+
+        return mongod
 
 
 class ServerService(Service):
