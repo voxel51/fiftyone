@@ -29,10 +29,10 @@ const DESERIALIZE = {
   },
 };
 
-const mapId = (label) => {
-  label.id = label._id;
-  delete label._id;
-  return label;
+const mapId = (obj) => {
+  obj.id = obj._id;
+  delete obj._id;
+  return obj;
 };
 
 const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
@@ -97,6 +97,7 @@ const processSample = ({ sample, uuid }: ProcessSample) => {
     ];
   }
 
+  mapId(sample);
   postMessage(
     {
       method: "processSample",
