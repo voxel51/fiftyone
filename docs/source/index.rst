@@ -107,7 +107,7 @@ learn how:
     :image_title: Plotly
 
 .. customimagelink::
-    :image_link: api/fiftyone.utils.cvat.html
+    :image_link: integrations/cvat.html
     :image_src: https://voxel51.com/images/integrations/cvat-128.png
     :image_title: CVAT
 

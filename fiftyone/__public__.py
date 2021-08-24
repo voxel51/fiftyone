@@ -9,6 +9,7 @@ import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
 
 config = foc.load_config()
+annotation_config = foc.load_annotation_config()
 app_config = foc.load_app_config()
 foo.establish_db_conn(config)
 

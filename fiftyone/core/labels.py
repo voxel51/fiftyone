@@ -49,6 +49,83 @@ class Label(DynamicEmbeddedDocument):
 
     meta = {"allow_inheritance": True}
 
+    def iter_attributes(self):
+        """Returns an iterator over the custom attributes of the label.
+
+        Returns:
+            a generator that emits ``(name, value)`` tuples
+        """
+        # pylint: disable=no-member
+        custom_fields = set(self._fields_ordered) - set(self._fields.keys())
+
+        for field in custom_fields:
+            yield field, self.get_attribute_value(field)
+
+    def has_attribute(self, name):
+        """Determines whether the label has an attribute with the given name.
+
+        Args:
+            name: the attribute name
+
+        Returns:
+            True/False
+        """
+        return hasattr(self, name)
+
+    def get_attribute_value(self, name, default=no_default):
+        """Gets the value of the attribute with the given name.
+
+        Args:
+            name: the attribute name
+            default (no_default): a default value to return if the attribute
+                does not exist. Can be ``None``
+
+        Returns:
+            the attribute value
+
+        Raises:
+            AttributeError: if the attribute does not exist and no default
+                value was provided
+        """
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            pass
+
+        if default is not no_default:
+            return default
+
+        raise AttributeError(
+            "%s has no attribute '%s'" % (self.__class__.__name__, name)
+        )
+
+    def set_attribute_value(self, name, value):
+        """Sets the value of the attribute with the given name.
+
+        The attribute will be declared if it does not exist.
+
+        Args:
+            name: the attribute name
+            value: the value
+        """
+        setattr(self, name, value)
+
+    def delete_attribute(self, name):
+        """Deletes the attribute with the given name.
+
+        Args:
+            name: the attribute name
+
+        Raises:
+            AttributeError: if the attribute does not exist
+        """
+        try:
+            delattr(self, name)
+        except AttributeError:
+            raise AttributeError(
+                "%s has no attribute '%s'" % (self.__class__.__name__, name)
+            )
+
 
 class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
@@ -112,7 +189,8 @@ class ListAttribute(Attribute):
     value = fof.ListField()
 
 
-class _HasAttributes(Label):
+# @todo remove this in favor of dynamic-only attributes
+class _HasAttributesDict(Label):
     """Mixin for :class:`Label` classes that have an :attr:`attributes` field
     that contains a dict of of :class:`Attribute` instances.
     """
@@ -123,6 +201,9 @@ class _HasAttributes(Label):
 
     def iter_attributes(self):
         """Returns an iterator over the custom attributes of the label.
+
+        Attribute may either exist in the :attr:`attributes` dict or as dynamic
+        attributes.
 
         Returns:
             a generator that emits ``(name, value)`` tuples
@@ -135,11 +216,10 @@ class _HasAttributes(Label):
             yield field, self.get_attribute_value(field)
 
     def has_attribute(self, name):
-        """Determines whether the detection has an attribute with the given
-        name.
+        """Determines whether the label has an attribute with the given name.
 
         The specified attribute may either exist in the :attr:`attributes` dict
-        or as a dynamic instance attribute.
+        or as a dynamic attribute.
 
         Args:
             name: the attribute name
@@ -154,11 +234,11 @@ class _HasAttributes(Label):
         """Gets the value of the attribute with the given name.
 
         The specified attribute may either exist in the :attr:`attributes` dict
-        or as a dynamic instance attribute.
+        or as a dynamic attribute.
 
         Args:
             name: the attribute name
-            default (no_default): the default value to return if the attribute
+            default (no_default): a default value to return if the attribute
                 does not exist. Can be ``None``
 
         Returns:
@@ -185,6 +265,55 @@ class _HasAttributes(Label):
         raise AttributeError(
             "%s has no attribute '%s'" % (self.__class__.__name__, name)
         )
+
+    def set_attribute_value(self, name, value):
+        """Sets the value of the attribute with the given name.
+
+        If the specified attribute already exists in the :attr:`attributes`
+        dict, its value is updated there. Otherwise, the attribute is
+        set (or created) as a dynamic attribute.
+
+        Args:
+            name: the attribute name
+            value: the value
+        """
+        # pylint: disable=unsupported-membership-test
+        if name in self.attributes:
+            # pylint: disable=unsubscriptable-object
+            self.attributes[name].value = value
+        else:
+            setattr(self, name, value)
+
+    def delete_attribute(self, name):
+        """Deletes the attribute with the given name.
+
+        The specified attribute may either exist in the :attr:`attributes` dict
+        or as a dynamic attribute.
+
+        Args:
+            name: the attribute name
+
+        Raises:
+            AttributeError: if the attribute does not exist
+        """
+        # pylint: disable=unsupported-membership-test
+        if name in self.attributes:
+            # pylint: disable=unsupported-delete-operation
+            try:
+                del self.attributes[name]
+            except KeyError:
+                raise AttributeError(
+                    "%s has no attribute '%s'"
+                    % (self.__class__.__name__, name)
+                )
+        else:
+            try:
+                delattr(self, name)
+            except AttributeError:
+                raise AttributeError(
+                    "%s has no attribute '%s'"
+                    % (self.__class__.__name__, name)
+                )
 
 
 class _HasID(Label):
@@ -356,7 +485,7 @@ class Classifications(ImageLabel, _HasLabelList):
         return cls(classifications=classifications)
 
 
-class Detection(ImageLabel, _HasID, _HasAttributes):
+class Detection(ImageLabel, _HasID, _HasAttributesDict):
     """An object detection.
 
     Args:
@@ -648,7 +777,7 @@ class Detections(ImageLabel, _HasLabelList):
         )
 
 
-class Polyline(ImageLabel, _HasID, _HasAttributes):
+class Polyline(ImageLabel, _HasID, _HasAttributesDict):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -675,16 +804,23 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
-    def to_detection(self, mask_size=None):
+    def to_detection(self, mask_size=None, frame_size=None):
         """Returns a :class:`Detection` representation of this instance whose
         bounding box tightly encloses the polyline.
 
         If a ``mask_size`` is provided, an instance mask of the specified size
         encoding the polyline's shape is included.
 
+        Alternatively, if a ``frame_size`` is provided, the required mask size
+            is then computed based off of the polyline points and
+            ``frame_size``
+
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
                 render an instance mask for the polyline
+            frame_size (None): used when no ``mask_size`` is provided.
+                an optional ``(width, height)`` of the frame containing this
+                polyline that is used to compute the required ``mask_size``
 
         Returns:
             a :class:`Detection`
@@ -698,6 +834,15 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
         xtl, ytl, xbr, ybr = bbox.to_coords()
         bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
+
+        if mask_size is None and frame_size:
+            w, h = frame_size
+            rel_mask_w = bounding_box[2]
+            rel_mask_h = bounding_box[3]
+            abs_mask_w = int(round(rel_mask_w * w))
+            abs_mask_h = int(round(rel_mask_h * h))
+            mask_size = (abs_mask_w, abs_mask_h)
+            _, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
 
         attributes = dict(self.iter_attributes())
 
@@ -861,16 +1006,24 @@ class Polylines(ImageLabel, _HasLabelList):
 
     polylines = fof.ListField(fof.EmbeddedDocumentField(Polyline))
 
-    def to_detections(self, mask_size=None):
+    def to_detections(self, mask_size=None, frame_size=None):
         """Returns a :class:`Detections` representation of this instance whose
         bounding boxes tightly enclose the polylines.
 
         If a ``mask_size`` is provided, instance masks of the specified size
         encoding the polyline's shape are included in each :class:`Detection`.
 
+        Alternatively, if a ``frame_size`` is provided, the required mask size
+        is then computed based off of the polyline points and ``frame_size``
+
+
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
                 render instance masks for the polylines
+            frame_size (None): used when no ``mask_size`` is provided.
+                an optional ``(width, height)`` of the frame containing these
+                polylines that is used to compute the required ``mask_size``
+
 
         Returns:
             a :class:`Detections`
@@ -878,7 +1031,8 @@ class Polylines(ImageLabel, _HasLabelList):
         # pylint: disable=not-an-iterable
         return Detections(
             detections=[
-                p.to_detection(mask_size=mask_size) for p in self.polylines
+                p.to_detection(mask_size=mask_size, frame_size=frame_size)
+                for p in self.polylines
             ]
         )
 
@@ -956,7 +1110,7 @@ class Polylines(ImageLabel, _HasLabelList):
         )
 
 
-class Keypoint(ImageLabel, _HasID, _HasAttributes):
+class Keypoint(ImageLabel, _HasID, _HasAttributesDict):
     """A list of keypoints in an image.
 
     Args:
@@ -1137,7 +1291,7 @@ class Segmentation(ImageLabel, _HasID):
         return cls(mask=mask)
 
 
-class GeoLocation(ImageLabel, _HasID):
+class GeoLocation(_HasID, Label):
     """Location data in GeoJSON format.
 
     Args:
@@ -1186,7 +1340,7 @@ class GeoLocation(ImageLabel, _HasID):
         return cls(point=point, line=line, polygon=polygon)
 
 
-class GeoLocations(ImageLabel, _HasID):
+class GeoLocations(_HasID, Label):
     """A batch of location data in GeoJSON format.
 
     The attributes of this class accept lists of data in the format of the
