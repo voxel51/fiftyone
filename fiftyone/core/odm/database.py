@@ -7,41 +7,129 @@ Database utilities.
 """
 from copy import copy
 import logging
+import os
 
 from bson import json_util
 from mongoengine import connect
 import motor
+from packaging.version import Version
 import pymongo
-from pymongo.errors import BulkWriteError
+from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+from fiftyone.core.config import FiftyOneConfigError
+import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
 
 _client = None
 _async_client = None
-_default_port = 27017
+_connection_kwargs = {}
+_db_service = None
 
 logger = logging.getLogger(__name__)
 
 _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
 
+def establish_db_conn(config):
+    """Establishes the database connection.
+
+    If ``fiftyone.config.database_uri`` is defined, then we connect to that
+    URI. Otherwise, a :class:`fiftyone.core.service.DatabaseService` is
+    created.
+
+    Args:
+        config: a :class:`fiftyone.core.config.FiftyOneConfig`
+
+    Raises:
+        ConnectionError: if a connection to ``mongod`` could not be established
+        FiftyOneConfigError: if ``fiftyone.config.database_uri`` is not
+            defined and ``mongod`` could not be found
+        ServiceExecutableNotFound: if
+            :class:`fiftyone.core.service.DatabaseService` startup was
+            attempted, but ``mongod`` was not found in :mod:`fiftyone.db.bin`
+        RuntimeError: if the ``mongod`` found does not meet FiftyOne's
+            requirements, or validation could not occur
+    """
+    global _connection_kwargs
+
+    if config.database_uri is not None:
+        _connection_kwargs["host"] = config.database_uri
+    else:
+        global _db_service
+
+        if _db_service is not None:
+            return
+
+        if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
+            return
+
+        try:
+            _db_service = fos.DatabaseService()
+            _connection_kwargs["port"] = _db_service.port
+
+        except fos.ServiceExecutableNotFound as error:
+            if not fou.is_arm_mac():
+                raise error
+
+            raise FiftyOneConfigError(
+                "MongoDB is not yet supported on Apple Silicon Macs. Please"
+                "define a `database_uri` in your"
+                "`fiftyone.core.config.FiftyOneConfig` to define a connection"
+                "to your own MongoDB instance or cluster"
+            )
+
+    global _client
+
+    _client = pymongo.MongoClient(**_connection_kwargs)
+    _validate_db_version(config, _client)
+
+    connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+
+
 def _connect():
     global _client
     if _client is None:
-        connect(foc.DEFAULT_DATABASE, port=_default_port)
-        _client = pymongo.MongoClient(port=_default_port)
+        global _connection_kwargs
+        _client = pymongo.MongoClient(**_connection_kwargs)
+        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
 
 
 def _async_connect():
     global _async_client
     if _async_client is None:
-        _async_client = motor.motor_tornado.MotorClient(
-            "localhost", _default_port
+        global _connection_kwargs
+        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+
+
+def _validate_db_version(config, client):
+    try:
+        version = Version(client.server_info()["version"])
+    except Exception as e:
+        if isinstance(e, ServerSelectionTimeoutError):
+            raise ConnectionError("Could not connect to `mongod`") from e
+
+        raise RuntimeError("Failed to validate `mongod` version") from e
+
+    min_ver, max_ver = foc.MONGODB_VERSION_RANGE
+
+    if min_ver <= version < max_ver:
+        return
+
+    if version >= max_ver and config.database_uri is not None:
+        raise RuntimeError(
+            "Found `mongod` version %s, but [%s, %s) is required. Your "
+            "FiftyOne installation may be outdated; try upgrading it"
+            % (version, min_ver, max_ver)
         )
+
+    raise RuntimeError(
+        "Found `mongod` version %s, but [%s, %s) is required"
+        % (version, min_ver, max_ver)
+    )
 
 
 def aggregate(collection, pipeline):
@@ -59,23 +147,14 @@ def aggregate(collection, pipeline):
     return collection.aggregate(pipeline, allowDiskUse=True)
 
 
-def set_default_port(port):
-    """Changes the default port used to connect to the database.
-
-    Args:
-        port (int): port number
-    """
-    global _default_port
-    _default_port = int(port)
-
-
 def get_db_client():
     """Returns a database client.
 
     Returns:
         a ``pymongo.mongo_client.MongoClient``
     """
-    return pymongo.MongoClient(port=_default_port)
+    _connect()
+    return _client
 
 
 def get_db_conn():

@@ -579,6 +579,16 @@ forwarding and open the App in your browser as follows:
         --port YYYY \
         --local-port ZZZZ
 
+.. _faq-my-own-mongodb:
+
+Can I use my own MongoDB database?
+----------------------------------
+
+Yes, you can configure FiftyOne to connect to your own MongoDB instance by
+setting the `database_uri` property of your
+:ref:`FiftyOne config <configuring-fiftyone>`. Refer to
+:ref:`this page <configuring-mongodb-connection>` for more information.
+
 .. _faq-too-many-files-open:
 
 Too many open files in system?

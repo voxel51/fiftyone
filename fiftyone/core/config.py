@@ -62,6 +62,9 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.database_uri = self.parse_string(
+            d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
+        )
         self.database_dir = self.parse_string(
             d,
             "database_dir",
@@ -196,6 +199,12 @@ class FiftyOneConfig(EnvConfig):
     def _validate(self):
         if self.default_ml_backend is not None:
             self.default_ml_backend = self.default_ml_backend.lower()
+
+
+class FiftyOneConfigError(etac.EnvConfigError):
+    """Exception raised when a FiftyOne configuration issue is encountered."""
+
+    pass
 
 
 class AppConfig(EnvConfig):

@@ -23,10 +23,6 @@ Prerequisites
 You will need a working Python installation. FiftyOne currently requires
 **Python 3.6 - 3.9**.
 
-Although Python 3.9 is supported, note that some dependencies, notably
-`scikit-image` and `scikit-learn`, will need to be built from source. Also
-note that `tensorflow` does not yet support 3.9.
-
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
 downloaded `from python.org <https://www.python.org/downloads>`_. To verify that
@@ -59,7 +55,8 @@ environment by importing the `fiftyone` package:
     >>>
 
 A successful installation of FiftyOne should result in no output when
-`fiftyone` is imported.
+`fiftyone` is imported. See :ref:`this section <install-troubleshooting>` for
+install troubleshooting tips.
 
 .. _fiftyone-quickstart:
 
@@ -127,6 +124,13 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
 
+**Apple Silicon users**:
+
+- MongoDB does not yet provide a native build for Apple Silicon, so you must
+  follow :ref:`these instructions <configuring-mongodb-connection>` to
+  configure FiftyOne to use a MongoDB instance that you have installed
+  yourself.
+
 **Mac users:**
 
 - You must have the
@@ -144,7 +148,7 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
   ``python3-dev`` package.
 - If you encounter an error related to MongoDB failing to start, such as `Could
   not find mongod`, you may need to install additional packages. See the
-  :ref:`troubleshooting page <troubleshooting-mongodb-linux>` for details.
+  :ref:`troubleshooting page <troubleshooting-mongodb>` for details.
 
 **Windows users:**
 
@@ -155,8 +159,8 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
 
 .. _installing-extras:
 
-Installing extra packages
--------------------------
+Installing extras
+-----------------
 
 Various tutorials and guides that we provide on this site require additional
 packages in order to run. If you encounter a missing package, you will see

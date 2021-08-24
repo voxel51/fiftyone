@@ -53,6 +53,10 @@ still encounter this error, ensure that the virtual environment is activated.
 See the
 :doc:`virtual environment setup guide <virtualenv>` for more details.
 
+.. note::
+
+    FiftyOne does not support 32-bit platforms.
+
 "Package 'fiftyone' requires a different Python"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -79,19 +83,19 @@ reported, there are several possible causes, including:
 "No module named skbuild"
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On Linux, this error can occur when attempting to install OpenCV with an old pip
-version. To fix this, upgrade pip. See the
+On Linux, this error can occur when attempting to install OpenCV with an old
+pip version. To fix this, upgrade pip. See the
 :ref:`installation guide <installing-fiftyone>` for instructions, or the
-`opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
-details.
+`opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for
+more details.
 
 .. _troubleshooting-video:
 
 Videos do not load in the App
 -----------------------------
 
-You will need to install `FFmpeg <https://ffmpeg.org>`_ in order to work with
-video datasets:
+You need to install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
+datasets:
 
 .. tabs::
 
@@ -145,14 +149,18 @@ To resolve this, install IPython in your active virtual environment (see the
 
     pip install ipython
 
-.. _troubleshooting-mongodb-linux:
+.. _troubleshooting-mongodb:
 
-MongoDB compatibility issues on Linux
--------------------------------------
+MongoDB compatibility issues
+----------------------------
 
-The ``fiftyone-db`` package includes a build of MongoDB that works on Ubuntu
-18.04 and several other modern distributions. If this build does not work on
-your distribution, you may encounter an error similar to:
+FiftyOne includes a `fiftyone-db` package wheel for your operating system and
+hardware. On Linux machines in particular, the MongoDB build works for Ubuntu
+18.04+ and several other modern distributions.
+
+However, if a suitable MongoDB build is not available or otherwise does not
+work in your environment, you may encounter a `ServerSelectionTimeoutError`
+with output similar to the following:
 
 .. code-block:: text
 
@@ -160,22 +168,24 @@ your distribution, you may encounter an error similar to:
     /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
     libcrypto.so.1.1: cannot open shared object file: No such file or directory
 
-.. code-block:: text
+To resolve this, you can follow
+:ref:`these instructions <configuring-mongodb-connection>` to configure
+FiftyOne to use a MongoDB instance that you have installed yourself.
 
-    RuntimeError: Could not find mongod >= 4.4
-
-To resolve this, you can install an alternative package on some distributions,
-detailed below, or install a compatible version of MongoDB system-wide.
+On Linux, alternative :ref:`fiftyone-db builds <alternative-builds>` are
+available as well.
 
 .. _alternative-builds:
 
 Alternative builds
 ~~~~~~~~~~~~~~~~~~
 
-Alternative builds of MongoDB are available as pip packages for the
+Alternative builds of MongoDB are available as pip packages for the Linux
 distributions listed below, and can be installed by running the corresponding
-command. Note that these packages must be installed *after* the `fiftyone`
-package; if you install `fiftyone` afterwards, you can fix your MongoDB
+command.
+
+Note that these packages must be installed *after* installing the `fiftyone`
+package; if you (re)install `fiftyone` afterwards, you can fix your MongoDB
 installation by adding `--force-reinstall` to the commands below.
 
 .. tabs::
@@ -199,35 +209,3 @@ installation by adding `--force-reinstall` to the commands below.
     .. code-block:: shell
 
       pip install fiftyone-db-rhel7
-
-Manual installation
-~~~~~~~~~~~~~~~~~~~
-
-FiftyOne also supports using an existing MongoDB installation (version 4.4 or
-newer). This can be installed through many distributions' package managers.
-Note that only the `mongod` (server) binary is required, so you may not need
-the complete MongoDB package. For example, Debian-based distributions make this
-available in the `mongodb-server` package.
-
-If your distribution does not provide a new-enough version of MongoDB, or if
-you would like to install a newer version, see
-`the MongoDB documentation <https://docs.mongodb.com/manual/administration/install-on-linux/>`_
-for instructions on installing MongoDB on your distribution. Note that you only
-need the `mongodb-org-server` package in this case.
-
-To verify the version of your MongoDB installation, run `mongod --version`,
-which should produce output that looks like this:
-
-.. code-block:: text
-
-   db version v4.2.6
-   git version: 20364840b8f1af16917e4c23c1b5f5efd8b352f8
-   OpenSSL version: OpenSSL 1.1.1  11 Sep 2018
-   allocator: tcmalloc
-   modules: none
-   build environment:
-       distmod: ubuntu1804
-       distarch: x86_64
-       target_arch: x86_64
-
-Verify that the version after "db version" is at least 4.4.
