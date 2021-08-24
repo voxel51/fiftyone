@@ -50,11 +50,11 @@ jobs:
         working-directory: app/packages/desktop
         run: yarn
       - name: Package App (Non-Windows)
-        if: ${{ matrix.platform != "win-amd64" }}
+        if: ${{ matrix.platform != 'win-amd64' }}
         working-directory: app/packages/desktop
         run: yarn package-${{ platform }} --publish never
       - name: Package App (Windows)
-        if: ${{ matrix.platform == "win-amd64" }}
+        if: ${{ matrix.platform == 'win-amd64' }}
         working-directory: app/
         run: |
           docker run --rm \
