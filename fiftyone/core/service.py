@@ -272,9 +272,6 @@ class DatabaseService(MultiClientService):
         if not sys.platform.startswith("win"):
             args.append("--nounixsocket")
 
-        if focx._get_context() == focx._COLAB:
-            return ["sudo"] + args
-
         try:
             etau.ensure_dir(database_dir)
         except:
@@ -291,6 +288,9 @@ class DatabaseService(MultiClientService):
             raise PermissionError(
                 "Database log path `%s` cannot be written to" % log_path
             )
+
+        if focx._get_context() == focx._COLAB:
+            return ["sudo"] + args
 
         return args
 
@@ -332,12 +332,11 @@ class DatabaseService(MultiClientService):
         mongod = os.path.join(
             foc.FIFTYONE_DB_BIN_DIR, DatabaseService.MONGOD_EXE_NAME
         )
-        is_colab = focx._get_context() == focx._COLAB
 
         if not os.path.isfile(mongod):
             raise ServiceExecutableNotFound("Could not find `mongod`")
 
-        if not os.access(mongod, os.X_OK) and not is_colab:
+        if not os.access(mongod, os.X_OK):
             raise PermissionError("`mongod` is not executable")
 
         return mongod
