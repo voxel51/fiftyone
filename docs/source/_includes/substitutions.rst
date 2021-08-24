@@ -25,6 +25,7 @@
 .. |IntField| replace:: :class:`IntField <fiftyone.core.fields.IntField>`
 .. |FloatField| replace:: :class:`FloatField <fiftyone.core.fields.FloatField>`
 .. |StringField| replace:: :class:`StringField <fiftyone.core.fields.StringField>`
+.. |DateTimeField| replace:: :class:`DateTimeField <fiftyone.core.fields.DateTimeField>`
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 .. |VectorField| replace:: :class:`VectorField <fiftyone.core.fields.VectorField>`

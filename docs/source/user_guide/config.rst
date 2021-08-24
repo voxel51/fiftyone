@@ -24,6 +24,10 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
 |                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
+|                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
+|                               |                                     |                               | more information.                                                                      |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -100,6 +104,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
+            "timezone": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -135,6 +140,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
+            "timezone": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -279,6 +285,57 @@ with administrative privileges.
     .. code-block:: shell
 
         brew install mongodb-community@4.4
+
+.. _configuring-timezone:
+
+Configuring a timezone
+----------------------
+
+By default, FiftyOne loads all datetimes in FiftyOne datasets as naive
+`datetime` objects in UTC time.
+
+However, you can configure FiftyOne to express datetimes in a specific timezone
+by setting the `timezone` property of your FiftyOne config.
+
+The `timezone` property can be set to any timezone string supported by
+:func:`pytz:pytz.timezone`, or `"local"` to use your current local timezone.
+
+For example, you could set the `FIFTYONE_TIMEZONE` environment variable:
+
+.. code-block:: shell
+
+    # Local timezone
+    export FIFTYONE_TIMEZONE=local
+
+    # US Eastern timezone
+    export FIFTYONE_TIMEZONE=US/Eastern
+
+Or, you can even dynamically change the timezone while you work in Python:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import datetime
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="image.png", creation_date=datetime.utcnow())
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(sample.creation_date)
+    # 2021-08-24 20:24:09.723021
+
+    fo.config.timezone = "local"
+    dataset.reload()
+
+    print(sample.creation_date)
+    # 2021-08-24 16:24:09.723000-04:00
+
+.. note::
+
+    This setting does not affect the internal database representation of
+    datetimes, which are always stored in UTC timestamps.
 
 .. _configuring-fiftyone-app:
 
