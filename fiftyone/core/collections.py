@@ -704,12 +704,13 @@ class SampleCollection(object):
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         view = self.select_labels(ids=ids, tags=tags, fields=fields)
 
+        sample_ids = view.values("id")
+
         labels = []
         for label_field in view._get_label_fields():
-            sample_ids = view.values("id")
-
             label_type, id_path = view._get_label_field_path(label_field, "id")
-            list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+
             label_ids = view.values(id_path)
 
             if self._is_frame_field(label_field):
@@ -723,7 +724,7 @@ class SampleCollection(object):
                         if not frame_label_ids:
                             continue
 
-                        if not list_field:
+                        if not is_list_field:
                             frame_label_ids = [frame_label_ids]
 
                         for label_id in frame_label_ids:
@@ -740,7 +741,7 @@ class SampleCollection(object):
                     if not sample_label_ids:
                         continue
 
-                    if not list_field:
+                    if not is_list_field:
                         sample_label_ids = [sample_label_ids]
 
                     for label_id in sample_label_ids:
@@ -5598,31 +5599,53 @@ class SampleCollection(object):
         The ``backend`` parameter controls which annotation backend to use.
         Depending on the backend you use, you may want/need to provide extra
         keyword arguments to this function for the constructor of the backend's
-        annotation API:
+        :class:`fiftyone.utils.annotations.AnnotationBackendConfig` class.
 
-        -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATAnnotationAPI`
+        The natively provided backends and their associated config classes are:
 
-        See :ref:`this page <annotation>` for more information about using this
-        method, including how to define label schemas and how to configure
-        login credentials for your annotation provider.
+        -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+
+        See :ref:`this page <requesting-annotations>` for more information
+        about using this method, including how to define label schemas and how
+        to configure login credentials for your annotation provider.
 
         Args:
             anno_key: a string key to use to refer to this annotation run
             label_schema (None): a dictionary defining the label schema to use.
-                If this argument is provided, it takes precedence over
-                ``label_field`` and ``label_type``
-            label_field (None): a string indicating either a new or existing
-                label field to annotate
-            label_type (None): a string indicating the type of labels to expect
-                when creating a new ``label_field``. Supported values are
-                ``("detections", "classifications", "polylines", "keypoints", "scalar")``
+                If this argument is provided, it takes precedence over the
+                other schema-related arguments
+            label_field (None): a string indicating a new or existing label
+                field to annotate
+            label_type (None): a string or type indicating the type of labels
+                to annotate. The possible label strings/types are:
+
+                -   ``"classification"``: :class:`fiftyone.core.labels.Classification`
+                -   ``"classifications"``: :class:`fiftyone.core.labels.Classifications`
+                -   ``"detection"``: :class:`fiftyone.core.labels.Detection`
+                -   ``"detections"``: :class:`fiftyone.core.labels.Detections`
+                -   ``"polyline"``: :class:`fiftyone.core.labels.Polyline`
+                -   ``"polylines"``: :class:`fiftyone.core.labels.Polylines`
+                -   ``"keypoint"``: :class:`fiftyone.core.labels.Keypoint`
+                -   ``"keypoints"``: :class:`fiftyone.core.labels.Keypoints`
+
+                You can also specify ``"scalar"`` for a primitive scalar field
+                or pass any of the supported scalar field types:
+
+                -   :class:`fiftyone.core.fields.IntField`
+                -   :class:`fiftyone.core.fields.FloatField`
+                -   :class:`fiftyone.core.fields.StringField`
+                -   :class:`fiftyone.core.fields.BooleanField`
+
+                All new label fields must have their type specified via this
+                argument or in ``label_schema``. Note that annotation backends
+                may not support all label types
             classes (None): a list of strings indicating the class options for
-                either ``label_field`` or all fields in ``label_schema``
-                without classes specified. All new label fields must have a
-                class list provided via one of the supported methods. For
-                existing label fields, if classes are not provided by this
-                argument nor ``label_schema``, they are parsed from
-                :meth:`classes` or :meth:`default_classes`
+                ``label_field`` or all fields in ``label_schema`` without
+                classes specified. All new label fields must have a class list
+                provided via one of the supported methods. For existing label
+                fields, if classes are not provided by this argument nor
+                ``label_schema``, they are parsed from :meth:`classes` or
+                :meth:`default_classes`
             attributes (True): specifies the label attributes of each label
                 field to include (other than their ``label``, which is always
                 included) in the annotation export. Can be any of the
@@ -5685,7 +5708,7 @@ class SampleCollection(object):
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationRun.list_runs(self)
+        return foan.AnnotationMethod.list_runs(self)
 
     def get_annotation_info(self, anno_key):
         """Returns information about the annotation run with the given key on
@@ -5697,7 +5720,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.annotation.AnnotationInfo`
         """
-        return foan.AnnotationRun.get_run_info(self, anno_key)
+        return foan.AnnotationMethod.get_run_info(self, anno_key)
 
     def load_annotation_results(self, anno_key, **kwargs):
         """Loads the results for the annotation run with the given key on this
@@ -5719,7 +5742,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.utils.annotations.AnnotationResults`
         """
-        results = foan.AnnotationRun.load_run_results(self, anno_key)
+        results = foan.AnnotationMethod.load_run_results(self, anno_key)
         results.load_credentials(**kwargs)
         return results
 
@@ -5735,11 +5758,13 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return foan.AnnotationRun.load_run_view(
+        return foan.AnnotationMethod.load_run_view(
             self, anno_key, select_fields=select_fields
         )
 
-    def load_annotations(self, anno_key, cleanup=False, **kwargs):
+    def load_annotations(
+        self, anno_key, skip_unexpected=False, cleanup=False, **kwargs
+    ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
 
@@ -5749,12 +5774,22 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
+            skip_unexpected (False): whether to skip any unexpected labels that
+                don't match the run's label schema when merging. If False and
+                unexpected labels are encountered, you will be presented an
+                interactive prompt to deal with them
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
         """
-        foua.load_annotations(self, anno_key, cleanup=cleanup, **kwargs)
+        foua.load_annotations(
+            self,
+            anno_key,
+            skip_unexpected=skip_unexpected,
+            cleanup=cleanup,
+            **kwargs,
+        )
 
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
@@ -5770,7 +5805,7 @@ class SampleCollection(object):
         Args:
             anno_key: an annotation key
         """
-        foan.AnnotationRun.delete_run(self, anno_key)
+        foan.AnnotationMethod.delete_run(self, anno_key)
 
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
@@ -5783,7 +5818,7 @@ class SampleCollection(object):
         Use :meth:`load_annotation_results` to programmatically manage/delete
         runs in the annotation backend.
         """
-        foan.AnnotationRun.delete_runs(self)
+        foan.AnnotationMethod.delete_runs(self)
 
     def list_indexes(self):
         """Returns the list of index names on this collection.
@@ -6457,6 +6492,13 @@ class SampleCollection(object):
         return _parse_field_name(
             self, field_name, auto_unwind, omit_terminal_lists, allow_missing
         )
+
+    def _has_field(self, field_name):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
+            return field_name in self.get_frame_field_schema()
+
+        return field_name in self.get_field_schema()
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)

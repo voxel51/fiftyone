@@ -5,9 +5,9 @@ Using Aggregations
 
 .. default-role:: code
 
-The :ref:`FiftyOne Dataset <using-datasets>` is the core data structure in
-FiftyOne, allowing you to represent your raw data, labels, and associated
-metadata. When you query and manipulate a |Dataset| object using
+:ref:`Datasets <using-datasets>` are the core data structure in FiftyOne,
+allowing you to represent your raw data, labels, and associated metadata. When
+you query and manipulate a |Dataset| object using
 :ref:`dataset views <using-views>`, a |DatasetView| object is returned, which
 represents a filtered view into a subset of the underlying dataset's contents.
 
