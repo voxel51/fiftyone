@@ -382,7 +382,7 @@ class SegmentationResults(BaseEvaluationResults):
         ]
 
     @classmethod
-    def _from_dict(cls, d, samples, **kwargs):
+    def _from_dict(cls, d, samples, config, **kwargs):
         return cls(
             d["pixel_confusion_matrix"],
             d["classes"],

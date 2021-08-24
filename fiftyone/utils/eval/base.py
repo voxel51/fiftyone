@@ -336,7 +336,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         )
 
     @classmethod
-    def _from_dict(cls, d, samples, **kwargs):
+    def _from_dict(cls, d, samples, config, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)

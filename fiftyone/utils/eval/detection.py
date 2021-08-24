@@ -454,7 +454,7 @@ class DetectionResults(BaseEvaluationResults):
         self.ious = np.array(ious)
 
     @classmethod
-    def _from_dict(cls, d, samples, **kwargs):
+    def _from_dict(cls, d, samples, config, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         ious = d["ious"]

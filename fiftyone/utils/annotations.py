@@ -1183,8 +1183,8 @@ class AnnotationResults(foa.AnnotationResults):
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        config: a :class:`AnnotationBackendConfig`
-        backend (None): a :class:`AnnotationBackend`
+        config: an :class:`AnnotationBackendConfig`
+        backend (None): an :class:`AnnotationBackend`
     """
 
     def __init__(self, samples, config, backend=None):
@@ -1193,7 +1193,11 @@ class AnnotationResults(foa.AnnotationResults):
 
         self._samples = samples
         self._backend = backend
-        self.config = config
+
+    @property
+    def config(self):
+        """The :class:`AnnotationBackendConfig` for these results."""
+        return self._backend.config
 
     @property
     def backend(self):
@@ -1214,11 +1218,7 @@ class AnnotationResults(foa.AnnotationResults):
         raise NotImplementedError("subclass must implement cleanup()")
 
     def _load_config_parameters(self, **kwargs):
-        config = self._backend.config
-
-        # make sure `config` and `_backend.config` are in-sync
-        self.config = config
-
+        config = self.config
         parameters = fo.annotation_config.backends.get(config.name, {})
 
         for name, value in kwargs.items():
@@ -1229,7 +1229,7 @@ class AnnotationResults(foa.AnnotationResults):
                 setattr(config, name, value)
 
     @classmethod
-    def _from_dict(cls, d, samples):
+    def _from_dict(cls, d, samples, config):
         """Builds an :class:`AnnotationResults` from a JSON dict
         representation of it.
 
@@ -1237,6 +1237,7 @@ class AnnotationResults(foa.AnnotationResults):
             d: a JSON dict
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
+            config: the :class:`AnnotationBackendConfig` for the run
 
         Returns:
             an :class:`AnnotationResults`
