@@ -95,7 +95,7 @@ export abstract class CoordinateOverlay<
   }
 
   isSelected(state: Readonly<State>): boolean {
-    return state.options.selectedLabels.includes(this.label._id);
+    return state.options.selectedLabels.includes(this.label.id);
   }
 
   getColor({ options }: Readonly<State>): string {
