@@ -1,6 +1,6 @@
 {
   "name": "@fiftyone/looker",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Voxel51, Inc.",
   "description": "Media viewer that can render label overlays.",
   "homepage": "https://github.com/voxel51/fiftyone/app/looker#readme",
