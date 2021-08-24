@@ -3,6 +3,16 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.13.1:
+
+FiftyOne 0.13.1
+---------------
+*Released August __, 2021*
+
+App
+
+- Fixed `id` rendering in the grid when the `id` checkbox is active
+
 .. _release-notes-v0.13.0:
 
 FiftyOne 0.13.0
