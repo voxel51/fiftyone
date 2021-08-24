@@ -186,7 +186,6 @@ const getSendChunk = (uuid: string) => ({
     let buffers: ArrayBuffer[] = [];
 
     value.frames.forEach((frame) => {
-      delete frame._sample_id;
       buffers = [...buffers, ...processLabels(frame)];
     });
     postMessage(
