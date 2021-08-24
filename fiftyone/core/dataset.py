@@ -27,6 +27,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
+import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
@@ -236,8 +237,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_doc_cls,
             ) = _load_dataset(name, migrate=_migrate)
 
-        self._evaluation_cache = {}
+        self._annotation_cache = {}
         self._brain_cache = {}
+        self._evaluation_cache = {}
+
         self._deleted = False
 
     def __len__(self):
@@ -4165,8 +4168,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Reloads the dataset and any in-memory samples from the database."""
         self._reload(hard=True)
         self._reload_docs(hard=True)
-        self._evaluation_cache.clear()
+
+        self._annotation_cache.clear()
         self._brain_cache.clear()
+        self._evaluation_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:
@@ -4348,11 +4353,15 @@ def _delete_dataset_doc(dataset_doc):
     # https://docs.mongoengine.org/guide/gridfs.html#deletion
     #
 
-    for run_doc in dataset_doc.evaluations.values():
+    for run_doc in dataset_doc.annotation_runs.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
     for run_doc in dataset_doc.brain_methods.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+    for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
@@ -4385,8 +4394,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.sample_collection_name = sample_collection_name
 
     # Run results get special treatment at the end
-    dataset_doc.evaluations = {}
+    dataset_doc.annotation_runs = {}
     dataset_doc.brain_methods = {}
+    dataset_doc.evaluations = {}
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -4437,8 +4447,15 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     clone_dataset = load_dataset(name)
 
-    # Clone RunResults
-    if dataset.has_evaluations or dataset.has_brain_runs:
+    #
+    # Clone run results
+    #
+
+    if (
+        dataset.has_annotation_runs
+        or dataset.has_brain_runs
+        or dataset.has_evaluations
+    ):
         _clone_runs(clone_dataset, dataset._doc)
 
     return clone_dataset
@@ -4634,18 +4651,24 @@ def _merge_dataset_doc(
     curr_doc.save()
 
     if dataset:
-        if doc.evaluations:
+        if doc.annotation_runs:
             logger.warning(
-                "Evaluations cannot be merged into a non-empty dataset"
+                "Annotation runs cannot be merged into a non-empty dataset"
             )
 
         if doc.brain_methods:
             logger.warning(
                 "Brain runs cannot be merged into a non-empty dataset"
             )
+
+        if doc.evaluations:
+            logger.warning(
+                "Evaluations cannot be merged into a non-empty dataset"
+            )
     else:
-        dataset.delete_evaluations()
+        dataset.delete_annotation_runs()
         dataset.delete_brain_runs()
+        dataset.delete_evaluations()
 
         _clone_runs(dataset, doc)
 
@@ -4657,29 +4680,47 @@ def _update_no_overwrite(d, dnew):
 def _clone_runs(dst_dataset, src_doc):
     dst_doc = dst_dataset._doc
 
-    # Clone evaluation results
-
-    dst_doc.evaluations = deepcopy(src_doc.evaluations)
-
+    #
+    # Clone annotation runs results
+    #
     # GridFS files must be manually copied
     # This works by loading the source dataset's copy of the results into
     # memory and then writing a new copy for the destination dataset
-    for eval_key, run_doc in dst_doc.evaluations.items():
-        results = foe.EvaluationMethod.load_run_results(dst_dataset, eval_key)
-        run_doc.results = None
-        foe.EvaluationMethod.save_run_results(dst_dataset, eval_key, results)
+    #
 
+    dst_doc.annotation_runs = deepcopy(src_doc.annotation_runs)
+    for anno_key, run_doc in dst_doc.annotation_runs.items():
+        results = foan.AnnotationMethod.load_run_results(dst_dataset, anno_key)
+        run_doc.results = None
+        foan.AnnotationMethod.save_run_results(dst_dataset, anno_key, results)
+
+    #
     # Clone brain results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
 
     dst_doc.brain_methods = deepcopy(src_doc.brain_methods)
-
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
     for brain_key, run_doc in dst_doc.brain_methods.items():
         results = fob.BrainMethod.load_run_results(dst_dataset, brain_key)
         run_doc.results = None
         fob.BrainMethod.save_run_results(dst_dataset, brain_key, results)
+
+    #
+    # Clone evaluation results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
+
+    dst_doc.evaluations = deepcopy(src_doc.evaluations)
+    for eval_key, run_doc in dst_doc.evaluations.items():
+        results = foe.EvaluationMethod.load_run_results(dst_dataset, eval_key)
+        run_doc.results = None
+        foe.EvaluationMethod.save_run_results(dst_dataset, eval_key, results)
 
     dst_doc.save()
 

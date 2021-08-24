@@ -129,6 +129,7 @@ dataset:
    :alt: quickstart-evaluate-detections
    :align: center
 
+|br|
 Notice anything wrong? The sample with the most false positives is a plate of
 carrots where the entire plate has been boxed as a single example in the ground
 truth while the model is generating predictions for individual carrots!
@@ -689,6 +690,7 @@ results of an evaluation on the
     :alt: evaluation-patches
     :align: center
 
+|br|
 Evaluation patches views are just like any other
 :ref:`dataset view <using-views>` in the sense that:
 

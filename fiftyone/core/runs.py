@@ -156,7 +156,7 @@ class Run(Configurable):
         )
 
     def get_fields(self, samples, key):
-        """Gets the fields that were involved and populated by the given run.
+        """Gets the fields that were involved in the given run.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -168,7 +168,7 @@ class Run(Configurable):
         raise NotImplementedError("subclass must implement get_fields()")
 
     def cleanup(self, samples, key):
-        """Deletes any results for the run with the given key from the
+        """Cleans up the results of the run with the given key from the
         collection.
 
         Args:

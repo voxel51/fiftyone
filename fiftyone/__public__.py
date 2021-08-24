@@ -11,6 +11,7 @@ import fiftyone.core.service as fos
 _database_service = fos.DatabaseService()
 
 config = foc.load_config()
+annotation_config = foc.load_annotation_config()
 app_config = foc.load_app_config()
 
 from .core.aggregations import (

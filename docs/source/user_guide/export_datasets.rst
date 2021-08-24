@@ -2211,7 +2211,8 @@ where `labels.json` is a JSON file in the following format:
                         "x2": 1040.626872,
                         "y1": 281.992415,
                         "y2": 326.91156
-                    }
+                    },
+                    "score": 0.95
                 },
                 ...
                 {
@@ -2232,7 +2233,8 @@ where `labels.json` is a JSON file in the following format:
                                 ...
                             ]
                         }
-                    ]
+                    ],
+                    "score": 0.87
                 },
                 ...
                 {
@@ -2256,6 +2258,7 @@ where `labels.json` is a JSON file in the following format:
                             ]
                         }
                     ],
+                    "score": 0.98
                 },
                 ...
             }

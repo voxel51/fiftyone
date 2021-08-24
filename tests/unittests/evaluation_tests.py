@@ -6,6 +6,7 @@ FiftyOne evaluation-related unit tests.
 |
 """
 import unittest
+import warnings
 
 import numpy as np
 
@@ -157,13 +158,16 @@ class ClassificationTests(unittest.TestCase):
         # Test evaluation (including missing data)
         #
 
-        results = dataset.evaluate_classifications(
-            "predictions",
-            gt_field="ground_truth",
-            eval_key="eval",
-            classes=["cat", "dog"],
-            method="top-k",
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing logits warning
+
+            results = dataset.evaluate_classifications(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="eval",
+                classes=["cat", "dog"],
+                method="top-k",
+            )
 
         dataset.load_evaluation_view("eval")
         dataset.get_evaluation_info("eval")
@@ -192,14 +196,17 @@ class ClassificationTests(unittest.TestCase):
         self.assertNotIn("eval", dataset.list_evaluations())
         self.assertNotIn("eval", dataset.get_field_schema())
 
-        results = dataset.evaluate_classifications(
-            "predictions",
-            gt_field="ground_truth",
-            eval_key="eval",
-            classes=["cat", "dog"],
-            method="top-k",
-            k=1,
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing logits warning
+
+            results = dataset.evaluate_classifications(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="eval",
+                classes=["cat", "dog"],
+                method="top-k",
+                k=1,
+            )
 
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         actual = results.confusion_matrix()
@@ -430,13 +437,16 @@ class VideoClassificationTests(unittest.TestCase):
         # Test evaluation (including missing data)
         #
 
-        results = dataset.evaluate_classifications(
-            "frames.predictions",
-            gt_field="frames.ground_truth",
-            eval_key="eval",
-            classes=["cat", "dog"],
-            method="top-k",
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing logits warning
+
+            results = dataset.evaluate_classifications(
+                "frames.predictions",
+                gt_field="frames.ground_truth",
+                eval_key="eval",
+                classes=["cat", "dog"],
+                method="top-k",
+            )
 
         dataset.load_evaluation_view("eval")
         dataset.get_evaluation_info("eval")
@@ -468,14 +478,17 @@ class VideoClassificationTests(unittest.TestCase):
         self.assertNotIn("eval", dataset.get_field_schema())
         self.assertNotIn("eval", dataset.get_frame_field_schema())
 
-        results = dataset.evaluate_classifications(
-            "frames.predictions",
-            gt_field="frames.ground_truth",
-            eval_key="eval",
-            classes=["cat", "dog"],
-            method="top-k",
-            k=1,
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing logits warning
+
+            results = dataset.evaluate_classifications(
+                "frames.predictions",
+                gt_field="frames.ground_truth",
+                eval_key="eval",
+                classes=["cat", "dog"],
+                method="top-k",
+                k=1,
+            )
 
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         actual = results.confusion_matrix()
@@ -1531,13 +1544,16 @@ class SegmentationTests(unittest.TestCase):
         # Test evaluation (including missing data)
         #
 
-        results = dataset.evaluate_segmentations(
-            "predictions",
-            gt_field="ground_truth",
-            eval_key="eval",
-            method="simple",
-            mask_targets={0: "background", 1: "cat", 2: "dog"},
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="eval",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+            )
 
         dataset.load_evaluation_view("eval")
         dataset.get_evaluation_info("eval")
@@ -1632,13 +1648,16 @@ class VideoSegmentationTests(unittest.TestCase):
         # Test evaluation (including missing data)
         #
 
-        results = dataset.evaluate_segmentations(
-            "frames.predictions",
-            gt_field="frames.ground_truth",
-            eval_key="eval",
-            method="simple",
-            mask_targets={0: "background", 1: "cat", 2: "dog"},
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            results = dataset.evaluate_segmentations(
+                "frames.predictions",
+                gt_field="frames.ground_truth",
+                eval_key="eval",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+            )
 
         dataset.load_evaluation_view("eval")
         dataset.get_evaluation_info("eval")

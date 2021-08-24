@@ -18,6 +18,7 @@ def plot_confusion_matrix(
     labels,
     ids=None,
     samples=None,
+    eval_key=None,
     gt_field=None,
     pred_field=None,
     backend="plotly",
@@ -41,6 +42,7 @@ def plot_confusion_matrix(
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the confusion matrix was generated. Only used by the
             "plotly" backend when ``ids`` are provided
+        eval_key (None): the evaluation key of the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -71,6 +73,7 @@ def plot_confusion_matrix(
             dict(
                 ids=ids,
                 samples=samples,
+                eval_key=eval_key,
                 gt_field=gt_field,
                 pred_field=pred_field,
             )
@@ -593,16 +596,32 @@ class InteractivePlot(ResponsivePlot):
     Args:
         link_type ("samples"): whether this plot is linked to "samples" or
             "labels"
-        label_fields (None): an optional label field or list of label fields to
-            which points in this plot correspond. Only applicable when linked
-            to labels
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
             defining an initial view from which to derive selection views when
             points are selected in the plot. This view will also be shown when
             the plot is in its default state (no selection)
+        label_fields (None): an optional label field or list of label fields to
+            which points in this plot correspond. Only applicable when
+            ``link_type == "labels"``
+        selection_mode (None): the mode to use when updating connected sessions
+            in response to selections in this plot. Only applicable when
+            ``link_type == "labels"``. See :meth:`selection_mode` for details
+        init_patches_fcn (None): an optional function that can be called with
+            ``init_view`` as its argument and returns a
+            :class:`fiftyone.core.collections.SampleCollection` defining an
+            initial view from which to dervie selection views when cells are
+            selected in the plot when :meth:`selection_mode` is ``"patches"``.
+            Only applicable when ``link_type == "labels"``
     """
 
-    def __init__(self, link_type="samples", label_fields=None, init_view=None):
+    def __init__(
+        self,
+        link_type="samples",
+        init_view=None,
+        label_fields=None,
+        selection_mode=None,
+        init_patches_fcn=None,
+    ):
         supported_link_types = ("samples", "labels")
         if link_type not in supported_link_types:
             raise ValueError(
@@ -610,10 +629,88 @@ class InteractivePlot(ResponsivePlot):
                 % (link_type, supported_link_types)
             )
 
-        self.label_fields = label_fields
-        self.init_view = init_view
+        if selection_mode is None and link_type == "labels":
+            selection_mode = "select"
 
         super().__init__(link_type)
+
+        self.label_fields = label_fields
+
+        self._init_view = init_view
+        self._init_patches_fcn = init_patches_fcn
+        self._init_patches_view = None
+
+        self._selection_callback = None
+        self._sync_callback = None
+        self._disconnect_callback = None
+        self._selection_mode = None
+
+        self.selection_mode = selection_mode
+
+    @property
+    def selection_mode(self):
+        """The current selection mode of the plot.
+
+        Only applicable when ``link_type == "labels"``.
+
+        This property controls how the current view is updated in response to
+        updates from :class:`InteractivePlot` instances that are linked to
+        labels:
+
+        -   ``"select"``: show only the selected labels
+        -   ``"match"``: show unfiltered samples containing the selected labels
+        -   ``"patches"``: show the selected labels in a patches view
+
+        .. note::
+
+            ``"patches"`` mode is only supported if an ``init_patches_fcn`` was
+            provided when constructing this plot.
+        """
+        return self._selection_mode
+
+    @selection_mode.setter
+    def selection_mode(self, mode):
+        if self.link_type == "samples":
+            if mode is not None:
+                logger.warning(
+                    "Ignoring `selection_mode` parameter, which is only "
+                    "applicable for plots linked to labels"
+                )
+
+            return
+
+        if self._init_patches_fcn is not None:
+            supported_modes = ("select", "match", "patches")
+        else:
+            supported_modes = ("select", "match")
+
+        if mode not in supported_modes:
+            raise ValueError(
+                "Unsupported selection_mode '%s'; supported values are %s"
+                % (mode, supported_modes)
+            )
+
+        self._selection_mode = mode
+
+        if self.is_connected and self._selection_callback is not None:
+            self._selection_callback(self.selected_ids)
+
+    @property
+    def init_view(self):
+        """A :class:`fiftyone.core.collections.SampleCollection` defining the
+        initial view from which to derive selection views when points are
+        selected in the plot.
+
+        This view will also be shown when the plot is in its default state (no
+        selection).
+        """
+        if self.selection_mode != "patches":
+            return self._init_view
+
+        if self._init_patches_view is None:
+            self._init_patches_view = self._init_patches_fcn(self._init_view)
+
+        return self._init_patches_view
 
     @property
     def selected_ids(self):
@@ -645,12 +742,11 @@ class InteractivePlot(ResponsivePlot):
         Args:
             callback: a selection callback
         """
+        self._selection_callback = callback
         self._register_selection_callback(callback)
 
     def _register_selection_callback(self, callback):
-        raise ValueError(
-            "Subclass must implement _register_selection_callback()"
-        )
+        pass
 
     def register_sync_callback(self, callback):
         """Registers a callback that can sync this plot with a
@@ -662,6 +758,7 @@ class InteractivePlot(ResponsivePlot):
         Args:
             callback: a function with no arguments
         """
+        self._sync_callback = callback
         self._register_sync_callback(callback)
 
     def _register_sync_callback(self, callback):
@@ -677,6 +774,7 @@ class InteractivePlot(ResponsivePlot):
         Args:
             callback: a function with no arguments
         """
+        self._disconnect_callback = callback
         self._register_disconnect_callback(callback)
 
     def _register_disconnect_callback(self, callback):

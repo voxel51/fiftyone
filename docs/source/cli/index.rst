@@ -63,7 +63,9 @@ The FiftyOne command-line interface.
 
 .. code-block:: text
 
-    fiftyone [-h] [-v] [--all-help] {quickstart,config,constants,convert,datasets,app,zoo} ...
+    fiftyone [-h] [-v] [--all-help]
+             {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
+             ...
 
 **Arguments**
 
@@ -75,8 +77,9 @@ The FiftyOne command-line interface.
       --all-help            show help recurisvely and exit
 
     available commands:
-      {config,constants,convert,datasets,app,zoo}
+      {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
         quickstart          Launch a FiftyOne quickstart.
+        annotation          Tools for working with the FiftyOne annotation API.
         app                 Tools for working with the FiftyOne App.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
@@ -84,7 +87,7 @@ The FiftyOne command-line interface.
         datasets            Tools for working with FiftyOne datasets.
         migrate             Tools for migrating the FiftyOne database.
         utils               FiftyOne utilities.
-        zoo                 Tools for working with the FiftyOne Dataset Zoo.
+        zoo                 Tools for working with the FiftyOne Zoo.
 
 .. _cli-fiftyone-quickstart:
 
@@ -95,7 +98,7 @@ Launch a FiftyOne quickstart.
 
 .. code-block:: text
 
-    fiftyone quickstart [-h] [-v] [-p PORT] [-r]
+    fiftyone quickstart [-h] [-v] [-p PORT] [-r] [-a]
 
 **Arguments**
 
@@ -568,34 +571,34 @@ Export FiftyOne datasets to disk in supported formats.
 Drawing labels on samples
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Writes annotated versions of samples in FiftyOne datasets to disk.
+Renders annotated versions of samples in FiftyOne datasets to disk.
 
 .. code-block:: text
 
-    fiftyone datasets draw [-h] [-d ANNO_DIR] [-f LABEL_FIELDs] NAME
+    fiftyone datasets draw [-h] [-d OUTPUT_DIR] [-f LABEL_FIELDS] NAME
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset to annotate
+      NAME                  the name of the dataset
 
     optional arguments:
       -h, --help            show this help message and exit
-      -d ANNO_DIR, --anno-dir ANNO_DIR
-                            the directory in which to write the annotated data
-      -f LABEL_FIELDs, --label-fields LABEL_FIELDs
+      -d OUTPUT_DIR, --output-dir OUTPUT_DIR
+                            the directory to write the annotated media
+      -f LABEL_FIELDS, --label-fields LABEL_FIELDS
                             a comma-separated list of label fields to export
 
 **Examples**
 
 .. code-block:: shell
 
-    # Write annotated versions of the samples in the dataset with the
-    # specified labels overlaid to disk
+    # Write annotated versions of the media in the dataset with the
+    # specified label field(s) overlaid to disk
     fiftyone datasets draw <name> \
-        --anno-dir <anno-dir> --label-fields <label-fields>
+        --output-dir <output-dir> --label-fields <list>,<of>,<fields>
 
 .. _cli-fiftyone-datasets-rename:
 
@@ -889,6 +892,68 @@ Transforms the videos in a dataset per the specified parameters.
     # Ensure that no videos in the dataset exceed 1920 x 1080 and 30fps
     fiftyone utils transform-videos <dataset-name> \
         --max-size 1920,1080 --max-fps 30.0
+
+.. _cli-fiftyone-annotation:
+
+FiftyOne Annotation
+-------------------
+
+Tools for working with the FiftyOne annotation API.
+
+.. code-block:: text
+
+    fiftyone annotation [-h] [--all-help] {config} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {config,launch,view,connect}
+        config              Tools for working with your FiftyOne annotation config.
+
+.. _cli-fiftyone-annotation-config:
+
+Annotation Config
+~~~~~~~~~~~~~~~~~
+
+Tools for working with your FiftyOne annotation config.
+
+.. code-block:: text
+
+    fiftyone annotation config [-h] [-l] [FIELD]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      FIELD         an annotation config field to print
+
+    optional arguments:
+      -h, --help    show this help message and exit
+      -l, --locate  print the location of your annotation config on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print your entire annotation config
+    fiftyone annotation config
+
+.. code-block:: shell
+
+    # Print a specific annotation config field
+    fiftyone annotation config <field>
+
+.. code-block:: shell
+
+    # Print the location of your annotation config on disk (if one exists)
+    fiftyone annotation config --locate
 
 .. _cli-fiftyone-app:
 
