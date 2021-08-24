@@ -303,8 +303,22 @@ class DatabaseService(MultiClientService):
         """Deletes non-persistent datasets when the DB shuts down."""
         import fiftyone.core.dataset as fod
         import fiftyone.core.odm.database as food
+        import fiftyone.service.util as fosu
 
         try:
+            port = next(
+                port
+                for child in psutil.Process().children()
+                for port in fosu.get_listening_tcp_ports(child)
+            )
+            food._connection_kwargs["port"] = port
+            food._connect()
+        except (StopIteration, psutil.Error):
+            # mongod may have exited - ok to wait until next time
+            return
+
+        try:
+
             fod.delete_non_persistent_datasets()
             food.sync_database()
         except:
