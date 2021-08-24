@@ -289,7 +289,7 @@ class AnnotationConfig(EnvConfig):
         self.default_backend = self.parse_string(
             d,
             "default_backend",
-            env_var="FIFTYONE_DEFAULT_BACKEND",
+            env_var="FIFTYONE_ANNOTATION_DEFAULT_BACKEND",
             default="cvat",
         )
 
@@ -464,69 +464,6 @@ def load_annotation_config():
         return AnnotationConfig.from_json(annotation_config_path)
 
     return AnnotationConfig()
-
-
-def set_config_settings(**kwargs):
-    """Sets the given FiftyOne config setting(s).
-
-    Args:
-        **kwargs: keyword arguments defining valid :class:`FiftyOneConfig`
-            attributes and values
-
-    Raises:
-        EnvConfigError: if the settings were invalid
-    """
-    import fiftyone as fo
-
-    # Validiate settings
-    FiftyOneConfig.from_dict(kwargs)
-
-    _set_settings(fo.config, kwargs)
-
-
-def set_app_config_settings(**kwargs):
-    """Sets the given FiftyOne App config setting(s).
-
-    Args:
-        **kwargs: keyword arguments defining valid :class:`AppConfig`
-            attributes and values
-
-    Raises:
-        EnvConfigError: if the settings were invalid
-    """
-    import fiftyone as fo
-
-    # Validiate settings
-    AppConfig.from_dict(kwargs)
-
-    _set_settings(fo.app_config, kwargs)
-
-
-def set_annotation_config_settings(**kwargs):
-    """Sets the given FiftyOne annotation config setting(s).
-
-    Args:
-        **kwargs: keyword arguments defining valid :class:`AnnotationConfig`
-            attributes and values
-
-    Raises:
-        EnvConfigError: if the settings were invalid
-    """
-    import fiftyone as fo
-
-    # Validiate settings
-    AnnotationConfig.from_dict(kwargs)
-
-    _set_settings(fo.annotation_config, kwargs)
-
-
-def _set_settings(config, kwargs):
-    for field, val in kwargs.items():
-        if not hasattr(config, field):
-            logger.warning("Skipping unknown parameter '%s'", field)
-            continue
-
-        setattr(config, field, val)
 
 
 def _parse_env_value(value):

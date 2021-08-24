@@ -59,6 +59,12 @@ on your data quickly and easily.
     :button_link: using_aggregations.html
 
 .. customcalloutitem::
+    :header: Annotating datasets
+    :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
+    :button_text: Learn more about annotations
+    :button_link: annotation.html
+
+.. customcalloutitem::
     :header: Evaluating models
     :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
     :button_text: Learn more about evaluating models
@@ -120,6 +126,7 @@ on your data quickly and easily.
     Using the App <app>
     Interactive plots <plots>
     Using aggregations <using_aggregations>
+    Annotating datasets <annotation>
     Evaluating models <evaluation>
     Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>

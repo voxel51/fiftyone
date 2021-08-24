@@ -1,3 +1,9 @@
+
+.. # hard line break macro for HTML
+.. |br| raw:: html
+
+   <br />
+
 .. |Dataset| replace:: :class:`Dataset <fiftyone.core.dataset.Dataset>`
 
 .. |SampleCollection| replace:: :class:`SampleCollection <fiftyone.core.collections.SampleCollection>`

@@ -237,6 +237,7 @@ ground truth label:
    :alt: mnist-scatterplot
    :align: center
 
+|br|
 As you can see, the 2D embeddings are naturally clustered according to their
 ground truth label!
 
@@ -315,6 +316,7 @@ digit images in the App that are likely to be confused as zeros:
    :alt: mnist-interactive1
    :align: center
 
+|br|
 Alternatively, let's hide all classes except the zero digits, and then select
 the zero digits that are *not* in the zero cluster; this isolates the zero
 digit images in the App that are likely to be confused as other digits:
@@ -393,6 +395,7 @@ contains |GeoLocation| data in its ``location`` field:
    :alt: location-scatterplot
    :align: center
 
+|br|
 You can also change the style to ``style="density"`` in order to view the data
 as a density plot:
 
