@@ -5,6 +5,8 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import datetime
+
 from bson import SON
 from bson.binary import Binary
 import mongoengine.fields
@@ -77,6 +79,14 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
     """A boolean field."""
 
     pass
+
+
+class DateTimeField(mongoengine.fields.DateTimeField, Field):
+    """A datetime field."""
+
+    def validate(self, value):
+        if not isinstance(value, datetime):
+            self.error("Datetime fields must have `datetime` values")
 
 
 class FrameNumberField(IntField):
@@ -534,9 +544,10 @@ class EmbeddedDocumentListField(
 
 _ARRAY_FIELDS = (VectorField, ArrayField)
 _PRIMITIVE_FIELDS = (
-    ObjectIdField,
-    IntField,
-    FloatField,
-    StringField,
     BooleanField,
+    DateTimeField,
+    FloatField,
+    IntField,
+    ObjectIdField,
+    StringField,
 )

@@ -6,6 +6,7 @@ Mixins and helpers for sample backing documents.
 |
 """
 from collections import OrderedDict
+from datetime import datetime
 import json
 import logging
 import numbers
@@ -155,6 +156,9 @@ def get_implied_field_kwargs(value):
     if isinstance(value, six.string_types):
         return {"ftype": fof.StringField}
 
+    if isinstance(value, datetime):
+        return {"ftype": fof.DateTimeField}
+
     if isinstance(value, (list, tuple)):
         kwargs = {"ftype": fof.ListField}
 
@@ -195,6 +199,9 @@ def _get_list_value_type(value):
 
     if isinstance(value, six.string_types):
         return fof.StringField
+
+    if isinstance(value, datetime):
+        return fof.DateTimeField
 
     return None
 

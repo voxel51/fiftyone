@@ -46,6 +46,7 @@ from .core.fields import (
     ArrayField,
     BooleanField,
     ClassesField,
+    DateTimeField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,

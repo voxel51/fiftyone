@@ -85,6 +85,7 @@ setup(
         "pprintpp",
         "psutil",
         "pymongo>=3.11,<4",
+        "pytz",
         "PyYAML",
         "retrying",
         "scikit-learn",

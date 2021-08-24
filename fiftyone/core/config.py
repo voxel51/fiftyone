@@ -13,6 +13,8 @@ try:
 except ImportError:
     import importlib_metadata  # Python < 3.8
 
+import pytz
+
 import eta
 import eta.core.config as etac
 
@@ -70,6 +72,9 @@ class FiftyOneConfig(EnvConfig):
             "database_dir",
             env_var="FIFTYONE_DATABASE_DIR",
             default=foc.DEFAULT_DB_DIR,
+        )
+        self.timezone = self.parse_string(
+            d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
         self.dataset_zoo_dir = self.parse_string(
             d,
@@ -199,6 +204,13 @@ class FiftyOneConfig(EnvConfig):
     def _validate(self):
         if self.default_ml_backend is not None:
             self.default_ml_backend = self.default_ml_backend.lower()
+
+        if self.timezone and self.timezone.lower() not in {"local", "utc"}:
+            try:
+                pytz.timezone(self.timezone)
+            except:
+                logger.warning("Ignoring invalid timezone '%s'", self.timezone)
+                self.timezone = None
 
 
 class FiftyOneConfigError(etac.EnvConfigError):
