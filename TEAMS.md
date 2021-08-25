@@ -62,5 +62,27 @@ the code that will be made public.
 Then follow the normal steps to make a pull request in the public
 [FiftyOne](https://github.com/voxel51/fiftyone) project.
 
-As these workflows solidify, syncing between the projects should be automated to
-whatever extent possible.
+As these workflows solidify, syncing between the projects should be automated
+to whatever extent possible.
+
+## Working with BB1 Teams
+
+Add yourself to the `cowboys` group on `bb1` if you are not in the group
+already. This ensures data files placed or modified in `/scratch/fiftyone`
+acceptable permissions for everyone else.
+
+Add the following to your `~/.bashrc`:
+
+```sh
+export FIFTYONE_DO_NOT_TRACK=true # for good measure
+export FIFTYONE_DATASET_ZOO_DIR=/scratch/fiftyone/zoo
+export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone/datasets
+export FIFTYONE_DATABASE_URI=mongodb://localhost:27017
+```
+
+This will be your default environment when using `fiftyone` on `bb1`. You can
+about other configuration options
+[here](https://voxel51.com/docs/fiftyone/user_guide/config.html) if you prefer
+a different behavior.
+
+That's it!
