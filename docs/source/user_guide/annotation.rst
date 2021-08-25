@@ -219,7 +219,7 @@ simply passing supported config parameters as keyword arguments each time you ca
     view.annotate(
         ...
         backend="cvat",
-        url="localhost",
+        url="http://localhost:8080",
         username=...,
         password=...,
     )
@@ -322,7 +322,7 @@ server without changing any other default config settings:
     {
         "backends": {
             "cvat": {
-                "url": "localhost"
+                "url": "http://localhost:8080"
             }
         }
     }
@@ -359,7 +359,7 @@ server as follows:
 
 .. code-block:: shell
 
-    export FIFTYONE_CVAT_URL=localhost
+    export FIFTYONE_CVAT_URL=http://localhost:8080
     export FIFTYONE_CVAT_USERNAME=...
     export FIFTYONE_CVAT_PASSWORD=...
 

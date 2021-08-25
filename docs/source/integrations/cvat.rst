@@ -172,8 +172,8 @@ FiftyOne:
 Setup
 _____
 
-FiftyOne supports both `cvat.org <https://cvat.org>`_ and self-hosted CVAT
-servers.
+FiftyOne supports both `cvat.org <https://cvat.org>`_ and
+`self-hosted servers <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_.
 
 The easiest way to get started is to use the default server
 `cvat.org <https://cvat.org>`_, which simply requires creating an account and
@@ -262,14 +262,15 @@ that requires a connection to CVAT:
 Self-hosted servers
 -------------------
 
-If you wish to use a self-hosted server, you can configure the URL of your
-server (e.g., `localhost`) in any of the following ways.
+If you wish to use a
+`self-hosted server <https://openvinotoolkit.github.io/cvat/docs/administration/basics/installation/>`_,
+you can configure the URL of your server in any of the following ways:
 
 -   Set the `FIFTYONE_CVAT_URL` environment variable:
 
 .. code-block:: shell
 
-    export FIFTYONE_CVAT_URL=...
+    export FIFTYONE_CVAT_URL=http://localhost:8080
 
 -   Store the `url` of your server in your
     :ref:`annotation config <annotation-config>` at
@@ -280,7 +281,7 @@ server (e.g., `localhost`) in any of the following ways.
     {
         "backends": {
             "cvat": {
-                "url": "localhost"
+                "url": "http://localhost:8080"
             }
         }
     }
@@ -294,7 +295,7 @@ server (e.g., `localhost`) in any of the following ways.
     view.annotate(
         anno_key,
         label_field="ground_truth",
-        url="localhost",
+        url="http://localhost:8080",
         username=...,
         password=...,
     )
