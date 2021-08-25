@@ -298,7 +298,7 @@ However, you can configure FiftyOne to express datetimes in a specific timezone
 by setting the `timezone` property of your FiftyOne config.
 
 The `timezone` property can be set to any timezone string supported by
-:func:`pytz:pytz.timezone`, or `"local"` to use your current local timezone.
+`pytz.timezone()`, or `"local"` to use your current local timezone.
 
 For example, you could set the `FIFTYONE_TIMEZONE` environment variable:
 
