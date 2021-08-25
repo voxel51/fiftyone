@@ -91,4 +91,7 @@ Note that using the App requires port forwarding with `ssh`:
 ssh -N -L <local-port>:127.0.0.1:<remote-session-port> <user>@voxelbb1.ddns.net
 ```
 
+When adding data to this shared database, ensure that all media is placed
+within `/scratch/fiftyone` so other users will have access.
+
 That's it!
