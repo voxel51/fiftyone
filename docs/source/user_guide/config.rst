@@ -292,7 +292,7 @@ Configuring a timezone
 ----------------------
 
 By default, FiftyOne loads all datetimes in FiftyOne datasets as naive
-`datetime` objects in UTC time.
+`datetime` objects expressed in UTC time.
 
 However, you can configure FiftyOne to express datetimes in a specific timezone
 by setting the `timezone` property of your FiftyOne config.
@@ -334,8 +334,8 @@ Or, you can even dynamically change the timezone while you work in Python:
 
 .. note::
 
-    This setting does not affect the internal database representation of
-    datetimes, which are always stored in UTC timestamps.
+    The `timezone` setting does not affect the internal database representation
+    of datetimes, which are always stored as UTC timestamps.
 
 .. _configuring-fiftyone-app:
 

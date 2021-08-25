@@ -565,8 +565,8 @@ ______________
 
 If your dataset contains :ref:`datetime fields <using-datetimes>`, then you
 can construct dataset views that query/filter based on this information by
-simply defining the appropriate |ViewExpression|, using  `datetime.datetime`
-and/or `datetime.timedelta` objects to define the required logic.
+simply defining the appropriate |ViewExpression|, using  `datetime` and
+`timedelta` objects to define the required logic.
 
 For example, you can use the
 :meth:`match() <fiftyone.core.collections.SampleCollection.match>` stage to
@@ -612,11 +612,11 @@ filter a dataset via date-based conditions as follows:
 .. note::
 
     As the example above demonstrates, |ViewExpression| instances may contain
-    `datetime.datetime` and `datetime.timedelta` objects.
+    `datetime` and `timedelta` objects.
 
     Note that, internally, subtracting two dates will result in the number of
-    milliseconds between them. Using `datetime.timedelta` allows these units to
-    be abstracted away from the API user.
+    milliseconds between them. Using `timedelta` allows these units to be
+    abstracted away from the API user.
 
 .. _object-patches-views:
 
