@@ -68,8 +68,8 @@ to whatever extent possible.
 ## Working with BB1 Teams
 
 Add yourself to the `cowboys` group on `bb1` if you are not in the group
-already. This ensures data files placed or modified in `/scratch/fiftyone`
-acceptable permissions for everyone else.
+already. This ensures data files created in `/scratch/fiftyone` have acceptable
+permissions for everyone else.
 
 Add the following to your `~/.bashrc`:
 
@@ -81,7 +81,7 @@ export FIFTYONE_DATABASE_URI=mongodb://localhost:27017
 ```
 
 This will be your default environment when using `fiftyone` on `bb1`. You can
-about other configuration options
+read about other configuration options
 [here](https://voxel51.com/docs/fiftyone/user_guide/config.html) if you prefer
 a different behavior.
 
