@@ -964,7 +964,7 @@ some workflows when it is available.
 Datetime fields
 _______________
 
-You can store dates and times in FiftyOne datasets by populating fields with
+You can store date information in FiftyOne datasets by populating fields with
 `datetime` values:
 
 .. code-block:: python
@@ -990,6 +990,11 @@ You can store dates and times in FiftyOne datasets by populating fields with
     print(dataset)
     print(dataset.head())
 
+.. note::
+
+    Did you know? You can :ref:`create dataset views <datetime-views>` with
+    date-based queries!
+
 Internally, FiftyOne stores all datetimes as UTC timestamps, but you can
 provide any valid `datetime` object when setting a |DateTimeField| of a sample,
 including timezone-aware datetimes, which are internally converted to UTC
@@ -1006,16 +1011,18 @@ format for safekeeping.
     dataset = fo.Dataset()
     dataset.add_sample(sample)
 
-    # Samples are singletons
+    # Samples are singletons, so we reload so `sample` will contain values as
+    # loaded from the database
     dataset.reload()
+
     sample.creation_date.tzinfo  # None
 
 By default, when you access a datetime field of a sample in a dataset, it is
-retrieved as a naive `datetime` instance in UTC format.
+retrieved as a naive `datetime` instance expressed in UTC format.
 
-However, if you prefer you can :ref:`configure FiftyOne <configuring-timezone>`
-to load datetime fields as timezone-aware `datetime` instances in a timezone of
-your choice.
+However, if you prefer, you can
+:ref:`configure FiftyOne <configuring-timezone>` to load datetime fields as
+timezone-aware `datetime` instances in a timezone of your choice.
 
 .. warning::
 
