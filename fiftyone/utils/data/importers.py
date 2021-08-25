@@ -1481,7 +1481,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 )
             )
 
-            # RunResults are imported separately
+            # Run results are imported separately
 
             for run_doc in dataset_dict.get("evaluations", {}).values():
                 run_doc["results"] = None
@@ -1552,7 +1552,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import RunResults
+        # Import Run results
         #
 
         if empty_import:
