@@ -163,8 +163,8 @@ importing `fiftyone` will result in exceptions being raised.
 
 .. _troubleshooting-mongodb-linux:
 
-Linux
-~~~~~
+Troubleshooting Linux imports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 On Linux machines in particular, the MongoDB build works for Ubuntu
 18.04+ and several other modern distributions.
@@ -221,11 +221,10 @@ installation by adding `--force-reinstall` to the commands below.
 
       pip install fiftyone-db-rhel7
 
-
 .. _troubleshooting-mongodb-windows:
 
-Windows
-~~~~~~~
+Troubleshooting Windows imports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If your encounter a `psutil.NoSuchProcessExists` exists when importing
 `fiftyone`, you are likely missing the C++ libraries MongoDB requires.

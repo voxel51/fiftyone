@@ -148,7 +148,7 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
   ``python3-dev`` package.
 - If you encounter an error related to MongoDB failing to start, such as `Could
   not find mongod`, you may need to install additional packages. See the
-  :ref:`troubleshooting page <troubleshooting-mongodb>` for details.
+  :ref:`Alternative Linux builds <troubleshooting-mongodb>` for details.
 
 **Windows users:**
 
