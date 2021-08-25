@@ -6,12 +6,13 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 |
 """
 from copy import deepcopy
+from datetime import datetime, timedelta
 import re
 import warnings
 
 import bson
-
 import numpy as np
+import pytz
 
 import eta.core.utils as etau
 
@@ -3919,26 +3920,41 @@ class ObjectId(ViewExpression):
         return {"$toObjectId": self._expr}
 
 
-def _do_recurse(val, fcn):
+def _do_to_mongo(val, prefix):
     if isinstance(val, ViewExpression):
-        return fcn(val)
+        return val.to_mongo(prefix=prefix)
 
     if isinstance(val, dict):
         return {
-            _do_recurse(k, fcn): _do_recurse(v, fcn) for k, v in val.items()
+            _do_to_mongo(k, prefix): _do_to_mongo(v, prefix)
+            for k, v in val.items()
         }
 
     if isinstance(val, list):
-        return [_do_recurse(v, fcn) for v in val]
+        return [_do_to_mongo(v, prefix) for v in val]
+
+    if isinstance(val, datetime):
+        return {"$toDate": _datetime_to_timestamp(val)}
+
+    if isinstance(val, timedelta):
+        return _timedelta_to_ms(val)
 
     return val
 
 
-def _do_to_mongo(val, prefix):
-    def fcn(val):
-        return val.to_mongo(prefix=prefix)
+def _datetime_to_timestamp(dt):
+    """Converts a `datetime.datetime` to milliseconds since epoch."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
 
-    return _do_recurse(val, fcn)
+    return int(1000 * dt.timestamp())
+
+
+def _timedelta_to_ms(td):
+    """Converts a `datetime.timedelta` to milliseconds."""
+    return int(
+        86400000 * td.days + 1000 * td.seconds + td.microseconds // 1000
+    )
 
 
 def _do_freeze_prefix(val, prefix):
@@ -3958,6 +3974,21 @@ def _do_apply_memo(val, old, new):
         return val
 
     return _do_recurse(val, fcn)
+
+
+def _do_recurse(val, fcn):
+    if isinstance(val, ViewExpression):
+        return fcn(val)
+
+    if isinstance(val, dict):
+        return {
+            _do_recurse(k, fcn): _do_recurse(v, fcn) for k, v in val.items()
+        }
+
+    if isinstance(val, list):
+        return [_do_recurse(v, fcn) for v in val]
+
+    return val
 
 
 VALUE = ViewField("$$value")
