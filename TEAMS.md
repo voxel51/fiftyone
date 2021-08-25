@@ -85,4 +85,10 @@ read about other configuration options
 [here](https://voxel51.com/docs/fiftyone/user_guide/config.html) if you prefer
 a different behavior.
 
+Note that using the App requires port forwarding with `ssh`:
+
+```sh
+ssh -N -L <local-port>:127.0.0.1:<remote-session-port> <user>@voxelbb1.ddns.net
+```
+
 That's it!
