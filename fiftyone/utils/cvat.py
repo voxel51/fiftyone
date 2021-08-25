@@ -3096,9 +3096,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             a list of the job ids created for the task
         """
         data = {"image_quality": image_quality}
-        files = {
-            "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
-        }
+
+        files = {}
+        for idx, path in enumerate(paths):
+            # IMPORTANT: CVAT organizes media within a task alphabetically by
+            # filename, so we must give CVAT filenames whose alphabetical order
+            # matches the order of `paths`
+            filename = "%06d%s" % (idx, os.path.splitext(path)[1])
+            files["client_files[%d]" % idx] = (filename, open(path, "rb"))
+
         self.post(self.task_data_url(task_id), data=data, files=files)
 
         job_ids = []
@@ -3172,15 +3178,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 scalar field is being annotated through a dropdown selection of
                 through an attribute with a text input box named "value"
         """
-        if media_field not in samples.get_field_schema():
-            logger.warning(
-                "Media field '%s' not found, uploading media from 'filepath'",
-                media_field,
-            )
-            media_field = "filepath"
-
-        samples = samples.sort_by(media_field)
-
         task_ids = []
         job_ids = {}
         frame_id_map = {}
