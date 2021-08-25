@@ -36,7 +36,7 @@ def down(db, dataset_name):
         config = run_doc.get("config", {})
         config_cls = config.get("cls", "")
         if config_cls == "fiftyone.brain.similarity.SimilarityConfig":
-            config.pop("model")
-            config.pop("metric")
+            config.pop("model", None)
+            config.pop("metric", None)
 
     db.datasets.replace_one(match_d, dataset_dict)
