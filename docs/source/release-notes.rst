@@ -3,6 +3,22 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.13.1:
+
+FiftyOne 0.13.1
+---------------
+*Released August 25, 2021*
+
+App
+
+- Fixed `id` rendering in the grid when the `id` checkbox is active
+
+Core
+
+- Fixed a bug that could cause mismatches between media and their pre-existing
+  labels when uploading data to CVAT for annotation whose source media lives in
+  multiple directories
+
 .. _release-notes-v0.13.0:
 
 FiftyOne 0.13.0

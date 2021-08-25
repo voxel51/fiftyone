@@ -2569,7 +2569,6 @@ class CVATBackend(foua.AnnotationBackend):
         annotations = api.download_annotations(
             results.config.label_schema,
             results.task_ids,
-            results.job_ids,
             results.frame_id_map,
             results.labels_task_map,
             results.assigned_scalar_attrs,
@@ -2967,9 +2966,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             return self._user_id_map[username]
 
         search_url = self.user_search_url(username)
-        user_response = self.get(search_url)
-        resp_json = user_response.json()
-        for user_info in resp_json["results"]:
+        resp = self.get(search_url).json()
+        for user_info in resp["results"]:
             if user_info["username"] == username:
                 user_id = user_info["id"]
                 self._user_id_map[username] = user_id
@@ -3017,15 +3015,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if segment_size is not None:
             task_json["segment_size"] = segment_size
 
-        task_creation_resp = self.post(self.tasks_url, json=task_json)
-        task_json = task_creation_resp.json()
-        task_id = task_json["id"]
+        task_resp = self.post(self.tasks_url, json=task_json).json()
+        task_id = task_resp["id"]
 
         attribute_id_map = {}
         class_id_map = {}
         attribute_id_map = {}
         class_id_map[task_id] = {}
-        for label in task_json["labels"]:
+        for label in task_resp["labels"]:
             class_id = label["id"]
             class_id_map[label["name"]] = class_id
             attribute_id_map[class_id] = {}
@@ -3046,7 +3043,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """Deletes the given task from the CVAT server.
 
         Args:
-            task_id: the task ID
+            task_id: the task id
         """
         self.delete(self.task_url(task_id))
 
@@ -3081,12 +3078,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_assignees=None,
         job_reviewers=None,
     ):
-        """Uploads a list of paths to images or one path to a video to an
-        existing task.
+        """Uploads a list of media to the task with the given ID.
 
         Args:
-            task_id: the id of the task to which to upload data
-            paths: a list of paths to media files on disk to upload
+            task_id: the task id
+            paths: a list of media paths to upload
             image_quality (75): an int in `[0, 100]` determining the image
                 quality to upload to CVAT
             job_assignees (None): a list of usernames to assign jobs
@@ -3096,29 +3092,40 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             a list of the job ids created for the task
         """
         data = {"image_quality": image_quality}
-        files = {
-            "client_files[%d]" % i: open(p, "rb") for i, p in enumerate(paths)
-        }
+
+        files = {}
+        for idx, path in enumerate(paths):
+            # IMPORTANT: CVAT organizes media within a task alphabetically by
+            # filename, so we must give CVAT filenames whose alphabetical order
+            # matches the order of `paths`
+            filename = "%06d%s" % (idx, os.path.splitext(path)[1])
+            files["client_files[%d]" % idx] = (filename, open(path, "rb"))
+
         self.post(self.task_data_url(task_id), data=data, files=files)
 
+        # @todo exponential backoff?
         job_ids = []
-        while job_ids == []:
+        while not job_ids:
             job_resp = self.get(self.jobs_url(task_id))
             job_ids = [j["id"] for j in job_resp.json()]
 
         if job_assignees is not None:
-            for ind, job_id in enumerate(job_ids):
-                assignee_ind = ind % len(job_assignees)
-                assignee = job_assignees[assignee_ind]
+            num_assignees = len(job_assignees)
+            for idx, job_id in enumerate(job_ids):
+                # Round robin strategy
+                assignee = job_assignees[idx % num_assignees]
+
                 user_id = self.get_user_id(assignee)
                 if assignee is not None and user_id is not None:
                     job_patch = {"assignee_id": user_id}
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
         if job_reviewers is not None:
-            for ind, job_id in enumerate(job_ids):
-                reviewer_ind = ind % len(job_reviewers)
-                reviewer = job_reviewers[reviewer_ind]
+            num_reviewers = len(job_reviewers)
+            for idx, job_id in enumerate(job_ids):
+                # Round robin strategy
+                reviewer = job_reviewers[idx % num_reviewers]
+
                 user_id = self.get_user_id(reviewer)
                 if reviewer is not None and user_id is not None:
                     job_patch = {"reviewer_id": user_id}
@@ -3172,15 +3179,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 scalar field is being annotated through a dropdown selection of
                 through an attribute with a text input box named "value"
         """
-        if media_field not in samples.get_field_schema():
-            logger.warning(
-                "Media field '%s' not found, uploading media from 'filepath'",
-                media_field,
-            )
-            media_field = "filepath"
-
-        samples = samples.sort_by(media_field)
-
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3197,12 +3195,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # Create a new task for every label field to annotate
         for label_field, label_info in label_schema.items():
-            labels_task_map[label_field] = []
             label_type = label_info["type"]
             classes = label_info["classes"]
-            input_attributes = label_info["attributes"]
+            cvat_attrs = self._construct_cvat_attributes(
+                label_info["attributes"]
+            )
             is_existing_field = label_info["existing_field"]
-            cvat_attributes = self._construct_cvat_attributes(input_attributes)
+
+            labels_task_map[label_field] = []
 
             # Create a new task for every video sample
             for task_index, task_batch_ind in enumerate(
@@ -3220,10 +3220,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "mutable": True,
                         "input_type": "text",
                     }
-                    cvat_attributes["label_id"] = label_id_attr
+                    cvat_attrs["label_id"] = label_id_attr
 
-                attributes = list(cvat_attributes.values())
-                attr_names = list(cvat_attributes.keys())
+                attributes = list(cvat_attrs.values())
+                attr_names = list(cvat_attrs.keys())
 
                 # Top level CVAT labels are classes for FiftyOne Label fields
                 # for scalar fields, there may only be one CVAT label and it is
@@ -3259,17 +3259,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_tags = []
                 anno_shapes = []
                 anno_tracks = []
-                id_mapping = self._create_id_mapping(batch_samples)
 
                 if is_existing_field:
-                    if is_video and label_type in [
+                    if is_video and label_type in (
                         "detections",
                         "keypoints",
                         "polylines",
                         "keypoint",
                         "polyline",
                         "detection",
-                    ]:
+                    ):
                         (
                             anno_shapes,
                             anno_tracks,
@@ -3283,11 +3282,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             is_shape=True,
                             load_tracks=True,
                         )
-                    elif label_type in [
+                    elif label_type in (
                         "classification",
                         "classifications",
                         "scalar",
-                    ]:
+                    ):
                         (
                             anno_tags,
                             remapped_attr_names,
@@ -3344,7 +3343,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field.replace(" ", "_"),
                 )
 
-                # Create task and upload raw data
+                # Create task
                 task_id, attribute_id_map, class_id_map = self.create_task(
                     task_name,
                     labels=labels,
@@ -3354,16 +3353,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 )
                 task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
-                paths = batch_samples.values(media_field)
-                current_job_ids = self.upload_data(
+
+                # Upload media
+                job_ids[task_id] = self.upload_data(
                     task_id,
-                    paths,
+                    batch_samples.values(media_field),
                     image_quality=image_quality,
                     job_assignees=current_job_assignees,
                     job_reviewers=current_job_reviewers,
                 )
-                job_ids[task_id] = current_job_ids
-                frame_id_map[task_id] = id_mapping
+                frame_id_map[task_id] = self._create_id_mapping(batch_samples)
 
                 # Creating task assigned ids to classes and attributes
                 # Remap annotations to these ids before uploading
@@ -3379,27 +3378,30 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 anno_json = {
                     "version": 0,
-                    "tags": anno_tags,
                     "shapes": anno_shapes,
+                    "tags": anno_tags,
                     "tracks": anno_tracks,
                 }
+                num_shapes = len(anno_shapes)
+                num_tags = len(anno_tags)
+                num_tracks = len(anno_tracks)
 
-                len_shapes = 0
-                len_tags = 0
-                len_tracks = 0
+                # Upload annotations
+                # @todo exponential backoff?
+                num_uploaded_shapes = 0
+                num_uploaded_tags = 0
+                num_uploaded_tracks = 0
                 while (
-                    len(anno_shapes) != len_shapes
-                    or len(anno_tags) != len_tags
-                    or len(anno_tracks) != len_tracks
+                    num_uploaded_shapes != num_shapes
+                    or num_uploaded_tags != num_tags
+                    or num_uploaded_tracks != num_tracks
                 ):
-                    # Upload annotations
-                    resp = self.put(
+                    anno_resp = self.put(
                         self.task_annotation_url(task_id), json=anno_json
-                    )
-                    resp_json = resp.json()
-                    len_shapes = len(resp_json["shapes"])
-                    len_tags = len(resp_json["tags"])
-                    len_tracks = len(resp_json["tracks"])
+                    ).json()
+                    num_uploaded_shapes = len(anno_resp["shapes"])
+                    num_uploaded_tags = len(anno_resp["tags"])
+                    num_uploaded_tracks = len(anno_resp["tracks"])
 
         return (
             task_ids,
@@ -3413,7 +3415,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         label_schema,
         task_ids,
-        job_ids,
         frame_id_map,
         labels_task_map,
         assigned_scalar_attrs,
@@ -3425,8 +3426,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_schema: a dictionary containing the description of label
                 fields, classes and attribute to annotate
             task_ids: a list of the task ids created by uploading samples
-            job_ids: a dictionary mapping task id to a list of job ids created
-                for that task
             frame_id_map: a dictionary mapping task id to another map from the
                 CVAT frame index of every image to the FiftyOne sample id
                 (for videos) and FiftyOne frame id
@@ -3454,8 +3453,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             _scalar_attrs = assigned_scalar_attrs.get(label_field, False)
 
             # Download task data
-            task_resp = self.get(self.task_url(task_id))
-            task_json = task_resp.json()
+            task_json = self.get(self.task_url(task_id)).json()
             attr_id_map = {}
             class_map = {}
             labels = task_json["labels"]
@@ -3465,14 +3463,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     [(i["name"], i["id"]) for i in label["attributes"]]
                 )
 
-            response = self.get(self.task_annotation_url(task_id))
-            resp_json = response.json()
-            shapes = resp_json["shapes"]
-            tags = resp_json["tags"]
-            tracks = resp_json["tracks"]
+            task_resp = self.get(self.task_annotation_url(task_id)).json()
+            shapes = task_resp["shapes"]
+            tags = task_resp["tags"]
+            tracks = task_resp["tracks"]
 
-            data_resp = self.get(self.task_data_meta_url(task_id))
-            frames = data_resp.json()["frames"]
+            data_resp = self.get(self.task_data_meta_url(task_id)).json()
+            frames = data_resp["frames"]
 
             # Parse annotations into FiftyOne labels
             label_field_results = {}
@@ -3820,16 +3817,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if is_shape:
             samples.compute_metadata()
 
+        is_video = samples.media_type == fom.VIDEO
+
         frame_id = -1
         for sample in samples:
             metadata = sample.metadata
-            sample_id = sample.id
-            is_video = False
-            if samples.media_type == fom.VIDEO:
-                is_video = True
+
+            if is_video:
                 images = sample.frames.values()
                 if label_field.startswith("frames."):
                     label_field = label_field[len("frames.") :]
+
                 if is_shape:
                     width = metadata.frame_width
                     height = metadata.frame_height
@@ -3841,6 +3839,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             for image in images:
                 frame_id += 1
+
                 try:
                     image_label = image[label_field]
                 except:
@@ -3860,7 +3859,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             attributes,
                             class_name,
                             remapped_attrs,
-                        ) = self._create_attributes(cls, attr_names, classes,)
+                        ) = self._create_attributes(cls, attr_names, classes)
                         if class_name is None:
                             continue
 
@@ -3927,7 +3926,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         height,
                         attr_names,
                         classes,
-                        frame_id=frame_id,
+                        frame_id,
                         load_tracks=load_tracks,
                     )
                     remapped_attr_names.update(remapped_attrs)
@@ -3974,19 +3973,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return tracks
 
     def _create_id_mapping(self, samples):
+        is_video = samples.media_type == fom.VIDEO
+        frame_id = -1
+
         id_mapping = {}
         for sample in samples:
-            sample_id = sample.id
-            is_video = False
-            if samples.media_type == fom.VIDEO:
-                is_video = True
+            if is_video:
                 images = sample.frames.values()
             else:
                 images = [sample]
 
             for image in images:
-                frame_id = len(id_mapping)
-                id_mapping[frame_id] = {"sample_id": sample_id}
+                frame_id += 1
+                id_mapping[frame_id] = {"sample_id": sample.id}
                 if is_video:
                     id_mapping[frame_id]["frame_id"] = image.id
 
@@ -3999,7 +3998,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         height,
         attr_names,
         classes,
-        frame_id=0,
+        frame_id,
         load_tracks=False,
     ):
         shapes = []
@@ -4058,7 +4057,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         height,
         attr_names,
         classes,
-        frame_id=0,
+        frame_id,
         load_tracks=False,
     ):
         shapes = []
@@ -4131,7 +4130,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         height,
         attr_names,
         classes,
-        frame_id=0,
+        frame_id,
         load_tracks=False,
     ):
         shapes = []

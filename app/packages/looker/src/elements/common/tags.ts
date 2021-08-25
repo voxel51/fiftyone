@@ -95,11 +95,17 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
               value: label,
             })),
         ];
-      } else if (
-        fieldsMap &&
-        ![undefined, null].includes(sample[fieldsMap[path] || path])
-      ) {
-        const value = sample[fieldsMap[path] || path];
+      } else {
+        let valuePath = path;
+        if (!sample[path] && fieldsMap && fieldsMap[path]) {
+          valuePath = fieldsMap[path];
+        }
+
+        const value = sample[valuePath];
+
+        if ([undefined, null].includes(value)) {
+          return elements;
+        }
 
         const appendElement = (value) => {
           const pretty = prettify(value);
