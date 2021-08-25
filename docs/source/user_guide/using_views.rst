@@ -557,6 +557,67 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+
+.. _datetime-views:
+
+Datetime views
+______________
+
+If your dataset contains :ref:`datetime fields <using-datetimes>`, then you
+can construct dataset views that query/filter based on this information by
+simply defining the appropriate |ViewExpression|, using  `datetime.datetime`
+and/or `datetime.timedelta` objects to define the required logic.
+
+For example, you can use the
+:meth:`match() <fiftyone.core.collections.SampleCollection.match>` stage to
+filter a dataset via date-based conditions as follows:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import datetime, timedelta
+
+    import fiftyone as fo
+    from fiftyone import ViewField as F
+
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath="image1.png",
+                creation_date=datetime(2021, 8, 24, 1, 0, 0),
+            ),
+            fo.Sample(
+                filepath="image2.png",
+                creation_date=datetime(2021, 8, 24, 2, 0, 0),
+            ),
+            fo.Sample(
+                filepath="image3.png",
+                creation_date=datetime(2021, 8, 24, 3, 0, 0),
+            ),
+        ]
+    )
+
+    query_date = datetime(2021, 8, 24, 2, 1, 0)
+    query_delta = timedelta(minutes=30)
+
+    # Samples with creation date after 2021-08-24 02:01:00
+    view = dataset.match(F("creation_date") > query_date)
+    print(view)
+
+    # Samples with creation date within 30 minutes of 2021-08-24 02:01:00
+    view = dataset.match(abs(F("creation_date") - query_date) < query_delta)
+    print(view)
+
+.. note::
+
+    As the example above demonstrates, |ViewExpression| instances may contain
+    `datetime.datetime` and `datetime.timedelta` objects.
+
+    Note that, internally, subtracting two dates will result in the number of
+    milliseconds between them. Using `datetime.timedelta` allows these units to
+    be abstracted away from the API user.
+
 .. _object-patches-views:
 
 Object patches
