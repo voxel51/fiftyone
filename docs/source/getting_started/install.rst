@@ -152,10 +152,10 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
 
 **Windows users:**
 
-- If you encounter errors related to missing `msvcp140.dll`, you will need to
-  install the 64-bit Visual Studio 2015 C++ redistributable library,
-  `available here <https://www.microsoft.com/en-us/download/details.aspx?id=48145>`_
-  (choose the x64 version).
+- If you encounter a `psutil.NoSuchProcessExists` when importing `fiftyone`,
+  you will need to install the 64-bit Visual Studio 2015 C++ redistributable
+  library. See :ref:`here <troubleshooting-mongodb-windows>` for
+  instructions.
 
 .. _installing-extras:
 

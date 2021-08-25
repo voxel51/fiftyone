@@ -151,11 +151,22 @@ To resolve this, install IPython in your active virtual environment (see the
 
 .. _troubleshooting-mongodb:
 
-MongoDB compatibility issues
-----------------------------
+Import and database issues
+--------------------------
 
 FiftyOne includes a `fiftyone-db` package wheel for your operating system and
-hardware. On Linux machines in particular, the MongoDB build works for Ubuntu
+hardware. If you have not
+:ref:`configured your own database connection <configuring-mongodb-connection>`,
+then FiftyOne's database service will attempt to start up on import using the
+MongoDB distribution provided by `fiftyone-db`. If the database fails to start,
+importing `fiftyone` will result in exceptions being raised.
+
+.. _troubleshooting-mongodb-linux:
+
+Linux
+~~~~~
+
+On Linux machines in particular, the MongoDB build works for Ubuntu
 18.04+ and several other modern distributions.
 
 However, if a suitable MongoDB build is not available or otherwise does not
@@ -177,8 +188,8 @@ available as well.
 
 .. _alternative-builds:
 
-Alternative builds
-~~~~~~~~~~~~~~~~~~
+Alternative Linux builds
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Alternative builds of MongoDB are available as pip packages for the Linux
 distributions listed below, and can be installed by running the corresponding
@@ -209,3 +220,21 @@ installation by adding `--force-reinstall` to the commands below.
     .. code-block:: shell
 
       pip install fiftyone-db-rhel7
+
+
+.. _troubleshooting-mongodb-windows:
+
+Windows
+~~~~~~~
+
+If your encounter a `psutil.NoSuchProcessExists` exists when importing
+`fiftyone`, you are likely missing the C++ libraries MongoDB requires.
+
+.. code-block::
+
+    psutil.NoSuchProcess: psutil.NoSuchProcess process no longer exists (pid=XXXX)
+  
+Downloading and installing the Microsoft Visual C++ Redistributable from this
+`page <https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0>`_
+should resolve the issue. Specifically, you will want to download the
+`vc_redist.x64.exe` redistributable.
