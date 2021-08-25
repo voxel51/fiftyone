@@ -171,7 +171,7 @@ On Linux machines in particular, the MongoDB build works for Ubuntu
 
 However, if a suitable MongoDB build is not available or otherwise does not
 work in your environment, you may encounter a `ServerSelectionTimeoutError`
-with output similar to the following:
+or other exception with output similar to the following:
 
 .. code-block:: text
 
