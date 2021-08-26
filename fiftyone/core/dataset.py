@@ -3988,8 +3988,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "from": self._frame_collection_name,
                         "let": {
                             "sample_id": "$_sample_id",
-                            "first": {"$arrayElemAt": ["$frame_support", 0]},
-                            "last": {"$arrayElemAt": ["$frame_support", 1]},
+                            "first": {"$arrayElemAt": ["$support", 0]},
+                            "last": {"$arrayElemAt": ["$support", 1]},
                         },
                         "pipeline": [
                             {

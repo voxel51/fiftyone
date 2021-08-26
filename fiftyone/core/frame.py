@@ -465,7 +465,7 @@ class Frames(object):
 
     def _get_frames_match_stage(self):
         if self._dataset._is_clips:
-            first, last = self._sample.frame_support
+            first, last = self._sample.support
             return {
                 "$match": {
                     "$expr": {
