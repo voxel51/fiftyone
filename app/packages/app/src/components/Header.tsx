@@ -679,9 +679,6 @@ const Header = ({ addNotification }) => {
       </LeftDiv>
       <RightDiv>
         <IconWrapper>
-          <Suspense fallback={null}>
-            <TeamsButton addNotification={addNotification} />
-          </Suspense>
           <ExternalLink
             title="Slack"
             href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ"
