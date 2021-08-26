@@ -1394,7 +1394,7 @@ class VideoClassification(_HasID, Label):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    support = fof.ListField(fof.IntField())
+    support = fof.FrameSupportField()
     confidence = fof.FloatField()
 
     @classmethod
