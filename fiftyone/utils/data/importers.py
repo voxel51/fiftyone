@@ -1466,18 +1466,22 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         if empty_import:
             #
-            # The `dataset` we're importing into is empty, so we mostly replace
-            # its backing document with `dataset_dict`
+            # The `dataset` we're importing into is empty, so we replace its
+            # backing document with `dataset_dict`, except for the
+            # metadata-related fields listed below, which we keep in `dataset`
             #
             # Note that we must work with dicts instead of `DatasetDocument`s
             # here because the import may need migration
             #
+            doc = dataset._doc
             dataset_dict.update(
                 dict(
-                    _id=dataset._doc.id,
-                    name=dataset._doc.name,
-                    sample_collection_name=dataset._doc.sample_collection_name,
-                    persistent=dataset._doc.persistent,
+                    _id=doc.id,
+                    name=doc.name,
+                    persistent=doc.persistent,
+                    creation_date=doc.creation_date,
+                    last_loaded_date=doc.last_loaded_date,
+                    sample_collection_name=doc.sample_collection_name,
                 )
             )
 
