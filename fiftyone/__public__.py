@@ -88,6 +88,8 @@ from .core.labels import (
     Segmentation,
     GeoLocation,
     GeoLocations,
+    VideoClassification,
+    VideoClassifications,
 )
 from .core.metadata import (
     Metadata,

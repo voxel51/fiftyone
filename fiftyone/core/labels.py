@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 import eta.core.data as etad
+import eta.core.frameutils as etaf
 import eta.core.geometry as etag
 import eta.core.keypoints as etak
 import eta.core.image as etai
@@ -22,6 +23,7 @@ import eta.core.utils as etau
 
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
 foug = fou.lazy_import("fiftyone.utils.geojson")
@@ -421,8 +423,7 @@ class Classification(ImageLabel, _HasID):
 
 
 class Classifications(ImageLabel, _HasLabelList):
-    """A list of classifications (typically from a multilabel model) in an
-    image.
+    """A list of classifications for an image.
 
     Args:
         classifications (None): a list of :class:`Classification` instances
@@ -1380,6 +1381,104 @@ class GeoLocations(_HasID, Label):
         return cls(points=points, lines=lines, polygons=polygons)
 
 
+class VideoClassification(_HasID, Label):
+    """A video classification with a temporal support specified by a start
+    and end frame.
+
+    Args:
+        label (None): the label string
+        support (None): the ``[first, last]`` frame numbers, inclusive
+        confidence (None): a confidence in ``[0, 1]`` for the classification
+    """
+
+    meta = {"allow_inheritance": True}
+
+    label = fof.StringField()
+    support = fof.ListField(fof.IntField())
+    confidence = fof.FloatField()
+
+    @classmethod
+    def from_timestamps(cls, timestamps, sample=None, metadata=None, **kwargs):
+        """Creates a :class:`VideoClassification` instance from
+        ``[start, stop]`` timestamps for the specified video.
+
+        You must provide either ``sample`` or ``metadata`` to inform the
+        conversion.
+
+        Args:
+            timestamps: the ``[start, stop]`` timestamps, in seconds or
+                "HH:MM:SS.XXX" format
+            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
+                ``metadata`` field is populated
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance
+            **kwargs: additional arguments for :class:`VideoClassification`
+
+        Returns:
+            a :class:`VideoClassification`
+        """
+        start, end = timestamps
+        total_frame_count, duration = _parse_video_metadata(sample, metadata)
+        support = [
+            etaf.timestamp_to_frame_number(start, duration, total_frame_count),
+            etaf.timestamp_to_frame_number(end, duration, total_frame_count),
+        ]
+        return cls(support=support, **kwargs)
+
+    def to_timestamps(self, sample=None, metadata=None):
+        """Returns the ``[start, stop]`` timestamps, in seconds, for this video
+        classification in the given video.
+
+        You must provide either ``sample`` or ``metadata`` to inform the
+        conversion.
+
+        Args:
+            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
+                ``metadata`` field is populated
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance
+
+        Returns:
+            the ``[start, stop]`` timestamps of this classification, in seconds
+        """
+        first, last = self.support  # pylint: disable=unpacking-non-sequence
+        total_frame_count, duration = _parse_video_metadata(sample, metadata)
+        return [
+            etaf.frame_number_to_timestamp(first, total_frame_count, duration),
+            etaf.frame_number_to_timestamp(last, total_frame_count, duration),
+        ]
+
+
+def _parse_video_metadata(sample, metadata):
+    if sample is not None:
+        metadata = sample.metadata
+
+    if not isinstance(metadata, fom.VideoMetadata):
+        raise ValueError(
+            "You must provide either `metadata` or a `sample` whose "
+            "`metadata` field is populated containing `VideoMetadata`"
+        )
+
+    return metadata.total_frame_count, metadata.duration
+
+
+class VideoClassifications(Label, _HasLabelList):
+    """A list of video classifications for a video.
+
+    Args:
+        classifications (None): a list of :class:`VideoClassification`
+            instances
+    """
+
+    _LABEL_LIST_FIELD = "classifications"
+
+    meta = {"allow_inheritance": True}
+
+    classifications = fof.ListField(
+        fof.EmbeddedDocumentField(VideoClassification)
+    )
+
+
 _SINGLE_LABEL_FIELDS = (
     Classification,
     Detection,
@@ -1387,6 +1486,7 @@ _SINGLE_LABEL_FIELDS = (
     Keypoint,
     Polyline,
     Segmentation,
+    VideoClassification,
 )
 
 _LABEL_LIST_FIELDS = (
@@ -1394,6 +1494,7 @@ _LABEL_LIST_FIELDS = (
     Detections,
     Keypoints,
     Polylines,
+    VideoClassifications,
 )
 
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
@@ -1410,6 +1511,7 @@ _SINGLE_LABEL_TO_LIST_MAP = {
     Detection: Detections,
     Keypoint: Keypoints,
     Polyline: Polylines,
+    VideoClassification: VideoClassifications,
 }
 
 _LABEL_LIST_TO_SINGLE_MAP = {
@@ -1417,6 +1519,7 @@ _LABEL_LIST_TO_SINGLE_MAP = {
     Detections: Detection,
     Keypoints: Keypoint,
     Polylines: Polyline,
+    VideoClassifications: VideoClassification,
 }
 
 
