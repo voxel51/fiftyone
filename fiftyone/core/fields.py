@@ -485,6 +485,9 @@ class FrameSupportField(ListField):
 
         super().__init__(**kwargs)
 
+    def __str__(self):
+        return etau.get_class_name(self)
+
     def validate(self, value):
         if (
             not isinstance(value, (list, tuple))
