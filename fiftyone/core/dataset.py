@@ -215,6 +215,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _migrate=True,
         _patches=False,
         _frames=False,
+        _clips=False,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -228,7 +229,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._sample_doc_cls,
                 self._frame_doc_cls,
             ) = _create_dataset(
-                name, persistent=persistent, patches=_patches, frames=_frames
+                name,
+                persistent=persistent,
+                patches=_patches,
+                frames=_frames,
+                clips=_clips,
             )
         else:
             (
@@ -311,6 +316,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _is_frames(self):
         return self._sample_collection_name.startswith("frames.")
+
+    @property
+    def _is_clips(self):
+        return self._sample_collection_name.startswith("clips.")
 
     @property
     def media_type(self):
@@ -3953,25 +3962,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             attach_frames = True
 
         if attach_frames:
-            _pipeline = [
-                {
-                    "$lookup": {
-                        "from": self._frame_collection_name,
-                        "let": {"sample_id": "$_id"},
-                        "pipeline": [
-                            {
-                                "$match": {
-                                    "$expr": {
-                                        "$eq": ["$$sample_id", "$_sample_id"]
-                                    }
-                                }
-                            },
-                            {"$sort": {"frame_number": 1}},
-                        ],
-                        "as": "frames",
-                    }
-                }
-            ]
+            _pipeline = self._frames_lookup_pipeline()
         else:
             _pipeline = []
 
@@ -3988,6 +3979,71 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
 
         return _pipeline
+
+    def _frames_lookup_pipeline(self):
+        if self._is_clips:
+            return [
+                {
+                    "$lookup": {
+                        "from": self._frame_collection_name,
+                        "let": {
+                            "sample_id": "$_sample_id",
+                            "first": {"$arrayElemAt": ["$frame_support", 0]},
+                            "last": {"$arrayElemAt": ["$frame_support", 1]},
+                        },
+                        "pipeline": [
+                            {
+                                "$match": {
+                                    "$expr": {
+                                        "$and": [
+                                            {
+                                                "$eq": [
+                                                    "$_sample_id",
+                                                    "$$sample_id",
+                                                ]
+                                            },
+                                            {
+                                                "$gte": [
+                                                    "$frame_number",
+                                                    "$$first",
+                                                ]
+                                            },
+                                            {
+                                                "$lte": [
+                                                    "$frame_number",
+                                                    "$$last",
+                                                ]
+                                            },
+                                        ]
+                                    }
+                                }
+                            },
+                            {"$sort": {"frame_number": 1}},
+                        ],
+                        "as": "frames",
+                    }
+                }
+            ]
+
+        return [
+            {
+                "$lookup": {
+                    "from": self._frame_collection_name,
+                    "let": {"sample_id": "$_id"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$eq": ["$$sample_id", "$_sample_id"]
+                                }
+                            }
+                        },
+                        {"$sort": {"frame_number": 1}},
+                    ],
+                    "as": "frames",
+                }
+            }
+        ]
 
     def _aggregate(
         self,
@@ -4210,7 +4266,7 @@ def _list_datasets(include_private=False):
         return sorted(foo.DatasetDocument.objects.distinct("name"))
 
     # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches or frames datasets
+    # e.g., patches datasets
     # pylint: disable=no-member
     return sorted(
         foo.DatasetDocument.objects.filter(
@@ -4219,7 +4275,9 @@ def _list_datasets(include_private=False):
     )
 
 
-def _create_dataset(name, persistent=False, patches=False, frames=False):
+def _create_dataset(
+    name, persistent=False, patches=False, frames=False, clips=False
+):
     if dataset_exists(name):
         raise ValueError(
             (
@@ -4230,7 +4288,7 @@ def _create_dataset(name, persistent=False, patches=False, frames=False):
         )
 
     sample_collection_name = _make_sample_collection_name(
-        patches=patches, frames=frames
+        patches=patches, frames=frames, clips=clips
     )
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
@@ -4273,7 +4331,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     )
 
 
-def _make_sample_collection_name(patches=False, frames=False):
+def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.datetime.now()
 
@@ -4281,6 +4339,8 @@ def _make_sample_collection_name(patches=False, frames=False):
         prefix = "patches"
     elif frames:
         prefix = "frames"
+    elif clips:
+        prefix = "clips"
     else:
         prefix = "samples"
 

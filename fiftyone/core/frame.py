@@ -92,7 +92,7 @@ class Frames(object):
 
         if d is None:
             # Empty frame
-            d = {"_sample_id": self._sample._id, "frame_number": frame_number}
+            d = {"_sample_id": self._sample_id, "frame_number": frame_number}
 
         frame = self._make_frame(d)
         self._set_replacement(frame)
@@ -128,6 +128,13 @@ class Frames(object):
     @property
     def _dataset(self):
         return self._sample._dataset
+
+    @property
+    def _sample_id(self):
+        if self._dataset._is_clips:
+            return self._sample._doc.sample_id
+
+        return self._sample._id
 
     @property
     def _frame_collection(self):
@@ -273,7 +280,7 @@ class Frames(object):
             if frame._in_db:
                 frame = Frame()
 
-            d = {"_sample_id": self._sample._id}
+            d = {"_sample_id": self._sample_id}
             doc = self._dataset._frame_dict_to_doc(d)
 
             for field, value in _frame.iter_fields():
@@ -453,12 +460,29 @@ class Frames(object):
 
     def _get_frame_db(self, frame_number):
         return self._frame_collection.find_one(
-            {"_sample_id": self._sample._id, "frame_number": frame_number}
+            {"_sample_id": self._sample_id, "frame_number": frame_number}
         )
+
+    def _get_frames_match_stage(self):
+        if self._dataset._is_clips:
+            first, last = self._sample.frame_support
+            return {
+                "$match": {
+                    "$expr": {
+                        "$and": [
+                            {"$eq": ["$_sample_id", self._sample_id]},
+                            {"$gte": ["$frame_number", first]},
+                            {"$lte": ["$frame_number", last]},
+                        ]
+                    }
+                }
+            }
+
+        return {"$match": {"_sample_id": self._sample_id}}
 
     def _get_frame_numbers_db(self):
         pipeline = [
-            {"$match": {"_sample_id": self._sample._id}},
+            self._get_frames_match_stage(),
             {
                 "$group": {
                     "_id": None,
@@ -537,7 +561,7 @@ class Frames(object):
 
     def _iter_frames_db(self):
         pipeline = [
-            {"$match": {"_sample_id": self._sample._id}},
+            self._get_frames_match_stage(),
             {"$sort": {"frame_number": 1}},
         ]
         return foo.aggregate(self._frame_collection, pipeline)
@@ -554,7 +578,7 @@ class Frames(object):
         # because None and missing are equivalent in our data model
         d = {k: v for k, v in d.items() if v is not None}
 
-        d["_sample_id"] = self._sample._id
+        d["_sample_id"] = self._sample_id
 
         return d
 
@@ -563,9 +587,7 @@ class Frames(object):
 
     def _save_deletions(self):
         if self._delete_all:
-            self._frame_collection.delete_many(
-                {"_sample_id": self._sample._id}
-            )
+            self._frame_collection.delete_many({"_sample_id": self._sample_id})
 
             Frame._reset_docs(
                 self._frame_collection_name, sample_ids=[self._sample.id]
@@ -578,7 +600,7 @@ class Frames(object):
             ops = [
                 DeleteOne(
                     {
-                        "_sample_id": self._sample._id,
+                        "_sample_id": self._sample_id,
                         "frame_number": frame_number,
                     }
                 )
@@ -657,7 +679,7 @@ class Frames(object):
                     ReplaceOne(
                         {
                             "frame_number": frame_number,
-                            "_sample_id": self._sample._id,
+                            "_sample_id": self._sample_id,
                         },
                         self._make_dict(frame),
                         upsert=True,
@@ -735,7 +757,7 @@ class FramesView(Frames):
                 % (Frame, FrameView, type(frame))
             )
 
-        frame_view = self._make_frame({"_sample_id": self._sample._id})
+        frame_view = self._make_frame({"_sample_id": self._sample_id})
 
         for field, value in frame.iter_fields():
             frame_view.set_field(field, value, create=expand_schema)
@@ -798,7 +820,7 @@ class FramesView(Frames):
         pipeline.append(
             {
                 "$match": {
-                    "_sample_id": self._sample._id,
+                    "_sample_id": self._sample_id,
                     "frame_number": frame_number,
                 }
             }
@@ -845,7 +867,7 @@ class FramesView(Frames):
                         UpdateOne(
                             {
                                 "frame_number": frame_number,
-                                "_sample_id": self._sample._id,
+                                "_sample_id": self._sample_id,
                                 field + "._id": element["_id"],
                             },
                             {"$set": {field + ".$": element}},
@@ -857,7 +879,7 @@ class FramesView(Frames):
                 UpdateOne(
                     {
                         "frame_number": frame_number,
-                        "_sample_id": self._sample._id,
+                        "_sample_id": self._sample_id,
                     },
                     {"$set": doc},
                     upsert=True,
