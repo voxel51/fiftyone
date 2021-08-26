@@ -4,16 +4,12 @@ on:
   push:
     branches:
       - develop
-      - rel-*
-      - release-*
-      - github-actions-*
     tags:
-      - v*
+      - teams-v*
   pull_request:
     types: [opened, synchronize]
     branches:
       - develop
-      - rel-*
       - release-*
 
 jobs:
@@ -114,7 +110,6 @@ jobs:
         with:
           key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
           path: package/db/cache/
-      # install test versions of fiftyone-db and fiftyone-desktop from source
       - name: Install fiftyone-db
         working-directory: package/db
         run: |

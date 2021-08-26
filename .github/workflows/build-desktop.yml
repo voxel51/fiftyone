@@ -3,21 +3,13 @@ name: Build Teams Desktop App
 on:
   push:
     branches:
-      # - develop
-      - rel-*
-      - release-*
-      - desktop-*
-      - github-actions-*
+      - develop
     tags:
-      - desktop-v*
-    paths:
-      - app/**
-      - package/desktop/**
-      - .github/workflows/build-desktop.yml
+      - teams-desktop-v*
   pull_request:
+    types: [opened, synchronize]
     branches:
-      # - develop
-      - rel-*
+      - develop
       - release-*
     paths:
       - app/**
