@@ -51,6 +51,7 @@ from .core.fields import (
     EmbeddedDocumentListField,
     Field,
     FrameNumberField,
+    FrameSupportField,
     FloatField,
     GeoPointField,
     GeoLineStringField,
