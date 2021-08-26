@@ -1,4 +1,4 @@
-name: Build
+name: Build Teams
 
 on:
   push:
@@ -186,7 +186,7 @@ jobs:
 
   publish:
     needs: [build, test]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/teams-v')
     runs-on: ubuntu-20.04
     steps:
       - name: Download dist
@@ -197,20 +197,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install twine
-      - name: Set environment
-        env:
-          RELEASE_TAG: ${{ github.ref }}
-        run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-          else
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-          fi
       - name: Upload to pypi
         env:
-          TWINE_USERNAME: __token__
+          TWINE_USERNAME: teams-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_TOKEN }}
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload downloads/*.whl
+          python3 -m twine upload --repository-url https://pypi.fiftyone.ai downloads/*.whli

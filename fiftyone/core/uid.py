@@ -79,7 +79,7 @@ def log_import_if_allowed(test=False):
                     "event",
                     "import",
                     kind,
-                    label="%s-%s" % (foc.VERSION, _get_context()),
+                    label="%s-%s-%s" % (foc.VERSION, _get_context(), foc.NAME),
                 )
 
             global _import_logged
