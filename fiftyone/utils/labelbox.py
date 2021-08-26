@@ -25,9 +25,148 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.utils.annotations as foua
 
 
 logger = logging.getLogger(__name__)
+
+
+class LabelboxBackendConfig(foua.AnnotationBackendConfig):
+    """Base class for configuring :class:`LabelboxBackend` instances.
+
+    Args:
+        name: the name of the backend
+        label_schema: a dictionary containing the description of label fields,
+            classes and attribute to annotate
+        media_field ("filepath"): string field name containing the paths to
+            media files on disk to upload
+        url (None): the url of the Labelbox server
+        api_key (None): the Labelbox API key
+    """
+
+    def __init__(
+        self,
+        name,
+        label_schema,
+        media_field="filepath",
+        url=None,
+        api_key=None,
+        **kwargs,
+    ):
+        super().__init__(name, label_schema, media_field=media_field, **kwargs)
+        self.url = url
+
+        # store privately so it isn't serialized
+        self._api_key = api_key
+
+    @property
+    def api_key(self):
+        return self._api_key
+
+    @api_key.setter
+    def api_key(self, value):
+        self._api_key = value
+
+
+class LabelboxBackend(foua.AnnotationBackend):
+    """Class for interacting with the Labelbox annotation backend."""
+
+    @property
+    def supported_label_types(self):
+        return {
+            fol.Classification,
+            fol.Classifications,
+            fol.Detection,
+            fol.Detections,
+            fol.Keypoint,
+            fol.Keypoints,
+            fol.Polyline,
+            fol.Polylines,
+        }
+
+    @property
+    def supported_scalar_types(self):
+        return {
+            fof.IntField,
+            fof.FloatField,
+            fof.StringField,
+            fof.BooleanField,
+        }
+
+    @property
+    def supported_attr_types(self):
+        return {"text", "select", "radio", "checkbox"}
+
+    @property
+    def default_attr_type(self):
+        return None
+
+    @property
+    def default_categorical_attr_type(self):
+        return None
+
+    def requires_attr_values(self, attr_type):
+        return False
+
+    def upload_annotations(self, samples, launch_editor=False):
+        if launch_editor:
+            pass
+
+        return LabelboxAnnotationResults(samples, self.config, backend=self)
+
+    def download_annotations(self, results):
+        return {}
+
+
+class LabelboxAnnotationResults(foua.AnnotationResults):
+    """Class that stores all relevant information needed to monitor the
+    progress of an annotation run sent to Labelbox and download the results.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        config: a :class:`LabelboxBackendConfig`
+        backend (None): a :class:`LabelboxBackend`
+    """
+
+    def __init__(
+        self, samples, config, backend=None,
+    ):
+        super().__init__(samples, config, backend=backend)
+
+    def load_credentials(self, url=None, api_key=None):
+        """Load the Labelbox credentials from the given keyword arguments or the
+        FiftyOne annotation config.
+
+        Args:
+            url (None): the url of the Labelbox server
+            api_key (None): the Labelbox API key
+        """
+        self._load_config_parameters(url=url, api_key=api_key)
+
+    def get_status(self):
+        """Gets the status of the annotation run.
+
+        Returns:
+            a dict of status information
+        """
+        return self._get_status()
+
+    def print_status(self):
+        """Print the status of the annotation run."""
+        self._get_status(log=True)
+
+    def cleanup(self):
+        """Deletes all tasks associated with this annotation run from the
+        Labelbox server.
+        """
+        pass
+
+    def _get_status(self, log=False):
+        pass
+
+    @classmethod
+    def _from_dict(cls, d, samples, config):
+        return cls(samples, config,)
 
 
 #

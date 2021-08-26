@@ -288,7 +288,11 @@ class AnnotationConfig(EnvConfig):
         "cvat": {
             "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
             "url": "https://cvat.org",
-        }
+        },
+        "labelbox": {
+            "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",
+            "url": "https://labelbox.com",
+        },
     }
 
     def __init__(self, d=None):

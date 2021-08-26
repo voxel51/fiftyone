@@ -54,6 +54,7 @@ def annotate(
     The natively provided backends and their associated config classes are:
 
     -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+    -   ``"labelbox"``: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
 
     See :ref:`this page <requesting-annotations>` for more information about
     using this method, including how to define label schemas and how to
