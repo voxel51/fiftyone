@@ -1,3 +1,9 @@
+
+.. # hard line break macro for HTML
+.. |br| raw:: html
+
+   <br />
+
 .. |Dataset| replace:: :class:`Dataset <fiftyone.core.dataset.Dataset>`
 
 .. |SampleCollection| replace:: :class:`SampleCollection <fiftyone.core.collections.SampleCollection>`
@@ -76,7 +82,6 @@
 .. |ImageMetadata| replace:: :class:`ImageMetadata <fiftyone.core.metadata.ImageMetadata>`
 .. |VideoMetadata| replace:: :class:`VideoMetadata <fiftyone.core.metadata.VideoMetadata>`
 
-.. |AnnotationConfig| replace:: :class:`AnnotationConfig <fiftyone.utils.annotations.AnnotationConfig>`
 .. |AppConfig| replace:: :class:`AppConfig <fiftyone.core.config.AppConfig>`
 
 .. |Session| replace:: :class:`Session <fiftyone.core.session.Session>`

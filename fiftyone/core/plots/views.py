@@ -32,7 +32,7 @@ class PlotlyViewPlot(PlotlyWidgetMixin, ViewPlot):
     """Base class for :class:`ViewPlot` instances with Plotly backends.
 
     Args:
-        widget: a ``plotly.graph_objects.FigureWidget``
+        widget: a :class:`plotly:plotly.graph_objects.FigureWidget`
         init_view (None): an optional initial
             :class:`fiftyone.core.collections.SampleCollection` to load
     """
@@ -65,7 +65,7 @@ class PlotlyViewPlot(PlotlyWidgetMixin, ViewPlot):
 
         Args:
             **kwargs: optional parameters for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+                :meth:`plotly:plotly.graph_objects.Figure.update_layout`
         """
         super().show(**kwargs)
 
@@ -82,7 +82,7 @@ class ViewGrid(PlotlyViewPlot):
         init_view (None): an optional initial
             :class:`fiftyone.core.collections.SampleCollection` to load
         **kwargs: optional parameters for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
     """
 
     def __init__(
@@ -194,12 +194,12 @@ class CategoricalHistogram(PlotlyViewPlot):
         log (False): whether to use a log scale y-axis
         bargap (None): relative spacing between bars in ``[0, 1]``
         color (None): a color for the bars. Can be any color supported by
-            ``plotly.graph_objects.bar.Marker.color``
+            :meth:`plotly:plotly.graph_objects.bar.Marker.color`
         opacity (None): an optional opacity for the bars in ``[0, 1]``
         init_view (None): an optional initial
             :class:`fiftyone.core.collections.SampleCollection` to load
         **kwargs: optional parameters for
-            ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
     """
 
     def __init__(
@@ -343,12 +343,12 @@ class NumericalHistogram(PlotlyViewPlot):
         xlabel (None): an optional x-label for the plot
         log (False): whether to use a log scale y-axis
         color (None): a color for the bars. Can be any color supported by
-            ``plotly.graph_objects.bar.Marker.color``
+            :meth:`plotly:plotly.graph_objects.bar.Marker.color`
         opacity (None): an optional opacity for the bars in ``[0, 1]``
         init_view (None): an optional initial
             :class:`fiftyone.core.collections.SampleCollection` to load
         **kwargs: optional parameters for
-                ``plotly.graph_objects.Figure.update_layout(**kwargs)``
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
     """
 
     def __init__(

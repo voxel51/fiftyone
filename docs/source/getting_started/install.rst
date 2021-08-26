@@ -23,10 +23,6 @@ Prerequisites
 You will need a working Python installation. FiftyOne currently requires
 **Python 3.6 - 3.9**.
 
-Although Python 3.9 is supported, note that some dependencies, notably
-`scikit-image` and `scikit-learn`, will need to be built from source. Also
-note that `tensorflow` does not yet support 3.9.
-
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
 downloaded `from python.org <https://www.python.org/downloads>`_. To verify that
@@ -59,7 +55,8 @@ environment by importing the `fiftyone` package:
     >>>
 
 A successful installation of FiftyOne should result in no output when
-`fiftyone` is imported.
+`fiftyone` is imported. See :ref:`this section <install-troubleshooting>` for
+install troubleshooting tips.
 
 .. _fiftyone-quickstart:
 
@@ -97,7 +94,7 @@ install as follows:
 
 .. code-block:: shell
 
-  pip install fiftyone-desktop
+  pip install fiftyone[desktop]
 
 .. note::
 
@@ -127,6 +124,13 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
 
+**Apple Silicon users**:
+
+- MongoDB does not yet provide a native build for Apple Silicon, so you must
+  follow :ref:`these instructions <configuring-mongodb-connection>` to
+  configure FiftyOne to use a MongoDB instance that you have installed
+  yourself.
+
 **Mac users:**
 
 - You must have the
@@ -144,19 +148,19 @@ the :ref:`troubleshooting page <troubleshooting>` for more details.
   ``python3-dev`` package.
 - If you encounter an error related to MongoDB failing to start, such as `Could
   not find mongod`, you may need to install additional packages. See the
-  :ref:`troubleshooting page <troubleshooting-mongodb-linux>` for details.
+  :ref:`alternative Linux builds <troubleshooting-mongodb>` for details.
 
 **Windows users:**
 
-- If you encounter errors related to missing `msvcp140.dll`, you will need to
-  install the 64-bit Visual Studio 2015 C++ redistributable library,
-  `available here <https://www.microsoft.com/en-us/download/details.aspx?id=48145>`_
-  (choose the x64 version).
+- If you encounter a `psutil.NoSuchProcessExists` when importing `fiftyone`,
+  you will need to install the 64-bit Visual Studio 2015 C++ redistributable
+  library. See :ref:`here <troubleshooting-mongodb-windows>` for
+  instructions.
 
 .. _installing-extras:
 
-Installing extra packages
--------------------------
+Installing extras
+-----------------
 
 Various tutorials and guides that we provide on this site require additional
 packages in order to run. If you encounter a missing package, you will see
@@ -198,6 +202,15 @@ option to ``pip install``:
 .. code-block:: shell
 
    pip install --upgrade fiftyone
+
+If you use the desktop App, you should also run:
+
+.. code-block:: shell
+
+   pip install fiftyone[desktop]
+
+to ensure that you have the proper version of the desktop App installed for
+your current FiftyOne version.
 
 .. note::
 
@@ -265,9 +278,9 @@ FiftyOne and all of its subpackages can be uninstalled with:
 
 .. code-block:: shell
 
-   pip uninstall fiftyone fiftyone-brain fiftyone-db voxel51-eta
+   pip uninstall fiftyone fiftyone-brain fiftyone-db
 
-If you installed the optional desktop App, you can uninstall that via:
+If you installed the optional desktop App, you can uninstall it via:
 
 .. code-block:: shell
 

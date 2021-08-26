@@ -17,7 +17,12 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | Config field                  | Environment variable                | Default value                 | Description                                                                            |
 +===============================+=====================================+===============================+========================================================================================+
-| `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database.                           |
+| `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
+|                               |                                     |                               | `database_uri` is not defined.                                                         |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
+|                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
+|                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
@@ -73,8 +78,8 @@ FiftyOne supports the configuration options described below:
 Viewing your config
 -------------------
 
-You can print your current FiftyOne config (including any customizations as
-described in the next section) at any time via the Python library and the CLI.
+You can print your current FiftyOne config at any time via the Python library
+and the CLI:
 
 .. tabs::
 
@@ -94,6 +99,7 @@ described in the next section) at any time via the Python library and the CLI.
 
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_uri": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -128,6 +134,7 @@ described in the next section) at any time via the Python library and the CLI.
 
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_uri": null,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -148,6 +155,12 @@ described in the next section) at any time via the Python library and the CLI.
 
         torch
 
+.. note::
+
+    If you have customized your FiftyOne config via any of the methods
+    described below, printing your config is a convenient way to ensure that
+    the changes you made have taken effect as you expected.
+
 Modifying your config
 ---------------------
 
@@ -160,11 +173,10 @@ Order of precedence
 The following order of precedence is used to assign values to your FiftyOne
 config settings at runtime:
 
-1. Config settings applied at runtime via
-   :func:`fiftyone.core.config.set_config_settings`
+1. Config changes applied at runtime by directly editing `fiftyone.config`
 2. `FIFTYONE_XXX` environment variables
 3. Settings in your JSON config (`~/.fiftyone/config.json`)
-4. The default config values described in the table above
+4. The default config values
 
 Editing your JSON config
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -178,8 +190,8 @@ For example, a valid config JSON file is:
 .. code-block:: json
 
     {
-      "default_ml_backend": "tensorflow",
-      "show_progress_bars": true
+        "default_ml_backend": "tensorflow",
+        "show_progress_bars": true
     }
 
 When `fiftyone` is imported, any options from your JSON config are applied,
@@ -210,26 +222,63 @@ issuing the following commands prior to launching your Python interpreter:
 Modifying your config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can dynamically modify your FiftyOne config at runtime via the
-:func:`fiftyone.core.config.set_config_settings` method, which accepts keyword
-arguments of the form `(field name, field value)` for all available config
-fields.
+You can dynamically modify your FiftyOne config at runtime by editing the
+`fiftyone.config` object.
 
 Any changes to your FiftyOne config applied via this manner will immediately
-take effect in all subsequent calls to `fiftyone.config` during your current
+take effect for all subsequent calls to `fiftyone.config` during your current
 session.
-
-For example, you can customize your FiftyOne config at runtime as follows:
 
 .. code-block:: python
     :linenos:
 
-    import fiftyone.core.config as foc
+    import fiftyone as fo
 
-    foc.set_config_settings(
-        default_ml_backend="tensorflow",
-        show_progress_bars=True,
-    )
+    fo.config.default_ml_backend = "tensorflow"
+    fo.config.show_progress_bars = True
+
+.. _configuring-mongodb-connection:
+
+Configuring a MongoDB connection
+--------------------------------
+
+By default, FiftyOne is installed with its own `mongod` database distribution.
+This database is managed by FiftyOne automatically as a service that runs
+whenever at least one FiftyOne Python client is alive.
+
+Alternatively, you can configure FiftyOne to connect to your own self-managed
+MongoDB instance. To do so, simply set the `database_uri` property of your
+FiftyOne config to any valid
+`MongoDB connection string URI <https://docs.mongodb.com/manual/reference/connection-string/>`_.
+
+For example, you can create a `~/.fiftyone/config.json` file with the following
+entry:
+
+.. code-block:: json
+
+    {
+        "database_uri": "..."
+    }
+
+Very rarerly, upgrading your FiftyOne package may require running a database
+admin migration, in which case the `database_uri` must establish a connection
+with administrative privileges.
+
+.. warning::
+
+    FiftyOne requires MongoDB v4.4.
+
+.. note::
+
+    **Apple Silicon users**: MongoDB does not yet provide a native build for
+    Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
+    distribution that you have installed yourself.
+
+    Users have reported success installing MongoDB on Apple Silicon as follows:
+
+    .. code-block:: shell
+
+        brew install mongodb-community@4.4
 
 .. _configuring-fiftyone-app:
 
@@ -279,8 +328,7 @@ The FiftyOne App can be configured in the ways described below:
 Viewing your App config
 -----------------------
 
-You can print your App config (including any customizations as described in
-the next section) at any time via the Python library and the CLI.
+You can print your App config at any time via the Python library and the CLI:
 
 .. tabs::
 
@@ -358,6 +406,12 @@ the next section) at any time via the Python library and the CLI.
 
         True
 
+.. note::
+
+    If you have customized your App config via any of the methods described
+    below, printing your config is a convenient way to ensure that the changes
+    you made have taken effect as you expected.
+
 Modifying your App config
 -------------------------
 
@@ -372,11 +426,11 @@ settings at runtime:
 
 1. Config settings of a
    :class:`Session <fiftyone.core.session.Session>` instance in question
-2. App config settings applied at runtime via
-   :func:`fiftyone.core.config.set_app_config_settings`
+2. App config settings applied at runtime by directly editing
+   `fiftyone.app_config`
 3. `FIFTYONE_APP_XXX` environment variables
 4. Settings in your JSON App config (`~/.fiftyone/app_config.json`)
-5. The default App config values described in the table above
+5. The default App config values
 
 Launching the App with a custom config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -426,8 +480,8 @@ For example, a valid App config JSON file is:
 .. code-block:: json
 
     {
-      "show_confidence": false,
-      "show_attributes": false
+        "show_confidence": false,
+        "show_attributes": false
     }
 
 When `fiftyone` is imported, any options from your JSON App config are applied,
@@ -441,9 +495,8 @@ as per the order of precedence described above.
 Setting App environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne App config settings may be customized on a per-session basis by
-setting the `FIFTYONE_APP_XXX` environment variable(s) for the desired App
-config settings.
+App config settings may be customized on a per-session basis by setting the
+`FIFTYONE_APP_XXX` environment variable(s) for the desired App config settings.
 
 When `fiftyone` is imported, all App config environment variables are applied,
 as per the order of precedence described above.
@@ -459,20 +512,17 @@ issuing the following commands prior to launching your Python interpreter:
 Modifying your App config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can dynamically modify your App config at runtime via the
-:func:`fiftyone.core.config.set_app_config_settings` method, which accepts
-keyword arguments of the form `(field name, field value)` for all available
-config fields.
+You can dynamically modify your App config at runtime by editing the
+`fiftyone.app_config` object.
 
-Any changes to your App config applied via this manner will immediately take
-effect in all subsequent calls to `fiftyone.app_config` during your current
-session.
-
-For example, you can customize your App config at runtime as follows:
+Any changes to your App config applied via this manner will immediately
+take effect for all subsequent calls to `fiftyone.app_config` during your
+current session.
 
 .. code-block:: python
     :linenos:
 
-    import fiftyone.core.config as foc
+    import fiftyone as fo
 
-    foc.set_app_config_settings(show_confidence=False, show_attributes=False)
+    fo.app_config.show_confidence = False
+    fo.app_config.show_attributes = False

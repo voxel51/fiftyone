@@ -16,6 +16,8 @@ import {
   DASH_LENGTH,
   LABEL_LISTS,
   JSON_COLORS,
+  LABELS,
+  MASK_LABELS,
 } from "./constants";
 import {
   getFrameElements,
@@ -92,7 +94,6 @@ export abstract class Looker<
     config: State["config"],
     options: Optional<State["options"]> = {}
   ) {
-    this.sample = sample;
     this.loadSample(sample);
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
@@ -140,7 +141,7 @@ export abstract class Looker<
       }
 
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, this.sample._id);
+        this.dispatchEvent(eventType, this.sample.id);
         return;
       }
 
@@ -180,6 +181,10 @@ export abstract class Looker<
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
 
+      if (!this.state.overlaysPrepared) {
+        return;
+      }
+
       this.dispatchImpliedEvents(this.previousState, this.state);
 
       this.lookerElement.render(this.state, this.sample);
@@ -192,12 +197,7 @@ export abstract class Looker<
       }
       const ctx = this.ctx;
 
-      if (
-        !this.state.loaded ||
-        !this.state.overlaysPrepared ||
-        this.state.destroyed ||
-        this.waiting
-      ) {
+      if (!this.state.loaded || this.state.destroyed || this.waiting) {
         return;
       }
 
@@ -211,8 +211,8 @@ export abstract class Looker<
       ctx.clearRect(
         0,
         0,
-        this.state.windowBBox[2] * dpr,
-        this.state.windowBBox[3] * dpr
+        Math.ceil(this.state.windowBBox[2] * dpr),
+        Math.ceil(this.state.windowBBox[3] * dpr)
       );
 
       ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
@@ -313,13 +313,13 @@ export abstract class Looker<
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label._id,
-            sample_id: this.sample._id,
+            label_id: label.id,
+            sample_id: this.sample.id,
           });
         });
       } else {
         const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample._id });
+        labels.push({ label_id, field, sample_id: this.sample.id });
       }
     });
 
@@ -467,10 +467,10 @@ export abstract class Looker<
   }
 
   private loadSample(sample: Sample) {
-    this.sample = sample;
     const messageUUID = uuid();
     const listener = ({ data: { sample, uuid } }) => {
       if (uuid === messageUUID) {
+        this.sample = sample;
         this.loadOverlays(sample);
         this.updater({ overlaysPrepared: true });
         labelsWorker.removeEventListener("message", listener);
@@ -555,7 +555,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
 
     if (this.state.zoomToContent) {
       toggleZoom(this.state, this.currentOverlays);
-    } else if (this.state.setZoom && this.pluckedOverlays.length) {
+    } else if (this.state.setZoom && this.state.overlaysPrepared) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -647,7 +647,7 @@ export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
 
     if (this.state.zoomToContent) {
       toggleZoom(this.state, this.currentOverlays);
-    } else if (this.state.setZoom && this.pluckedOverlays.length) {
+    } else if (this.state.setZoom && this.state.overlaysPrepared) {
       if (this.state.options.zoom) {
         this.state = zoomToContent(this.state, this.pluckedOverlays);
       } else {
@@ -875,13 +875,13 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label._id,
-            sample_id: this.sample._id,
+            label_id: label.id,
+            sample_id: this.sample.id,
           });
         });
       } else {
         const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample._id });
+        labels.push({ label_id, field, sample_id: this.sample.id });
       }
     });
 
@@ -897,9 +897,9 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
           overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
             labels.push({
               field: field,
-              label_id: label._id,
+              label_id: label.id,
               frame_number: this.frameNumber,
-              sample_id: this.sample._id,
+              sample_id: this.sample.id,
             });
           });
         } else {
@@ -907,7 +907,7 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
           labels.push({
             label_id,
             field,
-            sample_id: this.sample._id,
+            sample_id: this.sample.id,
             frame_number: this.frameNumber,
           });
         }
@@ -1190,7 +1190,9 @@ const filterSample = <S extends Sample | FrameSample>(
   for (const field in sample) {
     if (fieldsMap.hasOwnProperty(field)) {
       sample[fieldsMap[field]] = sample[field];
-      delete sample[field];
+      if (field !== fieldsMap[field]) {
+        delete sample[field];
+      }
     } else if (field.startsWith("_")) {
       delete sample[field];
     } else if (
@@ -1204,11 +1206,28 @@ const filterSample = <S extends Sample | FrameSample>(
       }
 
       if (LABEL_LISTS[sample[field]._cls]) {
-        sample[field] = sample[field][
-          LABEL_LISTS[sample[field]._cls]
-        ].filter((label) => state.options.filter[prefix + field](label));
+        sample[field] = {
+          ...sample[field],
+          [LABEL_LISTS[sample[field]._cls]]: sample[field][
+            LABEL_LISTS[sample[field]._cls]
+          ]
+            .filter((label) => state.options.filter[prefix + field](label))
+            .map((label) => {
+              if (MASK_LABELS.has(label._cls) && label.mask) {
+                label.mask = {
+                  shape: label.mask.shape,
+                };
+              }
+
+              return label;
+            }),
+        };
       } else if (!state.options.filter[prefix + field](sample[field])) {
         delete sample[field];
+      } else if (MASK_LABELS.has(sample[field]._cls) && sample[field].mask) {
+        sample[field].mask = {
+          shape: sample[field].mask.shape,
+        };
       }
     }
   }

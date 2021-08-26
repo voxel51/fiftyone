@@ -17,6 +17,7 @@ import io
 import itertools
 import logging
 import os
+import platform
 import signal
 import subprocess
 import timeit
@@ -53,29 +54,49 @@ _REQUIREMENT_ERROR_SUFFIX = (
 
 
 def extract_kwargs_for_class(cls, kwargs):
-    """Extracts keyword arguments for a class from the given dictionary of
-    arguments.
+    """Extracts keyword arguments for the given class's constructor from the
+    given kwargs.
 
     Args:
         cls: a class
         kwargs: a dictionary of keyword arguments
 
     Returns:
-        a tuple of:
+        a tuple of
 
-        -   ``class_kwargs``: a dictionary of keyword arguments for ``cls``
-        -   ``other_kwargs``: a dictionary containing the remaining ``kwargs``
+        -   **class_kwargs**: a dictionary of keyword arguments for ``cls``
+        -   **other_kwargs**: a dictionary containing the remaining ``kwargs``
     """
-    class_kwargs = {}
+    return _extract_kwargs(cls, kwargs)
+
+
+def extract_kwargs_for_function(fcn, kwargs):
+    """Extracts keyword arguments for the given function from the given kwargs.
+
+    Args:
+        fcn: a function
+        kwargs: a dictionary of keyword arguments
+
+    Returns:
+        a tuple of
+
+        -   **fcn_kwargs**: a dictionary of keyword arguments for ``fcn``
+        -   **other_kwargs**: a dictionary containing the remaining ``kwargs``
+    """
+    return _extract_kwargs(fcn, kwargs)
+
+
+def _extract_kwargs(cls_or_fcn, kwargs):
+    this_kwargs = {}
     other_kwargs = {}
-    spec = inspect.getfullargspec(cls)
+    spec = inspect.getfullargspec(cls_or_fcn)
     for k, v in kwargs.items():
         if k in spec.args:
-            class_kwargs[k] = v
+            this_kwargs[k] = v
         else:
             other_kwargs[k] = v
 
-    return class_kwargs, other_kwargs
+    return this_kwargs, other_kwargs
 
 
 def pprint(obj, stream=None, indent=4, width=80, depth=None):
@@ -119,10 +140,10 @@ def split_frame_fields(fields):
             field names
 
     Returns:
-        a tuple of:
+        a tuple of
 
-        -   a list or dict of sample fields
-        -   a list or dict of frame fields
+        -   **sample_fields**: a list or dict of sample fields
+        -   **frame_fields**: a list or dict of frame fields
     """
     if isinstance(fields, dict):
         return _split_frame_fields_dict(fields)
@@ -1190,3 +1211,15 @@ class SetAttributes(object):
     def __exit__(self, *args):
         for k, v in self._orig_kwargs.items():
             setattr(self._obj, k, v)
+
+
+def is_arm_mac():
+    """Determines whether the system is an ARM-based Mac (Apple Silicon).
+
+    Returns:
+        True/False
+    """
+    plat = platform.platform()
+    return platform.system() == "Darwin" and any(
+        proc in plat for proc in {"aarch64", "arm64"}
+    )

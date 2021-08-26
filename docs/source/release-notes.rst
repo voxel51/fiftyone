@@ -3,6 +3,110 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.13.1:
+
+FiftyOne 0.13.1
+---------------
+*Released August 25, 2021*
+
+App
+
+- Fixed `id` rendering in the grid when the `id` checkbox is active
+
+Core
+
+- Fixed a bug that could cause mismatches between media and their pre-existing
+  labels when uploading data to CVAT for annotation whose source media lives in
+  multiple directories
+
+.. _release-notes-v0.13.0:
+
+FiftyOne 0.13.0
+---------------
+*Released August 24, 2021*
+
+App
+
+- Added support for visualizing and filtering list fields
+- Added support for visualizing segmentation masks of any integer type (uint8,
+  uint16, etc.)
+- Improved handling of falsey field values in the fields sidebar and image
+  vizualizer
+- Improved the JSON display format available from the expanded sample modal
+- Resolved an issue that caused some users to see duplicate App screenshots
+  when calling :meth:`Session.freeze() <fiftyone.core.session.Session.freeze>`
+  in Jupyter notebooks
+- Fixed a bug that prevented users from being able to click left/right arrows
+  to navigate between samples in the expanded sample modal when working in
+  Jupyter notebooks
+- Fixed a bug where pressing the `ESC` key had no effect in the expanded sample
+  modal when working with datasets with no label fields
+- Fixed a bug that prevented the desktop App from launching when using source
+  builds
+
+Brain
+
+- Added new
+  :meth:`find_unique() <fiftyone.brain.similarity.SimilarityResults.find_unique>`,
+  :meth:`unique_view() <fiftyone.brain.similarity.SimilarityResults.unique_view>`, and
+  :meth:`visualize_unique() <fiftyone.brain.similarity.SimilarityResults.visualize_unique>`
+  methods to the
+  :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
+  object returned by
+  :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that enable
+  you to identify a maximally unique set of images or objects in a dataset
+- Added new
+  :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`,
+  :meth:`duplicates_view() <fiftyone.brain.similarity.SimilarityResults.duplicates_view>`, and
+  :meth:`visualize_duplicates() <fiftyone.brain.similarity.SimilarityResults.visualize_duplicates>`
+  methods to the
+  :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
+  object returned by
+  :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` that enable
+  you to identify near-duplicate images or objects in a dataset
+- Added a new
+  :meth:`compute_exact_duplicates() <fiftyone.brain.compute_exact_duplicates>`
+  method that can identify exactly duplicate media in a dataset
+
+Core
+
+- Added a powerful :ref:`annotation API <fiftyone-annotation>` that makes it
+  easy to add or edit labels on your FiftyOne datasets or specific views into
+  them
+- Added a native :ref:`CVAT integration <cvat-integration>` that enables you
+  to use the annotation API with
+  `CVAT <https://github.com/openvinotoolkit/cvat>`_
+- Added support for pip-installing FiftyOne on Apple Silicon Macs. Note that
+  MongoDB must be :ref:`self-installed <configuring-mongodb-connection>` in
+  this case
+- Added support for using a
+  :ref:`self-installed MongoDB database <configuring-mongodb-connection>`
+- Added a :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>`
+  view stage that allows for reorganizing the samples in a collection so that
+  they are grouped by a specified field or expression
+- Added a
+  :meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+  property that enables users to change the behavior of App updates when
+  selections are made in an interactive plot linked to labels. See
+  :ref:`this page <plot-selection-modes>` for details
+- Added support for :ref:`YOLOv5 YAML files <YOLOv5Dataset-import>` with
+  multiple directories per dataset split
+- Added support for importing/exporting confidences via the `score` field when
+  working with :ref:`BDD format <BDDDataset-import>`
+- Fixed some Windows-style path bugs
+
+Docs
+
+- Added a :doc:`CVAT annotation tutorial </tutorials/cvat_annotation>`
+- Added a :ref:`new example <brain-similarity-cifar10>` to the brain user guide
+  that demonstrates unique and near-duplicate image workflows
+- Added an object embeddings example to the
+  :ref:`embeddings visualization section <brain-embeddings-visualization>` of
+  the brain user guide
+- Added a :ref:`new section <plot-selection-modes>` to the plots user guide
+  page explaining how to control the selection mode of interactive plots linked
+  to labels
+
 .. _release-notes-v0.12.0:
 
 FiftyOne 0.12.0

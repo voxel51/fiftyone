@@ -8,6 +8,8 @@ Package-wide constants.
 from datetime import datetime
 import os
 
+from packaging.version import Version
+
 try:
     from importlib.metadata import metadata  # Python 3.8
 except ImportError:
@@ -17,6 +19,9 @@ except ImportError:
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
+FIFTYONE_ANNOTATION_CONFIG_PATH = os.path.join(
+    FIFTYONE_CONFIG_DIR, "annotation_config.json"
+)
 FIFTYONE_APP_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "app_config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
@@ -58,7 +63,6 @@ DEFAULT_APP_COLOR_POOL = {
     "#777799",
 }
 
-
 # MongoDB setup
 try:
     from fiftyone.db import FIFTYONE_DB_BIN_DIR
@@ -67,10 +71,13 @@ except ImportError:
     FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
 
 DEFAULT_DATABASE = "fiftyone"
-DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
+DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var", "lib", "mongo")
 MIGRATIONS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "migrations")
 MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
-MIGRATIONS_REVISIONS_DIR = os.path.join(FIFTYONE_DIR, "migrations/revisions")
+MIGRATIONS_REVISIONS_DIR = os.path.join(
+    FIFTYONE_DIR, "migrations", "revisions"
+)
+MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")

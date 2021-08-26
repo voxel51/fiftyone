@@ -10,7 +10,6 @@ on:
     types: [opened, synchronize]
     branches:
       - develop
-      - release-*
     paths:
       - app/**
       - package/desktop/**
@@ -19,15 +18,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - mac-arm64
+          - mac-x86_64
+          - linux-x86_64
+          - linux-aarch64
+          - win-amd64
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
         with:
           submodules: true
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.9
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
@@ -46,16 +54,13 @@ jobs:
       - name: Install dependencies
         working-directory: app/packages/desktop
         run: yarn
-      - name: Package App (Linux)
+      - name: Package App (Non-Windows)
+        if: ${{ matrix.platform != 'win-amd64' }}
         working-directory: app/packages/desktop
-        run: yarn package-linux --publish never
-      - name: Package App (macOS)
-        working-directory: app/packages/desktop
-        run: yarn package-mac --publish never
+        run: yarn package-${{ matrix.platform }} --publish never
       - name: Package App (Windows)
+        if: ${{ matrix.platform == 'win-amd64' }}
         working-directory: app/
-        # from https://www.electron.build/multi-platform-build#docker
-        # removed node_modules mount to use existing packages
         run: |
           docker run --rm \
            --env-file <(env | grep -iE 'DEBUG|NODE_|ELECTRON_|YARN_|NPM_|CI|CIRCLE|TRAVIS_TAG|TRAVIS|TRAVIS_REPO_|TRAVIS_BUILD_|TRAVIS_BRANCH|TRAVIS_PULL_REQUEST_|APPVEYOR_|CSC_|GH_|GITHUB_|BT_|AWS_|STRIP|BUILD_') \
@@ -65,7 +70,7 @@ jobs:
            -v ~/.cache/electron:/root/.cache/electron \
            -v ~/.cache/electron-builder:/root/.cache/electron-builder \
            electronuserland/builder:wine \
-           yarn workspace FiftyOne package-win --publish never
+           yarn workspace FiftyOne package-${{ matrix.platform }} --publish never
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -73,30 +78,14 @@ jobs:
           if [[ $RELEASE_TAG =~ ^refs\/tags\/desktop-v.*-rc\..*$ ]]; then
              echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/desktop-v//")" >> $GITHUB_ENV
           fi
-      - name: Build wheel (macOS)
+      - name: Build wheel
         working-directory: package/desktop
-        run: python setup.py bdist_wheel --plat-name mac
-      - name: Build wheel (Windows)
-        working-directory: package/desktop
-        run: python setup.py bdist_wheel --plat-name win
-      - name: Build wheel (Linux)
-        working-directory: package/desktop
-        run: python setup.py bdist_wheel --plat-name linux
-      - name: Upload wheel (Linux)
+        run: python setup.py bdist_wheel --plat-name ${{ matrix.platform }}
+      - name: Upload wheel
         uses: actions/upload-artifact@v2
         with:
-          name: wheel-linux
-          path: package/desktop/dist/*linux*.whl
-      - name: Upload wheel (macOS)
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheel-macos
-          path: package/desktop/dist/*macos*.whl
-      - name: Upload wheel (Windows)
-        uses: actions/upload-artifact@v2
-        with:
-          name: wheel-windows
-          path: package/desktop/dist/*win*.whl
+          name: wheel-${{ matrix.platform }}
+          path: package/desktop/dist/*.whl
 
   publish:
     runs-on: ubuntu-20.04

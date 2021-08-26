@@ -22,6 +22,9 @@ import tornado.websocket
 
 import eta.core.serial as etas
 
+if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
+    del os.environ["FIFTYONE_DISABLE_SERVICES"]
+
 os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
@@ -33,8 +36,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.service import DatabaseService
-from fiftyone.core.stages import Select, _STAGES
+from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
@@ -45,9 +47,6 @@ from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
 
 
-# connect to the existing DB service to initialize global port information
-dbs = DatabaseService()
-dbs.start()
 db = foo.get_async_db_conn()
 
 
@@ -760,31 +759,21 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
 
-        data = {"main": [], "none": []}
-
-        stats = fos.DatasetStatistics(view)
-        aggs = stats.aggregations
-        exists_aggs = stats.exists_aggregations
-        num_aggs = len(aggs)
+        aggregations = fos.DatasetStatistics(view, filters).aggregations
 
         results = await view._async_aggregate(
-            StateHandler.sample_collection(), aggs + exists_aggs
+            StateHandler.sample_collection(), aggregations
         )
-        aggs_results = results[:num_aggs]
-        exists_results = results[num_aggs:]
 
-        for a, r, k in [
-            (aggs, aggs_results, "main"),
-            (exists_aggs, exists_results, "none"),
-        ]:
-            for agg, result in zip(a, r):
-                data[k].append(
-                    {
-                        "_CLS": agg.__class__.__name__,
-                        "name": agg.field_name,
-                        "result": result,
-                    }
-                )
+        data = []
+        for agg, result in zip(aggregations, results):
+            data.append(
+                {
+                    "_CLS": agg.__class__.__name__,
+                    "name": agg.field_name,
+                    "result": result,
+                }
+            )
 
         message = {"type": "modal_statistics", "stats": data, "uuid": uuid}
 
@@ -1011,33 +1000,23 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only (None): a client to restrict the message to
         """
         base_view = view
-        data = {"main": [], "none": []}
+        data = []
         if view is not None and (filters is None or len(filters)):
             view = get_extended_view(view, filters)
 
-            stats = fos.DatasetStatistics(view)
-            aggs = stats.aggregations
-            exists_aggs = stats.exists_aggregations
-            num_aggs = len(aggs)
-
+            aggregations = fos.DatasetStatistics(view, filters).aggregations
             results = await view._async_aggregate(
-                cls.sample_collection(), aggs + exists_aggs
+                cls.sample_collection(), aggregations
             )
-            aggs_results = results[:num_aggs]
-            exists_results = results[num_aggs:]
 
-            for a, r, k in [
-                (aggs, aggs_results, "main"),
-                (exists_aggs, exists_results, "none"),
-            ]:
-                for agg, result in zip(a, r):
-                    data[k].append(
-                        {
-                            "_CLS": agg.__class__.__name__,
-                            "name": agg.field_name,
-                            "result": result,
-                        }
-                    )
+            for agg, result in zip(aggregations, results):
+                data.append(
+                    {
+                        "_CLS": agg.__class__.__name__,
+                        "name": agg.field_name,
+                        "result": result,
+                    }
+                )
 
         view = (
             base_view._serialize()
@@ -1066,7 +1045,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         count=True,
         limit=200,
         sample_id=None,
-        filters={},
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         col = cls.sample_collection()
@@ -1074,8 +1052,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.view
         elif state.dataset is not None:
             view = state.dataset
-
-        view = get_extended_view(view, filters=filters)
 
         view = _get_search_view(view, path, search, selected)
 

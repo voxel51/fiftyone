@@ -36,7 +36,7 @@ export class NextElement<State extends BaseState> extends BaseElement<
       click: ({ update, event, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        next.action(update, dispatchEvent);
+        next.action(update, dispatchEvent, null, true);
       },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });
@@ -92,7 +92,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
       click: ({ update, event, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
-        previous.action(update, dispatchEvent);
+        previous.action(update, dispatchEvent, null, true);
       },
       mouseenter: ({ update }) => {
         update({ hoveringControls: true });

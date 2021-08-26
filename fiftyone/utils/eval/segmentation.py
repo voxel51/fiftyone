@@ -16,10 +16,9 @@ import eta.core.image as etai
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .classification import ClassificationResults
+from .base import BaseEvaluationResults
 
 
 logger = logging.getLogger(__name__)
@@ -320,6 +319,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         return SegmentationResults(
             confusion_matrix,
             classes,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             missing=missing,
@@ -327,12 +327,13 @@ class SimpleEvaluation(SegmentationEvaluation):
         )
 
 
-class SegmentationResults(ClassificationResults):
+class SegmentationResults(BaseEvaluationResults):
     """Class that stores the results of a segmentation evaluation.
 
     Args:
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
+        eval_key (None): the evaluation key for the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         missing (None): a missing (background) class
@@ -344,6 +345,7 @@ class SegmentationResults(ClassificationResults):
         self,
         pixel_confusion_matrix,
         classes,
+        eval_key=None,
         gt_field=None,
         pred_field=None,
         missing=None,
@@ -358,6 +360,7 @@ class SegmentationResults(ClassificationResults):
             ytrue,
             ypred,
             weights=weights,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             classes=classes,
@@ -371,6 +374,7 @@ class SegmentationResults(ClassificationResults):
         return [
             "cls",
             "pixel_confusion_matrix",
+            "eval_key",
             "gt_field",
             "pred_field",
             "classes",
@@ -378,10 +382,11 @@ class SegmentationResults(ClassificationResults):
         ]
 
     @classmethod
-    def _from_dict(cls, d, samples, **kwargs):
+    def _from_dict(cls, d, samples, config, **kwargs):
         return cls(
             d["pixel_confusion_matrix"],
             d["classes"],
+            eval_key=d.get("eval_key", None),
             gt_field=d.get("gt_field", None),
             pred_field=d.get("pred_field", None),
             missing=d.get("missing", None),

@@ -27,6 +27,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
+import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
@@ -236,8 +237,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_doc_cls,
             ) = _load_dataset(name, migrate=_migrate)
 
-        self._evaluation_cache = {}
+        self._annotation_cache = {}
         self._brain_cache = {}
+        self._evaluation_cache = {}
+
         self._deleted = False
 
     def __len__(self):
@@ -321,8 +324,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError(
-                'media_type can only be one of %s; received "%s"'
-                % (fom.MEDIA_TYPES, media_type)
+                "Invalid media_type '%s'. Supported values are %s"
+                % (media_type, fom.MEDIA_TYPES)
             )
 
         self._doc.media_type = media_type
@@ -351,6 +354,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @name.setter
     def name(self, name):
         _name = self._doc.name
+
+        if name == _name:
+            return
+
+        if name in list_datasets():
+            raise ValueError("A dataset with name '%s' already exists" % name)
+
         try:
             self._doc.name = name
             self._doc.save()
@@ -948,9 +958,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ) = _parse_field_mapping(field_mapping)
 
         if fields:
-            self._frame_doc_cls._rename_fields(
-                fields, new_fields, are_frame_fields=True
-            )
+            self._frame_doc_cls._rename_fields(fields, new_fields, frames=True)
             fofr.Frame._rename_fields(
                 self._frame_collection_name, fields, new_fields
             )
@@ -1243,7 +1251,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if fields:
             self._frame_doc_cls._delete_fields(
-                fields, are_frame_fields=True, error_level=error_level
+                fields, frames=True, error_level=error_level
             )
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
@@ -2427,9 +2435,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Adds the contents of the given archive to the dataset.
 
-        If the archive does not exist but a directory with the same root name
-        does exist, it is assumed that this directory contains the extracted
-        contents of the archive.
+        If a directory with the same root name as ``archive_path`` exists, it
+        is assumed that this directory contains the extracted contents of the
+        archive, and thus the archive is not re-extracted.
 
         See :ref:`this guide <loading-datasets-from-disk>` for example usages
         of this method and descriptions of the available dataset types.
@@ -2510,12 +2518,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        dataset_dir = etau.split_archive(archive_path)[0]
-        if os.path.isfile(archive_path) or not os.path.isdir(dataset_dir):
-            etau.extract_archive(
-                archive_path, outdir=dataset_dir, delete_archive=cleanup
-            )
-
+        dataset_dir = _extract_archive_if_necessary(archive_path, cleanup)
         return self.add_dir(
             dataset_dir=dataset_dir,
             dataset_type=dataset_type,
@@ -2551,9 +2554,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the contents of the given archive into the dataset.
 
-        If the archive does not exist but a directory with the same root name
-        does exist, it is assumed that this directory contains the extracted
-        contents of the archive.
+        If a directory with the same root name as ``archive_path`` exists, it
+        is assumed that this directory contains the extracted contents of the
+        archive, and thus the archive is not re-extracted.
 
         See :ref:`this guide <loading-datasets-from-disk>` for example usages
         of this method and descriptions of the available dataset types.
@@ -2692,12 +2695,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type``
         """
-        dataset_dir = etau.split_archive(archive_path)[0]
-        if os.path.isfile(archive_path) or not os.path.isdir(dataset_dir):
-            etau.extract_archive(
-                archive_path, outdir=dataset_dir, delete_archive=cleanup
-            )
-
+        dataset_dir = _extract_archive_if_necessary(archive_path, cleanup)
         return self.merge_dir(
             dataset_dir=dataset_dir,
             dataset_type=dataset_type,
@@ -3448,9 +3446,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Creates a :class:`Dataset` from the contents of the given archive.
 
-        If the archive does not exist but a directory with the same root name
-        does exist, it is assumed that this directory contains the extracted
-        contents of the archive.
+        If a directory with the same root name as ``archive_path`` exists, it
+        is assumed that this directory contains the extracted contents of the
+        archive, and thus the archive is not re-extracted.
 
         See :ref:`this guide <loading-datasets-from-disk>` for example usages
         of this method and descriptions of the available dataset types.
@@ -4174,8 +4172,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Reloads the dataset and any in-memory samples from the database."""
         self._reload(hard=True)
         self._reload_docs(hard=True)
-        self._evaluation_cache.clear()
+
+        self._annotation_cache.clear()
         self._brain_cache.clear()
+        self._evaluation_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:
@@ -4357,11 +4357,15 @@ def _delete_dataset_doc(dataset_doc):
     # https://docs.mongoengine.org/guide/gridfs.html#deletion
     #
 
-    for run_doc in dataset_doc.evaluations.values():
+    for run_doc in dataset_doc.annotation_runs.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
     for run_doc in dataset_doc.brain_methods.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+    for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
@@ -4394,8 +4398,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.sample_collection_name = sample_collection_name
 
     # Run results get special treatment at the end
-    dataset_doc.evaluations = {}
+    dataset_doc.annotation_runs = {}
     dataset_doc.brain_methods = {}
+    dataset_doc.evaluations = {}
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -4446,8 +4451,15 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     clone_dataset = load_dataset(name)
 
-    # Clone RunResults
-    if dataset.has_evaluations or dataset.has_brain_runs:
+    #
+    # Clone run results
+    #
+
+    if (
+        dataset.has_annotation_runs
+        or dataset.has_brain_runs
+        or dataset.has_evaluations
+    ):
         _clone_runs(clone_dataset, dataset._doc)
 
     return clone_dataset
@@ -4643,18 +4655,24 @@ def _merge_dataset_doc(
     curr_doc.save()
 
     if dataset:
-        if doc.evaluations:
+        if doc.annotation_runs:
             logger.warning(
-                "Evaluations cannot be merged into a non-empty dataset"
+                "Annotation runs cannot be merged into a non-empty dataset"
             )
 
         if doc.brain_methods:
             logger.warning(
                 "Brain runs cannot be merged into a non-empty dataset"
             )
+
+        if doc.evaluations:
+            logger.warning(
+                "Evaluations cannot be merged into a non-empty dataset"
+            )
     else:
-        dataset.delete_evaluations()
+        dataset.delete_annotation_runs()
         dataset.delete_brain_runs()
+        dataset.delete_evaluations()
 
         _clone_runs(dataset, doc)
 
@@ -4666,29 +4684,47 @@ def _update_no_overwrite(d, dnew):
 def _clone_runs(dst_dataset, src_doc):
     dst_doc = dst_dataset._doc
 
-    # Clone evaluation results
-
-    dst_doc.evaluations = deepcopy(src_doc.evaluations)
-
+    #
+    # Clone annotation runs results
+    #
     # GridFS files must be manually copied
     # This works by loading the source dataset's copy of the results into
     # memory and then writing a new copy for the destination dataset
-    for eval_key, run_doc in dst_doc.evaluations.items():
-        results = foe.EvaluationMethod.load_run_results(dst_dataset, eval_key)
-        run_doc.results = None
-        foe.EvaluationMethod.save_run_results(dst_dataset, eval_key, results)
+    #
 
+    dst_doc.annotation_runs = deepcopy(src_doc.annotation_runs)
+    for anno_key, run_doc in dst_doc.annotation_runs.items():
+        results = foan.AnnotationMethod.load_run_results(dst_dataset, anno_key)
+        run_doc.results = None
+        foan.AnnotationMethod.save_run_results(dst_dataset, anno_key, results)
+
+    #
     # Clone brain results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
 
     dst_doc.brain_methods = deepcopy(src_doc.brain_methods)
-
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
     for brain_key, run_doc in dst_doc.brain_methods.items():
         results = fob.BrainMethod.load_run_results(dst_dataset, brain_key)
         run_doc.results = None
         fob.BrainMethod.save_run_results(dst_dataset, brain_key, results)
+
+    #
+    # Clone evaluation results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
+
+    dst_doc.evaluations = deepcopy(src_doc.evaluations)
+    for eval_key, run_doc in dst_doc.evaluations.items():
+        results = foe.EvaluationMethod.load_run_results(dst_dataset, eval_key)
+        run_doc.results = None
+        foe.EvaluationMethod.save_run_results(dst_dataset, eval_key, results)
 
     dst_doc.save()
 
@@ -5474,3 +5510,27 @@ def _parse_field_mapping(field_mapping):
             new_fields.append(new_field)
 
     return fields, new_fields, embedded_fields, embedded_new_fields
+
+
+def _extract_archive_if_necessary(archive_path, cleanup):
+    dataset_dir = etau.split_archive(archive_path)[0]
+
+    if not os.path.isdir(dataset_dir):
+        outdir = os.path.dirname(dataset_dir)
+        etau.extract_archive(
+            archive_path, outdir=outdir, delete_archive=cleanup
+        )
+
+        if not os.path.isdir(dataset_dir):
+            raise ValueError(
+                "Expected to find a directory '%s' after extracting '%s', "
+                "but it was not found" % (dataset_dir, archive_path)
+            )
+    else:
+        logger.info(
+            "Assuming '%s' contains the extracted contents of '%s'",
+            dataset_dir,
+            archive_path,
+        )
+
+    return dataset_dir

@@ -579,10 +579,10 @@ your :ref:`FiftyOne config <configuring-fiftyone>`.
         .. code-block:: python
             :linenos:
 
-            # Customize where zoo models are downloaded
-            import fiftyone.core.config as foc
+            import fiftyone as fo
 
-            foc.set_config_settings(model_zoo_dir="/your/custom/directory")
+            # Customize where zoo models are downloaded
+            fo.config.model_zoo_dir = "/your/custom/directory"
 
 .. _model-zoo-delete:
 

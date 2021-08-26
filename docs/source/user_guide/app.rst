@@ -7,7 +7,7 @@ Using the FiftyOne App
 
 The FiftyOne App is a powerful graphical user interface that enables you to
 visualize, browse, and interact directly with your
-:ref:`FiftyOne Datasets <using-datasets>`.
+:ref:`datasets <using-datasets>`.
 
 .. image:: /images/app/app-filters.gif
    :alt: app-filters
@@ -333,6 +333,13 @@ available actions and their associated hotkeys.
     :alt: image-visualizer
     :align: center
 
+.. note::
+
+    When working in :ref:`Jupyter/Colab notebooks <notebooks>`, you can hold
+    down the `SHIFT` key when zoom-scrolling or using the arrow keys to
+    navigate between samples/labels to restrict your inputs to the App and thus
+    prevent them from also affecting your browser window.
+
 .. _app-video-visualizer:
 
 Using the video visualizer
@@ -370,6 +377,13 @@ hovering, a slider appears to adjust the setting manually.
 .. image:: /images/app/app-video-visualizer.gif
     :alt: video-visualizer
     :align: center
+
+.. note::
+
+    When working in :ref:`Jupyter/Colab notebooks <notebooks>`, you can hold
+    down the `SHIFT` key when zoom-scrolling or using the arrow keys to
+    navigate between samples/labels to restrict your inputs to the App and thus
+    prevent them from also affecting your browser window.
 
 .. _app-stats-tabs:
 
@@ -419,6 +433,7 @@ select some samples in the App:
     :alt: app-selection
     :align: center
 
+|br|
 The selected samples checkmark in the options row in the upper-left corner of
 the sample grid records the number of samples that you have currently selected.
 You can also take actions such as updating the view to only show (or exclude)
@@ -463,6 +478,7 @@ in the App. Then click on individual labels to select them:
     :alt: app-label-selection
     :align: center
 
+|br|
 Selected labels will appear with dotted lines around them. The example above
 shows selecting an object detection, but classifications, polygons, polylines,
 segmentations, and keypoints can be selected as well.
@@ -545,6 +561,7 @@ You can also use the tag menu to remove existing tags.
     :alt: app-tagging-samples
     :align: center
 
+|br|
 The App also supports tagging data in individual samples when you have opened
 the expanded sample view by clicking on a sample. The tag icon is located in
 the top-right corner of the modal.
@@ -561,6 +578,7 @@ the top-right corner of the modal.
     :alt: app-tagging-expanded
     :align: center
 
+|br|
 If your dataset has sample or label tags, you can use the ``SAMPLE TAGS`` and
 ``LABEL TAGS`` sections of the filters sidebar to filter by your tags.
 
@@ -610,6 +628,7 @@ expanded sample view.
     :alt: object-patches
     :align: center
 
+|br|
 You can interact with object patches views in the App just like you would with
 any other view, including:
 
@@ -663,6 +682,7 @@ expanded sample view.
     :alt: evaluation-patches
     :align: center
 
+|br|
 You can interact with evaluation patches views in the App just like you would
 with any other view, including:
 
@@ -763,6 +783,7 @@ similarity (``reverse``).
     :alt: object-similarity
     :align: center
 
+|br|
 You can also sort by visual similarity to an object from the expanded sample
 view in the App by selecting an object and then using the similarity menu that
 appears in the upper-right corner of the modal:

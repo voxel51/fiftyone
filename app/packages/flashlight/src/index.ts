@@ -84,7 +84,11 @@ export default class Flashlight<K> {
           const newWidth = this.state.width !== width;
           this.state.width = width;
 
-          this.updateOptions(options, newWidth);
+          if (newWidth) {
+            this.updateOptions(options, newWidth);
+          } else {
+            this.render(false);
+          }
         });
       }
     );
@@ -98,9 +102,10 @@ export default class Flashlight<K> {
         }
 
         return (
-          ((this.state.options.rowAspectRatioThreshold * this.state.width) /
-            this.state.containerHeight) *
-          20
+          (this.state.width /
+            (this.state.containerHeight *
+              this.state.options.rowAspectRatioThreshold)) *
+          500
         );
       }
     );

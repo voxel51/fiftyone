@@ -6,6 +6,7 @@ View stages.
 |
 """
 from collections import defaultdict
+import contextlib
 from copy import deepcopy
 import random
 import reprlib
@@ -2285,6 +2286,163 @@ class GeoWithin(_GeoStage):
                 "placeholder": "strict (default=True)",
             },
         ]
+
+
+class GroupBy(ViewStage):
+    """Creates a view that reorganizes the samples in a collection so that they
+    are grouped by a specified field or expression.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        # Take a random sample of 1000 samples and organize them by ground
+        # truth label with groups arranged in decreasing order of size
+        stage = fo.GroupBy(
+            "ground_truth.label",
+            sort_expr=F().length(),
+            reverse=True,
+        )
+        view = dataset.take(1000).add_stage(stage)
+
+        print(view.values("ground_truth.label"))
+        print(
+            sorted(
+                view.count_values("ground_truth.label").items(),
+                key=lambda kv: kv[1],
+                reverse=True,
+            )
+        )
+
+    Args:
+        field_or_expr: the field or ``embedded.field.name`` to group by, or a
+            :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines the value to group by
+        sort_expr (None): an optional
+            :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines how to sort the groups in the output view. If
+            provided, this expression will be evaluated on the list of samples
+            in each group
+        reverse (False): whether to return the results in descending order
+    """
+
+    def __init__(self, field_or_expr, sort_expr=None, reverse=False):
+        self._field_or_expr = field_or_expr
+        self._sort_expr = sort_expr
+        self._reverse = reverse
+
+    @property
+    def field_or_expr(self):
+        """The field or expression to group by."""
+        return self._field_or_expr
+
+    @property
+    def sort_expr(self):
+        """An expression defining how the sort the groups in the output view.
+        """
+        return self._sort_expr
+
+    @property
+    def reverse(self):
+        """Whether to sort the groups in descending order."""
+        return self._reverse
+
+    def to_mongo(self, _):
+        field_or_expr = self._get_mongo_field_or_expr()
+        sort_expr = self._get_mongo_sort_expr()
+
+        if etau.is_str(field_or_expr):
+            group_expr = "$" + field_or_expr
+        else:
+            group_expr = field_or_expr
+
+        pipeline = [
+            {"$group": {"_id": group_expr, "docs": {"$push": "$$ROOT"}}}
+        ]
+
+        if sort_expr is not None:
+            order = -1 if self._reverse else 1
+            pipeline.extend(
+                [
+                    {"$set": {"_sort_field": sort_expr}},
+                    {"$sort": {"_sort_field": order}},
+                    {"$unset": "_sort_field"},
+                ]
+            )
+
+        pipeline.extend(
+            [{"$unwind": "$docs"}, {"$replaceRoot": {"newRoot": "$docs"}}]
+        )
+
+        return pipeline
+
+    def _needs_frames(self, sample_collection):
+        if sample_collection.media_type != fom.VIDEO:
+            return False
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if etau.is_str(field_or_expr):
+            return sample_collection._is_frame_field(field_or_expr)
+
+        return _is_frames_expr(field_or_expr)
+
+    def _get_mongo_field_or_expr(self):
+        if isinstance(self._field_or_expr, foe.ViewField):
+            return self._field_or_expr._expr
+
+        if isinstance(self._field_or_expr, foe.ViewExpression):
+            return self._field_or_expr.to_mongo()
+
+        return self._field_or_expr
+
+    def _get_mongo_sort_expr(self):
+        if isinstance(self._sort_expr, foe.ViewExpression):
+            return self._sort_expr.to_mongo(prefix="$docs")
+
+        return self._sort_expr
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["sort_expr", self._get_mongo_sort_expr()],
+            ["reverse", self._reverse],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "field_or_expr",
+                "type": "field|str|json",
+                "placeholder": "field or expression",
+            },
+            {
+                "name": "sort_expr",
+                "type": "NoneType|json",
+                "placeholder": "sort expression",
+                "default": "None",
+            },
+            {
+                "name": "reverse",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "reverse (default=False)",
+            },
+        ]
+
+    def validate(self, sample_collection):
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if etau.is_str(field_or_expr):
+            sample_collection.validate_fields_exist(field_or_expr)
+            sample_collection.create_index(field_or_expr)
 
 
 class Limit(ViewStage):
@@ -4693,13 +4851,8 @@ class SortBy(ViewStage):
     def validate(self, sample_collection):
         field_or_expr = self._get_mongo_field_or_expr()
 
-        # If sorting by a field, not an expression
         if etau.is_str(field_or_expr):
-            # Make sure the field exists
             sample_collection.validate_fields_exist(field_or_expr)
-
-            # Create an index on the field, if necessary, to make sorting
-            # more efficient
             sample_collection.create_index(field_or_expr)
 
 
@@ -4858,13 +5011,14 @@ class SortBySimilarity(ViewStage):
 
         results = sample_collection.load_brain_results(brain_key)
 
-        return results.sort_by_similarity(
-            self._query_ids,
-            k=self._k,
-            reverse=self._reverse,
-            samples=sample_collection,
-            mongo=True,
-        )
+        with contextlib.ExitStack() as context:
+            if sample_collection != results.view:
+                results.use_view(sample_collection)
+                context.enter_context(results)  # pylint: disable=no-member
+
+            return results.sort_by_similarity(
+                self._query_ids, k=self._k, reverse=self._reverse, _mongo=True
+            )
 
 
 class Take(ViewStage):
@@ -5579,6 +5733,7 @@ _STAGES = [
     FilterKeypoints,
     GeoNear,
     GeoWithin,
+    GroupBy,
     Limit,
     LimitLabels,
     MapLabels,

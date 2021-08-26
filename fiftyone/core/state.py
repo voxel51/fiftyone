@@ -12,13 +12,10 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-import fiftyone.core.config as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.sample as fosa
-import fiftyone.core.stages as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -137,7 +134,8 @@ class StateDescription(etas.Serializable):
         selected_labels = d.get("selected_labels", [])
 
         config = with_config or fo.app_config.copy()
-        foc._set_settings(config, d.get("config", {}))
+        for field, value in d.get("config", {}).items():
+            setattr(config, field, value)
 
         close = d.get("close", False)
         refresh = d.get("refresh", False)
@@ -162,12 +160,11 @@ class DatasetStatistics(object):
 
     Args:
         view: a :class:`fiftyone.core.view.DatasetView`
+        filters (None): An options dict of filters defined by the App
     """
 
-    def __init__(self, view):
-        aggs, exists_aggs = self._build(view)
-        self._aggregations = aggs
-        self._exists_aggregations = exists_aggs
+    def __init__(self, view, filters=None):
+        self._aggregations = self._build(view, filters)
 
     @property
     def aggregations(self):
@@ -175,13 +172,6 @@ class DatasetStatistics(object):
         instances to run to compute the stats for the view.
         """
         return self._aggregations
-
-    @property
-    def exists_aggregations(self):
-        """The list of :class:`fiftyone.core.aggregations.Aggregation`
-        instances that check whether fields exist.
-        """
-        return self._exists_aggregations
 
     @classmethod
     def fields(cls, collection):
@@ -198,7 +188,7 @@ class DatasetStatistics(object):
 
         schema = collection.get_field_schema()
         for field_name, field in schema.items():
-            if field_name not in ("metadata", "tags"):
+            if field_name != "metadata":
                 result.append((field_name, field))
 
         if collection.media_type == fom.VIDEO:
@@ -242,67 +232,57 @@ class DatasetStatistics(object):
 
         return count_aggs, tag_aggs
 
-    def _build(self, view):
-        F = fo.ViewField
+    def _build(self, view, filters):
         aggregations = [foa.Count()]
-        exists_aggregations = []
 
         if view.media_type == fom.VIDEO:
             aggregations.extend([foa.Count("frames")])
 
-        aggregations.append(foa.CountValues("tags"))
-
-        def get_exists(path):
-            keys = path.split(".")
-            if len(keys) > 1:
-                keys = keys[0:-1]
-
-            path = ".".join(keys)
-
-            return (
-                (F("$%s" % path).type() != "missing") & (F() == None)
-            ).if_else(True, None)
-
         for field_name, field in self.fields(view):
             if _is_label(field):
                 path = _expand_labels_path(field_name, field)
-
                 aggregations.append(foa.Count(path))
                 label_path = "%s.label" % path
                 confidence_path = "%s.confidence" % path
                 tags_path = "%s.tags" % path
+                include_labels = (
+                    None
+                    if filters is None or label_path not in filters
+                    else filters[label_path]["values"]
+                )
                 aggregations.extend(
                     [
-                        foa.CountValues(label_path, _first=200),
+                        foa.CountValues(
+                            label_path, _first=200, _include=include_labels
+                        ),
+                        foa.Count(label_path),
                         foa.Bounds(confidence_path),
+                        foa.Count(confidence_path),
                         foa.CountValues(tags_path),
                     ]
                 )
-                exists_aggregations.append(
-                    foa.Count(label_path, expr=get_exists(label_path))
-                )
-                exists_aggregations.append(
-                    foa.Count(
-                        confidence_path, expr=get_exists(confidence_path)
-                    )
-                )
             else:
                 aggregations.append(foa.Count(field_name))
-                exists_aggregations.append(
-                    foa.Count(field_name, expr=get_exists(field_name))
-                )
-
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
                     aggregations.append(foa.Bounds(field_name))
                 elif _meets_type(
                     field,
                     (fof.BooleanField, fof.StringField, fof.ObjectIdField),
                 ):
+                    include = (
+                        None
+                        if filters is None
+                        or field_name not in filters
+                        or field_name == "tags"
+                        else filters[field_name]["values"]
+                    )
                     aggregations.append(
-                        foa.CountValues(field_name, _first=200)
+                        foa.CountValues(
+                            field_name, _first=200, _include=include
+                        )
                     )
 
-        return aggregations, exists_aggregations
+        return aggregations
 
 
 def _expand_labels_path(root, label_field):
@@ -322,3 +302,7 @@ def _is_label(field):
     return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
         field.document_type, fol.Label
     )
+
+
+def _is_label_list(field):
+    return issubclass(field.document_type, fol._LABEL_LIST_FIELDS)

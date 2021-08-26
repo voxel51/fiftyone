@@ -139,6 +139,7 @@ intersphinx_mapping = {
     # including `python` autolinks things like (None) which is not desirable
     # "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "plotly": ("https://plotly.com/python-api-reference/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
     "torchvision": ("https://pytorch.org/vision/stable/", None),
     "flash": ("https://lightning-flash.readthedocs.io/en/latest", None),

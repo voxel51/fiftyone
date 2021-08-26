@@ -9,8 +9,8 @@ export interface Sample {
     width: number;
     height: number;
   };
-  _id: string;
-  _media_type: "image" | "image";
+  id: string;
+  media_type: "image" | "image";
   filepath: string;
   tags: string[];
   _label_tags: string[];
@@ -94,7 +94,6 @@ export interface ImageConfig extends BaseConfig {}
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
-  restPromise?: Promise<BaseSample>;
 }
 
 export interface FrameOptions extends BaseOptions {

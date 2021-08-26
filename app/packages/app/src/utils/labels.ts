@@ -6,6 +6,7 @@ export const VALID_OBJECT_TYPES = [
   "Polyline",
   "Polylines",
 ];
+
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
 export const VALID_MASK_TYPES = ["Segmentation"];
 export const VALID_LIST_TYPES = [
@@ -89,6 +90,7 @@ export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
+export const LIST_FIELD = "fiftyone.core.fields.ListField";
 
 export const VALID_SCALAR_TYPES = [
   BOOLEAN_FIELD,

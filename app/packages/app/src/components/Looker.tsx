@@ -289,7 +289,7 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
           ref={ref}
         >
           <ContentHeader key="header">{detail.field}</ContentHeader>
-          <Border color={detail.color} id={detail.label._id} />
+          <Border color={detail.color} id={detail.label.id} />
           {detail.label.tags && detail.label.tags.length > 0 && (
             <TagInfo key={"tags"} tags={detail.label?.tags} />
           )}
@@ -335,8 +335,8 @@ const lookerOptions = selector({
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
-      fieldsMap: reverse(get(selectors.scalarsDbMap("sample"))),
-      frameFieldsMap: reverse(get(selectors.scalarsDbMap("frame"))),
+      fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
+      frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
     };
   },
 });
