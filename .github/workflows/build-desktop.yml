@@ -121,7 +121,7 @@ jobs:
       - name: Upload to pypi
         env:
           TWINE_USERNAME: teams-ci
-          TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_PASSWORD }}
           TWINE_NON_INTERACTIVE: 1
         run: |
           python3 -m twine upload --repository-url https://pypi.fiftyone.ai downloads/*.whl
