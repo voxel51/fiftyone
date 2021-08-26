@@ -673,7 +673,7 @@ const Header = ({ addNotification }) => {
       <LeftDiv>
         <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
           <LogoImg style={logoProps} src={Logo} />
-          <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
+          <FiftyOneDiv className="fix-me">FiftyOne Teams</FiftyOneDiv>
         </TitleDiv>
         <DatasetSelector />
       </LeftDiv>
