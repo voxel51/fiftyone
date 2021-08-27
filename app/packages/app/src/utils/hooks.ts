@@ -167,7 +167,7 @@ export const useGA = () => {
       userId: info.user_id,
       checkProtocolTask: null, // disable check, allow file:// URLs
       [gaConfig.dimensions.dev]: buildType,
-      [gaConfig.dimensions.version]: info.version,
+      [gaConfig.dimensions.version]: `TEAMS-${info.version}`,
       [gaConfig.dimensions.context]: appContext,
     });
     setGAInitialized(true);

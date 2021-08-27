@@ -163,7 +163,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="fiftyone_teams_desktop",
+    name="fiftyone-teams-desktop",
     version=get_version(),
     description="FiftyOne Teams Desktop",
     author="Voxel51, Inc.",

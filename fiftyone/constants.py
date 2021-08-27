@@ -30,7 +30,8 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # Package metadata
 _META = metadata("fiftyone-teams")
 NAME = _META["name"]
-VERSION = _META["version"]
+VERSION = "0.13.1"
+TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
