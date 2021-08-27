@@ -181,7 +181,7 @@ def test_server():
         p = wait_for_subprocess(lambda p: "main.py" in p.cmdline())
         assert p.is_running()
         res = get_json_retry("http://127.0.0.1:5151/fiftyone")
-        assert res["version"] == foc.VERSION
+        assert res["version"] == foc.TEAMS_VERSION
         server.stop()
         assert not p.is_running()
 
