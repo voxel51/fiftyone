@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.1.0"
+VERSION = "0.5.0"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-teams-desktop<0.2.0"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-teams-desktop<0.6.0"]}
 
 
 with open("README.md", "r") as fh:
@@ -46,7 +46,7 @@ with open("README.md", "r") as fh:
 
 
 setup(
-    name="fiftyone_teams",
+    name="fiftyone-teams",
     version=get_version(),
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
