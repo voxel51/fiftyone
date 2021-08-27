@@ -349,7 +349,7 @@ def parse_eta_labels(eta_labels):
     elif isinstance(eta_labels, etaf.FrameLabels):
         label = load_image_labels(eta_labels)
     elif isinstance(eta_labels, np.ndarray):
-        label = fol.Segmentation.from_mask(eta_labels)
+        label = fol.Segmentation(mask=eta_labels)
     elif eta_labels is None:
         label = None
     else:
@@ -618,7 +618,7 @@ def _expand_with_prefix(
     #
 
     if frame_labels.has_mask:
-        labels[prefix + "mask"] = fol.Segmentation.from_mask(frame_labels.mask)
+        labels[prefix + "mask"] = fol.Segmentation(mask=frame_labels.mask)
 
     return labels
 
@@ -711,7 +711,7 @@ def _expand_with_labels_dict(
     #
 
     if frame_labels.has_mask and "mask" in labels_dict:
-        labels["mask"] = fol.Segmentation.from_mask(frame_labels.mask)
+        labels["mask"] = fol.Segmentation(mask=frame_labels.mask)
 
     return labels
 

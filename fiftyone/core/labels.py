@@ -496,7 +496,7 @@ class Detection(ImageLabel, _HasID, _HasAttributesDict):
             [<top-left-x>, <top-left-y>, <width>, <height>]
 
         mask (None): an instance segmentation mask for the detection within
-            its bounding box, which should be a 2D binary or 0/1 integer NumPy
+            its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
@@ -1258,8 +1258,8 @@ class Segmentation(ImageLabel, _HasID):
     """A semantic segmentation mask for an image.
 
     Args:
-        mask (None): a semantic segmentation mask, which should be a NumPy
-            array with integer values encoding the semantic labels
+        mask (None): a 2D numpy array with integer values encoding the semantic
+            labels
     """
 
     meta = {"allow_inheritance": True}
@@ -1278,17 +1278,18 @@ class Segmentation(ImageLabel, _HasID):
         """
         return etai.ImageLabels(mask=self.mask, tags=self.tags)
 
-    @classmethod
-    def from_mask(cls, mask):
-        """Creates a :class:`Segmentation` instance from a mask.
 
-        Args:
-            mask: a semantic segmentation mask
+class Heatmap(_HasID, Label):
+    """A heatmap for an image.
 
-        Returns:
-            a :class:`Segmentation`
-        """
-        return cls(mask=mask)
+    Args:
+        mask (None): a 2D numpy array, which can have either floating point
+            values in ``[0, 1]`` or uint8 values
+    """
+
+    meta = {"allow_inheritance": True}
+
+    map = fof.ArrayField()
 
 
 class GeoLocation(_HasID, Label):
@@ -1380,23 +1381,12 @@ class GeoLocations(_HasID, Label):
         return cls(points=points, lines=lines, polygons=polygons)
 
 
-_SINGLE_LABEL_FIELDS = (
-    Classification,
-    Detection,
-    GeoLocation,
-    Keypoint,
-    Polyline,
-    Segmentation,
-)
-
 _LABEL_LIST_FIELDS = (
     Classifications,
     Detections,
     Keypoints,
     Polylines,
 )
-
-_LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 
 _PATCHES_FIELDS = (
     Detection,

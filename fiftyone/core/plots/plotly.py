@@ -12,6 +12,8 @@ import os
 import warnings
 
 import numpy as np
+from PIL import ImageColor
+import plotly.colors as pc
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -984,6 +986,85 @@ def _parse_locations(locations, samples):
 
     locations = samples.values(location_field + ".point.coordinates")
     return np.asarray(locations)
+
+
+def get_colormap(colorscale, n=256, hex_strs=False):
+    """Generates a continuous colormap with the specified number of colors from
+    the given colorscale.
+
+    The provided colorscale will be sampled evenly at the required resolution
+    in order to generate the colormap.
+
+    Args:
+        colorscale: a valid plotly colorscale, e.g. the string name of a
+            builtin colorscale. See https://plotly.com/python/colorscales
+            for possible options
+        n (256): the desired number of colors
+        hex_strs (False): whether to return ``#RRGGBB`` hex strings rather than
+            ``(R, G, B)`` tuples
+
+    Returns:
+        a list of ``(R, G, B)`` tuples in `[0, 255]`, or, if ``hex_strs`` is
+        True, a list of `#RRGGBB` strings
+    """
+    if etau.is_str(colorscale):
+        colorscale = _get_colorscale(colorscale)
+
+    if not colorscale:
+        raise ValueError("colorscale must have at least one color")
+
+    values = np.linspace(0, 1, n)
+    rgb_strs = [_get_continuous_color(colorscale, v) for v in values]
+
+    # @todo don't cast to int here?
+    rgb_tuples = [
+        tuple(int(round(float(v.strip()))) for v in rgb_str[4:-1].split(","))
+        for rgb_str in rgb_strs
+    ]
+
+    if hex_strs:
+        return ["#%02x%02x%02x" % rgb for rgb in rgb_tuples]
+
+    return rgb_tuples
+
+
+def _get_colorscale(name):
+    from _plotly_utils.basevalidators import ColorscaleValidator
+
+    cv = ColorscaleValidator("colorscale", "")
+    return cv.validate_coerce(name)
+
+
+def _get_continuous_color(colorscale, value):
+    # Returns a string like `rgb(float, float, float)`
+
+    hex_to_rgb = lambda c: "rgb" + str(ImageColor.getcolor(c, "RGB"))
+
+    if value <= 0 or len(colorscale) == 1:
+        c = colorscale[0][1]
+        return c if c[0] != "#" else hex_to_rgb(c)
+
+    if value >= 1:
+        c = colorscale[-1][1]
+        return c if c[0] != "#" else hex_to_rgb(c)
+
+    for cutoff, color in colorscale:
+        if value > cutoff:
+            low_cutoff, low_color = cutoff, color
+        else:
+            high_cutoff, high_color = cutoff, color
+            break
+
+    if (low_color[0] == "#") or (high_color[0] == "#"):
+        low_color = hex_to_rgb(low_color)
+        high_color = hex_to_rgb(high_color)
+
+    return pc.find_intermediate_color(
+        lowcolor=low_color,
+        highcolor=high_color,
+        intermed=((value - low_cutoff) / (high_cutoff - low_cutoff)),
+        colortype="rgb",
+    )
 
 
 class PlotlyWidgetMixin(object):

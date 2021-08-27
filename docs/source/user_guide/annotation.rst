@@ -461,9 +461,9 @@ more details:
     `label_field` or all fields in `label_schema` without classes specified.
     All new label fields must have a class list provided via one of the
     supported methods. For existing label fields, if classes are not provided
-    by this argument nor `label_schema`, they are parsed from
-    :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
-    :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+    by this argument nor `label_schema`, they are retrived from
+    :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
+    if possible, or else the observed labels on your dataset are used
 -   **attributes** (*True*): specifies the label attributes of each label field
     to include (other than their `label`, which is always included) in the
     annotation export. Can be any of the following:
@@ -577,11 +577,9 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted, the class lists from the
-    :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
-    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list
+-   **classes**: if omitted, the classes are retrieved from
+    :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
+    if possible, or else the observed labels on your dataset are used
 
 .. _annotation-label-attributes:
 

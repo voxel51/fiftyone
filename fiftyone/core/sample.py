@@ -629,9 +629,7 @@ def _apply_confidence_thresh(label, confidence_thresh):
             if l.confidence is not None and l.confidence >= confidence_thresh
         ]
         setattr(label, label._LABEL_LIST_FIELD, labels)
-    elif isinstance(label, fol._SINGLE_LABEL_FIELDS) and hasattr(
-        label, "confidence"
-    ):
+    elif hasattr(label, "confidence"):
         if label.confidence is None or label.confidence < confidence_thresh:
             label = None
 
