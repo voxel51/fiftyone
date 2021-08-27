@@ -10,8 +10,6 @@ on:
     branches:
       - develop
     paths:
-      - app/packages/desktop/**
-      - package/desktop/**
       - .github/workflows/build-desktop.yml
 
 jobs:
