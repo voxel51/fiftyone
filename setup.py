@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-teams-desktop<0.6.0"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop<0.6.0"]}
 
 
 with open("README.md", "r") as fh:
@@ -46,7 +46,7 @@ with open("README.md", "r") as fh:
 
 
 setup(
-    name="fiftyone-teams",
+    name="fiftyone",
     version=get_version(),
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "

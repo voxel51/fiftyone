@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Installs the ``fiftyone-teams-desktop`` package.
+Installs the ``fiftyone-desktop`` package.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -163,7 +163,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="fiftyone-teams-desktop",
+    name="fiftyone-desktop",
     version=get_version(),
     description="FiftyOne Teams Desktop",
     author="Voxel51, Inc.",

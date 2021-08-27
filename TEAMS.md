@@ -70,7 +70,19 @@ to whatever extent possible.
 You should ask for a token if you don't have one already.
 
 ```sh
+# basic install
 pip install --index-url https://<token>@pypi.fiftyone.ai fiftyone
+
+
+# desktop install
+pip install --index-url https://<token>@pypi.fiftyone.ai fiftyone[desktop]
+
+```
+
+## Adding user tokens as an admin
+
+```sh
+curl -X POST -F 'email=user@company.com' https://admin:<password>@pypi.fiftyone.ai/admin/create_token/save
 ```
 
 ## Working with BB1 Teams
