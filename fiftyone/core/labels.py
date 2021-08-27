@@ -1255,7 +1255,7 @@ class Keypoints(ImageLabel, _HasLabelList):
 
 
 class Segmentation(ImageLabel, _HasID):
-    """A semantic segmentation mask for an image.
+    """A semantic segmentation for an image.
 
     Args:
         mask (None): a 2D numpy array with integer values encoding the semantic
@@ -1284,7 +1284,7 @@ class Heatmap(_HasID, Label):
 
     Args:
         mask (None): a 2D numpy array, which can have either floating point
-            values in ``[0, 1]`` or uint8 values
+            values in ``[0, 1]`` or integer values in ``[0, 255]``
     """
 
     meta = {"allow_inheritance": True}
