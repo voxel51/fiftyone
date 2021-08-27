@@ -47,7 +47,7 @@ DEV_INSTALL = os.path.isdir(
 RC_INSTALL = "rc" in VERSION
 
 # App configuration
-DEFAULT_APP_COLOR_POOL = {
+DEFAULT_APP_COLOR_POOL = [
     "#ee0000",
     "#ee6600",
     "#993300",
@@ -61,7 +61,8 @@ DEFAULT_APP_COLOR_POOL = {
     "#6600ff",
     "#cc33cc",
     "#777799",
-}
+]
+DEFAULT_APP_COLORSCALE = "viridis"
 
 # MongoDB setup
 try:

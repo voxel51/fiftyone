@@ -36,6 +36,7 @@ _DEFAULT_LAYOUT = dict(
 )
 
 _DEFAULT_LINE_COLOR = "#FF6D04"
+_DEFAULT_CONTINUOUS_COLORSCALE = "viridis"
 
 
 def plot_confusion_matrix(
@@ -990,15 +991,15 @@ def _parse_locations(locations, samples):
 
 def get_colormap(colorscale, n=256, hex_strs=False):
     """Generates a continuous colormap with the specified number of colors from
-    the given colorscale.
+    the given plotly colorscale.
 
-    The provided colorscale will be sampled evenly at the required resolution
-    in order to generate the colormap.
+    The colorscale will be sampled evenly at the required resolution in order
+    to generate the colormap.
 
     Args:
-        colorscale: a valid plotly colorscale, e.g. the string name of a
-            builtin colorscale. See https://plotly.com/python/colorscales
-            for possible options
+        colorscale: a plotly colorscale, e.g., the string name of a builtin
+            colorscale. See https://plotly.com/python/colorscales for possible
+            options
         n (256): the desired number of colors
         hex_strs (False): whether to return ``#RRGGBB`` hex strings rather than
             ``(R, G, B)`` tuples
@@ -1940,7 +1941,6 @@ def _plot_scatter_numeric(
     edges_title,
     colorbar_title,
     axis_equal,
-    colorscale="Viridis",
 ):
     num_dims = points.shape[1]
 
@@ -1951,7 +1951,7 @@ def _plot_scatter_numeric(
             dict(
                 color=values,
                 colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
-                colorscale=colorscale,
+                colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
                 showscale=True,
             )
         )
@@ -2205,7 +2205,6 @@ def _plot_scatter_mapbox_numeric(
     sizes_title,
     edges_title,
     colorbar_title,
-    colorscale="Viridis",
 ):
     marker = dict()
 
@@ -2214,7 +2213,7 @@ def _plot_scatter_mapbox_numeric(
             dict(
                 color=values,
                 colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
-                colorscale=colorscale,
+                colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
                 showscale=True,
             )
         )
@@ -2284,7 +2283,6 @@ def _plot_scatter_mapbox_density(
     labels_title,
     sizes_title,
     colorbar_title,
-    colorscale="Viridis",
 ):
     if values is not None and sizes is not None:
         hover_title = labels_title + " x " + sizes_title
@@ -2324,7 +2322,7 @@ def _plot_scatter_mapbox_density(
         z=values,
         radius=radius,
         customdata=ids,
-        colorscale=colorscale,
+        colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
         hovertemplate=hovertemplate,
     )
 

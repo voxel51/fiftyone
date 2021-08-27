@@ -17,6 +17,9 @@ import eta
 import eta.core.config as etac
 
 import fiftyone.constants as foc
+import fiftyone.core.utils as fou
+
+fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
 
 logger = logging.getLogger(__name__)
@@ -220,6 +223,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLOR_POOL",
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
+        self.colorscale = self.parse_string(
+            d,
+            "colorscale",
+            env_var="FIFTYONE_APP_COLORSCALE",
+            default=foc.DEFAULT_APP_COLORSCALE,
+        )
         self.default_grid_zoom = self.parse_int(
             d,
             "default_grid_zoom",
@@ -264,6 +273,24 @@ class AppConfig(EnvConfig):
         )
 
         self._validate()
+
+    def get_colormap(self, n=256, hex_strs=False):
+        """Generates a continuous colormap with the specified number of colors
+        from :attr:`colorscale`.
+
+        The colorscale will be sampled evenly at the required resolution in
+        order to generate the colormap.
+
+        Args:
+            n (256): the desired number of colors
+            hex_strs (False): whether to return ``#RRGGBB`` hex strings rather
+                than ``(R, G, B)`` tuples
+
+        Returns:
+            a list of ``(R, G, B)`` tuples in `[0, 255]`, or, if ``hex_strs``
+            is True, a list of `#RRGGBB` strings
+        """
+        return fop.get_colormap(self.colorscale, n=n, hex_strs=hex_strs)
 
     def _validate(self):
         if self.default_grid_zoom < 0 or self.default_grid_zoom > 10:
