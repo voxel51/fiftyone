@@ -296,6 +296,7 @@ FiftyOne provides a |Label| subclass for many common tasks:
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
+- :ref:`Heatmap <heatmaps>`: an intensity heatmap for an image
 - :ref:`GeoLocation <geolocation>`: a single geolocation point, line, or
   polygon
 - :ref:`GeoLocations <geolocation>`: a container of multiple geolocation
