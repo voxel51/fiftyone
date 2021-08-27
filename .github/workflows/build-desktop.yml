@@ -75,8 +75,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/desktop-v.*-rc\..*$ ]]; then
-             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/desktop-v//")" >> $GITHUB_ENV
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/teams-desktop-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-desktop-v//")" >> $GITHUB_ENV
           fi
       - name: Build wheel
         working-directory: package/desktop
