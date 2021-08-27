@@ -229,11 +229,8 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLORSCALE",
             default=foc.DEFAULT_APP_COLORSCALE,
         )
-        self.default_grid_zoom = self.parse_int(
-            d,
-            "default_grid_zoom",
-            env_var="FIFTYONE_APP_GRID_ZOOM",
-            default=5,
+        self.grid_zoom = self.parse_int(
+            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
         )
         self.loop_videos = self.parse_bool(
             d,
@@ -274,14 +271,17 @@ class AppConfig(EnvConfig):
 
         self._validate()
 
-    def get_colormap(self, n=256, hex_strs=False):
+    def get_colormap(self, colorscale=None, n=256, hex_strs=False):
         """Generates a continuous colormap with the specified number of colors
-        from :attr:`colorscale`.
+        from the given colorscale.
 
         The colorscale will be sampled evenly at the required resolution in
         order to generate the colormap.
 
         Args:
+            colorscale (None): a plotly colorscale, e.g., the string name of a
+                builtin colorscale. See https://plotly.com/python/colorscales
+                for possible options. By default, :attr:`colorscale` is used
             n (256): the desired number of colors
             hex_strs (False): whether to return ``#RRGGBB`` hex strings rather
                 than ``(R, G, B)`` tuples
@@ -290,13 +290,15 @@ class AppConfig(EnvConfig):
             a list of ``(R, G, B)`` tuples in `[0, 255]`, or, if ``hex_strs``
             is True, a list of `#RRGGBB` strings
         """
-        return fop.get_colormap(self.colorscale, n=n, hex_strs=hex_strs)
+        if colorscale is None:
+            colorscale = self.colorscale
+
+        return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _validate(self):
-        if self.default_grid_zoom < 0 or self.default_grid_zoom > 10:
+        if self.grid_zoom < 0 or self.grid_zoom > 10:
             raise AppConfigError(
-                "`default_grid_zoom` must be in [0, 10]; found %d"
-                % self.default_grid_zoom
+                "`grid_zoom` must be in [0, 10]; found %d" % self.grid_zoom
             )
 
 

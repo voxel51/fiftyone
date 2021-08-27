@@ -306,10 +306,10 @@ The FiftyOne App can be configured in the ways described below:
 |                     |                                   |                             | drawing labels (e.g., object bounding boxes).                                            |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `colorscale`        | `FIFTYONE_APP_COLORSCALE`         | "viridis"                   | The colorscale to use when rendering heatmaps in the App. Any named colorscale           |
-|                     |                                   |                             | `supported by Plotly <See https://plotly.com/python/colorscales>`_ can be used.          |
+|                     |                                   |                             | `supported by Plotly <https://plotly.com/python/colorscales>`_ can be used.              |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `default_grid_zoom` | `FIFTYONE_APP_DEFAULT_GRID_ZOOM`  | `5`                         | The default zoom level of the App's sample grid. Larger values result in larger samples  |
-|                     |                                   |                             | (and thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.            |
+| `grid_zoom`         | `FIFTYONE_APP_GRID_ZOOM`          | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and )   |
+|                     |                                   |                             | (thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `loop_videos`       | `FIFTYONE_APP_LOOP_VIDEOS`        | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -366,7 +366,7 @@ You can print your App config at any time via the Python library and the CLI:
                 "#777799"
             ],
             "colorscale": "viridis",
-            "default_grid_zoom": 5,
+            "grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
             "show_attributes": true
@@ -403,7 +403,7 @@ You can print your App config at any time via the Python library and the CLI:
                 "#777799"
             ],
             "colorscale": "viridis",
-            "default_grid_zoom": 5,
+            "grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
             "show_attributes": true
