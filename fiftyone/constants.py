@@ -28,7 +28,7 @@ TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
 # Package metadata
-_META = metadata("fiftyone-teams")
+_META = metadata("fiftyone")
 NAME = _META["name"]
 VERSION = "0.13.1"
 TEAMS_VERSION = _META["version"]
