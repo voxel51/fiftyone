@@ -461,7 +461,7 @@ more details:
     `label_field` or all fields in `label_schema` without classes specified.
     All new label fields must have a class list provided via one of the
     supported methods. For existing label fields, if classes are not provided
-    by this argument nor `label_schema`, they are retrived from
+    by this argument nor `label_schema`, they are retrieved from
     :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
     if possible, or else the observed labels on your dataset are used
 -   **attributes** (*True*): specifies the label attributes of each label field
