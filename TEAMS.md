@@ -45,7 +45,7 @@ To add the changes to the public repository,
 the open source project and add
 [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams) as a remote:
 
-```
+```sh
 cd /path/to/public/fiftyone
 git remote add teams git@github.com:voxel51/fiftyone-teams.git
 git checkout -b release-to-public
@@ -64,6 +64,14 @@ Then follow the normal steps to make a pull request in the public
 
 As these workflows solidify, syncing between the projects should be automated
 to whatever extent possible.
+
+## Installing FiftyOne Teams releases from private FiftyOne PyPI server
+
+You should ask for a token if you don't have one already.
+
+```sh
+pip install --index-url https://<token>@pypi.fiftyone.ai fiftyone
+```
 
 ## Working with BB1 Teams
 
