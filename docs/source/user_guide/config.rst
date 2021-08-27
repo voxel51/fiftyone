@@ -305,6 +305,9 @@ The FiftyOne App can be configured in the ways described below:
 | `color_pool`        | `FIFTYONE_APP_COLOR_POOL`         | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                     |                                   |                             | drawing labels (e.g., object bounding boxes).                                            |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `colorscale`        | `FIFTYONE_APP_COLORSCALE`         | "viridis"                   | The colorscale to use when rendering heatmaps in the App. Any named colorscale           |
+|                     |                                   |                             | `supported by Plotly <See https://plotly.com/python/colorscales>`_ can be used.          |
++---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `default_grid_zoom` | `FIFTYONE_APP_DEFAULT_GRID_ZOOM`  | `5`                         | The default zoom level of the App's sample grid. Larger values result in larger samples  |
 |                     |                                   |                             | (and thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.            |
 +---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -362,6 +365,7 @@ You can print your App config at any time via the Python library and the CLI:
                 "#cc33cc",
                 "#777799"
             ],
+            "colorscale": "viridis",
             "default_grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
@@ -398,6 +402,7 @@ You can print your App config at any time via the Python library and the CLI:
                 "#cc33cc",
                 "#777799"
             ],
+            "colorscale": "viridis",
             "default_grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,

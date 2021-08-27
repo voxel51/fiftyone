@@ -1298,7 +1298,7 @@ masks, which should be stored in the
 :attr:`mask <fiftyone.core.labels.Detection.mask>` attribute of each
 |Detection|.
 
-The mask must be a 2D NumPy array containing either booleans or 0/1 integers
+The mask must be a 2D numpy array containing either booleans or 0/1 integers
 encoding the extent of the instance mask within the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` of the
 object. The array can be of any size; it is stretched as necessary to fill the
@@ -1640,7 +1640,7 @@ The mask itself is stored in the
 :attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute of the
 |Segmentation| object.
 
-The mask should be a 2D NumPy array with integer values encoding the semantic
+The mask should be a 2D numpy array with integer values encoding the semantic
 labels for each pixel in the image. The array can be of any size; it is
 stretched as necessary to fit the image's extent when visualizing in the App.
 
@@ -1693,6 +1693,66 @@ is rendered as a distinct color.
     for your segmentation fields on your dataset. Then, when you view the
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
+
+.. _heatmaps:
+
+Heatmaps
+--------
+
+The |Heatmap| class represents a heatmap for an image. The map itself is stored
+in the :attr:`map <fiftyone.core.labels.Heatmap.map>` attribute of the
+|Heatmap| object.
+
+The map should be a 2D numpy array with either floating point values in
+``[0, 1]`` or integer values in ``[0, 255]`` encoding the intensities. The
+array can be of any size; it is stretched as necessary to fit the image's
+extent when visualizing in the App.
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    import fiftyone as fo
+
+    # Example heatmap
+    heatmap = np.random.randint(256, size=(128, 128), dtype=np.uint8)
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["heatmap"] = fo.Heatmap(map=heatmap)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'heatmap': <Heatmap: {
+            'id': '6129495c9e526ca632663cca',
+            'tags': BaseList([]),
+            'map': array([[  9,  65,  55, ...,  75, 203,  49],
+                          [151,  50,   3, ..., 136, 145, 144],
+                          [242, 110, 150, ...,  90, 214, 151],
+                          ...,
+                          [197, 195, 140, ..., 245, 128, 153],
+                          [145, 124,   9, ..., 205, 254,  68],
+                          [107, 123,  29, ..., 247,  74,   2]], dtype=uint8),
+        }>,
+    }>
+
+When you load datasets with |Heatmap| fields in the App, the intensity values
+are rendered using the colorscale of your
+:ref:`App config <configuring-fiftyone-app>`.
+
+.. note::
+
+    The intensity value ``0`` is a reserved "background" class that is always
+    rendered as invislble in the App.
 
 .. _geolocation:
 
