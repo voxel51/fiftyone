@@ -7,11 +7,10 @@ on:
     tags:
       - teams-desktop-v*
   pull_request:
-    types: [opened, synchronize]
     branches:
       - develop
     paths:
-      - app/**
+      - app/packages/desktop/**
       - package/desktop/**
       - .github/workflows/build-desktop.yml
 
@@ -105,4 +104,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_PASSWORD }}
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload --repository-url https://pypi.fiftyone.ai downloads/*.whl
+          python3 -m twine upload --repository-url https://pypi.fiftyone.ai downloads/wheel-*/*.whl
