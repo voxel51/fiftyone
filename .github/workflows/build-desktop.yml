@@ -85,6 +85,7 @@ jobs:
         with:
           name: wheel-${{ matrix.platform }}
           path: package/desktop/dist/*.whl
+          retention-days: 1
 
   publish:
     runs-on: ubuntu-20.04

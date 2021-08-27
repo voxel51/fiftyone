@@ -55,6 +55,7 @@ jobs:
         with:
           name: dist
           path: dist/
+          retention-days: 1
 
   test:
     runs-on: ${{ matrix.os }}
