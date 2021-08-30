@@ -78,6 +78,11 @@ export const LABEL_LISTS = [
   "VideoClassifications",
 ];
 
+export const UNSUPPORTED_IMAGE = [
+  "VideoClassification",
+  "VideoClassifications",
+];
+
 export const LABEL_LIST = {
   Classifications: "classifications",
   Detections: "detections",

@@ -2,7 +2,12 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, TEXT_COLOR, VIDEO_CLASSIFICATION } from "../constants";
+import {
+  DASH_COLOR,
+  MOMENT_CLASSIFICATIONS,
+  TEXT_COLOR,
+  VIDEO_CLASSIFICATION,
+} from "../constants";
 import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
 import {
   CONTAINS,
@@ -139,7 +144,12 @@ export class ClassificationsOverlay<
   protected getFiltered(state: Readonly<State>): Labels<Label> {
     return this.labels.map(([field, labels]) => [
       field,
-      labels.filter((label) => isShown(state, field, label) && label.label),
+      labels.filter(
+        (label) =>
+          MOMENT_CLASSIFICATIONS.includes(label._cls) &&
+          isShown(state, field, label) &&
+          label.label
+      ),
     ]);
   }
 

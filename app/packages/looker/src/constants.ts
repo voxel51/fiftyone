@@ -34,6 +34,8 @@ export const SEGMENTATION = "Segmentation";
 export const VIDEO_CLASSIFICATION = "VideoClassification";
 export const VIDEO_CLASSIFICATIONS = "VideoClassifications";
 
+export const MOMENT_CLASSIFICATIONS = [CLASSIFICATION, CLASSIFICATIONS];
+
 export const LABEL_TAGS_CLASSES = [
   CLASSIFICATION,
   CLASSIFICATIONS,

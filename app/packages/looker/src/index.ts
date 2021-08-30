@@ -57,6 +57,7 @@ import {
   getDPR,
   getElementBBox,
   getFitRect,
+  getMimeType,
   getURL,
   mergeUpdates,
   removeFromBuffers,
@@ -94,6 +95,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    this.state.options.mimetype = getMimeType(sample);
     if (!this.state.config.thumbnail) {
       this.state.showControls = true;
     }
