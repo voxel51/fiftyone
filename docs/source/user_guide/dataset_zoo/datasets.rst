@@ -517,8 +517,8 @@ The following parameters are available to configure a partial download of
 COCO-2014 by passing them to
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
 
--   **split** and **splits**: a string or list of strings, respectively,
-    specifying the splits to load. Supported values are
+-   **split** (*None*) and **splits** (*None*): a string or list of strings,
+    respectively, specifying the splits to load. Supported values are
     ``("train", "test", "validation")``. If neither is provided, all available
     splits are loaded
 
@@ -753,8 +753,8 @@ The following parameters are available to configure a partial download of
 COCO-2017 by passing them to
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
 
--   **split** and **splits**: a string or list of strings, respectively,
-    specifying the splits to load. Supported values are
+-   **split** (*None*) and **splits** (*None*): a string or list of strings,
+    respectively, specifying the splits to load. Supported values are
     ``("train", "test", "validation")``. If neither is provided, all available
     splits are loaded
 
@@ -1449,8 +1449,8 @@ The following parameters are available to configure a partial download of Open
 Images V6 by passing them to
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
 
--   **split** and **splits**: a string or list of strings, respectively,
-    specifying the splits to load. Supported values are
+-   **split** (*None*) and **splits** (*None*): a string or list of strings,
+    respectively, specifying the splits to load. Supported values are
     ``("train", "test", "validation")``. If neither is provided, all available
     splits are loaded
 
