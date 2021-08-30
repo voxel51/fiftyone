@@ -505,16 +505,22 @@ class ClassesField(ListField):
     def __init__(self, **kwargs):
         super().__init__(field=StringField(), **kwargs)
 
+    def __str__(self):
+        return etau.get_class_name(self)
+
 
 class TargetsField(IntDictField):
-    """An :class:`DictField` that stores mapping between integer keys and
-    string targets.
+    """A :class:`DictField` that stores mapping between integer keys and string
+    targets.
 
     If this field is not set, its default value is ``{}``.
     """
 
     def __init__(self, **kwargs):
         super().__init__(field=StringField(), **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
 
 
 class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
