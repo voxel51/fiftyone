@@ -4773,7 +4773,7 @@ class SortBy(ViewStage):
 
         #
         # Performs a compound sort where samples are first sorted in descending
-        # order by number of detections and then by ascending order of
+        # order by number of detections and then in ascending order of
         # uniqueness for samples with the same number of predictions
         #
 
