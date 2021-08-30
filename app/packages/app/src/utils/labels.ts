@@ -5,6 +5,8 @@ export const VALID_OBJECT_TYPES = [
   "Keypoints",
   "Polyline",
   "Polylines",
+  "VideoClassification",
+  "VideoClassifications",
 ];
 
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
@@ -14,6 +16,7 @@ export const VALID_LIST_TYPES = [
   "Detections",
   "Keypoints",
   "Polylines",
+  "VideoClassifications",
 ];
 
 export const PATCHES_FIELDS = ["Detections", "Polylines"];
@@ -50,6 +53,8 @@ export const FILTERABLE_TYPES = [
   "Keypoint",
   "Polylines",
   "Polyline",
+  "VideoClassification",
+  "VideoClassifications",
 ];
 
 export const CONFIDENCE_LABELS = [
@@ -61,6 +66,8 @@ export const CONFIDENCE_LABELS = [
   "Keypoints",
   "Polyline",
   "Polylines",
+  "VideoClassification",
+  "VideoClassifications",
 ];
 
 export const LABEL_LISTS = [
@@ -68,6 +75,7 @@ export const LABEL_LISTS = [
   "Detections",
   "Keypoints",
   "Polylines",
+  "VideoClassifications",
 ];
 
 export const LABEL_LIST = {
@@ -75,6 +83,7 @@ export const LABEL_LIST = {
   Detections: "detections",
   Keypoints: "keypoints",
   Polylines: "polylines",
+  VideoClassifications: "classifications",
 };
 
 export const AGGS = {

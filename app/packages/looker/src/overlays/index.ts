@@ -1,10 +1,12 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
+import { LABEL_LISTS, LABEL_TAGS_CLASSES } from "../constants";
 import { BaseState } from "../state";
 import { Overlay } from "./base";
-import ClassificationsOverlay, {
-  ClassificationLabels,
+import {
+  ClassificationsOverlay,
+  VideoClassificationsOverlay,
 } from "./classifications";
 import DetectionOverlay, { getDetectionPoints } from "./detection";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
@@ -40,28 +42,35 @@ export const POINTS_FROM_FO = {
   Segmentation: (label) => getSegmentationPoints([label]),
 };
 
-export const loadOverlays = <State extends BaseState>(sample: {
-  [key: string]: any;
-}): Overlay<State>[] => {
-  const classifications = <ClassificationLabels>[];
+export const loadOverlays = <State extends BaseState>(
+  sample: {
+    [key: string]: any;
+  },
+  video = false
+): Overlay<State>[] => {
+  const classifications = [];
   let overlays = [];
   for (const field in sample) {
     const label = sample[field];
     if (!label) {
       continue;
     }
+
     if (label._cls in FROM_FO) {
       const labelOverlays = FROM_FO[label._cls](field, label, this);
       overlays = [...overlays, ...labelOverlays];
-    } else if (label._cls === "Classification") {
-      classifications.push([field, [label]]);
-    } else if (label._cls === "Classifications") {
-      classifications.push([field, label.classifications]);
+    } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
+      classifications.push([
+        field,
+        label._cls in LABEL_LISTS ? label[LABEL_LISTS[label._cls]] : [label],
+      ]);
     }
   }
 
   if (classifications.length > 0) {
-    const overlay = new ClassificationsOverlay(classifications);
+    const overlay = video
+      ? new VideoClassificationsOverlay(classifications)
+      : new ClassificationsOverlay(classifications);
     overlays.push(overlay);
   }
 
