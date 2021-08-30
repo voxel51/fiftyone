@@ -27,6 +27,7 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
           path={entry.path}
           modal={modal}
           disableItems={entry.disableList}
+          fieldType={type}
           ref={ref}
         />
       ) : (

@@ -85,6 +85,7 @@ export const AGGS = {
 };
 
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
+export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const INT_FIELD = "fiftyone.core.fields.IntField";
