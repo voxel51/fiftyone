@@ -5,7 +5,7 @@ View stages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
 import random
@@ -4740,7 +4740,8 @@ class Skip(ViewStage):
 
 
 class SortBy(ViewStage):
-    """Sorts the samples in a collection by the given field or expression.
+    """Sorts the samples in a collection by the given field(s) or
+    expression(s).
 
     Examples::
 
@@ -4770,11 +4771,40 @@ class SortBy(ViewStage):
         stage = fo.SortBy(small_boxes.length(), reverse=True)
         view = dataset.add_stage(stage)
 
+        #
+        # Performs a compound sort where samples are first sorted in descending
+        # order by number of detections and then by ascending order of
+        # uniqueness for samples with the same number of predictions
+        #
+
+        stage = fo.SortBy(
+            [
+                (F("predictions.detections").length(), -1),
+                ("uniqueness", 1),
+            ]
+        )
+        view = dataset.add_stage(stage)
+
+        num_objects, uniqueness = view[:5].values(
+            [F("predictions.detections").length(), "uniqueness"]
+        )
+        print(list(zip(num_objects, uniqueness)))
+
     Args:
-        field_or_expr: the field or ``embedded.field.name`` to sort by, or a
-            :class:`fiftyone.core.expressions.ViewExpression` or a
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that defines the quantity to sort by
+        field_or_expr: the field(s) or expression(s) to sort by. This can be
+            any of the following:
+
+            -   a field to sort by
+            -   an ``embedded.field.name`` to sort by
+            -   a :class:`fiftyone.core.expressions.ViewExpression` or a
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines the quantity to sort by
+            -   a list of ``(field_or_expr, order)`` tuples defining a compound
+                sort criteria, where ``field_or_expr`` is a field or expression
+                as defined above, and ``order`` can be 1 or any string starting
+                with "a" for ascending order, or -1 or any string starting with
+                "d" for descending order
+
         reverse (False): whether to return the results in descending order
     """
 
@@ -4793,18 +4823,36 @@ class SortBy(ViewStage):
         return self._reverse
 
     def to_mongo(self, _):
-        order = -1 if self._reverse else 1
-
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if etau.is_str(field_or_expr):
-            return [{"$sort": {field_or_expr: order}}]
+        if not isinstance(field_or_expr, list):
+            field_or_expr = [(field_or_expr, 1)]
 
-        return [
-            {"$set": {"_sort_field": field_or_expr}},
-            {"$sort": {"_sort_field": order}},
-            {"$unset": "_sort_field"},
-        ]
+        if self._reverse:
+            field_or_expr = [(f, -order) for f, order in field_or_expr]
+
+        set_dict = {}
+        sort_dict = OrderedDict()
+        for idx, (expr, order) in enumerate(field_or_expr, 1):
+            if etau.is_str(expr):
+                field = expr
+            else:
+                field = "_sort_field%d" % idx
+                set_dict[field] = expr
+
+            sort_dict[field] = order
+
+        pipeline = []
+
+        if set_dict:
+            pipeline.append({"$set": set_dict})
+
+        pipeline.append({"$sort": sort_dict})
+
+        if set_dict:
+            pipeline.append({"$unset": list(set_dict.keys())})
+
+        return pipeline
 
     def _needs_frames(self, sample_collection):
         if sample_collection.media_type != fom.VIDEO:
@@ -4812,19 +4860,20 @@ class SortBy(ViewStage):
 
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if etau.is_str(field_or_expr):
-            return sample_collection._is_frame_field(field_or_expr)
+        if not isinstance(field_or_expr, list):
+            field_or_expr = [(field_or_expr, None)]
 
-        return _is_frames_expr(field_or_expr)
+        needs_frames = False
+        for expr, _ in field_or_expr:
+            if etau.is_str(expr):
+                needs_frames |= sample_collection._is_frame_field(expr)
+            else:
+                needs_frames |= _is_frames_expr(expr)
+
+        return needs_frames
 
     def _get_mongo_field_or_expr(self):
-        if isinstance(self._field_or_expr, foe.ViewField):
-            return self._field_or_expr._expr
-
-        if isinstance(self._field_or_expr, foe.ViewExpression):
-            return self._field_or_expr.to_mongo()
-
-        return self._field_or_expr
+        return _serialize_sort_expr(self._field_or_expr)
 
     def _kwargs(self):
         return [
@@ -4854,6 +4903,41 @@ class SortBy(ViewStage):
         if etau.is_str(field_or_expr):
             sample_collection.validate_fields_exist(field_or_expr)
             sample_collection.create_index(field_or_expr)
+
+
+def _serialize_sort_expr(field_or_expr):
+    if isinstance(field_or_expr, foe.ViewField):
+        return field_or_expr._expr
+
+    if isinstance(field_or_expr, foe.ViewExpression):
+        return field_or_expr.to_mongo()
+
+    if isinstance(field_or_expr, (list, tuple)):
+        return [
+            (_serialize_sort_expr(expr), _parse_sort_order(order))
+            for expr, order in field_or_expr
+        ]
+
+    return field_or_expr
+
+
+def _parse_sort_order(order):
+    if etau.is_str(order):
+        if order:
+            if order.lower()[0] == "a":
+                return 1
+
+            if order.lower()[0] == "d":
+                return -1
+
+    if order in {-1, 1}:
+        return order
+
+    raise ValueError(
+        "Invalid sort order %s. Supported values are 1 or any string starting "
+        "with 'a' for ascending order, or -1 or any string starting with 'd' "
+        "for descending order"
+    )
 
 
 class SortBySimilarity(ViewStage):
