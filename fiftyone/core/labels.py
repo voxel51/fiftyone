@@ -1283,13 +1283,17 @@ class Heatmap(_HasID, Label):
     """A heatmap for an image.
 
     Args:
-        mask (None): a 2D numpy array, which can have either floating point
-            values in ``[0, 1]`` or integer values in ``[0, 255]``
+        map (None): a 2D numpy array
+        range (None): an optional ``[min, max]`` range of the map's values. If
+            None is provided, ``[0, 1]`` will be assumed if ``map`` contains
+            floating point values, and ``[0, 255]`` will be assumed if ``map``
+            contains integer values
     """
 
     meta = {"allow_inheritance": True}
 
     map = fof.ArrayField()
+    range = fof.HeatmapRangeField()
 
 
 class GeoLocation(_HasID, Label):

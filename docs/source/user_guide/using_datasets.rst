@@ -1703,9 +1703,12 @@ The |Heatmap| class represents a heatmap for an image. The map itself is stored
 in the :attr:`map <fiftyone.core.labels.Heatmap.map>` attribute of the
 |Heatmap| object.
 
-The map should be a 2D numpy array with either floating point values in
-``[0, 1]`` or integer values in ``[0, 255]`` encoding the intensities. The
-array can be of any size; it is stretched as necessary to fit the image's
+Maps should be 2D numpy arrays. By default, the map values are assumed to be in
+`[0, 1]` for floating point arrays and `[0, 255]` for integer-valued arrays,
+but you can specify a custom `[min, max]` range for a map by setting its
+optional :attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
+
+The array can be of any size; it is stretched as necessary to fit the image's
 extent when visualizing in the App.
 
 .. code-block:: python
