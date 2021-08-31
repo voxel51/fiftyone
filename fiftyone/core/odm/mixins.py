@@ -229,7 +229,7 @@ class DatasetMixin(object):
         return self._get_fields_ordered(include_private=include_private)
 
     @classmethod
-    def _field_doc_name(cls):
+    def _doc_name(cls):
         return "Frame" if cls._is_frames_doc else "Sample"
 
     @classmethod
@@ -315,8 +315,7 @@ class DatasetMixin(object):
 
         if not expand_schema and add_fields:
             raise ValueError(
-                "%s fields %s do not exist"
-                % (cls._field_doc_name(), add_fields)
+                "%s fields %s do not exist" % (cls._doc_name(), add_fields)
             )
 
         for field_name in add_fields:
@@ -330,7 +329,7 @@ class DatasetMixin(object):
     def get_field(self, field_name):
         if not self.has_field(field_name):
             raise AttributeError(
-                "%s has no field '%s'" % (self._field_doc_name(), field_name)
+                "%s has no field '%s'" % (self._doc_name(), field_name)
             )
 
         return getattr(self, field_name)
@@ -374,8 +373,7 @@ class DatasetMixin(object):
         # pylint: disable=no-member
         if field_name in cls._fields:
             raise ValueError(
-                "%s field '%s' already exists"
-                % (cls._field_doc_name(), field_name)
+                "%s field '%s' already exists" % (cls._doc_name(), field_name)
             )
 
         cls.add_field(field_name, **get_implied_field_kwargs(value))
@@ -395,8 +393,7 @@ class DatasetMixin(object):
                 self.add_implied_field(field_name, value)
             else:
                 raise ValueError(
-                    "%s has no field '%s'"
-                    % (self._field_doc_name(), field_name)
+                    "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
 
         self.__setattr__(field_name, value)
@@ -419,14 +416,14 @@ class DatasetMixin(object):
             if field_name in default_fields:
                 raise ValueError(
                     "Cannot rename default %s field '%s'"
-                    % (cls._field_doc_name(), field_name)
+                    % (cls._doc_name(), field_name)
                 )
 
             # pylint: disable=no-member
             if field_name not in cls._fields:
                 raise AttributeError(
                     "%s field '%s' does not exist"
-                    % (cls._field_doc_name(), field_name)
+                    % (cls._doc_name(), field_name)
                 )
 
         if not field_names:
@@ -478,7 +475,7 @@ class DatasetMixin(object):
             if field_name not in cls._fields:
                 raise AttributeError(
                     "%s field '%s' does not exist"
-                    % (cls._field_doc_name(), field_name)
+                    % (cls._doc_name(), field_name)
                 )
 
         for field_name, new_field_name in zip(field_names, new_field_names):
@@ -712,9 +709,7 @@ class DatasetMixin(object):
 
         cls._fields[field.name] = field
         cls._fields_ordered += (field.name,)
-
-        # @todo was this needed?
-        # setattr(cls, field.name, field)
+        setattr(cls, field.name, field)
 
     @classmethod
     def _add_field_schema(
@@ -728,8 +723,7 @@ class DatasetMixin(object):
         # pylint: disable=no-member
         if field_name in cls._fields:
             raise ValueError(
-                "%s field '%s' already exists"
-                % (cls._field_doc_name(), field_name)
+                "%s field '%s' already exists" % (cls._doc_name(), field_name)
             )
 
         field = create_field(
@@ -936,8 +930,8 @@ class DatasetMixin(object):
 
 
 class NoDatasetMixin(object):
-    """Mixin for :class:`fiftyone.core.odm.document.Document` subtypes that are
-    not backed by a dataset.
+    """Mixin for :class:`fiftyone.core.odm.document.SerializableDocument`
+    subtypes that are not backed by a dataset.
     """
 
     # Subtypes must declare this
@@ -970,7 +964,7 @@ class NoDatasetMixin(object):
         return self.field_names
 
     @classmethod
-    def _field_doc_name(cls):
+    def _doc_name(cls):
         return "Frame" if cls._is_frames_doc else "Sample"
 
     @property
@@ -1017,7 +1011,7 @@ class NoDatasetMixin(object):
     def get_field(self, field_name):
         if not self.has_field(field_name):
             raise AttributeError(
-                "%s has no field '%s'" % (self._field_doc_name(), field_name)
+                "%s has no field '%s'" % (self._doc_name(), field_name)
             )
 
         return getattr(self, field_name)
@@ -1038,8 +1032,7 @@ class NoDatasetMixin(object):
                 self._data[field_name] = None
             else:
                 raise ValueError(
-                    "%s has no field '%s'"
-                    % (self._field_doc_name(), field_name)
+                    "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
 
         self.__setattr__(field_name, value)
@@ -1052,7 +1045,7 @@ class NoDatasetMixin(object):
 
         if field_name not in self._data:
             raise ValueError(
-                "%s has no field '%s'" % (self._field_doc_name(), field_name)
+                "%s has no field '%s'" % (self._doc_name(), field_name)
             )
 
         self._data.pop(field_name)

@@ -4331,13 +4331,11 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     collection = conn[sample_collection_name]
     collection.create_index("filepath")
 
-    if frame_collection_name is None:
-        return
-
-    frame_collection = conn[frame_collection_name]
-    frame_collection.create_index(
-        [("_sample_id", 1), ("frame_number", 1)], unique=True
-    )
+    if frame_collection_name is not None:
+        frame_collection = conn[frame_collection_name]
+        frame_collection.create_index(
+            [("_sample_id", 1), ("frame_number", 1)], unique=True
+        )
 
 
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
