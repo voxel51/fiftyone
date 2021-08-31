@@ -23,15 +23,20 @@ def make_clips_dataset(sample_collection, field_or_expr, tol=0, min_len=0):
 
     The returned dataset will contain:
 
-    -   The default sample-level fields of the input collection
+    -   All sample-level fields of the input collection
+    -   When ``field_or_expr`` is a video classification(s) field, the field
+        will be converted to a :class:`fiftyone.core.labels.Classification`
+        field
     -   A ``support`` field that records the ``[first, last]`` frame support of
         each clip
     -   A ``sample_id`` field that records the sample ID from which each clip
         was taken
-    -   When ``field_or_expr`` is a video classification(s) field, a
-        :class:`fiftyone.core.labels.Classification` field of the same name
-        that contains the classification for each clip
     -   All frame-level information in the input collection
+
+    ..note::
+
+        The returned dataset will directly use the frame collection of the
+        input dataset.
 
     Args:
         sample_collection: a
@@ -52,10 +57,9 @@ def make_clips_dataset(sample_collection, field_or_expr, tol=0, min_len=0):
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    fov.validate_video_collection(sample_collection)
+    _validate_collection(sample_collection)
 
     is_classification_clips = etau.is_str(field_or_expr)
-    support_field = "support"
 
     dataset = fod.Dataset(_clips=True)
     dataset.media_type = fom.VIDEO
@@ -65,6 +69,7 @@ def make_clips_dataset(sample_collection, field_or_expr, tol=0, min_len=0):
     dataset.create_index("sample_id")
     dataset.add_sample_field("support", fof.FrameSupportField)
 
+    # Convert video classifications to classifications
     if is_classification_clips:
         dataset.add_sample_field(
             field_or_expr,
@@ -72,31 +77,77 @@ def make_clips_dataset(sample_collection, field_or_expr, tol=0, min_len=0):
             embedded_doc_type=fol.Classification,
         )
 
-    frame_schema = sample_collection.get_frame_field_schema()
-    dataset._frame_doc_cls.merge_field_schema(frame_schema)
+    current_schema = dataset.get_field_schema()
+    dataset._sample_doc_cls.merge_field_schema(
+        {
+            k: v
+            for k, v in sample_collection.get_field_schema()
+            if k not in current_schema
+        }
+    )
+
+    # Directly inherit frames collection from source dataset
+    src_dataset = sample_collection._dataset
+    dataset._frame_doc_cls = src_dataset._frame_doc_cls
+    dataset._doc.frame_collection_name = src_dataset._doc.frame_collection_name
+    dataset._doc.frame_fields = src_dataset._doc.frame_fields
+    dataset._doc.save()
+
+    _make_pretty_summary(dataset)
 
     if is_classification_clips:
-        _write_classification_clips(
-            dataset, sample_collection, support_field, field_or_expr
-        )
+        _write_classification_clips(dataset, sample_collection, field_or_expr)
     else:
         _write_expr_clips(
-            dataset,
-            sample_collection,
-            support_field,
-            field_or_expr,
-            tol=tol,
-            min_len=min_len,
+            dataset, sample_collection, field_or_expr, tol=tol, min_len=min_len
         )
 
     return dataset
 
 
-def make_trajectories_dataset(sample_collection, field):
-    fov.validate_video_collection(sample_collection)
-    field, _ = sample_collection._handle_frame_field(field)
+def make_trajectories_dataset(sample_collection, field, only_tracks=True):
+    """Creates a dataset that contains one sample per clip defined by each
+    object trajectory in the frames of the given collection.
 
-    support_field = "support"
+    An object trajectory is defined by a collection of
+    :class:`fiftyone.core.labels.Label` instances in a sample with the same
+    ``(label, index)``.
+
+    The returned dataset will contain:
+
+    -   All sample-level fields of the input collection
+    -   A ``"support"`` field that records the ``[first, last]`` frame support
+        of each clip
+    -   A ``"sample_id"`` field that records the sample ID from which each clip
+        was taken
+    -   A new ``field`` that records the ``label`` of each trajectory
+    -   All frame-level information in the input collection
+
+    ..note::
+
+        The returned dataset will directly use the frame collection of the
+        input dataset.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        field: the name of a frame-level object field, which can be any of the
+            following types:
+
+            -   :class:`fiftyone.core.labels.Detections`
+            -   :class:`fiftyone.core.labels.Polylines`
+            -   :class:`fiftyone.core.labels.Keypoints`
+
+            The ``"frames."`` prefix is optional
+        only_tracks (True): whether to omit labels with no ``index`` (True) or
+            create single-frame clips for every label without an index (False)
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    _validate_collection(sample_collection)
+
+    field, _ = sample_collection._handle_frame_field(field)
 
     dataset = fod.Dataset(_clips=True)
     dataset.media_type = fom.VIDEO
@@ -104,18 +155,52 @@ def make_trajectories_dataset(sample_collection, field):
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
     dataset.create_index("sample_id")
-    dataset.add_sample_field(support_field, fof.FrameSupportField)
+    dataset.add_sample_field("support", fof.FrameSupportField)
+
+    # Store trajectory label as string field
+    # @todo `label` and `index` in a `Label` field?
     dataset.add_sample_field(field, fof.StringField)
 
-    frame_schema = sample_collection.get_frame_field_schema()
-    dataset._frame_doc_cls.merge_field_schema(frame_schema)
+    current_schema = dataset.get_field_schema()
+    dataset._sample_doc_cls.merge_field_schema(
+        {
+            k: v
+            for k, v in sample_collection.get_field_schema()
+            if k not in current_schema
+        }
+    )
 
-    _write_trajectories(dataset, sample_collection, support_field, field)
+    # Directly inherit frames collection from source dataset
+    src_dataset = sample_collection._dataset
+    dataset._frame_doc_cls = src_dataset._frame_doc_cls
+    dataset._doc.frame_collection_name = src_dataset._doc.frame_collection_name
+    dataset._doc.frame_fields = src_dataset._doc.frame_fields
+    dataset._doc.save()
+
+    _make_pretty_summary(dataset)
+
+    _write_trajectories(dataset, sample_collection, field, only_tracks)
 
     return dataset
 
 
-def _write_classification_clips(dataset, src_collection, support_field, field):
+def _validate_collection(sample_collection):
+    fov.validate_video_collection(sample_collection)
+    if sample_collection._dataset._is_clips:
+        raise ValueError(
+            "Cannot extract clips from a collection that already contains "
+            "clips"
+        )
+
+
+def _make_pretty_summary(dataset):
+    set_fields = ["id", "sample_id", "filepath", "suppoprt"]
+    all_fields = dataset._sample_doc_cls._fields_ordered
+    pretty_fields = set_fields + [f for f in all_fields if f not in set_fields]
+    dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
+
+
+def _write_classification_clips(dataset, src_collection, field):
     src_dataset = src_collection._dataset
     label_type = src_collection._get_label_field_type(field)
 
@@ -156,7 +241,7 @@ def _write_classification_clips(dataset, src_collection, support_field, field):
         [
             {
                 "$set": {
-                    support_field: "$" + support_path,
+                    "support": "$" + support_path,
                     field + "._cls": "Classification",
                     "_rand": {"$rand": {}},
                 }
@@ -168,20 +253,10 @@ def _write_classification_clips(dataset, src_collection, support_field, field):
 
     src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
-    #
-    # Populate frames collection
-    #
 
-    pipeline = src_collection._pipeline(frames_only=True)
-    pipeline.append({"$out": dataset._frame_collection_name})
-    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
-
-
-def _write_expr_clips(
-    dataset, src_collection, support_field, expr, tol=0, min_len=0
-):
+def _write_expr_clips(dataset, src_collection, expr, tol=0, min_len=0):
     src_dataset = src_collection._dataset
-    _support_field = "_" + support_field
+    _tmp_field = "_support"
 
     #
     # Convert expression to clips
@@ -191,10 +266,10 @@ def _write_expr_clips(
     bools = src_collection.values(F("frames").map(expr))
     clips = [_to_rle(b, tol=tol, min_len=min_len) for b in bools]
     src_collection.set_values(
-        _support_field, clips, expand_schema=False, _allow_missing=True,
+        _tmp_field, clips, expand_schema=False, _allow_missing=True,
     )
 
-    src_collection = fod._always_select_field(src_collection, _support_field)
+    src_collection = fod._always_select_field(src_collection, _tmp_field)
 
     #
     # Populate sample collection
@@ -211,28 +286,20 @@ def _write_expr_clips(
                     "metadata": True,
                     "tags": True,
                     "_sample_id": "$_id",
-                    _support_field: True,
+                    _tmp_field: True,
                 }
             },
-            {"$set": {support_field: "$" + _support_field}},
-            {"$unset": _support_field},
-            {"$unwind": "$" + support_field},
+            {"$set": {"support": "$" + _tmp_field}},
+            {"$unset": _tmp_field},
+            {"$unwind": "$support"},
             {"$set": {"_rand": {"$rand": {}}}},
             {"$out": dataset._sample_collection_name},
         ]
     )
     src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
-    cleanup_op = {"$unset": {_support_field: ""}}
+    cleanup_op = {"$unset": {_tmp_field: ""}}
     src_dataset._sample_collection.update_many({}, cleanup_op)
-
-    #
-    # Populate frames collection
-    #
-
-    pipeline = src_collection._pipeline(frames_only=True)
-    pipeline.append({"$out": dataset._frame_collection_name})
-    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
 
 def _to_rle(bools, tol=0, min_len=0):
@@ -265,13 +332,13 @@ def _to_rle(bools, tol=0, min_len=0):
     return ranges
 
 
-def _write_trajectories(dataset, src_collection, support_field, field):
+def _write_trajectories(dataset, src_collection, field, only_tracks):
     src_dataset = src_collection._dataset
     _tmp_field = "_" + field
 
     # Get trajectories
 
-    trajs = _get_trajectories(src_collection, field)
+    trajs = _get_trajectories(src_collection, field, only_tracks)
     src_collection.set_values(
         _tmp_field, trajs, expand_schema=False, _allow_missing=True,
     )
@@ -299,7 +366,7 @@ def _write_trajectories(dataset, src_collection, support_field, field):
             {"$unwind": "$" + _tmp_field},
             {
                 "$set": {
-                    support_field: {"$slice": ["$" + _tmp_field, 1, 2]},
+                    "support": {"$slice": ["$" + _tmp_field, 1, 2]},
                     field: {"$arrayElemAt": ["$" + _tmp_field, 0]},
                 }
             },
@@ -313,16 +380,8 @@ def _write_trajectories(dataset, src_collection, support_field, field):
     cleanup_op = {"$unset": {_tmp_field: ""}}
     src_dataset._sample_collection.update_many({}, cleanup_op)
 
-    #
-    # Populate frames collection
-    #
 
-    pipeline = src_collection._pipeline(frames_only=True)
-    pipeline.append({"$out": dataset._frame_collection_name})
-    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
-
-
-def _get_trajectories(sample_collection, frame_field):
+def _get_trajectories(sample_collection, frame_field, only_tracks):
     path = sample_collection._FRAMES_PREFIX + frame_field
     label_type = sample_collection._get_label_field_type(path)
 
@@ -360,12 +419,12 @@ def _get_trajectories(sample_collection, frame_field):
                 label, index = uuid.rsplit(".", 1)
                 if index:
                     index = int(index)
-                else:
-                    # Assumes all valid indexes are positive numbers!
+                    obs[(label, index)].add(fn)
+                elif not only_tracks:
+                    # @note assumes all valid indexes are positive numbers!
                     orphan_conter -= 1
                     index = orphan_conter
-
-                obs[(label, index)].add(fn)
+                    obs[(label, index)].add(fn)
 
         clips = []
         for (label, _), bounds in obs.items():
