@@ -446,6 +446,8 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
             "convert your video dataset to frames via `to_frames()`"
         )
 
+    is_frame_patches = sample_collection._is_frames
+
     if keep_label_lists:
         field_type = sample_collection._get_label_field_type(field)
     else:
@@ -458,7 +460,7 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
     )
     dataset.create_index("sample_id")
 
-    if sample_collection._is_frames:
+    if is_frame_patches:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
@@ -469,6 +471,8 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
     dataset.add_sample_field(
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
     )
+
+    _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
     patches_view = _make_patches_view(
         sample_collection, field, keep_label_lists=keep_label_lists
@@ -539,7 +543,9 @@ def make_evaluation_dataset(sample_collection, eval_key):
     else:
         crowd_attr = None
 
-    if sample_collection._is_frames:
+    is_frame_patches = sample_collection._is_frames
+
+    if is_frame_patches:
         if not pred_field.startswith(sample_collection._FRAMES_PREFIX):
             raise ValueError(
                 "Cannot extract evaluation patches for sample-level "
@@ -561,17 +567,11 @@ def make_evaluation_dataset(sample_collection, eval_key):
     dataset = fod.Dataset(_patches=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
-        pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
-    )
-    dataset.add_sample_field(
-        gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
-    )
-    dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
     dataset.create_index("sample_id")
 
-    if sample_collection._is_frames:
+    if is_frame_patches:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
@@ -579,10 +579,20 @@ def make_evaluation_dataset(sample_collection, eval_key):
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
-    dataset.add_sample_field("type", fof.StringField)
-    dataset.add_sample_field("iou", fof.FloatField)
+    dataset.add_sample_field(
+        gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
+    )
+    dataset.add_sample_field(
+        pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
+    )
+
     if crowd_attr is not None:
         dataset.add_sample_field("crowd", fof.BooleanField)
+
+    dataset.add_sample_field("type", fof.StringField)
+    dataset.add_sample_field("iou", fof.FloatField)
+
+    _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
 
     # Add ground truth patches
     gt_view = _make_eval_view(
@@ -600,6 +610,23 @@ def make_evaluation_dataset(sample_collection, eval_key):
     _add_samples(dataset, unmatched_pred_view)
 
     return dataset
+
+
+def _make_pretty_summary(dataset, is_frame_patches=False):
+    if is_frame_patches:
+        set_fields = [
+            "id",
+            "sample_id",
+            "frame_id",
+            "filepath",
+            "frame_number",
+        ]
+    else:
+        set_fields = ["id", "sample_id", "filepath"]
+
+    all_fields = dataset._sample_doc_cls._fields_ordered
+    pretty_fields = set_fields + [f for f in all_fields if f not in set_fields]
+    dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
 def _make_patches_view(sample_collection, field, keep_label_lists=False):

@@ -474,6 +474,8 @@ def make_frames_dataset(
     # later when syncing the source collection
     dataset.create_index([("sample_id", 1), ("frame_number", 1)], unique=True)
 
+    _make_pretty_summary(dataset)
+
     # Populate frames dataset
     ids_to_sample, frames_to_sample = _populate_frames(
         dataset,
@@ -502,6 +504,13 @@ def make_frames_dataset(
         )
 
     return dataset
+
+
+def _make_pretty_summary(dataset):
+    set_fields = ["id", "sample_id", "filepath", "frame_number"]
+    all_fields = dataset._sample_doc_cls._fields_ordered
+    pretty_fields = set_fields + [f for f in all_fields if f not in set_fields]
+    dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
 def _populate_frames(
