@@ -4386,7 +4386,7 @@ def _load_dataset(name, migrate=True):
         dataset_doc.sample_collection_name
     )
 
-    # @todo remove this, just a hack to work with non-migrated datasets
+    # @todo REMOVE THIS, JUST A HACK TO WORK WITH NON-MIGRATED DATASETS
     if dataset_doc.frame_collection_name is None:
         dataset_doc.frame_collection_name = (
             "frames." + dataset_doc.sample_collection_name
