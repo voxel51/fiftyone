@@ -190,8 +190,8 @@ class DatasetDocument(Document):
 
     name = StringField(unique=True, required=True)
     version = StringField(required=True, null=True)
-    creation_date = DateTimeField()
-    last_loaded_date = DateTimeField()
+    created_at = DateTimeField()
+    last_loaded_at = DateTimeField()
     persistent = BooleanField(default=False)
     media_type = StringField()
     info = DictField()

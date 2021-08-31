@@ -374,7 +374,7 @@ class DatasetsInfoCommand(Command):
 
         # Print basic information about all datasets
         fiftyone datasets info
-        fiftyone datasets info --sort-by creation_date
+        fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
         # Print information about a specific dataset
@@ -390,7 +390,7 @@ class DatasetsInfoCommand(Command):
             "-s",
             "--sort-by",
             metavar="FIELD",
-            default="last_loaded_date",
+            default="last_loaded_at",
             help="a field to sort the dataset rows by",
         )
         parser.add_argument(
@@ -418,8 +418,8 @@ def _print_all_dataset_info(sort_by, reverse):
 
     headers = [
         "name",
-        "creation_date",
-        "last_loaded_date",
+        "created_at",
+        "last_loaded_at",
         "version",
         "persistent",
         "media_type",

@@ -370,14 +370,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
     @property
-    def creation_date(self):
+    def created_at(self):
         """The datetime that the dataset was created."""
-        return self._doc.creation_date
+        return self._doc.created_at
 
     @property
-    def last_loaded_date(self):
+    def last_loaded_at(self):
         """The datetime that the dataset was last loaded."""
-        return self._doc.last_loaded_date
+        return self._doc.last_loaded_at
 
     @property
     def persistent(self):
@@ -4240,8 +4240,8 @@ def _list_dataset_info():
         info.append(
             {
                 "name": dataset.name,
-                "creation_date": dataset.creation_date,
-                "last_loaded_date": dataset.last_loaded_date,
+                "created_at": dataset.created_at,
+                "last_loaded_at": dataset.last_loaded_at,
                 "version": dataset.version,
                 "persistent": dataset.persistent,
                 "media_type": dataset.media_type,
@@ -4282,8 +4282,8 @@ def _create_dataset(name, persistent=False, patches=False, frames=False):
     dataset_doc = foo.DatasetDocument(
         name=name,
         version=focn.VERSION,
-        creation_date=now,
-        last_loaded_date=now,
+        created_at=now,
+        last_loaded_at=now,
         persistent=persistent,
         media_type=None,
         sample_collection_name=sample_collection_name,
@@ -4373,7 +4373,7 @@ def _load_dataset(name, virtual=False):
             frame_doc_cls._declare_field(frame_field)
 
     if not virtual:
-        dataset_doc.last_loaded_date = datetime.utcnow()
+        dataset_doc.last_loaded_at = datetime.utcnow()
         dataset_doc.save()
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
@@ -4434,8 +4434,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     dataset_doc = dataset._doc.copy()
     dataset_doc.name = name
-    dataset_doc.creation_date = datetime.utcnow()
-    dataset_doc.last_loaded_date = None
+    dataset_doc.created_at = datetime.utcnow()
+    dataset_doc.last_loaded_at = None
     dataset_doc.persistent = False
     dataset_doc.sample_collection_name = sample_collection_name
 

@@ -336,7 +336,7 @@ Print information about FiftyOne datasets.
 
     # Print basic information about all datasets
     fiftyone datasets info
-    fiftyone datasets info --sort-by creation_date
+    fiftyone datasets info --sort-by created_at
     fiftyone datasets info --sort-by name --reverse
 
 .. code-block:: shell
