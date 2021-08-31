@@ -318,18 +318,18 @@ Or, you can even dynamically change the timezone while you work in Python:
     from datetime import datetime
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="image.png", creation_date=datetime.utcnow())
+    sample = fo.Sample(filepath="image.png", created_at=datetime.utcnow())
 
     dataset = fo.Dataset()
     dataset.add_sample(sample)
 
-    print(sample.creation_date)
+    print(sample.created_at)
     # 2021-08-24 20:24:09.723021
 
     fo.config.timezone = "local"
     dataset.reload()
 
-    print(sample.creation_date)
+    print(sample.created_at)
     # 2021-08-24 16:24:09.723000-04:00
 
 .. note::

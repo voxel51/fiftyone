@@ -978,11 +978,11 @@ You can store date information in FiftyOne datasets by populating fields with
         [
             fo.Sample(
                 filepath="image1.png",
-                creation_date=datetime(2021, 8, 24, 21, 18, 7),
+                created_at=datetime(2021, 8, 24, 21, 18, 7),
             ),
             fo.Sample(
                 filepath="image2.png",
-                creation_date=datetime.utcnow(),
+                created_at=datetime.utcnow(),
             ),
         ]
     )
@@ -1006,7 +1006,7 @@ format for safekeeping.
     # A datetime in your local timezone
     now = datetime.utcnow().astimezone()
 
-    sample = fo.Sample(filepath="image.png", creation_date=now)
+    sample = fo.Sample(filepath="image.png", created_at=now)
 
     dataset = fo.Dataset()
     dataset.add_sample(sample)
@@ -1015,7 +1015,7 @@ format for safekeeping.
     # loaded from the database
     dataset.reload()
 
-    sample.creation_date.tzinfo  # None
+    sample.created_at.tzinfo  # None
 
 By default, when you access a datetime field of a sample in a dataset, it is
 retrieved as a naive `datetime` instance expressed in UTC format.
