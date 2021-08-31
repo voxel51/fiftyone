@@ -189,15 +189,22 @@ class DatasetStatistics(object):
 
         schema = collection.get_field_schema()
         for field_name, field in schema.items():
-            if field_name != "metadata":
-                result.append((field_name, field))
+            if field_name == "metadata":
+                continue
 
-        if collection.media_type == fom.VIDEO:
-            prefix = collection._FRAMES_PREFIX
-            frame_schema = collection.get_frame_field_schema()
-            for field_name, field in frame_schema.items():
-                if field_name not in ("id", "frame_number"):
-                    result.append((prefix + field_name, field))
+            result.append((field_name, field))
+
+        if collection.media_type != fom.VIDEO:
+            return result
+
+        prefix = collection._FRAMES_PREFIX
+        frame_schema = collection.get_frame_field_schema()
+
+        for field_name, field in frame_schema.items():
+            if field_name in ("id", "frame_number"):
+                continue
+
+            result.append((prefix + field_name, field))
 
         return result
 
@@ -237,51 +244,26 @@ class DatasetStatistics(object):
         aggregations = [foa.Count()]
 
         if view.media_type == fom.VIDEO:
-            aggregations.extend([foa.Count("frames")])
+            aggregations.append(foa.Count("frames"))
 
         for field_name, field in self.fields(view):
+            path = field_name
+
             if _is_label(field):
                 path = _expand_labels_path(field_name, field)
-                aggregations.append(foa.Count(path))
-                label_path = "%s.label" % path
-                confidence_path = "%s.confidence" % path
-                tags_path = "%s.tags" % path
-                include_labels = (
-                    None
-                    if filters is None or label_path not in filters
-                    else filters[label_path]["values"]
+                aggregations += _get_label_aggregations(path, filters)
+            elif _meets_type(
+                field, (fof.DateTimeField, fof.FloatField, fof.IntField)
+            ):
+                aggregations.append(foa.Bounds(field_name))
+            elif _meets_type(
+                field, (fof.BooleanField, fof.StringField, fof.ObjectIdField),
+            ):
+                aggregations.append(
+                    _get_categorical_aggregation(path, filters)
                 )
-                aggregations.extend(
-                    [
-                        foa.CountValues(
-                            label_path, _first=200, _include=include_labels
-                        ),
-                        foa.Count(label_path),
-                        foa.Bounds(confidence_path),
-                        foa.Count(confidence_path),
-                        foa.CountValues(tags_path),
-                    ]
-                )
-            else:
-                aggregations.append(foa.Count(field_name))
-                if _meets_type(field, (fof.IntField, fof.FloatField)):
-                    aggregations.append(foa.Bounds(field_name))
-                elif _meets_type(
-                    field,
-                    (fof.BooleanField, fof.StringField, fof.ObjectIdField),
-                ):
-                    include = (
-                        None
-                        if filters is None
-                        or field_name not in filters
-                        or field_name == "tags"
-                        else filters[field_name]["values"]
-                    )
-                    aggregations.append(
-                        foa.CountValues(
-                            field_name, _first=200, _include=include
-                        )
-                    )
+
+            aggregations.append(fo.Count(path))
 
         return aggregations
 
@@ -291,6 +273,34 @@ def _expand_labels_path(root, label_field):
         return "%s.%s" % (root, label_field.document_type._LABEL_LIST_FIELD,)
 
     return root
+
+
+def _get_categorical_aggregation(path, filters):
+    include = (
+        None
+        if filters is None or path not in filters or path == "tags"
+        else filters[path]["values"]
+    )
+    return foa.CountValues(path, _first=200, _include=include)
+
+
+def _get_label_aggregations(path, filters):
+    label_path = "%s.label" % path
+    confidence_path = "%s.confidence" % path
+    tags_path = "%s.tags" % path
+    include_labels = (
+        None
+        if filters is None or label_path not in filters
+        else filters[label_path]["values"]
+    )
+    return [
+        foa.Count(path),
+        foa.CountValues(label_path, _first=200, _include=include_labels),
+        foa.Count(label_path),
+        foa.Bounds(confidence_path),
+        foa.Count(confidence_path),
+        foa.CountValues(tags_path),
+    ]
 
 
 def _meets_type(field, t):
@@ -303,7 +313,3 @@ def _is_label(field):
     return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
         field.document_type, fol.Label
     )
-
-
-def _is_label_list(field):
-    return issubclass(field.document_type, fol._LABEL_LIST_FIELDS)

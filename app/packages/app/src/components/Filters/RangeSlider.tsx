@@ -69,6 +69,7 @@ const SliderStyled = styled(SliderUnstyled)`
 
   .valueLabel > span > span {
     color: transparent;
+    white-space: nowrap;
   }
 
   .valueLabel > span > span {
@@ -80,17 +81,17 @@ const SliderStyled = styled(SliderUnstyled)`
 
 const getDateFormatter = (timeZone) =>
   new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "long",
-    timeZone,
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: timeZone || "UTC",
   });
 
 const getFormatter = (fieldType, timeZone) => (v) =>
   fieldType === DATE_TIME_FIELD
-    ? getDateFormatter(timeZone).format(new Date(v * 1000))
+    ? getDateFormatter(timeZone).format(new Date(v))
     : numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
 
-const getStep = (bounds: [number, number], fieldType: string): number => {
+const getStep = (bounds: [number, number], fieldType?: string): number => {
   const delta = bounds[1] - bounds[0];
   const max = 120;
 
@@ -119,7 +120,7 @@ const getStep = (bounds: [number, number], fieldType: string): number => {
   }
 
   let step = delta / max;
-  if (fieldType === INT_FIELD) {
+  if (!fieldType || fieldType === INT_FIELD) {
     return Math.ceil(step);
   }
 
@@ -138,7 +139,7 @@ type BaseSliderProps = {
   onCommit: (e: Event, v: Range | number) => void;
   persistValue?: boolean;
   showBounds?: boolean;
-  fieldType: string;
+  fieldType?: string;
   style?: React.CSSProperties;
 };
 
@@ -156,7 +157,11 @@ const BaseSlider = React.memo(
   }: BaseSliderProps) => {
     const theme = useContext(ThemeContext);
     const bounds = useRecoilValue(boundsAtom);
-    const timezone = useRecoilValue(selectors.timezone);
+
+    const timeZone =
+      fieldType && fieldType === DATE_TIME_FIELD
+        ? useRecoilValue(selectors.timeZone)
+        : null;
     const [clicking, setClicking] = useState(false);
 
     const hasBounds = bounds.every((b) => b !== null);
@@ -164,8 +169,8 @@ const BaseSlider = React.memo(
     if (!hasBounds) {
       return null;
     }
-
-    const formatter = getFormatter(fieldType, timezone);
+    const step = getStep(bounds, fieldType);
+    const formatter = getFormatter(fieldType, timeZone);
 
     return (
       <SliderContainer style={style}>
@@ -191,7 +196,7 @@ const BaseSlider = React.memo(
           valueLabelDisplay={clicking || persistValue ? "on" : "off"}
           max={bounds[1]}
           min={bounds[0]}
-          step={getStep(bounds, fieldType)}
+          step={step}
           theme={{ ...theme, brand: color }}
         />
         {showBounds && formatter(bounds[1])}
@@ -205,7 +210,7 @@ type SliderProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   persistValue?: boolean;
-  fieldType: string;
+  fieldType?: string;
   showBounds?: boolean;
   int?: boolean;
 };

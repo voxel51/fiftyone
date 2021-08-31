@@ -212,8 +212,8 @@ export abstract class Looker<
       ctx.clearRect(
         0,
         0,
-        Math.ceil(this.state.windowBBox[2] * dpr),
-        Math.ceil(this.state.windowBBox[3] * dpr)
+        this.state.windowBBox[2] * dpr,
+        this.state.windowBBox[3] * dpr
       );
 
       ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);

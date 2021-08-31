@@ -7,8 +7,26 @@ import {
 
 import * as selectors from "../../recoil/selectors";
 import { Range } from "./RangeSlider";
-import { AGGS, LIST_FIELD, VALID_NUMERIC_TYPES } from "../../utils/labels";
+import {
+  AGGS,
+  DATE_TIME_FIELD,
+  LIST_FIELD,
+  VALID_NUMERIC_TYPES,
+} from "../../utils/labels";
 import { filterStage } from "./atoms";
+
+export const isDateTimeField = selectorFamily<boolean, string>({
+  key: "isDateTimeField",
+  get: (name) => ({ get }) => {
+    let map = get(selectors.primitivesMap("sample"));
+
+    if (map[name] === LIST_FIELD) {
+      map = get(selectors.primitivesSubfieldMap("sample"));
+    }
+
+    return map[name] === DATE_TIME_FIELD;
+  },
+});
 
 export const isNumericField = selectorFamily<boolean, string>({
   key: "isNumericField",
@@ -92,12 +110,19 @@ export const boundsAtom = selectorFamily<
 >({
   key: "numericFieldBounds",
   get: ({ path, defaultRange }) => ({ get }) => {
+    const isDateTime = get(isDateTimeField(path));
+
     let bounds = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
-        if (cur.name === path && cur._CLS === AGGS.BOUNDS) {
-          return cur.result;
+        if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
+          return acc;
         }
-        return acc;
+
+        if (isDateTime) {
+          return cur.result.map((v) => v.$date);
+        }
+
+        return cur.result;
       },
       [null, null]
     );

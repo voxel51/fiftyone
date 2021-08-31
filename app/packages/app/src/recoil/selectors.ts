@@ -413,9 +413,10 @@ export const defaultGridZoom = selector<number | null>({
   },
 });
 
-export const timezone = selector<string>({
-  key: "timezone",
+export const timeZone = selector<string>({
+  key: "timeZone",
   get: ({ get }) => {
+    console.log(get(appConfig));
     return get(appConfig).timezone;
   },
 });

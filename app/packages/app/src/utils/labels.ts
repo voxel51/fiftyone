@@ -95,6 +95,7 @@ export const LIST_FIELD = "fiftyone.core.fields.ListField";
 
 export const VALID_SCALAR_TYPES = [
   BOOLEAN_FIELD,
+  DATE_TIME_FIELD,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   INT_FIELD,
@@ -102,7 +103,12 @@ export const VALID_SCALAR_TYPES = [
   STRING_FIELD,
 ];
 
-export const VALID_NUMERIC_TYPES = [FLOAT_FIELD, FRAME_NUMBER_FIELD, INT_FIELD];
+export const VALID_NUMERIC_TYPES = [
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+];
 
 export const RESERVED_FIELDS = [
   "_id",

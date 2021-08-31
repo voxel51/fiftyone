@@ -40,7 +40,7 @@ def convert(d):
             if isinstance(v, bytes):
                 d[k] = _handle_numpy_array(v, k)
             elif isinstance(v, datetime):
-                d[k] = {"_cls": "DateTime", "datetime": v.total_seconds()}
+                d[k] = {"_cls": "DateTime", "datetime": v.timestamp()}
             elif isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
@@ -51,7 +51,7 @@ def convert(d):
             if isinstance(i, bytes):
                 d[idx] = _handle_numpy_array(i)
             elif isinstance(i, datetime):
-                d[idx] = {"_cls": "DateTime", "datetime": v.total_seconds()}
+                d[idx] = {"_cls": "DateTime", "datetime": v.timestamp()}
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
             elif isinstance(i, (dict, OrderedDict, list)):

@@ -27,7 +27,6 @@ const Container = styled.div`
 `;
 
 const Body = styled.div`
-  padding: 0 1rem;
   width: 100%;
   flex-grow: 1;
   display: flex;
