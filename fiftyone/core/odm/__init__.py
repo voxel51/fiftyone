@@ -41,12 +41,11 @@ from .document import (
     DynamicDocument,
     EmbeddedDocument,
     DynamicEmbeddedDocument,
-    SampleDocument,
     SerializableDocument,
 )
 from .frame import (
-    DatasetFrameSampleDocument,
-    NoDatasetFrameSampleDocument,
+    DatasetFrameDocument,
+    NoDatasetFrameDocument,
 )
 from .mixins import (
     get_default_fields,

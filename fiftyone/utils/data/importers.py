@@ -1477,6 +1477,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                     _id=dataset._doc.id,
                     name=dataset._doc.name,
                     sample_collection_name=dataset._doc.sample_collection_name,
+                    frame_collection_name=dataset._doc.frame_collection_name,
                     persistent=dataset._doc.persistent,
                 )
             )

@@ -29,7 +29,7 @@ def get_default_frame_fields(include_private=False, use_db_fields=False):
         a tuple of field names
     """
     return foo.get_default_fields(
-        foo.DatasetFrameSampleDocument,
+        foo.DatasetFrameDocument,
         include_private=include_private,
         use_db_fields=use_db_fields,
     )
@@ -659,7 +659,7 @@ class Frames(object):
                 raise ValueError(msg) from bwe
 
             for frame, d in zip(new_frames, dicts):
-                if isinstance(frame._doc, foo.NoDatasetFrameSampleDocument):
+                if isinstance(frame._doc, foo.NoDatasetFrameDocument):
                     doc = self._dataset._frame_dict_to_doc(d)
                     frame._set_backing_doc(doc, dataset=self._dataset)
                 else:
@@ -908,7 +908,7 @@ class Frame(Document, metaclass=FrameSingleton):
         **kwargs: frame fields and values
     """
 
-    _NO_DATASET_DOC_CLS = foo.NoDatasetFrameSampleDocument
+    _NO_DATASET_DOC_CLS = foo.NoDatasetFrameDocument
 
     def save(self):
         """Saves the frame to the database."""
@@ -955,7 +955,7 @@ class FrameView(DocumentView):
     accessing the frames in a :class:`fiftyone.core.view.DatasetView`.
 
     Args:
-        doc: a :class:`fiftyone.core.odm.frame.DatasetFrameSampleDocument`
+        doc: a :class:`fiftyone.core.odm.frame.DatasetFrameDocument`
         view: the :class:`fiftyone.core.view.DatasetView` that the frame
             belongs to
         selected_fields (None): a set of field names that this frame view is

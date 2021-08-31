@@ -487,7 +487,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         """Creates a :class:`Sample` backed by the given document.
 
         Args:
-            doc: a :class:`fiftyone.core.odm.SampleDocument`
+            doc: a :class:`fiftyone.core.odm.document.Document`
             dataset (None): the :class:`fiftyone.core.dataset.Dataset` that
                 the sample belongs to
 

@@ -224,11 +224,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             delete_dataset(name)
 
         if _create:
-            (
-                self._doc,
-                self._sample_doc_cls,
-                self._frame_doc_cls,
-            ) = _create_dataset(
+            doc, sample_doc_cls, frame_doc_cls = _create_dataset(
                 name,
                 persistent=persistent,
                 patches=_patches,
@@ -236,11 +232,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 clips=_clips,
             )
         else:
-            (
-                self._doc,
-                self._sample_doc_cls,
-                self._frame_doc_cls,
-            ) = _load_dataset(name, migrate=_migrate)
+            doc, sample_doc_cls, frame_doc_cls = _load_dataset(
+                name, migrate=_migrate
+            )
+
+        sample_doc_cls._dataset_doc = doc
+        frame_doc_cls._dataset_doc = doc
+
+        self._doc = doc
+        self._sample_doc_cls = sample_doc_cls
+        self._frame_doc_cls = frame_doc_cls
 
         self._annotation_cache = {}
         self._brain_cache = {}
@@ -967,7 +968,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ) = _parse_field_mapping(field_mapping)
 
         if fields:
-            self._frame_doc_cls._rename_fields(fields, new_fields, frames=True)
+            self._frame_doc_cls._rename_fields(fields, new_fields)
             fofr.Frame._rename_fields(
                 self._frame_collection_name, fields, new_fields
             )
@@ -1259,9 +1260,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._frame_doc_cls._delete_fields(
-                fields, frames=True, error_level=error_level
-            )
+            self._frame_doc_cls._delete_fields(fields, error_level=error_level)
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
         if embedded_fields:
@@ -4063,7 +4062,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _sample_collection_name(self):
-        return self._sample_doc_cls._meta["collection"]
+        return self._doc.sample_collection_name
 
     @property
     def _sample_collection(self):
@@ -4071,7 +4070,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _frame_collection_name(self):
-        return "frames." + self._sample_collection_name
+        return self._doc.frame_collection_name
 
     @property
     def _frame_collection(self):
@@ -4298,15 +4297,22 @@ def _create_dataset(
         for field in sample_doc_cls._fields.values()
     ]
 
-    frame_collection_name = "frames." + sample_collection_name
-    frame_doc_cls = _create_frame_document_cls(frame_collection_name)
-
-    frame_fields = []  # not populated until `media_type` is video
+    if not clips:
+        frame_collection_name = _make_frame_collection_name(
+            sample_collection_name
+        )
+        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
+        frame_fields = []  # not populated until `media_type` is video
+    else:
+        frame_collection_name = None
+        frame_doc_cls = None
+        frame_fields = None
 
     dataset_doc = foo.DatasetDocument(
         media_type=None,
         name=name,
         sample_collection_name=sample_collection_name,
+        frame_collection_name=frame_collection_name,
         persistent=persistent,
         sample_fields=sample_fields,
         frame_fields=frame_fields,
@@ -4324,6 +4330,9 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 
     collection = conn[sample_collection_name]
     collection.create_index("filepath")
+
+    if frame_collection_name is None:
+        return
 
     frame_collection = conn[frame_collection_name]
     frame_collection.create_index(
@@ -4353,12 +4362,16 @@ def _make_sample_collection_name(patches=False, frames=False, clips=False):
     return name
 
 
+def _make_frame_collection_name(sample_collection_name):
+    return "frames." + sample_collection_name
+
+
 def _create_sample_document_cls(sample_collection_name):
     return type(sample_collection_name, (foo.DatasetSampleDocument,), {})
 
 
 def _create_frame_document_cls(frame_collection_name):
-    return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
+    return type(frame_collection_name, (foo.DatasetFrameDocument,), {})
 
 
 def _load_dataset(name, migrate=True):
@@ -4375,8 +4388,14 @@ def _load_dataset(name, migrate=True):
         dataset_doc.sample_collection_name
     )
 
+    # @todo remove this, just a hack to work with non-migrated datasets
+    if dataset_doc.frame_collection_name is None:
+        dataset_doc.frame_collection_name = (
+            "frames." + dataset_doc.sample_collection_name
+        )
+
     frame_doc_cls = _create_frame_document_cls(
-        "frames." + dataset_doc.sample_collection_name
+        dataset_doc.frame_collection_name
     )
 
     default_sample_fields = fos.get_default_sample_fields(include_private=True)
@@ -4406,7 +4425,7 @@ def _drop_samples(dataset_doc):
     sample_collection = conn[sample_collection_name]
     sample_collection.drop()
 
-    frame_collection_name = "frames." + dataset_doc.sample_collection_name
+    frame_collection_name = dataset_doc.frame_collection_name
     frame_collection = conn[frame_collection_name]
     frame_collection.drop()
 
@@ -4446,7 +4465,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset._reload()
 
     sample_collection_name = _make_sample_collection_name()
-    frame_collection_name = "frames." + sample_collection_name
+    frame_collection_name = _make_frame_collection_name(sample_collection_name)
 
     #
     # Clone dataset document
@@ -4456,6 +4475,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.name = name
     dataset_doc.persistent = False
     dataset_doc.sample_collection_name = sample_collection_name
+    dataset_doc.frame_collection_name = frame_collection_name
 
     # Run results get special treatment at the end
     dataset_doc.annotation_runs = {}

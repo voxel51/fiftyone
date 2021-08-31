@@ -1,5 +1,5 @@
 """
-Mixins and helpers for sample backing documents.
+Mixins and helpers for dataset backing documents.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -21,7 +21,7 @@ import fiftyone.core.utils as fou
 
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument, DatasetDocument
-from .document import Document, BaseEmbeddedDocument, SampleDocument
+from .document import Document, BaseEmbeddedDocument
 
 
 logger = logging.getLogger(__name__)
@@ -200,9 +200,16 @@ def _get_list_value_type(value):
 
 
 class DatasetMixin(object):
-    """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
-    subtypes that are backed by a dataset.
+    """Mixin interface for :class:`fiftyone.core.odm.document.Document`
+    subclasses that are backed by a dataset.
     """
+
+    # Subtypes must declare these
+    _dataset_doc_fields_col = None
+    _is_frames_doc = None
+
+    # Must be set when subtypes are instantiated
+    _dataset_doc = None
 
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
@@ -222,44 +229,17 @@ class DatasetMixin(object):
         return self._get_fields_ordered(include_private=include_private)
 
     @classmethod
-    def _is_frames_doc(cls):
-        return cls.__name__.startswith("frames.samples.")
-
-    @classmethod
-    def _sample_collection_name(cls):
-        name = cls.__name__
-        if name.startswith("frames.samples."):
-            name = name[len("frames.") :]
-
-        return name
-
-    @classmethod
-    def _frame_collection_name(cls):
-        name = cls.__name__
-        if not name.startswith("frames.samples."):
-            name = "frames." + name
-
-        return name
-
-    @classmethod
-    def _dataset_doc(cls):
-        # pylint: disable=no-member
-        return DatasetDocument.objects.get(
-            sample_collection_name=cls._sample_collection_name()
-        )
-
-    @classmethod
-    def _dataset_doc_fields_col(cls):
-        return "sample_fields"
+    def _field_doc_name(cls):
+        return "Frame" if cls._is_frames_doc else "Sample"
 
     @classmethod
     def get_field_schema(
         cls, ftype=None, embedded_doc_type=None, include_private=False
     ):
-        """Returns a schema dictionary describing the fields of this sample.
+        """Returns a schema dictionary describing the fields of this document.
 
-        If the sample belongs to a dataset, the schema will apply to all
-        samples in the dataset.
+        If the document belongs to a dataset, the schema will apply to all
+        documents in the collection.
 
         Args:
             ftype (None): an optional field type to which to restrict the
@@ -309,7 +289,7 @@ class DatasetMixin(object):
 
     @classmethod
     def merge_field_schema(cls, schema, expand_schema=True):
-        """Merges the field schema into this sample.
+        """Merges the field schema into this document.
 
         Args:
             schema: a dictionary mapping field names to
@@ -334,8 +314,10 @@ class DatasetMixin(object):
                 add_fields.append(field_name)
 
         if not expand_schema and add_fields:
-            dtype = "Sample" if not cls._is_frames_doc() else "Frame"
-            raise ValueError("%s fields %s do not exist" % (dtype, add_fields))
+            raise ValueError(
+                "%s fields %s do not exist"
+                % (cls._field_doc_name(), add_fields)
+            )
 
         for field_name in add_fields:
             field = schema[field_name]
@@ -347,8 +329,9 @@ class DatasetMixin(object):
 
     def get_field(self, field_name):
         if not self.has_field(field_name):
-            dtype = "Sample" if not self._is_frames_doc() else "Frame"
-            raise AttributeError("%s has no field '%s'" % (dtype, field_name))
+            raise AttributeError(
+                "%s has no field '%s'" % (self._field_doc_name(), field_name)
+            )
 
         return getattr(self, field_name)
 
@@ -356,7 +339,7 @@ class DatasetMixin(object):
     def add_field(
         cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
     ):
-        """Adds a new field to the sample.
+        """Adds a new field to the document.
 
         Args:
             field_name: the field name
@@ -381,7 +364,7 @@ class DatasetMixin(object):
 
     @classmethod
     def add_implied_field(cls, field_name, value):
-        """Adds the field to the sample, inferring the field type from the
+        """Adds the field to the document, inferring the field type from the
         provided value.
 
         Args:
@@ -390,14 +373,17 @@ class DatasetMixin(object):
         """
         # pylint: disable=no-member
         if field_name in cls._fields:
-            raise ValueError("Field '%s' already exists" % field_name)
+            raise ValueError(
+                "%s field '%s' already exists"
+                % (cls._field_doc_name(), field_name)
+            )
 
         cls.add_field(field_name, **get_implied_field_kwargs(value))
 
     def set_field(self, field_name, value, create=False):
         if field_name.startswith("_"):
             raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
+                "Invalid field name '%s'. Field names cannot start with '_'"
                 % field_name
             )
 
@@ -408,8 +394,10 @@ class DatasetMixin(object):
             if create:
                 self.add_implied_field(field_name, value)
             else:
-                dtype = "Sample" if not self._is_frames_doc() else "Frame"
-                raise ValueError("%s has no field '%s'" % (dtype, field_name))
+                raise ValueError(
+                    "%s has no field '%s'"
+                    % (self._field_doc_name(), field_name)
+                )
 
         self.__setattr__(field_name, value)
 
@@ -417,13 +405,12 @@ class DatasetMixin(object):
         self.set_field(field_name, None)
 
     @classmethod
-    def _rename_fields(cls, field_names, new_field_names, frames=False):
-        """Renames the fields of the samples in this collection.
+    def _rename_fields(cls, field_names, new_field_names):
+        """Renames the fields of the documents in this collection.
 
         Args:
             field_names: an iterable of field names
             new_field_names: an iterable of new field names
-            frames (False): whether these are frame-level fields
         """
         default_fields = get_default_fields(
             cls.__bases__[0], include_private=True
@@ -431,18 +418,22 @@ class DatasetMixin(object):
         for field_name in field_names:
             if field_name in default_fields:
                 raise ValueError(
-                    "Cannot rename default field '%s'" % field_name
+                    "Cannot rename default %s field '%s'"
+                    % (cls._field_doc_name(), field_name)
                 )
 
             # pylint: disable=no-member
             if field_name not in cls._fields:
-                raise AttributeError("Field '%s' does not exist" % field_name)
+                raise AttributeError(
+                    "%s field '%s' does not exist"
+                    % (cls._field_doc_name(), field_name)
+                )
 
         if not field_names:
             return
 
         for field_name, new_field_name in zip(field_names, new_field_names):
-            cls._rename_field_schema(field_name, new_field_name, frames)
+            cls._rename_field_schema(field_name, new_field_name)
 
         cls._rename_fields_simple(field_names, new_field_names)
 
@@ -450,7 +441,7 @@ class DatasetMixin(object):
     def _rename_embedded_fields(
         cls, field_names, new_field_names, sample_collection
     ):
-        """Renames the embedded field of the samples in this collection.
+        """Renames the embedded field of the documents in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
@@ -470,7 +461,7 @@ class DatasetMixin(object):
     def _clone_fields(
         cls, field_names, new_field_names, sample_collection=None
     ):
-        """Clones the field(s) of the samples in this collection.
+        """Clones the field(s) of the documents in this collection.
 
         Args:
             field_names: an iterable of field names
@@ -485,7 +476,10 @@ class DatasetMixin(object):
         for field_name in field_names:
             # pylint: disable=no-member
             if field_name not in cls._fields:
-                raise AttributeError("Field '%s' does not exist" % field_name)
+                raise AttributeError(
+                    "%s field '%s' does not exist"
+                    % (cls._field_doc_name(), field_name)
+                )
 
         for field_name, new_field_name in zip(field_names, new_field_names):
             cls._clone_field_schema(field_name, new_field_name)
@@ -501,7 +495,7 @@ class DatasetMixin(object):
     def _clone_embedded_fields(
         cls, field_names, new_field_names, sample_collection
     ):
-        """Clones the embedded field(s) of the samples in this collection.
+        """Clones the embedded field(s) of the documents in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
@@ -519,7 +513,7 @@ class DatasetMixin(object):
 
     @classmethod
     def _clear_fields(cls, field_names, sample_collection=None):
-        """Clears the field(s) of the samples in this collection.
+        """Clears the field(s) of the documents in this collection.
 
         Args:
             field_names: an iterable of field names
@@ -537,7 +531,7 @@ class DatasetMixin(object):
 
     @classmethod
     def _clear_embedded_fields(cls, field_names, sample_collection):
-        """Clears the embedded field(s) on the samples in this collection.
+        """Clears the embedded field(s) on the documents in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
@@ -551,12 +545,11 @@ class DatasetMixin(object):
         cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
-    def _delete_fields(cls, field_names, frames=False, error_level=0):
-        """Deletes the field(s) from the samples in this collection.
+    def _delete_fields(cls, field_names, error_level=0):
+        """Deletes the field(s) from the documents in this collection.
 
         Args:
             field_names: an iterable of field names
-            frames (False): whether these are frame-level fields
             error_level (0): the error level to use. Valid values are:
 
             -   0: raise error if a field cannot be deleted
@@ -589,13 +582,13 @@ class DatasetMixin(object):
             return
 
         for field_name in _field_names:
-            cls._delete_field_schema(field_name, frames)
+            cls._delete_field_schema(field_name)
 
         cls._delete_fields_simple(_field_names)
 
     @classmethod
     def _delete_embedded_fields(cls, field_names):
-        """Deletes the embedded field(s) from the samples in this collection.
+        """Deletes the embedded field(s) from the documents in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
@@ -619,7 +612,7 @@ class DatasetMixin(object):
     ):
         from fiftyone import ViewField as F
 
-        if cls._is_frames_doc():
+        if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
             field_names = [prefix + f for f in field_names]
             new_field_names = [prefix + f for f in new_field_names]
@@ -657,7 +650,7 @@ class DatasetMixin(object):
     ):
         from fiftyone import ViewField as F
 
-        if cls._is_frames_doc():
+        if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
             field_names = [prefix + f for f in field_names]
             new_field_names = [prefix + f for f in new_field_names]
@@ -678,8 +671,8 @@ class DatasetMixin(object):
 
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
-        # operator will always overwrite top-level fields of each sample, so we
-        # limit the damage by projecting onto the modified fields
+        # operator will always overwrite top-level fields of each document, so
+        # we limit the damage by projecting onto the modified fields
         #
         view.save(list(new_field_roots))
 
@@ -699,8 +692,8 @@ class DatasetMixin(object):
 
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
-        # operator will always overwrite top-level fields of each sample, so we
-        # limit the damage by projecting onto the modified fields
+        # operator will always overwrite top-level fields of each document, so
+        # we limit the damage by projecting onto the modified fields
         #
         view.save(list(field_roots))
 
@@ -720,11 +713,8 @@ class DatasetMixin(object):
         cls._fields[field.name] = field
         cls._fields_ordered += (field.name,)
 
-        try:
-            if issubclass(cls, SampleDocument):
-                setattr(cls, field.name, field)
-        except TypeError:
-            pass
+        # @todo was this needed?
+        # setattr(cls, field.name, field)
 
     @classmethod
     def _add_field_schema(
@@ -737,7 +727,10 @@ class DatasetMixin(object):
     ):
         # pylint: disable=no-member
         if field_name in cls._fields:
-            raise ValueError("Field '%s' already exists" % field_name)
+            raise ValueError(
+                "%s field '%s' already exists"
+                % (cls._field_doc_name(), field_name)
+            )
 
         field = create_field(
             field_name,
@@ -749,13 +742,14 @@ class DatasetMixin(object):
 
         cls._declare_field(field)
 
-        dataset_doc = cls._dataset_doc()
+        dataset_doc = cls._dataset_doc
         sample_field = SampleFieldDocument.from_field(field)
-        dataset_doc[cls._dataset_doc_fields_col()].append(sample_field)
+
+        dataset_doc[cls._dataset_doc_fields_col].append(sample_field)
         dataset_doc.save()
 
     @classmethod
-    def _rename_field_schema(cls, field_name, new_field_name, frames):
+    def _rename_field_schema(cls, field_name, new_field_name):
         # pylint: disable=no-member
         field = cls._fields[field_name]
         field = _rename_field(field, new_field_name)
@@ -774,18 +768,13 @@ class DatasetMixin(object):
         except TypeError:
             pass
 
-        dataset_doc = cls._dataset_doc()
+        dataset_doc = cls._dataset_doc
+        fields = getattr(dataset_doc, cls._dataset_doc_fields_col)
 
-        if frames:
-            for f in dataset_doc.frame_fields:
-                if f.name == field_name:
-                    f.name = new_field_name
-                    f.db_field = new_field_name
-        else:
-            for f in dataset_doc.sample_fields:
-                if f.name == field_name:
-                    f.name = new_field_name
-                    f.db_field = new_field_name
+        for f in fields:
+            if f.name == field_name:
+                f.name = new_field_name
+                f.db_field = new_field_name
 
         dataset_doc.save()
 
@@ -796,7 +785,7 @@ class DatasetMixin(object):
         cls._add_field_schema(new_field_name, **get_field_kwargs(field))
 
     @classmethod
-    def _delete_field_schema(cls, field_name, frames):
+    def _delete_field_schema(cls, field_name):
         # pylint: disable=no-member
         del cls._fields[field_name]
         cls._fields_ordered = tuple(
@@ -804,17 +793,12 @@ class DatasetMixin(object):
         )
         delattr(cls, field_name)
 
-        dataset_doc = cls._dataset_doc()
+        dataset_doc = cls._dataset_doc
 
-        if frames:
-            dataset_doc.frame_fields = [
-                f for f in dataset_doc.frame_fields if f.name != field_name
-            ]
-        else:
-            dataset_doc.sample_fields = [
-                f for f in dataset_doc.sample_fields if f.name != field_name
-            ]
+        fields = getattr(dataset_doc, cls._dataset_doc_fields_col)
+        fields = [f for f in fields if f.name != field_name]
 
+        setattr(dataset_doc, cls._dataset_doc_fields_col, fields)
         dataset_doc.save()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
@@ -952,9 +936,12 @@ class DatasetMixin(object):
 
 
 class NoDatasetMixin(object):
-    """Mixin for :class:`fiftyone.core.odm.document.SampleDocument` subtypes
-    that are not backed by a dataset.
+    """Mixin for :class:`fiftyone.core.odm.document.Document` subtypes that are
+    not backed by a dataset.
     """
+
+    # Subtypes must declare this
+    _is_frames_doc = None
 
     def __getattr__(self, name):
         try:
@@ -982,9 +969,21 @@ class NoDatasetMixin(object):
     def _get_repr_fields(self):
         return self.field_names
 
+    @classmethod
+    def _field_doc_name(cls):
+        return "Frame" if cls._is_frames_doc else "Sample"
+
     @property
     def field_names(self):
         return self._get_field_names(include_private=False)
+
+    @property
+    def collection_name(self):
+        return None
+
+    @property
+    def in_db(self):
+        return False
 
     @staticmethod
     def _get_default(field):
@@ -1008,10 +1007,6 @@ class NoDatasetMixin(object):
 
         raise ValueError("Field '%s' has no default" % field)
 
-    @classmethod
-    def _is_frames_doc(cls):
-        return "Frame" in cls.__name__
-
     def has_field(self, field_name):
         try:
             return field_name in self._data
@@ -1021,8 +1016,9 @@ class NoDatasetMixin(object):
 
     def get_field(self, field_name):
         if not self.has_field(field_name):
-            dtype = "Sample" if not self._is_frames_doc() else "Frame"
-            raise AttributeError("%s has no field '%s'" % (dtype, field_name))
+            raise AttributeError(
+                "%s has no field '%s'" % (self._field_doc_name(), field_name)
+            )
 
         return getattr(self, field_name)
 
@@ -1041,8 +1037,10 @@ class NoDatasetMixin(object):
                 # dummy value so that it is identified by __setattr__
                 self._data[field_name] = None
             else:
-                dtype = "Sample" if not self._is_frames_doc() else "Frame"
-                raise ValueError("%s has no field '%s'" % (dtype, field_name))
+                raise ValueError(
+                    "%s has no field '%s'"
+                    % (self._field_doc_name(), field_name)
+                )
 
         self.__setattr__(field_name, value)
 
@@ -1053,8 +1051,9 @@ class NoDatasetMixin(object):
             return
 
         if field_name not in self._data:
-            dtype = "Sample" if not self._is_frames_doc() else "Frame"
-            raise ValueError("%s has no field '%s'" % (dtype, field_name))
+            raise ValueError(
+                "%s has no field '%s'" % (self._field_doc_name(), field_name)
+            )
 
         self._data.pop(field_name)
 
