@@ -3941,6 +3941,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         detach_frames=False,
         frames_only=False,
     ):
+
         if self.media_type != fom.VIDEO:
             attach_frames = False
             detach_frames = False
@@ -5534,3 +5535,63 @@ def _extract_archive_if_necessary(archive_path, cleanup):
         )
 
     return dataset_dir
+
+
+def _process_pipelines(media_type, frame_collection_name, pipelines, **kwargs):
+    if pipelines:
+        if isinstance(pipelines[0], dict):
+            pipelines = [pipelines]
+
+    _pipelines = []
+    for pipeline in pipelines:
+        _process_pipeline(**pipeline)
+
+
+def _process_pipeline(media_type, frame_collection_name, pipeline):
+    if media_type != fom.VIDEO:
+        attach_frames = False
+        detach_frames = False
+        frames_only = False
+
+    if not attach_frames:
+        detach_frames = False
+
+    if frames_only:
+        attach_frames = True
+
+    if attach_frames:
+        _pipeline = [
+            {
+                "$lookup": {
+                    "from": frame_collection_name,
+                    "let": {"sample_id": "$_id"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$eq": ["$$sample_id", "$_sample_id"]
+                                }
+                            }
+                        },
+                        {"$sort": {"frame_number": 1}},
+                    ],
+                    "as": "frames",
+                }
+            }
+        ]
+    else:
+        _pipeline = []
+
+    if pipeline is not None:
+        _pipeline += pipeline
+
+    if detach_frames:
+        _pipeline += [{"$project": {"frames": False}}]
+    elif frames_only:
+        _pipeline += [
+            {"$project": {"frames": True}},
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+        ]
+
+    return _pipeline

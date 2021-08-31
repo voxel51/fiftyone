@@ -6,7 +6,9 @@ Database utilities.
 |
 """
 from copy import copy
+from itertools import repeat
 import logging
+from multiprocessing.pool import ThreadPool
 import os
 
 from bson import json_util
@@ -132,7 +134,7 @@ def _validate_db_version(config, client):
     )
 
 
-def aggregate(collection, pipeline):
+def aggregate(collection, pipelines):
     """Executes an aggregation on a collection.
 
     Args:
@@ -144,7 +146,27 @@ def aggregate(collection, pipeline):
         a `pymongo.command_cursor.CommandCursor` or
         `motor.motor_tornado.MotorCommandCursor`
     """
-    return collection.aggregate(pipeline, allowDiskUse=True)
+    pipelines = list(pipelines)
+
+    is_list = not pipelines or isinstance(pipelines[0], dict)
+    if not is_list:
+        pipelines = [pipelines]
+
+    num_pipelines = len(pipelines)
+    if num_pipelines == 1:
+        result = collection.aggregate(pipelines[0], allowDiskUse=True)
+        return [result] if is_list else result
+
+    pool = ThreadPool(processes=num_pipelines)
+    result = pool.map(
+        lambda collection, pipeline: list(
+            collection.aggregate(pipeline, allowDiskUse=True)
+        ),
+        zip(repeat(collection), pipelines),
+        chunksize=1,
+    )
+    pool.close()
+    return result
 
 
 def get_db_client():

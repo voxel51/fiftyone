@@ -6232,12 +6232,12 @@ class SampleCollection(object):
 
         # Run faceted aggregations
         if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+            pipelines = self._build_faceted_pipeline(facet_aggs)
+            facet_keys = list(pipelines)
 
-            result = self._aggregate(
-                pipeline=pipeline, attach_frames=attach_frames
-            )
-            result = next(result)  # extract result of $facet
+            result = [
+                self._aggregate(pipeline) for idx, _ in enumerate(facet_keys)
+            ]
 
             self._parse_faceted_results(facet_aggs, result, results)
 
@@ -6259,15 +6259,11 @@ class SampleCollection(object):
         results = [None] * len(aggregations)
 
         if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
-
-            pipeline = self._pipeline(
-                pipeline=pipeline, attach_frames=attach_frames
-            )
-            result = await foo.aggregate(sample_collection, pipeline).to_list(
+            pipelines = self._build_faceted_pipeline(facet_aggs)
+            pipelines = [self._pipeline(**kwargs) for kwargs in pipelines]
+            result = await foo.aggregate(sample_collection, pipelines).to_list(
                 1
             )
-            result = result[0]  # extract result of $facet
 
             self._parse_faceted_results(facet_aggs, result, results)
 
@@ -6322,16 +6318,18 @@ class SampleCollection(object):
         return pipeline, attach_frames
 
     def _build_faceted_pipeline(self, aggs_map):
-        facets = {}
-        attach_frames = False
+        pipelines = {}
         for idx, aggregation in aggs_map.items():
-            pipeline = aggregation.to_mongo(self)
-            attach_frames |= aggregation._needs_frames(self)
-            facets[str(idx)] = pipeline
+            needs_frames = aggregation._needs_frames(self)
+            pipelines[str(idx)] = {
+                "attach_frames": needs_frames,
+                "pipeline": self._pipeline(
+                    pipeline=aggregation.to_mongo(self),
+                    attach_frames=needs_frames,
+                ),
+            }
 
-        facet_pipeline = [{"$facet": facets}]
-
-        return facet_pipeline, attach_frames
+        return pipelines
 
     def _parse_big_results(self, aggregation, result):
         if result:
