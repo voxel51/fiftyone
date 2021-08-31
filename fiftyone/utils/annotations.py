@@ -1388,15 +1388,18 @@ class AnnotationAPI(object):
 
         return username, password
 
-    def _prompt_api_key(self, backend):
-        prefix = "FIFTYONE_%s_" % backend.upper()
-        logger.info(
-            "Please enter your API key.\nYou can avoid this in the future by "
-            "setting your `%sKEY` environment variable",
-            prefix,
-        )
+    def _prompt_api_key(self, backend, api_key=None):
+        if api_key is None:
+            prefix = "FIFTYONE_%s_" % backend.upper()
+            logger.info(
+                "Please enter your API key.\nYou can avoid this in the future by "
+                "setting your `%sKEY` environment variable",
+                prefix,
+            )
 
-        return getpass.getpass(prompt="API key: ")
+            api_key = getpass.getpass(prompt="API key: ")
+
+        return api_key
 
 
 #

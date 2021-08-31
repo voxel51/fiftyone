@@ -11,6 +11,7 @@ import logging
 import os
 from uuid import uuid4
 import warnings
+import webbrowser
 
 import numpy as np
 
@@ -26,6 +27,9 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
+
+lb = fou.lazy_import("labelbox")
+lbs = fou.lazy_import("labelbox.schema.ontology")
 
 
 logger = logging.getLogger(__name__)
@@ -108,14 +112,305 @@ class LabelboxBackend(foua.AnnotationBackend):
     def requires_attr_values(self, attr_type):
         return False
 
-    def upload_annotations(self, samples, launch_editor=False):
-        if launch_editor:
-            pass
+    def connect_to_api(self):
+        """Returns an API instance connected to the Labelbox server.
 
-        return LabelboxAnnotationResults(samples, self.config, backend=self)
+        Returns:
+            a :class:`LabelboxAnnotationAPI`
+        """
+        return LabelboxAnnotationAPI(
+            self.config.name, self.config.url, api_key=self.config.api_key,
+        )
+
+    def upload_annotations(self, samples, launch_editor=False):
+        api = self.connect_to_api()
+
+        project_ids = api.upload_samples(
+            samples,
+            label_schema=self.config.label_schema,
+            media_field=self.config.media_field,
+        )
+
+        if launch_editor:
+            editor_url = api.editor_url(project_ids[0])
+            logger.info("Launching editor at '%s'...", editor_url)
+            api.launch_editor(url=editor_url)
+
+        return LabelboxAnnotationResults(
+            samples, self.config, project_ids, backend=self
+        )
 
     def download_annotations(self, results):
+        api = self.connect_to_api()
+
+        logger.info("Downloading labels from Labelbox...")
+        annotations = api.download_annotations(
+            results.config.label_schema, results.project_ids,
+        )
+        logger.info("Download complete")
+
+        return annotations
+
+
+class LabelboxAnnotationAPI(foua.AnnotationAPI):
+    """A class to facilitate connection to and management of projects in
+    Labelbox.
+
+    On initializiation, this class constructs a client based on the provided
+    server url and credentials.
+
+    This API provides methods to easily upload, download, create, and delete
+    projects and data through the formatted urls specified by the Labelbox API.
+
+    Additionally, samples and label schemas can be uploaded and annotations
+    downloaded through this class.
+
+    Args:
+        name: the name of the backend
+        url: url of the Labelbox serverPI
+        api_key (None): the Labelbox API key
+    """
+
+    _TYPES_MAP = {
+        "rectangle": ["detection", "detections"],
+        "polygon": ["polylines", "polyline", "detection", "detections"],
+        "polyline": ["polylines", "polyline"],
+        "points": ["keypoints", "keypoint"],
+    }
+
+    def __init__(self, name, url, api_key=None):
+        self._name = name
+        if "://" not in url:
+            protocol = "http"
+            base_url = url
+        else:
+            protocol, base_url = url.split("://")
+        self._url = base_url
+        self._protocol = protocol
+        self._api_key = api_key
+
+        self._setup()
+
+    def _setup(self):
+        if not self._url:
+            raise ValueError(
+                "You must provide/configure the `url` of the Labelbox server"
+            )
+
+        api_key = self._api_key
+
+        if api_key is None:
+            api_key = self._prompt_api_key(self._name, api_key=api_key)
+
+        self._client = lb.client.Client(
+            api_key=api_key, endpoint=self.base_graphql_url
+        )
+
+    @property
+    def base_api_url(self):
+        return "%s://api.%s" % (self._protocol, self._url)
+
+    @property
+    def base_graphql_url(self):
+        return "%s/graphql" % self.base_api_url
+
+    @property
+    def projects_url(self):
+        return "%s/projects" % self.base_api_url
+
+    def project_url(self, project_id):
+        return "%s/%s" % (self.projects_url, project_id)
+
+    def editor_url(self, project_id):
+        return "%s://editor.%s/?project=%s" % (
+            self._protocol,
+            self._url,
+            project_id,
+        )
+
+    def delete_project(self, project_id):
+        """Deletes the given project from the Labelbox server.
+
+        Args:
+            project_id: the project id
+        """
+        project = self._client.get_project(project_id)
+        project.delete()
+
+    def delete_projects(self, project_ids):
+        """Deletes the given projects from the Labelbox server.
+
+        Args:
+            project_ids: an iterable of project IDs
+        """
+        logger.info("Deleting projects...")
+        with fou.ProgressBar() as pb:
+            for project_id in pb(list(project_ids)):
+                self.delete_project(project_id)
+
+    @classmethod
+    def upload_data(
+        cls, samples, lb_client, lb_dataset, media_field="filepath"
+    ):
+        """
+        Upload sample media to a given Labelbox client and dataset. This method
+        uses ``labelbox.schema.dataset.Dataset.create_data_rows()`` to add
+        data in batches and match the external id of the DataRow to the Sample
+        id.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+                containing the media to upload
+            lb_client: a ``labelbox.client.Client`` to which to upload the
+                media files
+            lb_dataset: a ``labelbox.schema.dataset.Dataset`` to which to
+                add the media
+            media_field ("filepath"): string field name containing the paths to
+                media files on disk to upload
+
+        Returns:
+            the Labelbox dataset data row creation task
+        """
+        upload_info = []
+        for sample in samples:
+            media_path = sample[media_field]
+            item_url = lb_client.upload_file(media_path)
+            upload_info.append(
+                {
+                    lb.DataRow.row_data: item_url,
+                    lb.DataRow.external_id: sample.id,
+                }
+            )
+
+        task = lb_dataset.create_data_rows(upload_info)
+        task.wait_till_done()
+        return task
+
+    # def _create_ontology_tools(self, classes, label_type, attributes):
+    #     # TODO
+    #     tools = []
+    #     # TODO: Use polygons for instance segmentation
+    #     if label_type in (fol.Detection, fol.Detections):
+    #         tool_type = lbs.Tool.Type.BBOX
+    #     elif label_type in (fol.Keypoint, fol.Keypoints):
+    #         tool_type = lbs.Tool.Type.POINT
+    #     elif label_type in (fol.Polyline, fol.Polylines):
+    #         tool_type = lbs.Tool.Type.LINE
+
+    #     classifications = []
+    #     for attr in attributes:
+    #         cls = lbs.Classification(
+    #             class_type=lbs.Classification.Type.TEXT,
+    #             instruction=attr,
+    #             required=False,
+    #         )
+    #         classifications.append(cls)
+
+    #     for c in classes:
+    #         tool = lbs.Tool(
+    #             name=c, tool=tool_type, classifications=classifications
+    #         )
+    #         tools.append(tool)
+
+    #     return tools
+
+    # def _create_ontology(self, classes, attributes):
+    #     # TODO
+    #     tools = self._create_ontology_tools(
+    #         classes, self._field_label_type, attributes
+    #     )
+    #     ontology_builder = lbs.OntologyBuilder(tools=tools)
+
+    def _dummy_setup(self, project):
+        editor = next(
+            self._client.get_labeling_frontends(
+                where=lb.LabelingFrontend.name == "Editor"
+            )
+        )
+
+        tools = [lbs.Tool(name="det", tool=lbs.Tool.Type.BBOX)]
+
+        ontology_builder = lbs.OntologyBuilder(tools=tools)
+        project.setup(editor, ontology_builder.asdict())
+        return project
+
+    def _download_project_labels(
+        self, project_id=None, project=None, timeout=60
+    ):
+        if project is None:
+            if project_id is None:
+                raise ValueError(
+                    "Either `project_id` or `project` is required"
+                )
+            project = self._client.get_project(project_id)
+
+        label_url = project.export_labels(timeout_seconds=timeout)
+        return _download_or_load_ndjson(label_url)
+
+    def upload_samples(
+        self, samples, label_schema, media_field="filepath",
+    ):
+        """Parse the given samples and use the label schema to create projects,
+        upload data, and upload formatted annotations to Labelbox.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection` to
+                upload to Labelbox
+            label_schema: a dictionary containing the description of label
+                fields, classes and attribute to annotate
+            media_field ("filepath"): string field name containing the paths to
+                media files on disk to upload
+        """
+        project_ids = []
+        for label_field, info in label_schema.items():
+            project_name = "FiftyOne_%s_%s" % (
+                samples._root_dataset.name.replace(" ", "_"),
+                label_field.replace(" ", "_"),
+            )
+            dataset = self._client.create_dataset(name=project_name)
+            task = self.upload_data(
+                samples, self._client, dataset, media_field=media_field,
+            )
+            project = self._client.create_project(name=project_name)
+            project.datasets.connect(dataset)
+
+            project = self._dummy_setup(project)
+
+            if project.setup_complete is None:
+                raise ValueError("Labelbox project failed to be created")
+
+            project_ids.append(project.uid)
+
+        return project_ids
+
+    def download_annotations(
+        self, label_schema, project_ids,
+    ):
+        """Download annotations from the Labelbox server and parses them into the
+        appropriate FiftyOne types.
+
+        Args:
+            label_schema: a dictionary containing the description of label
+                fields, classes and attribute to annotate
+            project_ids: a list of the project ids created by uploading samples
+
+        Returns:
+            the label results dict
+        """
+        # TODO
         return {}
+
+    def launch_editor(self, url=None):
+        """Launches the Labelbox editor in your default web browser.
+
+        Args:
+            url (None): an optional URL to open. By default, the base URL of
+                the server is opened
+        """
+        if url is None:
+            url = self.projects_url
+
+        webbrowser.open(url, new=2)
 
 
 class LabelboxAnnotationResults(foua.AnnotationResults):
@@ -125,13 +420,16 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         config: a :class:`LabelboxBackendConfig`
+        project_ids: a list of project id strings for the projects created in
+            this annotation run
         backend (None): a :class:`LabelboxBackend`
     """
 
     def __init__(
-        self, samples, config, backend=None,
+        self, samples, config, project_ids, backend=None,
     ):
         super().__init__(samples, config, backend=backend)
+        self.project_ids = project_ids
 
     def load_credentials(self, url=None, api_key=None):
         """Load the Labelbox credentials from the given keyword arguments or the
@@ -155,18 +453,30 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         """Print the status of the annotation run."""
         self._get_status(log=True)
 
+    def connect_to_api(self):
+        """Returns an API instance connected to the Labelbox server.
+
+        Returns:
+            a :class:`LabelboxAnnotationAPI`
+        """
+        return self._backend.connect_to_api()
+
     def cleanup(self):
-        """Deletes all tasks associated with this annotation run from the
+        """Deletes all projects associated with this annotation run from the
         Labelbox server.
         """
-        pass
+        api = self.connect_to_api()
+        api.delete_projects(self.project_ids)
+
+        # @todo save updated results to DB?
+        self.project_ids = []
 
     def _get_status(self, log=False):
         pass
 
     @classmethod
     def _from_dict(cls, d, samples, config):
-        return cls(samples, config,)
+        return cls(samples, config, d["project_ids"])
 
 
 #
