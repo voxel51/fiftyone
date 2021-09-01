@@ -730,7 +730,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             sample = []
         else:
             (_, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(view)
-            results = await view._async_aggregate(
+            results = await view.aggregate(
                 StateHandler.sample_collection(),
                 [foa.Distinct("tags")] + tag_aggs,
             )
@@ -761,8 +761,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         aggregations = fos.DatasetStatistics(view, filters).aggregations
 
-        results = await view._async_aggregate(
-            StateHandler.sample_collection(), aggregations
+        results = await view.aggregate(
+            aggregations, StateHandler.sample_collection()
         )
 
         data = []
@@ -887,8 +887,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 count_aggs,
                 tag_aggs,
             ) = fos.DatasetStatistics.get_label_aggregations(view)
-            results = await view._async_aggregate(
-                StateHandler.sample_collection(), count_aggs + tag_aggs
+            results = await view.aggregate(
+                count_aggs + tag_aggs, StateHandler.sample_collection()
             )
 
             count = sum(results[: len(count_aggs)])
@@ -1005,8 +1005,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = get_extended_view(view, filters)
 
             aggregations = fos.DatasetStatistics(view, filters).aggregations
-            results = await view._async_aggregate(
-                cls.sample_collection(), aggregations
+            results = await view.aggregate(
+                aggregations, StateHandler.sample_collection()
             )
 
             for agg, result in zip(aggregations, results):
@@ -1047,7 +1047,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         sample_id=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        col = cls.sample_collection()
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -1060,9 +1059,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         sort_by = "count" if count else "_id"
 
-        count, first = await view._async_aggregate(
-            col,
+        count, first = await view.aggregate(
             foa.CountValues(path, _first=limit, _asc=asc, _sort_by=sort_by),
+            StateHandler.sample_collection(),
         )
 
         message = {
@@ -1281,8 +1280,8 @@ def _parse_count_values(result, field):
     )
 
 
-async def _gather_results(col, aggs, fields, view, ticks=None):
-    response = await view._async_aggregate(col, aggs)
+async def _gather_results(collection, aggs, fields, view, ticks=None):
+    response = await view.aggregate(aggs, collection)
 
     sorters = {
         foa.HistogramValues: _parse_histogram_values,
@@ -1357,7 +1356,7 @@ def _numeric_bounds(paths):
     return [foa.Bounds(path) for path in paths]
 
 
-async def _numeric_histograms(coll, view, schema, prefix=""):
+async def _numeric_histograms(collection, view, schema, prefix=""):
     paths = []
     fields = []
     numerics = (fof.IntField, fof.FloatField)
@@ -1370,7 +1369,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
             fields.append(field)
 
     aggs = _numeric_bounds(paths)
-    bounds = await view._async_aggregate(coll, aggs)
+    bounds = await view.aggregate(aggs, collection)
     aggregations = []
     ticks = []
     for range_, field, path in zip(bounds, fields, paths):

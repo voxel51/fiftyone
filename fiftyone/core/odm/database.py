@@ -11,6 +11,7 @@ import logging
 from multiprocessing.pool import ThreadPool
 import os
 
+import asyncio
 from bson import json_util
 from mongoengine import connect
 import motor
@@ -158,7 +159,14 @@ def aggregate(collection, pipelines):
         result = collection.aggregate(pipelines[0], allowDiskUse=True)
         return [list(result)] if is_list else result
 
-    pool = ThreadPool(processes=num_pipelines)
+    if isinstance(collection, motor.motor_tornado.MotorCollection):
+        return _do_async_pooled_aggregate(collection, pipelines)
+
+    return _do_pooled_aggregate(collection, pipelines)
+
+
+def _do_pooled_aggregate(collection, pipelines):
+    pool = ThreadPool(processes=len(pipelines))
     result = pool.map(
         lambda pipeline: list(
             collection.aggregate(pipeline, allowDiskUse=True)
@@ -169,6 +177,26 @@ def aggregate(collection, pipelines):
     pool.close()
 
     return result
+
+
+async def _do_async_aggregate(collection, pipeline, session):
+    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
+    result = await cursor.to_list(1)
+    return result
+
+
+async def _do_async_pooled_aggregate(collection, pipelines):
+    global _async_client
+    client = _async_client
+    with client.start_session() as session:
+        results = asyncio.gather(
+            *[
+                _do_async_aggregate(collection, pipeline, session)
+                for pipeline in pipelines
+            ]
+        )
+
+    return results
 
 
 def get_db_client():
