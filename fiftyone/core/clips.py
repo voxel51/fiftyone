@@ -284,7 +284,7 @@ class ClipsView(fov.DatasetView):
 
 
 def make_clips_dataset(
-    sample_collection, field_or_expr, tol=0, min_len=0, allow_orphans=False
+    sample_collection, field_or_expr, tol=0, min_len=0, trajectories=False
 ):
     """Creates a dataset that contains one sample per clip defined by the
     given field or expression in the collection.
@@ -305,9 +305,8 @@ def make_clips_dataset(
     -   When ``field_or_expr`` is a video classification(s) field, the field
         will be converted to a :class:`fiftyone.core.labels.Classification`
         field
-    -   When ``field_or_expr`` is a frame-level object field, a sample-level
-        string field of same name will be added recording the ``label`` of each
-        trajectory
+    -   When ``trajectories`` is True, a sample-level string field of will be
+        added recording the ``label`` of each trajectory
 
     ..note::
 
@@ -332,11 +331,13 @@ def make_clips_dataset(
                 defining the frame numbers of the clips to extract from each
                 sample
         tol (0): the maximum number of false frames that can be overlooked when
-            generating clips from a frame-level expression
-        min_len (0): the minimum allowable length of a clip when generating
-            clips from a frame-level expression
-        allow_orphans (False): whether to create clips for frame-level objects
-            with no ``index``
+            generating clips. Only applicable when ``field_or_expr`` is an
+            expression
+        min_len (0): the minimum allowable length of a clip, in frames. Only
+            applicable when ``field_or_expr`` is an expression
+        trajectories (False): whether to create clips for each unique object
+            trajectory defined by their ``(label, index)``. Only applicable
+            when ``field_or_expr`` is a frame-level field
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -345,7 +346,10 @@ def make_clips_dataset(
 
     if etau.is_str(field_or_expr):
         if sample_collection._is_frame_field(field_or_expr):
-            clips_type = "trajectories"
+            if trajectories:
+                clips_type = "trajectories"
+            else:
+                clips_type = "expression"
         else:
             clips_type = "classifications"
     elif isinstance(field_or_expr, (foe.ViewExpression, dict)):
@@ -375,7 +379,8 @@ def make_clips_dataset(
             fof.EmbeddedDocumentField,
             embedded_doc_type=fol.Classification,
         )
-    elif clips_type == "trajectories":
+
+    if clips_type == "trajectories":
         field_or_expr, _ = sample_collection._handle_frame_field(field_or_expr)
         dataset.add_sample_field(field_or_expr, fof.StringField)
 
@@ -393,9 +398,7 @@ def make_clips_dataset(
     if clips_type == "classifications":
         _write_classification_clips(dataset, sample_collection, field_or_expr)
     elif clips_type == "trajectories":
-        _write_trajectories(
-            dataset, sample_collection, field_or_expr, allow_orphans
-        )
+        _write_trajectories(dataset, sample_collection, field_or_expr)
     elif clips_type == "expression":
         _write_expr_clips(
             dataset, sample_collection, field_or_expr, tol=tol, min_len=min_len
@@ -472,7 +475,7 @@ def _write_classification_clips(dataset, src_collection, field):
     src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
 
-def _write_trajectories(dataset, src_collection, field, allow_orphans):
+def _write_trajectories(dataset, src_collection, field):
     path = src_collection._FRAMES_PREFIX + field
     label_type = src_collection._get_label_field_type(path)
 
@@ -488,7 +491,7 @@ def _write_trajectories(dataset, src_collection, field, allow_orphans):
 
     # Get trajectories
 
-    trajs = _get_trajectories(src_collection, field, allow_orphans)
+    trajs = _get_trajectories(src_collection, field)
     src_collection.set_values(
         _tmp_field, trajs, expand_schema=False, _allow_missing=True,
     )
@@ -540,6 +543,11 @@ def _write_trajectories(dataset, src_collection, field, allow_orphans):
 
 
 def _write_expr_clips(dataset, src_collection, expr, tol=0, min_len=0):
+    if etau.is_str(expr):
+        _, path = src_collection._get_label_field_path(expr)
+        leaf, _ = src_collection._handle_frame_field(path)
+        expr = F(leaf).length() > 0
+
     if isinstance(expr, dict):
         expr = foe.ViewExpression(expr)
 
@@ -596,7 +604,7 @@ def _write_manual_clips(dataset, src_collection, clips):
     src_dataset._sample_collection.update_many({}, cleanup_op)
 
 
-def _get_trajectories(sample_collection, frame_field, allow_orphans):
+def _get_trajectories(sample_collection, frame_field):
     path = sample_collection._FRAMES_PREFIX + frame_field
     label_type = sample_collection._get_label_field_type(path)
 
@@ -619,7 +627,6 @@ def _get_trajectories(sample_collection, frame_field, allow_orphans):
     fns, all_uuids = sample_collection.values([fn_expr, uuid_expr])
 
     trajs = []
-    orphan_count = 0
     for sample_fns, sample_uuids in zip(fns, all_uuids):
         if not sample_uuids:
             trajs.append(None)
@@ -634,11 +641,6 @@ def _get_trajectories(sample_collection, frame_field, allow_orphans):
                 label, index = uuid.rsplit(".", 1)
                 if index:
                     index = int(index)
-                    obs[(label, index)].add(fn)
-                elif allow_orphans:
-                    # assumes all valid indexes are positive numbers!
-                    orphan_count -= 1
-                    index = orphan_count
                     obs[(label, index)].add(fn)
 
         clips = []

@@ -4381,16 +4381,6 @@ class SampleCollection(object):
         -   All frame-level information from the underlying dataset of the
             input collection
 
-        In addition, sample-level fields will be added for certain clipping
-        strategies:
-
-        -   When ``field_or_expr`` is a video classification(s) field, the
-            field will be converted to a
-            :class:`fiftyone.core.labels.Classification` field
-        -   When ``field_or_expr`` is a frame-level object field, a
-            sample-level string field of same name will be added recording the
-            ``label`` of each trajectory
-
         Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
         available configuration options for generating clips.
 
@@ -4408,7 +4398,17 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("quickstart-video")
 
-            session = fo.launch_app(dataset)
+            #
+            # Create a clips view that contains one clip for each contiguous
+            # segment that contains at least one road sign in every frame
+            #
+
+            clips = (
+                dataset
+                .filter_labels("frames.detections", F("label") == "road sign")
+                .to_clips("frames.detections")
+            )
+            print(clips)
 
             #
             # Create a clips view that contains one clip for each contiguous
@@ -4418,8 +4418,6 @@ class SampleCollection(object):
             signs = F("detections.detections").filter(F("label") == "road sign")
             clips = dataset.to_clips(signs.length() >= 2)
             print(clips)
-
-            session.view = clips
 
         Args:
             field_or_expr: can be any of the following:

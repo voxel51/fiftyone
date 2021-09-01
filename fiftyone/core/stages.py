@@ -5331,16 +5331,6 @@ class ToClips(ViewStage):
     -   All frame-level information from the underlying dataset of the input
         collection
 
-    In addition, sample-level fields will be added for certain clipping
-    strategies:
-
-    -   When ``field_or_expr`` is a video classification(s) field, the field
-        will be converted to a :class:`fiftyone.core.labels.Classification`
-        field
-    -   When ``field_or_expr`` is a frame-level object field, a sample-level
-        string field of same name will be added recording the ``label`` of each
-        trajectory
-
     Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
     available configuration options for generating clips.
 
@@ -5358,7 +5348,15 @@ class ToClips(ViewStage):
 
         dataset = foz.load_zoo_dataset("quickstart-video")
 
-        session = fo.launch_app(dataset)
+        #
+        # Create a clips view that contains one clip for each contiguous
+        # segment that contains at least one road sign in every frame
+        #
+
+        stage1 = fo.FilterLabels("frames.detections", F("label") == "road sign")
+        stage2 = fo.ToClips("frames.detections")
+        clips = dataset.add_stage(stage1).add_stage(stage2)
+        print(clips)
 
         #
         # Create a clips view that contains one clip for each contiguous
@@ -5369,8 +5367,6 @@ class ToClips(ViewStage):
         stage = fo.ToClips(signs.length() >= 2)
         clips = dataset.add_stage(stage)
         print(clips)
-
-        session.view = clips
 
     Args:
         field_or_expr: can be any of the following:
