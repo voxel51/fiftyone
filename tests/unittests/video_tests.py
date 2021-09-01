@@ -1214,10 +1214,10 @@ class VideoTests(unittest.TestCase):
         view2 = view.skip(2).set_field("events.label", F("label").upper())
 
         self.assertDictEqual(
-            view.count_values("events.label"), {"party": 1, "meeting": 1}
+            view2.count_values("events.label"), {"PARTY": 1, "MEETING": 1}
         )
         self.assertDictEqual(
-            view2.count_values("events.label"), {"PARTY": 1, "MEETING": 1}
+            view.count_values("events.label"), {"party": 2, "meeting": 2}
         )
         self.assertDictEqual(
             dataset.count_values("events.classifications.label"),
@@ -1244,7 +1244,7 @@ class VideoTests(unittest.TestCase):
         sample["events"].label = "party"
         sample.save()
 
-        self.assertNotIn("foo", view.get_field_schema())
+        self.assertIn("foo", view.get_field_schema())
         self.assertNotIn("foo", dataset.get_frame_field_schema())
         self.assertListEqual(view.values("weather"), ["cloudy", "cloudy"])
         self.assertListEqual(dataset.values("weather"), ["sunny", "cloudy"])

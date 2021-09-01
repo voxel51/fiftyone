@@ -183,8 +183,10 @@ class ClipsView(fov.DatasetView):
         if etau.is_str(fields):
             fields = [fields]
 
+        self._sync_source(fields=fields, delete=True)
+
         #
-        # @todo this will fail on overlapping clips since there will be
+        # @todo will this fail on overlapping clips? In that case there will be
         # duplicate frames when super() runs its $out aggregation.
         # This aggregation could resolve that...
         #
@@ -195,10 +197,7 @@ class ClipsView(fov.DatasetView):
             {"$out": self._source_collection._dataset._frame_collection_name},
         ]
         """
-
         super().save(fields=fields)
-
-        self._sync_source(fields=fields)
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -238,7 +237,7 @@ class ClipsView(fov.DatasetView):
 
         self._source_collection._set_labels(field, [sample.sample_id], [doc])
 
-    def _sync_source(self, fields=None, ids=None):
+    def _sync_source(self, fields=None, ids=None, delete=False):
         if not self._classification_field:
             return
 
@@ -254,16 +253,34 @@ class ClipsView(fov.DatasetView):
         else:
             sync_view = self
 
-        sample_ids, supports, docs = sync_view.values(
-            ["sample_id", "support", field], _raw=True
-        )
-
-        for support, doc in zip(supports, docs):
+        del_ids = set()
+        update_ids = []
+        update_docs = []
+        for label_id, sample_id, support, doc in zip(
+            *sync_view.values(["id", "sample_id", "support", field], _raw=True)
+        ):
             if doc:
                 doc["support"] = support
                 doc["_cls"] = "VideoClassification"
+                update_ids.append(sample_id)
+                update_docs.append(doc)
+            else:
+                del_ids.add(label_id)
 
-        self._source_collection._set_labels(field, sample_ids, docs)
+        if delete:
+            observed_ids = set(update_ids)
+            for label_id, sample_id in zip(
+                *self._clips_dataset.values(["id", "sample_id"])
+            ):
+                if sample_id not in observed_ids:
+                    del_ids.add(label_id)
+
+        if del_ids:
+            # @todo can we optimize this? we know exactly which samples each
+            # label to be deleted came from
+            self._source_collection._delete_labels(del_ids, fields=[field])
+
+        self._source_collection._set_labels(field, update_ids, update_docs)
 
 
 def make_clips_dataset(
@@ -412,6 +429,8 @@ def _write_classification_clips(dataset, src_collection, field):
     #
 
     pipeline = src_collection._pipeline(detach_frames=True)
+
+    """
     pipeline.append(
         {
             "$project": {
@@ -425,11 +444,12 @@ def _write_classification_clips(dataset, src_collection, field):
             }
         }
     )
+    """
 
     if label_type is fol.VideoClassifications:
         list_path = field + "." + label_type._LABEL_LIST_FIELD
         pipeline.extend(
-            [{"$unwind": "$" + list_path}, {"$set": {field: "$" + list_path}},]
+            [{"$unwind": "$" + list_path}, {"$set": {field: "$" + list_path}}]
         )
 
     support_path = field + ".support"
@@ -438,6 +458,7 @@ def _write_classification_clips(dataset, src_collection, field):
             {
                 "$set": {
                     "_id": "$" + field + "._id",
+                    "_sample_id": "$_id",
                     "support": "$" + support_path,
                     field + "._cls": "Classification",
                     "_rand": {"$rand": {}},
@@ -479,31 +500,39 @@ def _write_trajectories(dataset, src_collection, field, allow_orphans):
     #
 
     pipeline = src_collection._pipeline(detach_frames=True)
+
+    """
+    pipeline.append(
+        {
+            "$project": {
+                "_id": False,
+                "_media_type": True,
+                "filepath": True,
+                "metadata": True,
+                "tags": True,
+                "_sample_id": "$_id",
+                _tmp_field: True,
+            }
+        }
+    )
+    """
+
     pipeline.extend(
         [
-            {
-                "$project": {
-                    "_id": False,
-                    "_media_type": True,
-                    "filepath": True,
-                    "metadata": True,
-                    "tags": True,
-                    "_sample_id": "$_id",
-                    _tmp_field: True,
-                }
-            },
             {"$unwind": "$" + _tmp_field},
             {
                 "$set": {
+                    "_sample_id": "$_id",
                     "support": {"$slice": ["$" + _tmp_field, 1, 2]},
                     field: {"$arrayElemAt": ["$" + _tmp_field, 0]},
                 }
             },
-            {"$unset": _tmp_field},
+            {"$unset": ["_id", _tmp_field]},
             {"$set": {"_rand": {"$rand": {}}}},
             {"$out": dataset._sample_collection_name},
         ]
     )
+
     src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
     cleanup_op = {"$unset": {_tmp_field: ""}}
@@ -535,21 +564,27 @@ def _write_manual_clips(dataset, src_collection, clips):
     #
 
     pipeline = src_collection._pipeline(detach_frames=True)
+
+    """
+    pipeline.append(
+        {
+            "$project": {
+                "_id": False,
+                "_media_type": True,
+                "filepath": True,
+                "metadata": True,
+                "tags": True,
+                "_sample_id": "$_id",
+                _tmp_field: True,
+            }
+        }
+    )
+    """
+
     pipeline.extend(
         [
-            {
-                "$project": {
-                    "_id": False,
-                    "_media_type": True,
-                    "filepath": True,
-                    "metadata": True,
-                    "tags": True,
-                    "_sample_id": "$_id",
-                    _tmp_field: True,
-                }
-            },
-            {"$set": {"support": "$" + _tmp_field}},
-            {"$unset": _tmp_field},
+            {"$set": {"_sample_id": "$_id", "support": "$" + _tmp_field}},
+            {"$unset": ["_id", _tmp_field]},
             {"$unwind": "$support"},
             {"$set": {"_rand": {"$rand": {}}}},
             {"$out": dataset._sample_collection_name},
