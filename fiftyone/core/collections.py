@@ -6234,8 +6234,9 @@ class SampleCollection(object):
         if facet_aggs:
             pipelines = self._build_faceted_pipeline(facet_aggs)
             facet_keys = list(pipelines)
-            result_list = self._aggregate(
-                [pipelines[idx] for idx in facet_keys]
+            result_list = foo.aggregate(
+                self._dataset._sample_collection,
+                [pipelines[idx] for idx in facet_keys],
             )
 
             result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}

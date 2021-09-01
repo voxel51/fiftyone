@@ -148,9 +148,9 @@ def aggregate(collection, pipelines):
     """
     pipelines = list(pipelines)
 
-    is_list = not pipelines or not isinstance(pipelines[0], dict)
+    is_list = pipelines and not isinstance(pipelines[0], dict)
     if not is_list:
-        pipelines = [pipelines]
+        pipelines = [pipelines or []]
 
     num_pipelines = len(pipelines)
 
@@ -160,11 +160,14 @@ def aggregate(collection, pipelines):
 
     pool = ThreadPool(processes=num_pipelines)
     result = pool.map(
-        lambda args: list(args[0].aggregate(args[1], allowDiskUse=True)),
-        zip(repeat(collection), pipelines),
+        lambda pipeline: list(
+            collection.aggregate(pipeline, allowDiskUse=True)
+        ),
+        pipelines,
         chunksize=1,
     )
     pool.close()
+
     return result
 
 
