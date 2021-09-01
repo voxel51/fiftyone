@@ -250,7 +250,7 @@ class ClipsView(fov.DatasetView):
         # Sync classification + support to underlying VideoClassification
 
         if ids is not None:
-            sync_view = self._source_collection.select(ids)
+            sync_view = self._clips_dataset.select(ids)
         else:
             sync_view = self
 

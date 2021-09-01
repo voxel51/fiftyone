@@ -2099,8 +2099,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_docs(self._sample_collection_name)
 
-        self._frame_doc_cls.drop_collection()
-        fofr.Frame._reset_docs(self._frame_collection_name)
+        if not self._is_clips:
+            self._frame_doc_cls.drop_collection()
+            fofr.Frame._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
