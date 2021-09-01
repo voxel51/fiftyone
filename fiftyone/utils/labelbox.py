@@ -171,13 +171,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         api_key (None): the Labelbox API key
     """
 
-    _TYPES_MAP = {
-        "rectangle": ["detection", "detections"],
-        "polygon": ["polylines", "polyline", "detection", "detections"],
-        "polyline": ["polylines", "polyline"],
-        "points": ["keypoints", "keypoint"],
-    }
-
     def __init__(self, name, url, api_key=None):
         self._name = name
         if "://" not in url:
@@ -284,7 +277,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         task = lb_dataset.create_data_rows(upload_info)
         task.wait_till_done()
-        return task
 
     # def _create_ontology_tools(self, classes, label_type, attributes):
     #     # TODO
@@ -314,13 +306,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
     #     return tools
 
-    # def _create_ontology(self, classes, attributes):
-    #     # TODO
-    #     tools = self._create_ontology_tools(
-    #         classes, self._field_label_type, attributes
-    #     )
-    #     ontology_builder = lbs.OntologyBuilder(tools=tools)
-
     def _dummy_setup(self, project):
         editor = next(
             self._client.get_labeling_frontends(
@@ -332,20 +317,36 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         ontology_builder = lbs.OntologyBuilder(tools=tools)
         project.setup(editor, ontology_builder.asdict())
-        return project
 
-    def _download_project_labels(
-        self, project_id=None, project=None, timeout=60
-    ):
-        if project is None:
-            if project_id is None:
-                raise ValueError(
-                    "Either `project_id` or `project` is required"
-                )
-            project = self._client.get_project(project_id)
+    def _create_ontology_tools(self, schema_info):
+        tools = []
 
-        label_url = project.export_labels(timeout_seconds=timeout)
-        return _download_or_load_ndjson(label_url)
+        return tools
+
+    def _setup_editor(self, project, schema_info):
+        editor = next(
+            self._client.get_labeling_frontends(
+                where=lb.LabelingFrontend.name == "Editor"
+            )
+        )
+
+        tools = self._create_ontology_tools(schema_info)
+
+        ontology_builder = lbs.OntologyBuilder(tools=tools)
+        project.setup(editor, ontology_builder.asdict())
+
+    def _setup_project(self, project_name, dataset, schema_info):
+        """Create a new Labelbox project, connect it to the dataset, and
+        construct the ontology and editor for the given schema.
+        """
+        project = self._client.create_project(name=project_name)
+        project.datasets.connect(dataset)
+        self._setup_editor(project, schema_info)
+
+        if project.setup_complete is None:
+            raise ValueError("Labelbox project failed to be created")
+
+        return project.uid
 
     def upload_samples(
         self, samples, label_schema, media_field="filepath",
@@ -362,26 +363,36 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 media files on disk to upload
         """
         project_ids = []
-        for label_field, info in label_schema.items():
+        for label_field, schema_info in label_schema.items():
             project_name = "FiftyOne_%s_%s" % (
                 samples._root_dataset.name.replace(" ", "_"),
                 label_field.replace(" ", "_"),
             )
+
             dataset = self._client.create_dataset(name=project_name)
-            task = self.upload_data(
+            self.upload_data(
                 samples, self._client, dataset, media_field=media_field,
             )
-            project = self._client.create_project(name=project_name)
-            project.datasets.connect(dataset)
 
-            project = self._dummy_setup(project)
-
-            if project.setup_complete is None:
-                raise ValueError("Labelbox project failed to be created")
-
-            project_ids.append(project.uid)
+            project_id = self._setup_project(
+                project_name, dataset, schema_info
+            )
+            project_ids.append(project_id)
 
         return project_ids
+
+    def _download_project_labels(
+        self, project_id=None, project=None, timeout=60
+    ):
+        if project is None:
+            if project_id is None:
+                raise ValueError(
+                    "Either `project_id` or `project` is required"
+                )
+            project = self._client.get_project(project_id)
+
+        label_url = project.export_labels(timeout_seconds=timeout)
+        return _download_or_load_ndjson(label_url)
 
     def download_annotations(
         self, label_schema, project_ids,
