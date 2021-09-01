@@ -6234,10 +6234,11 @@ class SampleCollection(object):
         if facet_aggs:
             pipelines = self._build_faceted_pipeline(facet_aggs)
             facet_keys = list(pipelines)
+            result_list = self._aggregate(
+                [pipelines[idx] for idx in facet_keys]
+            )
 
-            result = [
-                self._aggregate(pipeline) for idx, _ in enumerate(facet_keys)
-            ]
+            result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}
 
             self._parse_faceted_results(facet_aggs, result, results)
 
@@ -6320,14 +6321,10 @@ class SampleCollection(object):
     def _build_faceted_pipeline(self, aggs_map):
         pipelines = {}
         for idx, aggregation in aggs_map.items():
-            needs_frames = aggregation._needs_frames(self)
-            pipelines[str(idx)] = {
-                "attach_frames": needs_frames,
-                "pipeline": self._pipeline(
-                    pipeline=aggregation.to_mongo(self),
-                    attach_frames=needs_frames,
-                ),
-            }
+            pipelines[str(idx)] = self._pipeline(
+                pipeline=aggregation.to_mongo(self),
+                attach_frames=aggregation._needs_frames(self),
+            )
 
         return pipelines
 
