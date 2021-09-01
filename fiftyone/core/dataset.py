@@ -39,11 +39,11 @@ import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-import fiftyone.core.stages as fost
 from fiftyone.core.singletons import DatasetSingleton
-import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
+import fiftyone.core.view as fov
 
+fost = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
 
@@ -235,9 +235,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
                 name, migrate=_migrate
             )
-
-        sample_doc_cls._dataset_doc = doc
-        frame_doc_cls._dataset_doc = doc
 
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
@@ -4237,11 +4234,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._doc.reload()
             return
 
-        (
-            self._doc,
-            self._sample_doc_cls,
-            self._frame_doc_cls,
-        ) = _load_dataset(self.name, migrate=False)
+        doc, sample_doc_cls, frame_doc_cls = _load_dataset(
+            self.name, migrate=False
+        )
+
+        self._doc = doc
+        self._sample_doc_cls = sample_doc_cls
+        self._frame_doc_cls = frame_doc_cls
 
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
@@ -4321,6 +4320,11 @@ def _create_dataset(
     dataset_doc.save()
 
     _create_indexes(sample_collection_name, frame_collection_name)
+
+    sample_doc_cls._dataset_doc = dataset_doc
+
+    if frame_doc_cls is not None:
+        frame_doc_cls._dataset_doc = dataset_doc
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
@@ -4412,6 +4416,9 @@ def _load_dataset(name, migrate=True):
                 continue
 
             frame_doc_cls._declare_field(frame_field)
+
+    sample_doc_cls._dataset_doc = dataset_doc
+    frame_doc_cls._dataset_doc = dataset_doc
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 

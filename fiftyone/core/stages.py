@@ -19,6 +19,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.clips as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
@@ -5316,6 +5317,173 @@ class ToEvaluationPatches(ViewStage):
         ]
 
 
+class ToClips(ViewStage):
+    """Creates a view that contains one sample per clip defined by the given
+    field or expression in a video collection.
+
+    The returned view will contain:
+
+    -   All sample-level fields of the input collection
+    -   A ``support`` field that records the ``[first, last]`` frame support of
+        each clip
+    -   A ``sample_id`` field that records the sample ID from which each clip
+        was taken
+    -   All frame-level information from the underlying dataset of the input
+        collection
+
+    In addition, sample-level fields will be added for certain clipping
+    strategies:
+
+    -   When ``field_or_expr`` is a video classification(s) field, the field
+        will be converted to a :class:`fiftyone.core.labels.Classification`
+        field
+    -   When ``field_or_expr`` is a frame-level object field, a sample-level
+        string field of same name will be added recording the ``label`` of each
+        trajectory
+
+    Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
+    available configuration options for generating clips.
+
+    ..note::
+
+        The clip generation logic will respect any frame-level modifications
+        defined in the input collection, but the output clips will always
+        contain all frame-level labels.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Create a clips view that contains one clip for each contiguous
+        # segment that contains at least two road signs in every frame
+        #
+
+        signs = F("detections.detections").filter(F("label") == "road sign")
+        stage = fo.ToClips(signs.length() >= 2)
+        clips = dataset.add_stage(stage)
+        print(clips)
+
+        session.view = clips
+
+    Args:
+        field_or_expr: can be any of the following:
+
+            -   a :class:`fiftyone.core.labels.VideoClassification` or
+                :class:`fiftyone.core.labels.VideoClassifications` field
+            -   a frame-level object field of any of the following types:
+                -   :class:`fiftyone.core.labels.Detections`
+                -   :class:`fiftyone.core.labels.Polylines`
+                -   :class:`fiftyone.core.labels.Keypoints`
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                returns a boolean to apply to each frame of the input
+                collection to determine if the frame should be clipped
+            -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
+                defining the frame numbers of the clips to extract from each
+                sample
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+    """
+
+    def __init__(self, field_or_expr, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
+        self._field_or_expr = field_or_expr
+        self._config = config
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "field_or_expr": self._get_mongo_field_or_expr(),
+            "config": self._config,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
+            clips_dataset = foc.make_clips_dataset(
+                sample_collection, self._field_or_expr, **kwargs
+            )
+
+            state["name"] = clips_dataset.name
+            self._state = state
+        else:
+            clips_dataset = fod.load_dataset(name)
+
+        return foc.ClipsView(sample_collection, self, clips_dataset)
+
+    def _get_video_classification_field(self, sample_collection):
+        try:
+            fova.validate_collection_label_fields(
+                sample_collection,
+                self._field_or_expr,
+                (fol.VideoClassification, fol.VideoClassifications),
+            )
+            return self._field_or_expr
+        except:
+            return None
+
+    def _get_mongo_field_or_expr(self):
+        if isinstance(self._field_or_expr, foe.ViewExpression):
+            return self._field_or_expr.to_mongo()
+
+        return self._field_or_expr
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["config", self.config],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "field_or_expr",
+                "type": "field|str|json",
+                "placeholder": "field or expression",
+            },
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
 class ToFrames(ViewStage):
     """Creates a view that contains one sample per frame in a video collection.
 
@@ -5755,5 +5923,6 @@ _STAGES = [
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToClips,
     ToFrames,
 ]

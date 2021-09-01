@@ -183,8 +183,7 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=fields)
 
     def reload(self):
-        """Reloads this view from the frames of the source collection in the
-        database.
+        """Reloads this view from the source collection in the database.
 
         Note that :class:`FrameView` instances are not singletons, so any
         in-memory frames extracted from this view will not be updated by

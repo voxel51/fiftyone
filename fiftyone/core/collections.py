@@ -35,9 +35,9 @@ import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fosa
-import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
+fos = fou.lazy_import("fiftyone.core.stages")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -4365,6 +4365,85 @@ class SampleCollection(object):
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
         return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
+
+    @view_stage
+    def to_clips(self, field_or_expr, **kwargs):
+        """Creates a view that contains one sample per clip defined by the
+        given field or expression in the video collection.
+
+        The returned view will contain:
+
+        -   All sample-level fields of the input collection
+        -   A ``support`` field that records the ``[first, last]`` frame
+            support of each clip
+        -   A ``sample_id`` field that records the sample ID from which each
+            clip was taken
+        -   All frame-level information from the underlying dataset of the
+            input collection
+
+        In addition, sample-level fields will be added for certain clipping
+        strategies:
+
+        -   When ``field_or_expr`` is a video classification(s) field, the
+            field will be converted to a
+            :class:`fiftyone.core.labels.Classification` field
+        -   When ``field_or_expr`` is a frame-level object field, a
+            sample-level string field of same name will be added recording the
+            ``label`` of each trajectory
+
+        Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
+        available configuration options for generating clips.
+
+        ..note::
+
+            The clip generation logic will respect any frame-level
+            modifications defined in the input collection, but the output clips
+            will always contain all frame-level labels.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            session = fo.launch_app(dataset)
+
+            #
+            # Create a clips view that contains one clip for each contiguous
+            # segment that contains at least two road signs in every frame
+            #
+
+            signs = F("detections.detections").filter(F("label") == "road sign")
+            clips = dataset.to_clips(signs.length() >= 2)
+            print(clips)
+
+            session.view = clips
+
+        Args:
+            field_or_expr: can be any of the following:
+
+                -   a :class:`fiftyone.core.labels.VideoClassification` or
+                    :class:`fiftyone.core.labels.VideoClassifications` field
+                -   a frame-level object field of any of the following types:
+                    -   :class:`fiftyone.core.labels.Detections`
+                    -   :class:`fiftyone.core.labels.Polylines`
+                    -   :class:`fiftyone.core.labels.Keypoints`
+                -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                    returns a boolean to apply to each frame of the input
+                    collection to determine if the frame should be clipped
+                -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
+                    defining the frame numbers of the clips to extract from
+                    each sample
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
+                to perform the conversion
+
+        Returns:
+            a :class:`fiftyone.core.video.FramesView`
+        """
+        return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
 
     @view_stage
     def to_frames(self, **kwargs):

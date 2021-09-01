@@ -232,8 +232,7 @@ class _PatchesView(fov.DatasetView):
         self._sync_source_root(fields)
 
     def reload(self):
-        """Reloads this view from the object patches of the source collection
-        in the database.
+        """Reloads this view from the source collection in the database.
 
         Note that :class:`PatchView` instances are not singletons, so any
         in-memory patches extracted from this view will not be updated by
