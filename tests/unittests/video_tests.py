@@ -1071,6 +1071,198 @@ class VideoTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_to_clips_classifications(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+            events=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(label="meeting", support=[1, 3]),
+                    fo.VideoClassification(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+            events=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(label="party", support=[3, 5]),
+                    fo.VideoClassification(label="meeting", support=[1, 3]),
+                ]
+            ),
+        )
+        sample2.frames[1] = fo.Frame(hello="goodbye")
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_clips("events")
+
+        self.assertSetEqual(
+            set(view.get_field_schema().keys()),
+            {
+                "id",
+                "sample_id",
+                "filepath",
+                "support",
+                "metadata",
+                "tags",
+                "weather",
+                "events",
+            },
+        )
+
+        self.assertSetEqual(
+            set(view.select_fields().get_field_schema().keys()),
+            {
+                "id",
+                "sample_id",
+                "filepath",
+                "support",
+                "metadata",
+                "tags",
+                "events",
+            },
+        )
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("sample_id")  # can't exclude default field
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("support")  # can't exclude default field
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("events")  # can't exclude default field
+
+        index_info = view.get_index_information()
+        indexes = view.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "sample_id",
+            "frames.id",
+            "frames._sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(index_info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        with self.assertRaises(ValueError):
+            view.drop_index("id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("filepath")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("sample_id")  # can't drop default index
+
+        self.assertEqual(len(view), 4)
+
+        clip = view.first()
+        self.assertIsInstance(clip.id, str)
+        self.assertIsInstance(clip._id, ObjectId)
+        self.assertIsInstance(clip.sample_id, str)
+        self.assertIsInstance(clip._sample_id, ObjectId)
+        self.assertIsInstance(clip.support, list)
+        self.assertEqual(len(clip.support), 2)
+
+        for _id in view.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in view.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
+        self.assertDictEqual(view.count_sample_tags(), {"test": 4})
+
+        view.tag_samples("foo")
+
+        self.assertEqual(view.count_sample_tags()["foo"], 4)
+        self.assertNotIn("foo", dataset.count_sample_tags())
+
+        view.untag_samples("foo")
+
+        self.assertNotIn("foo", view.count_sample_tags())
+
+        view.tag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {"test": 4})
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 4})
+
+        view.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {})
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        view2 = view.skip(2).set_field("events.label", F("label").upper())
+
+        self.assertDictEqual(
+            view.count_values("events.label"), {"party": 1, "meeting": 1}
+        )
+        self.assertDictEqual(
+            view2.count_values("events.label"), {"PARTY": 1, "MEETING": 1}
+        )
+        self.assertDictEqual(
+            dataset.count_values("events.classifications.label"),
+            {"meeting": 2, "party": 2},
+        )
+
+        view2.save()
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(dataset.count("events.classifications"), 2)
+        self.assertDictEqual(
+            view.count_values("events.label"), {"MEETING": 1, "PARTY": 1}
+        )
+        self.assertDictEqual(
+            dataset.count_values("events.classifications.label"),
+            {"MEETING": 1, "PARTY": 1},
+        )
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().id)
+
+        sample = view.exclude_fields("weather").first()
+
+        sample["foo"] = "bar"
+        sample["events"].label = "party"
+        sample.save()
+
+        self.assertNotIn("foo", view.get_field_schema())
+        self.assertNotIn("foo", dataset.get_frame_field_schema())
+        self.assertListEqual(view.values("weather"), ["cloudy", "cloudy"])
+        self.assertListEqual(dataset.values("weather"), ["sunny", "cloudy"])
+        self.assertDictEqual(
+            view.count_values("events.label"), {"party": 1, "MEETING": 1}
+        )
+        self.assertDictEqual(
+            dataset.count_values("events.classifications.label"),
+            {"party": 1, "MEETING": 1},
+        )
+
+        dataset.untag_samples("test")
+        view.reload()
+
+        self.assertEqual(dataset.count_sample_tags(), {})
+        self.assertEqual(view.count_sample_tags(), {})
+
+    @drop_datasets
     def test_to_frames(self):
         dataset = fo.Dataset()
 
