@@ -785,7 +785,7 @@ class FramesView(Frames):
             #
             # In addition, we take the liberty of omitting other stages that
             # are known to only select/reorder documents, since that is not
-            # relevant to the frame labels of this
+            # relevant to the frame labels of this sample.
             #
             # @note this is brittle because if any new stages like `Skip()` are
             # added that could affect our ability to select the sample of
