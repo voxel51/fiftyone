@@ -865,15 +865,16 @@ class Session(foc.HasClient):
 
         Args:
             wait (1): the number of seconds to wait for a new App connection
-                before returning if all connections are lost. If `0`, the
-                session will server forever, regardless of the number of
-                connections. Not applicable to desktop App sessions
+                before returning if all connections are lost. If `0` a
+                negavtive value is provided, the session will server forever,
+                regardless of the number of connections. Not applicable to
+                desktop App sessions
         """
         if self._context != focx._NONE:
             logger.warning("Notebook sessions cannot wait")
             return
 
-        serve_forever = wait == 0
+        serve_forever = wait <= 0
         if serve_forever:
             wait = 10
 
