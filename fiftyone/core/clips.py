@@ -551,8 +551,14 @@ def _write_expr_clips(dataset, src_collection, expr, tol=0, min_len=0):
     if isinstance(expr, dict):
         expr = foe.ViewExpression(expr)
 
-    bools = src_collection.values(F("frames").map(expr))
-    clips = [_to_rle(b, tol=tol, min_len=min_len) for b in bools]
+    frame_numbers, bools = src_collection.values(
+        ["frames.frame_number", F("frames").map(expr)]
+    )
+
+    clips = [
+        _to_rle(fns, bs, tol=tol, min_len=min_len)
+        for fns, bs in zip(frame_numbers, bools)
+    ]
 
     _write_manual_clips(dataset, src_collection, clips)
 
@@ -666,31 +672,29 @@ class _Bounds(object):
             self.max = max(self.max, value)
 
 
-def _to_rle(bools, tol=0, min_len=0):
-    if not bools:
+def _to_rle(frame_numbers, bools, tol=0, min_len=0):
+    if not frame_numbers:
         return None
 
     ranges = []
     start = None
-    gap = 0
-    for idx, b in enumerate(bools, 1):
-        if b:
-            gap = 0
-            if start is None:
-                start = idx
-        else:
-            gap += 1
-            if start is not None and gap > tol:
-                last = idx - gap
-                if last - start + 1 >= min_len:
-                    ranges.append((start, last))
+    last = None
+    for fn, b in zip(frame_numbers, bools):
+        if start is not None and fn - last > tol + int(b):
+            ranges.append((start, last))
+            start = None
+            last = None
 
-                start = None
+        if b:
+            if start is None:
+                start = fn
+
+            last = fn
 
     if start is not None:
-        # pylint: disable=undefined-loop-variable
-        last = idx - gap
-        if last - start + 1 >= min_len:
-            ranges.append((start, idx - gap))
+        ranges.append((start, last))
+
+    if min_len > 1:
+        return [(s, l) for s, l in ranges if l - s + 1 >= min_len]
 
     return ranges

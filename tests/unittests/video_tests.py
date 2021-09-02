@@ -1071,7 +1071,7 @@ class VideoTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_to_clips_classifications(self):
+    def test_to_clips(self):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(
@@ -1198,7 +1198,6 @@ class VideoTests(unittest.TestCase):
         clip.frames[2]["world"] = "leader"
         clip.save()
 
-        # dataset.reload()
         self.assertIn("world", view.get_frame_field_schema())
         self.assertIn("world", dataset.get_frame_field_schema())
 
@@ -1286,6 +1285,78 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(dataset.count_sample_tags(), {})
         self.assertEqual(view.count_sample_tags(), {})
+
+    @drop_datasets
+    def test_to_clips_expr(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+        )
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(detections=[fo.Detection(label="cat")])
+        )
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[4] = fo.Frame(
+            detections=fo.Detections(detections=[fo.Detection(label="dog")])
+        )
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+        )
+        sample2.frames[2] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[5] = fo.Frame(
+            detections=fo.Detections(detections=[fo.Detection(label="dog")])
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_clips("frames.detections")
+        self.assertListEqual(
+            view.values("support"), [[1, 1], [3, 4], [2, 3], [5, 5]]
+        )
+
+        view = dataset.to_clips("frames.detections", tol=1)
+        self.assertListEqual(view.values("support"), [[1, 4], [2, 5]])
+
+        view = dataset.filter_labels(
+            "frames.detections", F("label") == "cat"
+        ).to_clips("frames.detections")
+        self.assertListEqual(view.values("support"), [[1, 1], [3, 3], [2, 3]])
+
+        view = dataset.filter_labels(
+            "frames.detections", F("label") == "cat"
+        ).to_clips("frames.detections", tol=1, min_len=3)
+        self.assertListEqual(view.values("support"), [[1, 3]])
+
+        view = dataset.to_clips(
+            F("detections.detections").length() >= 2, min_len=2
+        )
+        self.assertListEqual(view.values("support"), [[2, 3]])
 
     @drop_datasets
     def test_to_frames(self):
