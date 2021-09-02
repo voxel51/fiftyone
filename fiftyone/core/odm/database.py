@@ -155,12 +155,15 @@ def aggregate(collection, pipelines):
 
     num_pipelines = len(pipelines)
 
+    if isinstance(collection, motor.motor_tornado.MotorCollection):
+        if num_pipelines == 1 and not is_list:
+            return collection.aggregate(pipelines[0], allowDiskUse=True)
+
+        return _do_async_pooled_aggregate(collection, pipelines)
+
     if num_pipelines == 1:
         result = collection.aggregate(pipelines[0], allowDiskUse=True)
         return [list(result)] if is_list else result
-
-    if isinstance(collection, motor.motor_tornado.MotorCollection):
-        return _do_async_pooled_aggregate(collection, pipelines)
 
     return _do_pooled_aggregate(collection, pipelines)
 
