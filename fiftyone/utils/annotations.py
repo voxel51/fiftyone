@@ -73,6 +73,8 @@ def annotate(
             -   ``"classifications"``: :class:`fiftyone.core.labels.Classifications`
             -   ``"detection"``: :class:`fiftyone.core.labels.Detection`
             -   ``"detections"``: :class:`fiftyone.core.labels.Detections`
+            -   ``"segmentation"``: :class:`fiftyone.core.labels.Detection`
+            -   ``"segmentations"``: :class:`fiftyone.core.labels.Detections`
             -   ``"polyline"``: :class:`fiftyone.core.labels.Polyline`
             -   ``"polylines"``: :class:`fiftyone.core.labels.Polylines`
             -   ``"keypoint"``: :class:`fiftyone.core.labels.Keypoint`

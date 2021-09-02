@@ -1278,6 +1278,60 @@ class Segmentation(ImageLabel, _HasID):
         """
         return etai.ImageLabels(mask=self.mask, tags=self.tags)
 
+    def to_detections(self, mask_targets=None):
+        """Returns a :class:`Detections` representation of this instance.
+
+        Every class will be converted to a single :class:`Detection`.
+
+        Args:
+            mask_targets (None): a dict mapping integer pixel values in
+                ``[0, 255]`` to label strings defining which object classes to
+                label and which pixel values to use for each class. If
+                omitted, all labels are assigned to the integer pixel values
+
+        Returns:
+            a :class:`Detections`
+        """
+        detections = []
+
+        # pylint: disable=no-member
+        mask_h, mask_w = self.mask.shape
+
+        for target in np.unique(self.mask):
+            if target == 0:
+                # Skip background class
+                continue
+
+            if mask_targets is not None and target in mask_targets:
+                label = mask_targets[target]
+            else:
+                label = target
+
+            label_mask = (self.mask == target).astype("uint8")
+
+            # Crop mask and get bbox
+
+            # pylint: disable=no-member
+            coords = cv2.findNonZero(label_mask)
+            # pylint: disable=no-member
+            x, y, w, h = cv2.boundingRect(coords)
+
+            bbox = [
+                x / mask_w,
+                y / mask_h,
+                w / mask_w,
+                h / mask_h,
+            ]
+            label_mask = label_mask[y : y + h, x : x + w]
+
+            detections.append(
+                Detection(
+                    label=str(label), bounding_box=bbox, mask=label_mask,
+                )
+            )
+
+        return Detections(detections=detections)
+
     @classmethod
     def from_mask(cls, mask):
         """Creates a :class:`Segmentation` instance from a mask.

@@ -92,6 +92,47 @@ def objects_to_segmentations(
             sample_collection.mask_targets[out_field] = mask_targets
 
 
+def segmentations_to_detections(
+    sample_collection, in_field, out_field, mask_targets=None,
+):
+    """Converts the semantic segmentations masks in the specific field of the
+    collection into :class:`fiftyone.core.labels.Detections` with each class as
+    one instance segmentation.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        out_field: the name of the
+            :class:`fiftyone.core.labels.Detections` field to create from 
+            the given segmentation masks
+        in_field: the name of the :class:`fiftyone.core.labels.Segmentation`
+            field to convert
+        mask_targets (None): a dict mapping integer pixel values in
+            ``[0, 255]`` to label strings defining which object classes to
+            label and which pixel values to use for each class. If
+            omitted, all labels are assigned to the integer pixel values
+    """
+    fov.validate_image_collection(sample_collection)
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Segmentation,
+    )
+
+    if mask_targets is None:
+        if out_field in sample_collection.mask_targets:
+            mask_targets = sample_collection.mask_targets[out_field]
+        elif sample_collection.default_mask_targets:
+            mask_targets = sample_collection.default_mask_targets
+
+    for sample in sample_collection.iter_samples(progress=True):
+        label = sample[in_field]
+        if label is None:
+            continue
+
+        detections = label.to_detections(mask_targets=mask_targets)
+        sample[out_field] = detections
+        sample.save()
+
+
 def classification_to_detections(sample_collection, in_field, out_field):
     """Converts the :class:`fiftyone.core.labels.Classification` field of the
     collection into a :class:`fiftyone.core.labels.Detections` field containing
