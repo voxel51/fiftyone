@@ -141,7 +141,7 @@ class QuickstartCommand(Command):
             "-w",
             "--wait",
             metavar="WAIT",
-            default=1,
+            default=3,
             type=int,
             help=(
                 "the number of seconds to wait for a new App connection "
@@ -1001,7 +1001,7 @@ class AppLaunchCommand(Command):
             "-w",
             "--wait",
             metavar="WAIT",
-            default=1,
+            default=3,
             type=int,
             help=(
                 "the number of seconds to wait for a new App connection "
@@ -1184,7 +1184,7 @@ class AppViewCommand(Command):
             "-w",
             "--wait",
             metavar="WAIT",
-            default=1,
+            default=3,
             type=int,
             help=(
                 "the number of seconds to wait for a new App connection "

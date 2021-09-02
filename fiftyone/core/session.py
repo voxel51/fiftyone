@@ -857,14 +857,14 @@ class Session(foc.HasClient):
         """
         return fou.SetAttributes(self, _auto=False)
 
-    def wait(self, wait=1):
+    def wait(self, wait=3):
         """Blocks execution until the App is closed by the user.
 
         Closing a desktop App will always exit the wait. For browser Apps, all
         connected windows (tabs) must be closed.
 
         Args:
-            wait (1): the number of seconds to wait for a new App connection
+            wait (3): the number of seconds to wait for a new App connection
                 before returning if all connections are lost. If `0` a
                 negavtive value is provided, the session will server forever,
                 regardless of the number of connections. Not applicable to
