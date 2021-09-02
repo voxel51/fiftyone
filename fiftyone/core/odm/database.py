@@ -188,8 +188,8 @@ async def _do_async_aggregate(collection, pipeline, session):
 async def _do_async_pooled_aggregate(collection, pipelines):
     global _async_client
     client = _async_client
-    with client.start_session() as session:
-        results = asyncio.gather(
+    async with await client.start_session() as session:
+        results = await asyncio.gather(
             *[
                 _do_async_aggregate(collection, pipeline, session)
                 for pipeline in pipelines

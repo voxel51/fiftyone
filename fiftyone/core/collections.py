@@ -6175,7 +6175,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations, _collection=None):
+    def aggregate(self, aggregations):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -6194,9 +6194,6 @@ class SampleCollection(object):
         """
         if not aggregations:
             return []
-
-        if _collection is None:
-            _collection = self._dataset._sample_collection
 
         scalar_result = isinstance(aggregations, foa.Aggregation)
 
@@ -6238,7 +6235,39 @@ class SampleCollection(object):
             pipelines = self._build_faceted_pipeline(facet_aggs)
             facet_keys = list(pipelines)
             result_list = foo.aggregate(
-                _collection, [pipelines[idx] for idx in facet_keys],
+                self._dataset._sample_collection,
+                [pipelines[idx] for idx in facet_keys],
+            )
+
+            result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}
+
+            self._parse_faceted_results(facet_aggs, result, results)
+
+        return results[0] if scalar_result else results
+
+    async def _async_aggregate(self, aggregations):
+        if not aggregations:
+            return []
+
+        scalar_result = isinstance(aggregations, foa.Aggregation)
+
+        if scalar_result:
+            aggregations = [aggregations]
+
+        _, _, facet_aggs = self._parse_aggregations(
+            aggregations, allow_big=False
+        )
+
+        results = [None] * len(aggregations)
+
+        if facet_aggs:
+            pipelines = self._build_faceted_pipeline(facet_aggs)
+            facet_keys = list(pipelines)
+            collection = foo.get_async_db_conn()[
+                self._dataset._sample_collection_name
+            ]
+            result_list = await foo.aggregate(
+                collection, [pipelines[idx] for idx in facet_keys],
             )
 
             result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}
