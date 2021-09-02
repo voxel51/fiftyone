@@ -1177,6 +1177,31 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(clip.support, list)
         self.assertEqual(len(clip.support), 2)
 
+        frames = []
+        for clip in view:
+            frames.append(list(clip.frames.keys()))
+
+        self.assertListEqual(frames, [[1, 3], [3], [3, 5], [1, 3]])
+
+        clip = view.first()
+        clip.frames[1].hello = "there"
+        clip.frames[2].hello = "there"
+        clip.frames[3].hello = "there"
+        clip.save()
+
+        sample1.reload()
+        for frame_number in [1, 2, 3]:
+            frame = sample1.frames[frame_number]
+            self.assertEqual(frame.hello, "there")
+
+        clip = view.last()
+        clip.frames[2]["world"] = "leader"
+        clip.save()
+
+        # dataset.reload()
+        self.assertIn("world", view.get_frame_field_schema())
+        self.assertIn("world", dataset.get_frame_field_schema())
+
         for _id in view.values("id"):
             self.assertIsInstance(_id, str)
 
