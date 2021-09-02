@@ -174,6 +174,8 @@ def aggregate(collection, pipelines):
 
 
 def _do_pooled_aggregate(collection, pipelines):
+    # @todo: MongoDB 5.0 supports snapshots which we can be used to make the
+    # results consistent, i.e. read from the same snapshot time
     pool = ThreadPool(processes=len(pipelines))
     result = pool.map(
         lambda pipeline: list(
