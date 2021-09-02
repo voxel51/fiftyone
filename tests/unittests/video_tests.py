@@ -317,7 +317,7 @@ class VideoTests(unittest.TestCase):
 
         frame = dataset.first().frames[1]
 
-        self.assertEqual(frame.hello, "world")
+        self.assertEqual(frame.hello, None)
         self.assertEqual(frame.goodbye, "world")
         self.assertEqual(frame.new, "field")
 
