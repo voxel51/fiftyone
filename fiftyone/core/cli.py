@@ -137,6 +137,19 @@ class QuickstartCommand(Command):
             action="store_true",
             help="whether to launch a desktop App instance",
         )
+        parser.add_argument(
+            "-w",
+            "--wait",
+            metavar="WAIT",
+            default=1,
+            type=int,
+            help=(
+                "the number of seconds to wait for a new App connection "
+                " before returning if all connections are lost. If 0, the"
+                " session will server forever. Not applicable to desktop App"
+                " sessions"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -150,7 +163,7 @@ class QuickstartCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session)
+        _watch_session(session, args.wait)
 
 
 class ConfigCommand(Command):
@@ -984,6 +997,19 @@ class AppLaunchCommand(Command):
             action="store_true",
             help="whether to launch a desktop App instance",
         )
+        parser.add_argument(
+            "-w",
+            "--wait",
+            metavar="WAIT",
+            default=1,
+            type=int,
+            help=(
+                "the number of seconds to wait for a new App connection "
+                " before returning if all connections are lost. If 0, the"
+                " session will server forever. Not applicable to desktop App"
+                " sessions"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1002,10 +1028,10 @@ class AppLaunchCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session)
+        _watch_session(session, args.wait)
 
 
-def _watch_session(session):
+def _watch_session(session, wait):
     # Automated tests may set `FIFTYONE_EXIT` so they can immediately exit
     if os.environ.get("FIFTYONE_EXIT", False):
         return
@@ -1016,7 +1042,7 @@ def _watch_session(session):
         else:
             print("\nTo exit, press ctrl + c\n")
 
-        session.wait()
+        session.wait(wait)
     except KeyboardInterrupt:
         pass
 
@@ -1154,6 +1180,19 @@ class AppViewCommand(Command):
                 "`fiftyone.core.dataset.Dataset.from_dir()`"
             ),
         )
+        parser.add_argument(
+            "-w",
+            "--wait",
+            metavar="WAIT",
+            default=1,
+            type=int,
+            help=(
+                "the number of seconds to wait for a new App connection "
+                " before returning if all connections are lost. If 0, the"
+                " session will server forever. Not applicable to desktop App"
+                " sessions"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1216,7 +1255,7 @@ class AppViewCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session)
+        _watch_session(session, args.wait)
 
 
 class AppConnectCommand(Command):

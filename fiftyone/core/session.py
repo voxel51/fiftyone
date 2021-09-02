@@ -857,21 +857,31 @@ class Session(foc.HasClient):
         """
         return fou.SetAttributes(self, _auto=False)
 
-    def wait(self):
+    def wait(self, wait=1):
         """Blocks execution until the App is closed by the user.
 
         Closing a desktop App will always exit the wait. For browser Apps, all
         connected windows (tabs) must be closed.
+
+        Args:
+            wait (1): the number of seconds to wait for a new App connection
+                before returning if all connections are lost. If `0`, the
+                session will server forever, regardless of the number of
+                connections. Not applicable to desktop App sessions
         """
         if self._context != focx._NONE:
             logger.warning("Notebook sessions cannot wait")
             return
 
+        serve_forever = wait == 0
+        if serve_forever:
+            wait = 10
+
         try:
             if self._remote or not self._desktop:
                 self._wait_closed = False
-                while not self._wait_closed:
-                    time.sleep(1)
+                while not self._wait_closed or serve_forever:
+                    time.sleep(wait)
             else:
                 self._app_service.wait()
         except KeyboardInterrupt:
