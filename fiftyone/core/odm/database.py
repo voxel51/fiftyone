@@ -7,6 +7,7 @@ Database utilities.
 """
 from copy import copy
 import logging
+import multiprocessing
 import os
 
 from bson import json_util
@@ -24,10 +25,11 @@ import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
 
-_client = None
-_async_client = None
-_connection_kwargs = {}
-_db_service = None
+if "_db_service" not in globals():
+    _client = None
+    _async_client = None
+    _connection_kwargs = {}
+    _db_service = None
 
 logger = logging.getLogger(__name__)
 
@@ -54,16 +56,12 @@ def establish_db_conn(config):
         RuntimeError: if the ``mongod`` found does not meet FiftyOne's
             requirements, or validation could not occur
     """
+    global _db_service
     global _connection_kwargs
 
     if config.database_uri is not None:
         _connection_kwargs["host"] = config.database_uri
-    else:
-        global _db_service
-
-        if _db_service is not None:
-            return
-
+    elif _db_service is None:
         if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
             return
 
