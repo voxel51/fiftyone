@@ -141,11 +141,16 @@ def aggregate(collection, pipelines):
     Args:
         collection: a `pymongo.collection.Collection` or
             `motor.motor_tornado.MotorCollection`
-        pipeline: a MongoDB aggregation pipeline
+        pipelines: a MongoDB aggregation pipeline or a list of pipelines
 
     Returns:
-        a `pymongo.command_cursor.CommandCursor` or
+        if a single pipeline is provided, a
+        `pymongo.command_cursor.CommandCursor` or 
         `motor.motor_tornado.MotorCommandCursor`
+
+        if multiple pipelines are provided, it is assumed it is a list of
+        facets that resolve to one document each, and the cursors are resolved
+        and the document list is returned
     """
     pipelines = list(pipelines)
 
