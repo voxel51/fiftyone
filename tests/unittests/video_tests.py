@@ -310,7 +310,7 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(dataset.first().frames[1].goodbye, "world")
 
-        view = dataset.exclude_fields("frames.hello")
+        view = dataset.exclude_fields("frames.goodbye")
         sample = view.first()
         sample.frames[1] = fo.Frame(new="field")
         sample.save()
