@@ -145,9 +145,9 @@ class QuickstartCommand(Command):
             type=int,
             help=(
                 "the number of seconds to wait for a new App connection "
-                " before returning if all connections are lost. If 0, the"
-                " session will server forever. Not applicable to desktop App"
-                " sessions"
+                "before returning if all connections are lost. If 0, the "
+                "session will server forever. Not applicable to desktop App "
+                "sessions"
             ),
         )
 
@@ -1005,9 +1005,9 @@ class AppLaunchCommand(Command):
             type=int,
             help=(
                 "the number of seconds to wait for a new App connection "
-                " before returning if all connections are lost. If 0, the"
-                " session will server forever. Not applicable to desktop App"
-                " sessions"
+                "before returning if all connections are lost. If 0, the "
+                "session will server forever. Not applicable to desktop App "
+                "sessions"
             ),
         )
 
@@ -1188,9 +1188,9 @@ class AppViewCommand(Command):
             type=int,
             help=(
                 "the number of seconds to wait for a new App connection "
-                " before returning if all connections are lost. If 0, the"
-                " session will server forever. Not applicable to desktop App"
-                " sessions"
+                "before returning if all connections are lost. If 0, the "
+                "session will server forever. Not applicable to desktop App "
+                "sessions"
             ),
         )
 
