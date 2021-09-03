@@ -308,7 +308,8 @@ def make_clips_dataset(
 
             -   a :class:`fiftyone.core.labels.VideoClassification` or
                 :class:`fiftyone.core.labels.VideoClassifications` field
-            -   a frame-level object field of any of the following types:
+            -   a frame-level label list field of any of the following types:
+                -   :class:`fiftyone.core.labels.Classifications`
                 -   :class:`fiftyone.core.labels.Detections`
                 -   :class:`fiftyone.core.labels.Polylines`
                 -   :class:`fiftyone.core.labels.Keypoints`

@@ -792,6 +792,192 @@ prepending ``"frames."`` to the relevent parameters:
 In addition, FiftyOne provides a variety of dedicated view stages for
 performing manipulations that are unique to video data.
 
+.. _clip-views:
+
+Clip views
+----------
+
+You can use
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
+create views into your video datasets that contain one sample per clip defined
+by a specific field or expression in a video collection.
+
+For example, if you have :ref:`video classification <video-classification>`
+labels on your dataset, then you can create a clips view that contains one
+sample per temporal segment by simply passing the name of the video
+classification field to
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    sample1 = fo.Sample(
+        filepath="video1.mp4",
+        events=fo.VideoClassifications(
+            classifications=[
+                fo.VideoClassification(label="meeting", support=[1, 3]),
+                fo.VideoClassification(label="party", support=[2, 4]),
+            ]
+        ),
+    )
+
+    sample2 = fo.Sample(
+        filepath="video2.mp4",
+        metadata=fo.VideoMetadata(total_frame_count=5),
+        events=fo.VideoClassifications(
+            classifications=[
+                fo.VideoClassification(label="party", support=[1, 3]),
+                fo.VideoClassification(label="meeting", support=[3, 5]),
+            ]
+        ),
+    )
+
+    dataset.add_samples([sample1, sample2])
+
+    # Create a clips view with one clip per event
+    view = dataset.to_clips("events")
+    print(view)
+
+    # Verify that one sample per clip was created
+    print(dataset.count("events.classifications"))  # 4
+    print(len(view))  # 4
+
+.. code-block:: text
+
+    Dataset:    2021.09.03.09.44.57
+    Media type: video
+    Num clips:  4
+    Tags:       []
+    Clip fields:
+        id:        fiftyone.core.fields.ObjectIdField
+        sample_id: fiftyone.core.fields.ObjectIdField
+        filepath:  fiftyone.core.fields.StringField
+        support:   fiftyone.core.fields.FrameSupportField
+        tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        events:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+    View stages:
+        1. ToClips(field_or_expr='events', config=None)
+
+All clips views contain a top-level `support` field that contains the
+`[first, last]` frame range of the clip within `filepath`, which points to the
+source video.
+
+Note that the `events` field, which had type |VideoClassifications| in the
+source dataset, now has type |Classification| in the clips view, since each
+classification has a one-to-one relationship with its clip.
+
+.. note::
+
+    If you edit the `support` or |Classification| of a sample in a clips view
+    created from video classifications, the changes will be applied to the
+    corresponding |VideoClassification| in the source dataset.
+
+Continuing from the example above, if you would like to see clips only for
+specific video classification labels, you can achieve this by first
+:ref:`filtering the labels <filtering-sample-contents>`:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Create a clips view with one clip per meeting
+    view = (
+        dataset
+        .filter_labels("events", F("label") == "meeting")
+        .to_clips("events")
+    )
+
+    print(view.values("events.label"))
+    # ['meeting', 'meeting']
+
+Clips views can also be created based on frame-level labels, which provides a
+powerful query language that you can use to find segments of a potentially
+huge video dataset that contain specific content of interest.
+
+In the simplest case, you can provide the name of a frame-level list field
+(e.g., |Classifications| or |Detections|) to
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`, which
+will create one clip per contiguous range of frames that contain at least one
+label in the specified field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Create a view that contains one clip per contiguous range of frames that
+    # contains at least one object
+    view = dataset.to_clips("frames.detections")
+    print(view)
+
+The above view turns out to not be very interesting, since every frame in the
+`quickstart-video` dataset contains at least one object. So, instead, lets
+first :ref:`filter the objects <filtering-sample-contents>` so that we can
+construct a clips view that contains one clip per contiguous range of frames
+that contains at least one person:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Create a view that contains one clip per contiguous range of frames that
+    # contains at least one person
+    view = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "person")
+        .to_clips("frames.detections")
+    )
+    print(view)
+
+.. code-block:: text
+
+    Dataset:    quickstart-video
+    Media type: video
+    Num clips:  8
+    Tags:       []
+    Clip fields:
+        id:        fiftyone.core.fields.ObjectIdField
+        sample_id: fiftyone.core.fields.ObjectIdField
+        filepath:  fiftyone.core.fields.StringField
+        support:   fiftyone.core.fields.FrameSupportField
+        tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+    View stages:
+        1. FilterLabels(field='frames.detections', filter={'$eq': ['$$this.label', 'person']}, only_matches=True)
+        2. ToClips(field_or_expr='frames.detections', config=None)
+
+.. note::
+
+    Clips views created via
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+    always contain all frame-level labels from the underlying dataset for
+    their respective frame supports, even if frame-level filtering was applied
+    in previous view stages. Filtering prior to the
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+    stage only affects the frame supports.
+
+    You can, however, apply frame-level filtering to clips by appending
+    filtering operations after the
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+    stage in your view, just like any other view.
+
 .. _frame-views:
 
 Frame views
