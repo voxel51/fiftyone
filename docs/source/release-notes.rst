@@ -11,6 +11,11 @@ FiftyOne 0.13.2
 
 Core
 
+- Added support for providing compound sort criteria when usng the
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stage
+- Added support for configuring the wait time when using
+  :meth:`Session.wait() <fiftyone.core.session.Session.wait>` to block execution
+  until the App is closed, including support for serving forever
 - Fixed errors experienced by Windows users when running FiftyOne APIs
   that involved multiprocessing
 
