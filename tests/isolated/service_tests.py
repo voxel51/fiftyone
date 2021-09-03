@@ -6,9 +6,8 @@ Service tests.
 |
 """
 from contextlib import contextmanager
+import multiprocessing
 import os
-import pickle
-import subprocess
 import sys
 import time
 import unittest
@@ -309,3 +308,12 @@ def test_db_cleanup():
             ip.run_code(_start_db_snippet)
             cur_datasets = set(ip.run_code(_list_datasets_snippet))
             assert cur_datasets == orig_datasets
+
+
+def test_multiprocessing():
+    def do_nothing(*_):
+        pass
+
+    with multiprocessing.Pool(1, do_nothing) as pool:
+        for _ in pool.imap_unordered(do_nothing, [None]):
+            pass
