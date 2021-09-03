@@ -2,9 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import mime from "mime";
-
-import { BaseState, Sample } from "../../state";
+import { BaseState } from "../../state";
 import { BaseElement } from "../base";
 
 import { lookerErrorPage } from "./error.module.css";
@@ -17,10 +15,11 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
     return null;
   }
 
-  renderSelf(
-    { error, config: { thumbnail } }: Readonly<State>,
-    sample: Sample
-  ) {
+  renderSelf({
+    error,
+    config: { thumbnail },
+    options: { mimetype },
+  }: Readonly<State>) {
     if (error && !this.errorElement) {
       this.errorElement = document.createElement("div");
       this.errorElement.classList.add(lookerErrorPage);
@@ -29,7 +28,6 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
       this.errorElement.appendChild(errorImg);
 
       if (!thumbnail) {
-        const mimetype = getMimeType(sample);
         const isVideo = mimetype.startsWith("video/");
         const text = document.createElement("p");
         const textDiv = document.createElement("div");
@@ -80,14 +78,6 @@ const onClick = (href) => {
         openExternal(href);
       }
     : null;
-};
-
-const getMimeType = (sample: any) => {
-  return (
-    (sample.metadata && sample.metadata.mime_type) ||
-    mime.getType(sample.filepath) ||
-    "image/jpg"
-  );
 };
 
 const isElectron = (): boolean => {

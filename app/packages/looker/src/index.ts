@@ -16,7 +16,6 @@ import {
   DASH_LENGTH,
   LABEL_LISTS,
   JSON_COLORS,
-  LABELS,
   MASK_LABELS,
 } from "./constants";
 import {
@@ -58,6 +57,7 @@ import {
   getDPR,
   getElementBBox,
   getFitRect,
+  getMimeType,
   getURL,
   mergeUpdates,
   removeFromBuffers,
@@ -72,10 +72,7 @@ export { zoomAspectRatio } from "./zoom";
 
 const labelsWorker = createWorker();
 
-export abstract class Looker<
-  ImageSource extends CanvasImageSource,
-  State extends BaseState = BaseState
-> {
+export abstract class Looker<State extends BaseState = BaseState> {
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
@@ -98,6 +95,7 @@ export abstract class Looker<
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    this.state.options.mimetype = getMimeType(sample);
     if (!this.state.config.thumbnail) {
       this.state.showControls = true;
     }
@@ -486,7 +484,7 @@ export abstract class Looker<
   }
 }
 
-export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
+export class FrameLooker extends Looker<FrameState> {
   private overlays: Overlay<FrameState>[];
 
   constructor(
@@ -578,7 +576,7 @@ export class FrameLooker extends Looker<HTMLVideoElement, FrameState> {
   }
 }
 
-export class ImageLooker extends Looker<HTMLImageElement, ImageState> {
+export class ImageLooker extends Looker<ImageState> {
   private overlays: Overlay<ImageState>[];
 
   constructor(
@@ -824,7 +822,7 @@ const { aquireReader, addFrame } = (() => {
 
 let lookerWithReader: VideoLooker | null = null;
 
-export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
+export class VideoLooker extends Looker<VideoState> {
   private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number, force?: boolean) => void;
@@ -962,7 +960,8 @@ export class VideoLooker extends Looker<HTMLVideoElement, VideoState> {
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
         Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
-      )
+      ),
+      true
     );
 
     const providedFrames = sample.frames.length
