@@ -9,6 +9,11 @@ FiftyOne 0.13.2
 ---------------
 *Released September 3, 2021*
 
+App
+- Fixed count inconsistencies for large sets of
+  :class:`StringField <fiftyone.core.fields.StringField>` results in the
+  Fields Sidebar
+
 Core
 
 - Added support for providing compound sort criteria when usng the
