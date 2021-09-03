@@ -136,17 +136,19 @@ def _validate_db_version(config, client):
 
 
 def aggregate(collection, pipelines):
-    """Executes an aggregation on a collection.
+    """Executes one or more aggregations on a collection.
+
+    Multiple aggregations are executed using multiple threads.
 
     Args:
-        collection: a `pymongo.collection.Collection` or
-            `motor.motor_tornado.MotorCollection`
+        collection: a ``pymongo.collection.Collection`` or
+            ``motor.motor_tornado.MotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
 
     Returns:
         -   if a single pipeline is provided, a
-            `pymongo.command_cursor.CommandCursor` or
-            `motor.motor_tornado.MotorCommandCursor`
+            ``pymongo.command_cursor.CommandCursor`` or
+            ``motor.motor_tornado.MotorCommandCursor``
 
         -   if multiple pipelines are provided, it is assumed they are a list
             of facets that resolve to one document each, and the cursors are
@@ -156,7 +158,7 @@ def aggregate(collection, pipelines):
 
     is_list = pipelines and not isinstance(pipelines[0], dict)
     if not is_list:
-        pipelines = [pipelines or []]
+        pipelines = [pipelines]
 
     num_pipelines = len(pipelines)
 
@@ -176,28 +178,20 @@ def aggregate(collection, pipelines):
 def _do_pooled_aggregate(collection, pipelines):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
-    pool = ThreadPool(processes=len(pipelines))
-    result = pool.map(
-        lambda pipeline: list(
-            collection.aggregate(pipeline, allowDiskUse=True)
-        ),
-        pipelines,
-        chunksize=1,
-    )
-    pool.close()
-
-    return result
-
-
-async def _do_async_aggregate(collection, pipeline, session):
-    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
-    result = await cursor.to_list(1)
-    return result
+    with ThreadPool(processes=len(pipelines)) as pool:
+        return pool.map(
+            lambda pipeline: list(
+                collection.aggregate(pipeline, allowDiskUse=True)
+            ),
+            pipelines,
+            chunksize=1,
+        )
 
 
 async def _do_async_pooled_aggregate(collection, pipelines):
     global _async_client
     client = _async_client
+
     async with await client.start_session() as session:
         results = await asyncio.gather(
             *[
@@ -207,6 +201,12 @@ async def _do_async_pooled_aggregate(collection, pipelines):
         )
 
     return results
+
+
+async def _do_async_aggregate(collection, pipeline, session):
+    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
+    result = await cursor.to_list(1)
+    return result
 
 
 def get_db_client():

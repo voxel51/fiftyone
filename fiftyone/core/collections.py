@@ -6232,8 +6232,9 @@ class SampleCollection(object):
 
         # Run faceted aggregations
         if facet_aggs:
-            pipelines = self._build_faceted_pipeline(facet_aggs)
-            facet_keys = list(pipelines)
+            pipelines = self._build_faceted_pipelines(facet_aggs)
+            facet_keys = list(pipelines.keys())
+
             result_list = foo.aggregate(
                 self._dataset._sample_collection,
                 [pipelines[idx] for idx in facet_keys],
@@ -6261,7 +6262,7 @@ class SampleCollection(object):
         results = [None] * len(aggregations)
 
         if facet_aggs:
-            pipelines = self._build_faceted_pipeline(facet_aggs)
+            pipelines = self._build_faceted_pipelines(facet_aggs)
             facet_keys = list(pipelines)
             collection = foo.get_async_db_conn()[
                 self._dataset._sample_collection_name
@@ -6324,7 +6325,7 @@ class SampleCollection(object):
 
         return pipeline, attach_frames
 
-    def _build_faceted_pipeline(self, aggs_map):
+    def _build_faceted_pipelines(self, aggs_map):
         pipelines = {}
         for idx, aggregation in aggs_map.items():
             pipelines[str(idx)] = self._pipeline(
