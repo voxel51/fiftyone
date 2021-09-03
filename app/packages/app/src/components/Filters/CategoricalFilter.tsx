@@ -526,7 +526,7 @@ const CategoricalFilter = React.memo(
                   color={color}
                   shown={focused || hovering}
                   onSelect={(value) => {
-                    onSelect(value, getCount(searchResults, active));
+                    onSelect(value, getCount(searchResults, value));
                     setHovering(false);
                     setFocused(false);
                   }}
