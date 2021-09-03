@@ -397,11 +397,13 @@ class PollingHandler(tornado.web.RequestHandler):
             view = state.dataset
 
         if event == "statistics":
-            await StateHandler.send_statistics(view, only=self)
+            await StateHandler.send_statistics(
+                view, extended=False, filters=state.filters, only=self
+            )
 
         elif event == "extended_statistics":
             await StateHandler.send_statistics(
-                view, only=self, filters=state.filters
+                view, extended=True, filters=state.filters, only=self
             )
 
     def write_message(self, message):
@@ -581,7 +583,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics"})
 
-        await self.send_statistics(view, filters=filters)
+        await self.send_statistics(view, filters=filters, extended=True)
 
     @classmethod
     async def on_sample(cls, self, sample_id, uuid):
@@ -966,12 +968,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        awaitables = [cls.send_statistics(view, only=only)]
-
-        awaitables.append(
-            cls.send_statistics(view, filters=state.filters, only=only)
-        )
-        return awaitables
+        return [
+            cls.send_statistics(
+                view, extended=False, filters=state.filters, only=only,
+            ),
+            cls.send_statistics(
+                view, extended=True, filters=state.filters, only=only
+            ),
+        ]
 
     @classmethod
     async def send_updates(cls, ignore=None, only=None):
@@ -989,20 +993,24 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    async def send_statistics(cls, view, filters=None, only=None):
+    async def send_statistics(
+        cls, view, extended=False, filters=None, only=None
+    ):
         """Sends a statistics event given using the provided view to all App
         clients, unless an only client is provided in which case it is only
         sent to the that client.
 
         Args:
             view: a view
+            extended (False): whether to apply the extended view filters
             filters (None): filter stages to append to the view
             only (None): a client to restrict the message to
         """
         base_view = view
         data = []
-        if view is not None and (filters is None or len(filters)):
-            view = get_extended_view(view, filters)
+        if view is not None and (not extended or filters):
+            if extended:
+                view = get_extended_view(view, filters)
 
             aggregations = fos.DatasetStatistics(view, filters).aggregations
             results = await view._async_aggregate(
@@ -1029,6 +1037,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             "stats": data,
             "view": view,
             "filters": filters,
+            "extended": extended,
         }
 
         _write_message(message, app=True, only=only)
