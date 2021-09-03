@@ -6260,18 +6260,21 @@ class SampleCollection(object):
 
         # Run faceted aggregations
         if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+            pipelines = self._build_faceted_pipelines(facet_aggs)
+            facet_keys = list(pipelines.keys())
 
-            result = self._aggregate(
-                pipeline=pipeline, attach_frames=attach_frames
+            result_list = foo.aggregate(
+                self._dataset._sample_collection,
+                [pipelines[idx] for idx in facet_keys],
             )
-            result = next(result)  # extract result of $facet
+
+            result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}
 
             self._parse_faceted_results(facet_aggs, result, results)
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, sample_collection, aggregations):
+    async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
 
@@ -6287,15 +6290,17 @@ class SampleCollection(object):
         results = [None] * len(aggregations)
 
         if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+            pipelines = self._build_faceted_pipelines(facet_aggs)
+            facet_keys = list(pipelines.keys())
 
-            pipeline = self._pipeline(
-                pipeline=pipeline, attach_frames=attach_frames
+            collection = foo.get_async_db_conn()[
+                self._dataset._sample_collection_name
+            ]
+            result_list = await foo.aggregate(
+                collection, [pipelines[idx] for idx in facet_keys],
             )
-            result = await foo.aggregate(sample_collection, pipeline).to_list(
-                1
-            )
-            result = result[0]  # extract result of $facet
+
+            result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}
 
             self._parse_faceted_results(facet_aggs, result, results)
 
@@ -6349,17 +6354,15 @@ class SampleCollection(object):
 
         return pipeline, attach_frames
 
-    def _build_faceted_pipeline(self, aggs_map):
-        facets = {}
-        attach_frames = False
+    def _build_faceted_pipelines(self, aggs_map):
+        pipelines = {}
         for idx, aggregation in aggs_map.items():
-            pipeline = aggregation.to_mongo(self)
-            attach_frames |= aggregation._needs_frames(self)
-            facets[str(idx)] = pipeline
+            pipelines[str(idx)] = self._pipeline(
+                pipeline=aggregation.to_mongo(self),
+                attach_frames=aggregation._needs_frames(self),
+            )
 
-        facet_pipeline = [{"$facet": facets}]
-
-        return facet_pipeline, attach_frames
+        return pipelines
 
     def _parse_big_results(self, aggregation, result):
         if result:
