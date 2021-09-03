@@ -7,7 +7,9 @@ Multiprocess tests.
 """
 import multiprocessing
 import os
+import unittest
 
+import fiftyone as fo
 import fiftyone.core.odm.database as food
 
 
@@ -25,3 +27,8 @@ def _check_process(*_):
 
 def _do_nothing(*_args):
     pass
+
+
+if __name__ == "__main__":
+    fo.config.show_progress_bars = False
+    unittest.main(verbosity=2)
