@@ -13,6 +13,7 @@ App
 
 - Improved aggregation queries resulting in ~10x faster statistics load times
   and time-to-interaction in the Fields Sidebar
+- Optimized tagging requests to query and update only the necessary samples
 - Fixed count inconsistencies for large sets of
   :class:`StringField <fiftyone.core.fields.StringField>` results in the
   Fields Sidebar
