@@ -7,8 +7,6 @@ Service tests.
 """
 from contextlib import contextmanager
 import os
-import pickle
-import subprocess
 import sys
 import time
 import unittest
@@ -18,6 +16,7 @@ import requests
 import retrying
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
+import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.service as fos
 import fiftyone.service.util as fosu
@@ -309,3 +308,8 @@ def test_db_cleanup():
             ip.run_code(_start_db_snippet)
             cur_datasets = set(ip.run_code(_list_datasets_snippet))
             assert cur_datasets == orig_datasets
+
+
+if __name__ == "__main__":
+    fo.config.show_progress_bars = False
+    unittest.main(verbosity=2)
