@@ -170,7 +170,7 @@ def aggregate(collection, pipelines):
 
     if num_pipelines == 1:
         result = collection.aggregate(pipelines[0], allowDiskUse=True)
-        return [list(result)] if is_list else result
+        return [result] if is_list else result
 
     return _do_pooled_aggregate(collection, pipelines)
 
@@ -180,9 +180,7 @@ def _do_pooled_aggregate(collection, pipelines):
     # results consistent, i.e. read from the same point in time
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
-            lambda pipeline: list(
-                collection.aggregate(pipeline, allowDiskUse=True)
-            ),
+            lambda pipeline: collection.aggregate(pipeline, allowDiskUse=True),
             pipelines,
             chunksize=1,
         )
