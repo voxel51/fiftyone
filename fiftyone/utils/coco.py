@@ -1122,6 +1122,9 @@ class COCOObject(object):
             a :class:`COCOObject`
         """
         if extra_attrs is True:
+            if "attributes" in d:
+                d.update(d["attributes"])
+                del d["attributes"]
             return cls(**d)
 
         if etau.is_str(extra_attrs):
@@ -1132,7 +1135,13 @@ class COCOObject(object):
         else:
             attributes = {}
 
-        return cls(
+        # Handles CVAT exported attributes
+        if "attributes" in d and extra_attrs:
+            for f in extra_attrs:
+                if attributes[f] is None:
+                    attributes[f] = d["attributes"].get(f, None)
+
+        args = dict(
             id=d.get("id", None),
             image_id=d.get("image_id", None),
             category_id=d.get("category_id", None),
@@ -1142,8 +1151,9 @@ class COCOObject(object):
             score=d.get("score", None),
             area=d.get("area", None),
             iscrowd=d.get("iscrowd", None),
-            **attributes,
         )
+        args.update(attributes)
+        return cls(**args)
 
     def _get_label(self, classes):
         if classes:
