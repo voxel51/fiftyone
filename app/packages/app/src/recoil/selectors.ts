@@ -229,6 +229,7 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const raw = get(atoms.datasetStatsRaw);
+    console.log(raw);
     const currentView = get(view);
     if (!raw.view) {
       return null;
@@ -406,10 +407,22 @@ const selectedFields = selectorFamily({
   },
 });
 
-export const defaultGridZoom = selector<number | null>({
-  key: "defaultGridZoom",
+export const gridZoom = selector<number | null>({
+  key: "gridZoom",
   get: ({ get }) => {
-    return get(appConfig).default_grid_zoom;
+    return get(appConfig).grid_zoom;
+  },
+  set: ({ get, set }, value) => {
+    const state = get(atoms.stateDescription);
+    const newState = {
+      ...state,
+      config: {
+        ...state.config,
+        grid_zoom: value,
+      },
+    };
+    set(atoms.stateDescription, newState);
+    socket.send(packageMessage("update", { state: newState }));
   },
 });
 

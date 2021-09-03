@@ -34,11 +34,6 @@ import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
 
-export const gridZoom = atom<number | null>({
-  key: "gridZoom",
-  default: selectors.defaultGridZoom,
-});
-
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
   default: [0, 10],
@@ -79,7 +74,7 @@ const flashlightOptions = selector<FlashlightOptions>({
   get: ({ get }) => {
     return {
       rowAspectRatioThreshold:
-        11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
+        11 - Math.max(get(selectors.gridZoom), get(gridZoomRange)[0]),
     };
   },
 });
@@ -319,7 +314,7 @@ export default React.memo(() => {
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   useSampleUpdate();
   const gridZoomRef = useRef<number>();
-  const gridZoomValue = useRecoilValue(gridZoom);
+  const gridZoomValue = useRecoilValue(selectors.gridZoom);
   gridZoomRef.current = gridZoomValue;
 
   useEventHandler(

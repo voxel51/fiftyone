@@ -8,7 +8,7 @@ export const VALID_OBJECT_TYPES = [
 ];
 
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
-export const VALID_MASK_TYPES = ["Segmentation"];
+export const VALID_MASK_TYPES = ["Heatmap", "Segmentation"];
 export const VALID_LIST_TYPES = [
   "Classifications",
   "Detections",

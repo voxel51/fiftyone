@@ -66,3 +66,26 @@ export const getSegmentationColorArray = (
 
   return selected ? rawMaskColorsSelected : rawMaskColors;
 };
+
+let rawMapColors = new Uint32Array(256);
+let rawMapColorsSelected = new Uint32Array(256);
+
+let cachedColorscale = null;
+
+export const getHeatmapColorArray = (
+  colorscale: [],
+  selected: boolean
+): Readonly<Uint32Array> => {
+  if (cachedColorscale !== colorscale) {
+    cachedColorscale = colorscale;
+    for (let i = 0; i < 256; i++) {
+      rawMaskColors[i] = get32BitColor(colorMap(i), MASK_ALPHA);
+      rawMaskColorsSelected[i] = get32BitColor(
+        colorMap(i),
+        SELECTED_MASK_ALPHA
+      );
+    }
+  }
+
+  return selected ? rawMaskColorsSelected : rawMaskColors;
+};
