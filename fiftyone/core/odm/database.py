@@ -138,7 +138,8 @@ def _validate_db_version(config, client):
 def aggregate(collection, pipelines):
     """Executes one or more aggregations on a collection.
 
-    Multiple aggregations are executed using multiple threads.
+    Multiple aggregations are executed using multiple threads, and their
+    results are returned as lists rather than cursors.
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
@@ -148,13 +149,10 @@ def aggregate(collection, pipelines):
     Returns:
         -   If a single pipeline is provided, a
             ``pymongo.command_cursor.CommandCursor`` or
-            ``motor.motor_tornado.MotorCommandCursor``
+            ``motor.motor_tornado.MotorCommandCursor`` is returned
 
-        -   If multiple pipelines are provided, then if ``collection`` is a
-            pymongo collection, a list of cursors is returned, and if
-            ``collection`` a motor collection, it is assumed that the pipelines
-            are facets that resolve to one document each, and this list of
-            documents is directly returned
+        -   If multiple pipelines are provided, each cursor is extracted into
+            a list and the list of lists is returned
     """
     pipelines = list(pipelines)
 
@@ -182,7 +180,7 @@ def _do_pooled_aggregate(collection, pipelines):
     # results consistent, i.e. read from the same point in time
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
-            lambda pipeline: collection.aggregate(pipeline, allowDiskUse=True),
+            lambda p: list(collection.aggregate(p, allowDiskUse=True)),
             pipelines,
             chunksize=1,
         )

@@ -6239,7 +6239,7 @@ class SampleCollection(object):
         idx_map = {}
         pipelines = []
 
-        # Build batched pipeline
+        # Build batch pipeline
         if batch_aggs:
             pipeline = self._build_batch_pipeline(batch_aggs)
             pipelines.append(pipeline)
@@ -6257,22 +6257,23 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Run all aggregations
-        cursors = foo.aggregate(self._dataset._sample_collection, pipelines)
+        _results = foo.aggregate(self._dataset._sample_collection, pipelines)
 
-        # Parse batched results
+        # Parse batch results
         if batch_aggs:
-            result = list(cursors[0])
+            result = list(_results[0])
+
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse big results
         for idx, aggregation in big_aggs.items():
-            result = list(cursors[idx_map[idx]])
+            result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse facet-able results
         for idx, aggregation in facet_aggs.items():
-            result = list(cursors[idx_map[idx]])
+            result = list(_results[idx_map[idx]])
             results[idx] = self._parse_faceted_result(aggregation, result)
 
         return results[0] if scalar_result else results
@@ -6306,11 +6307,11 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            cursors = await foo.aggregate(collection, pipelines)
+            _results = await foo.aggregate(collection, pipelines)
 
             # Parse facet-able results
             for idx, aggregation in facet_aggs.items():
-                result = list(cursors[idx_map[idx]])
+                result = list(_results[idx_map[idx]])
                 results[idx] = self._parse_faceted_result(aggregation, result)
 
         return results[0] if scalar_result else results
@@ -6357,9 +6358,9 @@ class SampleCollection(object):
             pipeline=[{"$project": project}], attach_frames=attach_frames
         )
 
-    def _build_big_pipeline(self, aggregation, big_field="values"):
+    def _build_big_pipeline(self, aggregation):
         return self._pipeline(
-            pipeline=aggregation.to_mongo(self, big_field=big_field),
+            pipeline=aggregation.to_mongo(self, big_field="values"),
             attach_frames=aggregation._needs_frames(self),
         )
 
