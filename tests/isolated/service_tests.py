@@ -312,15 +312,16 @@ def test_db_cleanup():
 
 
 def test_multiprocessing():
-    def check_process(*_):
-        assert "FIFTYONE_PRIVATE_DATABASE_PORT" is os.environ
-        assert food._db_service is None
-        port = os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"]
-        assert str(port) == food._connection_kwargs["port"]
-
-    def do_nothing(*_args):
-        pass
-
-    with multiprocessing.Pool(1, check_process) as pool:
-        for _ in pool.imap_unordered(do_nothing, [None]):
+    with multiprocessing.Pool(1, _check_process) as pool:
+        for _ in pool.imap_unordered(_do_nothing, [None]):
             pass
+
+
+def _check_process(*_):
+    assert "FIFTYONE_PRIVATE_DATABASE_PORT" in os.environ
+    port = os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"]
+    assert int(port) == food._connection_kwargs["port"]
+
+
+def _do_nothing(*_args):
+    pass
