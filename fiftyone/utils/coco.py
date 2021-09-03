@@ -1122,7 +1122,8 @@ class COCOObject(object):
             a :class:`COCOObject`
         """
         # Handles CVAT exported attributes
-        d.update(d.pop("attributes", {}))
+        if "attributes" in d:
+            d.update(d.pop("attributes", {}))
 
         if extra_attrs is True:
             return cls(**d)
