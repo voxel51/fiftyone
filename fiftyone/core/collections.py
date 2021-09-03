@@ -4122,8 +4122,8 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by(self, field_or_expr, reverse=False):
-        """Sorts the samples in the collection by the given field or
-        expression.
+        """Sorts the samples in the collection by the given field(s) or
+        expression(s).
 
         Examples::
 
@@ -4152,11 +4152,39 @@ class SampleCollection(object):
             small_boxes = F("predictions.detections").filter(bbox_area < 0.2)
             view = dataset.sort_by(small_boxes.length(), reverse=True)
 
+            #
+            # Performs a compound sort where samples are first sorted in
+            # descending or by number of detections and then in ascending order
+            # of uniqueness for samples with the same number of predictions
+            #
+
+            view = dataset.sort_by(
+                [
+                    (F("predictions.detections").length(), -1),
+                    ("uniqueness", 1),
+                ]
+            )
+
+            num_objects, uniqueness = view[:5].values(
+                [F("predictions.detections").length(), "uniqueness"]
+            )
+            print(list(zip(num_objects, uniqueness)))
+
         Args:
-            field_or_expr: the field or ``embedded.field.name`` to sort by, or
-                a :class:`fiftyone.core.expressions.ViewExpression` or a
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that defines the quantity to sort by
+            field_or_expr: the field(s) or expression(s) to sort by. This can
+                be any of the following:
+
+                -   a field to sort by
+                -   an ``embedded.field.name`` to sort by
+                -   a :class:`fiftyone.core.expressions.ViewExpression` or a
+                    `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                    that defines the quantity to sort by
+                -   a list of ``(field_or_expr, order)`` tuples defining a
+                    compound sort criteria, where ``field_or_expr`` is a field
+                    or expression as defined above, and ``order`` can be 1 or
+                    any string starting with "a" for ascending order, or -1 or
+                    any string starting with "d" for descending order
+
             reverse (False): whether to return the results in descending order
 
         Returns:
@@ -6232,18 +6260,21 @@ class SampleCollection(object):
 
         # Run faceted aggregations
         if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+            pipelines = self._build_faceted_pipelines(facet_aggs)
+            facet_keys = list(pipelines.keys())
 
-            result = self._aggregate(
-                pipeline=pipeline, attach_frames=attach_frames
+            result_list = foo.aggregate(
+                self._dataset._sample_collection,
+                [pipelines[idx] for idx in facet_keys],
             )
-            result = next(result)  # extract result of $facet
+
+            result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}
 
             self._parse_faceted_results(facet_aggs, result, results)
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, sample_collection, aggregations):
+    async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
 
@@ -6259,15 +6290,17 @@ class SampleCollection(object):
         results = [None] * len(aggregations)
 
         if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+            pipelines = self._build_faceted_pipelines(facet_aggs)
+            facet_keys = list(pipelines.keys())
 
-            pipeline = self._pipeline(
-                pipeline=pipeline, attach_frames=attach_frames
+            collection = foo.get_async_db_conn()[
+                self._dataset._sample_collection_name
+            ]
+            result_list = await foo.aggregate(
+                collection, [pipelines[idx] for idx in facet_keys],
             )
-            result = await foo.aggregate(sample_collection, pipeline).to_list(
-                1
-            )
-            result = result[0]  # extract result of $facet
+
+            result = {idx: result_list[i] for i, idx in enumerate(facet_keys)}
 
             self._parse_faceted_results(facet_aggs, result, results)
 
@@ -6321,17 +6354,15 @@ class SampleCollection(object):
 
         return pipeline, attach_frames
 
-    def _build_faceted_pipeline(self, aggs_map):
-        facets = {}
-        attach_frames = False
+    def _build_faceted_pipelines(self, aggs_map):
+        pipelines = {}
         for idx, aggregation in aggs_map.items():
-            pipeline = aggregation.to_mongo(self)
-            attach_frames |= aggregation._needs_frames(self)
-            facets[str(idx)] = pipeline
+            pipelines[str(idx)] = self._pipeline(
+                pipeline=aggregation.to_mongo(self),
+                attach_frames=aggregation._needs_frames(self),
+            )
 
-        facet_pipeline = [{"$facet": facets}]
-
-        return facet_pipeline, attach_frames
+        return pipelines
 
     def _parse_big_results(self, aggregation, result):
         if result:
