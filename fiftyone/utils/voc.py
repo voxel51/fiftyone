@@ -794,16 +794,13 @@ def _parse_attribute(value):
     except:
         pass
 
-    try:
-        if value in {"True", "true"}:
-            return True
+    if value in {"True", "true"}:
+        return True
 
-        if value in {"False", "false"}:
-            return False
+    if value in {"False", "false"}:
+        return False
 
-        if value == "None":
-            return None
-    except:
-        pass
+    if value == "None":
+        return None
 
     return value
