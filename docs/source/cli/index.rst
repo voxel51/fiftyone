@@ -112,7 +112,7 @@ Launch a FiftyOne quickstart.
       -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
                             connection before returning if all connections are
-                            lost. If negative, the session will serve forever,
+                            lost. If negative, the process will wait forever,
                             regardless of connections
 
 **Examples**
@@ -1049,7 +1049,7 @@ Launch the FiftyOne App.
       -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
                             connection before returning if all connections are
-                            lost. If negative, the session will serve forever,
+                            lost. If negative, the process will wait forever,
                             regardless of connections
 
 **Examples**
@@ -1118,7 +1118,7 @@ View datasets in the FiftyOne App without persisting them to the database.
       -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
                             connection before returning if all connections are
-                            lost. If negative, the session will serve forever,
+                            lost. If negative, the process will wait forever,
                             regardless of connections
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             additional type-specific keyword arguments for

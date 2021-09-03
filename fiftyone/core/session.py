@@ -869,7 +869,7 @@ class Session(foc.HasClient):
         Args:
             wait (3): the number of seconds to wait for a new App connection
                 before returning if all connections are lost. If negative, the
-                session will serve forever, regardless of connections
+                process will wait forever, regardless of connections
         """
         if self._context != focx._NONE:
             logger.warning("Notebook sessions cannot wait")

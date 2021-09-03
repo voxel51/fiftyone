@@ -146,7 +146,7 @@ class QuickstartCommand(Command):
             help=(
                 "the number of seconds to wait for a new App connection "
                 "before returning if all connections are lost. If negative, "
-                "the session will serve forever, regardless of connections"
+                "the process will wait forever, regardless of connections"
             ),
         )
 
@@ -1005,7 +1005,7 @@ class AppLaunchCommand(Command):
             help=(
                 "the number of seconds to wait for a new App connection "
                 "before returning if all connections are lost. If negative, "
-                "the session will serve forever, regardless of connections"
+                "the process will wait forever, regardless of connections"
             ),
         )
 
@@ -1172,7 +1172,7 @@ class AppViewCommand(Command):
             help=(
                 "the number of seconds to wait for a new App connection "
                 "before returning if all connections are lost. If negative, "
-                "the session will serve forever, regardless of connections"
+                "the process will wait forever, regardless of connections"
             ),
         )
         parser.add_argument(
