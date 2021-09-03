@@ -6263,7 +6263,8 @@ class SampleCollection(object):
 
         if facet_aggs:
             pipelines = self._build_faceted_pipelines(facet_aggs)
-            facet_keys = list(pipelines)
+            facet_keys = list(pipelines.keys())
+
             collection = foo.get_async_db_conn()[
                 self._dataset._sample_collection_name
             ]

@@ -146,11 +146,11 @@ def aggregate(collection, pipelines):
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
 
     Returns:
-        -   if a single pipeline is provided, a
+        -   If a single pipeline is provided, a
             ``pymongo.command_cursor.CommandCursor`` or
             ``motor.motor_tornado.MotorCommandCursor``
 
-        -   if multiple pipelines are provided, it is assumed they are a list
+        -   If multiple pipelines are provided, it is assumed they are a list
             of facets that resolve to one document each, and the cursors are
             resolved and the document list is returned
     """
@@ -190,23 +190,19 @@ def _do_pooled_aggregate(collection, pipelines):
 
 async def _do_async_pooled_aggregate(collection, pipelines):
     global _async_client
-    client = _async_client
 
-    async with await client.start_session() as session:
-        results = await asyncio.gather(
+    async with await _async_client.start_session() as session:
+        return await asyncio.gather(
             *[
                 _do_async_aggregate(collection, pipeline, session)
                 for pipeline in pipelines
             ]
         )
 
-    return results
-
 
 async def _do_async_aggregate(collection, pipeline, session):
     cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
-    result = await cursor.to_list(1)
-    return result
+    return await cursor.to_list(1)
 
 
 def get_db_client():
