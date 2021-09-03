@@ -4194,8 +4194,8 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by(self, field_or_expr, reverse=False):
-        """Sorts the samples in the collection by the given field or
-        expression.
+        """Sorts the samples in the collection by the given field(s) or
+        expression(s).
 
         Examples::
 
@@ -4224,11 +4224,39 @@ class SampleCollection(object):
             small_boxes = F("predictions.detections").filter(bbox_area < 0.2)
             view = dataset.sort_by(small_boxes.length(), reverse=True)
 
+            #
+            # Performs a compound sort where samples are first sorted in
+            # descending or by number of detections and then in ascending order
+            # of uniqueness for samples with the same number of predictions
+            #
+
+            view = dataset.sort_by(
+                [
+                    (F("predictions.detections").length(), -1),
+                    ("uniqueness", 1),
+                ]
+            )
+
+            num_objects, uniqueness = view[:5].values(
+                [F("predictions.detections").length(), "uniqueness"]
+            )
+            print(list(zip(num_objects, uniqueness)))
+
         Args:
-            field_or_expr: the field or ``embedded.field.name`` to sort by, or
-                a :class:`fiftyone.core.expressions.ViewExpression` or a
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that defines the quantity to sort by
+            field_or_expr: the field(s) or expression(s) to sort by. This can
+                be any of the following:
+
+                -   a field to sort by
+                -   an ``embedded.field.name`` to sort by
+                -   a :class:`fiftyone.core.expressions.ViewExpression` or a
+                    `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                    that defines the quantity to sort by
+                -   a list of ``(field_or_expr, order)`` tuples defining a
+                    compound sort criteria, where ``field_or_expr`` is a field
+                    or expression as defined above, and ``order`` can be 1 or
+                    any string starting with "a" for ascending order, or -1 or
+                    any string starting with "d" for descending order
+
             reverse (False): whether to return the results in descending order
 
         Returns:
