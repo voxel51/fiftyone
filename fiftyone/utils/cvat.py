@@ -796,7 +796,7 @@ class CVATTaskLabels(object):
     @classmethod
     def from_labels_dict(cls, d):
         """Creates a :class:`CVATTaskLabels` instance from the ``<labels>``
-        tag of a CVAT image annotation XML file.
+        tag of a CVAT annotation XML file.
 
         Args:
             d: a dict representation of a ``<labels>`` tag
@@ -811,11 +811,10 @@ class CVATTaskLabels(object):
             attributes = _ensure_list(_tmp.get("attribute", []))
             _attributes = []
             for attribute in attributes:
+                _values = attribute.get("values", None)
+                _categories = _values.split("\n") if _values else []
                 _attributes.append(
-                    {
-                        "name": attribute["name"],
-                        "categories": attribute["values"].split("\n"),
-                    }
+                    {"name": attribute["name"], "categories": _categories}
                 )
 
             _labels.append({"name": label["name"], "attributes": _attributes})
@@ -1146,9 +1145,10 @@ class CVATImageAnno(object):
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
-            name = attr["@name"].lstrip("@")
-            value = _parse_attribute(attr["#text"])
-            attributes.append(CVATAttribute(name, value))
+            if "#text" in attr:
+                name = attr["@name"].lstrip("@")
+                value = _parse_attribute(attr["#text"])
+                attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
 
@@ -1777,9 +1777,10 @@ class CVATVideoAnno(object):
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
-            name = attr["@name"].lstrip("@")
-            value = _parse_attribute(attr["#text"])
-            attributes.append(CVATAttribute(name, value))
+            if "#text" in attr:
+                name = attr["@name"].lstrip("@")
+                value = _parse_attribute(attr["#text"])
+                attributes.append(CVATAttribute(name, value))
 
         return outside, occluded, keyframe, attributes
 
