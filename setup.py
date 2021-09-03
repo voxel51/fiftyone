@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.15,<0.16"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.15.2,<0.16"]}
 
 
 with open("README.md", "r") as fh:
