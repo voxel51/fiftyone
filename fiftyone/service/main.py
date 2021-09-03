@@ -39,6 +39,7 @@ import traceback
 
 import psutil
 
+os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 from fiftyone.core.service import Service
 from fiftyone.service.ipc import IPCServer
 
