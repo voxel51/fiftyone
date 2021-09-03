@@ -535,7 +535,6 @@ class VOCObject(object):
             k: _parse_attribute(d[k])
             for k in set(d.keys()) - {"name", "bndbox"}
         }
-
         return cls(name, bndbox, **attributes)
 
     @classmethod
@@ -589,7 +588,6 @@ class VOCObject(object):
 
         if extra_attrs == True:
             attributes = self.attributes
-
         elif extra_attrs == False:
             attributes = {}
         else:
