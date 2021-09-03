@@ -18,6 +18,8 @@ Core
   until the App is closed, including support for serving forever
 - Fixed errors experienced by Windows users when running FiftyOne APIs
   that involved multiprocessing
+- Resolved errors that could occur when importing CVAT XML files with
+  empty-valued attributes in their schema and/or individual labels
 
 .. _release-notes-v0.13.1:
 
