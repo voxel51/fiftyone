@@ -150,9 +150,11 @@ def aggregate(collection, pipelines):
             ``pymongo.command_cursor.CommandCursor`` or
             ``motor.motor_tornado.MotorCommandCursor``
 
-        -   If multiple pipelines are provided, it is assumed they are a list
-            of facets that resolve to one document each, and the cursors are
-            resolved and the document list is returned
+        -   If multiple pipelines are provided, then if ``collection`` is a
+            pymongo collection, a list of cursors is returned, and if
+            ``collection`` a motor collection, it is assumed that the pipelines
+            are facets that resolve to one document each, and this list of
+            documents is directly returned
     """
     pipelines = list(pipelines)
 
