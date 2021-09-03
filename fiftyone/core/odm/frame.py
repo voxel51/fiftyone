@@ -19,24 +19,23 @@ class DatasetFrameDocument(DatasetMixin, Document):
 
     meta = {"abstract": True}
 
+    _is_frames_doc = True
+
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     frame_number = fof.FrameNumberField(required=True)
 
     _sample_id = fof.ObjectIdField(required=True)
 
-    _dataset_doc_fields_col = "frame_fields"
-    _is_frames_doc = True
-
 
 class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
+
+    _is_frames_doc = True
 
     # pylint: disable=no-member
     default_fields = DatasetFrameDocument._fields
     default_fields_ordered = get_default_fields(
         DatasetFrameDocument, include_private=True
     )
-
-    _is_frames_doc = True
 
     def __init__(self, **kwargs):
         self._data = OrderedDict(

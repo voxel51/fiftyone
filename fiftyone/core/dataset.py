@@ -213,9 +213,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _migrate=True,
-        _patches=False,
-        _frames=False,
-        _clips=False,
+        **kwargs,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -225,11 +223,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if _create:
             doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                name,
-                persistent=persistent,
-                patches=_patches,
-                frames=_frames,
-                clips=_clips,
+                name, persistent=persistent, **kwargs
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
@@ -2099,6 +2093,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_docs(self._sample_collection_name)
 
+        # Clips datasets directly use their source dataset's frame collection,
+        # so don't delete frames
         if not self._is_clips:
             self._frame_doc_cls.drop_collection()
             fofr.Frame._reset_docs(self._frame_collection_name)
@@ -4275,7 +4271,12 @@ def _list_datasets(include_private=False):
 
 
 def _create_dataset(
-    name, persistent=False, patches=False, frames=False, clips=False
+    name,
+    persistent=False,
+    _patches=False,
+    _frames=False,
+    _clips=False,
+    _src_collection=None,
 ):
     if dataset_exists(name):
         raise ValueError(
@@ -4287,7 +4288,7 @@ def _create_dataset(
         )
 
     sample_collection_name = _make_sample_collection_name(
-        patches=patches, frames=frames, clips=clips
+        patches=_patches, frames=_frames, clips=_clips
     )
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
@@ -4297,16 +4298,18 @@ def _create_dataset(
         for field in sample_doc_cls._fields.values()
     ]
 
-    if not clips:
+    if _clips:
+        # Clips datasets directly inherit frames from source dataset
+        src_dataset = _src_collection._dataset
+        frame_collection_name = src_dataset._doc.frame_collection_name
+        frame_doc_cls = src_dataset._frame_doc_cls
+        frame_fields = src_dataset._doc.frame_fields
+    else:
         frame_collection_name = _make_frame_collection_name(
             sample_collection_name
         )
         frame_doc_cls = _create_frame_document_cls(frame_collection_name)
         frame_fields = []  # not populated until `media_type` is video
-    else:
-        frame_collection_name = None
-        frame_doc_cls = None
-        frame_fields = None
 
     dataset_doc = foo.DatasetDocument(
         media_type=None,
@@ -4321,11 +4324,6 @@ def _create_dataset(
     dataset_doc.save()
 
     _create_indexes(sample_collection_name, frame_collection_name)
-
-    sample_doc_cls._dataset_doc = dataset_doc
-
-    if frame_doc_cls is not None:
-        frame_doc_cls._dataset_doc = dataset_doc
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
@@ -4377,6 +4375,46 @@ def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameDocument,), {})
 
 
+def _get_dataset_doc(collection_name, frames=False):
+    if frames:
+        query = {
+            "frame_collection_name": collection_name,
+            "sample_collection_name": {"$regex": "^samples\\."},
+        }
+    else:
+        query = {"sample_collection_name": collection_name}
+
+    conn = foo.get_db_conn()
+    doc = conn.datasets.find_one(query, {"name": 1})
+
+    if doc is None:
+        dtype = "sample" if not frames else "frame"
+        raise ValueError(
+            "No dataset found with %s collection name '%s'"
+            % (dtype, collection_name)
+        )
+
+    dataset = load_dataset(doc["name"])
+    return dataset._doc
+
+
+def _load_clips_source_dataset(frame_collection_name):
+    # All clips datasets have a source dataset with the same frame collection
+    query = {
+        "frame_collection_name": frame_collection_name,
+        "sample_collection_name": {"$regex": "^samples\\."},
+    }
+
+    conn = foo.get_db_conn()
+    doc = conn.datasets.find_one(query, {"name": 1})
+
+    if doc is None:
+        # The source dataset must have been deleted...
+        return None
+
+    return load_dataset(doc["name"])
+
+
 def _load_dataset(name, migrate=True):
     if migrate:
         fomi.migrate_dataset_if_necessary(name)
@@ -4387,19 +4425,8 @@ def _load_dataset(name, migrate=True):
     except moe.DoesNotExist:
         raise ValueError("Dataset '%s' not found" % name)
 
-    sample_doc_cls = _create_sample_document_cls(
-        dataset_doc.sample_collection_name
-    )
-
-    # @todo REMOVE THIS, JUST A HACK TO WORK WITH NON-MIGRATED DATASETS
-    if dataset_doc.frame_collection_name is None:
-        dataset_doc.frame_collection_name = (
-            "frames." + dataset_doc.sample_collection_name
-        )
-
-    frame_doc_cls = _create_frame_document_cls(
-        dataset_doc.frame_collection_name
-    )
+    sample_collection_name = dataset_doc.sample_collection_name
+    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
     default_sample_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
@@ -4408,32 +4435,35 @@ def _load_dataset(name, migrate=True):
 
         sample_doc_cls._declare_field(sample_field)
 
-    if dataset_doc.media_type == fom.VIDEO:
-        default_frame_fields = fofr.get_default_frame_fields(
-            include_private=True
-        )
-        for frame_field in dataset_doc.frame_fields:
-            if frame_field.name in default_frame_fields:
-                continue
-
-            frame_doc_cls._declare_field(frame_field)
-
-    sample_doc_cls._dataset_doc = dataset_doc
-    frame_doc_cls._dataset_doc = dataset_doc
-
-    return dataset_doc, sample_doc_cls, frame_doc_cls
-
-
-def _drop_samples(dataset_doc):
-    conn = foo.get_db_conn()
-
-    sample_collection_name = dataset_doc.sample_collection_name
-    sample_collection = conn[sample_collection_name]
-    sample_collection.drop()
+    # @todo REMOVE THIS, JUST A HACK TO WORK WITH NON-MIGRATED DATASETS
+    if dataset_doc.frame_collection_name is None:
+        dataset_doc.frame_collection_name = "frames." + sample_collection_name
 
     frame_collection_name = dataset_doc.frame_collection_name
-    frame_collection = conn[frame_collection_name]
-    frame_collection.drop()
+
+    if sample_collection_name.startswith("clips."):
+        # Clips datasets directly inherit frames from source dataset
+        _src_dataset = _load_clips_source_dataset(frame_collection_name)
+    else:
+        _src_dataset = None
+
+    if _src_dataset is not None:
+        frame_doc_cls = _src_dataset._frame_doc_cls
+        dataset_doc.frame_fields = _src_dataset._doc.frame_fields
+    else:
+        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
+
+        if dataset_doc.media_type == fom.VIDEO:
+            default_frame_fields = fofr.get_default_frame_fields(
+                include_private=True
+            )
+            for frame_field in dataset_doc.frame_fields:
+                if frame_field.name in default_frame_fields:
+                    continue
+
+                frame_doc_cls._declare_field(frame_field)
+
+    return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
 def _delete_dataset_doc(dataset_doc):
@@ -4524,16 +4554,30 @@ def _clone_dataset_or_view(dataset_or_view, name):
     #
 
     if dataset.media_type == fom.VIDEO:
-        if view is not None:
+        # Clips datasets use `sample_id` to associated with frames, but now as
+        # a standalone collection, they must use `_id`
+        if dataset._is_clips:
+            coll = dataset._sample_collection
+            collection = view if view is not None else dataset
+            pipeline = collection._pipeline(attach_frames=True) + [
+                {"$project": {"frames": True}},
+                {"$unwind": "$frames"},
+                {"$set": {"frames._sample_id": "$_id"}},
+                {"$replaceRoot": {"newRoot": "$frames"}},
+                {"$unset": "_id"},
+            ]
+        elif view is not None:
             # The view may modify the frames, so we route the frames though
             # the sample collection
+            coll = dataset._sample_collection
             pipeline = view._pipeline(frames_only=True)
-            pipeline += [{"$out": frame_collection_name}]
-            foo.aggregate(dataset._sample_collection, pipeline)
         else:
             # Here we can directly aggregate on the frame collection
-            pipeline = [{"$out": frame_collection_name}]
-            foo.aggregate(dataset._frame_collection, pipeline)
+            coll = dataset._frame_collection
+            pipeline = []
+
+        pipeline.append({"$out": frame_collection_name})
+        foo.aggregate(coll, pipeline)
 
     clone_dataset = load_dataset(name)
 
@@ -4600,6 +4644,16 @@ def _save_view(view, fields):
         # The view may modify the frames, so we route the frames through the
         # sample collection
         pipeline = view._pipeline(frames_only=True)
+
+        # Clips views may contain overlapping clips, so we must select only
+        # the first occurrance of each frame
+        if dataset._is_clips:
+            pipeline.extend(
+                [
+                    {"$group": {"_id": "$_id", "doc": {"$first": "$$ROOT"}}},
+                    {"$replaceRoot": {"newRoot": "$doc"}},
+                ]
+            )
 
         if merge:
             if frame_fields:

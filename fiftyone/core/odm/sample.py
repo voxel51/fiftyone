@@ -91,6 +91,8 @@ class DatasetSampleDocument(DatasetMixin, Document):
 
     meta = {"abstract": True}
 
+    _is_frames_doc = False
+
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     filepath = fof.StringField(required=True)
     tags = fof.ListField(fof.StringField())
@@ -98,9 +100,6 @@ class DatasetSampleDocument(DatasetMixin, Document):
 
     _media_type = fof.StringField()
     _rand = fof.FloatField(default=_generate_rand)
-
-    _dataset_doc_fields_col = "sample_fields"
-    _is_frames_doc = False
 
     @property
     def media_type(self):
@@ -114,13 +113,13 @@ class DatasetSampleDocument(DatasetMixin, Document):
 class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     """Backing document for samples that have not been added to a dataset."""
 
+    _is_frames_doc = False
+
     # pylint: disable=no-member
     default_fields = DatasetSampleDocument._fields
     default_fields_ordered = get_default_fields(
         DatasetSampleDocument, include_private=True
     )
-
-    _is_frames_doc = False
 
     def __init__(self, **kwargs):
         filepath = os.path.abspath(os.path.expanduser(kwargs["filepath"]))

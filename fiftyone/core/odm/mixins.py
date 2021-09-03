@@ -23,6 +23,8 @@ from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument, DatasetDocument
 from .document import Document, BaseEmbeddedDocument
 
+fod = fou.lazy_import("fiftyone.core.dataset")
+
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +92,7 @@ def validate_fields_match(
             )
 
     if isinstance(field, (fof.ListField, fof.DictField)):
-        if (existing_field.field is not None) and not isinstance(
+        if existing_field.field is not None and not isinstance(
             field.field, type(existing_field.field)
         ):
             raise ValueError(
@@ -204,12 +206,8 @@ class DatasetMixin(object):
     subclasses that are backed by a dataset.
     """
 
-    # Subtypes must declare these
-    _dataset_doc_fields_col = None
+    # Subtypes must declare this
     _is_frames_doc = None
-
-    # Must be set when subtypes are instantiated
-    _dataset_doc = None
 
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
@@ -225,12 +223,21 @@ class DatasetMixin(object):
     def field_names(self):
         return self._get_fields_ordered(include_private=False)
 
-    def _get_field_names(self, include_private=False):
-        return self._get_fields_ordered(include_private=include_private)
-
     @classmethod
     def _doc_name(cls):
         return "Frame" if cls._is_frames_doc else "Sample"
+
+    @classmethod
+    def _fields_attr(cls):
+        return "frame_fields" if cls._is_frames_doc else "sample_fields"
+
+    @classmethod
+    def _dataset_doc(cls):
+        collection_name = cls.__name__
+        return fod._get_dataset_doc(collection_name, frames=cls._is_frames_doc)
+
+    def _get_field_names(self, include_private=False):
+        return self._get_fields_ordered(include_private=include_private)
 
     @classmethod
     def get_field_schema(
@@ -736,10 +743,10 @@ class DatasetMixin(object):
 
         cls._declare_field(field)
 
-        dataset_doc = cls._dataset_doc
+        dataset_doc = cls._dataset_doc()
         sample_field = SampleFieldDocument.from_field(field)
 
-        dataset_doc[cls._dataset_doc_fields_col].append(sample_field)
+        dataset_doc[cls._fields_attr()].append(sample_field)
         dataset_doc.save()
 
     @classmethod
@@ -762,8 +769,8 @@ class DatasetMixin(object):
         except TypeError:
             pass
 
-        dataset_doc = cls._dataset_doc
-        fields = getattr(dataset_doc, cls._dataset_doc_fields_col)
+        dataset_doc = cls._dataset_doc()
+        fields = getattr(dataset_doc, cls._fields_attr())
 
         for f in fields:
             if f.name == field_name:
@@ -787,12 +794,17 @@ class DatasetMixin(object):
         )
         delattr(cls, field_name)
 
-        dataset_doc = cls._dataset_doc
+        dataset_doc = cls._dataset_doc()
 
-        fields = getattr(dataset_doc, cls._dataset_doc_fields_col)
-        fields = [f for f in fields if f.name != field_name]
+        fields = getattr(dataset_doc, cls._fields_attr())
 
-        setattr(dataset_doc, cls._dataset_doc_fields_col, fields)
+        # This is intentionally implemented without creating a new list, since
+        # clips datasets directly use their source datasets frame fields
+        for idx, f in enumerate(fields):
+            if f.name == field_name:
+                del fields[idx]
+                break
+
         dataset_doc.save()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):

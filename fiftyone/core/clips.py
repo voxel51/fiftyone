@@ -185,18 +185,6 @@ class ClipsView(fov.DatasetView):
 
         self._sync_source(fields=fields, delete=True)
 
-        #
-        # @todo will this fail on overlapping clips? In that case there will be
-        # duplicate frames when super() runs its $out aggregation.
-        # This aggregation could resolve that...
-        #
-        """
-        [
-            {"$group": {"_id": "$_id", "doc" : {"$first": "$$ROOT"}}},
-            {"$replaceRoot": {"newRoot": "$doc"}},
-            {"$out": self._source_collection._dataset._frame_collection_name},
-        ]
-        """
         super().save(fields=fields)
 
     def reload(self):
@@ -357,15 +345,7 @@ def make_clips_dataset(
     else:
         clips_type = "manual"
 
-    dataset = fod.Dataset(_clips=True)
-
-    # Directly inherit frames collection from source dataset
-    src_dataset = sample_collection._dataset
-    dataset._frame_doc_cls = src_dataset._frame_doc_cls
-    dataset._doc.frame_collection_name = src_dataset._doc.frame_collection_name
-    dataset._doc.frame_fields = src_dataset._doc.frame_fields
-    dataset._doc.save()
-
+    dataset = fod.Dataset(_clips=True, _src_collection=sample_collection)
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
