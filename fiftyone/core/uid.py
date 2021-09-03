@@ -6,6 +6,7 @@ Utilities for usage analytics.
 |
 """
 import os
+import multiprocessing
 from socket import gaierror
 import threading
 import uuid
@@ -68,6 +69,9 @@ def log_import_if_allowed(test=False):
         return
 
     if os.environ.get("FIFTYONE_SERVER", None):
+        return
+
+    if multiprocessing.current_process().name != "MainProcess":
         return
 
     if test:
