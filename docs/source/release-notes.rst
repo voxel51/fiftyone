@@ -3,6 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.13.2:
+
+FiftyOne 0.13.2
+---------------
+*Released September 3, 2021*
+
+Core
+
+- Fixed errors experienced by Windows users when running FiftyOne APIs
+  that involved multiprocessing
+
 .. _release-notes-v0.13.1:
 
 FiftyOne 0.13.1
