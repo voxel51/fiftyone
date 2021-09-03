@@ -6,7 +6,6 @@ Service tests.
 |
 """
 from contextlib import contextmanager
-import multiprocessing
 import os
 import sys
 import time
@@ -18,7 +17,6 @@ import retrying
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 import fiftyone.constants as foc
-import fiftyone.core.odm.database as food
 import fiftyone.core.service as fos
 import fiftyone.service.util as fosu
 
@@ -309,19 +307,3 @@ def test_db_cleanup():
             ip.run_code(_start_db_snippet)
             cur_datasets = set(ip.run_code(_list_datasets_snippet))
             assert cur_datasets == orig_datasets
-
-
-def test_multiprocessing():
-    with multiprocessing.Pool(1, _check_process) as pool:
-        for _ in pool.imap_unordered(_do_nothing, [None]):
-            pass
-
-
-def _check_process(*_):
-    assert "FIFTYONE_PRIVATE_DATABASE_PORT" in os.environ
-    port = os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"]
-    assert int(port) == food._connection_kwargs["port"]
-
-
-def _do_nothing(*_args):
-    pass
