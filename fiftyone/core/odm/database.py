@@ -6,9 +6,12 @@ Database utilities.
 |
 """
 from copy import copy
+from itertools import repeat
 import logging
+from multiprocessing.pool import ThreadPool
 import os
 
+import asyncio
 from bson import json_util
 from mongoengine import connect
 import motor
@@ -134,19 +137,74 @@ def _validate_db_version(config, client):
     )
 
 
-def aggregate(collection, pipeline):
-    """Executes an aggregation on a collection.
+def aggregate(collection, pipelines):
+    """Executes one or more aggregations on a collection.
+
+    Multiple aggregations are executed using multiple threads.
 
     Args:
-        collection: a `pymongo.collection.Collection` or
-            `motor.motor_tornado.MotorCollection`
-        pipeline: a MongoDB aggregation pipeline
+        collection: a ``pymongo.collection.Collection`` or
+            ``motor.motor_tornado.MotorCollection``
+        pipelines: a MongoDB aggregation pipeline or a list of pipelines
 
     Returns:
-        a `pymongo.command_cursor.CommandCursor` or
-        `motor.motor_tornado.MotorCommandCursor`
+        -   If a single pipeline is provided, a
+            ``pymongo.command_cursor.CommandCursor`` or
+            ``motor.motor_tornado.MotorCommandCursor``
+
+        -   If multiple pipelines are provided, it is assumed they are a list
+            of facets that resolve to one document each, and the cursors are
+            resolved and the document list is returned
     """
-    return collection.aggregate(pipeline, allowDiskUse=True)
+    pipelines = list(pipelines)
+
+    is_list = pipelines and not isinstance(pipelines[0], dict)
+    if not is_list:
+        pipelines = [pipelines]
+
+    num_pipelines = len(pipelines)
+
+    if isinstance(collection, motor.motor_tornado.MotorCollection):
+        if num_pipelines == 1 and not is_list:
+            return collection.aggregate(pipelines[0], allowDiskUse=True)
+
+        return _do_async_pooled_aggregate(collection, pipelines)
+
+    if num_pipelines == 1:
+        result = collection.aggregate(pipelines[0], allowDiskUse=True)
+        return [list(result)] if is_list else result
+
+    return _do_pooled_aggregate(collection, pipelines)
+
+
+def _do_pooled_aggregate(collection, pipelines):
+    # @todo: MongoDB 5.0 supports snapshots which can be used to make the
+    # results consistent, i.e. read from the same point in time
+    with ThreadPool(processes=len(pipelines)) as pool:
+        return pool.map(
+            lambda pipeline: list(
+                collection.aggregate(pipeline, allowDiskUse=True)
+            ),
+            pipelines,
+            chunksize=1,
+        )
+
+
+async def _do_async_pooled_aggregate(collection, pipelines):
+    global _async_client
+
+    async with await _async_client.start_session() as session:
+        return await asyncio.gather(
+            *[
+                _do_async_aggregate(collection, pipeline, session)
+                for pipeline in pipelines
+            ]
+        )
+
+
+async def _do_async_aggregate(collection, pipeline, session):
+    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
+    return await cursor.to_list(1)
 
 
 def get_db_client():
