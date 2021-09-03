@@ -112,7 +112,7 @@ compute a low-dimensional representation of the embeddings.
 Embedding methods
 -----------------
 
-The ``embeddings`` and ``model`` parameters of
+The `embeddings` and `model` parameters of
 :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
 support a variety of ways to generate embeddings for your data:
 
@@ -127,15 +127,15 @@ support a variety of ways to generate embeddings for your data:
 Dimensionality reduction methods
 --------------------------------
 
-The ``method`` parameter of
+The `method` parameter of
 :meth:`compute_visualization() <fiftyone.brain.compute_visualization>` allows
 you to specify the dimensionality reduction method to use. The supported
 methods are:
 
--   ``"umap"`` (default): Uniform Manifold Approximation and Projection
+-   `"umap"` (default): Uniform Manifold Approximation and Projection
     (`UMAP <https://github.com/lmcinnes/umap>`_)
--   ``"t-sne"``: t-distributed Stochastic Neighbor Embedding (`t-SNE <https://lvdmaaten.github.io/tsne>`_)
--   ``"pca"``: Principal Component Analysis (`PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_)
+-   `"t-sne"`: t-distributed Stochastic Neighbor Embedding (`t-SNE <https://lvdmaaten.github.io/tsne>`_)
+-   `"pca"`: Principal Component Analysis (`PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_)
 
 .. note::
 
@@ -170,8 +170,8 @@ more applications specific to your use case when you try it out on your data!
     example uses of the Brain's embeddings-powered visualization methods to
     uncover hidden structure in datasets.
 
-Example usage
--------------
+Image embeddings example
+------------------------
 
 The following example gives a taste of the powers of visual embeddings in
 FiftyOne using the :ref:`BDD100K dataset <dataset-zoo-bdd100k>` from the
@@ -181,7 +181,7 @@ zoo, and the default `UMAP <https://github.com/lmcinnes/umap>`_ dimensionality
 reduction method.
 
 In this setup, the scatterpoints correspond to images in the validation split
-colored by the ``time of day`` labels provided by the BDD100K dataset. The plot
+colored by the `time of day` labels provided by the BDD100K dataset. The plot
 is :ref:`attached to an App instance <attaching-plots>`, so when points are
 lasso-ed in the plot, the corresponding samples are automatically selected in
 the session's :meth:`view <fiftyone.core.session.Session.view>`.
@@ -230,10 +230,11 @@ Each block in the example code below denotes a separate cell in a
     # Connect to session
     session.plots.attach(plot)
 
-.. image:: /images/brain/brain-visualization.gif
-   :alt: visualization
+.. image:: /images/brain/brain-image-visualization.gif
+   :alt: image-visualization
    :align: center
 
+|br|
 The GIF shows the variety of insights that are revealed by running this simple
 protocol:
 
@@ -242,9 +243,75 @@ protocol:
     image.
 -   The second cluster of points reveals a set of images in rainy conditions
     with water droplets on the windshield.
--   Hiding the primary cluster of ``daytime`` points and selecting the
-    remaining ``night`` points reveals that the ``night`` points have incorrect
+-   Hiding the primary cluster of `daytime` points and selecting the
+    remaining `night` points reveals that the `night` points have incorrect
     labels
+
+Object embeddings example
+-------------------------
+
+The following example demonstrates how embeddings can be used to visualize the
+ground truth objects in the :ref:`quickstart dataset <dataset-zoo-quickstart>`
+using the
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>` method's
+default embeddings model and dimensionality method.
+
+In this setup, we generate a visualization for all ground truth objects, but
+then we use the convenient
+:meth:`use_view() <fiftyone.brain.visualization.VisualizationResults.use_view>`
+method to restrict the visualization to only objects in a subset of the
+classes. The scatterpoints in the plot correspond to objects, colored by their
+`label` and sized proportionately to the object's size. The plot is
+:ref:`attached to an App instance <attaching-plots>`, so when points are
+lasso-ed in the plot, the corresponding object patches are automatically
+selected in the session's :meth:`view <fiftyone.core.session.Session.view>`.
+
+Each block in the example code below denotes a separate cell in a
+:ref:`Jupyter notebook <working-in-notebooks>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Generate visualization for `ground_truth` objects
+    results = fob.compute_visualization(dataset, patches_field="ground_truth")
+
+    # Get the 10 most common classes in the dataset
+    counts = dataset.count_values("ground_truth.detections.label")
+    classes = sorted(counts, key=counts.get, reverse=True)[:10]
+
+    # Restrict visualization to the 10 most common classes
+    view = dataset.filter_labels("ground_truth", F("label").is_in(classes))
+    results.use_view(view)
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Generate scatterplot
+    bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+    plot = results.visualize(
+        labels=F("ground_truth.detections.label"),
+        sizes=F("ground_truth.detections[]").apply(bbox_area),
+    )
+    plot.show(height=800)
+
+    session.plots.attach(plot)
+
+.. image:: /images/brain/brain-object-visualization.gif
+   :alt: object-visualization
+   :align: center
+
+As you can see, the coloring and sizing of the scatterpoints allows you to
+discover natural clusters of objects, such as visually similar carrots,
+large groups of people, and small/distant people.
 
 .. _brain-similarity:
 
@@ -265,13 +332,24 @@ image(s) or object patch(es) of your choice in your dataset. In addition, the
 with respect to an index you've computed whenever one or more images or labels
 are selected in the App.
 
+The :class:`SimilarityResults <fiftyone.brain.similarity.SimilarityResults>`
+object returned by
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` also provides
+powerful
+:meth:`find_unique() <fiftyone.brain.similarity.SimilarityResults.find_unique>`
+and
+:meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`
+methods that you can use to find both maximally unique and near-duplicate
+subsets of your datasets or their object patches. See
+:ref:`this section <brain-similarity-cifar10>` for example uses.
+
 Embedding methods
 -----------------
 
 Like :ref:`embeddings visualization <brain-embeddings-visualization>`, visual
 similarity leverages deep embeddings to generate a visual index for a dataset.
 
-The ``embeddings`` and ``model`` parameters of
+The `embeddings` and `model` parameters of
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` support a
 variety of ways to generate embeddings for your data:
 
@@ -296,15 +374,15 @@ view stage to query the index.
 
 To index by images, simply pass the |Dataset| or |DatasetView| of interest to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and provide a
-name for the index via the ``brain_key`` argument.
+name for the index via the `brain_key` argument.
 
 Next, load the dataset in the App and select some image(s). Whenever there is
 an active selection in the App, a similarity menu icon will appear above the
 grid, enabling you to sort by visual similarity to your current selection. The
-menu will list the ``brain_key`` for all applicable similarity indexes so you
+menu will list the `brain_key` for all applicable similarity indexes so you
 can choose which index to use to perform the search. You can also optionally
-specify a maximum number of matches to return (``k``) and whether to sort in
-order of least similarity (``reverse``):
+specify a maximum number of matches to return (`k`) and whether to sort in
+order of least similarity (`reverse`):
 
 .. code-block:: python
     :linenos:
@@ -322,12 +400,13 @@ order of least similarity (``reverse``):
     # Launch App
     session = fo.launch_app(dataset)
 
-    # In the App... select some image(s) and use the similarity menu to sort
+    # In the App... select some image(s) and use the similarity menu to sort!
 
 .. image:: /images/brain/brain-image-similarity.gif
    :alt: image-similarity
    :align: center
 
+|br|
 Alternatively, you can use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to programmatically :ref:`construct a view <using-views>` that
@@ -380,17 +459,17 @@ more information about adding labels to your datasets.
 To index by object patches, simply pass the |Dataset| or |DatasetView| of
 interest to :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
 along with the name of the patches field and a name for the index via the
-``brain_key`` argument.
+`brain_key` argument.
 
 Next, load the dataset in the App and switch to
 :ref:`object patches view <app-object-patches>` by clicking the patches icon
 above the grid and choosing the label field of interest from the dropdown.
 Now, whenever you have selected one or more patches in the App, a similarity
 menu icon will appear above the grid, enabling you to sort by visual similarity
-to your current selection. The menu will list the ``brain_key`` for all
+to your current selection. The menu will list the `brain_key` for all
 applicable similarity indexes so you can choose which index to use to perform
 the search. You can also optionally specify a maximum number of matches to
-return (``k``) and whether to sort in order of least similarity (``reverse``):
+return (`k`) and whether to sort in order of least similarity (`reverse`):
 
 .. code-block:: python
     :linenos:
@@ -417,6 +496,7 @@ return (``k``) and whether to sort in order of least similarity (``reverse``):
    :alt: object-similarity
    :align: center
 
+|br|
 Alternatively, you can directly use the
 :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
 view stage to programmatically :ref:`construct a view <using-views>` that
@@ -471,12 +551,179 @@ Here are a few of the many possible applications:
     training data
 -   Pruning near-duplicate images from your training dataset
 
+.. _brain-similarity-cifar10:
+
+CIFAR-10 example
+----------------
+
+The following example demonstrates two common workflows that you can perform
+using a similarity index generated via
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` on the
+:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>`:
+
+-   Selecting a set of maximally unique images from the dataset
+-   Identifying near-duplicate images in the dataset
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("cifar10", split="test")
+    print(dataset)
+
+To proceed, we first need some suitable image embeddings for the dataset.
+Although the :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
+and :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
+methods are equipped with a default general-purpose model to generate
+embeddings if none are provided, you'll typically find higher-quality insights
+when a domain-specific model is used to generate embeddings.
+
+In this case, we'll use a classifier that has been fine-tuned on CIFAR-10 to
+compute some embeddings and then generate image similarity/visualization
+indexes for them:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.brain as fob
+    import fiftyone.brain.internal.models as fbm
+
+    # Compute embeddings via a pre-trained CIFAR-10 classifier
+    model = fbm.load_model("simple-resnet-cifar10")
+    embeddings = dataset.compute_embeddings(model, batch_size=16)
+
+    # Generate similarity index
+    results = fob.compute_similarity(
+        dataset, embeddings=embeddings, brain_key="img_sim"
+    )
+
+    # Generate a 2D visualization
+    viz_results = fob.compute_visualization(
+        dataset, embeddings=embeddings, brain_key="img_viz"
+    )
+
+Finding maximally unique images
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With a similarity index generated, we can use the
+:meth:`find_unique() <fiftyone.brain.similarity.SimilarityResults.find_unique>`
+method of the index to identify a set of images of any desired size that are
+maximally unique with respect to each other:
+
+.. code-block:: python
+    :linenos:
+
+    # Use the similarity index to identify 500 maximally unique images
+    results.find_unique(500)
+    print(results.unique_ids[:5])
+
+We can also conveniently visualize the results of this operation via the
+:meth:`visualize_unique() <fiftyone.brain.similarity.SimilarityResults.visualize_unique>`
+method of the results object, which generates a scatterplot with the unique
+images colored separately:
+
+.. code-block:: python
+    :linenos:
+
+    # Visualize the unique images in embeddings space
+    plot = results.visualize_unique(visualization=viz_results)
+    plot.show(height=800, yaxis_scaleanchor="x")
+
+.. image:: /images/brain/brain-cifar10-unique-viz.png
+   :alt: cifar10-unique-viz
+   :align: center
+
+And of course we can load a view containing the unique images in the App to
+explore the results in detail:
+
+.. code-block:: python
+    :linenos:
+
+    # Visualize the unique images in the App
+    unique_view = dataset.select(results.unique_ids)
+    session = fo.launch_app(view=unique_view)
+
+.. image:: /images/brain/brain-cifar10-unique-view.png
+   :alt: cifar10-unique-view
+   :align: center
+
+Finding near-duplicate images
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We can also use our similarity index to detect *near-duplicate* images in the
+dataset.
+
+For example, let's use the
+:meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`
+method to identify the least visually similar images in our dataset:
+
+.. code-block:: python
+    :linenos:
+
+    # Use the similarity index to identify the 1% of images that are least
+    # visually similar w.r.t. the other images
+    results.find_duplicates(fraction=0.01)
+
+    print(results.neighbors_map)
+
 .. note::
 
-    Check out the
-    :doc:`image uniqueness tutorial </tutorials/uniqueness>` to see example
-    uses of the Brain's visual similarity methods to identify near-duplicate
-    images and mine target scenarios in a dataset.
+    You can also provide a specific embeddings distance threshold to
+    :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`,
+    in which case the non-duplicate set will be the (approximately) largest set
+    such that all pairwise distances between non-duplicate images are
+    *greater* than this threshold.
+
+The
+:meth:`neighbors_map <fiftyone.brain.similarity.SimilarityResults.neighbors_map>`
+property of the results object provides a data structure that summarizes the
+findings. The keys of the dictionary are the sample IDs of each nearest
+non-duplicate image, and the values are lists of `(id, distance)` tuples
+listing the sample IDs of the duplicate images for each in-sample image
+together with the embedding distance between the two images:
+
+.. code-block:: text
+
+    {
+        '61143408db40df926c571a6b': [
+            ('61143409db40df926c573075', 5.667297674385298),
+            ('61143408db40df926c572ab6', 6.231051661334058)
+        ],
+        '6114340cdb40df926c577f2a': [
+            ('61143408db40df926c572b54', 6.042934361555487)
+        ],
+        '61143408db40df926c572aa3': [
+            ('6114340bdb40df926c5772e9', 5.88984758067434),
+            ('61143408db40df926c572b64', 6.063986454046798),
+            ('61143409db40df926c574571', 6.10303338363576),
+            ('6114340adb40df926c5749a2', 6.161749290179865)
+        ],
+        ...
+    }
+
+We can conveniently visualize this information in the App via the
+:meth:`duplicates_view() <fiftyone.brain.similarity.SimilarityResults.duplicates_view>`
+method of the results object, which constructs a view with the duplicate images
+arranged directly after their corresponding nearest in-sample image, with
+additional sample fields recording the type and nearest in-sample ID/distance
+for each image:
+
+.. code-block:: python
+    :linenos:
+
+    duplicates_view = results.duplicates_view(
+        type_field="dup_type",
+        id_field="dup_id",
+        dist_field="dup_dist",
+    )
+
+    session.view = duplicates_view
+
+.. image:: /images/brain/brain-cifar10-duplicate-view.png
+   :alt: cifar10-duplicate-view
+   :align: center
 
 .. _brain-image-uniqueness:
 
@@ -514,16 +761,16 @@ structures like `COCO <https://cocodataset.org/#home>`_.
     Did you know? Instead of using FiftyOne's default model to generate
     embeddings, you can provide your own embeddings or specify a model from the
     :ref:`Model Zoo <model-zoo>` to use to generate embeddings via the optional
-    ``embeddings`` and ``model`` argument to
+    `embeddings` and `model` argument to
     :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
 
-**Output**: A scalar-valued ``uniqueness`` field is populated on each sample
+**Output**: A scalar-valued `uniqueness` field is populated on each sample
 that ranks the uniqueness of that sample (higher value means more unique).
-The uniqueness values for a dataset are normalized to ``[0, 1]``, with the most
-unique sample in the collection having a uniqueness value of ``1``.
+The uniqueness values for a dataset are normalized to `[0, 1]`, with the most
+unique sample in the collection having a uniqueness value of `1`.
 
 You can customize the name of this field by passing the optional
-``uniqueness_field`` argument to
+`uniqueness_field` argument to
 :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
 
 **What to expect**: Uniqueness uses a tuned algorithm that measures the
@@ -535,7 +782,7 @@ most other samples are more unique.
 .. note::
 
     Did you know? You can specify a region of interest within each image to use
-    to compute uniqueness by providing the optional ``roi_field`` argument to
+    to compute uniqueness by providing the optional `roi_field` argument to
     :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`, which
     contains |Detections| or |Polylines| that define the ROI for each sample.
 
@@ -584,10 +831,10 @@ datasets.
         human annotations (`"ground_truth"` above) and model predictions
         (`"predictions"` above).
 
-        **Output**: A float ``mistakenness`` field is populated on each sample
+        **Output**: A float `mistakenness` field is populated on each sample
         that ranks the chance that the human annotation is mistaken. You can
         customize the name of this field by passing the optional
-        ``mistakenness_field`` argument to
+        `mistakenness_field` argument to
         :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`.
 
         **What to expect**: Finding mistakes in human annotations is
@@ -647,7 +894,7 @@ datasets.
           matches in `label_field` but which are deemed to be likely correct
           annotations, these objects will have their `possible_missing`
           attribute set to True. In addition, if you pass the optional
-          ``copy_missing=True`` flag to
+          `copy_missing=True` flag to
           :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`,
           then these objects will be copied into `label_field`.
 
@@ -714,12 +961,12 @@ and their logits to your FiftyOne |Dataset| and then run the
     fob.compute_hardness(dataset, "predictions")
 
 **Input**: A |Dataset| or |DatasetView| on which predictions have been
-computed and are stored in the ``"predictions"`` argument. Ground truth
+computed and are stored in the `"predictions"` argument. Ground truth
 annotations are not required for hardness.
 
-**Output**: A scalar-valued ``hardness`` field is populated on each sample that
+**Output**: A scalar-valued `hardness` field is populated on each sample that
 ranks the hardness of the sample. You can customize the name of this field via
-the ``hardness_field`` argument of
+the `hardness_field` argument of
 :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
 
 **What to expect**: Hardness is computed in the context of a prediction model.
@@ -757,31 +1004,31 @@ Brain method runs can be accessed later by their `brain_key`:
 
         The
         :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
-        method accepts a ``brain_key`` parameter that specifies the brain key
+        method accepts a `brain_key` parameter that specifies the brain key
         under which to store the results of the visualization.
 
     .. tab:: Similarity
 
         The
         :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-        method accepts an optional ``brain_key`` parameter that specifies the
+        method accepts an optional `brain_key` parameter that specifies the
         brain key under which to store the similarity index.
 
     .. tab:: Uniqueness
 
         The brain key of uniqueness runs is the value of the
-        ``uniqueness_field`` passed to
+        `uniqueness_field` passed to
         :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
 
     .. tab:: Mistakenness
 
         The brain key of mistakenness runs is the value of the
-        ``mistakenness_field`` passed to
+        `mistakenness_field` passed to
         :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`.
 
     .. tab:: Hardness
 
-        The brain key of hardness runs is the value of the ``hardness_field``
+        The brain key of hardness runs is the value of the `hardness_field`
         passed to :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
 
 The example below demonstrates the basic interface:

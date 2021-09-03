@@ -1,6 +1,6 @@
 {
   "name": "@fiftyone/flashlight",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Voxel51, Inc.",
   "description": "Justified, scrubbable, and virtualized looker grid",
   "homepage": "https://github.com/voxel51/fiftyone/app/flashlight#readme",

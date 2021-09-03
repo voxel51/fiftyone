@@ -6,9 +6,27 @@ import pako from "./pako.js";
 
 export { deserialize };
 
+export const ARRAY_TYPES = {
+  Uint8Array,
+  Int8Array,
+  Uint16Array,
+  Int16Array,
+  Uint32Array,
+  Int32Array,
+};
+
+export type TypedArray =
+  | Uint8Array
+  | Int8Array
+  | Uint16Array
+  | Int16Array
+  | Uint32Array
+  | Int32Array;
+
 export interface NumpyResult {
   buffer: ArrayBuffer;
   shape: [number, number];
+  arrayType: keyof typeof ARRAY_TYPES;
 }
 
 const DATA_TYPES = {
@@ -130,6 +148,7 @@ function parse(array: Uint8Array): NumpyResult {
   return {
     shape: header.shape,
     buffer: typedData.buffer,
+    arrayType: typedData.constructor.name,
   };
 }
 

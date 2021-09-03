@@ -6,67 +6,203 @@ Database utilities.
 |
 """
 from copy import copy
+from itertools import repeat
 import logging
+from multiprocessing.pool import ThreadPool
+import os
 
+import asyncio
 from bson import json_util
 from mongoengine import connect
 import motor
+from packaging.version import Version
 import pymongo
-from pymongo.errors import BulkWriteError
+from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+from fiftyone.core.config import FiftyOneConfigError
+import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 _client = None
 _async_client = None
-_default_port = 27017
+_connection_kwargs = {}
+_db_service = None
 
-logger = logging.getLogger(__name__)
 
 _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
+
+
+def establish_db_conn(config):
+    """Establishes the database connection.
+
+    If ``fiftyone.config.database_uri`` is defined, then we connect to that
+    URI. Otherwise, a :class:`fiftyone.core.service.DatabaseService` is
+    created.
+
+    Args:
+        config: a :class:`fiftyone.core.config.FiftyOneConfig`
+
+    Raises:
+        ConnectionError: if a connection to ``mongod`` could not be established
+        FiftyOneConfigError: if ``fiftyone.config.database_uri`` is not
+            defined and ``mongod`` could not be found
+        ServiceExecutableNotFound: if
+            :class:`fiftyone.core.service.DatabaseService` startup was
+            attempted, but ``mongod`` was not found in :mod:`fiftyone.db.bin`
+        RuntimeError: if the ``mongod`` found does not meet FiftyOne's
+            requirements, or validation could not occur
+    """
+    global _client
+    global _db_service
+    global _connection_kwargs
+
+    established_port = os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None)
+    if established_port is not None:
+        _connection_kwargs["port"] = int(established_port)
+    if config.database_uri is not None:
+        _connection_kwargs["host"] = config.database_uri
+    elif _db_service is None:
+        if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
+            return
+
+        try:
+            _db_service = fos.DatabaseService()
+            port = _db_service.port
+            _connection_kwargs["port"] = port
+            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
+
+        except fos.ServiceExecutableNotFound as error:
+            if not fou.is_arm_mac():
+                raise error
+
+            raise FiftyOneConfigError(
+                "MongoDB is not yet supported on Apple Silicon Macs. Please"
+                "define a `database_uri` in your"
+                "`fiftyone.core.config.FiftyOneConfig` to define a connection"
+                "to your own MongoDB instance or cluster"
+            )
+
+    _client = pymongo.MongoClient(**_connection_kwargs)
+    _validate_db_version(config, _client)
+
+    connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
 
 
 def _connect():
     global _client
     if _client is None:
-        connect(foc.DEFAULT_DATABASE, port=_default_port)
-        _client = pymongo.MongoClient(port=_default_port)
+        global _connection_kwargs
+        _client = pymongo.MongoClient(**_connection_kwargs)
+        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
 
 
 def _async_connect():
     global _async_client
     if _async_client is None:
-        _async_client = motor.motor_tornado.MotorClient(
-            "localhost", _default_port
+        global _connection_kwargs
+        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+
+
+def _validate_db_version(config, client):
+    try:
+        version = Version(client.server_info()["version"])
+    except Exception as e:
+        if isinstance(e, ServerSelectionTimeoutError):
+            raise ConnectionError("Could not connect to `mongod`") from e
+
+        raise RuntimeError("Failed to validate `mongod` version") from e
+
+    min_ver, max_ver = foc.MONGODB_VERSION_RANGE
+
+    if min_ver <= version < max_ver:
+        return
+
+    if version >= max_ver and config.database_uri is not None:
+        raise RuntimeError(
+            "Found `mongod` version %s, but [%s, %s) is required. Your "
+            "FiftyOne installation may be outdated; try upgrading it"
+            % (version, min_ver, max_ver)
+        )
+
+    raise RuntimeError(
+        "Found `mongod` version %s, but [%s, %s) is required"
+        % (version, min_ver, max_ver)
+    )
+
+
+def aggregate(collection, pipelines):
+    """Executes one or more aggregations on a collection.
+
+    Multiple aggregations are executed using multiple threads, and their
+    results are returned as lists rather than cursors.
+
+    Args:
+        collection: a ``pymongo.collection.Collection`` or
+            ``motor.motor_tornado.MotorCollection``
+        pipelines: a MongoDB aggregation pipeline or a list of pipelines
+
+    Returns:
+        -   If a single pipeline is provided, a
+            ``pymongo.command_cursor.CommandCursor`` or
+            ``motor.motor_tornado.MotorCommandCursor`` is returned
+
+        -   If multiple pipelines are provided, each cursor is extracted into
+            a list and the list of lists is returned
+    """
+    pipelines = list(pipelines)
+
+    is_list = pipelines and not isinstance(pipelines[0], dict)
+    if not is_list:
+        pipelines = [pipelines]
+
+    num_pipelines = len(pipelines)
+
+    if isinstance(collection, motor.motor_tornado.MotorCollection):
+        if num_pipelines == 1 and not is_list:
+            return collection.aggregate(pipelines[0], allowDiskUse=True)
+
+        return _do_async_pooled_aggregate(collection, pipelines)
+
+    if num_pipelines == 1:
+        result = collection.aggregate(pipelines[0], allowDiskUse=True)
+        return [result] if is_list else result
+
+    return _do_pooled_aggregate(collection, pipelines)
+
+
+def _do_pooled_aggregate(collection, pipelines):
+    # @todo: MongoDB 5.0 supports snapshots which can be used to make the
+    # results consistent, i.e. read from the same point in time
+    with ThreadPool(processes=len(pipelines)) as pool:
+        return pool.map(
+            lambda p: list(collection.aggregate(p, allowDiskUse=True)),
+            pipelines,
+            chunksize=1,
         )
 
 
-def aggregate(collection, pipeline):
-    """Executes an aggregation on a collection.
+async def _do_async_pooled_aggregate(collection, pipelines):
+    global _async_client
 
-    Args:
-        collection: a `pymongo.collection.Collection` or
-            `motor.motor_tornado.MotorCollection`
-        pipeline: a MongoDB aggregation pipeline
-
-    Returns:
-        a `pymongo.command_cursor.CommandCursor` or
-        `motor.motor_tornado.MotorCommandCursor`
-    """
-    return collection.aggregate(pipeline, allowDiskUse=True)
+    async with await _async_client.start_session() as session:
+        return await asyncio.gather(
+            *[
+                _do_async_aggregate(collection, pipeline, session)
+                for pipeline in pipelines
+            ]
+        )
 
 
-def set_default_port(port):
-    """Changes the default port used to connect to the database.
-
-    Args:
-        port (int): port number
-    """
-    global _default_port
-    _default_port = int(port)
+async def _do_async_aggregate(collection, pipeline, session):
+    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
+    return await cursor.to_list(1)
 
 
 def get_db_client():
@@ -75,7 +211,8 @@ def get_db_client():
     Returns:
         a ``pymongo.mongo_client.MongoClient``
     """
-    return pymongo.MongoClient(port=_default_port)
+    _connect()
+    return _client
 
 
 def get_db_conn():
@@ -376,6 +513,200 @@ def delete_dataset(name, dry_run=False):
             _delete_run_results(delete_results)
 
 
+def delete_annotation_run(name, anno_key, dry_run=False):
+    """Deletes the annotation run with the given key from the dataset with
+    the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_annotation_run`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        anno_key: the annotation key
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    annotation_runs = dataset_dict.get("annotation_runs", {})
+    if anno_key not in annotation_runs:
+        logger.warning(
+            "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
+        )
+        return
+
+    run_doc = annotation_runs.pop(anno_key)
+    result_id = run_doc.get("results", None)
+
+    if result_id is not None:
+        logger.info("Deleting run result '%s'", result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    logger.info(
+        "Deleting annotation run '%s' from dataset '%s'", anno_key, name
+    )
+    if not dry_run:
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
+def delete_annotation_runs(name, dry_run=False):
+    """Deletes all annotation runs from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_annotation_runs`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    anno_keys = []
+    result_ids = []
+    for anno_key, run_doc in dataset_dict.get("annotation_runs", {}).items():
+        anno_keys.append(anno_key)
+
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    if result_ids:
+        logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            _delete_run_results(result_ids)
+
+    logger.info(
+        "Deleting annotation runs %s from dataset '%s'", anno_keys, name
+    )
+    if not dry_run:
+        dataset_dict["annotation_runs"] = {}
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
+def delete_brain_run(name, brain_key, dry_run=False):
+    """Deletes the brain method run with the given key from the dataset with
+    the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_run`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        brain_key: the brain key
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    brain_methods = dataset_dict.get("brain_methods", {})
+    if brain_key not in brain_methods:
+        logger.warning(
+            "Dataset '%s' has no brain method run with key '%s'",
+            name,
+            brain_key,
+        )
+        return
+
+    run_doc = brain_methods.pop(brain_key)
+    result_id = run_doc.get("results", None)
+
+    if result_id is not None:
+        logger.info("Deleting run result '%s'", result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    logger.info(
+        "Deleting brain method run '%s' from dataset '%s'", brain_key, name
+    )
+    if not dry_run:
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
+def delete_brain_runs(name, dry_run=False):
+    """Deletes all brain method runs from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_runs`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    match_d = {"name": name}
+    dataset_dict = conn.datasets.find_one(match_d)
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found", name)
+        return
+
+    brain_keys = []
+    result_ids = []
+    for brain_key, run_doc in dataset_dict.get("brain_methods", {}).items():
+        brain_keys.append(brain_key)
+
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    if result_ids:
+        logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            _delete_run_results(result_ids)
+
+    logger.info(
+        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
+    )
+    if not dry_run:
+        dataset_dict["brain_methods"] = {}
+        conn.datasets.replace_one(match_d, dataset_dict)
+
+
 def delete_evaluation(name, eval_key, dry_run=False):
     """Deletes the evaluation run with the given key from the dataset with the
     given name.
@@ -468,113 +799,20 @@ def delete_evaluations(name, dry_run=False):
         conn.datasets.replace_one(match_d, dataset_dict)
 
 
-def delete_brain_run(name, brain_key, dry_run=False):
-    """Deletes the brain method run with the given key from the dataset with
-    the given name.
-
-    This is a low-level implementation of deletion that does not call
-    :meth:`fiftyone.core.dataset.load_dataset` or
-    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_run`,
-    which is helpful if a dataset's backing document or collections are
-    corrupted and cannot be loaded via the normal pathways.
-
-    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
-    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
-
-    Args:
-        name: the name of the dataset
-        brain_key: the brain key
-        dry_run (False): whether to log the actions that would be taken but not
-            perform them
-    """
-    conn = get_db_conn()
-
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
-    if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
-        return
-
-    brain_methods = dataset_dict.get("brain_methods", {})
-    if brain_key not in brain_methods:
-        logger.warning(
-            "Dataset '%s' has no brain method run with key '%s'",
-            name,
-            brain_key,
-        )
-        return
-
-    run_doc = brain_methods.pop(brain_key)
-    result_id = run_doc.get("results", None)
-
-    if result_id is not None:
-        logger.info("Deleting run result '%s'", result_id)
-        if not dry_run:
-            _delete_run_results([result_id])
-
-    logger.info(
-        "Deleting brain method run '%s' from dataset '%s'", brain_key, name,
-    )
-    if not dry_run:
-        conn.datasets.replace_one(match_d, dataset_dict)
-
-
-def delete_brain_runs(name, dry_run=False):
-    """Deletes all brain method runs from the dataset with the given name.
-
-    This is a low-level implementation of deletion that does not call
-    :meth:`fiftyone.core.dataset.load_dataset` or
-    :meth:`fiftyone.core.collections.SampleCollection.delete_brain_runs`,
-    which is helpful if a dataset's backing document or collections are
-    corrupted and cannot be loaded via the normal pathways.
-
-    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
-    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
-
-    Args:
-        name: the name of the dataset
-        dry_run (False): whether to log the actions that would be taken but not
-            perform them
-    """
-    conn = get_db_conn()
-
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
-    if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
-        return
-
-    brain_keys = []
-    result_ids = []
-    for brain_key, run_doc in dataset_dict.get("brain_methods", {}).items():
-        brain_keys.append(brain_key)
-
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
-
-    if result_ids:
-        logger.info("Deleting %d run result(s)", len(result_ids))
-        if not dry_run:
-            _delete_run_results(result_ids)
-
-    logger.info(
-        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
-    )
-    if not dry_run:
-        dataset_dict["brain_methods"] = {}
-        conn.datasets.replace_one(match_d, dataset_dict)
-
-
 def _get_result_ids(dataset_dict):
     result_ids = []
 
-    for run_doc in dataset_dict.get("evaluations", {}).values():
+    for run_doc in dataset_dict.get("annotation_runs", {}).values():
         result_id = run_doc.get("results", None)
         if result_id is not None:
             result_ids.append(result_id)
 
     for run_doc in dataset_dict.get("brain_methods", {}).values():
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            result_ids.append(result_id)
+
+    for run_doc in dataset_dict.get("evaluations", {}).values():
         result_id = run_doc.get("results", None)
         if result_id is not None:
             result_ids.append(result_id)

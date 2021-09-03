@@ -10,7 +10,7 @@ import {
   TEXT_COLOR,
 } from "../constants";
 
-import { NumpyResult } from "../numpy";
+import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -26,14 +26,16 @@ export default class DetectionOverlay<
 > extends CoordinateOverlay<State, DetectionLabel> {
   private imageData: ImageData;
   private labelBoundingBox: BoundingBox;
-  private mask: Uint8ClampedArray;
+  private mask: TypedArray;
   private bitColor: number;
   private canvas: HTMLCanvasElement;
 
   constructor(field, label) {
     super(field, label);
     if (this.label.mask) {
-      this.mask = new Uint8ClampedArray(this.label.mask.buffer);
+      this.mask = new ARRAY_TYPES[this.label.mask.arrayType](
+        this.label.mask.buffer
+      );
       const [height, width] = this.label.mask.shape;
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
@@ -181,7 +183,7 @@ export default class DetectionOverlay<
 
     if (state.options.showIndex && !isNaN(this.label.index)) {
       text.length && (text += " ");
-      text += `[${Number(this.label.index).toLocaleString()}]`;
+      text += `${Number(this.label.index).toLocaleString()}`;
     }
 
     if (state.options.showConfidence && !isNaN(this.label.confidence)) {

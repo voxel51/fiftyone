@@ -509,10 +509,10 @@ of your :ref:`FiftyOne config <configuring-fiftyone>`.
         .. code-block:: python
             :linenos:
 
-            # Customize where zoo datasets are downloaded
-            import fiftyone.core.config as foc
+            import fiftyone as fo
 
-            foc.set_config_settings(dataset_zoo_dir="/your/custom/directory")
+            # Customize where zoo datasets are downloaded
+            fo.config.dataset_zoo_dir = "/your/custom/directory"
 
 .. _dataset-zoo-delete:
 
@@ -661,7 +661,7 @@ of your :ref:`FiftyOne config <configuring-fiftyone>`.
         .. code-block:: python
             :linenos:
 
-            # Use the `torch` backend
-            import fiftyone.core.config as foc
+            import fiftyone as fo
 
-            foc.set_config_settings(default_ml_backend="torch")
+            # Use the `torch` backend
+            fo.config.default_ml_backend = "torch"

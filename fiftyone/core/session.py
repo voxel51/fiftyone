@@ -8,6 +8,7 @@ Session class for interacting with the FiftyOne App.
 from collections import defaultdict
 from functools import wraps
 import logging
+import pkg_resources
 import time
 from uuid import uuid4
 import webbrowser
@@ -340,14 +341,8 @@ class Session(foc.HasClient):
                     "Cannot open a Desktop App instance from a Colab notebook"
                 )
 
-            try:
-                import fiftyone.desktop  # pylint: disable=unused-import
-            except ImportError as e:
-                if not focn.DEV_INSTALL:
-                    raise ValueError(
-                        "You must install the 'fiftyone-desktop' package "
-                        "in order to launch a desktop App instance"
-                    ) from e
+            if not focn.DEV_INSTALL:
+                _import_desktop()
 
             self._app_service = fos.AppService(server_port=port)
             return
@@ -862,21 +857,32 @@ class Session(foc.HasClient):
         """
         return fou.SetAttributes(self, _auto=False)
 
-    def wait(self):
+    def wait(self, wait=3):
         """Blocks execution until the App is closed by the user.
 
-        Closing a desktop App will always exit the wait. For browser Apps, all
-        connected windows (tabs) must be closed.
+        For browser Apps, all connected windows (tabs) must be closed before
+        this method will unblock.
+
+        For desktop Apps, all positive ``wait`` values are equivalent;
+        execution will immediately unblock when the App is closed.
+
+        Args:
+            wait (3): the number of seconds to wait for a new App connection
+                before returning if all connections are lost. If negative, the
+                process will wait forever, regardless of connections
         """
         if self._context != focx._NONE:
             logger.warning("Notebook sessions cannot wait")
             return
 
         try:
-            if self._remote or not self._desktop:
+            if wait < 0:
+                while True:
+                    time.sleep(10)
+            elif self._remote or not self._desktop:
                 self._wait_closed = False
                 while not self._wait_closed:
-                    time.sleep(1)
+                    time.sleep(wait)
             else:
                 self._app_service.wait()
         except KeyboardInterrupt:
@@ -1074,3 +1080,34 @@ def _display_colab(session, handle, uuid, port, height, update=False):
             )
 
     output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
+
+
+def _import_desktop():
+    try:
+        # pylint: disable=unused-import
+        import fiftyone.desktop
+    except ImportError as e:
+        raise ValueError(
+            "You must `pip install fiftyone[desktop]` in order to launch the "
+            "desktop App"
+        ) from e
+
+    # Get `fiftyone-desktop` requirement for current `fiftyone` install
+    fiftyone_dist = pkg_resources.get_distribution("fiftyone")
+    requirements = fiftyone_dist.requires(extras=["desktop"])
+    desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
+
+    desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
+
+    if not desktop_req.specifier.contains(desktop_dist.version):
+        raise ValueError(
+            "fiftyone==%s requires fiftyone-desktop%s, but you have "
+            "fiftyone-desktop==%s installed.\n"
+            "Run `pip install fiftyone[desktop]` to install the proper "
+            "desktop package version"
+            % (
+                fiftyone_dist.version,
+                desktop_req.specifier,
+                desktop_dist.version,
+            )
+        )

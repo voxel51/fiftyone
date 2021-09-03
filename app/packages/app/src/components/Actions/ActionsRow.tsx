@@ -333,7 +333,7 @@ const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
     <ActionsRowDiv style={style}>
       <Options modal={modal} />
       <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
-      {!modal && isRootView && !isVideo && <Patches />}
+      {!modal && (!isRootView || !isVideo) && <Patches />}
       {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}

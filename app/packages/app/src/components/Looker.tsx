@@ -289,7 +289,7 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
           ref={ref}
         >
           <ContentHeader key="header">{detail.field}</ContentHeader>
-          <Border color={detail.color} id={detail.label._id} />
+          <Border color={detail.color} id={detail.label.id} />
           {detail.label.tags && detail.label.tags.length > 0 && (
             <TagInfo key={"tags"} tags={detail.label?.tags} />
           )}

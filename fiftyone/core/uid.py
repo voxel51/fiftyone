@@ -6,6 +6,7 @@ Utilities for usage analytics.
 |
 """
 import os
+import multiprocessing
 from socket import gaierror
 import threading
 import uuid
@@ -62,6 +63,15 @@ def log_import_if_allowed(test=False):
         test (False): whether to use the "test" uid
     """
     if fo.config.do_not_track:
+        return
+
+    if os.environ.get("FIFTYONE_DISABLE_SERVICES", None):
+        return
+
+    if os.environ.get("FIFTYONE_SERVER", None):
+        return
+
+    if multiprocessing.current_process().name != "MainProcess":
         return
 
     if test:

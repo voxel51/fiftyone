@@ -15,7 +15,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.validation as fov
 
-from .classification import ClassificationResults
+from .base import BaseEvaluationResults
 
 
 logger = logging.getLogger(__name__)
@@ -309,6 +309,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         """
         return DetectionResults(
             matches,
+            eval_key=eval_key,
             gt_field=self.config.gt_field,
             pred_field=self.config.pred_field,
             classes=classes,
@@ -396,7 +397,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         self._validate_fields_match(eval_key, "gt_field", existing_info)
 
 
-class DetectionResults(ClassificationResults):
+class DetectionResults(BaseEvaluationResults):
     """Class that stores the results of a detection evaluation.
 
     Args:
@@ -404,6 +405,7 @@ class DetectionResults(ClassificationResults):
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
+        eval_key (None): the evaluation key for this evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         classes (None): the list of possible classes. If not provided, the
@@ -417,6 +419,7 @@ class DetectionResults(ClassificationResults):
     def __init__(
         self,
         matches,
+        eval_key=None,
         gt_field=None,
         pred_field=None,
         classes=None,
@@ -439,6 +442,7 @@ class DetectionResults(ClassificationResults):
             ytrue,
             ypred,
             confs=confs,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             ytrue_ids=ytrue_ids,
@@ -450,7 +454,7 @@ class DetectionResults(ClassificationResults):
         self.ious = np.array(ious)
 
     @classmethod
-    def _from_dict(cls, d, samples, **kwargs):
+    def _from_dict(cls, d, samples, config, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         ious = d["ious"]
@@ -467,14 +471,17 @@ class DetectionResults(ClassificationResults):
         if ypred_ids is None:
             ypred_ids = itertools.repeat(None)
 
+        eval_key = d.get("eval_key", None)
         gt_field = d.get("gt_field", None)
         pred_field = d.get("pred_field", None)
         classes = d.get("classes", None)
         missing = d.get("missing", None)
 
         matches = list(zip(ytrue, ypred, ious, confs, ytrue_ids, ypred_ids))
+
         return cls(
             matches,
+            eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
             classes=classes,
