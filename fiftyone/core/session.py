@@ -860,28 +860,28 @@ class Session(foc.HasClient):
     def wait(self, wait=3):
         """Blocks execution until the App is closed by the user.
 
-        Closing a desktop App will always exit the wait. For browser Apps, all
-        connected windows (tabs) must be closed.
+        For browser Apps, all connected windows (tabs) must be closed before
+        this method will unblock.
+
+        For desktop Apps, all positive ``wait`` values are equivalent;
+        execution will immediately unblock when the App is closed.
 
         Args:
             wait (3): the number of seconds to wait for a new App connection
-                before returning if all connections are lost. If `0` a
-                negavtive value is provided, the session will server forever,
-                regardless of the number of connections. Not applicable to
-                desktop App sessions
+                before returning if all connections are lost. If negative, the
+                session will serve forever, regardless of connections
         """
         if self._context != focx._NONE:
             logger.warning("Notebook sessions cannot wait")
             return
 
-        serve_forever = wait <= 0
-        if serve_forever:
-            wait = 10
-
         try:
-            if self._remote or not self._desktop:
+            if wait < 0:
+                while True:
+                    time.sleep(10)
+            elif self._remote or not self._desktop:
                 self._wait_closed = False
-                while not self._wait_closed or serve_forever:
+                while not self._wait_closed:
                     time.sleep(wait)
             else:
                 self._app_service.wait()

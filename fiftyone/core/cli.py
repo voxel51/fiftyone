@@ -142,12 +142,11 @@ class QuickstartCommand(Command):
             "--wait",
             metavar="WAIT",
             default=3,
-            type=int,
+            type=float,
             help=(
                 "the number of seconds to wait for a new App connection "
-                "before returning if all connections are lost. If 0 or a "
-                "negative value is provided, the session will server "
-                "forever. Not applicable to desktop App sessions"
+                "before returning if all connections are lost. If negative, "
+                "the session will serve forever, regardless of connections"
             ),
         )
 
@@ -1002,12 +1001,11 @@ class AppLaunchCommand(Command):
             "--wait",
             metavar="WAIT",
             default=3,
-            type=int,
+            type=float,
             help=(
                 "the number of seconds to wait for a new App connection "
-                "before returning if all connections are lost. If 0 or a "
-                "negative value is provided, the session will server "
-                "forever. Not applicable to desktop App sessions"
+                "before returning if all connections are lost. If negative, "
+                "the session will serve forever, regardless of connections"
             ),
         )
 
@@ -1037,11 +1035,7 @@ def _watch_session(session, wait):
         return
 
     try:
-        if session.desktop:
-            print("\nTo exit, close the App or press ctrl + c\n")
-        else:
-            print("\nTo exit, press ctrl + c\n")
-
+        print("\nTo exit, close the App or press ctrl + c\n")
         session.wait(wait)
     except KeyboardInterrupt:
         pass
@@ -1052,7 +1046,7 @@ def _wait():
 
     try:
         while True:
-            time.sleep(0.5)
+            time.sleep(10)
     except KeyboardInterrupt:
         pass
 
@@ -1170,6 +1164,18 @@ class AppViewCommand(Command):
             help="whether to launch a desktop App instance",
         )
         parser.add_argument(
+            "-w",
+            "--wait",
+            metavar="WAIT",
+            default=3,
+            type=float,
+            help=(
+                "the number of seconds to wait for a new App connection "
+                "before returning if all connections are lost. If negative, "
+                "the session will serve forever, regardless of connections"
+            ),
+        )
+        parser.add_argument(
             "-k",
             "--kwargs",
             nargs="+",
@@ -1178,19 +1184,6 @@ class AppViewCommand(Command):
             help=(
                 "additional type-specific keyword arguments for "
                 "`fiftyone.core.dataset.Dataset.from_dir()`"
-            ),
-        )
-        parser.add_argument(
-            "-w",
-            "--wait",
-            metavar="WAIT",
-            default=3,
-            type=int,
-            help=(
-                "the number of seconds to wait for a new App connection "
-                "before returning if all connections are lost. If 0 or a "
-                "negative value is provided, the session will server "
-                "forever. Not applicable to desktop App sessions"
             ),
         )
 

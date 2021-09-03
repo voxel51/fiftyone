@@ -98,7 +98,7 @@ Launch a FiftyOne quickstart.
 
 .. code-block:: text
 
-    fiftyone quickstart [-h] [-v] [-p PORT] [-r] [-a]
+    fiftyone quickstart [-h] [-v] [-p PORT] [-r] [-a] [-w WAIT]
 
 **Arguments**
 
@@ -110,6 +110,10 @@ Launch a FiftyOne quickstart.
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
+      -w WAIT, --wait WAIT  the number of seconds to wait for a new App
+                            connection before returning if all connections are
+                            lost. If negative, the session will serve forever,
+                            regardless of connections
 
 **Examples**
 
@@ -1029,7 +1033,7 @@ Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone app launch [-h] [-p PORT] [-r] [-a] [NAME]
+    fiftyone app launch [-h] [-p PORT] [-r] [-a] [-w WAIT] [NAME]
 
 **Arguments**
 
@@ -1043,6 +1047,10 @@ Launch the FiftyOne App.
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
+      -w WAIT, --wait WAIT  the number of seconds to wait for a new App
+                            connection before returning if all connections are
+                            lost. If negative, the session will serve forever,
+                            regardless of connections
 
 **Examples**
 
@@ -1079,7 +1087,7 @@ View datasets in the FiftyOne App without persisting them to the database.
                       [-s SPLITS [SPLITS ...]] [--images-dir IMAGES_DIR]
                       [--images-patt IMAGES_PATT] [--videos-dir VIDEOS_DIR]
                       [--videos-patt VIDEOS_PATT] [-j JSON_PATH] [-p PORT]
-                      [-r] [-a] [-k KEY=VAL [KEY=VAL ...]]
+                      [-r] [-a] [-w WAIT] [-k KEY=VAL [KEY=VAL ...]]
 
 **Arguments**
 
@@ -1108,6 +1116,10 @@ View datasets in the FiftyOne App without persisting them to the database.
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
+      -w WAIT, --wait WAIT  the number of seconds to wait for a new App
+                            connection before returning if all connections are
+                            lost. If negative, the session will serve forever,
+                            regardless of connections
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             additional type-specific keyword arguments for
                             `fiftyone.core.dataset.Dataset.from_dir()`
