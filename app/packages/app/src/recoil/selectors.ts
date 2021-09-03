@@ -413,6 +413,14 @@ export const defaultGridZoom = selector<number | null>({
   },
 });
 
+export const timeZone = selector<string>({
+  key: "timeZone",
+  get: ({ get }) => {
+    console.log(get(appConfig));
+    return get(appConfig).timezone;
+  },
+});
+
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {

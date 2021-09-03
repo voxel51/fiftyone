@@ -6,8 +6,9 @@ FiftyOne server json utilies.
 |
 """
 from bson import ObjectId, json_util
-from json import JSONEncoder
 from collections import OrderedDict
+from datetime import datetime
+from json import JSONEncoder
 
 import numpy as np
 
@@ -36,20 +37,25 @@ def _handle_numpy_array(raw, key=None):
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
-            if isinstance(v, ObjectId):
+            if isinstance(v, bytes):
+                d[k] = _handle_numpy_array(v, k)
+            elif isinstance(v, datetime):
+                d[k] = {"_cls": "DateTime", "datetime": v.timestamp()}
+            elif isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
-            elif isinstance(v, bytes):
-                d[k] = _handle_numpy_array(v, k)
+
     if isinstance(d, list):
         for idx, i in enumerate(d):
-            if isinstance(i, (dict, OrderedDict, list)):
-                convert(i)
+            if isinstance(i, bytes):
+                d[idx] = _handle_numpy_array(i)
+            elif isinstance(i, datetime):
+                d[idx] = {"_cls": "DateTime", "datetime": v.timestamp()}
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
-            elif isinstance(i, bytes):
-                d[idx] = _handle_numpy_array(i)
+            elif isinstance(i, (dict, OrderedDict, list)):
+                convert(i)
 
 
 class FiftyOneJSONEncoder(JSONEncoder):

@@ -138,6 +138,18 @@ class QuickstartCommand(Command):
             action="store_true",
             help="whether to launch a desktop App instance",
         )
+        parser.add_argument(
+            "-w",
+            "--wait",
+            metavar="WAIT",
+            default=3,
+            type=float,
+            help=(
+                "the number of seconds to wait for a new App connection "
+                "before returning if all connections are lost. If negative, "
+                "the process will wait forever, regardless of connections"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -151,7 +163,7 @@ class QuickstartCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session)
+        _watch_session(session, args.wait)
 
 
 class ConfigCommand(Command):
@@ -1048,6 +1060,18 @@ class AppLaunchCommand(Command):
             action="store_true",
             help="whether to launch a desktop App instance",
         )
+        parser.add_argument(
+            "-w",
+            "--wait",
+            metavar="WAIT",
+            default=3,
+            type=float,
+            help=(
+                "the number of seconds to wait for a new App connection "
+                "before returning if all connections are lost. If negative, "
+                "the process will wait forever, regardless of connections"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1066,21 +1090,17 @@ class AppLaunchCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session)
+        _watch_session(session, args.wait)
 
 
-def _watch_session(session):
+def _watch_session(session, wait):
     # Automated tests may set `FIFTYONE_EXIT` so they can immediately exit
     if os.environ.get("FIFTYONE_EXIT", False):
         return
 
     try:
-        if session.desktop:
-            print("\nTo exit, close the App or press ctrl + c\n")
-        else:
-            print("\nTo exit, press ctrl + c\n")
-
-        session.wait()
+        print("\nTo exit, close the App or press ctrl + c\n")
+        session.wait(wait)
     except KeyboardInterrupt:
         pass
 
@@ -1090,7 +1110,7 @@ def _wait():
 
     try:
         while True:
-            time.sleep(0.5)
+            time.sleep(10)
     except KeyboardInterrupt:
         pass
 
@@ -1208,6 +1228,18 @@ class AppViewCommand(Command):
             help="whether to launch a desktop App instance",
         )
         parser.add_argument(
+            "-w",
+            "--wait",
+            metavar="WAIT",
+            default=3,
+            type=float,
+            help=(
+                "the number of seconds to wait for a new App connection "
+                "before returning if all connections are lost. If negative, "
+                "the process will wait forever, regardless of connections"
+            ),
+        )
+        parser.add_argument(
             "-k",
             "--kwargs",
             nargs="+",
@@ -1280,7 +1312,7 @@ class AppViewCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session)
+        _watch_session(session, args.wait)
 
 
 class AppConnectCommand(Command):

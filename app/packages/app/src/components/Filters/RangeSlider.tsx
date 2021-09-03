@@ -10,8 +10,10 @@ import {
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
 import Checkbox from "../Common/Checkbox";
-import { PopoutSectionTitle } from "../utils";
 import { Button } from "../FieldsSidebar";
+import { DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
+import { PopoutSectionTitle } from "../utils";
+import * as selectors from "../../recoil/selectors";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -67,6 +69,7 @@ const SliderStyled = styled(SliderUnstyled)`
 
   .valueLabel > span > span {
     color: transparent;
+    white-space: nowrap;
   }
 
   .valueLabel > span > span {
@@ -76,7 +79,53 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 `;
 
-const formatNumeral = (int) => (v) => numeral(v).format(int ? "0a" : "0.00a");
+const getDateFormatter = (timeZone) =>
+  new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: timeZone || "UTC",
+  });
+
+const getFormatter = (fieldType, timeZone) => (v) =>
+  fieldType === DATE_TIME_FIELD
+    ? getDateFormatter(timeZone).format(new Date(v))
+    : numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
+
+const getStep = (bounds: [number, number], fieldType?: string): number => {
+  const delta = bounds[1] - bounds[0];
+  const max = 120;
+
+  if (fieldType === DATE_TIME_FIELD) {
+    if (delta <= 120) {
+      return 1;
+    }
+
+    if (delta <= max * 60) {
+      return 60;
+    }
+
+    if (delta <= max * 3600) {
+      return 3600;
+    }
+
+    if (delta < max * 3600 * 24) {
+      return 3600 * 24;
+    }
+
+    if (delta < max * 3600 * 24 * 28) {
+      return 3600 * 24 * 28;
+    }
+
+    return 3600 * 24 * 28 * 12;
+  }
+
+  let step = delta / max;
+  if (!fieldType || fieldType === INT_FIELD) {
+    return Math.ceil(step);
+  }
+
+  return step;
+};
 
 type SliderValue = number | undefined;
 
@@ -90,7 +139,7 @@ type BaseSliderProps = {
   onCommit: (e: Event, v: Range | number) => void;
   persistValue?: boolean;
   showBounds?: boolean;
-  int?: boolean;
+  fieldType?: string;
   style?: React.CSSProperties;
 };
 
@@ -98,7 +147,7 @@ const BaseSlider = React.memo(
   ({
     boundsAtom,
     color,
-    int = false,
+    fieldType,
     onChange,
     onCommit,
     persistValue = true,
@@ -108,6 +157,11 @@ const BaseSlider = React.memo(
   }: BaseSliderProps) => {
     const theme = useContext(ThemeContext);
     const bounds = useRecoilValue(boundsAtom);
+
+    const timeZone =
+      fieldType && fieldType === DATE_TIME_FIELD
+        ? useRecoilValue(selectors.timeZone)
+        : null;
     const [clicking, setClicking] = useState(false);
 
     const hasBounds = bounds.every((b) => b !== null);
@@ -115,12 +169,8 @@ const BaseSlider = React.memo(
     if (!hasBounds) {
       return null;
     }
-    let step = (bounds[1] - bounds[0]) / 100;
-    if (int) {
-      step = Math.ceil(step);
-    }
-
-    const formatter = formatNumeral(int);
+    const step = getStep(bounds, fieldType);
+    const formatter = getFormatter(fieldType, timeZone);
 
     return (
       <SliderContainer style={style}>
@@ -160,6 +210,7 @@ type SliderProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   persistValue?: boolean;
+  fieldType?: string;
   showBounds?: boolean;
   int?: boolean;
 };
@@ -187,7 +238,7 @@ type RangeSliderProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   showBounds?: boolean;
-  int?: boolean;
+  fieldType: string;
 };
 
 export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
@@ -233,8 +284,8 @@ type NamedProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   noneCountAtom: RecoilValueReadOnly<number>;
   noneAtom: RecoilState<boolean>;
+  fieldType: string;
   name?: string;
-  int?: boolean;
   color: string;
 };
 

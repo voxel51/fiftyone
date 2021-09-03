@@ -21,6 +21,7 @@ const Wrapper = styled.div`
   display: flex;
   margin-bottom: 0.5rem;
   flex-shrink: 0;
+  padding: 0 1rem;
 
   ${DropdownHandle.Body} {
     width: 264px;
