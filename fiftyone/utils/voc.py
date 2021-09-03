@@ -183,7 +183,6 @@ class VOCDetectionDatasetImporter(
                 for p in etau.list_files(self.labels_path, recursive=True)
             }
         else:
-            logger.info("No labels found at %s" % self.labels_path)
             self._labels_paths_map = {}
 
         uuids = set(self._labels_paths_map.keys())
@@ -514,6 +513,11 @@ class VOCObject(object):
         self.bndbox = bndbox
         self.attributes = attributes
 
+        # Handles CVAT exported attributes
+        cvat_attrs = self.attributes.pop("attributes", {}).pop("attribute", {})
+        cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
+        self.attributes.update(cvat_attrs)
+
     @classmethod
     def from_annotation_dict(cls, d):
         """Creates a :class:`VOCObject` from a VOC annotation dict.
@@ -582,17 +586,8 @@ class VOCObject(object):
         label = self.name
         bounding_box = self.bndbox.to_detection_format(frame_size)
 
-        # Handles CVAT exported attributes
-        cvat_attrs = self.attributes.get("attributes", None)
-        if cvat_attrs is not None:
-            cvat_attrs = cvat_attrs.get("attribute", None)
-            if cvat_attrs is not None:
-                cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
-            del self.attributes["attributes"]
-
         if extra_attrs == True:
             attributes = self.attributes
-            attributes.update(cvat_attrs)
 
         elif extra_attrs == False:
             attributes = {}
@@ -603,11 +598,6 @@ class VOCObject(object):
             attributes = {
                 name: self.attributes.get(name, None) for name in extra_attrs
             }
-
-            # Handles CVAT exported attributes
-            for f in extra_attrs:
-                if attributes[f] is None:
-                    attributes[f] = cvat_attrs.get(f, None)
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, **attributes
