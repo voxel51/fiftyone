@@ -525,6 +525,13 @@ class VOCObject(object):
         """
         name = d["name"]
         bndbox = VOCBoundingBox.from_bndbox_dict(d["bndbox"])
+
+        # Handles CVAT exported attributes
+        if "attributes" in d:
+            cvat_attrs = d.pop("attributes", {}).pop("attribute", {})
+            cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
+            d.update(cvat_attrs)
+
         attributes = {
             k: _parse_attribute(d[k])
             for k in set(d.keys()) - {"name", "bndbox"}
@@ -624,7 +631,10 @@ class VOCBoundingBox(object):
             a :class:`VOCBoundingBox`
         """
         return cls(
-            int(d["xmin"]), int(d["ymin"]), int(d["xmax"]), int(d["ymax"])
+            int(float(d["xmin"])),
+            int(float(d["ymin"])),
+            int(float(d["xmax"])),
+            int(float(d["ymax"])),
         )
 
     @classmethod
