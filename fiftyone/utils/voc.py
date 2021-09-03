@@ -183,6 +183,7 @@ class VOCDetectionDatasetImporter(
                 for p in etau.list_files(self.labels_path, recursive=True)
             }
         else:
+            logger.info("No labels found at %s" % self.labels_path)
             self._labels_paths_map = {}
 
         uuids = set(self._labels_paths_map.keys())
@@ -529,6 +530,7 @@ class VOCObject(object):
             k: _parse_attribute(d[k])
             for k in set(d.keys()) - {"name", "bndbox"}
         }
+
         return cls(name, bndbox, **attributes)
 
     @classmethod
@@ -580,8 +582,18 @@ class VOCObject(object):
         label = self.name
         bounding_box = self.bndbox.to_detection_format(frame_size)
 
+        # Handles CVAT exported attributes
+        cvat_attrs = self.attributes.get("attributes", None)
+        if cvat_attrs is not None:
+            cvat_attrs = cvat_attrs.get("attribute", None)
+            if cvat_attrs is not None:
+                cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
+            del self.attributes["attributes"]
+
         if extra_attrs == True:
             attributes = self.attributes
+            attributes.update(cvat_attrs)
+
         elif extra_attrs == False:
             attributes = {}
         else:
@@ -591,6 +603,11 @@ class VOCObject(object):
             attributes = {
                 name: self.attributes.get(name, None) for name in extra_attrs
             }
+
+            # Handles CVAT exported attributes
+            for f in extra_attrs:
+                if attributes[f] is None:
+                    attributes[f] = cvat_attrs.get(f, None)
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, **attributes
@@ -624,7 +641,10 @@ class VOCBoundingBox(object):
             a :class:`VOCBoundingBox`
         """
         return cls(
-            int(d["xmin"]), int(d["ymin"]), int(d["xmax"]), int(d["ymax"])
+            int(float(d["xmin"])),
+            int(float(d["ymin"])),
+            int(float(d["xmax"])),
+            int(float(d["ymax"])),
         )
 
     @classmethod
@@ -783,13 +803,16 @@ def _parse_attribute(value):
     except:
         pass
 
-    if value in {"True", "true"}:
-        return True
+    try:
+        if value in {"True", "true"}:
+            return True
 
-    if value in {"False", "false"}:
-        return False
+        if value in {"False", "false"}:
+            return False
 
-    if value == "None":
-        return None
+        if value == "None":
+            return None
+    except:
+        pass
 
     return value
