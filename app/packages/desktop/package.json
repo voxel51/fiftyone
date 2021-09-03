@@ -1,6 +1,6 @@
 {
   "name": "FiftyOne",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "description": "Explore, Analyze, Curate",
   "author": "Voxel51, Inc.",
   "main": "./dist/main.js",
