@@ -60,8 +60,9 @@ def establish_db_conn(config):
     global _db_service
     global _connection_kwargs
 
-    if os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None):
-        _connection_kwargs["port"] = config.database_uri
+    established_port = os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None)
+    if established_port is not None:
+        _connection_kwargs["port"] = int(established_port)
     if config.database_uri is not None:
         _connection_kwargs["host"] = config.database_uri
     elif _db_service is None:
@@ -72,7 +73,7 @@ def establish_db_conn(config):
             _db_service = fos.DatabaseService()
             port = _db_service.port
             _connection_kwargs["port"] = port
-            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = port
+            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
 
         except fos.ServiceExecutableNotFound as error:
             if not fou.is_arm_mac():
