@@ -157,7 +157,7 @@ jobs:
         run: |
           python tests/utils/pytest_wrapper.py tests/ --verbose \
             --ignore tests/benchmarking/ \
-            --ignore tests/isolated/
+            --ignore tests/isolated/ \
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
