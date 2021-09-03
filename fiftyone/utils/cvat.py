@@ -2480,6 +2480,7 @@ class CVATBackend(foua.AnnotationBackend):
             fol.Keypoints,
             fol.Polyline,
             fol.Polylines,
+            fol.Segmentation,
         }
 
     @property
@@ -2776,13 +2777,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         username (None): the CVAT username
         password (None): the CVAT password
     """
-
-    _TYPES_MAP = {
-        "rectangle": ["detection", "detections"],
-        "polygon": ["polylines", "polyline", "detection", "detections"],
-        "polyline": ["polylines", "polyline"],
-        "points": ["keypoints", "keypoint"],
-    }
 
     def __init__(self, name, url, username=None, password=None):
         self._name = name

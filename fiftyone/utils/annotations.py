@@ -75,6 +75,7 @@ def annotate(
             -   ``"detections"``: :class:`fiftyone.core.labels.Detections`
             -   ``"segmentation"``: :class:`fiftyone.core.labels.Detection`
             -   ``"segmentations"``: :class:`fiftyone.core.labels.Detections`
+            -   ``"semantic_segmentation"``: :class:`fiftyone.core.labels.Segmentation`
             -   ``"polyline"``: :class:`fiftyone.core.labels.Polyline`
             -   ``"polylines"``: :class:`fiftyone.core.labels.Polylines`
             -   ``"keypoint"``: :class:`fiftyone.core.labels.Keypoint`
@@ -211,6 +212,9 @@ _LABEL_TYPES_MAP = {
     "classifications": fol.Classifications,
     "detection": fol.Detection,
     "detections": fol.Detections,
+    "segmentation": fol.Detection,
+    "segmentations": fol.Detections,
+    "semantic_segmentation": fol.Segmentation,
     "keypoint": fol.Keypoint,
     "keypoints": fol.Keypoints,
     "polyline": fol.Polyline,
@@ -765,7 +769,12 @@ def _merge_labels(samples, anno_dict, results, label_field, label_info):
     if delete_ids:
         samples._dataset.delete_labels(ids=delete_ids, fields=label_field)
 
-    if is_video and label_type in ("detections", "keypoints", "polylines"):
+    if is_video and label_type in (
+        "detections",
+        "segmentations",
+        "keypoints",
+        "polylines",
+    ):
         tracking_index_map, max_tracking_index = _make_tracking_index(
             samples, label_field, anno_dict
         )
