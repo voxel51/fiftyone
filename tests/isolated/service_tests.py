@@ -18,6 +18,7 @@ import retrying
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 import fiftyone.constants as foc
+import fiftyone.core.odm.database as food
 import fiftyone.core.service as fos
 import fiftyone.service.util as fosu
 
@@ -311,9 +312,15 @@ def test_db_cleanup():
 
 
 def test_multiprocessing():
-    def do_nothing(*_):
+    def check_process(*_):
+        assert "FIFTYONE_PRIVATE_DATABASE_PORT" is os.environ
+        assert food._db_service is None
+        port = os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"]
+        assert str(port) == food._connection_kwargs["port"]
+
+    def do_nothing(*_args):
         pass
 
-    with multiprocessing.Pool(1, do_nothing) as pool:
+    with multiprocessing.Pool(1, check_process) as pool:
         for _ in pool.imap_unordered(do_nothing, [None]):
             pass
