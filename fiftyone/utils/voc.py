@@ -527,9 +527,10 @@ class VOCObject(object):
         bndbox = VOCBoundingBox.from_bndbox_dict(d["bndbox"])
 
         # Handles CVAT exported attributes
-        cvat_attrs = d.pop("attributes", {}).pop("attribute", {})
-        cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
-        d.update(cvat_attrs)
+        if "attributes" in d:
+            cvat_attrs = d.pop("attributes", {}).pop("attribute", {})
+            cvat_attrs = {a["name"]: a["value"] for a in cvat_attrs}
+            d.update(cvat_attrs)
 
         attributes = {
             k: _parse_attribute(d[k])
@@ -589,7 +590,6 @@ class VOCObject(object):
 
         if extra_attrs == True:
             attributes = self.attributes
-
         elif extra_attrs == False:
             attributes = {}
         else:
