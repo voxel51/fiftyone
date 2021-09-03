@@ -814,7 +814,7 @@ class CVATTaskLabels(object):
                 _attributes.append(
                     {
                         "name": attribute["name"],
-                        "categories": attribute["values"].split("\n"),
+                        "categories": (attribute["values"] or "").split("\n"),
                     }
                 )
 
