@@ -27,12 +27,14 @@ import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
 
+logger = logging.getLogger(__name__)
+
+
 _client = None
 _async_client = None
 _connection_kwargs = {}
 _db_service = None
 
-logger = logging.getLogger(__name__)
 
 _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
@@ -57,22 +59,24 @@ def establish_db_conn(config):
         RuntimeError: if the ``mongod`` found does not meet FiftyOne's
             requirements, or validation could not occur
     """
+    global _client
+    global _db_service
     global _connection_kwargs
 
+    established_port = os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None)
+    if established_port is not None:
+        _connection_kwargs["port"] = int(established_port)
     if config.database_uri is not None:
         _connection_kwargs["host"] = config.database_uri
-    else:
-        global _db_service
-
-        if _db_service is not None:
-            return
-
+    elif _db_service is None:
         if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
             return
 
         try:
             _db_service = fos.DatabaseService()
-            _connection_kwargs["port"] = _db_service.port
+            port = _db_service.port
+            _connection_kwargs["port"] = port
+            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
 
         except fos.ServiceExecutableNotFound as error:
             if not fou.is_arm_mac():
@@ -84,8 +88,6 @@ def establish_db_conn(config):
                 "`fiftyone.core.config.FiftyOneConfig` to define a connection"
                 "to your own MongoDB instance or cluster"
             )
-
-    global _client
 
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)

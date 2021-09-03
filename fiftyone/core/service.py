@@ -6,7 +6,6 @@ FiftyOne Services.
 |
 """
 import logging
-import multiprocessing
 import os
 import subprocess
 import sys
@@ -33,8 +32,7 @@ class ServiceException(Exception):
 
 
 class ServiceListenTimeout(ServiceException):
-    """Exception raised when a network-bound service fails to bind to a port.
-    """
+    """Exception raised when a network-bound service fails to bind to a port."""
 
     def __init__(self, name, port=None):
         self.name = name
@@ -71,13 +69,11 @@ class Service(object):
 
     def __init__(self):
         self._system = os.system
-        self._disabled = (
-            os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
-            or multiprocessing.current_process().name != "MainProcess"
-            or (
-                os.environ.get("FIFTYONE_HEADLESS", False)
-                and not self.allow_headless
-            )
+        self._disabled = os.environ.get(
+            "FIFTYONE_DISABLE_SERVICES", False
+        ) or (
+            os.environ.get("FIFTYONE_HEADLESS", False)
+            and not self.allow_headless
         )
         self.child = None
         if not self._disabled:
@@ -457,4 +453,5 @@ class AppService(Service):
                 # override port 1212 used by "yarn dev" for hot-reloading
                 # (specifying port 0 doesn't work here)
                 env["PORT"] = str(self.server_port + 1)
+
         return env
