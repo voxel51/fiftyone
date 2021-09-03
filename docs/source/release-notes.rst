@@ -10,6 +10,9 @@ FiftyOne 0.13.2
 *Released September 3, 2021*
 
 App
+
+- Improved aggregation queries resulting in ~10x faster statistics load times
+  and time-to-interaction in the Fields Sidebar
 - Fixed count inconsistencies for large sets of
   :class:`StringField <fiftyone.core.fields.StringField>` results in the
   Fields Sidebar
