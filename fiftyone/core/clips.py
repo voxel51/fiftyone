@@ -293,8 +293,8 @@ def make_clips_dataset(
     -   When ``field_or_expr`` is a video classification(s) field, the field
         will be converted to a :class:`fiftyone.core.labels.Classification`
         field
-    -   When ``trajectories`` is True, a sample-level string field of will be
-        added recording the ``label`` of each trajectory
+    -   When ``trajectories`` is True, a sample-level label field will be added
+        recording the ``label`` and ``index`` of each trajectory
 
     .. note::
 
@@ -364,7 +364,11 @@ def make_clips_dataset(
 
     if clips_type == "trajectories":
         field_or_expr, _ = sample_collection._handle_frame_field(field_or_expr)
-        dataset.add_sample_field(field_or_expr, fof.StringField)
+        dataset.add_sample_field(
+            field_or_expr,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.Label,
+        )
 
     current_schema = dataset.get_field_schema()
     dataset._sample_doc_cls.merge_field_schema(
@@ -419,7 +423,6 @@ def _write_classification_clips(dataset, src_collection, field):
     pipeline.append(
         {
             "$project": {
-                "_id": False,
                 "_media_type": True,
                 "filepath": True,
                 "metadata": True,
@@ -490,7 +493,6 @@ def _write_trajectories(dataset, src_collection, field):
     pipeline.append(
         {
             "$project": {
-                "_id": False,
                 "_media_type": True,
                 "filepath": True,
                 "metadata": True,
@@ -508,12 +510,16 @@ def _write_trajectories(dataset, src_collection, field):
             {
                 "$set": {
                     "_sample_id": "$_id",
-                    "support": {"$slice": ["$" + _tmp_field, 1, 2]},
-                    field: {"$arrayElemAt": ["$" + _tmp_field, 0]},
-                }
+                    "support": {"$slice": ["$" + _tmp_field, 2, 2]},
+                    field: {
+                        "_cls": "Label",
+                        "label": {"$arrayElemAt": ["$" + _tmp_field, 0]},
+                        "index": {"$arrayElemAt": ["$" + _tmp_field, 1]},
+                    },
+                    "_rand": {"$rand": {}},
+                },
             },
             {"$unset": ["_id", _tmp_field]},
-            {"$set": {"_rand": {"$rand": {}}}},
             {"$out": dataset._sample_collection_name},
         ]
     )
@@ -565,7 +571,6 @@ def _write_manual_clips(dataset, src_collection, clips):
     pipeline.append(
         {
             "$project": {
-                "_id": False,
                 "_media_type": True,
                 "filepath": True,
                 "metadata": True,
@@ -632,8 +637,8 @@ def _get_trajectories(sample_collection, frame_field):
                     obs[(label, index)].add(fn)
 
         clips = []
-        for (label, _), bounds in obs.items():
-            clips.append((label, bounds.min, bounds.max))
+        for (label, index), bounds in obs.items():
+            clips.append((label, index, bounds.min, bounds.max))
 
         trajs.append(clips)
 
