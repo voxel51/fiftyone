@@ -5418,7 +5418,7 @@ class ToClips(ViewStage):
     Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
     available configuration options for generating clips.
 
-    ..note::
+    .. note::
 
         The clip generation logic will respect any frame-level modifications
         defined in the input collection, but the output clips will always

@@ -296,7 +296,7 @@ def make_clips_dataset(
     -   When ``trajectories`` is True, a sample-level string field of will be
         added recording the ``label`` of each trajectory
 
-    ..note::
+    .. note::
 
         The returned dataset will directly use the frame collection of the
         input dataset.
@@ -320,10 +320,11 @@ def make_clips_dataset(
                 defining the frame numbers of the clips to extract from each
                 sample
         tol (0): the maximum number of false frames that can be overlooked when
-            generating clips. Only applicable when ``field_or_expr`` is an
-            expression
+            generating clips. Only applicable when ``field_or_expr`` is a
+            frame-level list field or expression
         min_len (0): the minimum allowable length of a clip, in frames. Only
-            applicable when ``field_or_expr`` is an expression
+            applicable when ``field_or_expr`` is a frame-level list field or an
+            expression
         trajectories (False): whether to create clips for each unique object
             trajectory defined by their ``(label, index)``. Only applicable
             when ``field_or_expr`` is a frame-level field

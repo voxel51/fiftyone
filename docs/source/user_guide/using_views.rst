@@ -868,7 +868,8 @@ classification field to
 
 All clips views contain a top-level `support` field that contains the
 `[first, last]` frame range of the clip within `filepath`, which points to the
-source video.
+source video. Each clip will also contain all additional sample-level fields
+from its parent sample in the source dataset.
 
 Note that the `events` field, which had type |VideoClassifications| in the
 source dataset, now has type |Classification| in the clips view, since each
@@ -900,8 +901,8 @@ specific video classification labels, you can achieve this by first
     # ['meeting', 'meeting']
 
 Clips views can also be created based on frame-level labels, which provides a
-powerful query language that you can use to find segments of a potentially
-huge video dataset that contain specific content of interest.
+powerful query language that you can use to find segments of a video dataset
+that contain specific frame content of interest.
 
 In the simplest case, you can provide the name of a frame-level list field
 (e.g., |Classifications| or |Detections|) to
@@ -918,7 +919,7 @@ label in the specified field:
     dataset = foz.load_zoo_dataset("quickstart-video")
 
     # Create a view that contains one clip per contiguous range of frames that
-    # contains at least one object
+    # contains at least one detection
     view = dataset.to_clips("frames.detections")
     print(view)
 
@@ -963,13 +964,31 @@ that contains at least one person:
         1. FilterLabels(field='frames.detections', filter={'$eq': ['$$this.label', 'person']}, only_matches=True)
         2. ToClips(field_or_expr='frames.detections', config=None)
 
+When you iterate over the frames of a sample in a clip view, you will only get
+the frames within the `[first, last]` support of each clip:
+
+.. code-block:: python
+    :linenos:
+
+    sample = view.last()
+
+    print(sample.support)
+    # [116, 120]
+
+    frame_numbers = []
+    for frame_number, frame in sample.frames.items():
+        frame_numbers.append(frame_number)
+
+    print(frame_numbers)
+    # [116, 117, 118, 119, 120]
+
 .. note::
 
     Clips views created via
     :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
     always contain all frame-level labels from the underlying dataset for
     their respective frame supports, even if frame-level filtering was applied
-    in previous view stages. Filtering prior to the
+    in previous view stages. In other words, filtering prior to the
     :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
     stage only affects the frame supports.
 
@@ -977,6 +996,63 @@ that contains at least one person:
     filtering operations after the
     :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
     stage in your view, just like any other view.
+
+More generally, you can provide an arbitrary |ViewExpression| to
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` that
+defines a boolean expression to apply to each frame. In this case, the clips
+view will contain one clip per contiguous range of frames for which the
+expression evaluates to true:
+
+.. code-block:: python
+    :linenos:
+
+    # Create a view that contains one clip per contiguous range of frames that
+    # contains at least 10 vehicles
+    view = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "vehicle")
+        .to_clips(F("detections.detections").length() >= 10)
+    )
+    print(view)
+
+See :ref:`this section <querying-frames>` for more information about
+constructing frame expressions.
+
+.. note::
+
+    You can pass optional `tol` and `min_len` pararmeters to
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
+    configure a missing frame tolerance and minimum length for clips generated
+    from frame-level fields or expressions.
+
+Clip views are just like any other :ref:`dataset view <using-views>` in the
+sense that:
+
+-   You can append view stages via the :ref:`App view bar <app-create-view>` or
+    :ref:`views API <using-views>`
+-   Any modifications to label tags that you make via the App's
+    :ref:`tagging menu <app-tagging>` or via API methods like
+    :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+    and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+    will be reflected on the source dataset
+-   Any modifications to the frame-level labels in a clips view that you make
+    by iterating over the contents of the view or calling
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    will be reflected on the source dataset
+-   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>` on a clips view
+    (typically one that contains additional view stages that filter or modify
+    its contents) will sync any frame-level edits or deletions with the source
+    dataset
+
+However, because clip views represent only a subset of a |Sample| from the
+source dataset, there are some differences compared to non-clip views:
+
+-   Tagging or untagging clips (as opposed to their labels) will not affect
+    the tags of the underlying |Sample|
+-   Any edits that you make to sample-level fields of clip views will not be
+    reflected on the source dataset (except for edits to the `support` and
+    |Classification| field populated when generating clip views based on
+    |VideoClassification| labels, as described above)
 
 .. _frame-views:
 
