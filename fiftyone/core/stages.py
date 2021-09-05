@@ -5577,7 +5577,20 @@ class ToClips(ViewStage):
         else:
             clips_dataset = fod.load_dataset(name)
 
-        return foc.ClipsView(sample_collection, self, clips_dataset)
+        view = foc.ClipsView(sample_collection, self, clips_dataset)
+
+        if kwargs.get("trajectories", False):
+            field, _ = sample_collection._handle_frame_field(
+                self._field_or_expr
+            )
+            stage = FilterLabels(
+                self._field_or_expr,
+                (F("label") == F("$" + field + ".label"))
+                & (F("index") == F("$" + field + ".index")),
+            )
+            view = view.add_stage(stage)
+
+        return view
 
     def _get_video_classification_field(self, sample_collection):
         try:
