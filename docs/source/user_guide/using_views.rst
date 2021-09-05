@@ -739,16 +739,14 @@ respectively.
     to specify additional read-only sample-level fields that each patch should
     include from their parent samples.
 
+Refer to the :ref:`evaluation guide <evaluating-detections>` guide for more
+information about running evaluations and using evaluation patches views to
+analyze object detection models.
+
 .. note::
 
     Did you know? You can convert to evaluation patches view directly
     :ref:`from the App <app-evaluation-patches>`!
-
-.. note::
-
-    Refer to the :ref:`evaluation guide <evaluating-detections>` guide for more
-    information about running evaluations and using evaluation patches views
-    to analyze object detection models.
 
 Evaluation patches views are just like any other
 :ref:`dataset view <using-views>` in the sense that:
