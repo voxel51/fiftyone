@@ -507,18 +507,12 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
     src_dataset = src_collection._dataset
     _tmp_field = "_" + field
 
-    # Get trajectories
-
     trajs = _get_trajectories(src_collection, field)
     src_collection.set_values(
         _tmp_field, trajs, expand_schema=False, _allow_missing=True,
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
-
-    #
-    # Populate sample collection
-    #
 
     project = {
         "_id": False,
@@ -596,10 +590,6 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
-
-    #
-    # Populate sample collection
-    #
 
     project = {
         "_id": False,

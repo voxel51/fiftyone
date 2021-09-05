@@ -3960,16 +3960,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline = []
 
         if pipeline is not None:
-            _pipeline += pipeline
+            _pipeline.extend(pipeline)
 
         if detach_frames:
-            _pipeline += [{"$project": {"frames": False}}]
+            _pipeline.append({"$project": {"frames": False}})
         elif frames_only:
-            _pipeline += [
-                {"$project": {"frames": True}},
-                {"$unwind": "$frames"},
-                {"$replaceRoot": {"newRoot": "$frames"}},
-            ]
+            _pipeline.extend(
+                [
+                    {"$project": {"frames": True}},
+                    {"$unwind": "$frames"},
+                    {"$replaceRoot": {"newRoot": "$frames"}},
+                ]
+            )
 
         return _pipeline
 
@@ -4323,7 +4325,10 @@ def _create_dataset(
     )
     dataset_doc.save()
 
-    _create_indexes(sample_collection_name, frame_collection_name)
+    if _clips:
+        _create_indexes(sample_collection_name, None)
+    else:
+        _create_indexes(sample_collection_name, frame_collection_name)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
@@ -4377,6 +4382,8 @@ def _create_frame_document_cls(frame_collection_name):
 
 def _get_dataset_doc(collection_name, frames=False):
     if frames:
+        # Clips datasets share their parent dataset's frame collection, but
+        # only the parent sample collection starts with "samples."
         query = {
             "frame_collection_name": collection_name,
             "sample_collection_name": {"$regex": "^samples\\."},
@@ -4546,7 +4553,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
     #
 
     pipeline = dataset_or_view._pipeline(detach_frames=True)
-    pipeline += [{"$out": sample_collection_name}]
+    pipeline.append({"$out": sample_collection_name})
+
     foo.aggregate(dataset._sample_collection, pipeline)
 
     #
