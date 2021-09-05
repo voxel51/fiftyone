@@ -1118,7 +1118,6 @@ class VideoTests(unittest.TestCase):
                 "support",
                 "metadata",
                 "tags",
-                "weather",
                 "events",
             },
         )
@@ -1262,7 +1261,7 @@ class VideoTests(unittest.TestCase):
         self.assertIsNotNone(view.first().id)
         self.assertIsNotNone(dataset.last().id)
 
-        sample = view.exclude_fields("weather").first()
+        sample = view.first()
 
         sample["foo"] = "bar"
         sample["events"].label = "party"
@@ -1270,8 +1269,6 @@ class VideoTests(unittest.TestCase):
 
         self.assertIn("foo", view.get_field_schema())
         self.assertNotIn("foo", dataset.get_frame_field_schema())
-        self.assertListEqual(view.values("weather"), ["cloudy", "cloudy"])
-        self.assertListEqual(dataset.values("weather"), ["sunny", "cloudy"])
         self.assertDictEqual(
             view.count_values("events.label"), {"party": 1, "MEETING": 1}
         )
