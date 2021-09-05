@@ -612,7 +612,7 @@ def _populate_frames(
 
     # We first populate `sample_map` and then convert to `ids_to_sample` and
     # `frames_to_sample` here to avoid resampling frames when working with clip
-    # views with multiple clips into the same video
+    # views with multiple overlapping clips into the same video
     ids_to_sample = []
     frames_to_sample = []
     for video_path, sample_frame_numbers in sample_map.items():

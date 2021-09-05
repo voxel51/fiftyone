@@ -141,7 +141,7 @@ class ClipsView(fov.DatasetView):
         if self._classification_field:
             clips_fields = ("support", self._classification_field)
         else:
-            clips_fields = "support"
+            clips_fields = ("support",)
 
         if use_db_fields:
             return fields + ("_sample_id",) + clips_fields
