@@ -2400,10 +2400,6 @@ class MigrateCommand(Command):
         if args.info:
             db_ver = fom.get_database_revision() or ""
 
-            if args.admin_only:
-                print(db_ver)
-                return
-
             if args.dataset_name is not None:
                 for name in args.dataset_name:
                     print(fom.get_dataset_revision(name))
