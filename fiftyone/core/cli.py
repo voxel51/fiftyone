@@ -2349,17 +2349,17 @@ class MigrateCommand(Command):
         # Print information about the current revisions of all datasets
         fiftyone migrate --info
 
-        # Migrates the database and all datasets to the current package version
+        # Migrate the database and all datasets to the current package version
         fiftyone migrate --all
 
-        # Migrates to a specific revision
+        # Migrate to a specific revision
         fiftyone migrate --all --version <VERSION>
 
-        # Migrates a specific dataset
+        # Migrate a specific dataset
         fiftyone migrate ... --dataset-name <DATASET_NAME>
 
-        # Runs only the admin (database) migrations
-        fiftyone migrate ... --admin-only
+        # Update the database version without migrating any existing datasets
+        fiftyone migrate
     """
 
     @staticmethod
@@ -2388,11 +2388,6 @@ class MigrateCommand(Command):
             nargs="+",
             metavar="DATASET_NAME",
             help="the name of a specific dataset to migrate",
-        )
-        parser.add_argument(
-            "--admin-only",
-            action="store_true",
-            help="whether to run only admin (database) migrations",
         )
         parser.add_argument(
             "--verbose",
@@ -2427,21 +2422,15 @@ class MigrateCommand(Command):
             fom.migrate_all(destination=args.version, verbose=args.verbose)
             return
 
-        if args.admin_only:
-            fom.migrate_database_if_necessary(
-                destination=args.version, verbose=args.verbose
-            )
-            return
+        fom.migrate_database_if_necessary(
+            destination=args.version, verbose=args.verbose
+        )
 
         if args.dataset_name:
             for name in args.dataset_name:
                 fom.migrate_dataset_if_necessary(
                     name, destination=args.version, verbose=args.verbose
                 )
-
-            return
-
-        parser.print_help()
 
 
 def _print_migration_table(fo_ver, db_ver, dataset_vers):
