@@ -1356,215 +1356,6 @@ class VideoTests(unittest.TestCase):
         self.assertListEqual(view.values("support"), [[2, 3]])
 
     @drop_datasets
-    def test_to_clip_frames(self):
-        dataset = fo.Dataset()
-
-        sample1 = fo.Sample(
-            filepath="video1.mp4",
-            metadata=fo.VideoMetadata(total_frame_count=4),
-            tags=["test"],
-            weather="sunny",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
-                    fo.VideoClassification(label="party", support=[2, 4]),
-                ]
-            ),
-        )
-        sample1.frames[1] = fo.Frame(hello="world")
-        sample1.frames[2] = fo.Frame(
-            ground_truth=fo.Detections(
-                detections=[
-                    fo.Detection(label="cat"),
-                    fo.Detection(label="dog"),
-                ]
-            )
-        )
-        sample1.frames[3] = fo.Frame(hello="goodbye")
-
-        sample2 = fo.Sample(
-            filepath="video2.mp4",
-            metadata=fo.VideoMetadata(total_frame_count=5),
-            tags=["test"],
-            weather="cloudy",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="party", support=[3, 5]),
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
-                ]
-            ),
-        )
-        sample2.frames[1] = fo.Frame(
-            hello="goodbye",
-            ground_truth=fo.Detections(
-                detections=[
-                    fo.Detection(label="dog"),
-                    fo.Detection(label="rabbit"),
-                ]
-            ),
-        )
-        sample2.frames[3] = fo.Frame()
-        sample2.frames[5] = fo.Frame(hello="there")
-
-        dataset.add_samples([sample1, sample2])
-
-        view = dataset.to_clips("events").to_frames(sample_frames=False)
-
-        self.assertSetEqual(
-            set(view.get_field_schema().keys()),
-            {
-                "id",
-                "filepath",
-                "metadata",
-                "tags",
-                "sample_id",
-                "frame_number",
-                "hello",
-                "ground_truth",
-            },
-        )
-
-        self.assertSetEqual(
-            set(view.select_fields().get_field_schema().keys()),
-            {
-                "id",
-                "filepath",
-                "metadata",
-                "tags",
-                "sample_id",
-                "frame_number",
-            },
-        )
-
-        with self.assertRaises(ValueError):
-            view.exclude_fields("sample_id")  # can't exclude default field
-
-        with self.assertRaises(ValueError):
-            view.exclude_fields("frame_number")  # can't exclude default field
-
-        index_info = view.get_index_information()
-        indexes = view.list_indexes()
-
-        default_indexes = {
-            "id",
-            "filepath",
-            "sample_id",
-            "_sample_id_1_frame_number_1",
-        }
-        self.assertSetEqual(set(index_info.keys()), default_indexes)
-        self.assertSetEqual(set(indexes), default_indexes)
-
-        with self.assertRaises(ValueError):
-            view.drop_index("id")  # can't drop default index
-
-        with self.assertRaises(ValueError):
-            view.drop_index("filepath")  # can't drop default index
-
-        with self.assertRaises(ValueError):
-            view.drop_index("sample_id")  # can't drop default index
-
-        self.assertEqual(len(view), 9)
-
-        frame = view.first()
-        self.assertIsInstance(frame.id, str)
-        self.assertIsInstance(frame._id, ObjectId)
-        self.assertIsInstance(frame.sample_id, str)
-        self.assertIsInstance(frame._sample_id, ObjectId)
-
-        for _id in view.values("id"):
-            self.assertIsInstance(_id, str)
-
-        for oid in view.values("_id"):
-            self.assertIsInstance(oid, ObjectId)
-
-        for _id in view.values("sample_id"):
-            self.assertIsInstance(_id, str)
-
-        for oid in view.values("_sample_id"):
-            self.assertIsInstance(oid, ObjectId)
-
-        self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
-        self.assertDictEqual(view.count_sample_tags(), {"test": 9})
-
-        view.tag_samples("foo")
-
-        self.assertEqual(view.count_sample_tags()["foo"], 9)
-        self.assertNotIn("foo", dataset.count_sample_tags())
-        self.assertNotIn("tags", dataset.get_frame_field_schema())
-
-        view.untag_samples("foo")
-
-        self.assertNotIn("foo", view.count_sample_tags())
-
-        view.tag_labels("test")
-
-        self.assertDictEqual(view.count_label_tags(), {"test": 4})
-        self.assertDictEqual(dataset.count_label_tags(), {"test": 4})
-
-        view.select_labels(tags="test").untag_labels("test")
-
-        self.assertDictEqual(view.count_label_tags(), {})
-        self.assertDictEqual(dataset.count_label_tags(), {})
-
-        view2 = view.skip(4).set_field(
-            "ground_truth.detections.label", F("label").upper()
-        )
-
-        self.assertDictEqual(
-            view.count_values("ground_truth.detections.label"),
-            {"cat": 1, "dog": 2, "rabbit": 1},
-        )
-        self.assertDictEqual(
-            view2.count_values("ground_truth.detections.label"),
-            {"DOG": 1, "RABBIT": 1},
-        )
-        self.assertDictEqual(
-            dataset.count_values("frames.ground_truth.detections.label"),
-            {"cat": 1, "dog": 2, "rabbit": 1},
-        )
-
-        view2.save()
-
-        self.assertEqual(len(view), 5)
-        self.assertEqual(dataset.values(F("frames").length()), [0, 5])
-        self.assertDictEqual(
-            view.count_values("ground_truth.detections.label"),
-            {"DOG": 1, "RABBIT": 1},
-        )
-        self.assertDictEqual(
-            dataset.count_values("frames.ground_truth.detections.label"),
-            {"DOG": 1, "RABBIT": 1},
-        )
-        self.assertIsNotNone(view.first().id)
-        self.assertIsNotNone(dataset.last().frames.first().id)
-
-        sample = view.exclude_fields("ground_truth").first()
-
-        sample["foo"] = "bar"
-        sample.save()
-
-        self.assertIn("foo", view.get_field_schema())
-        self.assertIn("foo", dataset.get_frame_field_schema())
-        self.assertIn("ground_truth", view.get_field_schema())
-        self.assertIn("ground_truth", dataset.get_frame_field_schema())
-        self.assertEqual(view.count_values("foo")["bar"], 1)
-        self.assertEqual(dataset.count_values("frames.foo")["bar"], 1)
-        self.assertDictEqual(
-            view.count_values("ground_truth.detections.label"),
-            {"DOG": 1, "RABBIT": 1},
-        )
-        self.assertDictEqual(
-            dataset.count_values("frames.ground_truth.detections.label"),
-            {"DOG": 1, "RABBIT": 1},
-        )
-
-        dataset.untag_samples("test")
-        view.reload()
-
-        self.assertEqual(dataset.count_sample_tags(), {})
-        self.assertEqual(view.count_sample_tags(), {})
-
-    @drop_datasets
     def test_to_frames(self):
         dataset = fo.Dataset()
 
@@ -1805,6 +1596,215 @@ class VideoTests(unittest.TestCase):
         frames = view.to_frames(sparse=True, sample_frames=False)
 
         self.assertEqual(len(frames), 2)
+
+    @drop_datasets
+    def test_to_clip_frames(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+            events=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(label="meeting", support=[1, 3]),
+                    fo.VideoClassification(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+            events=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(label="party", support=[3, 5]),
+                    fo.VideoClassification(label="meeting", support=[1, 3]),
+                ]
+            ),
+        )
+        sample2.frames[1] = fo.Frame(
+            hello="goodbye",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.to_clips("events").to_frames(sample_frames=False)
+
+        self.assertSetEqual(
+            set(view.get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_number",
+                "hello",
+                "ground_truth",
+            },
+        )
+
+        self.assertSetEqual(
+            set(view.select_fields().get_field_schema().keys()),
+            {
+                "id",
+                "filepath",
+                "metadata",
+                "tags",
+                "sample_id",
+                "frame_number",
+            },
+        )
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("sample_id")  # can't exclude default field
+
+        with self.assertRaises(ValueError):
+            view.exclude_fields("frame_number")  # can't exclude default field
+
+        index_info = view.get_index_information()
+        indexes = view.list_indexes()
+
+        default_indexes = {
+            "id",
+            "filepath",
+            "sample_id",
+            "_sample_id_1_frame_number_1",
+        }
+        self.assertSetEqual(set(index_info.keys()), default_indexes)
+        self.assertSetEqual(set(indexes), default_indexes)
+
+        with self.assertRaises(ValueError):
+            view.drop_index("id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("filepath")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            view.drop_index("sample_id")  # can't drop default index
+
+        self.assertEqual(len(view), 9)
+
+        frame = view.first()
+        self.assertIsInstance(frame.id, str)
+        self.assertIsInstance(frame._id, ObjectId)
+        self.assertIsInstance(frame.sample_id, str)
+        self.assertIsInstance(frame._sample_id, ObjectId)
+
+        for _id in view.values("id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        for _id in view.values("sample_id"):
+            self.assertIsInstance(_id, str)
+
+        for oid in view.values("_sample_id"):
+            self.assertIsInstance(oid, ObjectId)
+
+        self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
+        self.assertDictEqual(view.count_sample_tags(), {"test": 9})
+
+        view.tag_samples("foo")
+
+        self.assertEqual(view.count_sample_tags()["foo"], 9)
+        self.assertNotIn("foo", dataset.count_sample_tags())
+        self.assertNotIn("tags", dataset.get_frame_field_schema())
+
+        view.untag_samples("foo")
+
+        self.assertNotIn("foo", view.count_sample_tags())
+
+        view.tag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {"test": 4})
+        self.assertDictEqual(dataset.count_label_tags(), {"test": 4})
+
+        view.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(view.count_label_tags(), {})
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        view2 = view.skip(4).set_field(
+            "ground_truth.detections.label", F("label").upper()
+        )
+
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"),
+            {"cat": 1, "dog": 2, "rabbit": 1},
+        )
+        self.assertDictEqual(
+            view2.count_values("ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.label"),
+            {"cat": 1, "dog": 2, "rabbit": 1},
+        )
+
+        view2.save()
+
+        self.assertEqual(len(view), 5)
+        self.assertEqual(dataset.values(F("frames").length()), [0, 5])
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().frames.first().id)
+
+        sample = view.exclude_fields("ground_truth").first()
+
+        sample["foo"] = "bar"
+        sample.save()
+
+        self.assertIn("foo", view.get_field_schema())
+        self.assertIn("foo", dataset.get_frame_field_schema())
+        self.assertIn("ground_truth", view.get_field_schema())
+        self.assertIn("ground_truth", dataset.get_frame_field_schema())
+        self.assertEqual(view.count_values("foo")["bar"], 1)
+        self.assertEqual(dataset.count_values("frames.foo")["bar"], 1)
+        self.assertDictEqual(
+            view.count_values("ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.label"),
+            {"DOG": 1, "RABBIT": 1},
+        )
+
+        dataset.untag_samples("test")
+        view.reload()
+
+        self.assertEqual(dataset.count_sample_tags(), {})
+        self.assertEqual(view.count_sample_tags(), {})
 
     @drop_datasets
     def test_to_frame_patches(self):

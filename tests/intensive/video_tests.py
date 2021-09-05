@@ -17,6 +17,104 @@ import fiftyone.zoo as foz
 from fiftyone import ViewField as F
 
 
+def test_to_clips():
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+
+    dataset.tag_samples("test")
+
+    clips = dataset.filter_labels(
+        "frames.detections", F("label") == "road sign"
+    ).to_clips("frames.detections")
+
+    # Clips inherit sample tags
+    print(dataset.count_sample_tags())
+    print(clips.count_sample_tags())
+
+    clips.tag_samples("clips")
+
+    # Tagging clips has no effect on the source dataset
+    print(clips.count_sample_tags())
+    print(dataset.count_sample_tags())
+
+    clips.untag_samples("clips")
+
+    # Untagging clips has no effect on the source dataset
+    print(clips.count_sample_tags())
+    print(dataset.count_sample_tags())
+
+    clips.tag_labels("test")
+
+    # Tagging labels applies to the source dataset
+    print(clips.count_label_tags())
+    print(dataset.count_label_tags())
+    print(dataset.count_values("frames.detections.detections.tags"))
+
+    clips.untag_labels("test")
+
+    # Untagging labels applies to the source dataset
+    print(clips.count_label_tags())
+    print(dataset.count_label_tags())
+    print(dataset.count_values("frames.detections.detections.tags"))
+
+    view = clips.limit(1).set_field(
+        "frames.detections.detections.label", F("label").upper()
+    )
+
+    # Views can be created, but don't affect source dataset until saved
+    print(clips.count("frames.detections.detections"))
+    print(view.count("frames.detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(clips.count_values("frames.detections.detections.label"))
+    print(view.count_values("frames.detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
+
+    view.save()
+
+    # Changes and deletions are synced with source dataset
+    print(clips.count("frames.detections.detections"))
+    print(view.count("frames.detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(clips.count_values("frames.detections.detections.label"))
+    print(view.count_values("frames.detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
+
+    # Ensure that data is correctly formed
+    print(clips.first().frames.first().id)
+    print(dataset.first().frames.first().id)
+
+    sample = clips.first()
+
+    sample["foo"] = "bar"
+    sample.frames.first()["hello"] = "world"
+    sample.save()
+
+    # Frame fields can be added by direct sample modification, and are saved
+    print(clips)
+    print(dataset)
+    print(clips.count_values("foo"))
+    print(clips.count_values("frames.hello"))
+    print(dataset.count_values("frames.hello"))
+
+    sample = clips.exclude_fields("frames.detections").first()
+    sample.frames.first()["hello2"] = "world2"
+    sample.save()
+
+    # Excluded fields are not removed when saving clip samples
+    print(clips)
+    print(dataset)
+    print(clips.count_values("frames.detections.detections.label"))
+    print(clips.count_values("frames.hello2"))
+    print(dataset.count_values("frames.detections.detections.label"))
+    print(dataset.count_values("frames.hello2"))
+
+    dataset.untag_samples("test")
+    clips.reload()
+
+    # Reloading a view syncs it with the source dataset
+    print(dataset.count_sample_tags())
+    print(clips.count_sample_tags())  # empty because labels were capitalized!
+
+
 def test_to_frames():
     dataset = foz.load_zoo_dataset("quickstart-video").clone()
 
@@ -109,6 +207,113 @@ def test_to_frames():
     # Reloading a view syncs it with the source dataset
     print(dataset.count_sample_tags())
     print(frames.count_sample_tags())
+
+
+def test_to_clip_frames():
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+    dataset.compute_metadata()
+
+    dataset.tag_samples("test")
+
+    clips = dataset.filter_labels(
+        "frames.detections", F("label") == "person"
+    ).to_clips("frames.detections")
+
+    frames = clips.to_frames(fps=1)
+
+    print("\nClips view")
+    for filepath, support in zip(*clips.values(["filepath", "support"])):
+        print("%s: %s" % (filepath, support))
+
+    print("\nFrames view")
+    for filepath, fn in zip(*frames.values(["filepath", "frame_number"])):
+        print("%s: %s" % (filepath, fn))
+
+    # Frames inherit sample tags
+    print(dataset.count_sample_tags())
+    print(frames.count_sample_tags())
+
+    frames.tag_samples("clips")
+
+    # Tagging frames has no effect on the source dataset
+    print(frames.count_sample_tags())
+    print(dataset.count_sample_tags())
+
+    frames.untag_samples("clips")
+
+    # Untagging clips has no effect on the source dataset
+    print(frames.count_sample_tags())
+    print(dataset.count_sample_tags())
+
+    frames.tag_labels("test")
+
+    # Tagging labels applies to the source dataset
+    print(frames.count_label_tags())
+    print(dataset.count_label_tags())
+    print(dataset.count_values("frames.detections.detections.tags"))
+
+    frames.untag_labels("test")
+
+    # Untagging labels applies to the source dataset
+    print(frames.count_label_tags())
+    print(dataset.count_label_tags())
+    print(dataset.count_values("frames.detections.detections.tags"))
+
+    view = frames.limit(10).set_field(
+        "detections.detections.label", F("label").upper()
+    )
+
+    # Views can be created, but don't affect source dataset until saved
+    print(frames.count("detections.detections"))
+    print(view.count("detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(frames.count_values("detections.detections.label"))
+    print(view.count_values("detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
+
+    view.save()
+
+    # Changes and deletions are synced with source dataset
+    print(frames.count("detections.detections"))
+    print(view.count("detections.detections"))
+    print(dataset.count("frames.detections.detections"))
+    print(frames.count_values("detections.detections.label"))
+    print(view.count_values("detections.detections.label"))
+    print(dataset.count_values("frames.detections.detections.label"))
+
+    # Ensure that data is correctly formed
+    print(frames.first().id)
+    print(dataset.first().frames.first().id)
+
+    sample = frames.first()
+
+    sample["hello"] = "world"
+    sample.save()
+
+    # Fields can be added by direct sample modification, and are saved
+    print(frames)
+    print(dataset)
+    print(frames.count_values("hello"))
+    print(dataset.count_values("frames.hello"))
+
+    sample = frames.exclude_fields("detections").first()
+    sample["hello2"] = "world2"
+    sample.save()
+
+    # Excluded fields are not removed when saving clip samples
+    print(frames)
+    print(dataset)
+    print(frames.count_values("detections.detections.label"))
+    print(frames.count_values("hello2"))
+    print(dataset.count_values("frames.detections.detections.label"))
+    print(dataset.count_values("frames.hello2"))
+
+    dataset.untag_samples("test")
+    frames.reload()
+
+    # Reloading a view syncs it with the source dataset
+    print(dataset.count_sample_tags())
+    print(frames.count_sample_tags())  # empty because labels were capitalized!
 
 
 def test_to_frame_patches():
