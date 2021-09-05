@@ -605,6 +605,13 @@ detection dataset:
     View stages:
         1. ToPatches(field='ground_truth')
 
+.. note::
+
+    You can pass the optional `other_fields` pararmeter to
+    :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+    to specify additional read-only sample-level fields that each patch should
+    include from their parent samples.
+
 Or, you could :ref:`chain view stages <chaining-views>` to create a view that
 contains patches for a filtered set of predictions:
 
@@ -655,8 +662,9 @@ non-patch views:
 
 -   Tagging or untagging patches (as opposed to their labels) will not affect
     the tags of the underlying |Sample|
--   Any new fields that you add to an object patches view will not be added to
-    the source dataset
+-   Any edits that you make to sample-level fields of object patches views
+    other than the field that defines the patches themselves will not be
+    reflected on the source dataset
 
 .. note::
 
@@ -726,6 +734,13 @@ respectively.
 
 .. note::
 
+    You can pass the optional `other_fields` pararmeter to
+    :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+    to specify additional read-only sample-level fields that each patch should
+    include from their parent samples.
+
+.. note::
+
     Did you know? You can convert to evaluation patches view directly
     :ref:`from the App <app-evaluation-patches>`!
 
@@ -761,8 +776,9 @@ non-patch views:
 
 -   Tagging or untagging patches themselves (as opposed to their labels) will
     not affect the tags of the underlying |Sample|
--   Any new fields that you add to an evaluation patches view will not be added
-    to the source dataset
+-   Any edits that you make to sample-level fields of evaluation patches views
+    other than the ground truth/predicted label fields will not be reflected
+    on the source dataset
 
 .. _video-views:
 
@@ -868,12 +884,18 @@ classification field to
 
 All clips views contain a top-level `support` field that contains the
 `[first, last]` frame range of the clip within `filepath`, which points to the
-source video. Each clip will also contain all additional sample-level fields
-from its parent sample in the source dataset.
+source video.
 
 Note that the `events` field, which had type |VideoClassifications| in the
 source dataset, now has type |Classification| in the clips view, since each
 classification has a one-to-one relationship with its clip.
+
+.. note::
+
+    You can pass the optional `other_fields` pararmeter to
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
+    specify additional read-only sample-level fields that each clip should
+    include from their parent samples.
 
 .. note::
 
@@ -1182,8 +1204,8 @@ Frame views are just like any other image collection view in the sense that:
     video  dataset
 
 The only way in which frames views differ from regular image collections is
-that changes to the ``tags`` or ``metadata`` fields of frame samples will not be
-propagated to the frames of the underlying video dataset.
+that changes to the ``tags`` or ``metadata`` fields of frame samples will not
+be propagated to the frames of the underlying video dataset.
 
 .. _frame-patches-views:
 

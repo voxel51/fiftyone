@@ -4295,7 +4295,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Take(size, seed=seed))
 
     @view_stage
-    def to_patches(self, field):
+    def to_patches(self, field, **kwargs):
         """Creates a view that contains one sample per object patch in the
         specified field of the collection.
 
@@ -4325,14 +4325,17 @@ class SampleCollection(object):
             field: the patches field, which must be of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.patches.make_patches_dataset` specifying
+                how to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
         """
-        return self._add_view_stage(fos.ToPatches(field))
+        return self._add_view_stage(fos.ToPatches(field, **kwargs))
 
     @view_stage
-    def to_evaluation_patches(self, eval_key):
+    def to_evaluation_patches(self, eval_key, **kwargs):
         """Creates a view based on the results of the evaluation with the
         given key that contains one sample for each true positive, false
         positive, and false negative example in the collection, respectively.
@@ -4388,11 +4391,16 @@ class SampleCollection(object):
                 ground truth/predicted fields that are of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
+                specifying how to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
-        return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
+        return self._add_view_stage(
+            fos.ToEvaluationPatches(eval_key, **kwargs)
+        )
 
     @view_stage
     def to_clips(self, field_or_expr, **kwargs):
@@ -4401,11 +4409,10 @@ class SampleCollection(object):
 
         The returned view will contain:
 
-        -   All sample-level fields of the input collection
-        -   A ``support`` field that records the ``[first, last]`` frame
-            support of each clip
         -   A ``sample_id`` field that records the sample ID from which each
             clip was taken
+        -   A ``support`` field that records the ``[first, last]`` frame
+            support of each clip
         -   All frame-level information from the underlying dataset of the
             input collection
 

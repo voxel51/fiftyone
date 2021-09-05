@@ -272,18 +272,22 @@ class ClipsView(fov.DatasetView):
 
 
 def make_clips_dataset(
-    sample_collection, field_or_expr, tol=0, min_len=0, trajectories=False
+    sample_collection,
+    field_or_expr,
+    other_fields=None,
+    tol=0,
+    min_len=0,
+    trajectories=False,
 ):
     """Creates a dataset that contains one sample per clip defined by the
     given field or expression in the collection.
 
     The returned dataset will contain:
 
-    -   All sample-level fields of the input collection
-    -   A ``support`` field that records the ``[first, last]`` frame support of
-        each clip
     -   A ``sample_id`` field that records the sample ID from which each clip
         was taken
+    -   A ``support`` field that records the ``[first, last]`` frame support of
+        each clip
     -   All frame-level information from the underlying dataset of the input
         collection
 
@@ -319,6 +323,12 @@ def make_clips_dataset(
             -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
                 defining the frame numbers of the clips to extract from each
                 sample
+        other_fields (None): controls whether sample fields other than the
+            default sample fields are included. Can be any of the following:
+
+            -   a field or list of fields to include
+            -   ``True`` to include all other fields
+            -   ``None``/``False`` to include no other fields
         tol (0): the maximum number of false frames that can be overlooked when
             generating clips. Only applicable when ``field_or_expr`` is a
             frame-level list field or expression
@@ -333,6 +343,9 @@ def make_clips_dataset(
         a :class:`fiftyone.core.dataset.Dataset`
     """
     fova.validate_video_collection(sample_collection)
+
+    if etau.is_str(other_fields):
+        other_fields = [other_fields]
 
     if etau.is_str(field_or_expr):
         if sample_collection._is_frame_field(field_or_expr):
@@ -370,27 +383,50 @@ def make_clips_dataset(
             embedded_doc_type=fol.Label,
         )
 
-    current_schema = dataset.get_field_schema()
-    dataset._sample_doc_cls.merge_field_schema(
-        {
-            k: v
-            for k, v in sample_collection.get_field_schema().items()
-            if k not in current_schema
-        }
-    )
+    if other_fields:
+        src_schema = sample_collection.get_field_schema()
+        curr_schema = dataset.get_field_schema()
+
+        if other_fields == True:
+            other_fields = [f for f in src_schema if f not in curr_schema]
+
+        add_fields = [f for f in other_fields if f not in curr_schema]
+        dataset._sample_doc_cls.merge_field_schema(
+            {k: v for k, v in src_schema.items() if k in add_fields}
+        )
 
     _make_pretty_summary(dataset)
 
     if clips_type == "classifications":
-        _write_classification_clips(dataset, sample_collection, field_or_expr)
+        _write_classification_clips(
+            dataset,
+            sample_collection,
+            field_or_expr,
+            other_fields=other_fields,
+        )
     elif clips_type == "trajectories":
-        _write_trajectories(dataset, sample_collection, field_or_expr)
+        _write_trajectories(
+            dataset,
+            sample_collection,
+            field_or_expr,
+            other_fields=other_fields,
+        )
     elif clips_type == "expression":
         _write_expr_clips(
-            dataset, sample_collection, field_or_expr, tol=tol, min_len=min_len
+            dataset,
+            sample_collection,
+            field_or_expr,
+            other_fields=other_fields,
+            tol=tol,
+            min_len=min_len,
         )
     else:
-        _write_manual_clips(dataset, sample_collection, field_or_expr)
+        _write_manual_clips(
+            dataset,
+            sample_collection,
+            field_or_expr,
+            other_fields=other_fields,
+        )
 
     return dataset
 
@@ -402,7 +438,9 @@ def _make_pretty_summary(dataset):
     dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
-def _write_classification_clips(dataset, src_collection, field):
+def _write_classification_clips(
+    dataset, src_collection, field, other_fields=None
+):
     src_dataset = src_collection._dataset
     label_type = src_collection._get_label_field_type(field)
 
@@ -413,26 +451,22 @@ def _write_classification_clips(dataset, src_collection, field):
             % (field, supported_types, label_type)
         )
 
-    #
-    # Populate sample collection
-    #
+    project = {
+        "_id": False,
+        "_sample_id": "$_id",
+        "_media_type": True,
+        "filepath": True,
+        "metadata": True,
+        "tags": True,
+        field: True,
+    }
+
+    if other_fields:
+        project.update({f: True for f in other_fields})
 
     pipeline = src_collection._pipeline(detach_frames=True)
 
-    """
-    pipeline.append(
-        {
-            "$project": {
-                "_media_type": True,
-                "filepath": True,
-                "metadata": True,
-                "tags": True,
-                "_sample_id": "$_id",
-                field: True,
-            }
-        }
-    )
-    """
+    pipeline.append({"$project": project})
 
     if label_type is fol.VideoClassifications:
         list_path = field + "." + label_type._LABEL_LIST_FIELD
@@ -446,7 +480,6 @@ def _write_classification_clips(dataset, src_collection, field):
             {
                 "$set": {
                     "_id": "$" + field + "._id",
-                    "_sample_id": "$_id",
                     "support": "$" + support_path,
                     field + "._cls": "Classification",
                     "_rand": {"$rand": {}},
@@ -460,7 +493,7 @@ def _write_classification_clips(dataset, src_collection, field):
     src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
 
-def _write_trajectories(dataset, src_collection, field):
+def _write_trajectories(dataset, src_collection, field, other_fields=None):
     path = src_collection._FRAMES_PREFIX + field
     label_type = src_collection._get_label_field_type(path)
 
@@ -487,29 +520,28 @@ def _write_trajectories(dataset, src_collection, field):
     # Populate sample collection
     #
 
-    pipeline = src_collection._pipeline(detach_frames=True)
+    project = {
+        "_id": False,
+        "_sample_id": "$_id",
+        _tmp_field: True,
+        "_media_type": True,
+        "filepath": True,
+        "metadata": True,
+        "tags": True,
+        field: True,
+    }
 
-    """
-    pipeline.append(
-        {
-            "$project": {
-                "_media_type": True,
-                "filepath": True,
-                "metadata": True,
-                "tags": True,
-                "_sample_id": "$_id",
-                _tmp_field: True,
-            }
-        }
-    )
-    """
+    if other_fields:
+        project.update({f: True for f in other_fields})
+
+    pipeline = src_collection._pipeline(detach_frames=True)
 
     pipeline.extend(
         [
+            {"$project": project},
             {"$unwind": "$" + _tmp_field},
             {
                 "$set": {
-                    "_sample_id": "$_id",
                     "support": {"$slice": ["$" + _tmp_field, 2, 2]},
                     field: {
                         "_cls": "Label",
@@ -519,7 +551,7 @@ def _write_trajectories(dataset, src_collection, field):
                     "_rand": {"$rand": {}},
                 },
             },
-            {"$unset": ["_id", _tmp_field]},
+            {"$unset": _tmp_field},
             {"$out": dataset._sample_collection_name},
         ]
     )
@@ -530,7 +562,9 @@ def _write_trajectories(dataset, src_collection, field):
     src_dataset._sample_collection.update_many({}, cleanup_op)
 
 
-def _write_expr_clips(dataset, src_collection, expr, tol=0, min_len=0):
+def _write_expr_clips(
+    dataset, src_collection, expr, other_fields=None, tol=0, min_len=0
+):
     if etau.is_str(expr):
         _, path = src_collection._get_label_field_path(expr)
         leaf, _ = src_collection._handle_frame_field(path)
@@ -548,10 +582,12 @@ def _write_expr_clips(dataset, src_collection, expr, tol=0, min_len=0):
         for fns, bs in zip(frame_numbers, bools)
     ]
 
-    _write_manual_clips(dataset, src_collection, clips)
+    _write_manual_clips(
+        dataset, src_collection, clips, other_fields=other_fields
+    )
 
 
-def _write_manual_clips(dataset, src_collection, clips):
+def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     src_dataset = src_collection._dataset
     _tmp_field = "_support"
 
@@ -565,32 +601,30 @@ def _write_manual_clips(dataset, src_collection, clips):
     # Populate sample collection
     #
 
-    pipeline = src_collection._pipeline(detach_frames=True)
+    project = {
+        "_id": False,
+        "_sample_id": "$_id",
+        "_media_type": True,
+        "filepath": True,
+        "support": "$" + _tmp_field,
+        "metadata": True,
+        "tags": True,
+    }
 
-    """
-    pipeline.append(
-        {
-            "$project": {
-                "_media_type": True,
-                "filepath": True,
-                "metadata": True,
-                "tags": True,
-                "_sample_id": "$_id",
-                _tmp_field: True,
-            }
-        }
-    )
-    """
+    if other_fields:
+        project.update({f: True for f in other_fields})
+
+    pipeline = src_collection._pipeline(detach_frames=True)
 
     pipeline.extend(
         [
-            {"$set": {"_sample_id": "$_id", "support": "$" + _tmp_field}},
-            {"$unset": ["_id", _tmp_field]},
+            {"$project": project},
             {"$unwind": "$support"},
             {"$set": {"_rand": {"$rand": {}}}},
             {"$out": dataset._sample_collection_name},
         ]
     )
+
     src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
     cleanup_op = {"$unset": {_tmp_field: ""}}
