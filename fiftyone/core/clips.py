@@ -194,7 +194,7 @@ class ClipsView(fov.DatasetView):
         in-memory clips extracted from this view will not be updated by calling
         this method.
         """
-        self._root_dataset.reload()
+        self._source_collection.reload()
 
         #
         # Regenerate the clips dataset
