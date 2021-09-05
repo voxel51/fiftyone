@@ -775,7 +775,7 @@ class FramesView(Frames):
             # must run the entire view's aggregation first and then select the
             # sample of interest at the end
             #
-            frames_view = view.select(self._sample_id)
+            frames_view = view.select(self._sample._id)
             frames_pipeline = frames_view._pipeline(frames_only=True)
         else:
             #
@@ -800,7 +800,7 @@ class FramesView(Frames):
                     frames_view._stages.append(stage)
 
             frames_pipeline = frames_view._pipeline(frames_only=True)
-            frames_pipeline.insert(0, {"$match": {"_id": self._sample_id}})
+            frames_pipeline.insert(0, {"$match": {"_id": self._sample._id}})
 
         self._view = view
         self._selected_fields = sf
