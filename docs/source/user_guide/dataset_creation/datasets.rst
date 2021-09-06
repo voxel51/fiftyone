@@ -582,12 +582,12 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
                 ...
             ],
@@ -595,12 +595,12 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
             ],
             ...

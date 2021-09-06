@@ -610,12 +610,12 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
                 ...
             ],
@@ -623,12 +623,12 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>,
+                    "confidence": <optional-confidence>
                 },
             ],
             ...
@@ -638,7 +638,7 @@ where `labels.json` is a JSON file in the following format:
 By default, the `support` keys will be populated with the `[first, last]` frame
 numbers of the classifications, but you can pass the `use_timestamps=True` key
 during export to instead populate the `timestamps` keys with the
-`[start, stop]` timestamps of the classifications.
+`[start, stop]` timestamps of the classifications, in seconds.
 
 If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
