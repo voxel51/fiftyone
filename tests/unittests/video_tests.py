@@ -1650,7 +1650,10 @@ class VideoTests(unittest.TestCase):
 
         dataset.add_samples([sample1, sample2])
 
-        view = dataset.to_clips("events").to_frames(sample_frames=False)
+        # Note that frame views into overlapping clips are designed to NOT
+        # produce duplicate frames
+        clips = dataset.to_clips("events")
+        view = clips.to_frames(sample_frames=False)
 
         self.assertSetEqual(
             set(view.get_field_schema().keys()),
@@ -1811,7 +1814,7 @@ class VideoTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         sample1 = fo.Sample(
-            filepath="video.mp4",
+            filepath="video1.mp4",
             metadata=fo.VideoMetadata(total_frame_count=4),
             tags=["test"],
             weather="sunny",
@@ -1828,7 +1831,7 @@ class VideoTests(unittest.TestCase):
         sample1.frames[3] = fo.Frame(hello="goodbye")
 
         sample2 = fo.Sample(
-            filepath="video.mp4",
+            filepath="video2.mp4",
             metadata=fo.VideoMetadata(total_frame_count=5),
             tags=["test"],
             weather="cloudy",
@@ -2073,6 +2076,178 @@ class VideoTests(unittest.TestCase):
         self.assertDictEqual(
             frames.count_values("ground_truth.detections.tags"), {}
         )
+        self.assertDictEqual(
+            dataset.count_values("frames.ground_truth.detections.tags"), {}
+        )
+
+    @drop_datasets
+    def test_to_clip_frame_patches(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="video1.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=4),
+            tags=["test"],
+            weather="sunny",
+            events=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(label="meeting", support=[1, 3]),
+                    fo.VideoClassification(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[2] = fo.Frame(
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[3] = fo.Frame(hello="goodbye")
+
+        sample2 = fo.Sample(
+            filepath="video2.mp4",
+            metadata=fo.VideoMetadata(total_frame_count=5),
+            tags=["test"],
+            weather="cloudy",
+            events=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(label="party", support=[3, 5]),
+                    fo.VideoClassification(label="meeting", support=[1, 3]),
+                ]
+            ),
+        )
+        sample2.frames[1] = fo.Frame(
+            hello="goodbye",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="dog"),
+                    fo.Detection(label="rabbit"),
+                ]
+            ),
+        )
+        sample2.frames[3] = fo.Frame()
+        sample2.frames[5] = fo.Frame(hello="there")
+
+        dataset.add_samples([sample1, sample2])
+
+        # Note that frame views into overlapping clips are designed to NOT
+        # produce duplicate frames
+        clips = dataset.to_clips("events")
+        frames = clips.to_frames(sample_frames=False)
+        patches = frames.to_patches("ground_truth")
+
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(len(patches), 4)
+
+        self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
+        self.assertDictEqual(patches.count_sample_tags(), {"test": 4})
+
+        patches.tag_samples("patch")
+
+        self.assertEqual(patches.count_sample_tags()["patch"], 4)
+        self.assertNotIn("patch", frames.count_sample_tags())
+        self.assertNotIn("patch", dataset.count_sample_tags())
+
+        patches.untag_samples("patch")
+
+        self.assertNotIn("patch", patches.count_sample_tags())
+        self.assertNotIn("patch", frames.count_sample_tags())
+        self.assertNotIn("patch", dataset.count_sample_tags())
+
+        patches.tag_labels("test")
+
+        self.assertDictEqual(patches.count_label_tags(), {"test": 4})
+        self.assertDictEqual(frames.count_label_tags(), {"test": 4})
+        self.assertDictEqual(
+            dataset.count_label_tags("frames.ground_truth"), {"test": 4}
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        patches.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(patches.count_label_tags(), {})
+        self.assertDictEqual(dataset.count_label_tags(), {})
+
+        view2 = patches.limit(2)
+
+        values = [l.upper() for l in view2.values("ground_truth.label")]
+        view2.set_values("ground_truth.label_upper", values)
+
+        self.assertEqual(dataset.count(), 2)
+
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(view2.count(), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertEqual(patches.count("ground_truth"), 4)
+        self.assertEqual(view2.count("ground_truth"), 2)
+        self.assertEqual(
+            dataset.count("frames.ground_truth.detections.label_upper"), 2
+        )
+        self.assertEqual(patches.count("ground_truth.label_upper"), 2)
+        self.assertEqual(view2.count("ground_truth.label_upper"), 2)
+
+        view3 = patches.skip(2).set_field(
+            "ground_truth.label", F("label").upper()
+        )
+
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(view3.count(), 2)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertNotIn("rabbit", view3.count_values("ground_truth.label"))
+        self.assertEqual(view3.count_values("ground_truth.label")["RABBIT"], 1)
+        self.assertNotIn("RABBIT", patches.count_values("ground_truth.label"))
+        self.assertNotIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+
+        view3.save()
+
+        self.assertEqual(patches.count(), 2)
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count("ground_truth"), 2)
+        self.assertEqual(dataset.count("frames"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
+
+        sample = patches.first()
+
+        sample.ground_truth.hello = "world"
+        sample.save()
+
+        self.assertEqual(
+            patches.count_values("ground_truth.hello")["world"], 1
+        )
+        self.assertEqual(
+            dataset.count_values("frames.ground_truth.detections.hello")[
+                "world"
+            ],
+            1,
+        )
+
+        dataset.untag_samples("test")
+        patches.reload()
+
+        self.assertDictEqual(dataset.count_sample_tags(), {})
+        self.assertDictEqual(patches.count_sample_tags(), {})
+
+        patches.tag_labels("test")
+
+        self.assertDictEqual(
+            patches.count_label_tags(), dataset.count_label_tags()
+        )
+
+        # Including `select_labels()` here tests an important property: if the
+        # contents of a `view` changes after a save operation occurs, the
+        # original view still needs to be synced with the source dataset
+        patches.select_labels(tags="test").untag_labels("test")
+
+        self.assertDictEqual(patches.count_values("ground_truth.tags"), {})
         self.assertDictEqual(
             dataset.count_values("frames.ground_truth.detections.tags"), {}
         )
