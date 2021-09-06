@@ -299,6 +299,30 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
             dataset.count("predictions"), dataset2.count("predictions")
         )
 
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            label_field="predictions",
+        )
+
+        confs = dataset.values("predictions.confidence", missing_value=-1)
+        confs2 = dataset2.values("predictions.confidence", missing_value=-1)
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertTrue(np.allclose(sorted(confs), sorted(confs2)))
+
         # Labels-only
 
         data_path = self.images_dir
