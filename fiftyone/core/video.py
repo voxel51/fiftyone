@@ -671,8 +671,15 @@ def _parse_video_frames(
 
     if fps is not None or max_fps is not None:
         target_frame_numbers = fouv.sample_frames_uniform(
-            total_frame_count, frame_rate, fps=fps, max_fps=max_fps
+            frame_rate,
+            total_frame_count=total_frame_count,
+            support=support,
+            fps=fps,
+            max_fps=max_fps,
         )
+    elif support is not None:
+        first, last = support
+        target_frame_numbers = list(range(first, last + 1))
     else:
         target_frame_numbers = None  # all frames
 
@@ -687,12 +694,6 @@ def _parse_video_frames(
             doc_frame_numbers = list(range(1, total_frame_count + 1))
     else:
         doc_frame_numbers = target_frame_numbers
-
-    if support is not None:
-        first, last = support
-        doc_frame_numbers = [
-            fn for fn in doc_frame_numbers if first <= fn <= last
-        ]
 
     if sparse:
         doc_frame_numbers = [

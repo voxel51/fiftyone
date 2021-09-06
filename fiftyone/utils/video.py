@@ -385,8 +385,9 @@ def sample_video(
 
 
 def sample_frames_uniform(
-    total_frame_count,
     frame_rate,
+    total_frame_count=None,
+    support=None,
     fps=None,
     max_fps=None,
     always_sample_last=False,
@@ -395,8 +396,9 @@ def sample_frames_uniform(
     provided parameters.
 
     Args:
-        total_frame_count: the total number of frames in the video
         frame_rate: the video frame rate
+        total_frame_count (None): the total number of frames in the video
+        support (None): a ``[first, last]`` frame range from which to sample
         fps (None): a frame rate at which to sample frames
         max_fps (None): a maximum frame rate at which to sample frames
         always_sample_last (False): whether to always sample the last frame
@@ -404,11 +406,22 @@ def sample_frames_uniform(
     Returns:
         a list of frame numbers, or None if all frames should be sampled
     """
-    if total_frame_count <= 0:
-        return []
-
-    if frame_rate is None or total_frame_count is None:
+    if support is not None:
+        first, last = support
+    elif total_frame_count is None:
         return None
+    else:
+        first = 1
+        last = total_frame_count
+
+    if frame_rate is None:
+        if support is None:
+            return None
+
+        return list(range(first, last + 1))
+
+    if last < first:
+        return []
 
     ifps = frame_rate
 
@@ -421,21 +434,24 @@ def sample_frames_uniform(
         ofps = min(ofps, max_fps)
 
     if ofps >= ifps:
-        return None
+        if support is None:
+            return None
 
-    x = 1
-    last_fn = 1
+        return list(range(first, last + 1))
+
+    x = first
+    fn_last = first
     beta = ifps / ofps
     sample_frames = [x]
-    while x <= total_frame_count:
+    while x <= last:
         x += beta
         fn = int(round(x))
-        if last_fn < fn <= total_frame_count:
+        if fn_last < fn <= last:
             sample_frames.append(fn)
-            last_fn = fn
+            fn_last = fn
 
-    if always_sample_last and last_fn < total_frame_count:
-        sample_frames.append(total_frame_count)
+    if always_sample_last and fn_last < last:
+        sample_frames.append(last)
 
     return sample_frames
 
@@ -667,7 +683,9 @@ def _parse_parameters(
                 % (ofps, ifps, video_path)
             )
 
-        frames = sample_frames_uniform(iframe_count, ifps, fps=ofps)
+        frames = sample_frames_uniform(
+            ifps, total_frame_count=iframe_count, fps=ofps
+        )
     else:
         frames = None
 
