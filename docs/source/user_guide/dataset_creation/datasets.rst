@@ -441,8 +441,8 @@ where `labels.json` is a JSON file in the following format:
             ...
         ],
         "labels": {
-            "<uuid1>": "<target>",
-            "<uuid2>": "<target>",
+            "<uuid1>": <target>,
+            "<uuid2>": <target>,
             ...
         }
     }
@@ -466,12 +466,12 @@ confidences in the following format:
         ],
         "labels": {
             "<uuid1>": {
-                "label": "<target>",
-                "confidence": "<optional-confidence>"
+                "label": <target>,
+                "confidence": <optional-confidence>
             },
             "<uuid2>": {
-                "label": "<target>",
-                "confidence": "<optional-confidence>"
+                "label": <target>,
+                "confidence": <optional-confidence>
             },
             ...
         }

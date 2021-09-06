@@ -492,8 +492,8 @@ where `labels.json` is a JSON file in the following format:
             ...
         ],
         "labels": {
-            "<uuid1>": "<target1>",
-            "<uuid2>": "<target2>",
+            "<uuid1>": <target>,
+            "<uuid2>": <target>,
             ...
         }
     }
@@ -504,7 +504,7 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
-Alternatively, if you include the `include_confidences=True` parameter when
+Alternatively, if you include the `include_confidence=True` parameter when
 exporting datasets of this type, the `labels.json` file will contain
 predictions with associated confidences in the following format:
 
@@ -518,12 +518,12 @@ predictions with associated confidences in the following format:
         ],
         "labels": {
             "<uuid1>": {
-                "label": "<target1>",
-                "confidence": "<confidence>"
+                "label": <target>,
+                "confidence": <optional-confidence>
             },
             "<uuid2>": {
-                "label": "<target2>",
-                "confidence": "<confidence>"
+                "label": <target>,
+                "confidence": <optional-confidence>
             },
             ...
         }
