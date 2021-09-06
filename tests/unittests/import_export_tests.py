@@ -1559,6 +1559,98 @@ class VideoClassificationDatasetTests(VideoDatasetTests):
         )
 
 
+class TemporalVideoClassificationDatasetTests(VideoDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_video(),
+                predictions=fo.VideoClassifications(
+                    classifications=[
+                        fo.VideoClassification(
+                            label="cat", support=[1, 3], confidence=0.9
+                        )
+                    ]
+                ),
+            ),
+            fo.Sample(
+                filepath=self._new_video(),
+                predictions=fo.VideoClassifications(
+                    classifications=[
+                        fo.VideoClassification(
+                            label="cat", support=[1, 4], confidence=0.95,
+                        ),
+                        fo.VideoClassification(
+                            label="dog", support=[2, 5], confidence=0.95,
+                        ),
+                    ]
+                ),
+            ),
+            fo.Sample(filepath=self._new_video()),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_fiftyone_video_classification_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            label_field="predictions",
+        )
+
+        supports = dataset.values("predictions.classifications.support")
+        supports2 = dataset2.values("predictions.classifications.support")
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertListEqual(
+            sorted(supports, key=lambda k: (k is None, k)),
+            sorted(supports2, key=lambda k: (k is None, k)),
+        )
+
+        # Use timestamps
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            use_timestamps=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            label_field="predictions",
+        )
+
+        supports = dataset.values("predictions.classifications.support")
+        supports2 = dataset2.values("predictions.classifications.support")
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertListEqual(
+            sorted(supports, key=lambda k: (k is None, k)),
+            sorted(supports2, key=lambda k: (k is None, k)),
+        )
+
+
 class MultitaskVideoDatasetTests(VideoDatasetTests):
     def _make_dataset(self):
         sample1 = fo.Sample(filepath=self._new_video())
