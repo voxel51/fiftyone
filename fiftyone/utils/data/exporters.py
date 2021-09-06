@@ -15,6 +15,7 @@ from bson import json_util
 
 import eta.core.datasets as etad
 import eta.core.image as etai
+import eta.core.frameutils as etaf
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -1820,6 +1821,8 @@ class FiftyOneImageClassificationDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
+        include_confidence (False): whether to include the confidence of each
+            classifications in the exported labels
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -1836,6 +1839,7 @@ class FiftyOneImageClassificationDatasetExporter(
         data_path=None,
         labels_path=None,
         export_media=None,
+        include_confidence=False,
         classes=None,
         image_format=None,
         pretty_print=False,
@@ -1858,6 +1862,7 @@ class FiftyOneImageClassificationDatasetExporter(
         self.data_path = data_path
         self.labels_path = labels_path
         self.export_media = export_media
+        self.include_confidence = include_confidence
         self.classes = classes
         self.image_format = image_format
         self.pretty_print = pretty_print
@@ -1901,7 +1906,173 @@ class FiftyOneImageClassificationDatasetExporter(
     def export_sample(self, image_or_path, classification, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
         self._labels_dict[uuid] = _parse_classification(
-            classification, labels_map_rev=self._labels_map_rev
+            classification,
+            labels_map_rev=self._labels_map_rev,
+            include_confidence=self.include_confidence,
+        )
+
+    def close(self, *args):
+        labels = {
+            "classes": self.classes,
+            "labels": self._labels_dict,
+        }
+        etas.write_json(
+            labels, self.labels_path, pretty_print=self.pretty_print
+        )
+        self._media_exporter.close()
+
+    def _parse_classes(self):
+        if self.classes is not None:
+            self._labels_map_rev = _to_labels_map_rev(self.classes)
+
+
+class FiftyOneVideoClassificationDatasetExporter(
+    LabeledVideoDatasetExporter, ExportPathsMixin
+):
+    """Exporter that writes a temporal video classification dataset to disk in
+    FiftyOne's default format.
+
+    See :ref:`this page <FiftyOneVideoClassificationDataset-export>` for format
+    details.
+
+    Each input video is directly copied to its destination, maintaining the
+    original filename, unless a name conflict would occur, in which case an
+    index of the form ``"-%d" % count`` is appended to the base filename.
+
+    Args:
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a filename like ``"labels.json"`` specifying the location in
+                ``export_dir`` in which to export the labels
+            -   an absolute filepath to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default filename
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
+        use_timestamps (False): whether to export the support of each
+            classification in seconds rather than frame numbers
+        classes (None): the list of possible class labels. If not provided,
+            this list will be extracted when :meth:`log_collection` is called,
+            if possible
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
+    """
+
+    def __init__(
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        use_timestamps=False,
+        classes=None,
+        pretty_print=False,
+    ):
+        data_path, export_media = self._parse_data_path(
+            export_dir=export_dir,
+            data_path=data_path,
+            export_media=export_media,
+            default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(export_dir=export_dir)
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.export_media = export_media
+        self.use_timestamps = use_timestamps
+        self.classes = classes
+        self.pretty_print = pretty_print
+
+        self._labels_dict = None
+        self._labels_map_rev = None
+        self._media_exporter = None
+
+    @property
+    def requires_video_metadata(self):
+        return self.use_timestamps
+
+    @property
+    def label_cls(self):
+        return fol.VideoClassifications
+
+    @property
+    def frame_labels_cls(self):
+        return None
+
+    def setup(self):
+        self._labels_dict = {}
+        self._parse_classes()
+
+        self._media_exporter = VideoExporter(
+            self.export_media, export_path=self.data_path, ignore_exts=True,
+        )
+        self._media_exporter.setup()
+
+    def log_collection(self, sample_collection):
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+                self._parse_classes()
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+                self._parse_classes()
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+                self._parse_classes()
+
+    def export_sample(
+        self, video_path, video_classifications, _, metadata=None
+    ):
+        _, uuid = self._media_exporter.export(video_path)
+        self._labels_dict[uuid] = _parse_video_classifications(
+            video_classifications,
+            use_timestamps=self.use_timestamps,
+            labels_map_rev=self._labels_map_rev,
+            metadata=metadata,
         )
 
     def close(self, *args):
@@ -2646,23 +2817,87 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         self._media_exporter.close()
 
 
-def _parse_classification(classification, labels_map_rev=None):
+def _parse_classification(
+    classification, labels_map_rev=None, include_confidence=False
+):
     if classification is None:
         return None
 
     label = classification.label
-    if labels_map_rev is None:
-        return label
 
-    if label not in labels_map_rev:
-        msg = (
-            "Ignoring classification with label '%s' not in provided classes"
-            % label
-        )
-        warnings.warn(msg)
+    if labels_map_rev is not None:
+        if label not in labels_map_rev:
+            msg = (
+                "Ignoring classification with label '%s' not in provided "
+                "classes" % label
+            )
+            warnings.warn(msg)
+            return None
+
+        label = labels_map_rev[label]
+
+    if include_confidence:
+        label = {
+            "label": label,
+            "confidence": classification.confidence,
+        }
+
+    return label
+
+
+def _parse_video_classifications(
+    video_classifications,
+    use_timestamps=False,
+    labels_map_rev=None,
+    metadata=None,
+):
+    if video_classifications is None:
         return None
 
-    return labels_map_rev[label]
+    if use_timestamps and metadata is None:
+        raise ValueError(
+            "Video metadata must be provided in order to export video "
+            "classifications as timestamps"
+        )
+
+    labels = []
+
+    for classification in video_classifications.classifications:
+        label = classification.label
+        if labels_map_rev is not None:
+            if label not in labels_map_rev:
+                msg = (
+                    "Ignoring video classification with label '%s' not in "
+                    "provided classes" % label
+                )
+                warnings.warn(msg)
+                continue
+
+            label = labels_map_rev[label]
+
+        label_dict = {"label": label}
+
+        if use_timestamps:
+            total_frame_count = metadata.total_frame_count
+            duration = metadata.duration
+            first, last = classification.support
+            label_dict["timestamps"] = [
+                etaf.frame_number_to_timestamp(
+                    first, total_frame_count, duration
+                ),
+                etaf.frame_number_to_timestamp(
+                    last, total_frame_count, duration
+                ),
+            ]
+        else:
+            label_dict["support"] = classification.support
+
+        if classification.confidence is not None:
+            label_dict["confidence"] = classification.confidence
+
+        labels.append(label_dict)
+
+    return labels
 
 
 def _parse_detections(detections, labels_map_rev=None):

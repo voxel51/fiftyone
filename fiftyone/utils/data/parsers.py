@@ -879,11 +879,20 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
     This implementation supports samples that are ``(image_or_path, target)``
     tuples, where:
 
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
+        -   ``image_or_path`` is either an image that can be converted to numpy
+            format via ``np.asarray()`` or the path to an image on disk
 
-        - ``target`` is either a class ID (if ``classes`` is provided) or a
-          label string. For unlabeled images, ``target`` can be ``None``
+        -   ``target`` can be any of the following:
+
+            -   a label string
+            -   a class ID, if ``classes`` is provided
+            -   None, for unlabeled images
+            -   a dict of the following form::
+
+                {
+                    "label": <label-or-target>,
+                    "confidence": <confidence>,
+                }
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -915,12 +924,19 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
         if target is None:
             return None
 
-        try:
-            label = self.classes[target]
-        except:
-            label = str(target)
+        if isinstance(target, dict):
+            label = target.get("label", None)
+            confidence = target.get("confidence", None)
+        else:
+            label = target
+            confidence = None
 
-        return fol.Classification(label=label)
+        try:
+            label = self.classes[label]
+        except:
+            label = str(label)
+
+        return fol.Classification(label=label, confidence=confidence)
 
 
 class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
@@ -1145,6 +1161,104 @@ class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
 
     def __init__(self, classes=None):
         super().__init__(classes=classes)
+
+
+class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
+    """Parser for samples in FiftyOne video classification datasets.
+
+    See :ref:`this page <FiftyOneImageClassificationDataset-import>` for format
+    details.
+
+    Args:
+        classes (None): an optional list of class label strings. If provided,
+            it is assumed that ``target`` is a class ID that should be mapped
+            to a label string via ``classes[target]``
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
+            if :func:`get_video_metadata` is called and no metadata is
+            available
+    """
+
+    def __init__(self, classes=None, compute_metadata=False):
+        super().__init__()
+        self.classes = classes
+        self.compute_metadata = compute_metadata
+        self._current_metadata = None
+
+    @property
+    def has_video_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.VideoClassifications
+
+    @property
+    def frame_labels_cls(self):
+        return None
+
+    def get_video_path(self):
+        return self.current_sample[0]
+
+    def get_video_metadata(self):
+        if self._current_metadata is None and self.compute_metadata:
+            video_path = self.current_sample[0]
+            self._current_metadata = fom.VideoMetadata.build_for(video_path)
+
+        return self._current_metadata
+
+    def get_label(self):
+        video_path, labels = self.current_sample
+
+        if labels is None:
+            return None
+
+        classifications = []
+        for label_dict in labels:
+            label = label_dict["label"]
+
+            try:
+                label = self.classes[label]
+            except:
+                label = str(label)
+
+            confidence = label_dict.get("confidence", None)
+
+            if "support" in label_dict:
+                classification = fol.VideoClassification(
+                    label=label,
+                    support=label_dict["support"],
+                    confidence=confidence,
+                )
+            elif "timestamps" in label_dict:
+                if self._current_metadata is not None:
+                    metadata = self._current_metadata
+                else:
+                    metadata = fom.VideoMetadata.build_for(video_path)
+                    self._current_metadata = metadata
+
+                classification = fol.VideoClassification.from_timestamps(
+                    label_dict["timestamps"],
+                    metadata=metadata,
+                    label=label,
+                    confidence=confidence,
+                )
+            else:
+                raise ValueError(
+                    "All video classification label dicts must have either "
+                    "`support` or `timestamps` populated"
+                )
+
+            classifications.append(classification)
+
+        return fol.VideoClassifications(classifications=classifications)
+
+    def get_frame_labels(self):
+        return None
+
+    def clear_sample(self):
+        super().clear_sample()
+        self._current_metadata = None
 
 
 class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
