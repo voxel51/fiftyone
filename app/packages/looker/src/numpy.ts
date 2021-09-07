@@ -13,6 +13,8 @@ export const ARRAY_TYPES = {
   Int16Array,
   Uint32Array,
   Int32Array,
+  Float32Array,
+  Float64Array,
 };
 
 export type TypedArray =
@@ -21,7 +23,9 @@ export type TypedArray =
   | Uint16Array
   | Int16Array
   | Uint32Array
-  | Int32Array;
+  | Int32Array
+  | Float32Array
+  | Float64Array;
 
 export interface NumpyResult {
   buffer: ArrayBuffer;
@@ -57,6 +61,9 @@ const DATA_TYPES = {
   "<u8": convert64to32Array(Uint32Array),
   "|i8": convert64to32Array(Int32Array),
   "<i8": convert64to32Array(Int32Array),
+
+  "<f8": Float64Array,
+  "|f8": Float64Array,
 };
 
 /**

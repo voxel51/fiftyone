@@ -1033,6 +1033,7 @@ def _get_colorscale(name):
     from _plotly_utils.basevalidators import ColorscaleValidator
 
     cv = ColorscaleValidator("colorscale", "")
+    print(name, cv.validate_coerce(name))
     return cv.validate_coerce(name)
 
 

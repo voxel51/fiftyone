@@ -94,6 +94,7 @@ class StateDescription(etas.Serializable):
             d["dataset"] = _dataset
             d["view"] = _view
             d["view_cls"] = _view_cls
+            d["colorscale"] = self.config.get_colormap()
 
             return d
 

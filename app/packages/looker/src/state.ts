@@ -4,6 +4,9 @@
 
 import { Overlay } from "./overlays/base";
 
+export type RGB = [number, number, number];
+export type RGBA = [number, number, number, number];
+
 export interface Sample {
   metadata: {
     width: number;
@@ -55,6 +58,7 @@ interface BaseOptions {
     [key: string]: (label: { label?: string; confidence?: number }) => boolean;
   };
   colorMap: (key: string | number | null | undefined) => string;
+  colorscale: RGB[];
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;
@@ -231,6 +235,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
+  colorscale: [],
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

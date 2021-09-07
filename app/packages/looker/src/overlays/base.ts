@@ -21,6 +21,9 @@ export interface BaseLabel {
   mask?: {
     shape: [number, number];
   };
+  map?: {
+    shape: [number, number];
+  };
 }
 
 export interface PointInfo {

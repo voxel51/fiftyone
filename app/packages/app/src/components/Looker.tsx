@@ -180,6 +180,17 @@ const DetectionInfo = ({ detail }) => {
   );
 };
 
+const HeatmapInfo = ({ detail }) => {
+  const targetValue = useTarget(detail.field, detail.target);
+
+  return (
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
+      <AttrInfo label={detail.label} />
+    </AttrBlock>
+  );
+};
+
 const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
@@ -227,9 +238,10 @@ const Border = ({ color, id }) => {
 const OVERLAY_INFO = {
   Classification: ClassificationInfo,
   Detection: DetectionInfo,
+  Heatmap: HeatmapInfo,
   Keypoint: KeypointInfo,
-  Segmentation: SegmentationInfo,
   Polyline: PolylineInfo,
+  Segmentation: SegmentationInfo,
 };
 
 const TagInfo = ({ tags }: { tags: string[] }) => {
@@ -322,6 +334,7 @@ const lookerOptions = selector({
     const colorByLabel = get(atoms.colorByLabel(true));
 
     return {
+      colorscale: get(selectors.colorscale),
       colorByLabel,
       showConfidence,
       showIndex,

@@ -426,6 +426,13 @@ export const gridZoom = selector<number | null>({
   },
 });
 
+export const colorscale = selector<Array<string>>({
+  key: "colorscale",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).colorscale;
+  },
+});
+
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {

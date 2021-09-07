@@ -21,6 +21,12 @@ const DESERIALIZE = {
       }
     });
   },
+  Heatmap: (label, buffers) => {
+    if (typeof label.map === "string") {
+      label.map = deserialize(label.map);
+      buffers.push(label.map.buffer);
+    }
+  },
   Segmentation: (label, buffers) => {
     if (typeof label.mask === "string") {
       label.mask = deserialize(label.mask);
