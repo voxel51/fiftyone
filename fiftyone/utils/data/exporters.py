@@ -274,7 +274,7 @@ def export_samples(
             sample_parser = ImageClassificationSampleParser()
             num_samples = len(samples)
         else:
-            label_fcn = _make_label_coersion_functions(
+            label_fcn = _make_label_coercion_functions(
                 label_field, sample_collection, dataset_exporter
             )
             sample_parser = FiftyOneLabeledImageSampleParser(
@@ -302,10 +302,10 @@ def export_samples(
         if isinstance(samples, focl.ClipsView) and _export_media:
             dataset_exporter.export_media = "move"
 
-        label_fcn = _make_label_coersion_functions(
+        label_fcn = _make_label_coercion_functions(
             label_field, sample_collection, dataset_exporter
         )
-        frame_labels_fcn = _make_label_coersion_functions(
+        frame_labels_fcn = _make_label_coercion_functions(
             frame_labels_field,
             sample_collection,
             dataset_exporter,
@@ -578,7 +578,7 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
     return found_clips, clips_kwargs, kwargs
 
 
-def _make_label_coersion_functions(
+def _make_label_coercion_functions(
     label_field_or_dict, sample_collection, dataset_exporter, frames=False
 ):
     if frames:
@@ -619,7 +619,7 @@ def _make_label_coersion_functions(
             continue
 
         #
-        # Single label -> list coersion
+        # Single label -> list coercion
         #
 
         for export_type in export_types:
@@ -642,7 +642,7 @@ def _make_label_coersion_functions(
             continue
 
         #
-        # `Classification` -> `Detections` coersion
+        # `Classification` -> `Detections` coercion
         #
 
         if (

@@ -5656,7 +5656,7 @@ class SampleCollection(object):
             label_field = self._parse_label_field(
                 label_field,
                 dataset_exporter=dataset_exporter,
-                allow_coersion=True,
+                allow_coercion=True,
                 required=True,
             )
             frame_labels_field = None
@@ -5665,13 +5665,13 @@ class SampleCollection(object):
             label_field = self._parse_label_field(
                 label_field,
                 dataset_exporter=dataset_exporter,
-                allow_coersion=True,
+                allow_coercion=True,
                 required=False,
             )
             frame_labels_field = self._parse_frame_labels_field(
                 frame_labels_field,
                 dataset_exporter=dataset_exporter,
-                allow_coersion=True,
+                allow_coercion=True,
                 required=False,
             )
 
@@ -6658,7 +6658,7 @@ class SampleCollection(object):
         self,
         label_field,
         dataset_exporter=None,
-        allow_coersion=False,
+        allow_coercion=False,
         force_dict=False,
         required=False,
     ):
@@ -6666,7 +6666,7 @@ class SampleCollection(object):
             self,
             label_field,
             dataset_exporter=dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             force_dict=force_dict,
             required=required,
         )
@@ -6675,7 +6675,7 @@ class SampleCollection(object):
         self,
         frame_labels_field,
         dataset_exporter=None,
-        allow_coersion=False,
+        allow_coercion=False,
         force_dict=False,
         required=False,
     ):
@@ -6683,7 +6683,7 @@ class SampleCollection(object):
             self,
             frame_labels_field,
             dataset_exporter=dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             force_dict=force_dict,
             required=required,
         )
@@ -6859,7 +6859,7 @@ def _parse_label_field(
     sample_collection,
     label_field,
     dataset_exporter=None,
-    allow_coersion=False,
+    allow_coercion=False,
     force_dict=False,
     required=False,
 ):
@@ -6876,7 +6876,7 @@ def _parse_label_field(
         label_field = _get_default_label_fields_for_exporter(
             sample_collection,
             dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             required=required,
         )
 
@@ -6899,7 +6899,7 @@ def _parse_frame_labels_field(
     sample_collection,
     frame_labels_field,
     dataset_exporter=None,
-    allow_coersion=False,
+    allow_coercion=False,
     force_dict=False,
     required=False,
 ):
@@ -6918,7 +6918,7 @@ def _parse_frame_labels_field(
         frame_labels_field = _get_default_frame_label_fields_for_exporter(
             sample_collection,
             dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             required=required,
         )
 
@@ -6969,7 +6969,7 @@ def _get_frame_label_fields(sample_collection):
 
 
 def _get_default_label_fields_for_exporter(
-    sample_collection, dataset_exporter, allow_coersion=True, required=True
+    sample_collection, dataset_exporter, allow_coercion=True, required=True
 ):
     label_cls = dataset_exporter.label_cls
 
@@ -6992,7 +6992,7 @@ def _get_default_label_fields_for_exporter(
         label_schema,
         label_cls,
         frames=False,
-        allow_coersion=allow_coersion,
+        allow_coercion=allow_coercion,
     )
 
     if label_field_or_dict is not None:
@@ -7005,7 +7005,7 @@ def _get_default_label_fields_for_exporter(
 
 
 def _get_default_frame_label_fields_for_exporter(
-    sample_collection, dataset_exporter, allow_coersion=True, required=True
+    sample_collection, dataset_exporter, allow_coercion=True, required=True
 ):
     frame_labels_cls = dataset_exporter.frame_labels_cls
 
@@ -7028,7 +7028,7 @@ def _get_default_frame_label_fields_for_exporter(
         frame_label_schema,
         frame_labels_cls,
         frames=True,
-        allow_coersion=allow_coersion,
+        allow_coercion=allow_coercion,
     )
 
     if frame_labels_field_or_dict is not None:
@@ -7043,7 +7043,7 @@ def _get_default_frame_label_fields_for_exporter(
 
 
 def _get_fields_with_types(
-    media_type, label_schema, label_cls, frames=False, allow_coersion=False
+    media_type, label_schema, label_cls, frames=False, allow_coercion=False
 ):
     if not isinstance(label_cls, dict):
         return _get_field_with_type(
@@ -7051,7 +7051,7 @@ def _get_fields_with_types(
             label_schema,
             label_cls,
             frames=frames,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
         )
 
     labels_dict = {}
@@ -7061,7 +7061,7 @@ def _get_fields_with_types(
             label_schema,
             _label_cls,
             frames=frames,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
         )
         if field is not None:
             labels_dict[field] = name
@@ -7070,13 +7070,13 @@ def _get_fields_with_types(
 
 
 def _get_field_with_type(
-    media_type, label_schema, label_cls, frames=False, allow_coersion=False
+    media_type, label_schema, label_cls, frames=False, allow_coercion=False
 ):
     field = _get_matching_label_field(label_schema, label_cls)
     if field is not None:
         return field
 
-    if not allow_coersion:
+    if not allow_coercion:
         return None
 
     # Allow for extraction of image patches when exporting image classification
@@ -7107,7 +7107,7 @@ def _get_field_with_type(
             label_schema,
             _label_cls,
             frames=frames,
-            allow_coersion=False,
+            allow_coercion=False,
         )
         if field is not None:
             return field
