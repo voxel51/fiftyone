@@ -66,13 +66,15 @@ def import_samples(
         dataset_importer: a :class:`DatasetImporter`
         label_field (None): controls the field(s) in which imported labels are
             stored. Only applicable if ``dataset_importer`` is a
-            :class:`LabeledImageDatasetImporter`. If the importer produces a
-            single :class:`fiftyone.core.labels.Label` instance per sample,
-            this argument specifies the name of the field to use; the default
-            is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            :class:`LabeledImageDatasetImporter` or
+            :class:`LabeledVideoDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per
+            sample/frame, this argument specifies the name of the field to use;
+            the default is ``"ground_truth"``. If the importer produces a
+            dictionary of labels per sample, this argument specifies a string
+            prefix to prepend to each label key; the default in this case is to
+            directly use the keys of the imported label dictionaries as field
+            names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -195,14 +197,16 @@ def merge_samples(
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         dataset_importer: a :class:`DatasetImporter`
         label_field (None): controls the field(s) in which imported labels are
-            stored. Only applicable if the dataset importer used is a
-            :class:`LabeledImageDatasetImporter`. If the importer produces a
-            single :class:`fiftyone.core.labels.Label` instance per sample,
-            this argument specifies the name of the field to use; the default
-            is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            stored. Only applicable if ``dataset_importer`` is a
+            :class:`LabeledImageDatasetImporter` or
+            :class:`LabeledVideoDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per
+            sample/frame, this argument specifies the name of the field to use;
+            the default is ``"ground_truth"``. If the importer produces a
+            dictionary of labels per sample, this argument specifies a string
+            prefix to prepend to each label key; the default in this case is to
+            directly use the keys of the imported label dictionaries as field
+            names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         key_field ("filepath"): the sample field to use to decide whether to

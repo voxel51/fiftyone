@@ -2189,16 +2189,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 in ``dataset_dir`` of the labels for the default layout of the
                 dataset type being imported
             label_field (None): controls the field(s) in which imported labels
-                are stored. Only applicable if the dataset importer used is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                are stored. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2344,16 +2345,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 in ``dataset_dir`` of the labels for the default layout of the
                 dataset type being imported
             label_field (None): controls the field(s) in which imported labels
-                are stored. Only applicable if the dataset importer used is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                are stored. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -2495,16 +2497,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 in ``archive_path`` of the labels for the default layout of the
                 dataset type being imported
             label_field (None): controls the field(s) in which imported labels
-                are stored. Only applicable if the dataset importer used is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                are stored. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2643,16 +2646,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 in ``archive_path`` of the labels for the default layout of the
                 dataset type being imported
             label_field (None): controls the field(s) in which imported labels
-                are stored. Only applicable if the dataset importer used is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                are stored. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -2738,15 +2742,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
             label_field (None): controls the field(s) in which imported labels
                 are stored. Only applicable if ``dataset_importer`` is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2825,15 +2830,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
             label_field (None): controls the field(s) in which imported labels
                 are stored. Only applicable if ``dataset_importer`` is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -3402,16 +3408,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field (None): controls the field(s) in which imported labels
-                are stored. Only applicable if the dataset importer used is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                are stored. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             **kwargs: optional keyword arguments to pass to the constructor of
@@ -3508,16 +3515,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field (None): controls the field(s) in which imported labels
-                are stored. Only applicable if the dataset importer used is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                are stored. Only applicable if ``dataset_importer`` is a
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             cleanup (True): whether to delete the archive after extracting it
@@ -3560,15 +3568,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :func:`get_default_dataset_name` is used
             label_field (None): controls the field(s) in which imported labels
                 are stored. Only applicable if ``dataset_importer`` is a
-                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`.
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter` or
+                :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`.
                 If the importer produces a single
-                :class:`fiftyone.core.labels.Label` instance per sample, this
-                argument specifies the name of the field to use; the default is
-                ``"ground_truth"``. If the importer produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                :class:`fiftyone.core.labels.Label` instance per sample/frame,
+                this argument specifies the name of the field to use; the
+                default is ``"ground_truth"``. If the importer produces a
+                dictionary of labels per sample, this argument specifies a
+                string prefix to prepend to each label key; the default in this
+                case is to directly use the keys of the imported label
+                dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
