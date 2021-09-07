@@ -3258,11 +3258,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if is_existing_field:
                     if is_video and label_type in (
                         "detections",
+                        "segmentations",
+                        "_segmentations_and_detections",
                         "keypoints",
                         "polylines",
                         "keypoint",
                         "polyline",
                         "detection",
+                        "segmentation",
+                        "_segmentation_and_detection",
                     ):
                         (
                             anno_shapes,
@@ -3698,7 +3702,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             elif shape_type == "polygon":
                 label_type = "polylines"
                 label = cvat_shape.to_polyline(closed=True, filled=True)
-                if expected_label_type in ("detection", "detections"):
+                if expected_label_type in (
+                    "detection",
+                    "detections",
+                    "segmentation",
+                    "segmentations",
+                    "_segmentation_and_detection",
+                    "_segmentations_and_detections",
+                ):
                     label_type = "detections"
                     label = cvat_shape.polyline_to_detection(label)
             elif shape_type == "polyline":
@@ -3891,10 +3902,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         }
                     )
                 else:
-                    if label_type == "detection":
+                    if label_type in [
+                        "detection",
+                        "segmentation",
+                        "_segmentation_and_detection",
+                    ]:
                         labels = [image_label]
                         func = self._create_detection_shapes
-                    elif label_type == "detections":
+                    elif label_type in [
+                        "detections",
+                        "segmentations",
+                        "_segmentations_and_detections",
+                    ]:
                         labels = image_label.detections
                         func = self._create_detection_shapes
                     elif label_type == "polyline":
@@ -3922,6 +3941,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         attr_names,
                         classes,
                         frame_id,
+                        label_type=label_type,
                         load_tracks=load_tracks,
                     )
                     remapped_attr_names.update(remapped_attrs)
@@ -3994,6 +4014,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         attr_names,
         classes,
         frame_id,
+        label_type=None,
         load_tracks=False,
     ):
         shapes = []
@@ -4053,6 +4074,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         attr_names,
         classes,
         frame_id,
+        label_type=None,
         load_tracks=False,
     ):
         shapes = []
@@ -4126,6 +4148,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         attr_names,
         classes,
         frame_id,
+        label_type=None,
         load_tracks=False,
     ):
         shapes = []
@@ -4139,7 +4162,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             remapped_attr_names.update(remapped_attrs)
-            if det.mask is None:
+            if det.mask is None and label_type not in [
+                "segmentation",
+                "segmentations",
+            ]:
                 x, y, w, h = det.bounding_box
                 xtl = float(round(x * width))
                 ytl = float(round(y * height))
@@ -4160,7 +4186,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "attributes": attributes,
                 }
 
-            else:
+            elif det.mask is not None and label_type not in [
+                "detection",
+                "detections",
+            ]:
                 polygon = det.to_polyline()
                 points = polygon.points[0]
                 abs_points = HasCVATPoints._to_abs_points(
@@ -4182,6 +4211,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "source": "manual",
                     "attributes": attributes,
                 }
+            else:
+                continue
 
             if load_tracks and det.index is not None:
                 index = det.index

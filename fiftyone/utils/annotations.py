@@ -18,6 +18,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.annotation as foa
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -159,6 +160,8 @@ def annotate(
     # Don't allow overwriting an existing run with same `anno_key`
     anno_backend.register_run(samples, anno_key, overwrite=False)
 
+    samples = _filter_segmentations_detections(samples, config.label_schema)
+
     results = anno_backend.upload_annotations(
         samples, launch_editor=launch_editor
     )
@@ -166,6 +169,35 @@ def annotate(
     anno_backend.save_run_results(samples, anno_key, results)
 
     return results
+
+
+def _filter_segmentations_detections(samples, label_schema):
+    """Ignore detections with masks for "detections" type and ignore detections
+    without masks for "segmentations" type
+    """
+    for label_field, label_info in label_schema.items():
+        if not label_info["existing_field"]:
+            continue
+
+        label_type = label_info["type"]
+        if label_type in [
+            "segmentation",
+            "segmentations",
+            "detection",
+            "detections",
+        ]:
+            any_masks, only_masks = _check_for_masks(samples, label_field)
+
+            if label_type in ["segmentation", "segmentations"]:
+                expression = F("mask").exists()
+            else:
+                expression = ~(F("mask").exists())
+
+            samples = samples.filter_labels(
+                label_field, expression, only_matches=False
+            )
+
+    return samples
 
 
 def _get_patches_view_label_ids(patches_view):
@@ -214,13 +246,26 @@ _LABEL_TYPES_MAP = {
     "detections": fol.Detections,
     "segmentation": fol.Detection,
     "segmentations": fol.Detections,
+    "_segmentation_and_detection": fol.Detection,
+    "_segmentations_and_detections": fol.Detections,
     "semantic_segmentation": fol.Segmentation,
     "keypoint": fol.Keypoint,
     "keypoints": fol.Keypoints,
     "polyline": fol.Polyline,
     "polylines": fol.Polylines,
 }
-_LABEL_TYPES_MAP_REV = {v: k for k, v in _LABEL_TYPES_MAP.items()}
+
+_LABEL_TYPES_MAP_REV = {
+    fol.Classification: "classification",
+    fol.Classifications: "classifications",
+    fol.Detection: "detection",
+    fol.Detections: "detections",
+    fol.Segmentation: "semantic_segmentation",
+    fol.Keypoint: "keypoint",
+    fol.Keypoints: "keypoints",
+    fol.Polyline: "polyline",
+    fol.Polylines: "polylines",
+}
 
 # The label fields that are *always* annotated
 _DEFAULT_LABEL_FIELDS_MAP = {
@@ -259,6 +304,7 @@ def _build_label_schema(
         label_schema = {lf: {} for lf in label_schema}
 
     _label_schema = {}
+
     for _label_field, _label_info in label_schema.items():
         _label_type, _existing_field = _get_label_type(
             samples, backend, label_type, _label_field, _label_info
@@ -339,7 +385,7 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
 
     if field in schema:
         _existing_type = _get_existing_label_type(
-            backend, label_field, schema[field]
+            samples, backend, label_field, schema[field], label_type
         )
 
         if label_type is not None and _existing_type != label_type:
@@ -382,7 +428,9 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
     return label_type, False
 
 
-def _get_existing_label_type(backend, label_field, field_type):
+def _get_existing_label_type(
+    samples, backend, label_field, field_type, user_specified_type
+):
     if isinstance(field_type, fof.EmbeddedDocumentField):
         fo_label_type = field_type.document_type
 
@@ -398,7 +446,36 @@ def _get_existing_label_type(backend, label_field, field_type):
                 )
             )
 
-        return _LABEL_TYPES_MAP_REV[fo_label_type]
+        label_type = _LABEL_TYPES_MAP_REV[fo_label_type]
+        if label_type in ("detection", "detections"):
+            # Decide how to split up bounding boxes and masks for this field
+
+            if user_specified_type in [
+                "segmentation",
+                "segmentations",
+                "detection",
+                "detections",
+            ]:
+                # If user provided a type, use that only
+                return user_specified_type
+
+            if label_type == "detection":
+                seg_type = "segmentation"
+                seg_and_det_type = "_segmentation_and_detection"
+            else:
+                seg_type = "segmentations"
+                seg_and_det_type = "_segmentations_and_detections"
+
+            any_masks, only_masks = _check_for_masks(samples, label_field)
+            if not any_masks:
+                # If only boxes exists, then only annotate detections
+                return label_type
+            elif only_masks:
+                # If only masks exist, then only annotate segmentations
+                return seg_type
+            else:
+                # If both exist, then annotate both
+                return seg_and_det_type
 
     if type(field_type) not in backend.supported_scalar_types:
         raise TypeError(
@@ -586,6 +663,11 @@ def load_annotations(
                 # Backend is expected to always return list types
                 fo_list_type = fol._SINGLE_LABEL_TO_LIST_MAP[fo_label_type]
                 expected_type = _LABEL_TYPES_MAP_REV[fo_list_type]
+            elif label_type in [
+                "_segmentations_and_detections",
+                "segmentations",
+            ]:
+                expected_type = "detections"
             else:
                 expected_type = label_type
 
@@ -1467,3 +1549,49 @@ def _to_video_labels(sample, label_fields=None):
         )
 
     return video_labels
+
+
+def _check_for_masks(samples, label_field):
+    """Check if the given label field has masks and, if so, if it only contains
+    masks. Used to check if segmentations are required for annotating existing
+    :class:`fiftyone.core.labels.Detections` fields.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        label_field: the name of the field to check for masks
+
+    Returns:
+        tuple containing two booleans: (has any masks, has only masks) 
+    """
+    any_masks = False
+    only_masks = False
+    field, is_frame_field = samples._handle_frame_field(label_field)
+    if is_frame_field:
+        schema = samples.get_frame_field_schema()
+    else:
+        schema = samples.get_field_schema()
+
+    field_type = schema[field]
+    if isinstance(field_type, fof.EmbeddedDocumentField):
+        fo_label_type = field_type.document_type
+    else:
+        fo_label_type = field_type
+
+    if fo_label_type not in [fol.Detections, fol.Detection, fol.Segmentation]:
+        return any_masks, only_masks
+
+    full_field_path = label_field
+    if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+        list_field = fo_label_type._LABEL_LIST_FIELD
+        full_field_path += ".%s" % list_field
+
+    _, mask_field = samples._get_label_field_path(label_field, "mask")
+    num_masks = samples.count(mask_field)
+    num_labels = samples.count(full_field_path)
+
+    if num_masks > 0:
+        any_masks = True
+        if num_masks == num_labels:
+            only_masks = True
+
+    return any_masks, only_masks
