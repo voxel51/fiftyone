@@ -1514,6 +1514,159 @@ class VideoDatasetTests(unittest.TestCase):
         return os.path.join(self._tmp_dir, self._new_name())
 
 
+class VideoExportCoersionTests(VideoDatasetTests):
+    @drop_datasets
+    def test_clip_exports(self):
+        sample1 = fo.Sample(
+            filepath=self._new_video(),
+            predictions=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(
+                        label="cat", support=[1, 3], confidence=0.9
+                    )
+                ]
+            ),
+        )
+        sample1.frames[1] = fo.Frame(
+            weather=fo.Classification(label="sunny", confidence=0.9),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    ),
+                    fo.Detection(
+                        label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                    ),
+                ]
+            ),
+        )
+        sample1.frames[2] = fo.Frame(
+            weather=fo.Classification(label="cloudy", confidence=0.95),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        confidence=0.9,
+                        age=51,
+                        cute=True,
+                        mood="surly",
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        confidence=0.95,
+                        age=52,
+                        cute=False,
+                        mood="derpy",
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath=self._new_video(),
+            predictions=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(
+                        label="cat", support=[1, 4], confidence=0.95,
+                    ),
+                    fo.VideoClassification(
+                        label="dog", support=[2, 5], confidence=0.95,
+                    ),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        #
+        # Export unlabeled video clips
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoDirectory,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.VideoDirectory,
+        )
+
+        self.assertEqual(
+            len(dataset2), dataset.count("predictions.classifications")
+        )
+
+        #
+        # Export video classification clips in a VideoClassifications field
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+        )
+
+        self.assertEqual(
+            len(dataset2), dataset.count("predictions.classifications")
+        )
+
+        #
+        # Export video classification clips directly from a ClipsView
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.to_clips("predictions").export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+        )
+
+        self.assertEqual(
+            len(dataset2), dataset.count("predictions.classifications")
+        )
+
+        #
+        # Export frame labels for clips
+        #
+
+        export_dir = self._new_dir()
+
+        clips = dataset.to_clips("predictions")
+        clips.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+            frame_labels_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+        )
+
+        self.assertEqual(
+            clips.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+
 class UnlabeledVideoDatasetTests(VideoDatasetTests):
     def _make_dataset(self):
         samples = [fo.Sample(filepath=self._new_video()) for _ in range(5)]
