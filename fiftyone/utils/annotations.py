@@ -1231,6 +1231,13 @@ class AnnotationBackend(foa.AnnotationMethod):
 
             _, label_id_path = samples._get_label_field_path(label_field, "id")
             sample_ids, label_ids = samples.values(["id", label_id_path])
+
+            # Flatten frames lists
+            for ind, ids in enumerate(label_ids):
+                if len(ids) > 0 and isinstance(ids[0], list):
+                    ids = [i for frame in ids for i in frame]
+                    label_ids[ind] = ids
+
             id_map[label_field] = dict(zip(sample_ids, label_ids))
 
         return id_map
