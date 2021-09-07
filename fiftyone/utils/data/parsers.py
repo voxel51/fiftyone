@@ -5,16 +5,23 @@ Sample parsers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import numpy as np
 
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone as fo
+import fiftyone.core.clips as foc
 import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
+
+fouv = fou.lazy_import("fiftyone.utils.video")
 
 
 def add_images(dataset, samples, sample_parser, tags=None):
@@ -395,7 +402,7 @@ class SampleParser(object):
         """Sets the current sample so that subsequent calls to methods of this
         parser will return information from the given sample.
 
-        Guaranteed to call :func:`clear_sample` before setting the current
+        Guaranteed to call :meth:`clear_sample` before setting the current
         sample.
 
         Args:
@@ -1175,7 +1182,7 @@ class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
             to a label string via ``classes[target]``
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
-            if :func:`get_video_metadata` is called and no metadata is
+            if :meth:`get_video_metadata` is called and no metadata is
             available
     """
 
@@ -1402,7 +1409,7 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
     Args:
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
-            if :func:`get_image_metadata` is called and no metadata is
+            if :meth:`get_image_metadata` is called and no metadata is
             available
     """
 
@@ -1446,7 +1453,7 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
             each label before returning it
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
-            if :func:`get_image_metadata` is called and no metadata is
+            if :meth:`get_image_metadata` is called and no metadata is
             available
     """
 
@@ -1507,29 +1514,131 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
         return label
 
 
-class FiftyOneUnlabeledVideoSampleParser(UnlabeledVideoSampleParser):
-    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
-    videos.
+class ExtractClipsMixin(object):
+    """Mixin for sample parsers that extract clips from
+    :class:`fiftyone.core.clips.ClipView` instances.
 
     Args:
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
-            if :func:`get_video_metadata` is called and no metadata is
-            available
+            when no pre-computed metadata is available
+        export_media (True): whether to actually write clips when their paths
+            are requested
+        clip_dir (None): a directory to write clips. Only applicable when
+            parsing :class:`fiftyone.core.clips.ClipView` instances
+        video_format (None): the video format to use when writing video clips
+            to disk. By default, ``fiftyone.config.default_video_ext`` is used
     """
 
-    def __init__(self, compute_metadata=False):
-        super().__init__()
+    def __init__(
+        self,
+        compute_metadata=False,
+        export_media=True,
+        clip_dir=None,
+        video_format=None,
+    ):
+        if video_format is None:
+            video_format = fo.config.default_video_ext
+
         self.compute_metadata = compute_metadata
+        self.export_media = export_media
+        self.clip_dir = clip_dir
+        self.video_format = video_format
+
+        self._curr_clip_path = None
+
+    def _get_clip_path(self, sample):
+        video_path = sample.filepath
+        basename, ext = os.path.splitext(os.path.basename(video_path))
+
+        if self.export_media:
+            if self.clip_dir is None:
+                self.clip_dir = etau.make_temp_dir()
+
+            dirname = self.clip_dir
+            ext = self.video_format
+        else:
+            dirname = os.path.dirname(video_path)
+
+        clip_name = "%s-clip-%d-%d%s" % (
+            basename,
+            sample.support[0],
+            sample.support[1],
+            ext,
+        )
+        clip_path = os.path.join(dirname, clip_name)
+
+        if self.export_media:
+            self._curr_clip_path = clip_path
+            fouv.extract_clip(
+                video_path,
+                clip_path,
+                support=sample.support,
+                metadata=sample.metadata,
+            )
+        else:
+            self._curr_clip_path = None
+
+        return clip_path
+
+    def _get_clip_metadata(self, sample):
+        if not self.compute_metadata or self._curr_clip_path is None:
+            return None
+
+        return fom.VideoMetadata.build_for(self._curr_clip_path)
+
+
+class FiftyOneUnlabeledVideoSampleParser(
+    ExtractClipsMixin, UnlabeledVideoSampleParser
+):
+    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
+    videos.
+
+    This class also supports :class:`fiftyone.core.clips.ClipView` instances.
+
+    Args:
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
+            if :meth:`get_video_metadata` is called and no metadata is
+            available
+        export_media (True): whether to write clips when :meth:`get_video_path`
+            is called
+        clip_dir (None): a directory to write clips. Only applicable when
+            parsing :class:`fiftyone.core.clips.ClipView` instances
+        video_format (None): the video format to use when writing video clips
+            to disk. By default, ``fiftyone.config.default_video_ext`` is used
+    """
+
+    def __init__(
+        self,
+        compute_metadata=False,
+        export_media=True,
+        clip_dir=None,
+        video_format=None,
+    ):
+        ExtractClipsMixin.__init__(
+            self,
+            compute_metadata=compute_metadata,
+            export_media=export_media,
+            clip_dir=clip_dir,
+            video_format=video_format,
+        )
+        UnlabeledVideoSampleParser.__init__(self)
 
     @property
     def has_video_metadata(self):
         return True
 
     def get_video_path(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_path(self.current_sample)
+
         return self.current_sample.filepath
 
     def get_video_metadata(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_metadata(self.current_sample)
+
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.VideoMetadata.build_for(
@@ -1539,9 +1648,13 @@ class FiftyOneUnlabeledVideoSampleParser(UnlabeledVideoSampleParser):
         return metadata
 
 
-class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
+class FiftyOneLabeledVideoSampleParser(
+    ExtractClipsMixin, LabeledVideoSampleParser
+):
     """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
     labeled videos.
+
+    This class also supports :class:`fiftyone.core.clips.ClipView` instances.
 
     Args:
         label_field (None): the name of a label field to parse, or a dictionary
@@ -1559,8 +1672,14 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
             returning it
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
-            if :func:`get_video_metadata` is called and no metadata is
+            if :meth:`get_video_metadata` is called and no metadata is
             available
+        export_media (True): whether to write clips when :meth:`get_video_path`
+            is called
+        clip_dir (None): a directory to write clips. Only applicable when
+            parsing :class:`fiftyone.core.clips.ClipView` instances
+        video_format (None): the video format to use when writing video clips
+            to disk. By default, ``fiftyone.config.default_video_ext`` is used
     """
 
     def __init__(
@@ -1570,17 +1689,27 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         label_fcn=None,
         frame_labels_fcn=None,
         compute_metadata=False,
+        export_media=True,
+        clip_dir=None,
+        video_format=None,
     ):
         frame_labels_dict, frame_fcn_dict = self._parse_frame_args(
             frame_labels_field, frame_labels_fcn
         )
 
-        super().__init__()
+        ExtractClipsMixin.__init__(
+            self,
+            compute_metadata=compute_metadata,
+            export_media=export_media,
+            clip_dir=clip_dir,
+            video_format=video_format,
+        )
+        LabeledVideoSampleParser.__init__(self)
+
         self.label_field = label_field
         self.frame_labels_dict = frame_labels_dict
         self.label_fcn = label_fcn
         self.frame_fcn_dict = frame_fcn_dict
-        self.compute_metadata = compute_metadata
 
     @property
     def has_video_metadata(self):
@@ -1595,9 +1724,15 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         return None
 
     def get_video_path(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_path(self.current_sample)
+
         return self.current_sample.filepath
 
     def get_video_metadata(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_metadata(self.current_sample)
+
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.VideoMetadata.build_for(
@@ -1633,6 +1768,11 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         return label
 
     def get_frame_labels(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            df = self.current_sample.support[0] - 1
+        else:
+            df = 0
+
         frames = self.current_sample.frames
         frame_labels_dict = self.frame_labels_dict
         frame_fcn_dict = self.frame_fcn_dict
@@ -1651,11 +1791,11 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
                     else:
                         new_frame[v] = frame[k]
 
-                new_frames[frame_number] = new_frame
+                new_frames[frame_number - df] = new_frame
         else:
             new_frames = {}
             for frame_number, frame in frames.items():
-                new_frames[frame_number] = {
+                new_frames[frame_number - df] = {
                     v: frame[k] for k, v in frame_labels_dict.items()
                 }
 

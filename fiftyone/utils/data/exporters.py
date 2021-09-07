@@ -20,6 +20,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.clips as focl
 import fiftyone.core.collections as foc
 import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
@@ -191,6 +192,9 @@ def export_samples(
     found_patches, patches_kwargs, kwargs = _check_for_patches_export(
         samples, dataset_exporter, label_field, kwargs
     )
+    found_clips, clips_kwargs, kwargs = _check_for_clips_export(
+        samples, dataset_exporter, label_field, kwargs
+    )
 
     if dataset_exporter is None:
         dataset_exporter, _ = build_dataset_exporter(
@@ -237,8 +241,28 @@ def export_samples(
             )
 
     elif isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
+        if found_clips:
+            # Export unlabeled video clips
+            samples = samples.to_clips(label_field)
+            num_samples = len(samples)
+
+        # True for copy/move/symlink, False for manifest/no export
+        _export_media = getattr(
+            dataset_exporter, "export_media", export_media
+        ) not in {False, "symlink"}
+
+        #
+        # Clips are always written to a temporary directory first, so the
+        # exporter should just move these to the ultimate destination
+        #
+        # Note that if the dataset exporter does not use `export_media`, this
+        # will not work properly...
+        #
+        if isinstance(samples, focl.ClipsView) and _export_media:
+            dataset_exporter.export_media = "move"
+
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
-            compute_metadata=True
+            compute_metadata=True, export_media=_export_media, **clips_kwargs
         )
 
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
@@ -258,6 +282,26 @@ def export_samples(
             )
 
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
+        if found_clips:
+            # Export labeled video clips
+            samples = samples.to_clips(label_field)
+            num_samples = len(samples)
+
+        # True for copy/move/symlink, False for manifest/no export
+        _export_media = getattr(
+            dataset_exporter, "export_media", export_media
+        ) not in {False, "symlink"}
+
+        #
+        # Clips are always written to a temporary directory first, so the
+        # exporter should just move these to the ultimate destination
+        #
+        # Note that if the dataset exporter does not use `export_media`, this
+        # will not work properly...
+        #
+        if isinstance(samples, focl.ClipsView) and _export_media:
+            dataset_exporter.export_media = "move"
+
         label_fcn = _make_label_coersion_functions(
             label_field, sample_collection, dataset_exporter
         )
@@ -273,6 +317,8 @@ def export_samples(
             label_fcn=label_fcn,
             frame_labels_fcn=frame_labels_fcn,
             compute_metadata=True,
+            export_media=_export_media,
+            **clips_kwargs,
         )
 
     else:
@@ -470,6 +516,66 @@ def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
         patches_kwargs = {}
 
     return found_patches, patches_kwargs, kwargs
+
+
+def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
+    if isinstance(label_field, dict):
+        if len(label_field) == 1:
+            label_field = next(iter(label_field.keys()))
+        else:
+            label_field = None
+
+    found_clips = False
+    clips_kwargs = {}
+
+    if isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
+        try:
+            label_type = samples._get_label_field_type(label_field)
+            found_clips = issubclass(
+                label_type, (fol.VideoClassification, fol.VideoClassifications)
+            )
+        except:
+            pass
+
+        if found_clips:
+            logger.info(
+                "Detected an unlabeled video exporter and a label field '%s' "
+                "of type %s. Exporting video clips...",
+                label_field,
+                label_type,
+            )
+
+        if found_clips or isinstance(samples, focl.ClipsView):
+            clips_kwargs, kwargs = fou.extract_kwargs_for_class(
+                FiftyOneUnlabeledVideoSampleParser, kwargs
+            )
+
+    elif (
+        isinstance(dataset_exporter, LabeledVideoDatasetExporter)
+        and dataset_exporter.label_cls is fol.Classification
+    ):
+        try:
+            label_type = samples._get_label_field_type(label_field)
+            found_clips = issubclass(
+                label_type, (fol.VideoClassification, fol.VideoClassifications)
+            )
+        except:
+            pass
+
+        if found_clips:
+            logger.info(
+                "Detected a video classification exporter and a label field "
+                "'%s' of type %s. Exporting video clips...",
+                label_field,
+                label_type,
+            )
+
+        if found_clips or isinstance(samples, focl.ClipsView):
+            clips_kwargs, kwargs = fou.extract_kwargs_for_class(
+                FiftyOneLabeledVideoSampleParser, kwargs
+            )
+
+    return found_clips, clips_kwargs, kwargs
 
 
 def _make_label_coersion_functions(

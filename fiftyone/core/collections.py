@@ -6982,12 +6982,17 @@ def _get_default_label_fields_for_exporter(
 
         return None
 
+    media_type = sample_collection.media_type
     label_schema = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     label_field_or_dict = _get_fields_with_types(
-        label_schema, label_cls, allow_coersion=allow_coersion
+        media_type,
+        label_schema,
+        label_cls,
+        frames=False,
+        allow_coersion=allow_coersion,
     )
 
     if label_field_or_dict is not None:
@@ -7013,12 +7018,17 @@ def _get_default_frame_label_fields_for_exporter(
 
         return None
 
+    media_type = sample_collection.media_type
     frame_label_schema = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     frame_labels_field_or_dict = _get_fields_with_types(
-        frame_label_schema, frame_labels_cls, allow_coersion=allow_coersion
+        media_type,
+        frame_label_schema,
+        frame_labels_cls,
+        frames=True,
+        allow_coersion=allow_coersion,
     )
 
     if frame_labels_field_or_dict is not None:
@@ -7032,16 +7042,26 @@ def _get_default_frame_label_fields_for_exporter(
     return None
 
 
-def _get_fields_with_types(label_schema, label_cls, allow_coersion=False):
+def _get_fields_with_types(
+    media_type, label_schema, label_cls, frames=False, allow_coersion=False
+):
     if not isinstance(label_cls, dict):
         return _get_field_with_type(
-            label_schema, label_cls, allow_coersion=allow_coersion
+            media_type,
+            label_schema,
+            label_cls,
+            frames=frames,
+            allow_coersion=allow_coersion,
         )
 
     labels_dict = {}
     for name, _label_cls in label_cls.items():
         field = _get_field_with_type(
-            label_schema, _label_cls, allow_coersion=allow_coersion
+            media_type,
+            label_schema,
+            _label_cls,
+            frames=frames,
+            allow_coersion=allow_coersion,
         )
         if field is not None:
             labels_dict[field] = name
@@ -7049,7 +7069,9 @@ def _get_fields_with_types(label_schema, label_cls, allow_coersion=False):
     return labels_dict if labels_dict else None
 
 
-def _get_field_with_type(label_schema, label_cls, allow_coersion=False):
+def _get_field_with_type(
+    media_type, label_schema, label_cls, frames=False, allow_coersion=False
+):
     field = _get_matching_label_field(label_schema, label_cls)
     if field is not None:
         return field
@@ -7059,8 +7081,21 @@ def _get_field_with_type(label_schema, label_cls, allow_coersion=False):
 
     # Allow for extraction of image patches when exporting image classification
     # datasets
-    if label_cls is fol.Classification:
+    if media_type == fom.IMAGE and label_cls is fol.Classification:
         field = _get_matching_label_field(label_schema, fol._PATCHES_FIELDS)
+        if field is not None:
+            return field
+
+    # Allow for extraction of video clips when exporting video classification
+    # datasets
+    if (
+        media_type == fom.VIDEO
+        and not frames
+        and label_cls is fol.Classification
+    ):
+        field = _get_matching_label_field(
+            label_schema, (fol.VideoClassification, fol.VideoClassifications)
+        )
         if field is not None:
             return field
 
@@ -7068,7 +7103,11 @@ def _get_field_with_type(label_schema, label_cls, allow_coersion=False):
     _label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
     if _label_cls is not None:
         field = _get_fields_with_types(
-            label_schema, _label_cls, allow_coersion=False
+            media_type,
+            label_schema,
+            _label_cls,
+            frames=frames,
+            allow_coersion=False,
         )
         if field is not None:
             return field

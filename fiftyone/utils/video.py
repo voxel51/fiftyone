@@ -8,14 +8,77 @@ Video utilities.
 import itertools
 import os
 
+import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.numutils as etan
 import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.clips as foc
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+
+
+def extract_clip(
+    video_path,
+    output_path,
+    support=None,
+    timestamps=None,
+    metadata=None,
+    fast=False,
+):
+    """Extracts the specified clip from the video.
+
+    Provide either ``suppport`` or ``timestamps`` to this method.
+
+    When fast=False, the following ffmpeg command is used::
+
+        # Slower, more accurate option
+        ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
+
+    When fast is True, the following two-step ffmpeg process is used::
+
+        # Faster, less accurate option
+        ffmpeg -ss <start_time> -i <video_path> -t <duration> -c copy <tmp_path>
+        ffmpeg -i <tmp_path> <output_path>
+
+    Args:
+        video_path: the path to the video
+        output_path: the path to write the extracted clip
+        support (None): the ``[first, last]`` frame number range to clip
+        timestamps (None): the ``[start, stop]`` timestamps to clip, in seconds
+        metadata (None): the :class:`fiftyone.core.metadata.VideoMetadata`
+            for the video
+        fast (False): whether to use a faster-but-potentially-less-accurate
+            strategy to extract the clip
+    """
+    if timestamps is None and support is None:
+        raise ValueError("Either `support` or `timestamps` must be provided")
+
+    if timestamps is None:
+        if metadata is None:
+            metadata = fom.VideoMetadata.build_for(video_path)
+
+        total_frame_count = metadata.total_frame_count
+        duration = metadata.duration
+        first, last = support
+        timestamps = [
+            etaf.frame_number_to_timestamp(first, total_frame_count, duration),
+            etaf.frame_number_to_timestamp(last, total_frame_count, duration),
+        ]
+
+    start_time = timestamps[0]
+    duration = timestamps[1] - start_time
+
+    etav.extract_clip(
+        video_path,
+        output_path,
+        start_time=start_time,
+        duration=duration,
+        fast=fast,
+    )
 
 
 def reencode_videos(
