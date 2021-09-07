@@ -476,6 +476,8 @@ def _get_existing_label_type(
             else:
                 # If both exist, then annotate both
                 return seg_and_det_type
+        else:
+            return label_type
 
     if type(field_type) not in backend.supported_scalar_types:
         raise TypeError(
