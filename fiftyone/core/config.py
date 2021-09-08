@@ -224,10 +224,13 @@ class AppConfig(EnvConfig):
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
         self.colorscale = self.parse_string(
+            d, "colorscale", env_var="FIFTYONE_APP_COLORSCALE", default=None
+        )
+        self.colorscale_transparency = self.parse_bool(
             d,
-            "colorscale",
-            env_var="FIFTYONE_APP_COLORSCALE",
-            default=foc.DEFAULT_APP_COLORSCALE,
+            "colorscale_transparency",
+            env_var="FIFTYONE_APP_COLORSCALE_TRANSPARENCY",
+            default=True,
         )
         self.grid_zoom = self.parse_int(
             d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5

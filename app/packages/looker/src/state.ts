@@ -58,7 +58,7 @@ interface BaseOptions {
     [key: string]: (label: { label?: string; confidence?: number }) => boolean;
   };
   colorMap: (key: string | number | null | undefined) => string;
-  colorscale: RGB[];
+  colorscale?: RGB[];
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;
@@ -235,7 +235,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
-  colorscale: [],
+  colorscale: null,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

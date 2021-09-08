@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { getColorscaleArray } from "../color";
+import { getColorscaleArray, getRGBAColor } from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
@@ -19,8 +19,7 @@ export default class HeatmapOverlay<State extends BaseState>
   private readonly label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
-  private colorscale: RGB[];
-  private selected?: boolean;
+  private colorscale?: RGB[];
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
 
@@ -32,7 +31,14 @@ export default class HeatmapOverlay<State extends BaseState>
         this.label.map.buffer
       );
 
-      this.range = this.label.range ? this.label.range : [0, 1];
+      const isFloatArray = (arr) =>
+        arr instanceof Float32Array || arr instanceof Float64Array;
+
+      this.range = this.label.range
+        ? this.label.range
+        : isFloatArray(this.targets)
+        ? [0, 1]
+        : [0, 255];
 
       const [height, width] = this.label.map.shape;
       this.canvas = document.createElement("canvas");
@@ -50,23 +56,15 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const selected = this.isSelected(state);
-    if (
-      this.targets &&
-      (this.colorscale !== state.options.colorscale ||
-        this.selected !== selected)
-    ) {
+    if (this.targets && this.colorscale !== state.options.colorscale) {
       this.colorscale = state.options.colorscale;
-      this.selected = selected;
-      const colors = getColorscaleArray(this.colorscale, selected);
       const imageMask = new Uint32Array(this.imageData.data.buffer);
 
       const [start, stop] = this.range;
-      const max = stop - start;
+      const max = Math.max(Math.abs(start), Math.abs(stop));
       for (let i = 0; i < this.targets.length; i++) {
-        let value = this.targets[i] - start;
-        if (value) {
-          value = Math.min(max, Math.max(value, 0)) / max;
+        if (this.targets[i] !== 0) {
+          let value = Math.min(max, Math.max(this.targets[i], 0)) / max;
           value *= colors.length;
 
           imageMask[i] = colors[Math.round(value)];
@@ -74,6 +72,7 @@ export default class HeatmapOverlay<State extends BaseState>
       }
 
       const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
       maskCtx.clearRect(0, 0, this.label.map.shape[1], this.label.map.shape[0]);
       maskCtx.putImageData(this.imageData, 0, 0);
     }
@@ -92,7 +91,7 @@ export default class HeatmapOverlay<State extends BaseState>
   getPointInfo(state: Readonly<State>): PointInfo {
     const target = this.getTarget(state);
     return {
-      color: this.getColor(state, target),
+      color: getRGBAColor(this.getColor(state)(target)),
       label: {
         ...this.label,
         map: {
@@ -145,20 +144,28 @@ export default class HeatmapOverlay<State extends BaseState>
     return [sx, sy];
   }
 
-  private getColor(state: Readonly<State>, target: number): string {
-    const colors = getColorscaleArray(this.colorscale, false);
-    let value = target - start;
+  private getColor(state: Readonly<State>): (value: number) => number {
     const [start, stop] = this.range;
-    const max = stop - start;
+    const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    if (value) {
+    const colorscale = this.colorscale
+      ? getColorscaleArray(this.colorscale)
+      : null;
+    const color = state.options.colorMap(this.field);
+
+    return (value) => {
+      if (value === 0) {
+        return 0;
+      }
+
+      if (colorscale) {
+      }
+
       value = Math.min(max, Math.max(value, 0)) / max;
       value *= colors.length;
 
-      imageMask[i] = colors[Math.round(value)];
-    }
-
-    return state.options.colors(target);
+      return Math.round(value);
+    };
   }
 
   private getTarget(state: Readonly<State>): number {

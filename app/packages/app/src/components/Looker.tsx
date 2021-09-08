@@ -335,6 +335,7 @@ const lookerOptions = selector({
 
     return {
       colorscale: get(selectors.colorscale),
+      colorscaleTransparency: get(selectors.appConfig).colorscale_transparency,
       colorByLabel,
       showConfidence,
       showIndex,

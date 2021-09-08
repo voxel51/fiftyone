@@ -229,7 +229,6 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const raw = get(atoms.datasetStatsRaw);
-    console.log(raw);
     const currentView = get(view);
     if (!raw.view) {
       return null;
@@ -426,7 +425,7 @@ export const gridZoom = selector<number | null>({
   },
 });
 
-export const colorscale = selector<Array<string>>({
+export const colorscale = selector<[number, number, number][]>({
   key: "colorscale",
   get: ({ get }) => {
     return get(atoms.stateDescription).colorscale;

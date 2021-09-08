@@ -63,6 +63,7 @@ export default class SegmentationOverlay<State extends BaseState>
       }
 
       const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
       maskCtx.clearRect(
         0,
         0,

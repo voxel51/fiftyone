@@ -62,7 +62,6 @@ DEFAULT_APP_COLOR_POOL = [
     "#cc33cc",
     "#777799",
 ]
-DEFAULT_APP_COLORSCALE = "viridis"
 
 # MongoDB setup
 try:

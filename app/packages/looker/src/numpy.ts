@@ -62,6 +62,9 @@ const DATA_TYPES = {
   "|i8": convert64to32Array(Int32Array),
   "<i8": convert64to32Array(Int32Array),
 
+  "<f4": Float32Array,
+  "|f4": Float32Array,
+
   "<f8": Float64Array,
   "|f8": Float64Array,
 };
@@ -116,9 +119,6 @@ function readStringAt(array: Uint8Array, start: number, end: number) {
  * Parses a saved numpy array
  */
 function parse(array: Uint8Array): NumpyResult {
-  if (readStringAt(array, 0, 6) !== "\x93NUMPY") {
-    //throw new Error(`Invalid magic number: ${readStringAt(array, 0, 6)}`);
-  }
   const version = readUint16At(array, 6);
   if (version !== 1) {
     throw new Error(`Unsupported version: ${version}`);

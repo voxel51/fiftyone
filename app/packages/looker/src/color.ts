@@ -42,6 +42,10 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
   return bitColorCache[key];
 };
 
+export const getRGBAColor = ([r, g, b, a]: RGBA) => {
+  return `rgba(${r},${g},${b},${a / 255})`;
+};
+
 let rawMaskColors = new Uint32Array(256);
 let rawMaskColorsSelected = new Uint32Array(256);
 
