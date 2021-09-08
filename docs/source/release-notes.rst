@@ -3,6 +3,35 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.13.2:
+
+FiftyOne 0.13.2
+---------------
+*Released September 3, 2021*
+
+App
+
+- Improved aggregation queries resulting in ~10x faster statistics load times
+  and time-to-interaction in the Fields Sidebar!
+- Optimized in-App tagging actions
+- Fixed count inconsistencies for large sets of
+  :class:`StringField <fiftyone.core.fields.StringField>` results in the
+  Fields Sidebar
+
+Core
+
+- Added support for providing compound sort criteria when usng the
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stage
+- Added support for configuring the wait time when using
+  :meth:`Session.wait() <fiftyone.core.session.Session.wait>` to block
+  execution until the App is closed, including support for serving forever
+- Fixed errors experienced by Windows users when running FiftyOne APIs that
+  involved multiprocessing
+- Resolved errors that could occur when importing CVAT XML files with
+  empty-valued attributes in their schema and/or individual labels
+- Added support for importing CVAT-style attributes when loading labels in
+  COCO and VOC formats
+
 .. _release-notes-v0.13.1:
 
 FiftyOne 0.13.1

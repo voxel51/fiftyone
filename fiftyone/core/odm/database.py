@@ -27,12 +27,14 @@ import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
 
+logger = logging.getLogger(__name__)
+
+
 _client = None
 _async_client = None
 _connection_kwargs = {}
 _db_service = None
 
-logger = logging.getLogger(__name__)
 
 _PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
@@ -57,22 +59,24 @@ def establish_db_conn(config):
         RuntimeError: if the ``mongod`` found does not meet FiftyOne's
             requirements, or validation could not occur
     """
+    global _client
+    global _db_service
     global _connection_kwargs
 
+    established_port = os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None)
+    if established_port is not None:
+        _connection_kwargs["port"] = int(established_port)
     if config.database_uri is not None:
         _connection_kwargs["host"] = config.database_uri
-    else:
-        global _db_service
-
-        if _db_service is not None:
-            return
-
+    elif _db_service is None:
         if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
             return
 
         try:
             _db_service = fos.DatabaseService()
-            _connection_kwargs["port"] = _db_service.port
+            port = _db_service.port
+            _connection_kwargs["port"] = port
+            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
 
         except fos.ServiceExecutableNotFound as error:
             if not fou.is_arm_mac():
@@ -84,8 +88,6 @@ def establish_db_conn(config):
                 "`fiftyone.core.config.FiftyOneConfig` to define a connection"
                 "to your own MongoDB instance or cluster"
             )
-
-    global _client
 
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)
@@ -138,7 +140,8 @@ def _validate_db_version(config, client):
 def aggregate(collection, pipelines):
     """Executes one or more aggregations on a collection.
 
-    Multiple aggregations are executed using multiple threads.
+    Multiple aggregations are executed using multiple threads, and their
+    results are returned as lists rather than cursors.
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
@@ -148,11 +151,10 @@ def aggregate(collection, pipelines):
     Returns:
         -   If a single pipeline is provided, a
             ``pymongo.command_cursor.CommandCursor`` or
-            ``motor.motor_tornado.MotorCommandCursor``
+            ``motor.motor_tornado.MotorCommandCursor`` is returned
 
-        -   If multiple pipelines are provided, it is assumed they are a list
-            of facets that resolve to one document each, and the cursors are
-            resolved and the document list is returned
+        -   If multiple pipelines are provided, each cursor is extracted into
+            a list and the list of lists is returned
     """
     pipelines = list(pipelines)
 
@@ -170,7 +172,7 @@ def aggregate(collection, pipelines):
 
     if num_pipelines == 1:
         result = collection.aggregate(pipelines[0], allowDiskUse=True)
-        return [list(result)] if is_list else result
+        return [result] if is_list else result
 
     return _do_pooled_aggregate(collection, pipelines)
 
@@ -180,9 +182,7 @@ def _do_pooled_aggregate(collection, pipelines):
     # results consistent, i.e. read from the same point in time
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
-            lambda pipeline: list(
-                collection.aggregate(pipeline, allowDiskUse=True)
-            ),
+            lambda p: list(collection.aggregate(p, allowDiskUse=True)),
             pipelines,
             chunksize=1,
         )
