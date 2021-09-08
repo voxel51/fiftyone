@@ -8,13 +8,14 @@ Video frames.
 import itertools
 
 from pymongo import ReplaceOne, UpdateOne, DeleteOne
-from pymongo.errors import BulkWriteError
 
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
+
+fov = fou.lazy_import("fiftyone.core.view")
 
 
 def get_default_frame_fields(include_private=False, use_db_fields=False):
@@ -137,12 +138,16 @@ class Frames(object):
         return self._sample._id
 
     @property
+    def _sample_collection(self):
+        return self._dataset._sample_collection
+
+    @property
     def _frame_collection(self):
-        return self._sample._dataset._frame_collection
+        return self._dataset._frame_collection
 
     @property
     def _frame_collection_name(self):
-        return self._sample._dataset._frame_collection_name
+        return self._dataset._frame_collection_name
 
     @property
     def field_names(self):
@@ -497,6 +502,18 @@ class Frames(object):
         except StopIteration:
             return set()
 
+    def _get_ids_map(self):
+        pipeline = [
+            {"$match": {"_sample_id": self._sample_id}},
+            {"$project": {"frame_number": True}},
+        ]
+
+        id_map = {}
+        for d in foo.aggregate(self._frame_collection, pipeline):
+            id_map[d["frame_number"]] = d["_id"]
+
+        return id_map
+
     def _set_replacement(self, frame):
         self._replacements[frame.frame_number] = frame
 
@@ -640,53 +657,31 @@ class Frames(object):
         if not replacements:
             return
 
-        #
-        # Insert new frames
-        #
+        new_dicts = {}
+        ops = []
+        for idx, (frame_number, frame) in enumerate(replacements.items()):
+            d = self._make_dict(frame)
+            if not frame._in_db:
+                new_dicts[frame_number] = d
 
-        new_frames = [
-            frame for frame in replacements.values() if not frame._in_db
-        ]
+            op = ReplaceOne(
+                {"frame_number": frame_number, "_sample_id": self._sample_id},
+                d,
+                upsert=True,
+            )
+            ops.append(op)
 
-        if new_frames:
-            dicts = [self._make_dict(frame) for frame in new_frames]
+        self._frame_collection.bulk_write(ops, ordered=False)
 
-            try:
-                # adds `_id` to each dict
-                self._frame_collection.insert_many(dicts)
-            except BulkWriteError as bwe:
-                msg = bwe.details["writeErrors"][0]["errmsg"]
-                raise ValueError(msg) from bwe
-
-            for frame, d in zip(new_frames, dicts):
+        if new_dicts:
+            ids_map = self._get_ids_map()
+            for frame_number, d in new_dicts.items():
+                frame = replacements[frame_number]
                 if isinstance(frame._doc, foo.NoDatasetFrameDocument):
                     doc = self._dataset._frame_dict_to_doc(d)
                     frame._set_backing_doc(doc, dataset=self._dataset)
-                else:
-                    frame._doc.id = d["_id"]
 
-            for frame in new_frames:
-                replacements.pop(frame.frame_number, None)
-
-        #
-        # Replace existing frames
-        #
-
-        if replacements:
-            ops = []
-            for frame_number, frame in replacements.items():
-                ops.append(
-                    ReplaceOne(
-                        {
-                            "frame_number": frame_number,
-                            "_sample_id": self._sample_id,
-                        },
-                        self._make_dict(frame),
-                        upsert=True,
-                    )
-                )
-
-            self._frame_collection.bulk_write(ops, ordered=False)
+                frame._doc.id = ids_map[frame_number]
 
         self._replacements.clear()
 
@@ -713,24 +708,27 @@ class FramesView(Frames):
         super().__init__(sample_view)
 
         view = sample_view._view
+
         sf, ef = view._get_selected_excluded_fields(frames=True)
         ff = view._get_filtered_fields(frames=True)
+
+        needs_frames = view._needs_frames()
+        contains_all_fields = view._contains_all_fields(frames=True)
+
+        optimized_view = fov.make_optimized_select_view(view, sample_view.id)
+        frames_pipeline = optimized_view._pipeline(frames_only=True)
 
         self._view = view
         self._selected_fields = sf
         self._excluded_fields = ef
         self._filtered_fields = ff
-
-        self._needs_frames = view._needs_frames()
-        self._contains_all_fields = view._contains_all_fields(frames=True)
+        self._needs_frames = needs_frames
+        self._contains_all_fields = contains_all_fields
+        self._frames_pipeline = frames_pipeline
 
     @property
     def field_names(self):
         return list(self._view.get_frame_field_schema().keys())
-
-    @property
-    def _frames_view(self):
-        return self._view.select(self._sample.id)
 
     def add_frame(self, frame_number, frame, expand_schema=True):
         """Adds the frame to this instance.
@@ -797,7 +795,7 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._get_frame_numbers_db()
 
-        pipeline = self._frames_view._pipeline(frames_only=True) + [
+        pipeline = self._frames_pipeline + [
             {
                 "$group": {
                     "_id": None,
@@ -835,7 +833,7 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._iter_frames_db()
 
-        return self._frames_view._aggregate(frames_only=True)
+        return foo.aggregate(self._sample_collection, self._frames_pipeline)
 
     def _make_frame(self, d):
         doc = self._dataset._frame_dict_to_doc(d)

@@ -295,6 +295,33 @@ class VideoTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_frame_overwrite(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(hello="world")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertEqual(sample.frames[1].hello, "world")
+
+        # Overwriting an existing frame is alloed
+        sample.frames[1] = fo.Frame(goodbye="world")
+        sample.save()
+
+        self.assertEqual(dataset.first().frames[1].goodbye, "world")
+
+        view = dataset.exclude_fields("frames.goodbye")
+        sample = view.first()
+        sample.frames[1] = fo.Frame(new="field")
+        sample.save()
+
+        frame = dataset.first().frames[1]
+
+        self.assertEqual(frame.hello, None)
+        self.assertEqual(frame.goodbye, "world")
+        self.assertEqual(frame.new, "field")
+
+    @drop_datasets
     def test_save_frames(self):
         dataset = fo.Dataset()
 
