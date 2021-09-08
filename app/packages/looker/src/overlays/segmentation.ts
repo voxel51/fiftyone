@@ -125,7 +125,10 @@ export default class SegmentationOverlay<State extends BaseState>
 
   private getIndex(state: Readonly<State>): number {
     const [sx, sy] = this.getMaskCoordinates(state);
-    return this.label.mask.shape[1] * sy + sx;
+    if (sx < 0 || sy < 0) {
+      return -1;
+    }
+    return this.label.map.shape[1] * sy + sx;
   }
 
   private getMaskCoordinates({
@@ -146,6 +149,10 @@ export default class SegmentationOverlay<State extends BaseState>
 
   private getTarget(state: Readonly<State>): number {
     const index = this.getIndex(state);
+
+    if (index < 0) {
+      return null;
+    }
     return this.targets[index];
   }
 }

@@ -42,6 +42,13 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
   return bitColorCache[key];
 };
 
+export const getRGBA = (value: number): RGBA => {
+  const uint32 = new Uint32Array(1);
+  uint32[0] = value;
+
+  return [...new Uint8Array(uint32.buffer)] as RGBA;
+};
+
 export const getRGBAColor = ([r, g, b, a]: RGBA) => {
   return `rgba(${r},${g},${b},${a / 255})`;
 };
@@ -70,24 +77,18 @@ export const getSegmentationColorArray = (
 };
 
 let rawColorscale = new Uint32Array(256);
-let rawColorscaleSelected = new Uint32Array(256);
 
 let cachedColorscale = null;
 
 export const getColorscaleArray = (
-  colorscale: RGB[],
-  selected: boolean
+  colorscale: RGB[]
 ): Readonly<Uint32Array> => {
   if (cachedColorscale !== colorscale) {
     cachedColorscale = colorscale;
     for (let i = 0; i < colorscale.length; i++) {
       rawColorscale[i] = get32BitColor(colorscale[i], MASK_ALPHA);
-      rawColorscaleSelected[i] = get32BitColor(
-        colorscale[i],
-        SELECTED_MASK_ALPHA
-      );
     }
   }
 
-  return selected ? rawColorscaleSelected : rawColorscale;
+  return rawColorscale;
 };

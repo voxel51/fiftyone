@@ -2,7 +2,12 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { getColorscaleArray, getRGBAColor } from "../color";
+import {
+  get32BitColor,
+  getColorscaleArray,
+  getRGBA,
+  getRGBAColor,
+} from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
@@ -57,18 +62,10 @@ export default class HeatmapOverlay<State extends BaseState>
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     if (this.targets && this.colorscale !== state.options.colorscale) {
-      this.colorscale = state.options.colorscale;
       const imageMask = new Uint32Array(this.imageData.data.buffer);
-
-      const [start, stop] = this.range;
-      const max = Math.max(Math.abs(start), Math.abs(stop));
+      const getColor = this.getColor(state);
       for (let i = 0; i < this.targets.length; i++) {
-        if (this.targets[i] !== 0) {
-          let value = Math.min(max, Math.max(this.targets[i], 0)) / max;
-          value *= colors.length;
-
-          imageMask[i] = colors[Math.round(value)];
-        }
+        imageMask[i] = getColor(this.targets[i]);
       }
 
       const maskCtx = this.canvas.getContext("2d");
@@ -91,7 +88,7 @@ export default class HeatmapOverlay<State extends BaseState>
   getPointInfo(state: Readonly<State>): PointInfo {
     const target = this.getTarget(state);
     return {
-      color: getRGBAColor(this.getColor(state)(target)),
+      color: getRGBAColor(getRGBA(this.getColor(state)(target))),
       label: {
         ...this.label,
         map: {
@@ -129,6 +126,9 @@ export default class HeatmapOverlay<State extends BaseState>
 
   private getIndex(state: Readonly<State>): number {
     const [sx, sy] = this.getMapCoordinates(state);
+    if (sx < 0 || sy < 0) {
+      return -1;
+    }
     return this.label.map.shape[1] * sy + sx;
   }
 
@@ -148,9 +148,6 @@ export default class HeatmapOverlay<State extends BaseState>
     const [start, stop] = this.range;
     const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    const colorscale = this.colorscale
-      ? getColorscaleArray(this.colorscale)
-      : null;
     const color = state.options.colorMap(this.field);
 
     return (value) => {
@@ -158,18 +155,18 @@ export default class HeatmapOverlay<State extends BaseState>
         return 0;
       }
 
-      if (colorscale) {
-      }
+      value = Math.min(max, Math.abs(value)) / max;
 
-      value = Math.min(max, Math.max(value, 0)) / max;
-      value *= colors.length;
-
-      return Math.round(value);
+      return get32BitColor(color, value / max);
     };
   }
 
   private getTarget(state: Readonly<State>): number {
     const index = this.getIndex(state);
+
+    if (index < 0) {
+      return null;
+    }
     return this.targets[index];
   }
 }

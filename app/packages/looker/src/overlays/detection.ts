@@ -157,6 +157,7 @@ export default class DetectionOverlay<
       this.bitColor = bitColor;
 
       const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
       maskCtx.clearRect(
         0,
         0,
