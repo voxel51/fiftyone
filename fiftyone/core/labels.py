@@ -1326,7 +1326,9 @@ class Segmentation(ImageLabel, _HasID):
 
             detections.append(
                 Detection(
-                    label=str(label), bounding_box=bbox, mask=label_mask,
+                    label=str(label),
+                    bounding_box=bbox,
+                    mask=label_mask.astype(bool),
                 )
             )
 
