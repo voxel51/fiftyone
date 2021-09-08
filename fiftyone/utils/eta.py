@@ -365,6 +365,8 @@ def to_image_labels(labels, warn_unsupported=True):
     Args:
         labels: a :class:`fiftyone.core.labels.Label` instance or a dict
             mapping names to :class:`fiftyone.core.labels.Label` instances
+        warn_unsupported (True): whether to issue warnings if unsupported label
+            values are encountered
 
     Returns:
         an ``eta.core.image.ImageLabels`` instance
@@ -470,6 +472,8 @@ def to_video_labels(label=None, frames=None, warn_unsupported=True):
         frames (None): frame-level labels provided as a dict mapping frame
             numbers to dicts mapping field names to
             :class:`fiftyone.core.labels.Label` instances
+        warn_unsupported (True): whether to issue warnings if unsupported label
+            values are encountered
 
     Returns:
         a ``eta.core.video.VideoLabels``
