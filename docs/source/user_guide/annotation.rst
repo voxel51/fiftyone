@@ -442,10 +442,13 @@ more details:
     -   `"classifications"`: :class:`fiftyone.core.labels.Classifications`
     -   `"detection"`: :class:`fiftyone.core.labels.Detection`
     -   `"detections"`: :class:`fiftyone.core.labels.Detections`
+    -   `"segmentation"`: :class:`fiftyone.core.labels.Detection`
+    -   `"segmentations"`: :class:`fiftyone.core.labels.Detections`
     -   `"polyline"`: :class:`fiftyone.core.labels.Polyline`
     -   `"polylines"`: :class:`fiftyone.core.labels.Polylines`
     -   `"keypoint"`: :class:`fiftyone.core.labels.Keypoint`
     -   `"keypoints"`: :class:`fiftyone.core.labels.Keypoints`
+    -   `"semantic_segmentation"`: :class:`fiftyone.core.labels.Segmentation`
 
     You can also specify `"scalar"` for a primitive scalar field or pass any of
     the supported scalar field types:
