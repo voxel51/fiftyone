@@ -36,7 +36,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-import fiftyone.core.sample as fosm
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
@@ -196,7 +195,7 @@ class FramesHandler(tornado.web.RequestHandler):
         elif state.dataset is not None:
             view = state.dataset
 
-        view = fosm.get_optimized_samples_view(view, sample_id)
+        view = fov.get_optimized_samples_view(view, sample_id)
         view = view.set_field(
             "frames",
             F("frames").filter(
@@ -921,7 +920,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
-        view = fosm.get_optimized_samples_view(view, sample_ids)
+        view = fov.get_optimized_samples_view(view, sample_ids)
 
         if view.media_type == fom.VIDEO and current_frame is not None:
             default_filter = F("frame_number") == 1

@@ -15,7 +15,7 @@ import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
-fos = fou.lazy_import("fiftyone.core.sample")
+fov = fou.lazy_import("fiftyone.core.view")
 
 
 def get_default_frame_fields(include_private=False, use_db_fields=False):
@@ -687,15 +687,24 @@ class FramesView(Frames):
     def __init__(self, sample_view):
         super().__init__(sample_view)
 
-        self._view = None
-        self._selected_fields = None
-        self._excluded_fields = None
-        self._filtered_fields = None
-        self._needs_frames = None
-        self._contains_all_fields = None
-        self._frames_pipeline = None
+        view = sample_view._view
 
-        self._parse_view(sample_view._view)
+        sf, ef = view._get_selected_excluded_fields(frames=True)
+        ff = view._get_filtered_fields(frames=True)
+
+        needs_frames = view._needs_frames()
+        contains_all_fields = view._contains_all_fields(frames=True)
+
+        optimized_view = fov.get_optimized_samples_view(view, sample_view.id)
+        frames_pipeline = optimized_view._pipeline(frames_only=True)
+
+        self._view = view
+        self._selected_fields = sf
+        self._excluded_fields = ef
+        self._filtered_fields = ff
+        self._needs_frames = needs_frames
+        self._contains_all_fields = contains_all_fields
+        self._frames_pipeline = frames_pipeline
 
     @property
     def field_names(self):
@@ -761,24 +770,6 @@ class FramesView(Frames):
         self._delete_all = False
         self._delete_frames.clear()
         self._replacements.clear()
-
-    def _parse_view(self, view):
-        sf, ef = view._get_selected_excluded_fields(frames=True)
-        ff = view._get_filtered_fields(frames=True)
-
-        needs_frames = view._needs_frames()
-        contains_all_fields = view._contains_all_fields(frames=True)
-
-        optimized_view = fos.get_optimized_samples_view(view, self._sample_id)
-        frames_pipeline = optimized_view._pipeline(frames_only=True)
-
-        self._view = view
-        self._selected_fields = sf
-        self._excluded_fields = ef
-        self._filtered_fields = ff
-        self._needs_frames = needs_frames
-        self._contains_all_fields = contains_all_fields
-        self._frames_pipeline = frames_pipeline
 
     def _get_frame_numbers_db(self):
         if not self._needs_frames:
