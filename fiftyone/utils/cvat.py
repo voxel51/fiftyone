@@ -3267,6 +3267,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "detection",
                         "segmentation",
                         "_segmentation_and_detection",
+                        "semantic_segmentation",
                     ):
                         (
                             anno_shapes,
@@ -3526,7 +3527,78 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 results, {label_field: label_field_results}
             )
 
+            if label_type == "semantic_segmentation":
+                proc_frame_metadata = {}
+                for cvat_frame_id, ids in frame_id_map[task_id].items():
+                    if "frame_id" in ids and len(frames) == 1:
+                        proc_frame_metadata[ids["sample_id"]] = frames[0]
+                        break
+                    else:
+                        proc_frame_metadata[ids["sample_id"]] = frames[
+                            cvat_frame_id
+                        ]
+
+                results[label_field][
+                    "semantic_segmentation"
+                ] = self._convert_to_semantic_seg(
+                    results[label_field]["semantic_segmentation"],
+                    proc_frame_metadata,
+                )
+
         return results
+
+    def _convert_to_semantic_seg(self, results, frames_metadata):
+        """Convert detections with masks to semantic segmentations"""
+        convert = False
+        for k, v in results.items():
+            if isinstance(v, dict):
+                # Sample or frame
+                if isinstance(frames_metadata, dict) and k in frames_metadata:
+                    frames_metadata = frames_metadata[k]
+                results[k] = self._convert_to_semantic_seg(v, frames_metadata)
+            elif isinstance(v, fol.Detection):
+                # k is label id and v is Detection
+                convert = True
+
+        if convert:
+            # Compute the mask targets:
+            # Set the target of any integer class <= 255 to that integer
+            # then set string classes to remaining integers up to 255
+            detections = list(results.values())
+            classes = [d.label for d in detections]
+            mask_targets = {}
+            str_classes = []
+            for ind, c in enumerate(classes):
+                parsed_c = _parse_attribute(c)
+                if isinstance(parsed_c, int) and parsed_c < 256:
+                    target = parsed_c
+                    mask_targets[target] = c
+                else:
+                    str_classes.append(c)
+
+            available_ids = sorted(
+                set(range(1, 256)) - set(mask_targets.keys())
+            )
+            if len(str_classes) > len(available_ids):
+                logger.warning(
+                    "More than 255 semantic segmentation classes "
+                    "found, ignoring the excess %d classes." % len(str_classes)
+                    - len(available_ids)
+                )
+                str_classes = str_classes[: len(available_ids)]
+            available_ids = available_ids[: len(str_classes)]
+
+            for avail_id, str_class in zip(available_ids, str_classes):
+                mask_targets[avail_id] = str_class
+
+            label = fol.Detections(detections=detections)
+            frame_size = (frames_metadata["width"], frames_metadata["height"])
+            segmentation = label.to_segmentation(
+                frame_size=frame_size, mask_targets=mask_targets
+            )
+            return {segmentation.id: segmentation}
+        else:
+            return results
 
     def _merge_results(self, results, new_results):
         if isinstance(new_results, dict):
@@ -3712,6 +3784,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ):
                     label_type = "detections"
                     label = cvat_shape.polyline_to_detection(label)
+                elif expected_label_type == "semantic_segmentation":
+                    label_type = "semantic_segmentation"
+                    label = cvat_shape.polyline_to_detection(label)
+
             elif shape_type == "polyline":
                 label_type = "polylines"
                 label = cvat_shape.to_polyline()
@@ -3928,6 +4004,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     elif label_type == "keypoints":
                         labels = image_label.keypoints
                         func = self._create_keypoint_shapes
+                    elif label_type == "semantic_segmentation":
+                        labels = [image_label]
+                        func = self._create_semantic_segmentation_shapes
                     else:
                         raise ValueError(
                             "Label type %s of field %s is not supported"
@@ -4192,6 +4271,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             ]:
                 polygon = det.to_polyline()
                 points = polygon.points[0]
+                if len(points) < 3:
+                    continue
                 abs_points = HasCVATPoints._to_abs_points(
                     points, (width, height)
                 )
@@ -4260,6 +4341,35 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             class_name = None
 
         return label_attrs, class_name, remapped_attr_names
+
+    def _create_semantic_segmentation_shapes(
+        self,
+        semantic_segmentations,
+        width,
+        height,
+        attr_names,
+        classes,
+        frame_id,
+        label_type=None,
+        load_tracks=False,
+    ):
+        if len(semantic_segmentations) > 1:
+            raise ValueError(
+                "`semantic_segmentations` is expected to have " "a length of 1"
+            )
+
+        semantic_segmentation = semantic_segmentations[0]
+        detections = semantic_segmentation.to_detections()
+        return self._create_detection_shapes(
+            detections.detections,
+            width,
+            height,
+            attr_names,
+            classes,
+            frame_id,
+            label_type="segmentations",
+            load_tracks=load_tracks,
+        )
 
     def _remap_ids(self, shapes_or_tags, attribute_id_map, class_id_map):
         for obj in shapes_or_tags:
@@ -4385,6 +4495,8 @@ class CVATShape(CVATLabel):
         class_map: a dictionary mapping label ids to class strings
         attr_id_map: a dictionary mapping attribute ids attribute names for
             every label
+        metadata: a dictionary containing the width and height of the frame
+        index (None): the tracking index of the given shape
     """
 
     def __init__(

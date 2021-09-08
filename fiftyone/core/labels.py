@@ -1307,7 +1307,7 @@ class Segmentation(ImageLabel, _HasID):
             else:
                 label = target
 
-            label_mask = (self.mask == target).astype("uint8")
+            label_mask = (self.mask == target).astype(int)
 
             # Crop mask and get bbox
 
@@ -1480,7 +1480,7 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
         width, height = frame_size
-        mask = np.zeros((height, width), dtype=np.uint8)
+        mask = np.zeros((height, width), dtype=np.int)
     else:
         height, width = mask.shape[:2]
 

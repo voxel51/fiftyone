@@ -273,6 +273,7 @@ _DEFAULT_LABEL_FIELDS_MAP = {
     fol.Detection: ["label", "bounding_box", "index"],
     fol.Polyline: ["label", "points", "index"],
     fol.Keypoint: ["label", "points", "index"],
+    fol.Segmentation: ["mask"],
 }
 
 # The supported scalar field types
@@ -318,6 +319,13 @@ def _build_label_schema(
             _existing_field,
             _label_type,
         )
+
+        if label_type == "semantic_segmentation" and len(_classes) > 255:
+            raise ValueError(
+                "Only 255 classes are allowed for "
+                "`semantic_segmentation` annotations in order to store "
+                "uint8 masks. Found %d classes." % len(_classes)
+            )
 
         if _label_type != "scalar":
             _attributes = _get_attributes(
@@ -498,6 +506,14 @@ def _get_existing_label_type(
 def _get_classes(
     samples, classes, label_field, label_info, existing_field, label_type
 ):
+    if existing_field and label_type == "semantic_segmentation":
+        # Allow access to any number 1-255
+        # @todo incorporate mask_targets into schema
+        logger.info(
+            "Found existing `Segmentation` field, using integers as classes"
+        )
+        return [str(i) for i in range(1, 256)]
+
     if "classes" in label_info:
         return label_info["classes"]
 
