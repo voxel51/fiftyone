@@ -6,20 +6,20 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
 import os
-import requests
-import urllib3
 import warnings
 import webbrowser
 
+from bson import ObjectId
 import jinja2
 import numpy as np
+import requests
+import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
@@ -3566,7 +3566,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frame_results = f_or_l_results
                         for label_id, label in frame_results.items():
                             label = self._convert_single_polyline(
-                                label, label_type, width, height
+                                label, width, height
                             )
                             results[label_type][sample_id][frame_or_label_id][
                                 label_id
@@ -3574,14 +3574,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     else:
                         label = f_or_l_results
                         label = self._convert_single_polyline(
-                            label, label_type, width, height
+                            label, width, height
                         )
                         results[label_type][sample_id][
                             frame_or_label_id
                         ] = label
         return results
 
-    def _convert_single_polyline(self, label, label_type, width, height):
+    def _convert_single_polyline(self, label, width, height):
         if isinstance(label, fol.Polyline):
             label = CVATShape.polyline_to_detection(label, width, height)
         elif isinstance(label, fol.Polylines):
@@ -3749,7 +3749,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # Shapes created with values, set class to value
                 anno_attrs = anno["attributes"]
                 class_val = False
-                if len(anno_attrs) > 0 and "value" in anno_attrs[0]:
+                if anno_attrs and "value" in anno_attrs[0]:
                     class_val = anno_attrs[0]["value"]
                     anno["attributes"] = []
 
@@ -3801,7 +3801,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if (
                         prev_type is not None
                         and label is not None
-                        and type(label) != prev_type
+                        and not isinstance(label, prev_type)
                     ):
                         if prev_type == str:
                             label = str(label)
@@ -3889,7 +3889,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label = merged_label
                 del curr_result["None"]
             else:
-                if len(curr_result) > 0:
+                if curr_result:
                     merged_label = self._merge_label_to_polylines(
                         label, list(curr_result.values())[0]
                     )
@@ -4070,7 +4070,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         func = self._create_keypoint_shapes
                     elif label_type == "semantic_segmentation":
                         labels = [image_label]
-                        func = self._create_semantic_segmentation_shapes
+                        func = self._create_semantic_seg_shapes
                     else:
                         raise ValueError(
                             "Label type %s of field %s is not supported"
@@ -4418,7 +4418,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return label_attrs, class_name, remapped_attr_names
 
-    def _create_semantic_segmentation_shapes(
+    def _create_semantic_seg_shapes(
         self,
         semantic_segmentations,
         width,
@@ -4722,7 +4722,7 @@ class CVATShape(CVATLabel):
         classes = [p.label for p in polylines.polylines]
         mask_targets = {}
         str_classes = []
-        for ind, c in enumerate(classes):
+        for c in classes:
             parsed_c = _parse_attribute(c)
             if isinstance(parsed_c, int) and parsed_c < 256:
                 target = parsed_c

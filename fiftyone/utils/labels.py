@@ -103,7 +103,7 @@ def segmentations_to_detections(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         out_field: the name of the
-            :class:`fiftyone.core.labels.Detections` field to create from 
+            :class:`fiftyone.core.labels.Detections` field to create from
             the given segmentation masks
         in_field: the name of the :class:`fiftyone.core.labels.Segmentation`
             field to convert

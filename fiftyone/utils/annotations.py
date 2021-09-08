@@ -160,7 +160,7 @@ def annotate(
     # Don't allow overwriting an existing run with same `anno_key`
     anno_backend.register_run(samples, anno_key, overwrite=False)
 
-    samples = _filter_segmentations_detections(samples, config.label_schema)
+    samples = _filter_segmentations(samples, config.label_schema)
 
     results = anno_backend.upload_annotations(
         samples, launch_editor=launch_editor
@@ -171,7 +171,7 @@ def annotate(
     return results
 
 
-def _filter_segmentations_detections(samples, label_schema):
+def _filter_segmentations(samples, label_schema):
     """Ignore detections with masks for "detections" type and ignore detections
     without masks for "segmentations" type
     """
@@ -762,7 +762,7 @@ def _load_scalars(samples, anno_dict, label_field):
     logger.info("Loading annotations for field '%s'...", label_field)
     with fou.ProgressBar(total=len(anno_dict)) as pb:
         for sample_id, value in pb(anno_dict.items()):
-            if type(value) == dict:
+            if isinstance(value, dict):
                 field, _ = samples._handle_frame_field(label_field)
                 sample = (
                     samples.select(sample_id)
@@ -849,7 +849,7 @@ def _merge_labels(samples, anno_dict, results, label_field, label_info):
     prev_ids = set()
     for ids in id_map[label_field].values():
         if isinstance(ids, list):
-            if len(ids) > 0 and isinstance(ids[0], list):
+            if ids and isinstance(ids[0], list):
                 for frame_ids in ids:
                     prev_ids.update(frame_ids)
             else:
@@ -1255,11 +1255,7 @@ class AnnotationBackend(foa.AnnotationMethod):
 
             # Flatten frames lists
             for ind, ids in enumerate(label_ids):
-                if (
-                    ids is not None
-                    and len(ids) > 0
-                    and isinstance(ids[0], list)
-                ):
+                if ids is not None and ids and isinstance(ids[0], list):
                     ids = [i for frame in ids for i in frame]
                     label_ids[ind] = ids
 
