@@ -208,6 +208,7 @@ class FramesHandler(tornado.web.RequestHandler):
         frames = await foo.aggregate(
             StateHandler.sample_collection(), view._pipeline(frames_only=True)
         ).to_list(end_frame - start_frame + 1)
+        convert(frames)
         self.write({"frames": frames, "range": [start_frame, end_frame]})
 
 
@@ -239,9 +240,11 @@ class PageHandler(tornado.web.RequestHandler):
             self.write({"results": [], "more": False})
             return
 
-        view = view.set_field(
-            "frames", F("frames").filter((F("frame_number") == 1))
-        )
+        if view.media_type == fom.VIDEO:
+            view = view.set_field(
+                "frames", F("frames").filter((F("frame_number") == 1))
+            )
+
         view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
 
@@ -268,8 +271,9 @@ class PageHandler(tornado.web.RequestHandler):
                     filepath, r["sample"].get("metadata", None)
                 )
 
-        r.update(metadata[filepath])
-        self.write({"results": samples, "more": more})
+            r.update(metadata[filepath])
+
+        self.write({"results": results, "more": more})
 
 
 class TeamsHandler(RequestHandler):
@@ -934,6 +938,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             StateHandler.sample_collection(),
             view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(len(sample_ids))
+        convert(samples)
 
         _write_message(
             {"type": "samples_update", "samples": samples}, app=True, only=only

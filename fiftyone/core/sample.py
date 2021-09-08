@@ -51,6 +51,7 @@ def get_optimized_samples_view(samples, sample_ids):
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
+    samples = samples.view()
     if any(isinstance(stage, fos.Mongo) for stage in samples._stages):
         #
         # We have no way of knowing what a `Mongo()` stage might do, so we
