@@ -195,7 +195,7 @@ class FramesHandler(tornado.web.RequestHandler):
         elif state.dataset is not None:
             view = state.dataset
 
-        view = fov.get_optimized_samples_view(view, sample_id)
+        view = fov.make_optimized_select_view(view, sample_id)
         view = view.set_field(
             "frames",
             F("frames").filter(
@@ -920,7 +920,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
-        view = fov.get_optimized_samples_view(view, sample_ids)
+        view = fov.make_optimized_select_view(view, sample_ids)
 
         if view.media_type == fom.VIDEO and current_frame is not None:
             default_filter = F("frame_number") == 1

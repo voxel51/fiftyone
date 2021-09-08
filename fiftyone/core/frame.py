@@ -695,7 +695,7 @@ class FramesView(Frames):
         needs_frames = view._needs_frames()
         contains_all_fields = view._contains_all_fields(frames=True)
 
-        optimized_view = fov.get_optimized_samples_view(view, sample_view.id)
+        optimized_view = fov.make_optimized_select_view(view, sample_view.id)
         frames_pipeline = optimized_view._pipeline(frames_only=True)
 
         self._view = view
