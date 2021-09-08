@@ -885,53 +885,28 @@ def make_optimized_select_view(sample_collection, sample_ids, ordered=False):
     if any(isinstance(stage, fost.Mongo) for stage in view._stages):
         #
         # We have no way of knowing what a `Mongo()` stage might do, so we must
-        # run the entire view's aggregation first and then select the sample of
-        # interest at the end
+        # run the entire view's aggregation first and then select the samples
+        # of interest at the end
         #
         return view.select(sample_ids, ordered=ordered)
 
     #
-    # Selecting the sample of interest first can be significantly faster than
-    # running the entire aggregation and then selecting it.
+    # Selecting the samples of interest first can be significantly faster than
+    # running the entire aggregation and then selecting them.
     #
     # However, in order to do that, we must omit any `Skip()` stages, which
     # depend on the number of documents in the pipeline.
     #
     # In addition, we take the liberty of omitting other stages that are known
-    # to only select/reorder documents, since that is not relevant to the frame
-    # labels of this sample.
+    # to only select/reorder documents.
     #
     # @note this is brittle because if any new stages like `Skip()` are added
-    # that could affect our ability to select the sample of interest first,
+    # that could affect our ability to select the samples of interest first,
     # we'll need to account for that here...
     #
     optimized_view = view._dataset.select(sample_ids, ordered=ordered)
     for stage in view._stages:
-        if type(stage) not in _SKIPPABLE_STAGES:
+        if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
             optimized_view._stages.append(stage)
 
     return optimized_view
-
-
-_SKIPPABLE_STAGES = {
-    # View stages that only reorder documents
-    fost.SortBy,
-    fost.GroupBy,
-    fost.Shuffle,
-    # View stages that only select documents
-    fost.Exclude,
-    fost.ExcludeBy,
-    fost.Exists,
-    fost.GeoNear,
-    fost.GeoWithin,
-    fost.Limit,
-    fost.Match,
-    fost.MatchFrames,
-    fost.MatchLabels,
-    fost.MatchTags,
-    fost.Select,
-    fost.SelectBy,
-    fost.Skip,
-    fost.SortBySimilarity,
-    fost.Take,
-}
