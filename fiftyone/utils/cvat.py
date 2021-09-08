@@ -178,7 +178,7 @@ class CVATImageDatasetImporter(
             cvat_images = []
 
         self._info = info
-        self._cvat_images_map = {i.name: i for i in cvat_images}
+        self._cvat_images_map = {os.path.join(i.subset, i.name): i for i in cvat_images}
 
         filenames = set(self._cvat_images_map.keys())
 
@@ -877,9 +877,11 @@ class CVATImage(object):
         polygons=None,
         polylines=None,
         points=None,
+        subset=None,
     ):
         self.id = id
         self.name = name
+        self.subset = subset
         self.width = width
         self.height = height
         self.boxes = boxes or []
@@ -1032,6 +1034,7 @@ class CVATImage(object):
         """
         id = d["@id"]
         name = d["@name"]
+        subset = d['@subset']
         width = int(d["@width"])
         height = int(d["@height"])
 
@@ -1060,6 +1063,7 @@ class CVATImage(object):
             polygons=polygons,
             polylines=polylines,
             points=points,
+            subset=subset,
         )
 
 
