@@ -36,6 +36,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.sample as fosm
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
@@ -195,22 +196,18 @@ class FramesHandler(tornado.web.RequestHandler):
         elif state.dataset is not None:
             view = state.dataset
 
-        stage_dicts = view.view()._serialize()
-        frames_view = fov.DatasetView._build(view._dataset, stage_dicts)
-
-        frames_view = frames_view.select(sample_id)
-
-        results, _ = await _get_samples(
-            StateHandler.sample_collection(),
-            frames_view,
-            1,
-            0,
-            detach_frames=False,
-            frames=[start_frame, end_frame],
+        view = fosm.get_optimized_samples_view(view, sample_id)
+        view = view.set_field(
+            "frames",
+            F("frames").filter(
+                (F("frame_number") >= start_frame)
+                & (F("frame_number") <= end_frame)
+            ),
         )
 
-        frames = results[0]["frames"]
-
+        frames = await foo.aggregate(
+            StateHandler.sample_collection(), view._pipeline(frames_only=True)
+        ).to_list(end_frame - start_frame + 1)
         self.write({"frames": frames, "range": [start_frame, end_frame]})
 
 
@@ -242,18 +239,37 @@ class PageHandler(tornado.web.RequestHandler):
             self.write({"results": [], "more": False})
             return
 
+        view = view.set_field(
+            "frames", F("frames").filter((F("frame_number") == 1))
+        )
         view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
 
-        results, more = await _get_sample_data(
+        samples = await foo.aggregate(
             StateHandler.sample_collection(),
-            view,
-            page_length,
-            page,
-            detach_frames=False,
-        )
+            view.skip((page - 1) * page_length)._pipeline(
+                attach_frames=True, detach_frames=False
+            ),
+        ).to_list(page_length + 1)
+        convert(samples)
 
-        self.write({"results": results, "more": more})
+        more = False
+        if len(samples) > page_length:
+            samples = samples[:page_length]
+            more = page + 1
+
+        results = [{"sample": s} for s in samples]
+        metadata = {}
+
+        for r in results:
+            filepath = r["sample"]["filepath"]
+            if filepath not in metadata:
+                metadata[filepath] = fosu.read_metadata(
+                    filepath, r["sample"].get("metadata", None)
+                )
+
+        r.update(metadata[filepath])
+        self.write({"results": samples, "more": more})
 
 
 class TeamsHandler(RequestHandler):
@@ -585,23 +601,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         await self.send_statistics(view, filters=filters, extended=True)
 
-    @classmethod
-    async def on_sample(cls, self, sample_id, uuid):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-
-        view = view.select(sample_id)
-
-        results, more = await _get_samples(
-            cls.sample_collection(), view, 1, 0, detach_frames=False
-        )
-        message = {"type": "sample", "sample": results[0], "uuid": uuid}
-
-        _write_message(message, app=True, only=self)
-
     @staticmethod
     async def on_update(caller, state, ignore_polling_client=None):
         """Event for state updates. Sends an update message to all active
@@ -918,10 +917,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
-
-        col = cls.sample_collection()
-
-        view = view.select(sample_ids)
+        view = fosm.get_optimized_samples_view(view, sample_ids)
 
         if view.media_type == fom.VIDEO and current_frame is not None:
             default_filter = F("frame_number") == 1
@@ -932,15 +928,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 filter_frames(current_filter),
                 filter_frames(default_filter),
             )
-        else:
-            expr = None
+            view = view.set_field("frames", expr)
 
-        result, _ = await _get_sample_data(
-            col, view, len(sample_ids), 1, detach_frames=False, expr=expr
-        )
+        samples = await foo.aggregate(
+            StateHandler.sample_collection(),
+            view._pipeline(attach_frames=True, detach_frames=False),
+        ).to_list(len(sample_ids))
 
         _write_message(
-            {"type": "samples_update", "samples": result}, app=True, only=only
+            {"type": "samples_update", "samples": samples}, app=True, only=only
         )
 
     @classmethod
@@ -1393,55 +1389,6 @@ async def _numeric_histograms(view, schema, prefix=""):
         aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))
 
     return aggregations, fields, ticks
-
-
-async def _get_samples(
-    col, view, page_length, page, detach_frames=True, frames=[1, 1], expr=None
-):
-    if view.media_type == fom.VIDEO and expr is None:
-        view = view.set_field(
-            "frames",
-            F("frames").filter(
-                (F("frame_number") >= frames[0])
-                & (F("frame_number") <= frames[1])
-            ),
-        )
-    elif expr is not None:
-        view = view.set_field("frames", expr)
-
-    pipeline = view._pipeline(attach_frames=True, detach_frames=detach_frames)
-
-    samples = await foo.aggregate(col, pipeline).to_list(page_length + 1)
-    convert(samples)
-
-    more = False
-    if len(samples) > page_length:
-        samples = samples[:page_length]
-        more = page + 1
-
-    return samples, more
-
-
-async def _get_sample_data(
-    col, view, page_length, page, detach_frames=True, expr=None
-):
-    samples, more = await _get_samples(
-        col, view, page_length, page, detach_frames=detach_frames, expr=expr
-    )
-
-    results = [{"sample": s} for s in samples]
-    metadata = {}
-
-    for r in results:
-        filepath = r["sample"]["filepath"]
-        if filepath not in metadata:
-            metadata[filepath] = fosu.read_metadata(
-                filepath, r["sample"].get("metadata", None)
-            )
-
-        r.update(metadata[filepath])
-
-    return results, more
 
 
 class FileHandler(tornado.web.StaticFileHandler):

@@ -15,7 +15,7 @@ import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
-fos = fou.lazy_import("fiftyone.core.stages")
+fos = fou.lazy_import("fiftyone.core.sample")
 
 
 def get_default_frame_fields(include_private=False, use_db_fields=False):
@@ -769,38 +769,8 @@ class FramesView(Frames):
         needs_frames = view._needs_frames()
         contains_all_fields = view._contains_all_fields(frames=True)
 
-        if any(isinstance(stage, fos.Mongo) for stage in view._stages):
-            #
-            # We have no way of knowing what a `Mongo()` stage might do, so we
-            # must run the entire view's aggregation first and then select the
-            # sample of interest at the end
-            #
-            frames_view = view.select(self._sample._id)
-            frames_pipeline = frames_view._pipeline(frames_only=True)
-        else:
-            #
-            # Selecting the sample of interest first can be significantly
-            # faster than running the entire aggregation and then selecting it.
-            #
-            # However, in order to do that, we must omit any `Skip()` stages,
-            # which depend on the number of documents in the pipeline.
-            #
-            # In addition, we take the liberty of omitting other stages that
-            # are known to only select/reorder documents, since that is not
-            # relevant to the frame labels of this sample.
-            #
-            # @note this is brittle because if any new stages like `Skip()` are
-            # added that could affect our ability to select the sample of
-            # interest first, we'll need to account for that here...
-            #
-            frames_view = view._dataset.view()
-            skippable_stages = _get_skippable_stages()
-            for stage in view._stages:
-                if type(stage) not in skippable_stages:
-                    frames_view._stages.append(stage)
-
-            frames_pipeline = frames_view._pipeline(frames_only=True)
-            frames_pipeline.insert(0, {"$match": {"_id": self._sample._id}})
+        optimized_view = fos.get_optimized_samples_view(view, self._sample_id)
+        frames_pipeline = optimized_view._pipeline(frames_only=True)
 
         self._view = view
         self._selected_fields = sf
@@ -984,28 +954,3 @@ class FrameView(DocumentView):
     """
 
     _DOCUMENT_CLS = Frame
-
-
-def _get_skippable_stages():
-    return {
-        # View stages that only reorder documents
-        fos.SortBy,
-        fos.GroupBy,
-        fos.Shuffle,
-        # View stages that only select documents
-        fos.Exclude,
-        fos.ExcludeBy,
-        fos.Exists,
-        fos.GeoNear,
-        fos.GeoWithin,
-        fos.Limit,
-        fos.Match,
-        fos.MatchFrames,
-        fos.MatchLabels,
-        fos.MatchTags,
-        fos.Select,
-        fos.SelectBy,
-        fos.Skip,
-        fos.SortBySimilarity,
-        fos.Take,
-    }

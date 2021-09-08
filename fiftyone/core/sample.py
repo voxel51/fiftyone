@@ -17,6 +17,8 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
+fos = fou.lazy_import("fiftyone.core.stages")
+
 
 def get_default_sample_fields(include_private=False, use_db_fields=False):
     """Returns the default fields present on all samples.
@@ -34,6 +36,76 @@ def get_default_sample_fields(include_private=False, use_db_fields=False):
         include_private=include_private,
         use_db_fields=use_db_fields,
     )
+
+
+def get_optimized_samples_view(samples, sample_ids):
+    """
+    Returns a view that selects the provided sample id(s) that is optimized to
+    reduce the document list as early as possible in the pipeline.
+
+    Args:
+        samples:  a :class:`fiftyone.core.collections.SampleCollection`
+        sample_ids: a :attr:`fiftyone.core.sample.Sample.id` string or an
+            iterable of them
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
+    if any(isinstance(stage, fos.Mongo) for stage in samples._stages):
+        #
+        # We have no way of knowing what a `Mongo()` stage might do, so we
+        # must run the entire view's aggregation first and then select the
+        # sample of interest at the end
+        #
+        optimized_view = samples.select(sample_ids)
+    else:
+        #
+        # Selecting the sample of interest first can be significantly
+        # faster than running the entire aggregation and then selecting it.
+        #
+        # However, in order to do that, we must omit any `Skip()` stages,
+        # which depend on the number of documents in the pipeline.
+        #
+        # In addition, we take the liberty of omitting other stages that
+        # are known to only select/reorder documents, since that is not
+        # relevant to the frame labels of this sample.
+        #
+        # @note this is brittle because if any new stages like `Skip()` are
+        # added that could affect our ability to select the sample of
+        # interest first, we'll need to account for that here...
+        #
+        optimized_view = samples._dataset.view().select(sample_ids)
+        skippable_stages = _get_skippable_stages()
+        for stage in samples._stages:
+            if type(stage) not in skippable_stages:
+                optimized_view._stages.append(stage)
+
+    return optimized_view
+
+
+def _get_skippable_stages():
+    return {
+        # View stages that only reorder documents
+        fos.SortBy,
+        fos.GroupBy,
+        fos.Shuffle,
+        # View stages that only select documents
+        fos.Exclude,
+        fos.ExcludeBy,
+        fos.Exists,
+        fos.GeoNear,
+        fos.GeoWithin,
+        fos.Limit,
+        fos.Match,
+        fos.MatchFrames,
+        fos.MatchLabels,
+        fos.MatchTags,
+        fos.Select,
+        fos.SelectBy,
+        fos.Skip,
+        fos.SortBySimilarity,
+        fos.Take,
+    }
 
 
 class _SampleMixin(object):
