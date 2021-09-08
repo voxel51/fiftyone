@@ -3521,82 +3521,72 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field_results, track_shape_results
                 )
 
+            frames_metadata = {}
+            for cvat_frame_id, ids in frame_id_map[task_id].items():
+                if "frame_id" in ids and len(frames) == 1:
+                    frames_metadata[ids["sample_id"]] = frames[0]
+                    break
+                else:
+                    frames_metadata[ids["sample_id"]] = frames[cvat_frame_id]
+
+            # Polygons with matching label ids needed to be aggregated, they
+            # can now be converted to the given segmentation label type
+            label_field_results = self._convert_polylines_to_masks(
+                label_field_results, frames_metadata
+            )
+
             results = self._merge_results(
                 results, {label_field: label_field_results}
             )
 
-            if label_type == "semantic_segmentation":
-                proc_frame_metadata = {}
-                for cvat_frame_id, ids in frame_id_map[task_id].items():
-                    if "frame_id" in ids and len(frames) == 1:
-                        proc_frame_metadata[ids["sample_id"]] = frames[0]
-                        break
-                    else:
-                        proc_frame_metadata[ids["sample_id"]] = frames[
-                            cvat_frame_id
-                        ]
-
-                results[label_field][
-                    "semantic_segmentation"
-                ] = self._convert_to_semantic_seg(
-                    results[label_field]["semantic_segmentation"],
-                    proc_frame_metadata,
-                )
-
         return results
 
-    def _convert_to_semantic_seg(self, results, frames_metadata):
-        """Convert detections with masks to semantic segmentations"""
-        convert = False
-        for k, v in results.items():
-            if isinstance(v, dict):
-                # Sample or frame
-                if isinstance(frames_metadata, dict) and k in frames_metadata:
-                    frames_metadata = frames_metadata[k]
-                results[k] = self._convert_to_semantic_seg(v, frames_metadata)
-            elif isinstance(v, fol.Detection):
-                # k is label id and v is Detection
-                convert = True
+    def _convert_polylines_to_masks(self, results, frames_metadata):
+        mask_types = [
+            "detections",
+            "detection",
+            "segmentations",
+            "segmentation",
+            "_segmentations_and_detections",
+            "_segmentation_and_detection",
+            "semantic_segmentation",
+        ]
+        for label_type, type_results in results.items():
+            if label_type not in mask_types:
+                continue
+            for sample_id, sample_results in type_results.items():
+                sample_metadata = frames_metadata[sample_id]
+                width = sample_metadata["width"]
+                height = sample_metadata["height"]
+                for (
+                    frame_or_label_id,
+                    f_or_l_results,
+                ) in sample_results.items():
+                    if isinstance(f_or_l_results, dict):
+                        frame_results = f_or_l_results
+                        for label_id, label in frame_results.items():
+                            label = self._convert_single_polyline(
+                                label, label_type, width, height
+                            )
+                            results[label_type][sample_id][frame_or_label_id][
+                                label_id
+                            ] = label
+                    else:
+                        label = f_or_l_results
+                        label = self._convert_single_polyline(
+                            label, label_type, width, height
+                        )
+                        results[label_type][sample_id][
+                            frame_or_label_id
+                        ] = label
+        return results
 
-        if convert:
-            # Compute the mask targets:
-            # Set the target of any integer class <= 255 to that integer
-            # then set string classes to remaining integers up to 255
-            detections = list(results.values())
-            classes = [d.label for d in detections]
-            mask_targets = {}
-            str_classes = []
-            for ind, c in enumerate(classes):
-                parsed_c = _parse_attribute(c)
-                if isinstance(parsed_c, int) and parsed_c < 256:
-                    target = parsed_c
-                    mask_targets[target] = c
-                else:
-                    str_classes.append(c)
-
-            available_ids = sorted(
-                set(range(1, 256)) - set(mask_targets.keys())
-            )
-            if len(str_classes) > len(available_ids):
-                logger.warning(
-                    "More than 255 semantic segmentation classes "
-                    "found, ignoring the excess %d classes." % len(str_classes)
-                    - len(available_ids)
-                )
-                str_classes = str_classes[: len(available_ids)]
-            available_ids = available_ids[: len(str_classes)]
-
-            for avail_id, str_class in zip(available_ids, str_classes):
-                mask_targets[avail_id] = str_class
-
-            label = fol.Detections(detections=detections)
-            frame_size = (frames_metadata["width"], frames_metadata["height"])
-            segmentation = label.to_segmentation(
-                frame_size=frame_size, mask_targets=mask_targets
-            )
-            return {segmentation.id: segmentation}
-        else:
-            return results
+    def _convert_single_polyline(self, label, label_type, width, height):
+        if isinstance(label, fol.Polyline):
+            label = CVATShape.polyline_to_detection(label, width, height)
+        elif isinstance(label, fol.Polylines):
+            label = CVATShape.polylines_to_segmentation(label, width, height)
+        return label
 
     def _merge_results(self, results, new_results):
         if isinstance(new_results, dict):
@@ -3771,20 +3761,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label = cvat_shape.to_detection()
             elif shape_type == "polygon":
                 label_type = "polylines"
-                label = cvat_shape.to_polyline(closed=True, filled=True)
-                if expected_label_type in (
-                    "detection",
-                    "detections",
-                    "segmentation",
-                    "segmentations",
-                    "_segmentation_and_detection",
-                    "_segmentations_and_detections",
-                ):
-                    label_type = "detections"
-                    label = cvat_shape.polyline_to_detection(label)
-                elif expected_label_type == "semantic_segmentation":
+                if expected_label_type == "semantic_segmentation":
                     label_type = "semantic_segmentation"
-                    label = cvat_shape.polyline_to_detection(label)
+                    label = cvat_shape.to_polylines(closed=True, filled=True)
+                    try:
+                        label.id = str(label._id)
+                    except:
+                        label.id = "None"
+                else:
+                    label = cvat_shape.to_polyline(closed=True, filled=True)
+                    if expected_label_type in (
+                        "detection",
+                        "detections",
+                        "segmentation",
+                        "segmentations",
+                        "_segmentation_and_detection",
+                        "_segmentations_and_detections",
+                    ):
+                        label_type = "detections"
 
             elif shape_type == "polyline":
                 label_type = "polylines"
@@ -3844,14 +3838,86 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if label_type == "scalar":
                 results[label_type][sample_id][frame_id] = label
             else:
-                results[label_type][sample_id][frame_id][label.id] = label
+                results = self._merge_label_to_results(
+                    results, label, label_type, sample_id, frame_id=frame_id
+                )
         else:
             if label_type == "scalar":
                 results[label_type][sample_id] = label
             else:
-                results[label_type][sample_id][label.id] = label
+                results = self._merge_label_to_results(
+                    results, label, label_type, sample_id
+                )
 
         return results, prev_type
+
+    def _merge_label_to_results(
+        self, results, label, label_type, sample_id, frame_id=None
+    ):
+        """Merges polylines with the same label id, for all other types this
+        simply adds them to the results. Merging polylines lets us later create
+        segmentations with multiple disjoint masks.
+        """
+        curr_result = results[label_type][sample_id]
+        if frame_id is not None:
+            curr_result = curr_result[frame_id]
+
+        if label.id in curr_result:
+            if isinstance(label, fol.Polyline) and isinstance(
+                curr_result[label.id], fol.Polyline
+            ):
+                # Merge masks of Detection objects with the same id
+                existing_label = curr_result[label.id]
+                existing_label.points.extend(label.points)
+                label = existing_label
+            elif isinstance(label, fol.Polylines) and isinstance(
+                curr_result[label.id], fol.Polylines
+            ):
+                merged_label = self._merge_label_to_polylines(
+                    label, curr_result[label.id]
+                )
+                label = merged_label
+            else:
+                label._id = None
+        elif isinstance(label, fol.Polylines):
+            if label.id != "None" and "None" in curr_result:
+                merged_label = self._merge_label_to_polylines(
+                    label, curr_result["None"]
+                )
+                merged_label.id = label.id
+                merged_label._id = label._id
+                label = merged_label
+                del curr_result["None"]
+            else:
+                if len(curr_result) > 0:
+                    merged_label = self._merge_label_to_polylines(
+                        label, list(curr_result.values())[0]
+                    )
+                    label = merged_label
+
+        curr_result[label.id] = label
+        return results
+
+    def _merge_label_to_polylines(self, label, existing_label):
+        # `label` is the new Polylines that contains only a single
+        # Polyline
+        found_existing_class = False
+        for polyline in existing_label.polylines:
+            if len(label.polylines) > 1:
+                logger.warning(
+                    "Expected only one Polyline to be loaded for "
+                    "every CVAT polygon, found %d" % len(label.polylines)
+                )
+            new_polyline = label.polylines[0]
+            # Merge masks of Segmentation classes
+            if polyline.label == new_polyline.label:
+                found_existing_class = True
+                polyline.points.extend(new_polyline.points)
+
+        if not found_existing_class:
+            existing_label.polylines.extend(label.polylines)
+
+        return existing_label
 
     def _parse_arg(self, arg, config_arg):
         if arg is None:
@@ -4231,6 +4297,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         classes,
         frame_id,
         label_type=None,
+        label_id=None,
         load_tracks=False,
     ):
         shapes = []
@@ -4239,7 +4306,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         for det in detections:
             curr_shapes = []
             attributes, class_name, remapped_attrs = self._create_attributes(
-                det, attr_names, classes
+                det, attr_names, classes, label_id=label_id,
             )
             if class_name is None:
                 continue
@@ -4323,10 +4390,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return shapes, tracks, remapped_attr_names
 
-    def _create_attributes(self, label, attributes, classes):
+    def _create_attributes(self, label, attributes, classes, label_id=None):
         label_attrs = []
         remapped_attr_names = {}
-        label_attrs.append({"spec_id": "label_id", "value": label.id})
+        if label_id is None:
+            label_id = label.id
+        label_attrs.append({"spec_id": "label_id", "value": label_id})
         for attribute in attributes:
             value = None
             if attribute in label:
@@ -4375,6 +4444,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             classes,
             frame_id,
             label_type="segmentations",
+            label_id=semantic_segmentation.id,
             load_tracks=load_tracks,
         )
 
@@ -4565,6 +4635,28 @@ class CVATShape(CVATLabel):
             label.index = self.index
         return label
 
+    def to_polylines(self, closed=False, filled=False):
+        """Converts the `CVATLabel` to a
+        :class:`fiftyone.core.labels.Polylines`
+
+        Returns:
+            a :class:`fiftyone.core.labels.Polylines`
+        """
+        points = self._to_pairs_of_points(self.points)
+        frame_size = (self.width, self.height)
+        rel_points = HasCVATPoints._to_rel_points(points, frame_size)
+        polyline = fol.Polyline(
+            label=self.class_name,
+            points=[rel_points],
+            closed=closed,
+            filled=filled,
+            attributes=self.fo_attributes,
+        )
+        label = fol.Polylines(polylines=[polyline],)
+        label = self.update_attrs(label)
+
+        return label
+
     def to_keypoint(self):
         """Converts the `CVATLabel` to a
         :class:`fiftyone.core.labels.Keypoint`
@@ -4585,22 +4677,88 @@ class CVATShape(CVATLabel):
             label.index = self.index
         return label
 
-    def polyline_to_detection(self, label):
+    @classmethod
+    def polyline_to_detection(cls, polyline, width, height):
         """Converts the `CVATLabel` to a
         :class:`fiftyone.core.labels.Detection` with a segmentation mask
         created from the polyline annotation.
 
+        Args:
+            polyline: a :class:`fiftyone.core.labels.Polyline`
+            width: the width of the output frame containing this polyline
+            height: the height of the output frame containing this polyline
+
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
-        new_fields = label._fields
-        default_fields = type(label)._fields_ordered
-        label = label.to_detection(frame_size=(self.width, self.height))
+        new_fields = polyline._fields
+        default_fields = type(polyline)._fields_ordered
+        prev_id = polyline._id
+        detection = polyline.to_detection(frame_size=(width, height))
 
         for field, value in new_fields.items():
             if field not in default_fields:
-                label[field] = value
-        return label
+                detection[field] = value
+        detection._id = prev_id
+        return detection
+
+    @classmethod
+    def polylines_to_segmentation(cls, polylines, width, height):
+        """Converts the `CVATLabel` to a
+        :class:`fiftyone.core.labels.Segmentation` with a segmentation mask
+        created from the polyline annotation.
+
+        Args:
+            polylines: a :class:`fiftyone.core.labels.Polylines`
+            width: the width of the output frame containing these polyline
+            height: the height of the output frame containing these polyline
+
+        Returns:
+            a :class:`fiftyone.core.labels.Segmentation`
+        """
+        # Compute the mask targets:
+        # Set the target of any integer class <= 255 to that integer
+        # then set string classes to remaining integers up to 255
+        classes = [p.label for p in polylines.polylines]
+        mask_targets = {}
+        str_classes = []
+        for ind, c in enumerate(classes):
+            parsed_c = _parse_attribute(c)
+            if isinstance(parsed_c, int) and parsed_c < 256:
+                target = parsed_c
+                mask_targets[target] = c
+            else:
+                str_classes.append(c)
+
+        available_ids = sorted(set(range(1, 256)) - set(mask_targets.keys()))
+        if len(str_classes) > len(available_ids):
+            logger.warning(
+                "More than 255 semantic segmentation classes "
+                "found, ignoring the excess %d classes." % len(str_classes)
+                - len(available_ids)
+            )
+            str_classes = str_classes[: len(available_ids)]
+        available_ids = available_ids[: len(str_classes)]
+
+        for avail_id, str_class in zip(available_ids, str_classes):
+            mask_targets[avail_id] = str_class
+
+        new_fields = polylines._fields
+        default_fields = type(polylines)._fields_ordered
+        try:
+            prev_id = polylines._id
+        except:
+            prev_id = ObjectId()
+        frame_size = (width, height)
+        segmentation = polylines.to_segmentation(
+            frame_size=frame_size, mask_targets=mask_targets
+        )
+
+        for field, value in new_fields.items():
+            if field not in default_fields:
+                segmentation[field] = value
+        segmentation._id = prev_id
+        return segmentation
 
 
 class CVATTag(CVATLabel):

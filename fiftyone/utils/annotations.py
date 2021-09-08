@@ -270,7 +270,7 @@ _LABEL_TYPES_MAP_REV = {
 # The label fields that are *always* annotated
 _DEFAULT_LABEL_FIELDS_MAP = {
     fol.Classification: ["label"],
-    fol.Detection: ["label", "bounding_box", "index"],
+    fol.Detection: ["label", "bounding_box", "index", "mask"],
     fol.Polyline: ["label", "points", "index"],
     fol.Keypoint: ["label", "points", "index"],
     fol.Segmentation: ["mask"],
@@ -506,12 +506,15 @@ def _get_existing_label_type(
 def _get_classes(
     samples, classes, label_field, label_info, existing_field, label_type
 ):
-    if existing_field and label_type == "semantic_segmentation":
+    if label_type == "semantic_segmentation":
         # Allow access to any number 1-255
         # @todo incorporate mask_targets into schema
-        logger.info(
-            "Found existing `Segmentation` field, using integers as classes"
-        )
+        if classes or "classes" in label_info:
+            logger.info(
+                "`Segmentation` field classes are currently only specified "
+                "through `Dataset.default_mask_targets`, using integers as "
+                "classes"
+            )
         return [str(i) for i in range(1, 256)]
 
     if "classes" in label_info:
@@ -1252,7 +1255,11 @@ class AnnotationBackend(foa.AnnotationMethod):
 
             # Flatten frames lists
             for ind, ids in enumerate(label_ids):
-                if len(ids) > 0 and isinstance(ids[0], list):
+                if (
+                    ids is not None
+                    and len(ids) > 0
+                    and isinstance(ids[0], list)
+                ):
                     ids = [i for frame in ids for i in frame]
                     label_ids[ind] = ids
 
