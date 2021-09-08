@@ -9,6 +9,7 @@ from collections import defaultdict
 from copy import deepcopy
 import getpass
 import logging
+import os
 import warnings
 
 import eta.core.annotations as etaa
@@ -19,6 +20,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.annotation as foa
+import fiftyone.core.clips as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -1396,13 +1398,21 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
     output_ext = fo.config.default_video_ext
 
-    outpaths = []
+    is_clips = isinstance(samples, foc.ClipsView)
     num_videos = len(samples)
+
+    outpaths = []
     for idx, sample in enumerate(samples, 1):
-        logger.info("Drawing labels for video %d/%d", idx, num_videos)
-        outpath = filename_maker.get_output_path(
-            sample.filepath, output_ext=output_ext
-        )
+        if is_clips:
+            logger.info("Drawing labels for clip %d/%d", idx, num_videos)
+            base, ext = os.path.splitext(sample.filepath)
+            first, last = sample.support
+            inpath = "%s-clip-%d-%d%s" % (base, first, last, ext)
+        else:
+            logger.info("Drawing labels for video %d/%d", idx, num_videos)
+            inpath = sample.filepath
+
+        outpath = filename_maker.get_output_path(inpath, output_ext=output_ext)
         draw_labeled_video(
             sample, outpath, label_fields=label_fields, config=config
         )
@@ -1429,8 +1439,17 @@ def draw_labeled_video(sample, outpath, label_fields=None, config=None):
     video_path = sample.filepath
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
+    if isinstance(sample, foc.ClipView):
+        support = sample.support
+    else:
+        support = None
+
     etaa.annotate_video(
-        video_path, video_labels, outpath, annotation_config=config
+        video_path,
+        video_labels,
+        outpath,
+        support=support,
+        annotation_config=config,
     )
 
 
