@@ -8,8 +8,7 @@ Utilities for working with datasets in
 """
 from bson import ObjectId
 from collections import defaultdict
-from copy import copy
-from copy import deepcopy
+from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
@@ -3016,7 +3015,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         attribute_id_map = {}
         class_id_map = {}
         attribute_id_map = {}
-        class_id_map[task_id] = {}
         for label in task_resp["labels"]:
             class_id = label["id"]
             class_id_map[label["name"]] = class_id
@@ -4160,6 +4158,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         tracks = {}
         remapped_attr_names = {}
         for poly in polylines:
+            curr_shapes = []
             attributes, class_name, remapped_attrs = self._create_attributes(
                 poly, attr_names, classes
             )
@@ -4167,37 +4166,40 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             remapped_attr_names.update(remapped_attrs)
-            points = poly.points[0]
-            abs_points = HasCVATPoints._to_abs_points(points, (width, height))
-            flattened_points = [
-                coord for point in abs_points for coord in point
-            ]
+            for points in poly.points:
+                abs_points = HasCVATPoints._to_abs_points(
+                    points, (width, height)
+                )
+                flattened_points = [
+                    coord for point in abs_points for coord in point
+                ]
 
-            if poly.closed:
-                shape = {
-                    "type": "polygon",
-                    "occluded": False,
-                    "z_order": 0,
-                    "points": flattened_points,
-                    "label_id": class_name,
-                    "group": 0,
-                    "frame": frame_id,
-                    "source": "manual",
-                    "attributes": attributes,
-                }
+                if poly.closed:
+                    shape = {
+                        "type": "polygon",
+                        "occluded": False,
+                        "z_order": 0,
+                        "points": flattened_points,
+                        "label_id": class_name,
+                        "group": 0,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": deepcopy(attributes),
+                    }
 
-            else:
-                shape = {
-                    "type": "polyline",
-                    "occluded": False,
-                    "z_order": 0,
-                    "points": flattened_points,
-                    "label_id": class_name,
-                    "group": 0,
-                    "frame": frame_id,
-                    "source": "manual",
-                    "attributes": attributes,
-                }
+                else:
+                    shape = {
+                        "type": "polyline",
+                        "occluded": False,
+                        "z_order": 0,
+                        "points": flattened_points,
+                        "label_id": class_name,
+                        "group": 0,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": deepcopy(attributes),
+                    }
+                curr_shapes.append(shape)
             if load_tracks and poly.index is not None:
                 index = poly.index
                 if class_name not in tracks:
@@ -4211,11 +4213,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tracks[class_name][index]["group"] = 0
                     tracks[class_name][index]["attributes"] = []
 
-                shape["outside"] = False
-                del shape["label_id"]
-                tracks[class_name][index]["shapes"].append(shape)
+                for shape in curr_shapes:
+                    shape["outside"] = False
+                    del shape["label_id"]
+                    tracks[class_name][index]["shapes"].append(shape)
             else:
-                shapes.append(shape)
+                shapes.extend(curr_shapes)
 
         return shapes, tracks, remapped_attr_names
 
@@ -4234,6 +4237,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         tracks = {}
         remapped_attr_names = {}
         for det in detections:
+            curr_shapes = []
             attributes, class_name, remapped_attrs = self._create_attributes(
                 det, attr_names, classes
             )
@@ -4264,34 +4268,36 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "source": "manual",
                     "attributes": attributes,
                 }
+                curr_shapes.append(shape)
 
             elif det.mask is not None and label_type not in [
                 "detection",
                 "detections",
             ]:
                 polygon = det.to_polyline()
-                points = polygon.points[0]
-                if len(points) < 3:
-                    continue
-                abs_points = HasCVATPoints._to_abs_points(
-                    points, (width, height)
-                )
+                for points in polygon.points:
+                    if len(points) < 3:
+                        continue
+                    abs_points = HasCVATPoints._to_abs_points(
+                        points, (width, height)
+                    )
 
-                flattened_points = [
-                    coord for point in abs_points for coord in point
-                ]
+                    flattened_points = [
+                        coord for point in abs_points for coord in point
+                    ]
 
-                shape = {
-                    "type": "polygon",
-                    "occluded": False,
-                    "z_order": 0,
-                    "points": flattened_points,
-                    "label_id": class_name,
-                    "group": 0,
-                    "frame": frame_id,
-                    "source": "manual",
-                    "attributes": attributes,
-                }
+                    shape = {
+                        "type": "polygon",
+                        "occluded": False,
+                        "z_order": 0,
+                        "points": flattened_points,
+                        "label_id": class_name,
+                        "group": 0,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": deepcopy(attributes),
+                    }
+                    curr_shapes.append(shape)
             else:
                 continue
 
@@ -4308,11 +4314,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tracks[class_name][index]["group"] = 0
                     tracks[class_name][index]["attributes"] = []
 
-                shape["outside"] = False
-                del shape["label_id"]
-                tracks[class_name][index]["shapes"].append(shape)
+                for shape in curr_shapes:
+                    shape["outside"] = False
+                    del shape["label_id"]
+                    tracks[class_name][index]["shapes"].append(shape)
             else:
-                shapes.append(shape)
+                shapes.extend(curr_shapes)
 
         return shapes, tracks, remapped_attr_names
 
@@ -4355,7 +4362,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     ):
         if len(semantic_segmentations) > 1:
             raise ValueError(
-                "`semantic_segmentations` is expected to have " "a length of 1"
+                "`semantic_segmentations` is expected to have a length of 1"
             )
 
         semantic_segmentation = semantic_segmentations[0]
