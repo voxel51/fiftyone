@@ -64,8 +64,74 @@ your datasets that you have identified by constructing a |DatasetView|.
         # Render the labels!
         fiftyone datasets draw $NAME --output-dir $OUTPUT_DIR --label-fields $LABEL_FIELDS
 
-Drawing labels for individual samples
--------------------------------------
+Examples
+--------
+
+Drawing labels on images
+________________________
+
+The following snippet renders the ground truth and predicted labels on a few
+samples from the :ref:`quickstart dataset <dataset-zoo-quickstart>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=10)
+
+    anno_image_paths = dataset.draw_labels(
+        "/tmp/quickstart/draw-labels",
+        label_fields=None,                  # all label fields
+        # label_fields=["predictions"],     # only predictions
+    )
+    print(anno_image_paths)
+
+Drawing labels on videos
+________________________
+
+The following snippet renders both sample-level and frame-level labels on a
+few videos from the
+:ref:`quickstart-video dataset <dataset-zoo-quickstart-video>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2).clone()
+
+    # Add some temporal video classifications
+    sample1 = dataset.first()
+    sample1["events"] = fo.VideoClassifications(
+        classifications=[
+            fo.VideoClassification(label="first", support=[31, 60]),
+            fo.VideoClassification(label="second", support=[90, 120]),
+        ]
+    )
+    sample1.save()
+
+    sample2 = dataset.last()
+    sample2["events"] = fo.VideoClassifications(
+        classifications=[
+            fo.VideoClassification(label="first", support=[16, 45]),
+            fo.VideoClassification(label="second", support=[75, 104]),
+        ]
+    )
+    sample2.save()
+
+    anno_video_paths = dataset.draw_labels(
+        "/tmp/quickstart-video/draw-labels",
+        label_fields=None,                      # all sample and frame labels
+        # label_fields=["events"],              # only sample-level labels
+        # label_fields=["frames.detections"],   # only frame-level labels
+    )
+    print(anno_video_paths)
+
+Individual samples
+------------------
 
 You can also render annotated versions of individual samples directly by using
 the various methods exposed in the :mod:`fiftyone.utils.annotations` module.
@@ -119,7 +185,7 @@ For example, you can render an annotated version of an image sample with
     # Render the annotated image
     foua.draw_labeled_image(sample, outpath)
 
-.. image:: /images/draw_labels_example1.jpg
+.. image:: /images/draw_labels/example1.jpg
    :alt: image-annotated.jpg
    :align: center
 
@@ -161,6 +227,6 @@ the labels in the example above and includes the confidence of the predictions:
     # Render the annotated image
     foua.draw_labeled_image(sample, outpath, config=config)
 
-.. image:: /images/draw_labels_example2.jpg
+.. image:: /images/draw_labels/example2.jpg
    :alt: image-annotated.jpg
    :align: center
