@@ -72,7 +72,6 @@ from .core.fields import (
 from .core.frame import Frame
 from .core.labels import (
     Label,
-    ImageLabel,
     Attribute,
     BooleanAttribute,
     CategoricalAttribute,

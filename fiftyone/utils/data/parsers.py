@@ -15,11 +15,11 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
-import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.utils.eta as foue
 
 fouv = fou.lazy_import("fiftyone.utils.video")
 
@@ -1112,9 +1112,9 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
             expanded label dictionary
         labels_dict (None): a dictionary mapping names of attributes/objects
             in the image labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 
@@ -1145,7 +1145,7 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
         return self._parse_label(labels)
 
     def _parse_label(self, labels):
-        return foe.load_image_labels(
+        return foue.from_image_labels(
             labels,
             prefix=self.prefix,
             labels_dict=self.labels_dict,
@@ -1302,9 +1302,9 @@ class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
             expanded label dictionary
         labels_dict (None): a dictionary mapping names of attributes/objects
             in the image labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 
@@ -1326,12 +1326,16 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
 
     Args:
         prefix (None): a string prefix to prepend to each label name in the
-            expanded frame label dictionaries
+            expanded sample/frame label dictionaries
         labels_dict (None): a dictionary mapping names of attributes/objects
-            in the frame labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+            in the sample labels to field names into which to expand them. By
+            default, all sample labels are loaded
+        frame_labels_dict (None): a dictionary mapping names of
+            attributes/objects in the frame labels to field names into which to
+            expand them. By default, all frame labels are loaded
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 
@@ -1339,14 +1343,19 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
         self,
         prefix=None,
         labels_dict=None,
+        frame_labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
     ):
         super().__init__()
         self.prefix = prefix
         self.labels_dict = labels_dict
+        self.frame_labels_dict = frame_labels_dict
         self.multilabel = multilabel
         self.skip_non_categorical = skip_non_categorical
+
+        self._curr_label = None
+        self._curr_frames = None
 
     @property
     def has_video_metadata(self):
@@ -1364,20 +1373,33 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
         return self.current_sample[0]
 
     def get_label(self):
-        return None
+        self._parse_labels()
+        return self._curr_label
 
     def get_frame_labels(self):
-        labels = self.current_sample[1]
-        return self._parse_labels(labels)
+        self._parse_labels()
+        return self._curr_frames
 
-    def _parse_labels(self, labels):
-        return foe.load_video_labels(
-            labels,
+    def clear_sample(self):
+        super().clear_sample()
+        self._curr_label = None
+        self._curr_frames = None
+
+    def _parse_labels(self):
+        if self._curr_label is not None or self._curr_frames is not None:
+            return
+
+        label, frames = foue.from_video_labels(
+            self.current_sample[1],
             prefix=self.prefix,
             labels_dict=self.labels_dict,
+            frame_labels_dict=self.frame_labels_dict,
             multilabel=self.multilabel,
             skip_non_categorical=self.skip_non_categorical,
         )
+
+        self._curr_label = label
+        self._curr_frames = frames
 
 
 class FiftyOneVideoLabelsSampleParser(VideoLabelsSampleParser):
@@ -1393,9 +1415,9 @@ class FiftyOneVideoLabelsSampleParser(VideoLabelsSampleParser):
             expanded frame label dictionaries
         labels_dict (None): a dictionary mapping names of attributes/objects
             in the frame labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 

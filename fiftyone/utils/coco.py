@@ -29,6 +29,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.utils.eta as foue
 
 mask_utils = fou.lazy_import(
     "pycocotools.mask", callback=lambda: fou.ensure_import("pycocotools")
@@ -2060,7 +2061,7 @@ def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
     if detection.mask is None:
         return None
 
-    dobj = detection.to_detected_object()
+    dobj = foue.to_detected_object(detection)
 
     try:
         mask = etai.render_instance_image(

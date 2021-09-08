@@ -2817,9 +2817,13 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
         prefix (None): a string prefix to prepend to each label name in the
-            expanded frame label dictionaries
+            expanded sample/frame label dictionaries
         labels_dict (None): a dictionary mapping names of attributes/objects
-            in the frame labels to field names into which to expand them
+            in the sample labels to field names into which to expand them. By
+            default, all sample labels are loaded
+        frame_labels_dict (None): a dictionary mapping names of
+            attributes/objects in the frame labels to field names into which to
+            expand them. By default, all frame labels are loaded
         multilabel (False): whether to store frame attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
@@ -2834,6 +2838,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         compute_metadata=False,
         prefix=None,
         labels_dict=None,
+        frame_labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
         max_samples=None,
@@ -2843,6 +2848,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         self.compute_metadata = compute_metadata
         self.prefix = prefix
         self.labels_dict = labels_dict
+        self.frame_labels_dict = frame_labels_dict
         self.multilabel = multilabel
         self.skip_non_categorical = skip_non_categorical
 
@@ -2905,6 +2911,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         self._sample_parser = FiftyOneVideoLabelsSampleParser(
             prefix=self.prefix,
             labels_dict=self.labels_dict,
+            frame_labels_dict=self.frame_labels_dict,
             multilabel=self.multilabel,
             skip_non_categorical=self.skip_non_categorical,
         )
