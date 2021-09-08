@@ -769,7 +769,9 @@ class FramesView(Frames):
         needs_frames = view._needs_frames()
         contains_all_fields = view._contains_all_fields(frames=True)
 
-        optimized_view = fos.get_optimized_samples_view(view, self._sample._id)
+        optimized_view = fos.get_optimized_samples_view(
+            view, str(self._sample._id)
+        )
         frames_pipeline = optimized_view._pipeline(frames_only=True)
 
         self._view = view

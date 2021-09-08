@@ -45,8 +45,7 @@ def get_optimized_samples_view(samples, sample_ids):
 
     Args:
         samples:  a :class:`fiftyone.core.collections.SampleCollection`
-        sample_ids: a :attr:`fiftyone.core.sample.Sample.id` string or an
-            iterable of them
+        sample_ids: a sample id string or an iterable of sample if strings
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
