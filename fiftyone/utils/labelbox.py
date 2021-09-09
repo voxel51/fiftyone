@@ -45,9 +45,10 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             media files on disk to upload
         url (None): the url of the Labelbox server
         api_key (None): the Labelbox API key
-        classes_as_attrs (True): whether to show every class at the top level
-            of the editor (False) or whether to show the label field at the top
-            level and annotate the class as a required attribute (True)
+        classes_as_attrs (True): whether to show every class at the top
+            level of the editor (False) or whether to show the label field
+            at the top level and annotate the class as a required
+            attribute (True)
         project_name (None): the name of the project that will be created,
             defaults to FiftyOne_<dataset-name>
     """
@@ -340,9 +341,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 fields, classes and attribute to annotate
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
-            classes_as_attrs (True): whether to show every class at the top level
-                of the editor (False) or whether to show the label field at the top
-                level and annotate the class as a required attribute (True)
+            classes_as_attrs (True): whether to show every class at the top
+                level of the editor (False) or whether to show the label field
+                at the top level and annotate the class as a required
+                attribute (True)
             project_name (None): the name of the project that will be created,
                 defaults to FiftyOne_<dataset-name>
         """
