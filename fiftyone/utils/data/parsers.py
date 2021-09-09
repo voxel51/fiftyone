@@ -19,6 +19,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 
 fouv = fou.lazy_import("fiftyone.utils.video")
@@ -1448,12 +1449,15 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
         return True
 
     def get_image(self):
+        fov.validate_image_sample(self.current_sample)
         return etai.read(self.current_sample.filepath)
 
     def get_image_path(self):
+        fov.validate_image_sample(self.current_sample)
         return self.current_sample.filepath
 
     def get_image_metadata(self):
+        fov.validate_image_sample(self.current_sample)
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.ImageMetadata.build_for(
@@ -1498,12 +1502,15 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
         return None
 
     def get_image(self):
+        fov.validate_image_sample(self.current_sample)
         return etai.read(self.current_sample.filepath)
 
     def get_image_path(self):
+        fov.validate_image_sample(self.current_sample)
         return self.current_sample.filepath
 
     def get_image_metadata(self):
+        fov.validate_image_sample(self.current_sample)
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.ImageMetadata.build_for(

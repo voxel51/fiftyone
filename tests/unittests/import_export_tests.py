@@ -59,6 +59,92 @@ class ImageDatasetTests(unittest.TestCase):
         return os.path.join(self._tmp_dir, self._new_name())
 
 
+class DuplicateImageExportTests(ImageDatasetTests):
+    @drop_datasets
+    def test_duplicate_images(self):
+        sample = fo.Sample(
+            filepath=self._new_image(),
+            cls=fo.Classification(label="sunny"),
+            det=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 1, 1])
+                ]
+            ),
+        )
+
+        # This dataset contains two samples with the same `filepath`
+        dataset = fo.Dataset()
+        dataset.add_samples([sample, sample])
+
+        export_dir = self._new_dir()
+
+        #
+        # In general, duplicate copies of the same images are NOT created
+        #
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageDirectory,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.ImageDirectory
+        )
+
+        # We didn't create a duplicate image during export, so there's only
+        # one image to import here
+        self.assertEqual(len(dataset2), 1)
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+        )
+
+        self.assertEqual(len(dataset2), 2)
+
+        # Use COCODetectionDataset as a representative for other labeled image
+        # dataset types
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.COCODetectionDataset
+        )
+
+        self.assertEqual(len(dataset2), 2)
+
+        #
+        # The one exception is labeled dataset types where the location of the
+        # exported media encodes the label (what if the same image has
+        # different labels in different samples). In this case, duplicate
+        # images ARE exported
+        #
+        #
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+        )
+
+        self.assertEqual(len(dataset2), 2)
+
+
 class ImageExportCoersionTests(ImageDatasetTests):
     @drop_datasets
     def test_field_inference(self):
@@ -1098,7 +1184,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
 class DICOMDatasetTests(ImageDatasetTests):
     def _get_dcm_path(self):
-        import pydicom
+        import pydicom  # pylint: disable=unused-import
         from pydicom.data import get_testdata_file
 
         return get_testdata_file("MR_small.dcm")

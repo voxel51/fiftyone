@@ -258,7 +258,7 @@ def export_samples(
         # Note that if the dataset exporter does not use `export_media`, this
         # will not work properly...
         #
-        if isinstance(samples, focl.ClipsView) and _export_media:
+        if samples._dataset._is_clips and _export_media:
             dataset_exporter.export_media = "move"
 
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
@@ -299,7 +299,7 @@ def export_samples(
         # Note that if the dataset exporter does not use `export_media`, this
         # will not work properly...
         #
-        if isinstance(samples, focl.ClipsView) and _export_media:
+        if samples._dataset._is_clips and _export_media:
             dataset_exporter.export_media = "move"
 
         label_fcn = _make_label_coercion_functions(
@@ -545,7 +545,7 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
                 label_type,
             )
 
-        if found_clips or isinstance(samples, focl.ClipsView):
+        if found_clips or samples._dataset._is_clips:
             clips_kwargs, kwargs = fou.extract_kwargs_for_class(
                 FiftyOneUnlabeledVideoSampleParser, kwargs
             )
@@ -570,7 +570,7 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
                 label_type,
             )
 
-        if found_clips or isinstance(samples, focl.ClipsView):
+        if found_clips or samples._dataset._is_clips:
             clips_kwargs, kwargs = fou.extract_kwargs_for_class(
                 FiftyOneLabeledVideoSampleParser, kwargs
             )
@@ -1852,7 +1852,7 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
         return False
 
     def setup(self):
-        self._media_exporter = ImageExporter(
+        self._media_exporter = VideoExporter(
             self.export_media,
             export_path=self.export_dir,
             supported_modes=(True, "move", "symlink"),
