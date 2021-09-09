@@ -106,18 +106,21 @@ export const isRootView = selector<boolean>({
   },
 });
 
+const CLIPS_VIEW = "fiftyone.core.clips.ClipsView";
 const FRAMES_VIEW = "fiftyone.core.video.FramesView";
 const EVALUATION_PATCHES_VIEW = "fiftyone.core.patches.EvaluationPatchesView";
 const PATCHES_VIEW = "fiftyone.core.patches.PatchesView";
 const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
 
 enum ELEMENT_NAMES {
+  CLIP = "clip",
   FRAME = "frame",
   PATCH = "patch",
   SAMPLE = "sample",
 }
 
 enum ELEMENT_NAMES_PLURAL {
+  CLIP = "clips",
   FRAME = "frames",
   PATCH = "patches",
   SAMPLE = "samples",
@@ -131,6 +134,8 @@ export const rootElementName = selector<string>({
       return ELEMENT_NAMES.PATCH;
     }
 
+    if (cls === CLIPS_VIEW) return ELEMENT_NAMES.CLIP;
+
     if (cls === FRAMES_VIEW) return ELEMENT_NAMES.FRAME;
 
     return ELEMENT_NAMES.SAMPLE;
@@ -143,6 +148,8 @@ export const rootElementNamePlural = selector<string>({
     const elementName = get(rootElementName);
 
     switch (elementName) {
+      case ELEMENT_NAMES.CLIP:
+        return ELEMENT_NAMES_PLURAL.CLIP;
       case ELEMENT_NAMES.FRAME:
         return ELEMENT_NAMES_PLURAL.FRAME;
       case ELEMENT_NAMES.PATCH:
@@ -160,6 +167,13 @@ export const elementNames = selector<{ plural: string; singular: string }>({
       plural: get(rootElementNamePlural),
       singular: get(rootElementName),
     };
+  },
+});
+
+export const isClipsView = selector<boolean>({
+  key: "isClipsView",
+  get: ({ get }) => {
+    return get(rootElementName) === ELEMENT_NAMES.CLIP;
   },
 });
 
