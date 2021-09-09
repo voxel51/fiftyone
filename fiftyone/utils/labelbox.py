@@ -46,6 +46,9 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             media files on disk to upload
         url (None): the url of the Labelbox server
         api_key (None): the Labelbox API key
+        classes_as_attrs (False): whether to show every class at the top level
+            of the editor (False) or whether to show the label field at the top
+            level and annotate the class as a required attribute (True)
     """
 
     def __init__(
@@ -55,10 +58,12 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         media_field="filepath",
         url=None,
         api_key=None,
+        classes_as_attrs=False,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
         self.url = url
+        self.classes_as_attrs = classes_as_attrs
 
         # store privately so it isn't serialized
         self._api_key = api_key
@@ -103,7 +108,7 @@ class LabelboxBackend(foua.AnnotationBackend):
 
     @property
     def default_attr_type(self):
-        return None
+        return "text"
 
     @property
     def default_categorical_attr_type(self):
@@ -129,6 +134,7 @@ class LabelboxBackend(foua.AnnotationBackend):
             samples,
             label_schema=self.config.label_schema,
             media_field=self.config.media_field,
+            classes_as_attrs=self.config.classes_as_attrs,
         )
 
         if launch_editor:
@@ -311,7 +317,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         task.wait_till_done()
 
     def upload_samples(
-        self, samples, label_schema, media_field="filepath",
+        self,
+        samples,
+        label_schema,
+        media_field="filepath",
+        classes_as_attrs=False,
     ):
         """Parse the given samples and use the label schema to create projects,
         upload data, and upload formatted annotations to Labelbox.
@@ -323,6 +333,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 fields, classes and attribute to annotate
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
+            classes_as_attrs (False): whether to show every class at the top level
+                of the editor (False) or whether to show the label field at the top
+                level and annotate the class as a required attribute (True)
+
         """
         project_ids = []
         for label_field, schema_info in label_schema.items():
@@ -337,26 +351,34 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             )
 
             project_id = self._setup_project(
-                project_name, dataset, schema_info, label_field
+                project_name,
+                dataset,
+                schema_info,
+                label_field,
+                classes_as_attrs,
             )
             project_ids.append(project_id)
 
         return project_ids
 
-    def _setup_project(self, project_name, dataset, schema_info, label_field):
+    def _setup_project(
+        self, project_name, dataset, schema_info, label_field, classes_as_attrs
+    ):
         """Create a new Labelbox project, connect it to the dataset, and
         construct the ontology and editor for the given schema.
         """
         project = self._client.create_project(name=project_name)
         project.datasets.connect(dataset)
-        self._setup_editor(project, schema_info, label_field)
+        self._setup_editor(project, schema_info, label_field, classes_as_attrs)
 
         if project.setup_complete is None:
             raise ValueError("Labelbox project failed to be created")
 
         return project.uid
 
-    def _setup_editor(self, project, schema_info, label_field):
+    def _setup_editor(
+        self, project, schema_info, label_field, classes_as_attrs
+    ):
         editor = next(
             self._client.get_labeling_frontends(
                 where=lb.LabelingFrontend.name == "Editor"
@@ -364,7 +386,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         )
 
         tools, classifications = self._create_ontology_tools(
-            schema_info, label_field
+            schema_info, label_field, classes_as_attrs
         )
 
         ontology_builder = lbs.OntologyBuilder(
@@ -372,42 +394,34 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         )
         project.setup(editor, ontology_builder.asdict())
 
-    def _create_ontology_tools(self, schema_info, label_field):
+    def _create_ontology_tools(
+        self, schema_info, label_field, classes_as_attrs
+    ):
         tools = []
         classifications = []
         label_type = schema_info["type"]
         classes = schema_info["classes"]
         attr_schema = schema_info["attributes"]
 
-        general_attrs = self._format_attributes(attr_schema)
+        general_attrs = self._build_attributes(attr_schema)
 
         if label_type in ["scalar", "classification", "classifications"]:
-            classifications = self._build_classification(
+            classifications = self._build_classifications(
                 classes, label_field, general_attrs, label_type
             )
 
         else:
-            for c in classes:
-                if isinstance(c, dict):
-                    raise NotImplementedError(
-                        "Allow for different classes to have different attributes"
-                    )
-                    subset_classes = c["classes"]
-                    subset_attr_schema = c["attributes"]
-                    subset_attrs = self._format_attributes(subset_attr_schema)
-                    all_attrs = general_attrs + subset_attrs
-                    for sc in subset_classes:
-                        tools.extend(
-                            self._build_tool(sc, label_type, all_attrs)
-                        )
-                else:
-                    tools.extend(
-                        self._build_tool(c, label_type, general_attrs)
-                    )
+            tools = self._build_tools(
+                classes,
+                label_field,
+                label_type,
+                general_attrs,
+                classes_as_attrs,
+            )
 
         return tools, classifications
 
-    def _format_attributes(self, attr_schema):
+    def _build_attributes(self, attr_schema):
         attributes = []
         for attr_name, attr_info in attr_schema.items():
             attr_type = attr_info["type"]
@@ -427,20 +441,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             attributes.append(attr)
         return attributes
 
-    def _build_tool(self, class_name, label_type, attributes):
-        tools = []
-        tool_types = self._tools_per_label_type[label_type]
-        for tool_type in tool_types:
-            tools.append(
-                lbs.Tool(
-                    name=str(class_name),
-                    tool=tool_type,
-                    classifications=attributes,
-                )
-            )
-        return tools
-
-    def _build_classification(self, classes, name, attributes, label_type):
+    def _build_classifications(self, classes, name, attributes, label_type):
         """Return the classifications for the given label field. Generally, the
         classification is a dropdown selection for given classes, but can be a
         text entry for scalars without provided classes.
@@ -477,6 +478,81 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 attribute.instructions = "attr:%s_%s" % (name, attr_name)
                 classifications.append(attribute)
         return classifications
+
+    def _build_tools(
+        self, classes, label_field, label_type, general_attrs, classes_as_attrs
+    ):
+        tools = []
+        if not classes_as_attrs:
+            for c in classes:
+                if isinstance(c, dict):
+                    raise NotImplementedError(
+                        "Support for different attributes on different "
+                        "classes is not yet implemented."
+                    )
+                    subset_classes = c["classes"]
+                    subset_attr_schema = c["attributes"]
+                    subset_attrs = self._build_attributes(subset_attr_schema)
+                    all_attrs = general_attrs + subset_attrs
+                    for sc in subset_classes:
+                        tools.extend(
+                            self._build_tool_for_class(
+                                sc, label_type, all_attrs
+                            )
+                        )
+                else:
+                    tools.extend(
+                        self._build_tool_for_class(
+                            c, label_type, general_attrs
+                        )
+                    )
+        else:
+            tool_types = self._tools_per_label_type[label_type]
+            attributes = self._create_classes_as_attrs(classes, general_attrs)
+            for tool_type in tool_types:
+                tools.append(
+                    lbs.Tool(
+                        name=label_field,
+                        tool=tool_type,
+                        classifications=attributes,
+                    )
+                )
+        return tools
+
+    def _build_tool_for_class(self, class_name, label_type, attributes):
+        tools = []
+        tool_types = self._tools_per_label_type[label_type]
+        for tool_type in tool_types:
+            tools.append(
+                lbs.Tool(
+                    name=str(class_name),
+                    tool=tool_type,
+                    classifications=attributes,
+                )
+            )
+        return tools
+
+    def _create_classes_as_attrs(self, classes, general_attrs):
+        """Create a DROPDOWN attribute for classes and make all class specific 
+        attributes available for all classes when `classes_as_attrs` is True.
+        """
+        class_strings = []
+        attributes = general_attrs
+        for c in classes:
+            if isinstance(c, dict):
+                class_strings.extend(c["classes"])
+                attributes.extend(self._build_attributes(c["attributes"]))
+            else:
+                class_strings.append(c)
+        options = [lbs.Option(value=str(c)) for c in class_strings]
+        classes_attr = lbs.Classification(
+            class_type=lbs.Classification.Type.DROPDOWN,
+            instructions="class_name",
+            options=options,
+            required=True,
+        )
+        attributes = [classes_attr] + attributes
+        return attributes
 
     def download_annotations(
         self, label_schema, project_ids,
