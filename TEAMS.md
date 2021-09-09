@@ -1,32 +1,40 @@
 # FiftyOne Teams
 
-Guide to developing in the private Teams fork of
-[FiftyOne](https://github.com/voxel51/fiftyone)
+This document describes how we develop FiftyOne Teams, which is a private fork
+of [FiftyOne](https://github.com/voxel51/fiftyone).
 
-## Pulling in changes in from [FiftyOne](https://github.com/voxel51/fiftyone)
+## Pulling changes from FiftyOne
 
-The `public` branch in
-[FiftyOne Teams](https://github.com/voxel51/fiftyone-teams) should match
-`develop` in [FiftyOne](https://github.com/voxel51/fiftyone).
+The `public` branch in this repository should match `develop` in
+[FiftyOne](https://github.com/voxel51/fiftyone).
 
-Be sure to have `fiftyone` added as the `public` remote:
+To merge the latest [FiftyOne](https://github.com/voxel51/fiftyone) into
+FiftyOne Teams, make sure `public` is up-to-date and then open a pull request
+into `develop`.
 
-```sh
+Note that the `public` branch is protected, except for administrators, so if
+you are not an admin and need to update the `public` branch, you must do so via
+a pull request.
+
+### Administrators
+
+Be sure to have [FiftyOne](https://github.com/voxel51/fiftyone) added as the
+`public` remote:
+
+```shell
 git remote add public git@github.com:voxel51/fiftyone.git
 ```
 
-Merge in changes from `fiftyone` into the `public` branch:
+Then you can merge changes from [FiftyOne](https://github.com/voxel51/fiftyone)
+into the `public` branch as follows:
 
 ```
 git checkout public
 git pull public develop
-git push origin public # protect the `public` branch?
+git push origin public
 ```
 
-Open a pull request for `public` to be merged into `develop`. Can we automate
-this?
-
-## Creating a pull request from [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams) into [FiftyOne](https://github.com/voxel51/fiftyone)
+## Creating a pull request into FiftyOne
 
 When developing features privately intended to reach the public
 [FiftyOne](https://github.com/voxel51/fiftyone) repository, it is best to
@@ -42,10 +50,9 @@ Open a pull request to merge `my-feature` into `public`.
 
 To add the changes to the public repository,
 [FiftyOne](https://github.com/voxel51/fiftyone), switch to your local clone of
-the open source project and add
-[FiftyOne Teams](https://github.com/voxel51/fiftyone-teams) as a remote:
+the open source project and add this repository as a remote:
 
-```sh
+```shell
 cd /path/to/public/fiftyone
 git remote add teams git@github.com:voxel51/fiftyone-teams.git
 git checkout -b release-to-public
@@ -53,7 +60,7 @@ git pull teams public
 git push origin release-to-public
 ```
 
-## Adding a previously "Teams"-only feature to the public [FiftyOne](https://github.com/voxel51/fiftyone)
+## Adding a Teams feature to FiftyOne
 
 In this case, the assumption is that feature has been refactored to fit within
 the structure of the open source project. Branch from `public` and commit the
@@ -65,53 +72,50 @@ Then follow the normal steps to make a pull request in the public
 As these workflows solidify, syncing between the projects should be automated
 to whatever extent possible.
 
-## Installing FiftyOne Teams releases from private FiftyOne PyPI server
+## Installing FiftyOne Teams releases
+
+FiftyOne Teams releases are installed via a private FiftyOne PyPI server that
+we maintain at https://pypi.fiftyone.ai.
 
 You should ask for a token if you don't have one already.
 
-```sh
+```shell
 # basic install
 pip install --index-url https://<token>@pypi.fiftyone.ai fiftyone
 
-
 # desktop install
 pip install --index-url https://<token>@pypi.fiftyone.ai fiftyone[desktop]
-
 ```
 
-## Adding user tokens as an admin
+### Adding user tokens
 
-```sh
+PyPI admins can add additional user tokens as follows:
+
+```shell
 curl -X POST -F 'email=user@company.com' https://admin:<password>@pypi.fiftyone.ai/admin/create_token/save
 ```
 
-## Working with BB1 Teams
+## Using FiftyOne Teams on bb1
 
-Add yourself to the `cowboys` group on `bb1` if you are not in the group
-already. This ensures data files created in `/scratch/fiftyone` have acceptable
+We maintain a shared deployment of FiftyOne Teams on bb1 (voxelbb1.ddns.net).
+
+Add yourself to the `cowboys` group on bb1 if you are not in the group already.
+This ensures data files created in `/scratch/fiftyone` have acceptable
 permissions for everyone else.
 
-Add the following to your `~/.bashrc`:
+Then add the following to your `~/.bashrc`:
 
-```sh
-export FIFTYONE_DO_NOT_TRACK=true # for good measure
+```shell
+export FIFTYONE_DO_NOT_TRACK=true
 export FIFTYONE_DATASET_ZOO_DIR=/scratch/fiftyone/zoo
 export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone/datasets
 export FIFTYONE_DATABASE_URI=mongodb://localhost:27017
 ```
 
-This will be your default environment when using `fiftyone` on `bb1`. You can
-read about other configuration options
+This will be your default environment when using FiftyOne on bb1. You can read
+about other configuration options
 [here](https://voxel51.com/docs/fiftyone/user_guide/config.html) if you prefer
 a different behavior.
 
-Note that using the App requires port forwarding with `ssh`:
-
-```sh
-ssh -N -L <local-port>:127.0.0.1:<remote-session-port> <user>@voxelbb1.ddns.net
-```
-
 When adding data to this shared database, ensure that all media is placed
 within `/scratch/fiftyone` so other users will have access.
-
-That's it!
