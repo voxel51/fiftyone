@@ -206,16 +206,25 @@ class MigrationRunner(object):
         if destination is None:
             destination = foc.VERSION
 
-        pkg_ver = Version(foc.VERSION)
         head_ver = Version(head)
         dest_ver = Version(destination)
+        pkg_ver = Version(foc.VERSION)
+        teams_ver = Version(foc.TEAMS_VERSION)
         if head_ver > pkg_ver or dest_ver > pkg_ver:
             raise EnvironmentError(
-                "You must have fiftyone>=%s installed in order to migrate "
-                "from v%s to v%s, but you are currently running fiftyone==%s."
+                "You must have a FiftyOne Teams version with open source "
+                "compatibility fiftyone>=%s installed in order to migrate "
+                "from v%s to v%s, but you are currently running FiftyOne "
+                "Teams v%s with open source compatibility fiftyone==%s."
                 "\n\nSee https://voxel51.com/docs/fiftyone/getting_started/install.html#downgrading-fiftyone "
                 "for information about downgrading FiftyOne."
-                % (max(head_ver, dest_ver), head_ver, dest_ver, pkg_ver)
+                % (
+                    max(head_ver, dest_ver),
+                    head_ver,
+                    dest_ver,
+                    teams_ver,
+                    pkg_ver,
+                )
             )
 
         if _revisions is None:
