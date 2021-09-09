@@ -4122,8 +4122,8 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by(self, field_or_expr, reverse=False):
-        """Sorts the samples in the collection by the given field or
-        expression.
+        """Sorts the samples in the collection by the given field(s) or
+        expression(s).
 
         Examples::
 
@@ -4152,11 +4152,39 @@ class SampleCollection(object):
             small_boxes = F("predictions.detections").filter(bbox_area < 0.2)
             view = dataset.sort_by(small_boxes.length(), reverse=True)
 
+            #
+            # Performs a compound sort where samples are first sorted in
+            # descending or by number of detections and then in ascending order
+            # of uniqueness for samples with the same number of predictions
+            #
+
+            view = dataset.sort_by(
+                [
+                    (F("predictions.detections").length(), -1),
+                    ("uniqueness", 1),
+                ]
+            )
+
+            num_objects, uniqueness = view[:5].values(
+                [F("predictions.detections").length(), "uniqueness"]
+            )
+            print(list(zip(num_objects, uniqueness)))
+
         Args:
-            field_or_expr: the field or ``embedded.field.name`` to sort by, or
-                a :class:`fiftyone.core.expressions.ViewExpression` or a
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that defines the quantity to sort by
+            field_or_expr: the field(s) or expression(s) to sort by. This can
+                be any of the following:
+
+                -   a field to sort by
+                -   an ``embedded.field.name`` to sort by
+                -   a :class:`fiftyone.core.expressions.ViewExpression` or a
+                    `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                    that defines the quantity to sort by
+                -   a list of ``(field_or_expr, order)`` tuples defining a
+                    compound sort criteria, where ``field_or_expr`` is a field
+                    or expression as defined above, and ``order`` can be 1 or
+                    any string starting with "a" for ascending order, or -1 or
+                    any string starting with "d" for descending order
+
             reverse (False): whether to return the results in descending order
 
         Returns:
@@ -6208,42 +6236,49 @@ class SampleCollection(object):
         # Placeholder to store results
         results = [None] * len(aggregations)
 
-        # Run big aggregations
-        for idx, aggregation in big_aggs.items():
-            pipeline, attach_frames = self._build_big_pipeline(aggregation)
+        idx_map = {}
+        pipelines = []
 
-            result = self._aggregate(
-                pipeline=pipeline, attach_frames=attach_frames
-            )
-
-            results[idx] = self._parse_big_results(aggregation, result)
-
-        # Run batched big aggregations
+        # Build batch pipeline
         if batch_aggs:
-            pipeline, attach_frames = self._build_batch_pipeline(batch_aggs)
+            pipeline = self._build_batch_pipeline(batch_aggs)
+            pipelines.append(pipeline)
 
-            result = self._aggregate(
-                pipeline=pipeline, attach_frames=attach_frames
-            )
-            result = list(result)
+        # Build big pipelines
+        for idx, aggregation in big_aggs.items():
+            pipeline = self._build_big_pipeline(aggregation)
+            idx_map[idx] = len(pipelines)
+            pipelines.append(pipeline)
+
+        # Build facet-able pipelines
+        facet_pipelines = self._build_faceted_pipelines(facet_aggs)
+        for idx, pipeline in facet_pipelines.items():
+            idx_map[idx] = len(pipelines)
+            pipelines.append(pipeline)
+
+        # Run all aggregations
+        _results = foo.aggregate(self._dataset._sample_collection, pipelines)
+
+        # Parse batch results
+        if batch_aggs:
+            result = list(_results[0])
 
             for idx, aggregation in batch_aggs.items():
-                results[idx] = self._parse_big_results(aggregation, result)
+                results[idx] = self._parse_big_result(aggregation, result)
 
-        # Run faceted aggregations
-        if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+        # Parse big results
+        for idx, aggregation in big_aggs.items():
+            result = list(_results[idx_map[idx]])
+            results[idx] = self._parse_big_result(aggregation, result)
 
-            result = self._aggregate(
-                pipeline=pipeline, attach_frames=attach_frames
-            )
-            result = next(result)  # extract result of $facet
-
-            self._parse_faceted_results(facet_aggs, result, results)
+        # Parse facet-able results
+        for idx, aggregation in facet_aggs.items():
+            result = list(_results[idx_map[idx]])
+            results[idx] = self._parse_faceted_result(aggregation, result)
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, sample_collection, aggregations):
+    async def _async_aggregate(self, aggregations):
         if not aggregations:
             return []
 
@@ -6256,20 +6291,28 @@ class SampleCollection(object):
             aggregations, allow_big=False
         )
 
+        # Placeholder to store results
         results = [None] * len(aggregations)
 
+        idx_map = {}
+        pipelines = []
+
         if facet_aggs:
-            pipeline, attach_frames = self._build_faceted_pipeline(facet_aggs)
+            # Build facet-able pipelines
+            facet_pipelines = self._build_faceted_pipelines(facet_aggs)
+            for idx, pipeline in facet_pipelines.items():
+                idx_map[idx] = len(pipelines)
+                pipelines.append(pipeline)
 
-            pipeline = self._pipeline(
-                pipeline=pipeline, attach_frames=attach_frames
-            )
-            result = await foo.aggregate(sample_collection, pipeline).to_list(
-                1
-            )
-            result = result[0]  # extract result of $facet
+            # Run all aggregations
+            coll_name = self._dataset._sample_collection_name
+            collection = foo.get_async_db_conn()[coll_name]
+            _results = await foo.aggregate(collection, pipelines)
 
-            self._parse_faceted_results(facet_aggs, result, results)
+            # Parse facet-able results
+            for idx, aggregation in facet_aggs.items():
+                result = list(_results[idx_map[idx]])
+                results[idx] = self._parse_faceted_result(aggregation, result)
 
         return results[0] if scalar_result else results
 
@@ -6293,20 +6336,14 @@ class SampleCollection(object):
 
         return big_aggs, batch_aggs, facet_aggs
 
-    def _build_big_pipeline(self, aggregation, big_field="values"):
-        pipeline = aggregation.to_mongo(self, big_field=big_field)
-        attach_frames = aggregation._needs_frames(self)
-        return pipeline, attach_frames
-
     def _build_batch_pipeline(self, aggs_map):
         project = {}
         attach_frames = False
         for idx, aggregation in aggs_map.items():
             big_field = "value%d" % idx
-            _pipeline, _attach_frames = self._build_big_pipeline(
-                aggregation, big_field=big_field
-            )
-            attach_frames |= _attach_frames
+
+            _pipeline = aggregation.to_mongo(self, big_field=big_field)
+            attach_frames |= aggregation._needs_frames(self)
 
             try:
                 assert len(_pipeline) == 1
@@ -6317,35 +6354,37 @@ class SampleCollection(object):
                     "$project stage; found %s" % _pipeline
                 )
 
-        pipeline = [{"$project": project}]
+        return self._pipeline(
+            pipeline=[{"$project": project}], attach_frames=attach_frames
+        )
 
-        return pipeline, attach_frames
+    def _build_big_pipeline(self, aggregation):
+        return self._pipeline(
+            pipeline=aggregation.to_mongo(self, big_field="values"),
+            attach_frames=aggregation._needs_frames(self),
+        )
 
-    def _build_faceted_pipeline(self, aggs_map):
-        facets = {}
-        attach_frames = False
+    def _build_faceted_pipelines(self, aggs_map):
+        pipelines = {}
         for idx, aggregation in aggs_map.items():
-            pipeline = aggregation.to_mongo(self)
-            attach_frames |= aggregation._needs_frames(self)
-            facets[str(idx)] = pipeline
+            pipelines[idx] = self._pipeline(
+                pipeline=aggregation.to_mongo(self),
+                attach_frames=aggregation._needs_frames(self),
+            )
 
-        facet_pipeline = [{"$facet": facets}]
+        return pipelines
 
-        return facet_pipeline, attach_frames
-
-    def _parse_big_results(self, aggregation, result):
+    def _parse_big_result(self, aggregation, result):
         if result:
             return aggregation.parse_result(result)
 
         return aggregation.default_result()
 
-    def _parse_faceted_results(self, aggs_map, result, results):
-        for idx, aggregation in aggs_map.items():
-            resulti = result[str(idx)]
-            if resulti:
-                results[idx] = aggregation.parse_result(resulti[0])
-            else:
-                results[idx] = aggregation.default_result()
+    def _parse_faceted_result(self, aggregation, result):
+        if result:
+            return aggregation.parse_result(result[0])
+
+        return aggregation.default_result()
 
     def _pipeline(
         self,
