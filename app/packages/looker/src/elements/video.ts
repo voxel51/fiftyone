@@ -336,7 +336,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private canvas: HTMLCanvasElement;
   private duration: number = null;
   private frameCount: number;
-  private frameNumber: number = 1;
+  private frameNumber: number;
+  private firstFrame: number;
   private frameRate: number = 0;
   private loop: boolean = false;
   private playbackRate: number = 1;
@@ -353,7 +354,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   getEvents(): Events<VideoState> {
     return {
-      error: ({ event, dispatchEvent }) => {
+      error: ({ update, event, dispatchEvent }) => {
+        this.releaseVideo();
+        update({ error: true });
         dispatchEvent("error", { event });
       },
       loadedmetadata: ({ update }) => {
@@ -396,8 +399,13 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       play: ({ update, dispatchEvent }) => {
         const callback = (newFrameNumber: number) => {
           update(
-            ({ playing, options: { loop } }) => {
+            ({ playing, options: { loop }, config: { support } }) => {
               this.frameNumber = newFrameNumber;
+
+              if (support) {
+                if (newFrameNumber === support[1]) {
+                }
+              }
 
               if (newFrameNumber === this.frameCount) {
                 playing = loop;
@@ -477,8 +485,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   createHTMLElement(update: StateUpdate<VideoState>) {
     this.update = update;
     this.element = null;
-    this.frameNumber = 1;
     update(({ config: { thumbnail, dimensions, src, frameRate } }) => {
+      this.frameNumber = this.firstFrame;
       this.src = src;
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
@@ -568,8 +576,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private acquireVideo() {
     let called = false;
 
-    this.update(({ waitingForVideo }) => {
-      if (!waitingForVideo) {
+    this.update(({ waitingForVideo, error }) => {
+      if (!waitingForVideo && !error) {
         acquirePlayer().then(([video, release]) => {
           this.update(({ hovering, config: { thumbnail } }) => {
             this.element = video;

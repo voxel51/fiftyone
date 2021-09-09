@@ -7,7 +7,11 @@ import {
 
 import * as selectors from "../../recoil/selectors";
 import { Range } from "./RangeSlider";
-import { AGGS, LIST_FIELD, VALID_NUMERIC_TYPES } from "../../utils/labels";
+import {
+  AGGS,
+  VALID_LIST_FIELDS,
+  VALID_NUMERIC_TYPES,
+} from "../../utils/labels";
 import { filterStage } from "./atoms";
 
 export const isNumericField = selectorFamily<boolean, string>({
@@ -15,7 +19,7 @@ export const isNumericField = selectorFamily<boolean, string>({
   get: (name) => ({ get }) => {
     let map = get(selectors.primitivesMap("sample"));
 
-    if (map[name] === LIST_FIELD) {
+    if (VALID_LIST_FIELDS.includes(map[name])) {
       map = get(selectors.primitivesSubfieldMap("sample"));
     }
 

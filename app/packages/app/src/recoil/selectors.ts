@@ -8,8 +8,8 @@ import {
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   VALID_LIST_TYPES,
-  LIST_FIELD,
   UNSUPPORTED_IMAGE,
+  VALID_LIST_FIELDS,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -371,7 +371,10 @@ const primitiveFilter = (f) => {
     return true;
   }
 
-  if (f.ftype === LIST_FIELD && VALID_SCALAR_TYPES.includes(f.subfield)) {
+  if (
+    VALID_LIST_FIELDS.includes(f.ftype) &&
+    VALID_SCALAR_TYPES.includes(f.subfield)
+  ) {
     return true;
   }
 

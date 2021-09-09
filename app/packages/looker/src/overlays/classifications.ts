@@ -300,7 +300,6 @@ export class VideoClassificationsOverlay extends ClassificationsOverlay<
   VideoClassificationLabel | ClassificationLabel
 > {
   getFiltered(state: Readonly<VideoState>) {
-    console.log(this.labels);
     return this.labels.map<
       [string, (VideoClassificationLabel | ClassificationLabel)[]]
     >(([field, labels]) => [

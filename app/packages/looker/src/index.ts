@@ -923,13 +923,15 @@ export class VideoLooker extends Looker<VideoState> {
     config: VideoState["config"],
     options: VideoState["options"]
   ): VideoState {
+    const firstFrame = config.support ? config.support[0] : 1;
+
     return {
       duration: null,
       seeking: false,
       locked: false,
       fragment: null,
       playing: false,
-      frameNumber: 1,
+      frameNumber: firstFrame,
       buffering: false,
       ...this.getInitialBaseState(),
       config: { ...config },
@@ -937,11 +939,12 @@ export class VideoLooker extends Looker<VideoState> {
         ...this.getDefaultOptions(),
         ...options,
       },
-      buffers: [[1, 1]] as Buffers,
+      buffers: [[firstFrame, firstFrame]] as Buffers,
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
       waitingForVideo: false,
+      lockedToSupport: Boolean(config.support),
     };
   }
 

@@ -388,6 +388,7 @@ const Looker = ({
     atoms.modal
   );
   const fullscreen = useRecoilValue(atoms.fullscreen);
+  const isClips = useRecoilValue(selectors.isClipsView);
   const mimetype = getMimeType(sample);
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
@@ -398,6 +399,7 @@ const Looker = ({
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
+    const etc = isClips ? { support: sample.support } : {};
 
     return new constructor(
       sample,
@@ -408,6 +410,7 @@ const Looker = ({
         frameNumber,
         sampleId: sample._id,
         thumbnail: false,
+        ...etc,
       },
       {
         activePaths,

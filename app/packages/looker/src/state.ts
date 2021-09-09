@@ -95,6 +95,7 @@ export interface ImageConfig extends BaseConfig {}
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
+  support?: [number, number];
 }
 
 export interface FrameOptions extends BaseOptions {
@@ -196,6 +197,7 @@ export interface VideoState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
   waitingForVideo: boolean;
+  lockedToSupport: boolean;
 }
 
 export type Optional<T> = {
