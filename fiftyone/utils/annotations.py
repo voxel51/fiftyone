@@ -24,9 +24,8 @@ import fiftyone.core.clips as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
-import fiftyone.core.video as fov
+import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 
 
@@ -127,11 +126,15 @@ def annotate(
         an :class:`AnnnotationResults`
     """
     # @todo support this?
-    if isinstance(samples, fov.FramesView):
+    if samples._dataset._is_frames:
         raise ValueError("Annotating frames views is not supported")
 
+    # @todo support this?
+    if samples._dataset._is_clips:
+        raise ValueError("Annotating clips views is not supported")
+
     # Convert to equivalent regular view containing the same labels
-    if isinstance(samples, (fop.PatchesView, fop.EvaluationPatchesView)):
+    if samples._dataset._is_patches:
         ids = _get_patches_view_label_ids(samples)
         samples = samples._root_dataset.select_labels(
             ids=ids, fields=samples._label_fields,
@@ -1364,7 +1367,9 @@ def draw_labeled_image(sample, outpath, label_fields=None, config=None):
     if config is None:
         config = DrawConfig.default()
 
+    fov.validate_image_sample(sample)
     img = etai.read(sample.filepath)
+
     image_labels = _to_image_labels(sample, label_fields=label_fields)
 
     anno_img = etaa.annotate_image(img, image_labels, annotation_config=config)
@@ -1398,7 +1403,7 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
     output_ext = fo.config.default_video_ext
 
-    is_clips = isinstance(samples, foc.ClipsView)
+    is_clips = samples._dataset._is_clips
     num_videos = len(samples)
 
     outpaths = []
