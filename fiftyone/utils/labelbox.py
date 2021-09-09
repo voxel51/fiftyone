@@ -39,29 +39,29 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
     """Base class for configuring :class:`LabelboxBackend` instances.
 
     Args:
-        name: the name of the backend
         label_schema: a dictionary containing the description of label fields,
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
             media files on disk to upload
         url (None): the url of the Labelbox server
         api_key (None): the Labelbox API key
-        classes_as_attrs (False): whether to show every class at the top level
+        classes_as_attrs (True): whether to show every class at the top level
             of the editor (False) or whether to show the label field at the top
             level and annotate the class as a required attribute (True)
     """
 
     def __init__(
         self,
-        name,
         label_schema,
         media_field="filepath",
         url=None,
         api_key=None,
-        classes_as_attrs=False,
+        classes_as_attrs=True,
         **kwargs,
     ):
-        super().__init__(name, label_schema, media_field=media_field, **kwargs)
+        super().__init__(
+            "labelbox", label_schema, media_field=media_field, **kwargs
+        )
         self.url = url
         self.classes_as_attrs = classes_as_attrs
 
@@ -321,7 +321,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         samples,
         label_schema,
         media_field="filepath",
-        classes_as_attrs=False,
+        classes_as_attrs=True,
     ):
         """Parse the given samples and use the label schema to create projects,
         upload data, and upload formatted annotations to Labelbox.
@@ -333,7 +333,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 fields, classes and attribute to annotate
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
-            classes_as_attrs (False): whether to show every class at the top level
+            classes_as_attrs (True): whether to show every class at the top level
                 of the editor (False) or whether to show the label field at the top
                 level and annotate the class as a required attribute (True)
 
