@@ -462,9 +462,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         options = []
         for c in classes:
             if isinstance(c, dict):
-                # raise NotImplementedError(
-                #    "Class specific attributes are not yet supported"
-                # )
                 sub_classes = c["classes"]
                 attrs = self._build_attributes(c["attributes"]) + general_attrs
             else:
@@ -517,9 +514,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         if not classes_as_attrs:
             for c in classes:
                 if isinstance(c, dict):
-                    # raise NotImplementedError(
-                    #    "Class specific attributes are not yet supported"
-                    # )
                     subset_classes = c["classes"]
                     subset_attr_schema = c["attributes"]
                     subset_attrs = self._build_attributes(subset_attr_schema)
@@ -569,9 +563,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         options = []
         for c in classes:
             if isinstance(c, dict):
-                # raise NotImplementedError(
-                #    "Class specific attributes are not yet supported"
-                # )
                 subset_attrs = self._build_attributes(c["attributes"])
                 for sc in c["classes"]:
                     options.append(
