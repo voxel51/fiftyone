@@ -428,7 +428,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         return tools, classifications
 
-    def _build_attributes(self, attr_schema, prefix=""):
+    def _build_attributes(self, attr_schema):
         attributes = []
         for attr_name, attr_info in attr_schema.items():
             attr_type = attr_info["type"]
@@ -563,7 +563,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return tools
 
     def _create_classes_as_attrs(self, classes, general_attrs):
-        """Create a DROPDOWN attribute for classes and format all class specific 
+        """Create a DROPDOWN attribute for classes and format all class specific
         attributes.
         """
         options = []
@@ -586,7 +586,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             options=options,
             required=True,
         )
-        return [classes_attr] + general_attrs
+        attributes = [classes_attr] + general_attrs
+        return attributes
 
     def download_annotations(
         self, label_schema, project_id,
