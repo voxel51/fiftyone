@@ -172,7 +172,7 @@ def _validate_image(filepath):
             "'%s'.\n\nIf you are working with a frames view that was created "
             "via `to_frames(..., sample_frames=False)`, then re-create the "
             "view without `sample_frames=False` so that the necessary images "
-            "will be available" % (filepath, actual_media_type)
+            "will be available." % (filepath, actual_media_type)
         )
 
 

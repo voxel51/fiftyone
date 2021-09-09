@@ -560,7 +560,7 @@ def _iter_batches(video_reader, batch_size):
             frame_numbers = []
             imgs = []
 
-    return frame_numbers, imgs
+    yield frame_numbers, imgs
 
 
 def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
