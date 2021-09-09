@@ -6,7 +6,7 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy
+from copy import copy, deepcopy
 import logging
 import os
 from uuid import uuid4
@@ -184,6 +184,29 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         self._setup()
 
+        self._tools_per_label_type = {
+            "detections": [lbs.Tool.Type.BBOX],
+            "detection": [lbs.Tool.Type.BBOX],
+            "segmentation": [lbs.Tool.Type.SEGMENTATION],
+            "segmentations": [lbs.Tool.Type.SEGMENTATION],
+            "_segmentations_and_detections": [
+                lbs.Tool.Type.BBOX,
+                lbs.Tool.Type.SEGMENTATION,
+            ],
+            "_segmentation_and_detection": [
+                lbs.Tool.Type.BBOX,
+                lbs.Tool.Type.SEGMENTATION,
+            ],
+            "semantic_segmentations": [lbs.Tool.Type.SEGMENTATION],
+            "polyline": [lbs.Tool.Type.LINE],
+            "polylines": [lbs.Tool.Type.LINE],
+            "polygon": [lbs.Tool.Type.POLYGON],
+            "polygons": [lbs.Tool.Type.POLYGON],
+            "classification": [lbs.Classification],
+            "classifications": [lbs.Classification],
+            "scalar": [lbs.Classification],
+        }
+
     def _setup(self):
         if not self._url:
             raise ValueError(
@@ -198,6 +221,15 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self._client = lb.client.Client(
             api_key=api_key, endpoint=self.base_graphql_url
         )
+
+    @property
+    def attr_type_map(self):
+        return {
+            "text": lbs.Classification.Type.TEXT,
+            "select": lbs.Classification.Type.DROPDOWN,
+            "radio": lbs.Classification.Type.RADIO,
+            "checkbox": lbs.Classification.Type.CHECKLIST,
+        }
 
     @property
     def base_api_url(self):
@@ -278,76 +310,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         task = lb_dataset.create_data_rows(upload_info)
         task.wait_till_done()
 
-    # def _create_ontology_tools(self, classes, label_type, attributes):
-    #     # TODO
-    #     tools = []
-    #     # TODO: Use polygons for instance segmentation
-    #     if label_type in (fol.Detection, fol.Detections):
-    #         tool_type = lbs.Tool.Type.BBOX
-    #     elif label_type in (fol.Keypoint, fol.Keypoints):
-    #         tool_type = lbs.Tool.Type.POINT
-    #     elif label_type in (fol.Polyline, fol.Polylines):
-    #         tool_type = lbs.Tool.Type.LINE
-
-    #     classifications = []
-    #     for attr in attributes:
-    #         cls = lbs.Classification(
-    #             class_type=lbs.Classification.Type.TEXT,
-    #             instruction=attr,
-    #             required=False,
-    #         )
-    #         classifications.append(cls)
-
-    #     for c in classes:
-    #         tool = lbs.Tool(
-    #             name=c, tool=tool_type, classifications=classifications
-    #         )
-    #         tools.append(tool)
-
-    #     return tools
-
-    def _dummy_setup(self, project):
-        editor = next(
-            self._client.get_labeling_frontends(
-                where=lb.LabelingFrontend.name == "Editor"
-            )
-        )
-
-        tools = [lbs.Tool(name="det", tool=lbs.Tool.Type.BBOX)]
-
-        ontology_builder = lbs.OntologyBuilder(tools=tools)
-        project.setup(editor, ontology_builder.asdict())
-
-    def _create_ontology_tools(self, schema_info):
-        tools = []
-
-        return tools
-
-    def _setup_editor(self, project, schema_info):
-        editor = next(
-            self._client.get_labeling_frontends(
-                where=lb.LabelingFrontend.name == "Editor"
-            )
-        )
-
-        tools = self._create_ontology_tools(schema_info)
-
-        ontology_builder = lbs.OntologyBuilder(tools=tools)
-        project.setup(editor, ontology_builder.asdict())
-
-    def _setup_project(self, project_name, dataset, schema_info):
-        """Create a new Labelbox project, connect it to the dataset, and
-        construct the ontology and editor for the given schema.
-        """
-        project = self._client.create_project(name=project_name)
-        project.datasets.connect(dataset)
-        self._setup_editor(project, schema_info)
-
-        if project.setup_complete is None:
-            raise ValueError("Labelbox project failed to be created")
-
-        return project.uid
-
     def upload_samples(
         self, samples, label_schema, media_field="filepath",
     ):
@@ -375,24 +337,146 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             )
 
             project_id = self._setup_project(
-                project_name, dataset, schema_info
+                project_name, dataset, schema_info, label_field
             )
             project_ids.append(project_id)
 
         return project_ids
 
-    def _download_project_labels(
-        self, project_id=None, project=None, timeout=60
-    ):
-        if project is None:
-            if project_id is None:
-                raise ValueError(
-                    "Either `project_id` or `project` is required"
-                )
-            project = self._client.get_project(project_id)
+    def _setup_project(self, project_name, dataset, schema_info, label_field):
+        """Create a new Labelbox project, connect it to the dataset, and
+        construct the ontology and editor for the given schema.
+        """
+        project = self._client.create_project(name=project_name)
+        project.datasets.connect(dataset)
+        self._setup_editor(project, schema_info, label_field)
 
-        label_url = project.export_labels(timeout_seconds=timeout)
-        return _download_or_load_ndjson(label_url)
+        if project.setup_complete is None:
+            raise ValueError("Labelbox project failed to be created")
+
+        return project.uid
+
+    def _setup_editor(self, project, schema_info, label_field):
+        editor = next(
+            self._client.get_labeling_frontends(
+                where=lb.LabelingFrontend.name == "Editor"
+            )
+        )
+
+        tools, classifications = self._create_ontology_tools(
+            schema_info, label_field
+        )
+
+        ontology_builder = lbs.OntologyBuilder(
+            tools=tools, classifications=classifications
+        )
+        project.setup(editor, ontology_builder.asdict())
+
+    def _create_ontology_tools(self, schema_info, label_field):
+        tools = []
+        classifications = []
+        label_type = schema_info["type"]
+        classes = schema_info["classes"]
+        attr_schema = schema_info["attributes"]
+
+        general_attrs = self._format_attributes(attr_schema)
+
+        if label_type in ["scalar", "classification", "classifications"]:
+            classifications = self._build_classification(
+                classes, label_field, general_attrs, label_type
+            )
+
+        else:
+            for c in classes:
+                if isinstance(c, dict):
+                    raise NotImplementedError(
+                        "Allow for different classes to have different attributes"
+                    )
+                    subset_classes = c["classes"]
+                    subset_attr_schema = c["attributes"]
+                    subset_attrs = self._format_attributes(subset_attr_schema)
+                    all_attrs = general_attrs + subset_attrs
+                    for sc in subset_classes:
+                        tools.extend(
+                            self._build_tool(sc, label_type, all_attrs)
+                        )
+                else:
+                    tools.extend(
+                        self._build_tool(c, label_type, general_attrs)
+                    )
+
+        return tools, classifications
+
+    def _format_attributes(self, attr_schema):
+        attributes = []
+        for attr_name, attr_info in attr_schema.items():
+            attr_type = attr_info["type"]
+            class_type = self.attr_type_map[attr_type]
+            if attr_type == "text":
+                attr = lbs.Classification(
+                    class_type=class_type, instructions=attr_name,
+                )
+            else:
+                attr_values = attr_info["values"]
+                options = [lbs.Option(value=str(v)) for v in attr_values]
+                attr = lbs.Classification(
+                    class_type=class_type,
+                    instructions=attr_name,
+                    options=options,
+                )
+            attributes.append(attr)
+        return attributes
+
+    def _build_tool(self, class_name, label_type, attributes):
+        tools = []
+        tool_types = self._tools_per_label_type[label_type]
+        for tool_type in tool_types:
+            tools.append(
+                lbs.Tool(
+                    name=str(class_name),
+                    tool=tool_type,
+                    classifications=attributes,
+                )
+            )
+        return tools
+
+    def _build_classification(self, classes, name, attributes, label_type):
+        """Return the classifications for the given label field. Generally, the
+        classification is a dropdown selection for given classes, but can be a
+        text entry for scalars without provided classes.
+
+        Attributes are available for Classification and Classifications types
+        and are added as additional classifications in Labelbox prepended with
+        "attr:<label-field>"
+        """
+        classifications = []
+        if label_type == "scalar" and not classes:
+            classification = lbs.Classification(
+                class_type=lbs.Classification.Type.TEXT, instructions=name,
+            )
+            classifications.append(classification)
+        elif label_type == "classifications":
+            classification = lbs.Classification(
+                class_type=lbs.Classification.Type.CHECKLIST,
+                instructions=name,
+                options=[lbs.Option(value=str(v)) for v in classes],
+            )
+            classifications.append(classification)
+        else:
+            classification = lbs.Classification(
+                class_type=lbs.Classification.Type.DROPDOWN,
+                instructions=name,
+                options=[lbs.Option(value=str(v)) for v in classes],
+            )
+            classifications.append(classification)
+
+        if label_type != "scalar":
+            for attribute in attributes:
+                attribute = deepcopy(attribute)
+                attr_name = attribute.instructions
+                attribute.instructions = "attr:%s_%s" % (name, attr_name)
+                classifications.append(attribute)
+        return classifications
 
     def download_annotations(
         self, label_schema, project_ids,
@@ -410,6 +494,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         """
         # TODO
         return {}
+
+    def _download_project_labels(
+        self, project_id=None, project=None, timeout=60
+    ):
+        if project is None:
+            if project_id is None:
+                raise ValueError(
+                    "Either `project_id` or `project` is required"
+                )
+            project = self._client.get_project(project_id)
+
+        label_url = project.export_labels(timeout_seconds=timeout)
+        return _download_or_load_ndjson(label_url)
 
     def launch_editor(self, url=None):
         """Launches the Labelbox editor in your default web browser.
