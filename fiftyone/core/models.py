@@ -25,7 +25,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-from fiftyone import ViewField as F
 
 tud = fou.lazy_import("torch.utils.data")
 
@@ -538,7 +537,8 @@ def _apply_video_model(
 
 def _get_frame_counts(samples):
     if samples._dataset._is_clips:
-        frame_counts = samples.values(F("support")[1] - F("support")[0] + 1)
+        expr = fo.ViewField("support")[1] - fo.ViewField("support")[0] + 1
+        frame_counts = samples.values(expr)
     else:
         samples.compute_metadata()
         frame_counts = samples.values("metadata.total_frame_count")

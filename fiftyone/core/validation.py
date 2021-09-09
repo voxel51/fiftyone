@@ -9,9 +9,9 @@ import eta.core.utils as etau
 
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
-import fiftyone.core.video as fov
 
 foc = fou.lazy_import("fiftyone.core.collections")
+fov = fou.lazy_import("fiftyone.core.video")
 
 
 def validate_image_sample(sample):
