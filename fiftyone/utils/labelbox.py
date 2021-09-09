@@ -271,7 +271,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         Args:
             project_id: the project id
         """
-        logger.info("Deleting project %s..." % str(project_id))
+        logger.info("Deleting project %s...", str(project_id))
         project = self._client.get_project(project_id)
         project.delete()
 
@@ -563,8 +563,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return tools
 
     def _create_classes_as_attrs(self, classes, general_attrs):
-        """Create a DROPDOWN attribute for classes and format all class specific
-        attributes.
+        """Create a RADIO attribute for classes and format all class
+        specific attributes.
         """
         options = []
         for c in classes:
@@ -650,8 +650,8 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         self.project_id = project_id
 
     def load_credentials(self, url=None, api_key=None):
-        """Load the Labelbox credentials from the given keyword arguments or the
-        FiftyOne annotation config.
+        """Load the Labelbox credentials from the given keyword arguments or
+        the FiftyOne annotation config.
 
         Args:
             url (None): the url of the Labelbox server
