@@ -711,23 +711,25 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self, labels_dict, sample_id, results, label_schema
     ):
         """
-        goals: 
+        Convert the labels_dict parsed from Labelbox output to the results
+        expected by `fiftyone.utils.annotations.load_annotations()`
 
-        create results:
+        results:
             <label_field>: {
                 <label_type>: {
                     <sample_id>: {
                         <frame/label_id>: 
                             <fo.Label> or {<label_id>: <fo.Label>}
-                    }
+                    } or <label - for scalars>
                 }
             }
-        from labels_dict: {
+        labels_dict: {
             <label_field>: {
                 <label_type>: [<fo.Label>, ...]
             }
         }
 
+        Labelbox label type to annotations label type conversion
         detections -> detections
         keypoints -> keypoints
         polylines -> detections, semantic_segmentation, polylines
