@@ -763,21 +763,16 @@ def _load_scalars(samples, anno_dict, label_field):
     logger.info("Loading annotations for field '%s'...", label_field)
     with fou.ProgressBar(total=len(anno_dict)) as pb:
         for sample_id, value in pb(anno_dict.items()):
+            sample = samples[sample_id]
             if isinstance(value, dict):
                 field, _ = samples._handle_frame_field(label_field)
-                sample = (
-                    samples.select(sample_id)
-                    .select_frames(list(value.keys()))
-                    .first()
-                )
-                for frame in sample.frames.values():
-                    frame[field] = value[frame.id]
+                for frame_number, frame_label in value.items():
+                    frame = sample.frames[frame_number]
+                    frame[field] = frame_label
 
-                sample.save()
             else:
-                sample = samples[sample_id]
                 sample[label_field] = value
-                sample.save()
+            sample.save()
 
 
 def _add_new_labels(samples, anno_dict, label_field, label_type):
@@ -811,17 +806,14 @@ def _add_new_labels(samples, anno_dict, label_field, label_type):
 
         if is_video:
             field, _ = samples._handle_frame_field(label_field)
-            images = sample.frames.values()
+            images = [sample.frames[i] for i in sample_annos.keys()]
         else:
             field = label_field
             images = [sample]
 
         for image in images:
             if is_video:
-                if image.id not in sample_annos:
-                    continue
-
-                image_annos = sample_annos[image.id]
+                image_annos = sample_annos[image.frame_number]
             else:
                 image_annos = sample_annos
 
@@ -914,14 +906,14 @@ def _merge_labels(samples, anno_dict, results, label_field, label_info):
 
         if is_video:
             field, _ = samples._handle_frame_field(label_field)
-            images = sample.frames.values()
+            images = [sample.frames[i] for i in sample_annos.keys()]
         else:
             field = label_field
             images = [sample]
 
         for image in images:
             if is_video:
-                image_annos = sample_annos[image.id]
+                image_annos = sample_annos[image.frame_number]
             else:
                 image_annos = sample_annos
 

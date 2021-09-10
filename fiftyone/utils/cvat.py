@@ -3164,7 +3164,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 created for that task
             -   **frame_id_map**: a dictionary mapping task id to another map
                 from the CVAT frame index of every image to the FiftyOne sample
-                id (for videos) and FiftyOne frame id
+                id (for videos) and FiftyOne frame number
             -   **labels_task_map**: a dictionary mapping label field names to
                 a list of tasks created for that label field
             -   **assigned_scalar_attrs**: a dictionary mapping the label field
@@ -3617,8 +3617,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             anno_type: the type of annotations to parse, in
                 ``("shapes", "tags", "track")``
             annos: list of shapes or tags
-            frame_id_map: dict mapping CVAT frame ids to FiftyOne sample and
-                frame uuids
+            frame_id_map: dict mapping CVAT frame ids to FiftyOne sample ids and
+                frame numbers
             label_type: expected label type to parse from the given annotations
             class_map: dict mapping CVAT class id to class name
             attr_id_map: dict mapping CVAT class id to a map of attr name to
@@ -3739,7 +3739,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         store_frame = False
         if "frame_id" in frame_id_map[frame]:
             store_frame = True
-            frame_id = frame_id_map[frame]["frame_id"]
+            frame_number = frame_id_map[frame]["frame_id"]
 
         label = None
 
@@ -3832,14 +3832,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             results[label_type][sample_id] = {}
 
         if store_frame:
-            if frame_id not in results[label_type][sample_id]:
-                results[label_type][sample_id][frame_id] = {}
+            if frame_number not in results[label_type][sample_id]:
+                results[label_type][sample_id][frame_number] = {}
 
             if label_type == "scalar":
-                results[label_type][sample_id][frame_id] = label
+                results[label_type][sample_id][frame_number] = label
             else:
                 results = self._merge_label_to_results(
-                    results, label, label_type, sample_id, frame_id=frame_id
+                    results,
+                    label,
+                    label_type,
+                    sample_id,
+                    frame_number=frame_number,
                 )
         else:
             if label_type == "scalar":
@@ -3852,15 +3856,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return results, prev_type
 
     def _merge_label_to_results(
-        self, results, label, label_type, sample_id, frame_id=None
+        self, results, label, label_type, sample_id, frame_number=None
     ):
         """Merges polylines with the same label id, for all other types this
         simply adds them to the results. Merging polylines lets us later create
         segmentations with multiple disjoint masks.
         """
         curr_result = results[label_type][sample_id]
-        if frame_id is not None:
-            curr_result = curr_result[frame_id]
+        if frame_number is not None:
+            curr_result = curr_result[frame_number]
 
         if label.id in curr_result:
             if isinstance(label, fol.Polyline) and isinstance(
@@ -3965,15 +3969,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         is_video = samples.media_type == fom.VIDEO
 
-        frame_id = -1
+        cvat_frame_id = -1
         for sample in samples:
             metadata = sample.metadata
 
             if is_video:
-                images = sample.frames.values()
                 if label_field.startswith("frames."):
                     label_field = label_field[len("frames.") :]
 
+                num_frames = metadata.total_frame_count
+                images = range(1, num_frames + 1)
                 if is_shape:
                     width = metadata.frame_width
                     height = metadata.frame_height
@@ -3984,7 +3989,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     height = metadata.height
 
             for image in images:
-                frame_id += 1
+                cvat_frame_id += 1
+                if is_video:
+                    frame_number = image
+                    if frame_number not in sample.frames:
+                        continue
+                    else:
+                        image = sample.frames[frame_number]
 
                 try:
                     image_label = image[label_field]
@@ -4014,7 +4025,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             {
                                 "label_id": class_name,
                                 "group": 0,
-                                "frame": frame_id,
+                                "frame": cvat_frame_id,
                                 "source": "manual",
                                 "attributes": attributes,
                             }
@@ -4036,7 +4047,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         {
                             "label_id": class_name,
                             "group": 0,
-                            "frame": frame_id,
+                            "frame": cvat_frame_id,
                             "source": "manual",
                             "attributes": attributes,
                         }
@@ -4083,7 +4094,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         height,
                         attr_names,
                         classes,
-                        frame_id,
+                        cvat_frame_id,
                         label_type=label_type,
                         load_tracks=load_tracks,
                     )
@@ -4092,7 +4103,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tracks = self._update_tracks(tracks, new_tracks)
 
         if load_tracks:
-            formatted_tracks = self._format_tracks(tracks, frame_id)
+            formatted_tracks = self._format_tracks(tracks, cvat_frame_id)
             return tags_or_shapes, formatted_tracks, remapped_attr_names
 
         return tags_or_shapes, remapped_attr_names
@@ -4132,20 +4143,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _create_id_mapping(self, samples):
         is_video = samples.media_type == fom.VIDEO
-        frame_id = -1
+        cvat_frame_id = -1
 
         id_mapping = {}
         for sample in samples:
             if is_video:
-                images = sample.frames.values()
+                images = range(1, sample.metadata.total_frame_count + 1)
             else:
                 images = [sample]
 
             for image in images:
-                frame_id += 1
-                id_mapping[frame_id] = {"sample_id": sample.id}
+                cvat_frame_id += 1
+                id_mapping[cvat_frame_id] = {"sample_id": sample.id}
                 if is_video:
-                    id_mapping[frame_id]["frame_id"] = image.id
+                    id_mapping[cvat_frame_id]["frame_id"] = image
 
         return id_mapping
 
