@@ -72,7 +72,12 @@ Then follow the normal steps to make a pull request in the public
 As these workflows solidify, syncing between the projects should be automated
 to whatever extent possible.
 
-## Installing FiftyOne Teams releases
+## Documenting Teams releases
+
+Currently release notes for Teams release are documented
+[in this doc](https://docs.google.com/document/d/1SvoJRXiajm14jXaenD9GottSEoQlOVCNcyMEV8qrF-g).
+
+## Installing Teams releases
 
 FiftyOne Teams releases are installed via a private FiftyOne PyPI server that
 we maintain at https://pypi.fiftyone.ai.
@@ -95,7 +100,7 @@ PyPI admins can add additional user tokens as follows:
 curl -X POST -F 'email=user@company.com' https://admin:<password>@pypi.fiftyone.ai/admin/create_token/save
 ```
 
-## Using FiftyOne Teams on bb1
+## Using Teams on bb1
 
 We maintain a shared deployment of FiftyOne Teams on bb1 (voxelbb1.ddns.net).
 
