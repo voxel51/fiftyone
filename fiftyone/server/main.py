@@ -1348,7 +1348,9 @@ def _count_values(f, view):
 
             fields.append(field)
             aggregations.append(
-                foa.CountValues("%s%s" % (prefix, path), _first=200)
+                foa.CountValues(
+                    "%s%s" % (prefix, path), _first=200, _asc=False
+                )
             )
 
     return aggregations, fields
