@@ -51,6 +51,8 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             attribute (True)
         project_name (None): the name of the project that will be created,
             defaults to FiftyOne_<dataset-name>
+        upload_annotations (False): whether to upload annotations to Labelbox.
+            This is considered "Model Assisted Labeling" and is a paid feature
     """
 
     def __init__(
@@ -61,6 +63,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         api_key=None,
         classes_as_attrs=True,
         project_name=None,
+        upload_annotations=False,
         **kwargs,
     ):
         super().__init__(
@@ -73,6 +76,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.url = url
         self.classes_as_attrs = classes_as_attrs
         self.project_name = project_name
+        self.upload_annotations = upload_annotations
 
         # store privately so it isn't serialized
         self._api_key = api_key
@@ -147,7 +151,9 @@ class LabelboxBackend(foua.AnnotationBackend):
             project_name=self.config.project_name,
         )
 
-        id_map = self.build_label_id_map(samples)
+        id_map = self.build_label_id_map(
+            samples, store_label_ids=self.config.upload_annotations
+        )
 
         if launch_editor:
             editor_url = api.editor_url(project_id)
@@ -345,6 +351,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         media_field="filepath",
         classes_as_attrs=True,
         project_name=None,
+        upload_annotations=False,
     ):
         """Parse the given samples and use the label schema to create project,
         upload data, and upload formatted annotations to Labelbox.
@@ -362,6 +369,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 attribute (True)
             project_name (None): the name of the project that will be created,
                 defaults to FiftyOne_<dataset-name>
+            upload_annotations (False): whether to upload annotations to Labelbox.
+                This is considered "Model Assisted Labeling" and is a paid feature
+
         """
         if not classes_as_attrs:
             raise NotImplementedError(
@@ -380,6 +390,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_id = self._setup_project(
             project_name, dataset, label_schema, classes_as_attrs,
         )
+
+        if upload_annotations:
+            # TODO
+            raise NotImplementedError(
+                "Uploading annotations to Labelbox is not yet supported"
+            )
 
         return project_id
 

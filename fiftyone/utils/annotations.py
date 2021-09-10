@@ -1223,7 +1223,7 @@ class AnnotationBackend(foa.AnnotationMethod):
             "subclass must implement download_annotations()"
         )
 
-    def build_label_id_map(self, samples):
+    def build_label_id_map(self, samples, store_label_ids=True):
         """Utility method that builds a label ID dictionary for the given
         collection.
 
@@ -1239,6 +1239,8 @@ class AnnotationBackend(foa.AnnotationMethod):
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            store_label_ids: whether labels are uploaded and the ids need to be
+                stored (True) or whether to just store sample ids (False)
 
         Returns:
             a dict
@@ -1251,16 +1253,21 @@ class AnnotationBackend(foa.AnnotationMethod):
             ):
                 continue
 
-            _, label_id_path = samples._get_label_field_path(label_field, "id")
-            sample_ids, label_ids = samples.values(["id", label_id_path])
+            if store_label_ids:
+                _, label_id_path = samples._get_label_field_path(
+                    label_field, "id"
+                )
+                sample_ids, label_ids = samples.values(["id", label_id_path])
 
-            # Flatten frames lists
-            for ind, ids in enumerate(label_ids):
-                if ids is not None and ids and isinstance(ids[0], list):
-                    ids = [i for frame in ids for i in frame]
-                    label_ids[ind] = ids
+                # Flatten frames lists
+                for ind, ids in enumerate(label_ids):
+                    if ids is not None and ids and isinstance(ids[0], list):
+                        ids = [i for frame in ids for i in frame]
+                        label_ids[ind] = ids
 
-            id_map[label_field] = dict(zip(sample_ids, label_ids))
+                id_map[label_field] = dict(zip(sample_ids, label_ids))
+            else:
+                id_map[label_field] = {sid: [] for sid in samples.values("id")}
 
         return id_map
 
