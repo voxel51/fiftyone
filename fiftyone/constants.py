@@ -37,7 +37,7 @@ AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
-VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+VERSION_LONG = "FiftyOne Teams v%s, %s" % (TEAMS_VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 DEV_INSTALL = os.path.isdir(
@@ -45,7 +45,7 @@ DEV_INSTALL = os.path.isdir(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
     )
 )
-RC_INSTALL = "rc" in VERSION
+RC_INSTALL = "rc" in TEAMS_VERSION
 
 # App configuration
 DEFAULT_APP_COLOR_POOL = {
