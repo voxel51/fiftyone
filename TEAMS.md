@@ -111,10 +111,9 @@ permissions for everyone else.
 Then add the following to your `~/.bashrc`:
 
 ```shell
-export FIFTYONE_DO_NOT_TRACK=true
-export FIFTYONE_DATASET_ZOO_DIR=/scratch/fiftyone/zoo
-export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone/datasets
 export FIFTYONE_DATABASE_URI=mongodb://localhost:27017
+export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone
+export FIFTYONE_DO_NOT_TRACK=true
 ```
 
 This will be your default environment when using FiftyOne on bb1. You can read
