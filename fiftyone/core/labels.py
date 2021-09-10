@@ -660,6 +660,52 @@ class Detection(ImageLabel, _HasID, _HasAttributesDict):
             **attributes,
         )
 
+    @classmethod
+    def from_mask(cls, mask, label, attributes={}):
+        """Creates a :class:`Detection` instance from an
+        array and a class label. This method finds the bounding box contour of
+        the non-zero portion of the mask and crops it.
+
+        Args:
+            mask: a numpy array containing 0 or False for the background and
+                non-zero or True values where this detected object exists in
+                the image
+            label: the label string for this detected object
+            attributes: a dictionary containing the attribute names and values
+                to apply to this object
+
+        Returns:
+            a :class:`Detection`
+        """
+        # Force grayscale
+        if mask.ndim > 1:
+            mask = mask[:, :, 0]
+
+        mask_h, mask_w = mask.shape[:2]
+        mask = mask.astype(bool).astype(int)
+
+        # Crop mask and get bbox
+
+        # pylint: disable=no-member
+        coords = cv2.findNonZero(mask)
+        # pylint: disable=no-member
+        x, y, w, h = cv2.boundingRect(coords)
+
+        bbox = [
+            x / mask_w,
+            y / mask_h,
+            w / mask_w,
+            h / mask_h,
+        ]
+        mask = mask[y : y + h, x : x + w]
+
+        return Detection(
+            label=str(label),
+            bounding_box=bbox,
+            mask=mask.astype(bool),
+            **attributes,
+        )
+
 
 class Detections(ImageLabel, _HasLabelList):
     """A list of object detections in an image.

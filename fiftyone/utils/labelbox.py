@@ -66,6 +66,10 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         super().__init__(
             "labelbox", label_schema, media_field=media_field, **kwargs
         )
+        if not classes_as_attrs:
+            raise NotImplementedError(
+                "Support for annotating classes at the top level is not yet implemented."
+            )
         self.url = url
         self.classes_as_attrs = classes_as_attrs
         self.project_name = project_name
@@ -143,13 +147,15 @@ class LabelboxBackend(foua.AnnotationBackend):
             project_name=self.config.project_name,
         )
 
+        id_map = self.build_label_id_map(samples)
+
         if launch_editor:
             editor_url = api.editor_url(project_id)
             logger.info("Launching editor at '%s'...", editor_url)
             api.launch_editor(url=editor_url)
 
         return LabelboxAnnotationResults(
-            samples, self.config, project_id, backend=self
+            samples, self.config, id_map, project_id, backend=self
         )
 
     def download_annotations(self, results):
@@ -157,7 +163,9 @@ class LabelboxBackend(foua.AnnotationBackend):
 
         logger.info("Downloading labels from Labelbox...")
         annotations = api.download_annotations(
-            results.config.label_schema, results.project_id,
+            results.config.label_schema,
+            results.project_id,
+            classes_as_attrs=results.config.classes_as_attrs,
         )
         logger.info("Download complete")
 
@@ -265,26 +273,33 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_id,
         )
 
-    def delete_project(self, project_id):
+    def delete_project(self, project_id, delete_datasets=True):
         """Deletes the given project from the Labelbox server.
 
         Args:
             project_id: the project id
+            delete_datasets: whether to delete the attached datasets as well
         """
         logger.info("Deleting project %s...", str(project_id))
         project = self._client.get_project(project_id)
+        if delete_datasets:
+            for dataset in project.datasets():
+                dataset.delete()
         project.delete()
 
-    def delete_projects(self, project_ids):
+    def delete_projects(self, project_ids, delete_datasets=True):
         """Deletes the given projects from the Labelbox server.
 
         Args:
             project_ids: an iterable of project IDs
+            delete_datasets: whether to delete the attached datasets as well
         """
         logger.info("Deleting projects...")
         with fou.ProgressBar() as pb:
             for project_id in pb(list(project_ids)):
-                self.delete_project(project_id)
+                self.delete_project(
+                    project_id, delete_datasets=delete_datasets
+                )
 
     @classmethod
     def upload_data(
@@ -348,6 +363,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_name (None): the name of the project that will be created,
                 defaults to FiftyOne_<dataset-name>
         """
+        if not classes_as_attrs:
+            raise NotImplementedError(
+                "Support for annotating classes at the top level is not yet implemented."
+            )
         if project_name is None:
             project_name = "FiftyOne_%s" % (
                 samples._root_dataset.name.replace(" ", "_"),
@@ -580,8 +599,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         attributes = [classes_attr] + general_attrs
         return attributes
 
+    def _get_sample_metadata(self, project, sample_id):
+        metadata = None
+        for dataset in project.datasets():
+            try:
+                metadata = dataset.data_row_for_external_id(
+                    sample_id
+                ).media_attributes
+            except lb.exceptions.ResourceNotFoundError:
+                pass
+        return metadata
+
     def download_annotations(
-        self, label_schema, project_id,
+        self, label_schema, project_id, classes_as_attrs=True
     ):
         """Download annotations from the Labelbox server and parses them into the
         appropriate FiftyOne types.
@@ -590,16 +620,68 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             label_schema: a dictionary containing the description of label
                 fields, classes and attribute to annotate
             project_id: the id of the project created by uploading samples
+            classes_as_attrs (True): whether to show every class at the top
+                level of the editor (False) or whether to show the label field
+                at the top level and annotate the class as a required
+                attribute (True)
+            frame_id_map: 
+            sample_metadata: 
 
         Returns:
             the label results dict
         """
-        # TODO
-        return {}
+        is_video = False
+        if not classes_as_attrs:
+            raise NotImplementedError(
+                "Support for annotating classes at the top level is not yet implemented."
+            )
+        project = self._client.get_project(project_id)
+        labels_json = self._download_project_labels(project=project)
 
-    def _download_project_labels(
-        self, project_id=None, project=None, timeout=60
-    ):
+        results = {}
+        if classes_as_attrs:
+            class_attr = "class_name"
+        else:
+            class_attr = None
+
+        for d in labels_json:
+            labelbox_id = d["DataRow ID"]
+            sample_id = d["External ID"]
+            if sample_id is None:
+                logger.warning(
+                    "No sample id found for DataRow %s. " "Skipping...",
+                    labelbox_id,
+                )
+                continue
+
+            metadata = self._get_sample_metadata(project, sample_id)
+            if metadata is None:
+                logger.warning(
+                    "No metadata found for sample %s. Skipping...", sample_id
+                )
+                continue
+
+            if is_video:
+                # TODO
+                # frame_size = (
+                #    metadata["frame_width"],
+                #    metadata["frame_height"],
+                # )
+                # frames = _parse_video_labels(d["Label"], frame_size)
+                pass
+
+            else:
+                frame_size = (metadata["width"], metadata["height"])
+                labels_dict = _parse_image_labels(
+                    d["Label"], frame_size, class_attr=class_attr
+                )
+                results = self._add_labels_to_results(
+                    labels_dict, sample_id, results, label_schema
+                )
+
+        return results
+
+    def _download_project_labels(self, project_id=None, project=None):
         if project is None:
             if project_id is None:
                 raise ValueError(
@@ -607,8 +689,139 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 )
             project = self._client.get_project(project_id)
 
-        label_url = project.export_labels(timeout_seconds=timeout)
-        return _download_or_load_ndjson(label_url)
+        return download_labels_from_labelbox(project)
+
+    def _add_labels_to_results(
+        self, labels_dict, sample_id, results, label_schema
+    ):
+        """
+        goals: 
+
+        create results:
+            <label_field>: {
+                <label_type>: {
+                    <sample_id>: {
+                        <frame/label_id>: 
+                            <fo.Label> or {<label_id>: <fo.Label>}
+                    }
+                }
+            }
+        from labels_dict: {
+            <label_field>: {
+                <label_type>: [<fo.Label>, ...]
+            }
+        }
+
+        detections -> detections
+        keypoints -> keypoints
+        polylines -> detections, semantic_segmentation, polylines
+        segmentations -> detections, semantic_segmentation
+        """
+        for label_field, labels in labels_dict.items():
+            if label_field not in label_schema:
+                # TODO Unexpected labels
+                pass
+            else:
+                label_info = label_schema[label_field]
+                expected_type = label_info["type"]
+                if isinstance(labels, dict):
+                    label_results = self._convert_label_types(
+                        labels, expected_type, sample_id
+                    )
+                else:
+                    label_info = label_schema[label_field]
+                    expected_type = label_info["type"]
+                    # Classifications
+                    if expected_type == "classifications":
+                        label_results = {
+                            "classifications": {
+                                sample_id: {
+                                    c.id: c for c in labels.classifications
+                                }
+                            }
+                        }
+                    elif expected_type == "classification":
+                        label_results = {
+                            "classifications": {sample_id: {labels.id: labels}}
+                        }
+                    else:
+                        # Scalar
+                        label_results = {"scalar": {sample_id: labels.label}}
+
+                label_results = {label_field: label_results}
+                results = self._merge_results(results, label_results)
+
+        return results
+
+    def _convert_label_types(self, labels_dict, expected_type, sample_id):
+        output_labels = {}
+        for lb_type, labels_list in labels_dict.items():
+            if lb_type == "detections":
+                fo_type = "detections"
+            if lb_type == "keypoints":
+                fo_type = "keypoints"
+            if lb_type == "polylines":
+                if expected_type in ["detections", "segmentations"]:
+                    fo_type = "detections"
+                elif expected_type == "semantic_segmentation":
+                    fo_type = "semantic_segmentation"
+                else:
+                    fo_type = "polylines"
+            if lb_type == "segmentations":
+                if expected_type == "semantic_segmentation":
+                    fo_type = "semantic_segmentation"
+                else:
+                    fo_type = "detections"
+                labels_list = self._convert_segmentations(labels_list, fo_type)
+
+            if fo_type not in output_labels:
+                output_labels[fo_type] = {}
+            if sample_id not in output_labels[fo_type]:
+                output_labels[fo_type][sample_id] = {}
+            for label in labels_list:
+                output_labels[fo_type][sample_id][label.id] = label
+        return output_labels
+
+    def _convert_segmentations(self, labels_list, label_type):
+        labels = []
+        for seg_dict in labels_list:
+            mask = seg_dict["mask"]
+            label = seg_dict["label"]
+            attrs = seg_dict["attributes"]
+            labels.append(
+                fol.Detection.from_mask(mask, label, attributes=attrs)
+            )
+
+        if label_type == "semantic_segmentation":
+            detections = fol.Detections(detections=labels)
+
+            try:
+                mask_targets = {int(d.label): d.label for d in labels}
+            except ValueError:
+                logger.warning(
+                    "Semantic segmentation labels only support integer class "
+                    "annotations but found another type. Skipping..."
+                )
+                return []
+
+            h, w, _ = mask.shape
+            labels = [
+                detections.to_segmentation(
+                    frame_size=(w, h), mask_targets=mask_targets
+                )
+            ]
+
+        return labels
+
+    def _merge_results(self, results, new_results):
+        if isinstance(new_results, dict):
+            for key, val in new_results.items():
+                if key not in results:
+                    results[key] = val
+                else:
+                    results[key] = self._merge_results(results[key], val)
+
+        return results
 
     def launch_editor(self, url=None):
         """Launches the Labelbox editor in your default web browser.
@@ -630,14 +843,16 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         config: a :class:`LabelboxBackendConfig`
+        id_map: a label ID dictionary for the given collection
         project_id: the id string of the project created in this annotation run
         backend (None): a :class:`LabelboxBackend`
     """
 
     def __init__(
-        self, samples, config, project_id, backend=None,
+        self, samples, config, id_map, project_id, backend=None,
     ):
         super().__init__(samples, config, backend=backend)
+        self.id_map = id_map
         self.project_id = project_id
 
     def load_credentials(self, url=None, api_key=None):
@@ -686,7 +901,7 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config):
-        return cls(samples, config, d["project_id"])
+        return cls(samples, config, d["id_map"], d["project_id"])
 
 
 #
@@ -1444,7 +1659,7 @@ def _parse_video_labels(video_label_d, frame_size):
 
 
 # https://labelbox.com/docs/exporting-data/export-format-detail#images
-def _parse_image_labels(label_d, frame_size):
+def _parse_image_labels(label_d, frame_size, class_attr=None):
     labels = {}
 
     # Parse classifications
@@ -1455,7 +1670,7 @@ def _parse_image_labels(label_d, frame_size):
     # Parse objects
     # @todo what if `objects.keys()` conflicts with `classifications.keys()`?
     od_list = label_d.get("objects", [])
-    objects = _parse_objects(od_list, frame_size)
+    objects = _parse_objects(od_list, frame_size, class_attr=class_attr)
     labels.update(objects)
 
     return labels
@@ -1519,65 +1734,105 @@ def _parse_attributes(cd_list):
     return attributes
 
 
-def _parse_objects(od_list, frame_size):
+def _parse_objects(od_list, frame_size, class_attr=None):
     detections = []
     polylines = []
     keypoints = []
     mask = None
     mask_instance_uri = None
+    label_fields = {}
     for od in od_list:
-        label = od["value"]
         attributes = _parse_attributes(od.get("classifications", []))
+        if class_attr is not None and class_attr in attributes:
+            label_field = od["value"]
+            label = attributes.pop(class_attr)
+            if label_field not in label_fields:
+                label_fields[label_field] = {}
+        else:
+            label = od["value"]
+            label_field = None
 
         if "bbox" in od:
             # Detection
             bounding_box = _parse_bbox(od["bbox"], frame_size)
-            detections.append(
-                fol.Detection(
-                    label=label, bounding_box=bounding_box, **attributes
-                )
+            det = fol.Detection(
+                label=label, bounding_box=bounding_box, **attributes
             )
+            if label_field is None:
+                detections.append(det)
+            else:
+                if "detections" not in label_fields[label_field]:
+                    label_fields[label_field]["detections"] = []
+                label_fields[label_field]["detections"].append(det)
+
         elif "polygon" in od:
             # Polyline
             points = _parse_points(od["polygon"], frame_size)
-            polylines.append(
-                fol.Polyline(
-                    label=label,
-                    points=[points],
-                    closed=True,
-                    filled=True,
-                    **attributes,
-                )
+            polyline = fol.Polyline(
+                label=label,
+                points=[points],
+                closed=True,
+                filled=True,
+                **attributes,
             )
+            if label_field is None:
+                polylines.append(polyline)
+            else:
+                if "polylines" not in label_fields[label_field]:
+                    label_fields[label_field]["polylines"] = []
+                label_fields[label_field]["polylines"].append(polyline)
+
         elif "line" in od:
             # Polyline
             points = _parse_points(od["line"], frame_size)
-            polylines.append(
-                fol.Polyline(
-                    label=label,
-                    points=[points],
-                    closed=True,
-                    filled=False,
-                    **attributes,
-                )
+            polyline = fol.Polyline(
+                label=label,
+                points=[points],
+                closed=True,
+                filled=False,
+                **attributes,
             )
+            if label_field is None:
+                polylines.append(polyline)
+            else:
+                if "polylines" not in label_fields[label_field]:
+                    label_fields[label_field]["polylines"] = []
+                label_fields[label_field]["polylines"].append(polyline)
+
         elif "point" in od:
-            # Polyline
+            # Keypoint
             point = _parse_point(od["point"], frame_size)
-            keypoints.append(
-                fol.Keypoint(label=label, points=[point], **attributes)
-            )
+            keypoint = fol.Keypoint(label=label, points=[point], **attributes)
+            if label_field is None:
+                keypoints.append(keypoint)
+            else:
+                if "keypoints" not in label_fields[label_field]:
+                    label_fields[label_field]["keypoints"] = []
+                label_fields[label_field]["keypoints"].append(keypoint)
+
         elif "instanceURI" in od:
             # Segmentation mask
-            if mask is None:
-                mask_instance_uri = od["instanceURI"]
-                mask = _parse_mask(mask_instance_uri)
-            elif od["instanceURI"] != mask_instance_uri:
-                msg = (
-                    "Only one segmentation mask per image/frame is allowed; "
-                    "skipping additional mask(s)"
-                )
-                warnings.warn(msg)
+            if label_field is None:
+                if mask is None:
+                    mask_instance_uri = od["instanceURI"]
+                    mask = _parse_mask(mask_instance_uri)
+                elif od["instanceURI"] != mask_instance_uri:
+                    msg = (
+                        "Only one segmentation mask per image/frame is allowed; "
+                        "skipping additional mask(s)"
+                    )
+                    warnings.warn(msg)
+            else:
+                current_mask_instance_uri = od["instanceURI"]
+                current_mask = _parse_mask(current_mask_instance_uri)
+                segmentation = {
+                    "mask": current_mask,
+                    "label": label,
+                    "attributes": attributes,
+                }
+                if "segmentations" not in label_fields[label_field]:
+                    label_fields[label_field]["segmentations"] = []
+                label_fields[label_field]["segmentations"].append(segmentation)
         else:
             msg = "Ignoring unsupported label"
             warnings.warn(msg)
@@ -1595,6 +1850,8 @@ def _parse_objects(od_list, frame_size):
 
     if mask is not None:
         labels["segmentation"] = mask
+
+    labels.update(label_fields)
 
     return labels
 
