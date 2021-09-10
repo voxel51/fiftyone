@@ -1274,7 +1274,7 @@ def _parse_histogram_values(result, field):
 
 def _parse_count_values(result, field):
     return sorted(
-        [{"key": k, "count": v} for k, v in result.items()],
+        [{"key": k, "count": v} for k, v in result[1]],
         key=lambda i: i["count"],
         reverse=True,
     )
@@ -1347,7 +1347,9 @@ def _count_values(f, view):
                 continue
 
             fields.append(field)
-            aggregations.append(foa.CountValues("%s%s" % (prefix, path)))
+            aggregations.append(
+                foa.CountValues("%s%s" % (prefix, path), _first=200)
+            )
 
     return aggregations, fields
 
