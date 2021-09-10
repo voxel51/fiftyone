@@ -72,7 +72,12 @@ Then follow the normal steps to make a pull request in the public
 As these workflows solidify, syncing between the projects should be automated
 to whatever extent possible.
 
-## Installing FiftyOne Teams releases
+## Documenting Teams releases
+
+Currently release notes for Teams release are documented
+[in this doc](https://docs.google.com/document/d/1SvoJRXiajm14jXaenD9GottSEoQlOVCNcyMEV8qrF-g).
+
+## Installing Teams releases
 
 FiftyOne Teams releases are installed via a private FiftyOne PyPI server that
 we maintain at https://pypi.fiftyone.ai.
@@ -95,7 +100,7 @@ PyPI admins can add additional user tokens as follows:
 curl -X POST -F 'email=user@company.com' https://admin:<password>@pypi.fiftyone.ai/admin/create_token/save
 ```
 
-## Using FiftyOne Teams on bb1
+## Using Teams on bb1
 
 We maintain a shared deployment of FiftyOne Teams on bb1 (voxelbb1.ddns.net).
 
@@ -106,10 +111,17 @@ permissions for everyone else.
 Then add the following to your `~/.bashrc`:
 
 ```shell
-export FIFTYONE_DO_NOT_TRACK=true
-export FIFTYONE_DATASET_ZOO_DIR=/scratch/fiftyone/zoo
-export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone/datasets
 export FIFTYONE_DATABASE_URI=mongodb://localhost:27017
+export FIFTYONE_DO_NOT_TRACK=true
+
+# Auto-populated media (eg unpacking TFRecords) will be written here
+export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone/default
+
+# Zoo datasets will be downloaded here
+export FIFTYONE_DATASET_ZOO_DIR=/scratch/fiftyone/zoo
+
+# Zoo models will be downloaded here
+export FIFTYONE_MODEL_ZOO_DIR=/scratch/fiftyone/models
 ```
 
 This will be your default environment when using FiftyOne on bb1. You can read
