@@ -112,8 +112,16 @@ Then add the following to your `~/.bashrc`:
 
 ```shell
 export FIFTYONE_DATABASE_URI=mongodb://localhost:27017
-export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone
 export FIFTYONE_DO_NOT_TRACK=true
+
+# Auto-populated media (eg unpacking TFRecords) will be written here
+export FIFTYONE_DEFAULT_DATASET_DIR=/scratch/fiftyone/default
+
+# Zoo datasets will be downloaded here
+export FIFTYONE_DATASET_ZOO_DIR=/scratch/fiftyone/zoo
+
+# Zoo models will be downloaded here
+export FIFTYONE_MODEL_ZOO_DIR=/scratch/fiftyone/models
 ```
 
 This will be your default environment when using FiftyOne on bb1. You can read
