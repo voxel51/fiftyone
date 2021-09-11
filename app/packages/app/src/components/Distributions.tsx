@@ -12,6 +12,7 @@ import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
 import { AGGS } from "../utils/labels";
 import { filterStages } from "./Filters/atoms";
+import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -81,6 +82,8 @@ const Distribution = ({ distribution }) => {
     key: prettify(key, false),
   }));
 
+  const hasMore = data.length >= LIST_LIMIT;
+
   const map = strData.reduce(
     (acc, cur) => ({
       ...acc,
@@ -91,7 +94,7 @@ const Distribution = ({ distribution }) => {
 
   return (
     <Container ref={ref}>
-      <Title>{name}</Title>
+      <Title>{`${name}${hasMore ? ` (first ${data.length})` : ""}`}</Title>
       <BarChart
         ref={container}
         height={height - 37}

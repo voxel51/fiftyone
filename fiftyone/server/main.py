@@ -49,6 +49,11 @@ import fiftyone.server.utils as fosu
 
 
 db = foo.get_async_db_conn()
+_notebook_clients = {}
+_deactivated_clients = set()
+_DISCONNECT_TIMEOUT = 1  # seconds
+_DEFAULT_NUM_HISTOGRAM_BINS = 25
+_LIST_LIMIT = 200
 
 
 class RequestHandler(tornado.web.RequestHandler):
@@ -316,11 +321,6 @@ def _catch_errors(func):
                 )
 
     return wrapper
-
-
-_notebook_clients = {}
-_deactivated_clients = set()
-_DISCONNECT_TIMEOUT = 1  # seconds
 
 
 class PollingHandler(tornado.web.RequestHandler):
@@ -1049,7 +1049,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         search="",
         asc=False,
         count=True,
-        limit=200,
+        limit=_LIST_LIMIT,
         sample_id=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
@@ -1124,7 +1124,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             results = await _gather_results(aggs, fields, view)
 
         elif group == "sample tags" and results is None:
-            aggs = [foa.CountValues("tags")]
+            aggs = [foa.CountValues("tags", _first=_LIST_LIMIT)]
             try:
                 fields = [view.get_field_schema()["tags"]]
                 results = await _gather_results(aggs, fields, view)
@@ -1243,9 +1243,6 @@ def _filter_deactivated_clients(clients):
     return filtered
 
 
-_DEFAULT_NUM_HISTOGRAM_BINS = 25
-
-
 def _parse_histogram_values(result, field):
     counts, edges, other = result
     data = sorted(
@@ -1278,7 +1275,7 @@ def _parse_histogram_values(result, field):
 
 def _parse_count_values(result, field):
     return sorted(
-        [{"key": k, "count": v} for k, v in result.items()],
+        [{"key": k, "count": v} for k, v in result[1]],
         key=lambda i: i["count"],
         reverse=True,
     )
@@ -1351,7 +1348,11 @@ def _count_values(f, view):
                 continue
 
             fields.append(field)
-            aggregations.append(foa.CountValues("%s%s" % (prefix, path)))
+            aggregations.append(
+                foa.CountValues(
+                    "%s%s" % (prefix, path), _first=_LIST_LIMIT, _asc=False
+                )
+            )
 
     return aggregations, fields
 

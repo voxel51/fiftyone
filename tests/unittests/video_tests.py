@@ -229,6 +229,27 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(schema["array_field"], fo.ArrayField)
 
     @drop_datasets
+    def test_reload(self):
+        sample = fo.Sample(filepath="video.mp4", hello="world")
+        frame = fo.Frame(hi="there")
+
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertTrue(sample._in_db)
+        self.assertTrue(frame._in_db)
+
+        dataset.reload()
+
+        self.assertTrue(sample._in_db)
+        self.assertTrue(frame._in_db)
+
+        self.assertEqual(sample.hello, "world")
+        self.assertEqual(frame.hi, "there")
+
+    @drop_datasets
     def test_modify_video_sample(self):
         dataset = fo.Dataset()
 
