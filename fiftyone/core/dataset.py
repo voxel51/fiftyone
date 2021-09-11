@@ -4451,10 +4451,6 @@ def _load_dataset(name, migrate=True):
 
         sample_doc_cls._declare_field(sample_field)
 
-    # @todo REMOVE THIS, JUST A HACK TO WORK WITH NON-MIGRATED DATASETS
-    if dataset_doc.frame_collection_name is None:
-        dataset_doc.frame_collection_name = "frames." + sample_collection_name
-
     frame_collection_name = dataset_doc.frame_collection_name
 
     if sample_collection_name.startswith("clips."):
