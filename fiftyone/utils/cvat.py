@@ -178,7 +178,18 @@ class CVATImageDatasetImporter(
             cvat_images = []
 
         self._info = info
-        self._cvat_images_map = {i.name: i for i in cvat_images}
+
+        # Use subset/name as the key if it exists, else just name
+        cvat_images_map = {}
+        for i in cvat_images:
+            if i.subset:
+                key = os.path.join(i.subset, i.name)
+            else:
+                key = i.name
+
+            cvat_images_map[key] = i
+
+        self._cvat_images_map = cvat_images_map
 
         filenames = set(self._cvat_images_map.keys())
 
@@ -865,6 +876,7 @@ class CVATImage(object):
         polygons (None): a list of :class:`CVATImagePolygon` instances
         polylines (None): a list of :class:`CVATImagePolyline` instances
         points (None): a list of :class:`CVATImagePoints` instances
+        subset (None): the project subset of the image, if any
     """
 
     def __init__(
@@ -877,9 +889,11 @@ class CVATImage(object):
         polygons=None,
         polylines=None,
         points=None,
+        subset=None,
     ):
         self.id = id
         self.name = name
+        self.subset = subset
         self.width = width
         self.height = height
         self.boxes = boxes or []
@@ -1032,6 +1046,7 @@ class CVATImage(object):
         """
         id = d["@id"]
         name = d["@name"]
+        subset = d.get("@subset", None)
         width = int(d["@width"])
         height = int(d["@height"])
 
@@ -1060,6 +1075,7 @@ class CVATImage(object):
             polygons=polygons,
             polylines=polylines,
             points=points,
+            subset=subset,
         )
 
 
