@@ -508,7 +508,6 @@ class CountValues(Aggregation):
         Returns:
             a dict mapping values to counts
         """
-
         if self._first is None:
             return {i["k"]: i["count"] for i in d["result"]}
 
