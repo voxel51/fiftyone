@@ -702,9 +702,18 @@ class SampleCollection(object):
             view.set_values(tags_path, tags)
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
-        view = self.select_labels(ids=ids, tags=tags, fields=fields)
+        if ids is not None or tags is not None:
+            view = self.select_labels(ids=ids, tags=tags, fields=fields)
+        else:
+            view = self
 
-        label_fields = view._get_label_fields()
+        if fields is None:
+            label_fields = view._get_label_fields()
+        elif etau.is_str(fields):
+            label_fields = [fields]
+        else:
+            label_fields = fields
+
         if not label_fields:
             return []
 
@@ -713,8 +722,8 @@ class SampleCollection(object):
         is_frame_fields = []
         for label_field in label_fields:
             label_type, id_path = view._get_label_field_path(label_field, "id")
-            is_frame_field = self._is_frame_field(label_field)
             is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            is_frame_field = view._is_frame_field(label_field)
 
             paths.append(id_path)
             is_list_fields.append(is_list_field)
@@ -725,7 +734,7 @@ class SampleCollection(object):
         if has_frame_fields:
             paths.insert(0, "frames.frame_number")
 
-        results = view.values(paths)
+        results = list(view.values(paths))
 
         if has_frame_fields:
             frame_numbers = results.pop(0)
