@@ -1215,23 +1215,22 @@ methods to get information about the current status of the project for that anno
 
 .. code-block:: text
 
-    Initializing Labelbox client at 'https://api.labelbox.com/graphql'
     Project: FiftyOne_quickstart
             ID: cktixtv70e8zm0yba501v0ltz
             Created at: 2021-09-13 17:46:21+00:00
             Updated at: 2021-09-13 17:46:24+00:00
             Members:
     
-                    User: FIRSTNAME LASTNAME
+                    User: user1 
                         Role: Admin
                         ID: ckl137jfiss1c07320dacd81l
                         Nickname: user1
                         Email: USER1_EMAIL@email.com
 
-                    User: FIRSTNAME LASTNAME
+                    User: user2
                         Role: Labeler
+                        Name: FIRSTNAME LASTNAME
                         ID: ckl137jfiss1c07320dacd82y
-                        Nickname: user2
                         Email: USER2_EMAIL@email.com
 
             Reviews:

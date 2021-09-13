@@ -405,7 +405,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
     def list_datasets(self):
         """List the IDs of all datasets associated to your Labelbox account."""
-        datasets = self._client.list_datasets()
+        datasets = self._client.get_datasets()
         return [d.uid for d in datasets]
 
     def delete_datasets(self, dataset_ids):
@@ -422,7 +422,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
     def list_projects(self):
         """List the IDs of all projects associated to your Labelbox account."""
-        projects = self._client.list_projects()
+        projects = self._client.get_projects()
         return [p.uid for p in projects]
 
     def get_project(self, project_id):
@@ -1210,7 +1210,7 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         num_labeled_samples = len(list(project.labels()))
         if log:
             logger.info(
-                "Project: %s\n"
+                "\nProject: %s\n"
                 "\tID: %s\n"
                 "\tCreated at: %s\n"
                 "\tUpdated at: %s\n"
