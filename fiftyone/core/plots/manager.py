@@ -47,7 +47,7 @@ class PlotManager(object):
         session: a :class:`fiftyone.core.session.Session`
     """
 
-    _MIN_UPDATE_DELTA_SECONDS = 0.5
+    _MIN_UPDATE_DELTA_SECONDS = 1
     _LISTENER_NAME = "plots"
 
     def __init__(self, session):
@@ -56,6 +56,7 @@ class PlotManager(object):
         self._aggs = {}
         self._current_sample_ids = None
         self._current_labels = None
+        self._last_session_view = None
         self._last_update = None
         self._last_updates = {}
         self._connected = False
@@ -374,6 +375,9 @@ class PlotManager(object):
         if not self._ready_for_update("session"):
             return
 
+        if self._session.view == self._last_session_view:
+            return
+
         self._update_ids_from_session()
         self._update_plots_from_session()
 
@@ -451,7 +455,7 @@ class PlotManager(object):
             warnings.warn(msg)
 
         self._update_session(plot_view)
-        self._update_plots_from_session()
+        self._update_plots_from_session(exclude=[name])
 
     def _update_ids_from_session(self):
         session = self._session
@@ -489,14 +493,16 @@ class PlotManager(object):
         if not self._needs_update("session"):
             return
 
+        self._last_session_view = view
         with self._session.no_show():
             self._session.view = view
 
-    def _update_plots_from_session(self):
+    def _update_plots_from_session(self, exclude=None):
+        exclude = set(exclude or [])
         names = [
             name
             for name, plot in self._plots.items()
-            if plot.supports_session_updates
+            if plot.supports_session_updates and name not in exclude
         ]
         self._update_plots(names)
 
@@ -526,17 +532,17 @@ class PlotManager(object):
                     % (name, plot.link_type)
                 )
 
+        view = self._session._collection.view()
+
         if view_plot_names:
-            self._update_view_plots(view_plot_names)
+            self._update_view_plots(view_plot_names, view)
 
         for name in interactive_plot_names:
-            self._update_interactive_plot(name)
+            self._update_interactive_plot(name, view)
 
-    def _update_view_plots(self, names):
+    def _update_view_plots(self, names, view):
         # For efficiency, aggregations for all supported `ViewPlot`s are
         # computed in a single batch
-
-        view = self._session._collection.view()
 
         # Build flat list of all aggregations
         aggregations = []
@@ -571,7 +577,7 @@ class PlotManager(object):
             plot = self._plots[name]
             plot.update_view(view, agg_results=_agg_results)
 
-    def _update_interactive_plot(self, name):
+    def _update_interactive_plot(self, name, view):
         plot = self._plots[name]
 
         if plot.link_type == "samples":

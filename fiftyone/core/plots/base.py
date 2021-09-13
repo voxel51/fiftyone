@@ -784,7 +784,7 @@ class InteractivePlot(ResponsivePlot):
         """Selects the points with the given IDs in this plot.
 
         Args:
-            ids: a list of IDs
+            ids: a list of IDs, or None to reset the plot to its default state
         """
         if not self.is_connected:
             return
