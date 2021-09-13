@@ -61,14 +61,14 @@ on the cards below to see how!
     :image: ../_static/images/integrations/cvat.png
     :tags: Annotation
 
-.. Upcoming integrations :)
+.. customcarditem::
+    :header: Labelbox
+    :description: Use our Labelbox integration to annotate your FiftyOne datasets in the elegant Labelbox editor.
+    :link: labelbox.html
+    :image: ../_static/images/integrations/labelbox.jpeg
+    :tags: Annotation
 
-    .. customcarditem::
-        :header: Labelbox
-        :description: Use our Labelbox integration to easily annotate and edit your FiftyOne datasets.
-        :link: ../api/fiftyone.utils.labelbox.html
-        :image: https://voxel51.com/images/integrations/labelbox-128.png
-        :tags: Annotation
+.. Upcoming integrations :)
 
     .. customcarditem::
         :header: Scale AI
@@ -99,3 +99,4 @@ on the cards below to see how!
     Open Images <open_images.rst>
     COCO <coco.rst>
     CVAT <cvat.rst>
+    Labelbox <labelbox.rst>

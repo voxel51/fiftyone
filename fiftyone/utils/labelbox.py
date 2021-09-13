@@ -284,6 +284,28 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_id,
         )
 
+    def list_datasets(self):
+        """List the IDs of all datasets associated to your Labelbox account."""
+        datasets = self._client.list_datasets()
+        return [d.uid for d in datasets]
+
+    def delete_datasets(self, dataset_ids):
+        """Deletes the given datasets from the Labelbox server.
+
+        Args:
+            dataset_ids: an iterable of dataset IDs
+        """
+        logger.info("Deleting datasets...")
+        with fou.ProgressBar() as pb:
+            for dataset_id in pb(list(dataset_ids)):
+                dataset = self._client.get_dataset(dataset_id)
+                dataset.delete()
+
+    def list_projects(self):
+        """List the IDs of all projects associated to your Labelbox account."""
+        projects = self._client.list_projects()
+        return [p.uid for p in projects]
+
     def delete_project(self, project_id, delete_datasets=True):
         """Deletes the given project from the Labelbox server.
 
@@ -336,13 +358,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             the Labelbox dataset data row creation task
         """
         upload_info = []
-        for sample in samples:
-            media_path = sample[media_field]
+        media_paths, sample_ids = samples.values([media_field, "id"])
+        for media_path, sample_id in zip(media_paths, sample_ids):
             item_url = lb_client.upload_file(media_path)
             upload_info.append(
                 {
                     lb.DataRow.row_data: item_url,
-                    lb.DataRow.external_id: sample.id,
+                    lb.DataRow.external_id: sample_id,
                 }
             )
 
@@ -1035,6 +1057,7 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         self.project_id = None
 
     def _get_status(self, log=False):
+        # TODO print project status
         pass
 
     @classmethod
