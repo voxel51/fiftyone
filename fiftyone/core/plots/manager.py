@@ -532,17 +532,17 @@ class PlotManager(object):
                     % (name, plot.link_type)
                 )
 
-        view = self._session._collection.view()
-
         if view_plot_names:
-            self._update_view_plots(view_plot_names, view)
+            self._update_view_plots(view_plot_names)
 
         for name in interactive_plot_names:
-            self._update_interactive_plot(name, view)
+            self._update_interactive_plot(name)
 
-    def _update_view_plots(self, names, view):
+    def _update_view_plots(self, names):
         # For efficiency, aggregations for all supported `ViewPlot`s are
         # computed in a single batch
+
+        view = self._session._collection.view()
 
         # Build flat list of all aggregations
         aggregations = []
@@ -577,7 +577,7 @@ class PlotManager(object):
             plot = self._plots[name]
             plot.update_view(view, agg_results=_agg_results)
 
-    def _update_interactive_plot(self, name, view):
+    def _update_interactive_plot(self, name):
         plot = self._plots[name]
 
         if plot.link_type == "samples":
