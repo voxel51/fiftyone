@@ -31,7 +31,9 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 
 lb = fou.lazy_import("labelbox")
-lbs = fou.lazy_import("labelbox.schema.ontology")
+lbs = fou.lazy_import("labelbox.schema")
+lbo = fou.lazy_import("labelbox.schema.ontology")
+lbr = fou.lazy_import("labelbox.schema.review")
 
 
 logger = logging.getLogger(__name__)
@@ -55,6 +57,9 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             defaults to FiftyOne_<dataset-name>
         upload_annotations (False): whether to upload annotations to Labelbox.
             This is considered "Model Assisted Labeling" and is a paid feature
+        invite_users ([]): a list of email and role tuples specifying the users
+            to invite and their roles in the created project. Options for roles
+            are ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]
     """
 
     def __init__(
@@ -66,6 +71,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         classes_as_attrs=True,
         project_name=None,
         upload_annotations=False,
+        invite_users=[],
         **kwargs,
     ):
         super().__init__(
@@ -79,6 +85,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.classes_as_attrs = classes_as_attrs
         self.project_name = project_name
         self.upload_annotations = upload_annotations
+        self.invite_users = invite_users
 
         # store privately so it isn't serialized
         self._api_key = api_key
@@ -90,6 +97,15 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
     @api_key.setter
     def api_key(self, value):
         self._api_key = value
+
+    @property
+    def _requires_experimental(self):
+        """If the Labelbox client that gets created requires experimental
+        features based on the given configuration"""
+        if self.invite_users:
+            return True
+
+        return False
 
 
 class LabelboxBackend(foua.AnnotationBackend):
@@ -139,7 +155,10 @@ class LabelboxBackend(foua.AnnotationBackend):
             a :class:`LabelboxAnnotationAPI`
         """
         return LabelboxAnnotationAPI(
-            self.config.name, self.config.url, api_key=self.config.api_key,
+            self.config.name,
+            self.config.url,
+            api_key=self.config.api_key,
+            _requires_experimental=self.config._requires_experimental,
         )
 
     def upload_annotations(self, samples, launch_editor=False):
@@ -151,6 +170,7 @@ class LabelboxBackend(foua.AnnotationBackend):
             media_field=self.config.media_field,
             classes_as_attrs=self.config.classes_as_attrs,
             project_name=self.config.project_name,
+            invite_users=self.config.invite_users,
         )
 
         id_map = self.build_label_id_map(
@@ -202,7 +222,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         api_key (None): the Labelbox API key
     """
 
-    def __init__(self, name, url, api_key=None):
+    def __init__(self, name, url, api_key=None, _requires_experimental=False):
         self._name = name
         if "://" not in url:
             protocol = "http"
@@ -212,31 +232,34 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self._url = base_url
         self._protocol = protocol
         self._api_key = api_key
+        self._requires_experimental = _requires_experimental
 
         self._setup()
 
         self._tools_per_label_type = {
-            "detections": [lbs.Tool.Type.BBOX],
-            "detection": [lbs.Tool.Type.BBOX],
-            "segmentation": [lbs.Tool.Type.SEGMENTATION],
-            "segmentations": [lbs.Tool.Type.SEGMENTATION],
+            "detections": [lbo.Tool.Type.BBOX],
+            "detection": [lbo.Tool.Type.BBOX],
+            "segmentation": [lbo.Tool.Type.SEGMENTATION],
+            "segmentations": [lbo.Tool.Type.SEGMENTATION],
             "_segmentations_and_detections": [
-                lbs.Tool.Type.BBOX,
-                lbs.Tool.Type.SEGMENTATION,
+                lbo.Tool.Type.BBOX,
+                lbo.Tool.Type.SEGMENTATION,
             ],
             "_segmentation_and_detection": [
-                lbs.Tool.Type.BBOX,
-                lbs.Tool.Type.SEGMENTATION,
+                lbo.Tool.Type.BBOX,
+                lbo.Tool.Type.SEGMENTATION,
             ],
-            "semantic_segmentations": [lbs.Tool.Type.SEGMENTATION],
-            "polyline": [lbs.Tool.Type.LINE],
-            "polylines": [lbs.Tool.Type.LINE],
-            "polygon": [lbs.Tool.Type.POLYGON],
-            "polygons": [lbs.Tool.Type.POLYGON],
-            "classification": [lbs.Classification],
-            "classifications": [lbs.Classification],
-            "scalar": [lbs.Classification],
+            "semantic_segmentations": [lbo.Tool.Type.SEGMENTATION],
+            "polyline": [lbo.Tool.Type.LINE],
+            "polylines": [lbo.Tool.Type.LINE],
+            "polygon": [lbo.Tool.Type.POLYGON],
+            "polygons": [lbo.Tool.Type.POLYGON],
+            "classification": [lbo.Classification],
+            "classifications": [lbo.Classification],
+            "scalar": [lbo.Classification],
         }
+
+        self._roles = None
 
     def _setup(self):
         if not self._url:
@@ -250,16 +273,24 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             api_key = self._prompt_api_key(self._name, api_key=api_key)
 
         self._client = lb.client.Client(
-            api_key=api_key, endpoint=self.base_graphql_url
+            api_key=api_key,
+            endpoint=self.base_graphql_url,
+            enable_experimental=self._requires_experimental,
         )
+
+    @property
+    def roles(self):
+        if self._roles is None:
+            self._roles = self._client.get_roles()
+        return self._roles
 
     @property
     def attr_type_map(self):
         return {
-            "text": lbs.Classification.Type.TEXT,
-            "select": lbs.Classification.Type.DROPDOWN,
-            "radio": lbs.Classification.Type.RADIO,
-            "checkbox": lbs.Classification.Type.CHECKLIST,
+            "text": lbo.Classification.Type.TEXT,
+            "select": lbo.Classification.Type.DROPDOWN,
+            "radio": lbo.Classification.Type.RADIO,
+            "checkbox": lbo.Classification.Type.CHECKLIST,
         }
 
     @property
@@ -284,6 +315,94 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_id,
         )
 
+    def get_project_users(self, project=None, project_id=None):
+        """Returns a list of users that are assigned to the given project.
+        
+        Args:
+            project: the ``labelbox.schema.project.Project`` for which to get
+                the user IDs
+            project_id: the ID of the ``labelbox.schema.project.Project`` for
+                which to get the user IDs
+        Returns:
+            a list of ``labelbox.schema.user.User`` objects
+        """
+        if project is None:
+            if project_id is None:
+                raise ValueError(
+                    "Either `project` or `project_id` must be provided"
+                )
+            else:
+                project = self.get_project(project_id)
+
+        project_users = []
+        project_id = project.uid
+        users = list(project.organization().users())
+        for user in users:
+            if project in user.projects():
+                project_users.append(user)
+        return users
+
+    def invite_user(self, project, email, role):
+        """Invite a given user to the project to perform a specific role. Users
+        are always added with project-level permissions, not organization-level
+        permissions.
+        
+        Possible roles are:
+        
+            ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]
+
+        Note: This function can only be used if the API was initialized with
+            `_requires_experimental=True`
+
+        Args:
+            project: the ``labelbox.schema.project.Project`` to which to invite the user
+            email: the email of the user to which to send the invite
+            role: the string indicating the role of the user
+
+        Returns:
+            the invitation object for this user
+        """
+        if not self._requires_experimental:
+            logger.warning(
+                "The method `invite_user()` can only be used if the "
+                "`LabelboxAnnotationAPI` object was initialized with "
+                "`_requires_experimental=True`"
+            )
+            return None
+
+        if role not in self.roles or role == "NONE":
+            raise ValueError("Users with role `%s` is not supported" % role)
+
+        organization = self._client.get_organization()
+        existing_users = {u.email: u for u in organization.users()}
+        role_id = self.roles[role]
+        if email in existing_users:
+            logger.info(
+                "User %s is already in the organization, updating their "
+                "role...",
+                email,
+            )
+            user = existing_users[email]
+            user.upsert_project_role(project, role_id)
+            return None
+
+        limit = organization.invite_limit()
+        if limit.remaining == 0:
+            logger.warning(
+                "Organization has reached the limit of %d invites. User %s will "
+                "not be invited for role %s." % (limit.limit, email, role)
+            )
+            return None
+
+        project_role = lbs.organization.ProjectRole(
+            project=project, role=role_id
+        )
+
+        invite = organization.invite_user(
+            email, self.roles["NONE"], project_roles=[project_role]
+        )
+        return invite
+
     def list_datasets(self):
         """List the IDs of all datasets associated to your Labelbox account."""
         datasets = self._client.list_datasets()
@@ -305,6 +424,20 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         """List the IDs of all projects associated to your Labelbox account."""
         projects = self._client.list_projects()
         return [p.uid for p in projects]
+
+    def get_project(self, project_id):
+        """Returns the ``labelbox.schema.project.Project`` corresponding to the
+        given ID.
+
+        Args:
+            project_id: the unique ID of the project to get from the Labelbox
+                client
+        
+        Returns:
+            the ``labelbox.schema.project.Project`` corresponding to the given
+                ID
+        """
+        return self._client.get_project(project_id)
 
     def delete_project(self, project_id, delete_datasets=True):
         """Deletes the given project from the Labelbox server.
@@ -379,6 +512,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         classes_as_attrs=True,
         project_name=None,
         upload_annotations=False,
+        invite_users=[],
     ):
         """Parse the given samples and use the label schema to create project,
         upload data, and upload formatted annotations to Labelbox.
@@ -398,7 +532,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 defaults to FiftyOne_<dataset-name>
             upload_annotations (False): whether to upload annotations to Labelbox.
                 This is considered "Model Assisted Labeling" and is a paid feature
+            invite_users ([]): a list of (email, role) tuples specifying the users
+                to invite and their roles in the created project. Options for roles
+                are ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]
 
+        Returns: 
+            the ID of the created Labelbox project
         """
         if not classes_as_attrs:
             raise NotImplementedError(
@@ -414,15 +553,20 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             samples, self._client, dataset, media_field=media_field,
         )
 
-        project_id = self._setup_project(
+        project = self._setup_project(
             project_name, dataset, label_schema, classes_as_attrs,
         )
+
+        for email, role in invite_users:
+            invite = self.invite_user(project, email, role)
 
         if upload_annotations:
             # TODO
             raise NotImplementedError(
                 "Uploading annotations to Labelbox is not yet supported"
             )
+
+        project_id = project.uid
 
         return project_id
 
@@ -439,7 +583,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         if project.setup_complete is None:
             raise ValueError("Labelbox project failed to be created")
 
-        return project.uid
+        return project
 
     def _setup_editor(self, project, label_schema, classes_as_attrs):
         editor = next(
@@ -458,7 +602,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             tools.extend(field_tools)
             classifications.extend(field_classifications)
 
-        ontology_builder = lbs.OntologyBuilder(
+        ontology_builder = lbo.OntologyBuilder(
             tools=tools, classifications=classifications
         )
         project.setup(editor, ontology_builder.asdict())
@@ -496,13 +640,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             attr_type = attr_info["type"]
             class_type = self.attr_type_map[attr_type]
             if attr_type == "text":
-                attr = lbs.Classification(
+                attr = lbo.Classification(
                     class_type=class_type, instructions=attr_name,
                 )
             else:
                 attr_values = attr_info["values"]
-                options = [lbs.Option(value=str(v)) for v in attr_values]
-                attr = lbs.Classification(
+                options = [lbo.Option(value=str(v)) for v in attr_values]
+                attr = lbo.Classification(
                     class_type=class_type,
                     instructions=attr_name,
                     options=options,
@@ -545,23 +689,23 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     for attr in sub_attrs:
                         attr.instructions = prefix + attr.instructions
 
-                options.append(lbs.Option(value=str(sc), options=sub_attrs))
+                options.append(lbo.Option(value=str(sc), options=sub_attrs))
 
         if label_type == "scalar" and not classes:
-            classification = lbs.Classification(
-                class_type=lbs.Classification.Type.TEXT, instructions=name,
+            classification = lbo.Classification(
+                class_type=lbo.Classification.Type.TEXT, instructions=name,
             )
             classifications.append(classification)
         elif label_type == "classifications":
-            classification = lbs.Classification(
-                class_type=lbs.Classification.Type.CHECKLIST,
+            classification = lbo.Classification(
+                class_type=lbo.Classification.Type.CHECKLIST,
                 instructions=name,
                 options=options,
             )
             classifications.append(classification)
         else:
-            classification = lbs.Classification(
-                class_type=lbs.Classification.Type.RADIO,
+            classification = lbo.Classification(
+                class_type=lbo.Classification.Type.RADIO,
                 instructions=name,
                 options=options,
             )
@@ -597,7 +741,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             attributes = self._create_classes_as_attrs(classes, general_attrs)
             for tool_type in tool_types:
                 tools.append(
-                    lbs.Tool(
+                    lbo.Tool(
                         name=label_field,
                         tool=tool_type,
                         classifications=attributes,
@@ -610,7 +754,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         tool_types = self._tools_per_label_type[label_type]
         for tool_type in tool_types:
             tools.append(
-                lbs.Tool(
+                lbo.Tool(
                     name=str(class_name),
                     tool=tool_type,
                     classifications=attributes,
@@ -628,13 +772,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 subset_attrs = self._build_attributes(c["attributes"])
                 for sc in c["classes"]:
                     options.append(
-                        lbs.Option(value=str(sc), options=subset_attrs)
+                        lbo.Option(value=str(sc), options=subset_attrs)
                     )
 
             else:
-                options.append(lbs.Option(value=str(c)))
-        classes_attr = lbs.Classification(
-            class_type=lbs.Classification.Type.RADIO,
+                options.append(lbo.Option(value=str(c)))
+        classes_attr = lbo.Classification(
+            class_type=lbo.Classification.Type.RADIO,
             instructions="class_name",
             options=options,
             required=True,
@@ -1057,8 +1201,86 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         self.project_id = None
 
     def _get_status(self, log=False):
-        # TODO print project status
-        pass
+        api = self.connect_to_api()
+
+        status = {}
+        project = api.get_project(self.project_id)
+        updated_at = project.updated_at
+        created_at = project.created_at
+        num_labeled_samples = len(list(project.labels()))
+        if log:
+            logger.info(
+                "Project: %s\n"
+                "\tID: %s\n"
+                "\tCreated at: %s\n"
+                "\tUpdated at: %s\n"
+                "\tNumber of labeled samples: %d\n"
+                "\tMembers:\n"
+                % (
+                    project.name,
+                    project.uid,
+                    str(created_at),
+                    str(updated_at),
+                    num_labeled_samples,
+                )
+            )
+        else:
+            status["updated"] = updated_at
+            status["created"] = created_at
+            status["name"] = project.name
+            status["id"] = project.uid
+            status["num_labeled_samples"] = num_labeled_samples
+
+        members = list(project.members())
+        status["members"] = []
+        if not members:
+            if log:
+                logger.info("\t\tNone\n")
+        else:
+            for member in project.members():
+                if log:
+                    user = member.user()
+                    role = member.role()
+                    user_id = user.uid
+                    user_role = role.name
+                    user_name = user.name
+                    user_nickname = user.nickname
+                    user_email = user.email
+                    logger.info(
+                        "\t\tUser: %s\n"
+                        "\t\t\tRole: %s\n"
+                        "\t\t\tName: %s\n"
+                        "\t\t\tID: %s\n"
+                        "\t\t\tEmail: %s\n"
+                        % (
+                            user_nickname,
+                            user_role,
+                            user_name,
+                            user_id,
+                            user_email,
+                        )
+                    )
+                else:
+                    status["members"].append(member)
+
+        positive = project.review_metrics(lbr.Review.NetScore.Positive)
+        negative = project.review_metrics(lbr.Review.NetScore.Negative)
+        zero = project.review_metrics(lbr.Review.NetScore.Zero)
+        if log:
+            logger.info(
+                "\tReviews:\n"
+                "\t\tPositive: %d\n"
+                "\t\tZero: %d\n"
+                "\t\tNegative: %d\n" % (positive, zero, negative,)
+            )
+        else:
+            status["review"] = {
+                "positive": positive,
+                "negative": negative,
+                "zero": zero,
+            }
+
+        return status
 
     @classmethod
     def _from_dict(cls, d, samples, config):

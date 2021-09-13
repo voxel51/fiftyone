@@ -938,12 +938,12 @@ these unexpected new labels in:
    :alt: labelbox-polyline
    :align: center
 
-Assigning users
+Assigning users 
 ---------------
 
 When using the Labelbox backend, you can provide the following optional parameters
 to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
-specify which users will be assigned to the created tasks:
+specify which members will be assigned to the created project:
 
 -   `segment_size`: the maximum number of images to include in a single job
 -   `task_assignee`: a username to assign the generated tasks
@@ -1111,7 +1111,7 @@ For example, let's upload some blurred images to Labelbox for annotation:
 Annotating videos
 _________________
 
-You can add or edit annotations for video datasets using the Labelbox backend
+You can annotate for video datasets using the Labelbox backend
 through the
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 method.
@@ -1144,6 +1144,7 @@ to record classifications for your video datasets.
     # Send frame-level detections to Labelbox
     view.annotate(
         anno_key,
+        backend="labelbox",
         label_field="frames.detections",
         launch_editor=True,
     )
@@ -1163,12 +1164,6 @@ to record classifications for your video datasets.
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
-.. note:
-
-    Labelbox only allows one video per task, so calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    on a video dataset will result multiple tasks per label field.
-
 .. image:: /images/integrations/labelbox_video.png
    :alt: labelbox-video
    :align: center
@@ -1179,7 +1174,7 @@ Additional utilities
 ____________________
 
 You can perform additional Labelbox-specific operations to monitor the progress
-of an annotation task initiated by
+of an annotation project initiated by
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` via
 the returned
 :class:`LabelboxAnnotationResults <fiftyone.utils.labelbox.LabelboxAnnotationResults>`
@@ -1187,14 +1182,13 @@ instance.
 
 The sections below highlight some common actions that you may want to perform.
 
-Viewing task statuses
----------------------
+Viewing project status
+----------------------
 
 You can use the
-:meth:`get_status() <fiftyone.utils.labelbox.LabelboxAnnotationResults.print_status>` and
+:meth:`get_status() <fiftyone.utils.labelbox.LabelboxAnnotationResults.get_status>` and
 :meth:`print_status() <fiftyone.utils.labelbox.LabelboxAnnotationResults.print_status>`
-methods to get information about the current status of the task(s) and job(s)
-for that annotation run:
+methods to get information about the current status of the project for that annotation run:
 
 .. code:: python
     :linenos:
@@ -1205,14 +1199,12 @@ for that annotation run:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(3)
 
+    anno_key = "labelbox_status"
+
     view.annotate(
         anno_key,
         backend="labelbox",
         label_field="ground_truth",
-        segment_size=2,
-        task_assignee="user1",
-        job_assignees=["user1"],
-        job_reviewers=["user2", "user3"],
     )
 
     results = dataset.load_annotation_results(anno_key)
@@ -1223,24 +1215,29 @@ for that annotation run:
 
 .. code-block:: text
 
-    Status for label field 'ground_truth':
+    Initializing Labelbox client at 'https://api.labelbox.com/graphql'
+    Project: FiftyOne_quickstart
+            ID: cktixtv70e8zm0yba501v0ltz
+            Created at: 2021-09-13 17:46:21+00:00
+            Updated at: 2021-09-13 17:46:24+00:00
+            Members:
+    
+                    User: FIRSTNAME LASTNAME
+                        Role: Admin
+                        ID: ckl137jfiss1c07320dacd81l
+                        Nickname: user1
+                        Email: USER1_EMAIL@email.com
 
-        Task 331 (FiftyOne_quickstart_ground_truth):
-            Status: annotation
-            Assignee: user1
-            Last updated: 2021-08-11T15:09:02.680181Z
-            URL: http://localhost:8080/tasks/331
+                    User: FIRSTNAME LASTNAME
+                        Role: Labeler
+                        ID: ckl137jfiss1c07320dacd82y
+                        Nickname: user2
+                        Email: USER2_EMAIL@email.com
 
-            Job 369:
-                Status: annotation
-                Assignee: user1
-                Reviewer: user2
-
-            Job 370:
-                Status: annotation
-                Assignee: user1
-                Reviewer: user3
-
+            Reviews:
+                    Positive: 2
+                    Zero: 0
+                    Negative: 1
 
 Deleting projects
 -----------------
