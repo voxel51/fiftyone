@@ -1769,18 +1769,18 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         self.assertEqual(len(clips), len(dataset2))
+        self.assertEqual(clips.count("frames"), dataset2.count("frames"))
         self.assertListEqual(
             clips.values("support"), dataset2.values("support")
         )
-        self.assertListEqual(clips.count("frames"), dataset2.count("frames"))
 
         dataset3 = clips.clone()
 
         self.assertEqual(len(clips), len(dataset3))
+        self.assertEqual(clips.count("frames"), dataset3.count("frames"))
         self.assertListEqual(
             clips.values("support"), dataset3.values("support")
         )
-        self.assertListEqual(clips.count("frames"), dataset3.count("frames"))
 
 
 class UnlabeledVideoDatasetTests(VideoDatasetTests):
