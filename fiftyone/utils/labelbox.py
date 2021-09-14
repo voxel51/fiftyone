@@ -119,6 +119,7 @@ class LabelboxBackend(foua.AnnotationBackend):
             fol.Keypoints,
             fol.Polyline,
             fol.Polylines,
+            fol.Segmentation,
         }
 
     @property
@@ -246,11 +247,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 lbo.Tool.Type.BBOX,
                 lbo.Tool.Type.SEGMENTATION,
             ],
-            "semantic_segmentations": [lbo.Tool.Type.SEGMENTATION],
+            "semantic_segmentation": [lbo.Tool.Type.SEGMENTATION],
             "polyline": [lbo.Tool.Type.LINE],
             "polylines": [lbo.Tool.Type.LINE],
             "polygon": [lbo.Tool.Type.POLYGON],
             "polygons": [lbo.Tool.Type.POLYGON],
+            "keypoint": [lbo.Tool.Type.POINT],
+            "keypoints": [lbo.Tool.Type.POINT],
             "classification": [lbo.Classification],
             "classifications": [lbo.Classification],
             "scalar": [lbo.Classification],

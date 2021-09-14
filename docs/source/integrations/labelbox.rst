@@ -36,8 +36,8 @@ datasets:
 - :ref:`Scalar fields <adding-sample-fields>`
 - :ref:`Semantic segmentation <semantic-segmentation>`
 
-.. image:: /images/integrations/labelbox_example.png
-   :alt: labelbox-example
+.. image:: /images/integrations/labelbox_video.png
+   :alt: labelbox-video
    :align: center
 
 .. _labelbox-basic-recipe:
@@ -854,10 +854,69 @@ attributes matching what exists in the field currently.
     # Cleanup the run
     dataset.delete_annotation_run(anno_key)
 
+.. image:: /images/integrations/labelbox_example.png
+   :alt: labelbox-example
+   :align: center
+
 |br|
 The above code snippet will infer the possible classes and label attributes
 from your FiftyOne dataset. However, the `classes` and `attributes` parameters
 can be used to annotate new classes and/or attributes:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "labelbox_existing_field"
+
+    session = fo.launch_app(view=view)
+
+    # Tag labels to be edited with the tag "edit"
+
+    editing_view = view.match_labels(tags="edit")
+
+    # The list of possible `label` values
+    classes = ["person", "dog", "cat", "helicopter"]
+
+    # Details for the existing `iscrowd` attribute are automatically inferred
+    # A new `attr2` attribute is also added
+    attributes = {
+        "iscrowd": {},
+        "attr2": {
+            "type": "select",
+            "values": ["val1", "val2"],
+        }
+    }
+
+    editing_view.annotate(
+        anno_key,
+        backend="labelbox",
+        label_field="ground_truth",
+        classes=classes,
+        attributes=attributes,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Reannotate the relevant bounding boxes and their attributes in Labelbox
+
+    # Load the edited labels back into FiftyOne
+    dataset.load_annotations(anno_key, cleanup=True)
+
+    # Delete the old labels
+    dataset.delete_labels(view=editing_view)
+
+    # Cleanup the run
+    dataset.delete_annotation_run(anno_key)
+
+.. image:: /images/integrations/labelbox_new_class.png
+   :alt: labelbox-new-class
+   :align: center
 
 Uploading annotations to Labelbox
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -895,57 +954,6 @@ by simply passing the name of the field via the `label_field` parameter of
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. image:: /images/integrations/labelbox_example.png
-   :alt: labelbox-example
-   :align: center
-
-|br|
-The above code snippet will infer the possible classes and label attributes
-from your FiftyOne dataset. However, the `classes` and `attributes` parameters
-can be used to annotate new classes and/or attributes:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    anno_key = "labelbox_existing_field"
-
-    # The list of possible `label` values
-    classes = ["person", "dog", "cat", "helicopter"]
-
-    # Details for the existing `iscrowd` attribute are automatically inferred
-    # A new `attr2` attribute is also added
-    attributes = {
-        "iscrowd": {},
-        "attr2": {
-            "type": "select",
-            "values": ["val1", "val2"],
-        }
-    }
-
-    view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="ground_truth",
-        classes=classes,
-        attributes=attributes,
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # Modify/add/delete bounding boxes and their attributes in Labelbox
-
-    dataset.load_annotations(anno_key, cleanup=True)
-    dataset.delete_annotation_run(anno_key)
-
-.. image:: /images/integrations/labelbox_new_class.png
-   :alt: labelbox-new-class
-   :align: center
 
 Annotating multiple fields
 --------------------------
@@ -1000,49 +1008,6 @@ fields at once:
 
 .. image:: /images/integrations/labelbox_multiple_fields.png
    :alt: labelbox-multiple-fields
-   :align: center
-
-Unexpected annotations
-----------------------
-
-The :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-method allows you to define the annotation schema that should be followed in
-Labelbox. However, you or your annotators may "violate" this schema by adding
-annotations whose types differ from the pre-configured tasks.
-
-For example, suppose you upload a |Detections| field to Labelbox for editing, but
-then polyline annotations are added instead. In such cases, the
-:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-method will present a command prompt asking you what field(s) (if any) to store
-these unexpected new labels in:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    anno_key = "labelbox_unexpected"
-
-    view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="ground_truth",
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # Add some polyline annotations in Labelbox (wrong type!)
-
-    # You will be prompted for a field in which to store the polylines
-    dataset.load_annotations(anno_key, cleanup=True)
-    dataset.delete_annotation_run(anno_key)
-
-.. image:: /images/integrations/labelbox_polyline.png
-   :alt: labelbox-polyline
    :align: center
 
 Assigning users 
@@ -1110,7 +1075,7 @@ automatically be assigned to the newly created project.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Cleanup
+    # Cleanup without downloading results
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
@@ -1161,7 +1126,7 @@ enter the appropriate scalar in the `value` attribute of the tag.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Cleanup
+    # Cleanup without downloading results
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
