@@ -102,10 +102,19 @@ notebook but nothing appears after you call `plot.show()`, then you likely need
 to :ref:`follow these instructions <working-in-notebooks>` to install the
 proper packages and/or Jupyter notebook extensions.
 
-Also, note that FiftyOne currently requires `plotly>=4.14,<5`, which should
-have been automatically installed when you installed FiftyOne. If you manually
-upgraded to Plotly v5 after installing FiftyOne, some interactive plotting
-features may not work as expected.
+If the proper packages are installed but plots are still not displaying, try
+including the following commands in your notebook before creating any plots:
+
+.. code-block:: python
+
+    # Ensure that plotly.js is downloaded
+    import plotly.offline as po
+    po.init_notebook_mode(connected=True)
+
+Note that FiftyOne currently requires `plotly>=4.14,<5`, which should have been
+automatically installed when you installed FiftyOne. If you manually upgraded
+to Plotly v5 after installing FiftyOne, some interactive plotting features may
+not work as expected.
 
 .. _faq-remote-server-data:
 
