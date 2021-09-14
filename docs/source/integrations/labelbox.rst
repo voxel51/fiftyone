@@ -779,7 +779,12 @@ labeling task:
         }
     }
 
-    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    view.annotate(
+        anno_key,
+        backend="labelbox",
+        label_schema=label_schema,
+        launch_editor=True,
+    )
     print(dataset.get_annotation_info(anno_key))
 
     # Create annotations in Labelbox
