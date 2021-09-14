@@ -56,7 +56,8 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         project_name (None): the name of the project that will be created,
             defaults to FiftyOne_<dataset-name>
         upload_annotations (False): whether to upload annotations to Labelbox.
-            This is considered "Model Assisted Labeling" and is a paid feature
+            This is considered "Model Assisted Labeling" and is only available
+            for paid Labelbox accounts
         invite_users ([]): a list of email and role tuples specifying the users
             to invite and their roles in the created project. Options for roles
             are ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]
@@ -531,7 +532,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_name (None): the name of the project that will be created,
                 defaults to FiftyOne_<dataset-name>
             upload_annotations (False): whether to upload annotations to Labelbox.
-                This is considered "Model Assisted Labeling" and is a paid feature
+                This is considered "Model Assisted Labeling" and is only
+                available for paid Labelbox accounts
             invite_users ([]): a list of (email, role) tuples specifying the users
                 to invite and their roles in the created project. Options for roles
                 are ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]

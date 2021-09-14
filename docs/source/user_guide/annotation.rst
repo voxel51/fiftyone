@@ -642,8 +642,7 @@ For example, CVAT supports the following choices for `type`:
     `default` is optional
 -   `radio`: a radio button list UI. In this case, `values` is required and
     `default` is optional
--   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
-    `values` is unused
+-   `checkbox`: a checkbox UI. The specifications vary with the backend used 
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -659,6 +658,11 @@ take additional values:
 
     Only scalar-valued label attributes are supported. Other attribute types
     like lists, dictionaries, and arrays will be omitted.
+
+.. note:: 
+
+    Labelbox does not support default values for attributes so the
+    `default` key on attributes is ignored.
 
 .. _loading-annotations:
 
