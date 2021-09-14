@@ -1489,10 +1489,6 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
                 curr_ids[y, x].append(_id)
 
         Z = np.vectorize(lambda a: len(a))(curr_ids)
-
-        # cells = list(zip(*reversed(np.nonzero(Z))))
-        cells = []
-
         zlim = [0, Z.max()]
 
         self._curr_view = view
@@ -1500,7 +1496,7 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         self._curr_Z = Z
         self._curr_zlim = zlim
 
-        self._update_heatmap(cells, Z, Z, zlim)
+        self._update_heatmap([], Z, Z, zlim)
 
     def _on_click(self, point_inds):
         # `point_inds` is a list of `(y, x)` coordinates of selected cells
