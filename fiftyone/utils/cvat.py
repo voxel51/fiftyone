@@ -3260,8 +3260,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "_segmentations_and_detections",
                         "keypoints",
                         "polylines",
+                        "polygons",
                         "keypoint",
                         "polyline",
+                        "polygon",
                         "detection",
                         "segmentation",
                         "_segmentation_and_detection",
@@ -4067,10 +4069,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     ]:
                         labels = image_label.detections
                         func = self._create_detection_shapes
-                    elif label_type == "polyline":
+                    elif label_type in ["polyline", "polygon"]:
                         labels = [image_label]
                         func = self._create_polyline_shapes
-                    elif label_type == "polylines":
+                    elif label_type in ["polylines", "polygons"]:
                         labels = image_label.polylines
                         func = self._create_polyline_shapes
                     elif label_type == "keypoint":

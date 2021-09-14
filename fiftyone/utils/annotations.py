@@ -254,6 +254,8 @@ _LABEL_TYPES_MAP = {
     "keypoints": fol.Keypoints,
     "polyline": fol.Polyline,
     "polylines": fol.Polylines,
+    "polygon": fol.Polyline,
+    "polygons": fol.Polylines,
 }
 
 _LABEL_TYPES_MAP_REV = {
@@ -690,6 +692,8 @@ def load_annotations(
                 "segmentations",
             ]:
                 expected_type = "detections"
+            elif label_type in ["polygon", "polygons"]:
+                expected_type = "polylines"
             else:
                 expected_type = label_type
 
