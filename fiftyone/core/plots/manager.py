@@ -532,17 +532,17 @@ class PlotManager(object):
                     % (name, plot.link_type)
                 )
 
+        view = self._session._collection.view()
+
         if view_plot_names:
-            self._update_view_plots(view_plot_names)
+            self._update_view_plots(view_plot_names, view)
 
         for name in interactive_plot_names:
-            self._update_interactive_plot(name)
+            self._update_interactive_plot(name, view)
 
-    def _update_view_plots(self, names):
+    def _update_view_plots(self, names, view):
         # For efficiency, aggregations for all supported `ViewPlot`s are
         # computed in a single batch
-
-        view = self._session._collection.view()
 
         # Build flat list of all aggregations
         aggregations = []
@@ -577,14 +577,14 @@ class PlotManager(object):
             plot = self._plots[name]
             plot.update_view(view, agg_results=_agg_results)
 
-    def _update_interactive_plot(self, name):
+    def _update_interactive_plot(self, name, view):
         plot = self._plots[name]
 
         if plot.link_type == "samples":
-            plot.select_ids(self._current_sample_ids)
+            plot.select_ids(self._current_sample_ids, view=view)
         elif plot.link_type == "labels":
             label_ids = self._get_current_label_ids_for_plot(plot)
-            plot.select_ids(label_ids)
+            plot.select_ids(label_ids, view=view)
         else:
             raise ValueError(
                 "InteractivePlot '%s' has unsupported link type '%s'"

@@ -1279,7 +1279,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
     def _reopen(self):
         self._widget = self._make_widget()
 
-    def _select_ids(self, ids):
+    def _select_ids(self, ids, view=None):
         deselect = ids is None
         if deselect:
             ids = []
@@ -1404,8 +1404,11 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         self._bgw = None
         self._selected_cells = []
 
-        # Lower bound at 1 to avoid zero division errors
-        self._ids_counts = np.vectorize(lambda a: max(1, len(a)))(ids)
+        self._curr_view = None
+        self._curr_ids = None
+        self._curr_Z = None
+        self._curr_zlim = None
+
         self._cells_map = {}
 
         widget = self._make_widget()
@@ -1418,13 +1421,25 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         return True
 
     @property
+    def init_view(self):
+        if self._curr_view is not None:
+            return self._curr_view
+
+        return super().init_view
+
+    @property
     def _selected_ids(self):
         if not self._selected_cells:
             return None
 
+        if self._curr_ids is not None:
+            ids = self._curr_ids
+        else:
+            ids = self.ids
+
         return list(
             itertools.chain.from_iterable(
-                self.ids[y, x] for x, y in self._selected_cells
+                ids[y, x] for x, y in self._selected_cells
             )
         )
 
@@ -1456,27 +1471,39 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
     def _reopen(self):
         self._widget = self._make_widget()
 
-    def _select_ids(self, ids):
+    def _select_ids(self, ids, view=None):
         if ids is None:
             self._deselect()
             return
 
-        counter = defaultdict(int)
+        num_rows, num_cols = self.Z.shape
+        curr_ids = np.empty((num_rows, num_cols), dtype=object)
+        for i in range(num_rows):
+            for j in range(num_cols):
+                curr_ids[i, j] = []
+
         for _id in ids:
             cell = self._cells_map.get(_id, None)
             if cell is not None:
-                counter[cell] += 1
+                x, y = cell
+                curr_ids[y, x].append(_id)
 
-        if counter:
-            cells, counts = zip(*counter.items())
-        else:
-            cells, counts = [], []
+        Z = np.vectorize(lambda a: len(a))(curr_ids)
 
-        self._select_fractional_cells(cells, counts)
+        # cells = list(zip(*reversed(np.nonzero(Z))))
+        cells = []
+
+        zlim = [0, Z.max()]
+
+        self._curr_view = view
+        self._curr_ids = curr_ids
+        self._curr_Z = Z
+        self._curr_zlim = zlim
+
+        self._update_heatmap(cells, Z, Z, zlim)
 
     def _on_click(self, point_inds):
         # `point_inds` is a list of `(y, x)` coordinates of selected cells
-
         if not point_inds:
             self._deselect()
             return
@@ -1498,7 +1525,6 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
     def _on_selection(self, point_inds):
         # `point_inds` are linear indices into the flattened meshgrid of points
         # from `_make_heatmap()`
-
         if point_inds:
             y, x = np.unravel_index(point_inds, self.Z.shape)
             cells = list(zip(x, y))
@@ -1507,7 +1533,12 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
             self._deselect()
 
     def _deselect(self):
-        self._update_heatmap([], self.Z, self.Z)
+        self._curr_view = None
+        self._curr_ids = None
+        self._curr_Z = None
+        self._curr_zlim = None
+
+        self._update_heatmap([], self.Z, self.Z, self.zlim)
 
     def _select_cells(self, cells):
         if cells is None:
@@ -1515,42 +1546,21 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
             return
 
         Z_active = np.full(self.Z.shape, None)
-        Z_bg = self.Z.copy()
 
-        if cells:
-            x, y = zip(*cells)
-            Z_active[y, x] = self.Z[y, x]
-
-        self._update_heatmap(cells, Z_active, Z_bg)
-
-    def _select_fractional_cells(self, cells, counts):
-        #
-        # Compute "effective" heatmap values by comparing the number of
-        # observed IDs to the total possible IDs. This is important because
-        # some heatmap cells may have two IDs (confusion matrix cells with GT
-        # and predicted labels) while other cells have have only one associated
-        # will have both GT and predicted IDs, while cells corresponding to
-        # false positive/negative predictions will only have one ID
-        #
-
-        Z_active = np.zeros_like(self.Z)
-        Z_bg = np.zeros_like(self.Z)
-
-        if cells:
-            x, y = zip(*cells)
-            observed_frac = np.array(counts) / self._ids_counts[y, x]
-            z_observed = observed_frac * self.Z[y, x]
-            Z_active[y, x] = z_observed
-            Z_bg[y, x] = z_observed
-
-        zlim = [0, Z_active.max()]
-
-        self._update_heatmap(cells, Z_active, Z_bg, zlim=zlim)
-
-    def _update_heatmap(self, cells, Z_active, Z_bg, zlim=None):
-        if zlim is None:
+        if self._curr_ids is not None:
+            Z_bg = self._curr_Z
+            zlim = self._curr_zlim
+        else:
+            Z_bg = self.Z
             zlim = self.zlim
 
+        if cells:
+            x, y = zip(*cells)
+            Z_active[y, x] = Z_bg[y, x]
+
+        self._update_heatmap(cells, Z_active, Z_bg, zlim)
+
+    def _update_heatmap(self, cells, Z_active, Z_bg, zlim):
         self._selected_cells = cells
 
         with self._widget.batch_update():
@@ -1576,7 +1586,7 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
                     self._cells_map[_id] = (x, y)
 
     def _make_heatmap(self):
-        Z = self.Z.copy()
+        Z = self.Z
 
         num_rows, num_cols = Z.shape
         xticks = np.arange(num_cols)

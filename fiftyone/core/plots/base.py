@@ -780,18 +780,20 @@ class InteractivePlot(ResponsivePlot):
     def _register_disconnect_callback(self, callback):
         pass
 
-    def select_ids(self, ids):
+    def select_ids(self, ids, view=None):
         """Selects the points with the given IDs in this plot.
 
         Args:
             ids: a list of IDs, or None to reset the plot to its default state
+            view (None): the :class:`fiftyone.core.view.DatasetView`
+                corresponding to the given IDs, if available
         """
         if not self.is_connected:
             return
 
-        self._select_ids(ids)
+        self._select_ids(ids, view=view)
 
-    def _select_ids(self, ids):
+    def _select_ids(self, ids, view=None):
         raise ValueError("Subclass must implement _select_ids()")
 
     def reset(self):
