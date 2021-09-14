@@ -531,7 +531,7 @@ class CountValues(Aggregation):
             {"$group": {"_id": value, "count": {"$sum": 1}}},
         ]
 
-        if self._first:
+        if self._first is not None:
             sort = OrderedDict()
             limit = self._first
 

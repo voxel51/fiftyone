@@ -201,7 +201,7 @@ export const useSampleUpdate = (lookerRef) => {
   const handler = useRecoilCallback(
     ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
       const modal = await snapshot.getPromise(atoms.modal);
-      updatedSamples.forEach(({ sample }) => {
+      updatedSamples.forEach((sample) => {
         modal.sample._id === sample._id &&
           lookerRef.current &&
           lookerRef.current.updateSample(sample);
