@@ -1209,14 +1209,8 @@ through the
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 method.
 
-All Labelbox label types except `tags` provide an option to annotate **tracks** in
-videos, which captures the identity of a single object as it moves through the
-video. These tracks are stored in the `index` field of the |Label| instances
-when you import the annotations into FiftyOne.
-
-Note that Labelbox does not provide a straightforward way to annotate frame-level
-classification labels. Instead, we recommend that you use sample-level fields
-to record classifications for your video datasets.
+Note that some features (like text attributes) are not yet available for video
+annotation in Labelbox.
 
 .. note::
 
