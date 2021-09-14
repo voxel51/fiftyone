@@ -835,7 +835,7 @@ attributes matching what exists in the field currently.
 
     # Tag labels to be edited with the tag "edit"
 
-    editing_view = view.match_labels(tags="edit")
+    editing_view = view.select_labels(tags="edit")
 
     editing_view.annotate(
         anno_key,
