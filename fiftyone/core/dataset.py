@@ -4558,51 +4558,20 @@ def _clone_dataset_or_view(dataset_or_view, name):
     # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
 
-    #
     # Clone samples
-    #
-
-    pipeline = dataset_or_view._pipeline(detach_frames=True)
+    coll, pipeline = _get_samples_pipeline(dataset_or_view)
     pipeline.append({"$out": sample_collection_name})
+    foo.aggregate(coll, pipeline)
 
-    foo.aggregate(dataset._sample_collection, pipeline)
-
-    #
     # Clone frames
-    #
-
     if dataset.media_type == fom.VIDEO:
-        # Clips datasets use `sample_id` to associated with frames, but now as
-        # a standalone collection, they must use `_id`
-        if dataset._is_clips:
-            coll = dataset._sample_collection
-            collection = view if view is not None else dataset
-            pipeline = collection._pipeline(attach_frames=True) + [
-                {"$project": {"frames": True}},
-                {"$unwind": "$frames"},
-                {"$set": {"frames._sample_id": "$_id"}},
-                {"$replaceRoot": {"newRoot": "$frames"}},
-                {"$unset": "_id"},
-            ]
-        elif view is not None:
-            # The view may modify the frames, so we route the frames though
-            # the sample collection
-            coll = dataset._sample_collection
-            pipeline = view._pipeline(frames_only=True)
-        else:
-            # Here we can directly aggregate on the frame collection
-            coll = dataset._frame_collection
-            pipeline = []
-
+        coll, pipeline = _get_frames_pipeline(dataset_or_view)
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
     clone_dataset = load_dataset(name)
 
-    #
     # Clone run results
-    #
-
     if (
         dataset.has_annotation_runs
         or dataset.has_brain_runs
@@ -4611,6 +4580,44 @@ def _clone_dataset_or_view(dataset_or_view, name):
         _clone_runs(clone_dataset, dataset._doc)
 
     return clone_dataset
+
+
+def _get_samples_pipeline(sample_collection):
+    coll = sample_collection._dataset._sample_collection
+    pipeline = sample_collection._pipeline(detach_frames=True)
+    return coll, pipeline
+
+
+def _get_frames_pipeline(sample_collection):
+    if isinstance(sample_collection, fov.DatasetView):
+        dataset = sample_collection._dataset
+        view = sample_collection
+    else:
+        dataset = sample_collection
+        view = None
+
+    if dataset._is_clips:
+        # Clips datasets use `sample_id` to associated with frames, but now as
+        # a standalone collection, they must use `_id`
+        coll = dataset._sample_collection
+        pipeline = sample_collection._pipeline(attach_frames=True) + [
+            {"$project": {"frames": True}},
+            {"$unwind": "$frames"},
+            {"$set": {"frames._sample_id": "$_id"}},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {"$unset": "_id"},
+        ]
+    elif view is not None:
+        # The view may modify the frames, so we route the frames though
+        # the sample collection
+        coll = dataset._sample_collection
+        pipeline = view._pipeline(frames_only=True)
+    else:
+        # Here we can directly aggregate on the frame collection
+        coll = dataset._frame_collection
+        pipeline = []
+
+    return coll, pipeline
 
 
 def _save_view(view, fields):

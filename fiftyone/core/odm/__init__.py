@@ -24,6 +24,7 @@ from .database import (
     list_collections,
     get_collection_stats,
     stream_collection,
+    count_documents,
     export_document,
     export_collection,
     import_document,

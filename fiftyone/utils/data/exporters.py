@@ -20,8 +20,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.clips as focl
 import fiftyone.core.collections as foc
+import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -1679,20 +1679,25 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             _outpaths = inpaths
 
         logger.info("Exporting samples...")
-        num_samples = sample_collection.count()
-        samples = list(sample_collection._aggregate(detach_frames=True))
 
-        for sample, filepath in zip(samples, _outpaths):
-            sample["filepath"] = filepath
+        coll, pipeline = fod._get_samples_pipeline(sample_collection)
+        num_samples = foo.count_documents(coll, pipeline)
+        _samples = foo.aggregate(coll, pipeline)
 
+        def _prep_sample(sample, outpath):
+            sample["filepath"] = outpath
+            return sample
+
+        samples = map(_prep_sample, _samples, _outpaths)
         foo.export_collection(
             samples, self._samples_path, key="samples", num_docs=num_samples
         )
 
         if sample_collection.media_type == fomm.VIDEO:
             logger.info("Exporting frames...")
-            num_frames = sample_collection.count("frames")
-            frames = sample_collection._aggregate(frames_only=True)
+            coll, pipeline = fod._get_frames_pipeline(sample_collection)
+            num_frames = foo.count_documents(coll, pipeline)
+            frames = foo.aggregate(coll, pipeline)
             foo.export_collection(
                 frames, self._frames_path, key="frames", num_docs=num_frames
             )
