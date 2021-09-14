@@ -2404,6 +2404,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     """Base class for configuring :class:`CVATBackend` instances.
 
     Args:
+        name: the name of the backend
         label_schema: a dictionary containing the description of label fields,
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
@@ -2423,6 +2424,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
 
     def __init__(
         self,
+        name,
         label_schema,
         media_field="filepath",
         url=None,
@@ -2435,9 +2437,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_reviewers=None,
         **kwargs,
     ):
-        super().__init__(
-            "cvat", label_schema, media_field=media_field, **kwargs
-        )
+        super().__init__(name, label_schema, media_field=media_field, **kwargs)
         self.url = url
         self.segment_size = segment_size
         self.image_quality = image_quality

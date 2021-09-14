@@ -43,6 +43,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
     """Base class for configuring :class:`LabelboxBackend` instances.
 
     Args:
+        name: the name of the backend
         label_schema: a dictionary containing the description of label fields,
             classes and attribute to annotate
         media_field ("filepath"): string field name containing the paths to
@@ -65,6 +66,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
 
     def __init__(
         self,
+        name,
         label_schema,
         media_field="filepath",
         url=None,
@@ -75,9 +77,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         invite_users=[],
         **kwargs,
     ):
-        super().__init__(
-            "labelbox", label_schema, media_field=media_field, **kwargs
-        )
+        super().__init__(name, label_schema, media_field=media_field, **kwargs)
         if not classes_as_attrs:
             raise NotImplementedError(
                 "Support for annotating classes at the top level is not yet implemented."

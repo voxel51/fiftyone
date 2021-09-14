@@ -236,7 +236,7 @@ def _parse_config(name, label_schema, media_field, **kwargs):
         config_cls = etau.get_class(config_cls)
 
     params.update(**kwargs)
-    return config_cls(label_schema, media_field=media_field, **params)
+    return config_cls(name, label_schema, media_field=media_field, **params)
 
 
 # The supported label field types and their string names
