@@ -176,7 +176,13 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in _list_datasets(include_private=True):
-        dataset = Dataset(name, _create=False, _migrate=False)
+        try:
+            dataset = Dataset(name, _create=False, _migrate=False)
+        except:
+            # If the dataset can't be loaded, it likely requires migration,
+            # which means it is persistent, so we don't worry about it here
+            continue
+
         if not dataset.persistent and not dataset.deleted:
             dataset.delete()
             if verbose:
