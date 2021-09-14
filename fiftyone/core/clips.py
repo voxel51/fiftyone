@@ -310,8 +310,9 @@ def make_clips_dataset(
             :class:`fiftyone.core.collections.SampleCollection`
         field_or_expr: can be any of the following:
 
-            -   a :class:`fiftyone.core.labels.VideoClassification` or
-                :class:`fiftyone.core.labels.VideoClassifications` field
+            -   a :class:`fiftyone.core.labels.VideoClassification`,
+                :class:`fiftyone.core.labels.VideoClassifications`, or
+                :class:`fiftyone.core.fields.FrameSupportField` field
             -   a frame-level label list field of any of the following types:
                 -   :class:`fiftyone.core.labels.Classifications`
                 -   :class:`fiftyone.core.labels.Detections`
@@ -354,7 +355,11 @@ def make_clips_dataset(
             else:
                 clips_type = "expression"
         else:
-            clips_type = "classifications"
+            field_type = sample_collection._get_field_type(field_or_expr)
+            if isinstance(field_type, fof.FrameSupportField):
+                clips_type = "support"
+            else:
+                clips_type = "classifications"
     elif isinstance(field_or_expr, (foe.ViewExpression, dict)):
         clips_type = "expression"
     else:
@@ -397,7 +402,14 @@ def make_clips_dataset(
 
     _make_pretty_summary(dataset)
 
-    if clips_type == "classifications":
+    if clips_type == "support":
+        _write_support_clips(
+            dataset,
+            sample_collection,
+            field_or_expr,
+            other_fields=other_fields,
+        )
+    elif clips_type == "classifications":
         _write_classification_clips(
             dataset,
             sample_collection,
@@ -436,6 +448,31 @@ def _make_pretty_summary(dataset):
     all_fields = dataset._sample_doc_cls._fields_ordered
     pretty_fields = set_fields + [f for f in all_fields if f not in set_fields]
     dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
+
+
+def _write_support_clips(dataset, src_collection, field, other_fields=None):
+    src_dataset = src_collection._dataset
+
+    project = {
+        "_id": False,
+        "_sample_id": "$_id",
+        "_media_type": True,
+        "_rand": True,
+        "filepath": True,
+        "metadata": True,
+        "tags": True,
+        "support": "$" + field,
+    }
+
+    if other_fields:
+        project.update({f: True for f in other_fields})
+
+    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline.extend(
+        [{"$project": project}, {"$out": dataset._sample_collection_name}]
+    )
+
+    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
 
 
 def _write_classification_clips(
