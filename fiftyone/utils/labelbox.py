@@ -2105,18 +2105,20 @@ def _parse_attributes(cd_list):
             answer = cd["answer"]
             if isinstance(answer, list):
                 # Dropdown
-                attributes[name] = [a["value"] for a in answer]
+                attributes[name] = [
+                    _parse_attribute(a["value"]) for a in answer
+                ]
             elif isinstance(answer, dict):
                 # Radio question
-                attributes[name] = answer["value"]
+                attributes[name] = _parse_attribute(answer["value"])
             else:
                 # Free text
-                attributes[name] = answer
+                attributes[name] = _parse_attribute(answer)
 
         if "answers" in cd:
             # Checklist
             answer = cd["answers"]
-            attributes[name] = [a["value"] for a in answer]
+            attributes[name] = [_parse_attribute(a["value"]) for a in answer]
 
     return attributes
 
@@ -2272,3 +2274,26 @@ def _download_or_load_ndjson(url_or_filepath):
         return etas.load_ndjson(ndjson_bytes)
 
     return etas.read_ndjson(url_or_filepath)
+
+
+def _parse_attribute(value):
+    if value in {"True", "true"}:
+        return True
+
+    if value in {"False", "false"}:
+        return False
+
+    try:
+        return int(value)
+    except:
+        pass
+
+    try:
+        return float(value)
+    except:
+        pass
+
+    if value == "None":
+        return None
+
+    return value
