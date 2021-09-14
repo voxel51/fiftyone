@@ -8,13 +8,13 @@ Utilities for working with annotations in
 """
 from copy import copy, deepcopy
 import logging
-import ndjson
 import os
 import requests
 from uuid import uuid4
 import warnings
 import webbrowser
 
+import ndjson
 import numpy as np
 
 import eta.core.image as etai
@@ -50,10 +50,6 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             media files on disk to upload
         url (None): the url of the Labelbox server
         api_key (None): the Labelbox API key
-        classes_as_attrs (True): whether to show every class at the top
-            level of the editor (False) or whether to show the label field
-            at the top level and annotate the class as a required
-            attribute (True)
         project_name (None): the name of the project that will be created,
             defaults to FiftyOne_<dataset-name>
         upload_annotations (False): whether to upload annotations to Labelbox.
@@ -71,25 +67,25 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         media_field="filepath",
         url=None,
         api_key=None,
-        classes_as_attrs=True,
         project_name=None,
         upload_annotations=False,
         invite_users=[],
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
-        if not classes_as_attrs:
-            raise NotImplementedError(
-                "Support for annotating classes at the top level is not yet implemented."
-            )
+
         self.url = url
-        self.classes_as_attrs = classes_as_attrs
         self.project_name = project_name
         self.upload_annotations = upload_annotations
         self.invite_users = invite_users
 
         # store privately so it isn't serialized
         self._api_key = api_key
+
+        # @todo Support _classes_as_attrs=False which allows classes to be
+        # stored at the top level when annotating a
+        # single label field rather than as an attribute under the label field
+        self._classes_as_attrs = True
 
     @property
     def api_key(self):
@@ -169,7 +165,7 @@ class LabelboxBackend(foua.AnnotationBackend):
             samples,
             label_schema=self.config.label_schema,
             media_field=self.config.media_field,
-            classes_as_attrs=self.config.classes_as_attrs,
+            classes_as_attrs=self.config._classes_as_attrs,
             project_name=self.config.project_name,
             invite_users=self.config.invite_users,
         )
@@ -197,7 +193,7 @@ class LabelboxBackend(foua.AnnotationBackend):
             results.config.label_schema,
             results.project_id,
             is_video=results.is_video,
-            classes_as_attrs=results.config.classes_as_attrs,
+            classes_as_attrs=results.config._classes_as_attrs,
         )
         logger.info("Download complete")
 
@@ -332,8 +328,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 raise ValueError(
                     "Either `project` or `project_id` must be provided"
                 )
-            else:
-                project = self.get_project(project_id)
+
+            project = self.get_project(project_id)
 
         project_users = []
         project_id = project.uid
@@ -542,8 +538,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             the ID of the created Labelbox project
         """
         if not classes_as_attrs:
+            # @todo
             raise NotImplementedError(
-                "Support for annotating classes at the top level is not yet implemented."
+                "Annotating classes at the top level is not yet supported."
             )
         if project_name is None:
             project_name = "FiftyOne_%s" % (
@@ -563,9 +560,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             invite = self.invite_user(project, email, role)
 
         if upload_annotations:
-            # TODO
+            # @todo Upload annotations for paid Labelbox users with the Model
+            # Assisted Labeling feature
             raise NotImplementedError(
-                "Uploading annotations to Labelbox is not yet supported"
+                "Uploading annotations to Labelbox is not yet supported."
             )
 
         project_id = project.uid
@@ -685,8 +683,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     sub_attrs = attrs
                 else:
                     # Multiple copies of attributes for different classes can
-                    # get confusing, prefix each attribute with the class name
-                    prefix = "%s_%s:" % (label_field, str(sc))
+                    # get confusing, prefix each attribute with the label field
+                    # and class name
+                    prefix = "field:%s_class:%s_attr:" % (label_field, str(sc))
                     sub_attrs = deepcopy(attrs)
                     for attr in sub_attrs:
                         attr.instructions = prefix + attr.instructions
@@ -820,8 +819,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             the label results dict
         """
         if not classes_as_attrs:
+            # @todo
             raise NotImplementedError(
-                "Support for annotating classes at the top level is not yet implemented."
+                "Annotating classes at the top level is not yet supported."
             )
         project = self._client.get_project(project_id)
         labels_json = self._download_project_labels(project=project)
@@ -921,40 +921,16 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         polylines -> detections, semantic_segmentation, polylines
         segmentations -> detections, semantic_segmentation
         """
-        for label_field, labels in labels_dict.items():
-            if label_field not in label_schema:
-                # TODO Classes as attrs is False
-                pass
-            else:
-                label_info = label_schema[label_field]
-                expected_type = label_info["type"]
-                if isinstance(labels, dict):
-                    # Object labels
-                    label_results = self._convert_label_types(
-                        labels, expected_type, sample_id
-                    )
-                else:
-                    # Classifications
-                    label_info = label_schema[label_field]
-                    expected_type = label_info["type"]
-                    if expected_type == "classifications":
-                        label_results = {
-                            "classifications": {
-                                sample_id: {
-                                    c.id: c for c in labels.classifications
-                                }
-                            }
-                        }
-                    elif expected_type == "classification":
-                        label_results = {
-                            "classifications": {sample_id: {labels.id: labels}}
-                        }
-                    else:
-                        # Scalar
-                        label_results = {"scalar": {sample_id: labels.label}}
+        # Parse all classification attributes first
+        attributes = self._gather_classification_attributes(
+            labels_dict, label_schema
+        )
 
-                label_results = {label_field: label_results}
-                results = self._merge_results(results, label_results)
+        # Parse remaining label fields and add classification attributes if
+        # necessary
+        results = self._parse_expected_label_fields(
+            labels_dict, label_schema, sample_id, attributes, results
+        )
 
         return results
 
@@ -991,60 +967,147 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         segmentations -> detections, semantic_segmentation
         """
         for frame_number, labels_dict in frames_dict.items():
-            for label_field, labels in labels_dict.items():
-                if label_field not in label_schema:
-                    # TODO Classes as attrs is False
-                    pass
+            # Parse all classification attributes first
+            attributes = self._gather_classification_attributes(
+                labels_dict, label_schema
+            )
+
+            # Parse remaining label fields and add classification attributes if
+            # necessary
+            results = self._parse_expected_label_fields(
+                labels_dict,
+                label_schema,
+                sample_id,
+                attributes,
+                results,
+                frame_number=frame_number,
+            )
+
+        return results
+
+    def _gather_classification_attributes(self, labels_dict, label_schema):
+        attributes = {}
+        for label_field, labels in labels_dict.items():
+            if label_field not in label_schema:
+                if all(
+                    [
+                        "field:" in label_field,
+                        "_class:" in label_field,
+                        "_attr:" in label_field,
+                    ]
+                ):
+                    label_field, substr = label_field.replace(
+                        "field:", ""
+                    ).split("_class:")
+                    class_name, attr_name = substr.split("_attr:")
+
+                    # Only classification or classifictions attributes are
+                    # formatted this way
+                    if isinstance(labels, fol.Classifications):
+                        val = [
+                            _parse_attribute(c.label)
+                            for c in labels.classifications
+                        ]
+                    elif isinstance(labels, fol.Classification):
+                        val = _parse_attribute(labels.label)
+                    else:
+                        raise ValueError(
+                            "A classification attribute was not parsed as a "
+                            "'Classification' or 'Classifications'"
+                        )
+
+                    if label_field not in attributes:
+                        attributes[label_field] = {}
+                    if class_name not in attributes[label_field]:
+                        attributes[label_field][class_name] = {}
+
+                    attributes[label_field][class_name][attr_name] = val
+
                 else:
+                    logger.warning(
+                        "Found unexpected label field '%s'. Ignoring...",
+                        label_field,
+                    )
+        return attributes
+
+    def _parse_expected_label_fields(
+        self,
+        labels_dict,
+        label_schema,
+        sample_id,
+        attributes,
+        results,
+        frame_number=None,
+    ):
+        """Iterate through the labels and parse them into the results
+        dictionary. Add any classification attributes to the labels at this
+        time.
+        """
+        for label_field, labels in labels_dict.items():
+            if label_field in label_schema:
+                label_info = label_schema[label_field]
+                expected_type = label_info["type"]
+                if isinstance(labels, dict):
+                    # Object labels
+                    label_results = self._convert_label_types(
+                        labels,
+                        expected_type,
+                        sample_id,
+                        frame_number=frame_number,
+                    )
+                else:
+                    # Classifications and scalar labels
                     label_info = label_schema[label_field]
                     expected_type = label_info["type"]
-                    if isinstance(labels, dict):
-                        # Object labels
-                        label_results = self._convert_label_types(
-                            labels,
-                            expected_type,
-                            sample_id,
-                            frame_number=frame_number,
-                        )
-                    else:
-                        # Classifications
-                        label_info = label_schema[label_field]
-                        expected_type = label_info["type"]
-                        if expected_type == "classifications":
-                            label_results = {
-                                "classifications": {
-                                    sample_id: {
-                                        frame_number: {
-                                            c.id: c
-                                            for c in labels.classifications
-                                        }
-                                    }
-                                }
-                            }
-                        elif expected_type == "classification":
-                            label_results = {
-                                "classifications": {
-                                    sample_id: {
-                                        frame_number: {labels.id: labels}
-                                    }
-                                }
-                            }
-                        else:
-                            # Scalar
-                            label_results = {
-                                "scalar": {
-                                    sample_id: {frame_number: labels.label}
-                                }
-                            }
+                    if expected_type == "classifications":
+                        # Update attributes
+                        if label_field in attributes:
+                            for c in labels.classifications:
+                                class_name = str(c.label)
+                                if class_name in attributes[label_field]:
+                                    for attr_name, attr_val in attributes[
+                                        label_field
+                                    ][class_name].items():
+                                        c[attr_name] = attr_val
 
-                    label_results = {label_field: label_results}
-                    results = self._merge_results(results, label_results)
+                        result_type = "classifications"
+                        sample_results = {
+                            c.id: c for c in labels.classifications
+                        }
+
+                    elif expected_type == "classification":
+                        # Update attributes
+                        if label_field in attributes:
+                            class_name = str(labels.label)
+                            if class_name in attributes[label_field]:
+                                for attr_name, attr_val in attributes[
+                                    label_field
+                                ][class_name].items():
+                                    labels[attr_name] = attr_val
+
+                        result_type = "classifications"
+                        sample_results = {labels.id: labels}
+
+                    else:
+                        # Scalar
+                        result_type = "scalar"
+                        sample_results = _parse_attribute(labels.label)
+
+                    if frame_number is not None:
+                        sample_results = {frame_number: sample_results}
+                    label_results = {result_type: {sample_id: sample_results}}
+
+                label_results = {label_field: label_results}
+                results = self._merge_results(results, label_results)
 
         return results
 
     def _convert_label_types(
         self, labels_dict, expected_type, sample_id, frame_number=None
     ):
+        """Convert the labels loaded from Labelbox into the format expected by
+        the FiftyOne annotation API
+        """
         output_labels = {}
         for lb_type, labels_list in labels_dict.items():
             if lb_type == "detections":
@@ -1086,6 +1149,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return output_labels
 
     def _convert_segmentations(self, labels_list, label_type):
+        """Convert the masks loaded from Labelbox into either Detection or
+        Segmentation labels
+        """
         labels = []
         for seg_dict in labels_list:
             mask = seg_dict["mask"]
@@ -2051,6 +2117,7 @@ def _parse_image_labels(label_d, frame_size, class_attr=None):
 
     # Parse classifications
     cd_list = label_d.get("classifications", [])
+
     classifications = _parse_classifications(cd_list)
     labels.update(classifications)
 
