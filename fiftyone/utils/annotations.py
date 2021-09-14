@@ -80,6 +80,8 @@ def annotate(
             -   ``"semantic_segmentation"``: :class:`fiftyone.core.labels.Segmentation`
             -   ``"polyline"``: :class:`fiftyone.core.labels.Polyline`
             -   ``"polylines"``: :class:`fiftyone.core.labels.Polylines`
+            -   ``"polygon"``: :class:`fiftyone.core.labels.Polyline`
+            -   ``"polygons"``: :class:`fiftyone.core.labels.Polylines`
             -   ``"keypoint"``: :class:`fiftyone.core.labels.Keypoint`
             -   ``"keypoints"``: :class:`fiftyone.core.labels.Keypoints`
 
