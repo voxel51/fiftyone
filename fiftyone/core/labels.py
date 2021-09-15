@@ -733,7 +733,7 @@ class Detections(ImageLabel, _HasLabelList):
             if labels_to_targets is not None:
                 target = labels_to_targets.get(detection.label, None)
                 if target is None:
-                    continue
+                    continue  # skip unknown target
             else:
                 target = 255
 
@@ -1065,7 +1065,7 @@ class Polylines(ImageLabel, _HasLabelList):
             if labels_to_targets is not None:
                 target = labels_to_targets.get(polyline.label, None)
                 if target is None:
-                    continue
+                    continue  # skip unknown target
             else:
                 target = 255
 
@@ -1489,8 +1489,13 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
         if frame_size is None:
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
+        if mask_targets is not None and max(mask_targets) > 255:
+            dtype = np.int
+        else:
+            dtype = np.uint8
+
         width, height = frame_size
-        mask = np.zeros((height, width), dtype=np.uint8)
+        mask = np.zeros((height, width), dtype=dtype)
     else:
         height, width = mask.shape[:2]
 
