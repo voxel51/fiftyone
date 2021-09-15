@@ -561,7 +561,7 @@ class Detection(ImageLabel, _HasID, _HasAttributesDict):
 
         mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
         _render_instance(mask, self, target)
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -739,7 +739,7 @@ class Detections(ImageLabel, _HasLabelList):
 
             _render_instance(mask, detection, target)
 
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -878,7 +878,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributesDict):
         """
         mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
         _render_polyline(mask, self, target, thickness)
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -1074,7 +1074,7 @@ class Polylines(ImageLabel, _HasLabelList):
 
             _render_polyline(mask, polyline, target, thickness)
 
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
