@@ -812,8 +812,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributesDict):
         encoding the polyline's shape is included.
 
         Alternatively, if a ``frame_size`` is provided, the required mask size
-            is then computed based off of the polyline points and
-            ``frame_size``
+        is then computed based off of the polyline points and ``frame_size``.
 
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
@@ -1014,8 +1013,7 @@ class Polylines(ImageLabel, _HasLabelList):
         encoding the polyline's shape are included in each :class:`Detection`.
 
         Alternatively, if a ``frame_size`` is provided, the required mask size
-        is then computed based off of the polyline points and ``frame_size``
-
+        is then computed based off of the polyline points and ``frame_size``.
 
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
@@ -1023,7 +1021,6 @@ class Polylines(ImageLabel, _HasLabelList):
             frame_size (None): used when no ``mask_size`` is provided.
                 an optional ``(width, height)`` of the frame containing these
                 polylines that is used to compute the required ``mask_size``
-
 
         Returns:
             a :class:`Detections`
