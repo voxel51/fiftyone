@@ -880,7 +880,7 @@ can be used to annotate new classes and/or attributes:
 
     # Tag labels to be edited with the tag "edit"
 
-    editing_view = view.match_labels(tags="edit")
+    editing_view = view.select_labels(tags="edit")
 
     # The list of possible `label` values
     classes = ["person", "dog", "cat", "helicopter"]
