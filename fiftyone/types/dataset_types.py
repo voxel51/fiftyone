@@ -710,6 +710,20 @@ class DICOMDataset(ImageLabelsDataset):
         return foud.DICOMDatasetImporter
 
 
+class ActivityNetDataset(VideoClassificationDataset):
+    """A video dataset composed of temporal activity detections loaded as
+    VideoClassification labels stored in 
+    `ActivityNet format <http://activity-net.org/download.html>`_.
+
+    See :ref:`this page <ActivityNetDataset-import>` for importing datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.activitynet as foua
+
+        return foua.ActivityNetDatasetImporter
+
+
 class GeoJSONDataset(LabeledDataset):
     """An image or video dataset whose geolocation data and optional properties
     are stored in `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.
