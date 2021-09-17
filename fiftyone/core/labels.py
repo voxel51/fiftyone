@@ -711,10 +711,10 @@ class Detections(ImageLabel, _HasLabelList):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values in
-                ``[0, 255]`` to label strings defining which object classes to
-                render and which pixel values to use for each class. If
-                omitted, all objects are rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which object classes to render and which pixel
+                values to use for each class. If omitted, all objects are
+                rendered with pixel value 255
 
         Returns:
             a :class:`Segmentation`
@@ -1046,10 +1046,10 @@ class Polylines(ImageLabel, _HasLabelList):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values in
-                ``[0, 255]`` to label strings defining which object classes to
-                render and which pixel values to use for each class. If
-                omitted, all objects are rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which object classes to render and which
+                pixel values to use for each class. If omitted, all objects are
+                rendered with pixel value 255
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
@@ -1286,9 +1286,8 @@ class Segmentation(ImageLabel, _HasID):
         per connected region of that class in the segmentation.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values in
-                ``[0, 255]`` to label strings defining which object classes to
-                label and which pixel values to use for each class. If
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which classes to generate detections for. If
                 omitted, all labels are assigned to the integer pixel values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
@@ -1318,10 +1317,10 @@ class Segmentation(ImageLabel, _HasID):
         per connected region of that class.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values in
-                ``[0, 255]`` to label strings defining which object classes to
-                label and which pixel values to use for each class. If
-                omitted, all labels are assigned to the integer pixel values
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which object classes to generate polylines
+                for. If omitted, all labels are assigned to the integer pixel
+                values
             mask_types ("stuff"): whether the classes are ``"stuff"``
                 (amorphous regions of pixels) or ``"thing"`` (connected
                 regions, each representing an instance of the thing). Can be

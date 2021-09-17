@@ -294,10 +294,11 @@ def _build_label_schema(
             )
 
         if label_type == "segmentation":
-            _classes = _get_segmentation_classes(
+            _mask_targets, _classes = _get_mask_targets(
                 samples, mask_targets, _label_field, _label_info
             )
         else:
+            _mask_targets = None
             _classes = _get_classes(
                 samples,
                 classes,
@@ -324,6 +325,7 @@ def _build_label_schema(
             "type": _label_type,
             "classes": _classes,
             "attributes": _attributes,
+            "mask_targets": _mask_targets,
             "existing_field": _existing_field,
         }
 
@@ -550,7 +552,7 @@ def _get_classes(
     return samples._dataset.distinct(label_path)
 
 
-def _get_segmentation_classes(samples, mask_targets, label_field, label_info):
+def _get_mask_targets(samples, mask_targets, label_field, label_info):
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
 
@@ -561,9 +563,12 @@ def _get_segmentation_classes(samples, mask_targets, label_field, label_info):
         mask_targets = samples.default_mask_targets
 
     if mask_targets is None:
-        return [str(i) for i in range(1, 256)]
+        mask_targets = {i: str(i) for i in range(1, 256)}
+        mask_targets[0] = "background"
 
-    return sorted(mask_targets.values())
+    classes = [c for v, c in mask_targets.items() if v != 0]
+
+    return mask_targets, classes
 
 
 def _get_attributes(
