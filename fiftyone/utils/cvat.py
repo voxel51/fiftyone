@@ -3543,7 +3543,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Polyline(s) corresponding to instance/semantic masks need to be
             # converted to their final format
             self._convert_polylines_to_masks(
-                label_field_results, label_schema, frames_metadata
+                label_field_results, label_info, frames_metadata
             )
 
             results = self._merge_results(
@@ -3553,7 +3553,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _convert_polylines_to_masks(
-        self, results, label_schema, frames_metadata
+        self, results, label_info, frames_metadata
     ):
         for label_type, type_results in results.items():
             if label_type not in (
@@ -3564,8 +3564,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "segmentation",
             ):
                 continue
-
-            label_info = label_schema[label_type]
 
             for sample_id, sample_results in type_results.items():
                 sample_metadata = frames_metadata[sample_id]
@@ -3596,7 +3594,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if isinstance(label, fol.Polyline):
             label = CVATShape.polyline_to_detection(label, frame_size)
         elif isinstance(label, fol.Polylines):
-            mask_targets = label_info["mask_targets"]
+            mask_targets = label_info.get("mask_targets", None)
             label = CVATShape.polylines_to_segmentation(
                 label, frame_size, mask_targets
             )
@@ -3779,7 +3777,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if expected_label_type == "segmentation":
                     label_type = "segmentation"
                     label = cvat_shape.to_polylines(closed=True, filled=True)
-                    label.id = "None"  # @todo weird?
+                    label.id = None
                 else:
                     label = cvat_shape.to_polyline(closed=True, filled=True)
                     if expected_label_type in (
@@ -3879,8 +3877,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 _label = label
         elif isinstance(label, fol.Polylines):
-            if label.id != "None" and "None" in results:
-                _label = results.pop("None")
+            if label.id is not None and None in results:
+                _label = results.pop(None)
                 self._merge_polylines(_label, label)
                 _label.id = label.id
             elif results:

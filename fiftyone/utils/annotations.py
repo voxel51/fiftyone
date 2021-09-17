@@ -237,6 +237,25 @@ _LABEL_TYPES_MAP = {
     "segmentation": fol.Segmentation,
 }
 
+# Mapping from label types to the return type that the backend should use to
+# store the results
+_RETURN_TYPES_MAP = {
+    "classification": "classifications",
+    "classifications": "classifications",
+    "detection": "detections",
+    "detections": "detections",
+    "instance": "detections",
+    "instances": "detections",
+    "polyline": "polylines",
+    "polylines": "polylines",
+    "polygon": "polylines",
+    "polygons": "polylines",
+    "keypoint": "keypoints",
+    "keypoints": "keypoints",
+    "segmentation": "segmentation",
+    "scalar": "scalar",
+}
+
 # The label fields that are *always* overwritten during import
 _DEFAULT_LABEL_FIELDS_MAP = {
     fol.Classification: ["label"],
@@ -701,15 +720,10 @@ def load_annotations(
 
     for label_field, label_info in label_schema.items():
         label_type = label_info["type"]
+        expected_type = _RETURN_TYPES_MAP[label_type]
         existing_field = label_info["existing_field"]
 
         anno_dict = annotations.get(label_field, {})
-
-        if label_type + "s" in _LABEL_TYPES_MAP:
-            # Backend is expected to return list types
-            expected_type = label_type + "s"
-        else:
-            expected_type = label_type
 
         #
         # First add unexpected labels to new fields, if necessary
@@ -1221,6 +1235,14 @@ class AnnotationBackend(foa.AnnotationMethod):
 
             # Label fields
             results[label_type][sample_id][frame_id][label_id] = label
+
+        The valid values for ``label_type`` are:
+
+        -   "classifications": single or multilabel classifications
+        -   "detections": detections or instance segmentations
+        -   "polylines": polygons or polylines
+        -   "segmentation": semantic segmentations
+        -   "scalar": scalar values
 
         Args:
             results: an :class:`AnnotationResults`
