@@ -889,8 +889,9 @@ def _merge_labels(samples, anno_dict, results, label_field, label_info):
     if is_video and label_type in (
         "detections",
         "instances",
-        "keypoints",
         "polylines",
+        "polygons",
+        "keypoints",
     ):
         tracking_index_map, max_tracking_index = _make_tracking_index(
             samples, label_field, anno_dict

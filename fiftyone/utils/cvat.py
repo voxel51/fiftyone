@@ -3767,6 +3767,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             cvat_shape = CVATShape(
                 anno, class_map, attr_id_map, metadata, index=track_index
             )
+
             if shape_type == "rectangle":
                 label_type = "detections"
                 label = cvat_shape.to_detection()
@@ -3775,6 +3776,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if expected_label_type == "segmentation":
                     label_type = "segmentation"
                     label = cvat_shape.to_polylines(closed=True, filled=True)
+
+                    # @todo fix this?
                     try:
                         label.id = str(label._id)
                     except:
