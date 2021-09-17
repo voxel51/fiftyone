@@ -3274,9 +3274,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "keypoints",
                         "polyline",
                         "polylines",
+                        "polygon",
+                        "polygons",
                         "segmentation",
-                        "_segmentation_and_detection",
-                        "_segmentations_and_detections",
                     ):
                         (
                             anno_shapes,
@@ -3553,18 +3553,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _convert_polylines_to_masks(self, results, frames_metadata):
-        mask_types = (
-            "detection",
-            "detections",
-            "instance",
-            "instances",
-            "segmentation",
-            "_segmentation_and_detection",
-            "_segmentations_and_detections",
-        )
-
         for label_type, type_results in results.items():
-            if label_type not in mask_types:
+            if label_type not in (
+                "detection",
+                "detections",
+                "instance",
+                "instances",
+                "segmentation",
+            ):
                 continue
 
             for sample_id, sample_results in type_results.items():
@@ -3790,11 +3786,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "detections",
                         "instance",
                         "instances",
-                        "_segmentation_and_detection",
-                        "_segmentations_and_detections",
                     ):
                         label_type = "detections"
-
             elif shape_type == "polyline":
                 label_type = "polylines"
                 label = cvat_shape.to_polyline()
@@ -3870,8 +3863,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self, results, label, label_type, sample_id, frame_id=None
     ):
         """Merges polylines with the same label id, for all other types this
-        simply adds them to the results. Merging polylines lets us later create
-        segmentations with multiple disjoint masks.
+        simply adds them to the results.
+
+        Merging polylines lets us later create segmentations with multiple
+        disjoint masks.
         """
         curr_result = results[label_type][sample_id]
         if frame_id is not None:
@@ -3914,16 +3909,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _merge_label_to_polylines(self, label, existing_label):
-        # `label` is the new Polylines that contains only a single
-        # Polyline
+        # `label` is the new Polylines that contains only a single Polyline
         found_existing_class = False
         for polyline in existing_label.polylines:
-            if len(label.polylines) > 1:
-                logger.warning(
-                    "Expected only one Polyline to be loaded for "
-                    "every CVAT polygon, found %d" % len(label.polylines)
-                )
             new_polyline = label.polylines[0]
+
             # Merge masks of Segmentation classes
             if polyline.label == new_polyline.label:
                 found_existing_class = True
@@ -4057,24 +4047,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         }
                     )
                 else:
-                    if label_type in (
-                        "detection",
-                        "instance",
-                        "_segmentation_and_detection",
-                    ):
+                    if label_type in ("detection", "instance"):
                         labels = [image_label]
                         func = self._create_detection_shapes
-                    elif label_type in (
-                        "detections",
-                        "instances",
-                        "_segmentations_and_detections",
-                    ):
+                    elif label_type in ("detections", "instances"):
                         labels = image_label.detections
                         func = self._create_detection_shapes
-                    elif label_type == "polyline":
+                    elif label_type in ("polyline", "polygon"):
                         labels = [image_label]
                         func = self._create_polyline_shapes
-                    elif label_type == "polylines":
+                    elif label_type in ("polylines", "polygons"):
                         labels = image_label.polylines
                         func = self._create_polyline_shapes
                     elif label_type == "keypoint":

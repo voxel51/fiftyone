@@ -156,10 +156,9 @@ def annotate(
         )
 
     config = _parse_config(backend, None, media_field, **kwargs)
-
     anno_backend = config.build()
 
-    config.label_schema = _build_label_schema(
+    label_schema, samples = _build_label_schema(
         samples,
         anno_backend,
         label_schema=label_schema,
@@ -169,6 +168,7 @@ def annotate(
         attributes=attributes,
         mask_targets=mask_targets,
     )
+    config.label_schema = label_schema
 
     # Don't allow overwriting an existing run with same `anno_key`
     anno_backend.register_run(samples, anno_key, overwrite=False)
@@ -270,82 +270,92 @@ def _build_label_schema(
     _label_schema = {}
 
     for _label_field, _label_info in label_schema.items():
-        _label_type, _existing_field = _get_label_type(
+        _label_type, _existing_field, _multiple_types = _get_label_type(
             samples, backend, label_type, _label_field, _label_info
         )
-        _validate_label_type(backend, _label_field, _label_type)
 
-        label_info = []
-        for _li in _to_list(_label_info):
-            label_info.append(
-                _build_label_info(
-                    samples,
-                    backend,
+        if _label_type not in backend.supported_label_types:
+            raise ValueError(
+                "Field '%s' has unsupported label type '%s'. The '%s' backend "
+                "supports %s"
+                % (
                     _label_field,
                     _label_type,
-                    _li,
-                    _existing_field,
-                    classes=classes,
-                    attributes=attributes,
-                    mask_targets=mask_targets,
+                    backend.config.name,
+                    backend.supported_label_types,
                 )
             )
 
-        _label_schema[_label_field] = _unwrap(label_info)
+        # We found an existing field with multiple label types, so we must
+        # select only the relevant labels
+        if _multiple_types:
+            samples = _select_labels_with_type(
+                samples, _label_field, _label_type
+            )
 
-    return _label_schema
+        if label_type == "segmentation":
+            _classes = _get_segmentation_classes(
+                samples, mask_targets, _label_field, _label_info
+            )
+        else:
+            _classes = _get_classes(
+                samples,
+                classes,
+                _label_field,
+                _label_info,
+                _existing_field,
+                _label_type,
+            )
+
+        if label_type not in ("scalar", "segmentation"):
+            _attributes = _get_attributes(
+                samples,
+                backend,
+                attributes,
+                _label_field,
+                _label_info,
+                _existing_field,
+                _label_type,
+            )
+        else:
+            _attributes = {}
+
+        _label_schema[_label_field] = {
+            "type": _label_type,
+            "classes": _classes,
+            "attributes": _attributes,
+            "existing_field": _existing_field,
+        }
+
+    return _label_schema, samples
 
 
-def _build_label_info(
-    samples,
-    backend,
-    label_field,
-    label_type,
-    label_info,
-    existing_field,
-    classes=None,
-    attributes=None,
-    mask_targets=None,
-):
-    if label_type == "segmentation":
-        _classes = _get_segmentation_classes(
-            samples, mask_targets, label_field, label_info
-        )
-    else:
-        _classes = _get_classes(
-            samples,
-            classes,
-            label_field,
-            label_info,
-            existing_field,
-            label_type,
-        )
+def _select_labels_with_type(samples, label_field, label_type):
+    if label_type in ("detection", "detections"):
+        return samples.filter_labels(label_field, ~F("mask").exists())
 
-    if label_type not in ("scalar", "segmentation"):
-        _attributes = _get_attributes(
-            samples,
-            backend,
-            attributes,
-            label_field,
-            label_info,
-            existing_field,
-            label_type,
-        )
-    else:
-        _attributes = {}
+    if label_type in ("instance", "instances"):
+        return samples.filter_labels(label_field, F("mask").exists())
 
-    return {
-        "type": label_type,
-        "classes": _classes,
-        "attributes": _attributes,
-        "existing_field": existing_field,
-    }
+    if label_type in ("polygon", "polygons"):
+        return samples.filter_labels(label_field, F("filled") == True)
+
+    if label_type in ("polyline", "polylines"):
+        return samples.filter_labels(label_field, F("filled") == False)
+
+    raise ValueError(
+        "Field '%s' has unsupported multiple label type '%s'"
+        % (label_field, label_type)
+    )
 
 
 def _init_label_schema(
     label_field, label_type, classes, attributes, mask_targets
 ):
     d = {}
+
+    if label_type is not None:
+        d["type"] = label_type
 
     if classes is not None:
         d["classes"] = classes
@@ -356,31 +366,11 @@ def _init_label_schema(
     if mask_targets is not None:
         d["mask_targets"] = mask_targets
 
-    if isinstance(label_type, (list, tuple)):
-        dd = []
-        for _label_type in label_type:
-            _d = d.copy()
-            _d["type"] = _label_type
-            dd.append(_d)
-
-        return {label_field: dd}
-
-    if label_type is not None:
-        d["type"] = label_type
-
     return {label_field: d}
 
 
 def _get_label_type(samples, backend, label_type, label_field, label_info):
-    if isinstance(label_info, (list, tuple)):
-        label_types = []
-        for li in label_info:
-            if "type" in label_info:
-                label_types.append(li["type"])
-
-        if label_types:
-            label_type = label_types
-    elif "type" in label_info:
+    if "type" in label_info:
         label_type = label_info["type"]
 
     field, is_frame_field = samples._handle_frame_field(label_field)
@@ -389,30 +379,57 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
     else:
         schema = samples.get_field_schema()
 
-    if field in schema:
-        _existing_type = _get_existing_label_type(
-            samples, backend, label_field, schema[field]
-        )
-
+    if field not in schema:
         if label_type is None:
-            return _existing_type, True
+            raise ValueError(
+                "You must specify a type for new label field '%s'"
+                % label_field
+            )
 
-        for label_type in _to_list(label_type):
-            if label_type not in _to_list(_existing_type):
-                raise ValueError(
-                    "Manually reported label type '%s' for existing field "
-                    "'%s' does not match its actual type '%s'"
-                    % (label_type, label_field, _existing_type)
-                )
+        return label_type, False, False
 
-        return label_type, True
+    _existing_type = _get_existing_label_type(
+        samples, backend, label_field, schema[field]
+    )
+    _multiple_types = isinstance(_existing_type, list)
 
-    if label_type is None:
+    if label_type is not None:
+        if label_type not in _to_list(_existing_type):
+            raise ValueError(
+                "Manually reported label type '%s' for existing field '%s' "
+                "does not match its actual type '%s'"
+                % (label_type, label_field, _existing_type)
+            )
+
+        return label_type, True, _multiple_types
+
+    if not _multiple_types:
+        return _existing_type, True, _multiple_types
+
+    # Existing field contains multiple label types, so we must choose which
+    if "detection" in _existing_type:
+        _label_type = "detection"
+    elif "detections" in _existing_type:
+        _label_type = "detections"
+    elif "polygon" in _existing_type:
+        _label_type = "polygon"
+    elif "polygons" in _existing_type:
+        _label_type = "polygons"
+    else:
         raise ValueError(
-            "You must specify a type for new label field '%s'" % label_field
+            "Existing field '%s' has unsupported multiple types "
+            "%s" % (label_field, _existing_type)
         )
 
-    return label_type, False
+    logger.warning(
+        "Found existing field '%s' with multiple types %s. Only the '%s' "
+        "will be annotated",
+        label_field,
+        _existing_type,
+        _label_type,
+    )
+
+    return _label_type, True, _multiple_types
 
 
 def _to_list(value):
@@ -505,23 +522,8 @@ def _get_existing_label_type(samples, backend, label_field, field_type):
     )
 
 
-def _validate_label_type(backend, label_field, label_type):
-    for _label_type in _to_list(label_type):
-        if _label_type not in backend.supported_label_types:
-            raise ValueError(
-                "Field '%s' has unsupported label type '%s'. The '%s' backend "
-                "supports %s"
-                % (
-                    label_field,
-                    label_type,
-                    backend.config.name,
-                    backend.supported_label_types,
-                )
-            )
-
-
 def _get_classes(
-    samples, classes, label_field, label_info, existing_field, label_type,
+    samples, classes, label_field, label_info, existing_field, label_type
 ):
     if "classes" in label_info:
         return label_info["classes"]
