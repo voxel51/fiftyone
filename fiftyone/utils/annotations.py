@@ -17,6 +17,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.aggregations as foag
 import fiftyone.core.annotation as foa
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
@@ -38,6 +39,7 @@ def annotate(
     label_type=None,
     classes=None,
     attributes=True,
+    mask_targets=None,
     media_field="filepath",
     backend=None,
     launch_editor=False,
@@ -67,28 +69,36 @@ def annotate(
             schema-related arguments
         label_field (None): a string indicating a new or existing label field
             to annotate
-        label_type (None): a string or type indicating the type of labels to
-            annotate. The possible label strings/types are:
+        label_type (None): a string indicating the type of labels to annotate.
+            The possible values are:
 
-            -   ``"classification"``: :class:`fiftyone.core.labels.Classification`
-            -   ``"classifications"``: :class:`fiftyone.core.labels.Classifications`
-            -   ``"detection"``: :class:`fiftyone.core.labels.Detection`
-            -   ``"detections"``: :class:`fiftyone.core.labels.Detections`
-            -   ``"segmentation"``: :class:`fiftyone.core.labels.Detection`
-            -   ``"segmentations"``: :class:`fiftyone.core.labels.Detections`
-            -   ``"semantic_segmentation"``: :class:`fiftyone.core.labels.Segmentation`
-            -   ``"polyline"``: :class:`fiftyone.core.labels.Polyline`
-            -   ``"polylines"``: :class:`fiftyone.core.labels.Polylines`
-            -   ``"keypoint"``: :class:`fiftyone.core.labels.Keypoint`
-            -   ``"keypoints"``: :class:`fiftyone.core.labels.Keypoints`
-
-            You can also specify ``"scalar"`` for a primitive scalar field or
-            pass any of the supported scalar field types:
-
-            -   :class:`fiftyone.core.fields.IntField`
-            -   :class:`fiftyone.core.fields.FloatField`
-            -   :class:`fiftyone.core.fields.StringField`
-            -   :class:`fiftyone.core.fields.BooleanField`
+            -   ``"classification"``: a single classification stored in
+                :class:`fiftyone.core.labels.Classification` fields
+            -   ``"classifications"``: multilabel classifications stored in
+                :class:`fiftyone.core.labels.Classifications` fields
+            -   ``"detections"``: object detections stored in
+                :class:`fiftyone.core.labels.Detections` fields
+            -   ``"instances"``: instance segmentations stored in
+                :class:`fiftyone.core.labels.Detections` fields with their
+                :attr:`mask <fiftyone.core.labels.Detection.mask>` attributes
+                populated
+            -   ``"polylines"``: polylines stored in
+                :class:`fiftyone.core.labels.Polylines` fields with their
+                :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes
+                set to ``False``
+            -   ``"polygons"``: polygons stored in
+                :class:`fiftyone.core.labels.Polylines` fields with their
+                :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes
+                set to ``True``
+            -   ``"keypoints"``: keypoints stored in
+                :class:`fiftyone.core.labels.Keypoints` fields
+            -   ``"segmentation"``: semantic segmentations stored in
+                :class:`fiftyone.core.labels.Segmentation` fields
+            -   ``"scalar"``: scalar labels stored in
+                :class:`fiftyone.core.fields.IntField`,
+                :class:`fiftyone.core.fields.FloatField`,
+                :class:`fiftyone.core.fields.StringField`, or
+                :class:`fiftyone.core.fields.BooleanField` fields
 
             All new label fields must have their type specified via this
             argument or in ``label_schema``. Note that annotation backends may
@@ -113,6 +123,8 @@ def annotate(
 
             If provided, this parameter will apply to all label fields in
             ``label_schema`` that do not define their attributes
+        mask_targets (None): a dict mapping pixel values to semantic label
+            strings. Only applicable when annotating semantic segmentations
         media_field ("filepath"): the field containing the paths to the
             media files to upload
         backend (None): the annotation backend to use. The supported values are
@@ -155,12 +167,11 @@ def annotate(
         label_type=label_type,
         classes=classes,
         attributes=attributes,
+        mask_targets=mask_targets,
     )
 
     # Don't allow overwriting an existing run with same `anno_key`
     anno_backend.register_run(samples, anno_key, overwrite=False)
-
-    samples = _filter_segmentations(samples, config.label_schema)
 
     results = anno_backend.upload_annotations(
         samples, launch_editor=launch_editor
@@ -169,35 +180,6 @@ def annotate(
     anno_backend.save_run_results(samples, anno_key, results)
 
     return results
-
-
-def _filter_segmentations(samples, label_schema):
-    """Ignore detections with masks for "detections" type and ignore detections
-    without masks for "segmentations" type
-    """
-    for label_field, label_info in label_schema.items():
-        if not label_info["existing_field"]:
-            continue
-
-        label_type = label_info["type"]
-        if label_type in [
-            "segmentation",
-            "segmentations",
-            "detection",
-            "detections",
-        ]:
-            any_masks, only_masks = _check_for_masks(samples, label_field)
-
-            if label_type in ["segmentation", "segmentations"]:
-                expression = F("mask").exists()
-            else:
-                expression = ~(F("mask").exists())
-
-            samples = samples.filter_labels(
-                label_field, expression, only_matches=False
-            )
-
-    return samples
 
 
 def _get_patches_view_label_ids(patches_view):
@@ -238,50 +220,30 @@ def _parse_config(name, label_schema, media_field, **kwargs):
     return config_cls(name, label_schema, media_field=media_field, **params)
 
 
-# The supported label field types and their string names
+# The supported label type strings and their corresponding FiftyOne types
 _LABEL_TYPES_MAP = {
     "classification": fol.Classification,
     "classifications": fol.Classifications,
     "detection": fol.Detection,
     "detections": fol.Detections,
-    "segmentation": fol.Detection,
-    "segmentations": fol.Detections,
-    "_segmentation_and_detection": fol.Detection,
-    "_segmentations_and_detections": fol.Detections,
-    "semantic_segmentation": fol.Segmentation,
-    "keypoint": fol.Keypoint,
-    "keypoints": fol.Keypoints,
+    "instance": fol.Detection,
+    "instances": fol.Detections,
     "polyline": fol.Polyline,
     "polylines": fol.Polylines,
+    "polygon": fol.Polyline,
+    "polygons": fol.Polylines,
+    "keypoint": fol.Keypoint,
+    "keypoints": fol.Keypoints,
+    "segmentation": fol.Segmentation,
 }
 
-_LABEL_TYPES_MAP_REV = {
-    fol.Classification: "classification",
-    fol.Classifications: "classifications",
-    fol.Detection: "detection",
-    fol.Detections: "detections",
-    fol.Segmentation: "semantic_segmentation",
-    fol.Keypoint: "keypoint",
-    fol.Keypoints: "keypoints",
-    fol.Polyline: "polyline",
-    fol.Polylines: "polylines",
-}
-
-# The label fields that are *always* annotated
+# The label fields that are *always* overwritten during import
 _DEFAULT_LABEL_FIELDS_MAP = {
     fol.Classification: ["label"],
     fol.Detection: ["label", "bounding_box", "index", "mask"],
-    fol.Polyline: ["label", "points", "index"],
+    fol.Polyline: ["label", "points", "index", "closed", "filled"],
     fol.Keypoint: ["label", "points", "index"],
     fol.Segmentation: ["mask"],
-}
-
-# The supported scalar field types
-_SCALAR_TYPES = {
-    fof.IntField,
-    fof.FloatField,
-    fof.StringField,
-    fof.BooleanField,
 }
 
 
@@ -293,13 +255,14 @@ def _build_label_schema(
     label_type=None,
     classes=None,
     attributes=None,
+    mask_targets=None,
 ):
     if label_schema is None and label_field is None:
         raise ValueError("Either `label_schema` or `label_field` is required")
 
     if label_schema is None:
         label_schema = _init_label_schema(
-            label_field, label_type, classes, attributes
+            label_field, label_type, classes, attributes, mask_targets
         )
     elif isinstance(label_schema, list):
         label_schema = {lf: {} for lf in label_schema}
@@ -310,51 +273,79 @@ def _build_label_schema(
         _label_type, _existing_field = _get_label_type(
             samples, backend, label_type, _label_field, _label_info
         )
+        _validate_label_type(backend, _label_field, _label_type)
 
-        _classes = _get_classes(
-            samples,
-            classes,
-            _label_field,
-            _label_info,
-            _existing_field,
-            _label_type,
-        )
-
-        if label_type == "semantic_segmentation" and len(_classes) > 255:
-            raise ValueError(
-                "Only 255 classes are allowed for "
-                "`semantic_segmentation` annotations in order to store "
-                "uint8 masks. Found %d classes." % len(_classes)
+        label_info = []
+        for _li in _to_list(_label_info):
+            label_info.append(
+                _build_label_info(
+                    samples,
+                    backend,
+                    _label_field,
+                    _label_type,
+                    _li,
+                    _existing_field,
+                    classes=classes,
+                    attributes=attributes,
+                    mask_targets=mask_targets,
+                )
             )
 
-        if _label_type != "scalar":
-            _attributes = _get_attributes(
-                samples,
-                backend,
-                attributes,
-                _label_field,
-                _label_info,
-                _existing_field,
-                _label_type,
-            )
-        else:
-            _attributes = {}
-
-        _label_schema[_label_field] = {
-            "type": _label_type,
-            "classes": _classes,
-            "attributes": _attributes,
-            "existing_field": _existing_field,
-        }
+        _label_schema[_label_field] = _unwrap(label_info)
 
     return _label_schema
 
 
-def _init_label_schema(label_field, label_type, classes, attributes):
-    d = {}
+def _build_label_info(
+    samples,
+    backend,
+    label_field,
+    label_type,
+    label_info,
+    existing_field,
+    classes=None,
+    attributes=None,
+    mask_targets=None,
+):
+    if label_type == "segmentation":
+        _classes = _get_segmentation_classes(
+            samples, mask_targets, label_field, label_info
+        )
+    else:
+        _classes = _get_classes(
+            samples,
+            classes,
+            label_field,
+            label_info,
+            existing_field,
+            label_type,
+        )
 
-    if label_type is not None:
-        d["type"] = label_type
+    if label_type not in ("scalar", "segmentation"):
+        _attributes = _get_attributes(
+            samples,
+            backend,
+            attributes,
+            label_field,
+            label_info,
+            existing_field,
+            label_type,
+        )
+    else:
+        _attributes = {}
+
+    return {
+        "type": label_type,
+        "classes": _classes,
+        "attributes": _attributes,
+        "existing_field": existing_field,
+    }
+
+
+def _init_label_schema(
+    label_field, label_type, classes, attributes, mask_targets
+):
+    d = {}
 
     if classes is not None:
         d["classes"] = classes
@@ -362,28 +353,35 @@ def _init_label_schema(label_field, label_type, classes, attributes):
     if attributes not in (True, False, None):
         d["attributes"] = attributes
 
+    if mask_targets is not None:
+        d["mask_targets"] = mask_targets
+
+    if isinstance(label_type, (list, tuple)):
+        dd = []
+        for _label_type in label_type:
+            _d = d.copy()
+            _d["type"] = _label_type
+            dd.append(_d)
+
+        return {label_field: dd}
+
+    if label_type is not None:
+        d["type"] = label_type
+
     return {label_field: d}
 
 
 def _get_label_type(samples, backend, label_type, label_field, label_info):
-    if "type" in label_info:
-        label_type = label_info["type"]
+    if isinstance(label_info, (list, tuple)):
+        label_types = []
+        for li in label_info:
+            if "type" in label_info:
+                label_types.append(li["type"])
 
-    if etau.is_str(label_type):
-        # Convert strings to lowercase
-        label_type = label_type.lower()
-    elif label_type in _LABEL_TYPES_MAP_REV:
-        # Allow `Label` types to be directly provided
-        label_type = _LABEL_TYPES_MAP_REV[label_type]
-    elif label_type in _SCALAR_TYPES:
-        # Allow scalar `Field` types to be directly provided
-        label_type = "scalar"
-    elif label_type is not None:
-        raise ValueError(
-            "Field '%s' has unsupported label type %s. The supported label "
-            "types are %s and the supported scalar types are %s"
-            % (label_field, label_type, _LABEL_TYPES_MAP, _SCALAR_TYPES)
-        )
+        if label_types:
+            label_type = label_types
+    elif "type" in label_info:
+        label_type = label_info["type"]
 
     field, is_frame_field = samples._handle_frame_field(label_field)
     if is_frame_field:
@@ -393,130 +391,138 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
 
     if field in schema:
         _existing_type = _get_existing_label_type(
-            samples, backend, label_field, schema[field], label_type
+            samples, backend, label_field, schema[field]
         )
 
-        if label_type is not None and _existing_type != label_type:
-            raise ValueError(
-                "Manually reported label type '%s' for existing field '%s' "
-                "does not match its actual type '%s'"
-                % (label_type, label_field, _existing_type)
-            )
+        if label_type is None:
+            return _existing_type, True
 
-        return _existing_type, True
+        for label_type in _to_list(label_type):
+            if label_type not in _to_list(_existing_type):
+                raise ValueError(
+                    "Manually reported label type '%s' for existing field "
+                    "'%s' does not match its actual type '%s'"
+                    % (label_type, label_field, _existing_type)
+                )
+
+        return label_type, True
 
     if label_type is None:
         raise ValueError(
             "You must specify a type for new label field '%s'" % label_field
         )
 
-    if label_type == "scalar":
-        return label_type, False
-
-    if label_type not in _LABEL_TYPES_MAP:
-        raise ValueError(
-            "Field '%s' has unsupported label type '%s'. The supported label "
-            "types are %s"
-            % (label_field, label_type, sorted(_LABEL_TYPES_MAP.keys()))
-        )
-
-    fo_label_type = _LABEL_TYPES_MAP[label_type]
-    if fo_label_type not in backend.supported_label_types:
-        raise ValueError(
-            "Field '%s' has unsupported label type %s. The '%s' backend "
-            "supports %s"
-            % (
-                label_field,
-                fo_label_type,
-                backend.config.name,
-                backend.supported_label_types,
-            )
-        )
-
     return label_type, False
 
 
-def _get_existing_label_type(
-    samples, backend, label_field, field_type, user_specified_type
-):
-    if isinstance(field_type, fof.EmbeddedDocumentField):
-        fo_label_type = field_type.document_type
+def _to_list(value):
+    if not isinstance(value, (list, tuple)):
+        return [value]
 
-        if fo_label_type not in backend.supported_label_types:
+    return list(value)
+
+
+def _unwrap(value):
+    if len(value) == 1:
+        return value[0]
+
+    return value
+
+
+def _get_existing_label_type(samples, backend, label_field, field_type):
+    if not isinstance(field_type, fof.EmbeddedDocumentField):
+        return "scalar"
+
+    fo_label_type = field_type.document_type
+
+    if issubclass(fo_label_type, (fol.Detection, fol.Detections)):
+        # Must check for detections vs instances
+        _, label_path = samples._get_label_field_path(label_field)
+        _, mask_path = samples._get_label_field_path(label_field, "mask")
+
+        num_labels, num_masks = samples.aggregate(
+            [foag.Count(label_path), foag.Count(mask_path)]
+        )
+
+        label_types = []
+
+        if num_labels == 0 or num_labels > num_masks:
+            label_types.append(
+                "detection"
+                if issubclass(fo_label_type, fol.Detection)
+                else "detections"
+            )
+
+        if num_masks > 0:
+            label_types.append(
+                "instance"
+                if issubclass(fo_label_type, fol.Detection)
+                else "instances"
+            )
+
+        return _unwrap(label_types)
+
+    if issubclass(fo_label_type, (fol.Polyline, fol.Polylines)):
+        # Must check for polylines vs polygons
+        _, path = samples._get_label_field_path(label_field, "filled")
+        counts = samples.count_values(path)
+
+        label_types = []
+
+        if counts.get(True, 0) > 0:
+            label_types.append(
+                "polygon"
+                if issubclass(fo_label_type, fol.Polyline)
+                else "polygons"
+            )
+
+        if counts.get(False, 0) > 0:
+            label_types.append(
+                "polyline"
+                if issubclass(fo_label_type, fol.Detection)
+                else "polylines"
+            )
+
+        return _unwrap(label_types)
+
+    if issubclass(fo_label_type, fol.Classification):
+        return "classification"
+
+    if issubclass(fo_label_type, fol.Classifications):
+        return "classifications"
+
+    if issubclass(fo_label_type, fol.Keypoint):
+        return "keypoint"
+
+    if issubclass(fo_label_type, fol.Keypoints):
+        return "keypoints"
+
+    if issubclass(fo_label_type, fol.Segmentation):
+        return "segmentation"
+
+    raise ValueError(
+        "Field '%s' has unsupported type %s" % (label_field, fo_label_type)
+    )
+
+
+def _validate_label_type(backend, label_field, label_type):
+    for _label_type in _to_list(label_type):
+        if _label_type not in backend.supported_label_types:
             raise ValueError(
-                "Existing field '%s' has unsupported label type %s. The '%s' "
-                "backend supports %s"
+                "Field '%s' has unsupported label type '%s'. The '%s' backend "
+                "supports %s"
                 % (
                     label_field,
-                    fo_label_type,
+                    label_type,
                     backend.config.name,
                     backend.supported_label_types,
                 )
             )
 
-        label_type = _LABEL_TYPES_MAP_REV[fo_label_type]
-        if label_type in ("detection", "detections"):
-            # Decide how to split up bounding boxes and masks for this field
-
-            if user_specified_type in [
-                "segmentation",
-                "segmentations",
-                "detection",
-                "detections",
-            ]:
-                # If user provided a type, use that only
-                return user_specified_type
-
-            if label_type == "detection":
-                seg_type = "segmentation"
-                seg_and_det_type = "_segmentation_and_detection"
-            else:
-                seg_type = "segmentations"
-                seg_and_det_type = "_segmentations_and_detections"
-
-            any_masks, only_masks = _check_for_masks(samples, label_field)
-            if not any_masks:
-                # If only boxes exists, then only annotate detections
-                return label_type
-            elif only_masks:
-                # If only masks exist, then only annotate segmentations
-                return seg_type
-            else:
-                # If both exist, then annotate both
-                return seg_and_det_type
-        else:
-            return label_type
-
-    if type(field_type) not in backend.supported_scalar_types:
-        raise TypeError(
-            "Existing field '%s' has unsupported type %s. The '%s' backend "
-            "supports label types %s and scalar types %s"
-            % (
-                label_field,
-                field_type,
-                backend.config.name,
-                backend.supported_label_types,
-                backend.supported_scalar_types,
-            )
-        )
-
-    return "scalar"
-
 
 def _get_classes(
-    samples, classes, label_field, label_info, existing_field, label_type
+    samples, classes, label_field, label_info, existing_field, label_type,
 ):
-    if label_type == "semantic_segmentation":
-        # Allow access to any number 1-255
-        # @todo incorporate mask_targets into schema
-        if classes or "classes" in label_info:
-            logger.info(
-                "`Segmentation` field classes are currently only specified "
-                "through `Dataset.default_mask_targets`, using integers as "
-                "classes"
-            )
-        return [str(i) for i in range(1, 256)]
-
     if "classes" in label_info:
         return label_info["classes"]
 
@@ -540,6 +546,22 @@ def _get_classes(
 
     _, label_path = samples._get_label_field_path(label_field, "label")
     return samples._dataset.distinct(label_path)
+
+
+def _get_segmentation_classes(samples, mask_targets, label_field, label_info):
+    if "mask_targets" in label_info:
+        mask_targets = label_info["mask_targets"]
+
+    if mask_targets is None and label_field in samples.mask_targets:
+        mask_targets = samples.mask_targets[label_field]
+
+    if mask_targets is None and samples.default_mask_targets:
+        mask_targets = samples.default_mask_targets
+
+    if mask_targets is None:
+        return [str(i) for i in range(1, 256)]
+
+    return sorted(mask_targets.values())
 
 
 def _get_attributes(
@@ -676,21 +698,11 @@ def load_annotations(
 
         anno_dict = annotations.get(label_field, {})
 
-        if label_type == "scalar":
-            expected_type = "scalar"
+        if label_type + "s" in _LABEL_TYPES_MAP:
+            # Backend is expected to return list types
+            expected_type = label_type + "s"
         else:
-            fo_label_type = _LABEL_TYPES_MAP[label_type]
-            if fo_label_type in fol._SINGLE_LABEL_TO_LIST_MAP:
-                # Backend is expected to always return list types
-                fo_list_type = fol._SINGLE_LABEL_TO_LIST_MAP[fo_label_type]
-                expected_type = _LABEL_TYPES_MAP_REV[fo_list_type]
-            elif label_type in [
-                "_segmentations_and_detections",
-                "segmentations",
-            ]:
-                expected_type = "detections"
-            else:
-                expected_type = label_type
+            expected_type = label_type
 
         #
         # First add unexpected labels to new fields, if necessary
@@ -874,7 +886,7 @@ def _merge_labels(samples, anno_dict, results, label_field, label_info):
 
     if is_video and label_type in (
         "detections",
-        "segmentations",
+        "instances",
         "keypoints",
         "polylines",
     ):
@@ -1093,36 +1105,27 @@ class AnnotationBackend(foa.AnnotationMethod):
 
     @property
     def supported_label_types(self):
-        """The set of label types supported by the backend.
+        """The list of label types supported by the backend.
 
         Backends may support any subset of the following label types:
 
-        -   :class:`fiftyone.core.labels.Classification`
-        -   :class:`fiftyone.core.labels.Classifications`
-        -   :class:`fiftyone.core.labels.Detection`
-        -   :class:`fiftyone.core.labels.Detections`
-        -   :class:`fiftyone.core.labels.Polyline`
-        -   :class:`fiftyone.core.labels.Polylines`
-        -   :class:`fiftyone.core.labels.Keypoint`
-        -   :class:`fiftyone.core.labels.Keypoints`
+        -   ``"classification"``
+        -   ``"classifications"``
+        -   ``"detection"``
+        -   ``"detections"``
+        -   ``"instance"``
+        -   ``"instances"``
+        -   ``"polyline"``
+        -   ``"polylines"``
+        -   ``"polygon"``
+        -   ``"polygons"``
+        -   ``"keypoint"``
+        -   ``"keypoints"``
+        -   ``"segmentation"``
+        -   ``"scalar"``
         """
         raise NotImplementedError(
             "subclass must implement supported_label_types"
-        )
-
-    @property
-    def supported_scalar_types(self):
-        """The set of supported scalar types supported by the backend.
-
-        Backends may support any subset of the following scalar types:
-
-        -   :class:`fiftyone.core.fields.IntField`
-        -   :class:`fiftyone.core.fields.FloatField`
-        -   :class:`fiftyone.core.fields.StringField`
-        -   :class:`fiftyone.core.fields.BooleanField`
-        """
-        raise NotImplementedError(
-            "subclass must implement supported_scalar_types"
         )
 
     @property
@@ -1132,8 +1135,7 @@ class AnnotationBackend(foa.AnnotationMethod):
         This list defines the valid string values for the ``type`` field of
         an attributes dict of the label schema provided to the backend.
 
-        For example, the CVAT API supports
-        ``{"text", "select", "radio", "checkbox"}``.
+        For example, CVAT supports ``["text", "select", "radio", "checkbox"]``.
         """
         raise NotImplementedError(
             "subclass must implement supported_attr_types"
@@ -1253,11 +1255,10 @@ class AnnotationBackend(foa.AnnotationMethod):
             _, label_id_path = samples._get_label_field_path(label_field, "id")
             sample_ids, label_ids = samples.values(["id", label_id_path])
 
-            # Flatten frames lists
-            for ind, ids in enumerate(label_ids):
-                if ids is not None and ids and isinstance(ids[0], list):
-                    ids = [i for frame in ids for i in frame]
-                    label_ids[ind] = ids
+            if samples._is_frame_field(label_field):
+                label_ids = samples._unwind_values(
+                    label_id_path, label_ids, keep_top_level=True
+                )
 
             id_map[label_field] = dict(zip(sample_ids, label_ids))
 
@@ -1577,49 +1578,3 @@ def _to_video_labels(sample, label_fields=None):
         )
 
     return video_labels
-
-
-def _check_for_masks(samples, label_field):
-    """Check if the given label field has masks and, if so, if it only contains
-    masks. Used to check if segmentations are required for annotating existing
-    :class:`fiftyone.core.labels.Detections` fields.
-
-    Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        label_field: the name of the field to check for masks
-
-    Returns:
-        tuple containing two booleans: (has any masks, has only masks) 
-    """
-    any_masks = False
-    only_masks = False
-    field, is_frame_field = samples._handle_frame_field(label_field)
-    if is_frame_field:
-        schema = samples.get_frame_field_schema()
-    else:
-        schema = samples.get_field_schema()
-
-    field_type = schema[field]
-    if isinstance(field_type, fof.EmbeddedDocumentField):
-        fo_label_type = field_type.document_type
-    else:
-        fo_label_type = field_type
-
-    if fo_label_type not in [fol.Detections, fol.Detection, fol.Segmentation]:
-        return any_masks, only_masks
-
-    full_field_path = label_field
-    if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
-        list_field = fo_label_type._LABEL_LIST_FIELD
-        full_field_path += ".%s" % list_field
-
-    _, mask_field = samples._get_label_field_path(label_field, "mask")
-    num_masks = samples.count(mask_field)
-    num_labels = samples.count(full_field_path)
-
-    if num_masks > 0:
-        any_masks = True
-        if num_masks == num_labels:
-            only_masks = True
-
-    return any_masks, only_masks

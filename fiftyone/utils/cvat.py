@@ -26,7 +26,6 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -2487,30 +2486,26 @@ class CVATBackend(foua.AnnotationBackend):
 
     @property
     def supported_label_types(self):
-        return {
-            fol.Classification,
-            fol.Classifications,
-            fol.Detection,
-            fol.Detections,
-            fol.Keypoint,
-            fol.Keypoints,
-            fol.Polyline,
-            fol.Polylines,
-            fol.Segmentation,
-        }
-
-    @property
-    def supported_scalar_types(self):
-        return {
-            fof.IntField,
-            fof.FloatField,
-            fof.StringField,
-            fof.BooleanField,
-        }
+        return [
+            "classification",
+            "classifications",
+            "detection",
+            "detections",
+            "instance",
+            "instances",
+            "polyline",
+            "polylines",
+            "polygon",
+            "polygons",
+            "keypoint",
+            "keypoints",
+            "segmentation",
+            "scalar",
+        ]
 
     @property
     def supported_attr_types(self):
-        return {"text", "select", "radio", "checkbox"}
+        return ["text", "select", "radio", "checkbox"]
 
     @property
     def default_attr_type(self):
@@ -3271,17 +3266,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 if is_existing_field:
                     if is_video and label_type in (
-                        "detections",
-                        "segmentations",
-                        "_segmentations_and_detections",
-                        "keypoints",
-                        "polylines",
-                        "keypoint",
-                        "polyline",
                         "detection",
+                        "detections",
+                        "instance",
+                        "instances",
+                        "keypoint",
+                        "keypoints",
+                        "polyline",
+                        "polylines",
                         "segmentation",
                         "_segmentation_and_detection",
-                        "semantic_segmentation",
+                        "_segmentations_and_detections",
                     ):
                         (
                             anno_shapes,
@@ -3558,18 +3553,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _convert_polylines_to_masks(self, results, frames_metadata):
-        mask_types = [
-            "detections",
+        mask_types = (
             "detection",
-            "segmentations",
+            "detections",
+            "instance",
+            "instances",
             "segmentation",
-            "_segmentations_and_detections",
             "_segmentation_and_detection",
-            "semantic_segmentation",
-        ]
+            "_segmentations_and_detections",
+        )
+
         for label_type, type_results in results.items():
             if label_type not in mask_types:
                 continue
+
             for sample_id, sample_results in type_results.items():
                 sample_metadata = frames_metadata[sample_id]
                 width = sample_metadata["width"]
@@ -3595,6 +3592,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         results[label_type][sample_id][
                             frame_or_label_id
                         ] = label
+
         return results
 
     def _convert_single_polyline(self, label, width, height):
@@ -3602,6 +3600,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label = CVATShape.polyline_to_detection(label, width, height)
         elif isinstance(label, fol.Polylines):
             label = CVATShape.polylines_to_segmentation(label, width, height)
+
         return label
 
     def _merge_results(self, results, new_results):
@@ -3777,8 +3776,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label = cvat_shape.to_detection()
             elif shape_type == "polygon":
                 label_type = "polylines"
-                if expected_label_type == "semantic_segmentation":
-                    label_type = "semantic_segmentation"
+                if expected_label_type == "segmentation":
+                    label_type = "segmentation"
                     label = cvat_shape.to_polylines(closed=True, filled=True)
                     try:
                         label.id = str(label._id)
@@ -3789,8 +3788,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if expected_label_type in (
                         "detection",
                         "detections",
-                        "segmentation",
-                        "segmentations",
+                        "instance",
+                        "instances",
                         "_segmentation_and_detection",
                         "_segmentations_and_detections",
                     ):
@@ -4058,18 +4057,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         }
                     )
                 else:
-                    if label_type in [
+                    if label_type in (
                         "detection",
-                        "segmentation",
+                        "instance",
                         "_segmentation_and_detection",
-                    ]:
+                    ):
                         labels = [image_label]
                         func = self._create_detection_shapes
-                    elif label_type in [
+                    elif label_type in (
                         "detections",
-                        "segmentations",
+                        "instances",
                         "_segmentations_and_detections",
-                    ]:
+                    ):
                         labels = image_label.detections
                         func = self._create_detection_shapes
                     elif label_type == "polyline":
@@ -4084,9 +4083,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     elif label_type == "keypoints":
                         labels = image_label.keypoints
                         func = self._create_keypoint_shapes
-                    elif label_type == "semantic_segmentation":
-                        labels = [image_label]
-                        func = self._create_semantic_seg_shapes
+                    elif label_type == "segmentation":
+                        labels = image_label
+                        func = self._create_segmentation_shapes
                     else:
                         raise ValueError(
                             "Label type %s of field %s is not supported"
@@ -4328,10 +4327,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             remapped_attr_names.update(remapped_attrs)
-            if det.mask is None and label_type not in [
-                "segmentation",
-                "segmentations",
-            ]:
+
+            if det.mask is None and label_type not in (
+                "instance",
+                "instances",
+            ):
                 x, y, w, h = det.bounding_box
                 xtl = float(round(x * width))
                 ytl = float(round(y * height))
@@ -4352,11 +4352,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "attributes": attributes,
                 }
                 curr_shapes.append(shape)
-
-            elif det.mask is not None and label_type not in [
+            elif det.mask is not None and label_type not in (
                 "detection",
                 "detections",
-            ]:
+            ):
                 polygon = det.to_polyline()
                 for points in polygon.points:
                     if len(points) < 3:
@@ -4434,9 +4433,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return label_attrs, class_name, remapped_attr_names
 
-    def _create_semantic_seg_shapes(
+    def _create_segmentation_shapes(
         self,
-        semantic_segmentations,
+        segmentation,
         width,
         height,
         attr_names,
@@ -4445,13 +4444,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         load_tracks=False,
     ):
-        if len(semantic_segmentations) > 1:
-            raise ValueError(
-                "`semantic_segmentations` is expected to have a length of 1"
-            )
-
-        semantic_segmentation = semantic_segmentations[0]
-        detections = semantic_segmentation.to_detections()
+        detections = segmentation.to_detections()
         return self._create_detection_shapes(
             detections.detections,
             width,
@@ -4459,8 +4452,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             attr_names,
             classes,
             frame_id,
-            label_type="segmentations",
-            label_id=semantic_segmentation.id,
+            label_type="instances",
+            label_id=segmentation.id,
             load_tracks=load_tracks,
         )
 
@@ -4749,11 +4742,12 @@ class CVATShape(CVATLabel):
         available_ids = sorted(set(range(1, 256)) - set(mask_targets.keys()))
         if len(str_classes) > len(available_ids):
             logger.warning(
-                "More than 255 semantic segmentation classes "
-                "found, ignoring the excess %d classes." % len(str_classes)
-                - len(available_ids)
+                "More than 255 segmentation classes found, ignoring the "
+                "excess %d classes",
+                len(str_classes) - len(available_ids),
             )
             str_classes = str_classes[: len(available_ids)]
+
         available_ids = available_ids[: len(str_classes)]
 
         for avail_id, str_class in zip(available_ids, str_classes):
@@ -4765,6 +4759,7 @@ class CVATShape(CVATLabel):
             prev_id = polylines._id
         except:
             prev_id = ObjectId()
+
         frame_size = (width, height)
         segmentation = polylines.to_segmentation(
             frame_size=frame_size, mask_targets=mask_targets
@@ -4773,6 +4768,7 @@ class CVATShape(CVATLabel):
         for field, value in new_fields.items():
             if field not in default_fields:
                 segmentation[field] = value
+
         segmentation._id = prev_id
         return segmentation
 
