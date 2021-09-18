@@ -312,7 +312,7 @@ def _build_label_schema(
                 samples, _label_field, _label_type
             )
 
-        if label_type == "segmentation":
+        if _label_type == "segmentation":
             _mask_targets, _classes = _get_mask_targets(
                 samples, mask_targets, _label_field, _label_info
             )
@@ -327,7 +327,7 @@ def _build_label_schema(
                 _label_type,
             )
 
-        if label_type not in ("scalar", "segmentation"):
+        if _label_type not in ("scalar", "segmentation"):
             _attributes = _get_attributes(
                 samples,
                 backend,
@@ -1099,7 +1099,7 @@ class AnnotationBackendConfig(foa.AnnotationMethodConfig):
     Args:
         name: the name of the backend
         label_schema: a dictionary containing the description of label fields,
-            classes and attribute to annotate
+            classes and attributes to annotate
         media_field ("filepath"): string field name containing the paths to
             media files on disk to upload
         **kwargs: any leftover keyword arguments after subclasses have done
@@ -1381,9 +1381,24 @@ class AnnotationResults(foa.AnnotationResults):
                 setattr(config, name, value)
 
     @classmethod
+    def from_dict(cls, d, samples, config):
+        results = super().from_dict(d, samples, config)
+
+        # Mask targets are serialized with string keys; must undo this...
+        label_schema = results.config.label_schema
+        for label_info in label_schema.values():
+            mask_targets = label_info.get("mask_targets", None)
+            if isinstance(mask_targets, dict):
+                label_info["mask_targets"] = {
+                    int(k): v for k, v in mask_targets.items()
+                }
+
+        return results
+
+    @classmethod
     def _from_dict(cls, d, samples, config):
-        """Builds an :class:`AnnotationResults` from a JSON dict
-        representation of it.
+        """Builds an :class:`AnnotationResults` from a JSON dict representation
+        of it.
 
         Args:
             d: a JSON dict

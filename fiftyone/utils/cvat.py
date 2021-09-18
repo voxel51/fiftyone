@@ -3265,33 +3265,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_tracks = []
 
                 if is_existing_field:
-                    if is_video and label_type in (
-                        "detection",
-                        "detections",
-                        "instance",
-                        "instances",
-                        "keypoint",
-                        "keypoints",
-                        "polyline",
-                        "polylines",
-                        "polygon",
-                        "polygons",
-                        "segmentation",
-                    ):
-                        (
-                            anno_shapes,
-                            anno_tracks,
-                            remapped_attr_names,
-                        ) = self._create_shapes_tags_tracks(
-                            batch_samples,
-                            label_field,
-                            label_type,
-                            attr_names,
-                            classes,
-                            is_shape=True,
-                            load_tracks=True,
-                        )
-                    elif label_type in (
+                    if label_type in (
                         "classification",
                         "classifications",
                         "scalar",
@@ -3302,11 +3276,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         ) = self._create_shapes_tags_tracks(
                             batch_samples,
                             label_field,
-                            label_type,
+                            label_info,
                             attr_names,
-                            classes,
                             is_shape=False,
                             assign_scalar_attrs=assign_scalar_attrs,
+                        )
+                    elif is_video:
+                        (
+                            anno_shapes,
+                            anno_tracks,
+                            remapped_attr_names,
+                        ) = self._create_shapes_tags_tracks(
+                            batch_samples,
+                            label_field,
+                            label_info,
+                            attr_names,
+                            is_shape=True,
+                            load_tracks=True,
                         )
                     else:
                         (
@@ -3315,9 +3301,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         ) = self._create_shapes_tags_tracks(
                             batch_samples,
                             label_field,
-                            label_type,
+                            label_info,
                             attr_names,
-                            classes,
                             is_shape=True,
                         )
 
@@ -3860,7 +3845,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """Adds the provided label to the results.
 
         Polyline(s) with the same label ID are merged, as these define instance
-        or semantic segmentation masks that are later constructed.
+        or semantic segmentation masks.
         """
         if label.id in results:
             _label = results[label.id]
@@ -3873,11 +3858,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             elif isinstance(label, fol.Polylines) and isinstance(
                 _label, fol.Polylines
             ):
+                # Merge masks for each segmentation class
                 self._merge_polylines(_label, label)
             else:
                 _label = label
         elif isinstance(label, fol.Polylines):
+            # @todo is label.id == None working properly here?
             if label.id is not None and None in results:
+                # Merge masks for each segmentation class
                 _label = results.pop(None)
                 self._merge_polylines(_label, label)
                 _label.id = label.id
@@ -3930,13 +3918,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         samples,
         label_field,
-        label_type,
+        label_info,
         attr_names,
-        classes,
         is_shape=False,
         load_tracks=False,
         assign_scalar_attrs=False,
     ):
+        label_type = label_info["type"]
+        classes = label_info["classes"]
+        mask_targets = label_info.get("mask_targets", None)
+
         tags_or_shapes = []
         tracks = {}
 
@@ -3956,17 +3947,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if is_video:
                 images = sample.frames.values()
-                if label_field.startswith("frames."):
-                    label_field = label_field[len("frames.") :]
+                label_field, _ = samples._handle_frame_field(label_field)
 
                 if is_shape:
-                    width = metadata.frame_width
-                    height = metadata.frame_height
+                    frame_size = (metadata.frame_width, metadata.frame_height)
             else:
                 images = [sample]
                 if is_shape:
-                    width = metadata.width
-                    height = metadata.height
+                    frame_size = (metadata.width, metadata.height)
 
             for image in images:
                 frame_id += 1
@@ -4027,6 +4015,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         }
                     )
                 else:
+                    kwargs = {}
+
                     if label_type in ("detection", "instance"):
                         labels = [image_label]
                         func = self._create_detection_shapes
@@ -4048,6 +4038,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     elif label_type == "segmentation":
                         labels = image_label
                         func = self._create_segmentation_shapes
+                        kwargs["mask_targets"] = mask_targets
                     else:
                         raise ValueError(
                             "Label type %s of field %s is not supported"
@@ -4056,14 +4047,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                     shapes, new_tracks, remapped_attrs = func(
                         labels,
-                        width,
-                        height,
+                        frame_size,
                         attr_names,
                         classes,
                         frame_id,
                         label_type=label_type,
                         load_tracks=load_tracks,
+                        **kwargs,
                     )
+
                     remapped_attr_names.update(remapped_attrs)
                     tags_or_shapes.extend(shapes)
                     tracks = self._update_tracks(tracks, new_tracks)
@@ -4129,8 +4121,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _create_keypoint_shapes(
         self,
         keypoints,
-        width,
-        height,
+        frame_size,
         attr_names,
         classes,
         frame_id,
@@ -4149,7 +4140,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             remapped_attr_names.update(remapped_attrs)
             points = kp.points
-            abs_points = HasCVATPoints._to_abs_points(points, (width, height))
+            abs_points = HasCVATPoints._to_abs_points(points, frame_size)
             flattened_points = [
                 coord for point in abs_points for coord in point
             ]
@@ -4189,8 +4180,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _create_polyline_shapes(
         self,
         polylines,
-        width,
-        height,
+        frame_size,
         attr_names,
         classes,
         frame_id,
@@ -4210,12 +4200,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             remapped_attr_names.update(remapped_attrs)
             for points in poly.points:
-                abs_points = HasCVATPoints._to_abs_points(
-                    points, (width, height)
-                )
-                flattened_points = [
-                    coord for point in abs_points for coord in point
-                ]
+                abs_points = HasCVATPoints._to_abs_points(points, frame_size)
+                flattened_points = [c for point in abs_points for c in point]
 
                 if poly.closed:
                     shape = {
@@ -4268,8 +4254,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _create_detection_shapes(
         self,
         detections,
-        width,
-        height,
+        frame_size,
         attr_names,
         classes,
         frame_id,
@@ -4280,6 +4265,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         shapes = []
         tracks = {}
         remapped_attr_names = {}
+
+        width, height = frame_size
+
         for det in detections:
             curr_shapes = []
             attributes, class_name, remapped_attrs = self._create_attributes(
@@ -4322,12 +4310,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for points in polygon.points:
                     if len(points) < 3:
                         continue
-                    abs_points = HasCVATPoints._to_abs_points(
-                        points, (width, height)
-                    )
 
+                    abs_points = HasCVATPoints._to_abs_points(
+                        points, frame_size
+                    )
                     flattened_points = [
-                        coord for point in abs_points for coord in point
+                        c for point in abs_points for c in point
                     ]
 
                     shape = {
@@ -4399,19 +4387,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _create_segmentation_shapes(
         self,
         segmentation,
-        width,
-        height,
+        frame_size,
         attr_names,
         classes,
         frame_id,
         label_type=None,
+        mask_targets=None,
         load_tracks=False,
     ):
-        detections = segmentation.to_detections()
+        detections = segmentation.to_detections(mask_targets=mask_targets)
         return self._create_detection_shapes(
             detections.detections,
-            width,
-            height,
+            frame_size,
             attr_names,
             classes,
             frame_id,
@@ -4649,7 +4636,6 @@ class CVATShape(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Segmentation`
         """
-        # @todo allow new mask targets?
         segmentation = polylines.to_segmentation(
             frame_size=frame_size, mask_targets=mask_targets
         )
