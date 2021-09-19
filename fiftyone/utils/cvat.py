@@ -1094,18 +1094,13 @@ class HasCVATPoints(object):
 
     @staticmethod
     def _to_rel_points(points, frame_size):
-        width, height = frame_size
-        rel_points = [(x / width, y / height) for x, y in points]
-        return rel_points
+        w, h = frame_size
+        return [(x / w, y / h) for x, y in points]
 
     @staticmethod
     def _to_abs_points(points, frame_size):
-        width, height = frame_size
-        abs_points = []
-        for x, y in points:
-            abs_points.append((int(round(x * width)), int(round(y * height))))
-
-        return abs_points
+        w, h = frame_size
+        return [(int(round(x * w)), int(round(y * h))) for x, y in points]
 
     @staticmethod
     def _to_cvat_points_str(points):
@@ -2548,6 +2543,8 @@ class CVATBackend(foua.AnnotationBackend):
         )
         logger.info("Upload complete")
 
+        # @todo need to omit things like polygons with 2 points that can't be
+        # uploaded
         id_map = self.build_label_id_map(samples)
 
         results = CVATAnnotationResults(
@@ -2593,11 +2590,6 @@ class CVATBackend(foua.AnnotationBackend):
 class CVATAnnotationResults(foua.AnnotationResults):
     """Class that stores all relevant information needed to monitor the
     progress of an annotation run sent to CVAT and download the results.
-
-    Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        config: a :class:`CVATBackendConfig`
-        backend (None): a :class:`CVATBackend`
     """
 
     def __init__(
@@ -3107,7 +3099,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         self.post(self.task_data_url(task_id), data=data, files=files)
 
-        # @todo exponential backoff?
+        # @todo is this loop really needed?
         job_ids = []
         while not job_ids:
             job_resp = self.get(self.jobs_url(task_id))
@@ -3381,7 +3373,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 num_tracks = len(anno_tracks)
 
                 # Upload annotations
-                # @todo exponential backoff?
+                # @todo is this loop really needed?
                 num_uploaded_shapes = 0
                 num_uploaded_tags = 0
                 num_uploaded_tracks = 0
@@ -3758,13 +3750,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = "detections"
                 label = cvat_shape.to_detection()
             elif shape_type == "polygon":
-                label_type = "polylines"
                 if expected_label_type == "segmentation":
                     label_type = "segmentation"
                     label = cvat_shape.to_polylines(closed=True, filled=True)
-                    label.id = None
+                    label.id = None  # @todo is this working?
                 else:
-                    label = cvat_shape.to_polyline(closed=True, filled=True)
+                    if expected_label_type in ("polyline", "polylines"):
+                        filled = False
+                    else:
+                        filled = True
+
+                    label = cvat_shape.to_polyline(closed=True, filled=filled)
                     if expected_label_type in (
                         "detection",
                         "detections",
@@ -3772,6 +3768,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "instances",
                     ):
                         label_type = "detections"
+                    else:
+                        label_type = "polylines"
             elif shape_type == "polyline":
                 label_type = "polylines"
                 label = cvat_shape.to_polyline()
@@ -4139,11 +4137,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             remapped_attr_names.update(remapped_attrs)
-            points = kp.points
-            abs_points = HasCVATPoints._to_abs_points(points, frame_size)
-            flattened_points = [
-                coord for point in abs_points for coord in point
-            ]
+            abs_points = HasCVATPoints._to_abs_points(kp.points, frame_size)
+            flattened_points = list(itertools.chain.from_iterable(abs_points))
 
             shape = {
                 "type": "points",
@@ -4156,6 +4151,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "source": "manual",
                 "attributes": attributes,
             }
+
             if load_tracks and kp.index is not None:
                 index = kp.index
                 if class_name not in tracks:
@@ -4200,35 +4196,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             remapped_attr_names.update(remapped_attrs)
             for points in poly.points:
+                if poly.filled and len(points) < 3:
+                    continue  # CVAT polygons must contain >= 3 points
+
                 abs_points = HasCVATPoints._to_abs_points(points, frame_size)
-                flattened_points = [c for point in abs_points for c in point]
+                flattened_points = list(
+                    itertools.chain.from_iterable(abs_points)
+                )
 
-                if poly.closed:
-                    shape = {
-                        "type": "polygon",
-                        "occluded": False,
-                        "z_order": 0,
-                        "points": flattened_points,
-                        "label_id": class_name,
-                        "group": 0,
-                        "frame": frame_id,
-                        "source": "manual",
-                        "attributes": deepcopy(attributes),
-                    }
-
-                else:
-                    shape = {
-                        "type": "polyline",
-                        "occluded": False,
-                        "z_order": 0,
-                        "points": flattened_points,
-                        "label_id": class_name,
-                        "group": 0,
-                        "frame": frame_id,
-                        "source": "manual",
-                        "attributes": deepcopy(attributes),
-                    }
+                shape = {
+                    "type": "polygon" if poly.filled else "polyline",
+                    "occluded": False,
+                    "z_order": 0,
+                    "points": flattened_points,
+                    "label_id": class_name,
+                    "group": 0,
+                    "frame": frame_id,
+                    "source": "manual",
+                    "attributes": deepcopy(attributes),
+                }
                 curr_shapes.append(shape)
+
             if load_tracks and poly.index is not None:
                 index = poly.index
                 if class_name not in tracks:
@@ -4287,7 +4275,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ytl = float(round(y * height))
                 xbr = float(round((x + w) * width))
                 ybr = float(round((y + h) * height))
-
                 bbox = [xtl, ytl, xbr, ybr]
 
                 shape = {
@@ -4309,14 +4296,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 polygon = det.to_polyline()
                 for points in polygon.points:
                     if len(points) < 3:
-                        continue
+                        continue  # CVAT polygons must contain >= 3 points
 
                     abs_points = HasCVATPoints._to_abs_points(
                         points, frame_size
                     )
-                    flattened_points = [
-                        c for point in abs_points for c in point
-                    ]
+                    flattened_points = list(
+                        itertools.chain.from_iterable(abs_points)
+                    )
 
                     shape = {
                         "type": "polygon",

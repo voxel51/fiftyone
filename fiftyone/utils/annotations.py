@@ -353,16 +353,24 @@ def _build_label_schema(
 
 def _select_labels_with_type(samples, label_field, label_type):
     if label_type in ("detection", "detections"):
-        return samples.filter_labels(label_field, ~F("mask").exists())
+        return samples.filter_labels(
+            label_field, ~F("mask").exists(), only_matches=False
+        )
 
     if label_type in ("instance", "instances"):
-        return samples.filter_labels(label_field, F("mask").exists())
+        return samples.filter_labels(
+            label_field, F("mask").exists(), only_matches=False
+        )
 
     if label_type in ("polygon", "polygons"):
-        return samples.filter_labels(label_field, F("filled") == True)
+        return samples.filter_labels(
+            label_field, F("filled") == True, only_matches=False
+        )
 
     if label_type in ("polyline", "polylines"):
-        return samples.filter_labels(label_field, F("filled") == False)
+        return samples.filter_labels(
+            label_field, F("filled") == False, only_matches=False
+        )
 
     raise ValueError(
         "Field '%s' has unsupported multiple label type '%s'"
