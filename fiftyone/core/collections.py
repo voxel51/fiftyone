@@ -38,6 +38,7 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
+fod = fou.lazy_import("fiftyone.core.dataset")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -820,6 +821,73 @@ class SampleCollection(object):
                 counts[tag] += count
 
         return dict(counts)
+
+    def split_labels(self, in_field, out_field, filter=None):
+        """Splits the labels from the given input field into the given output
+        field of the collection.
+
+        This method is typically invoked on a view that has filtered the
+        contents of the specified input field, so that the labels in the view
+        are moved to the output field and the remaining labels are left
+        in-place.
+
+        Alternatively, you can provide a ``filter`` expression that selects the
+        labels of interest to move in this collection.
+
+        Args:
+            in_field: the name of the input label field
+            out_field: the name of the output label field, which will be
+                created if necessary
+            filter (None): a boolean
+                :class:`fiftyone.core.expressions.ViewExpression` to apply to
+                each label in the input field to determine whether to move it
+                (True) or leave it (False)
+        """
+        if filter is not None:
+            move_view = self.filter_labels(in_field, filter)
+        else:
+            move_view = self
+
+        move_view.merge_labels(in_field, out_field)
+
+    def merge_labels(self, in_field, out_field):
+        """Merges the labels from the given input field into the given output
+        field of the collection.
+
+        If this collection is a dataset, the input field is deleted after the
+        merge.
+
+        If this collection is a view, the input field will still exist on the
+        underlying dataset but will only contain the labels not present in this
+        view.
+
+        Args:
+            in_field: the name of the input label field
+            out_field: the name of the output label field, which will be
+                created if necessary
+        """
+        if not isinstance(self, fod.Dataset):
+            # The label IDs that we'll need to delete from `in_field`
+            _, id_path = self._get_label_field_path(in_field, "id")
+            del_ids = self.values(id_path, unwind=True)
+
+        dataset = self._dataset
+        dataset.merge_samples(
+            self,
+            key_field="id",
+            skip_existing=False,
+            insert_new=False,
+            fields={in_field: out_field},
+            merge_lists=True,
+            overwrite=True,
+            expand_schema=True,
+            include_info=False,
+        )
+
+        if isinstance(self, fod.Dataset):
+            dataset.delete_sample_field(in_field)
+        else:
+            dataset.delete_labels(ids=del_ids, fields=in_field)
 
     def set_values(
         self,
