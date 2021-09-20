@@ -41,6 +41,9 @@ class ActivityNet100Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the `max_duration` will be downloaded. By
+            default, all videos are downloaded
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -56,12 +59,14 @@ class ActivityNet100Dataset(FiftyOneDataset):
     def __init__(
         self,
         classes=None,
+        max_duration=None,
         num_workers=None,
         shuffle=None,
         seed=None,
         max_samples=None,
     ):
         self.classes = classes
+        self.max_duration = max_duration
         self.num_workers = num_workers
         self.shuffle = shuffle
         self.seed = seed
@@ -91,6 +96,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
             dataset_dir,
             split,
             classes=self.classes,
+            max_duration=self.max_duration,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
             seed=self.seed,
@@ -109,6 +115,9 @@ class ActivityNet200Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the `max_duration` will be downloaded. By
+            default, all videos are downloaded
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -124,12 +133,14 @@ class ActivityNet200Dataset(FiftyOneDataset):
     def __init__(
         self,
         classes=None,
+        max_duration=None,
         num_workers=None,
         shuffle=None,
         seed=None,
         max_samples=None,
     ):
         self.classes = classes
+        self.max_duration = max_duration
         self.num_workers = num_workers
         self.shuffle = shuffle
         self.seed = seed
@@ -159,6 +170,7 @@ class ActivityNet200Dataset(FiftyOneDataset):
             dataset_dir,
             split,
             classes=self.classes,
+            max_duration=self.max_duration,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
             seed=self.seed,

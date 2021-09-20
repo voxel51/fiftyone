@@ -30,6 +30,7 @@ def download_activitynet_split(
     dataset_dir,
     split,
     classes=None,
+    max_duration=None,
     num_workers=None,
     shuffle=None,
     seed=None,
@@ -49,6 +50,9 @@ def download_activitynet_split(
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the `max_duration` will be downloaded. By
+            default, all videos are downloaded
         num_workers (None): the number of processes to use when downloading
             individual video. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -72,17 +76,25 @@ def download_activitynet_split(
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
-    if split not in _SPLIT_MAP.values():
+    if split not in _SPLIT_MAP.keys():
         raise ValueError(
             "Unsupported split '%s'; supported values are %s"
-            % (split, tuple(_SPLIT_MAP.values()))
+            % (split, tuple(_SPLIT_MAP.keys()))
         )
+
+    if max_duration is None and max_samples is None and classes is None:
+        load_entire_split = True
+    else:
+        load_entire_split = False
 
     if version not in _ANNOTATION_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported version '%s'; supported values are %s"
             % (version, tuple(_ANNOTATION_DOWNLOAD_LINKS.keys()))
         )
+
+    if max_duration is not None and max_duration <= 0:
+        raise ValueError("`max_duration` must be a positive integer or float")
 
     if classes is not None and split == "test":
         logger.warning("Test split is unlabeled; ignoring classes requirement")
@@ -107,22 +119,19 @@ def download_activitynet_split(
         non_existant_classes = list(set(classes) - set(all_classes))
         if non_existant_classes:
             raise ValueError(
-                "Non existant classes specified; %s"
-                % tuple(non_existant_classes)
+                "The following classes specified but do not exist in the "
+                "dataset; %s",
+                tuple(non_existant_classes),
             )
 
     # Get ids of previously downloaded samples
     prev_downloaded_ids = _get_downloaded_sample_ids(videos_dir)
 
-    if classes is None:
-        any_class_samples = raw_annotations["database"]
-        all_class_samples = {}
-    else:
-        # Find all samples that match either all classes specified or any
-        # classes specified
-        any_class_samples, all_class_samples = _get_matching_samples(
-            raw_annotations, classes, split
-        )
+    # Find all samples that match either all classes specified or any
+    # classes specified
+    any_class_samples, all_class_samples = _get_matching_samples(
+        raw_annotations, classes, split, max_duration
+    )
 
     # Check if the downloaded samples are enough, else download more
     selected_samples, num_downloaded_samples = _downloaded_necessary_samples(
@@ -164,7 +173,7 @@ def _get_downloaded_sample_ids(videos_dir):
     video_ids = []
     for vfn in video_filenames:
         video_id, ext = os.path.splitext(vfn)
-        if ext == ".part":
+        if ext != ".mp4":
             logger.warning("Removing partially downloaded video %s...", vfn)
             os.remove(os.path.join(videos_dir, vfn))
         else:
@@ -173,7 +182,7 @@ def _get_downloaded_sample_ids(videos_dir):
     return video_ids
 
 
-def _get_matching_samples(raw_annotations, classes, split):
+def _get_matching_samples(raw_annotations, classes, split, max_duration):
     # sample contains all specified classes
     all_class_match = {}
 
@@ -182,18 +191,27 @@ def _get_matching_samples(raw_annotations, classes, split):
 
     activitynet_split = _SPLIT_MAP[split]
 
-    class_set = set(classes)
+    if classes is not None:
+        class_set = set(classes)
     for sample_id, annot_info in raw_annotations["database"].items():
-        if activitynet_split != annot_info["subset"]:
+        is_correct_split = activitynet_split == annot_info["subset"]
+        if max_duration is None:
+            is_correct_dur = True
+        else:
+            is_correct_dur = max_duration >= annot_info["duration"]
+        if not is_correct_split or not is_correct_dur:
             continue
-        annot_labels = set(
-            {annot["label"] for annot in annot_info["annotations"]}
-        )
 
-        if class_set.issubset(annot_labels):
-            all_class_match[sample_id] = annot_info
-        elif class_set & annot_labels:
+        if classes is None:
             any_class_match[sample_id] = annot_info
+        else:
+            annot_labels = set(
+                {annot["label"] for annot in annot_info["annotations"]}
+            )
+            if class_set.issubset(annot_labels):
+                all_class_match[sample_id] = annot_info
+            elif class_set & annot_labels:
+                any_class_match[sample_id] = annot_info
 
     return any_class_match, all_class_match
 
@@ -298,7 +316,10 @@ def _attempt_to_download(videos_dir, ids, samples_info, num_samples):
 
 def _do_download(url, output_path):
     try:
-        ydl_opts = {"outtmpl": output_path}
+        ydl_opts = {
+            "outtmpl": output_path,
+            "format": "bestvideo[ext=mp4]",
+        }
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
@@ -333,7 +354,7 @@ _ANNOTATION_DOWNLOAD_LINKS = {
 }
 
 _SPLIT_MAP = {
-    "training": "train",
-    "testing": "test",
+    "train": "training",
+    "test": "testing",
     "validation": "validation",
 }
