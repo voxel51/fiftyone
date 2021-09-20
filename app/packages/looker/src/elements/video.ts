@@ -345,7 +345,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private release: () => void;
   private src: string;
   private update: StateUpdate<VideoState>;
-  private volume: number = 0;
+  private volume: number;
   private waitingToPause: boolean = false;
   private waitingToPlay: boolean = false;
   private waitingToRelease: boolean = false;
