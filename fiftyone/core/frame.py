@@ -888,6 +888,10 @@ class Frame(Document, metaclass=FrameSingleton):
 
     _NO_DATASET_DOC_CLS = foo.NoDatasetFrameSampleDocument
 
+    @property
+    def _sample_id(self):
+        return self._doc._sample_id
+
     def save(self):
         """Saves the frame to the database."""
         if not self._in_db:

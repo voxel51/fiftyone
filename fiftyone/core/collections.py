@@ -38,6 +38,7 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
+fod = fou.lazy_import("fiftyone.core.dataset")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -702,19 +703,52 @@ class SampleCollection(object):
             view.set_values(tags_path, tags)
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
-        view = self.select_labels(ids=ids, tags=tags, fields=fields)
+        if ids is not None or tags is not None:
+            view = self.select_labels(ids=ids, tags=tags, fields=fields)
+        else:
+            view = self
 
-        sample_ids = view.values("id")
+        if fields is None:
+            label_fields = view._get_label_fields()
+        elif etau.is_str(fields):
+            label_fields = [fields]
+        else:
+            label_fields = fields
 
-        labels = []
-        for label_field in view._get_label_fields():
+        if not label_fields:
+            return []
+
+        paths = ["id"]
+        is_list_fields = []
+        is_frame_fields = []
+        for label_field in label_fields:
             label_type, id_path = view._get_label_field_path(label_field, "id")
             is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            is_frame_field = view._is_frame_field(label_field)
 
-            label_ids = view.values(id_path)
+            paths.append(id_path)
+            is_list_fields.append(is_list_field)
+            is_frame_fields.append(is_frame_field)
 
-            if self._is_frame_field(label_field):
-                frame_numbers = view.values("frames.frame_number")
+        has_frame_fields = any(is_frame_fields)
+
+        if has_frame_fields:
+            paths.insert(0, "frames.frame_number")
+
+        results = list(view.values(paths))
+
+        if has_frame_fields:
+            frame_numbers = results.pop(0)
+
+        sample_ids = results[0]
+        all_label_ids = results[1:]
+
+        labels = []
+
+        for label_field, label_ids, is_list_field, is_frame_field in zip(
+            label_fields, all_label_ids, is_list_fields, is_frame_fields
+        ):
+            if is_frame_field:
                 for sample_id, sample_frame_numbers, sample_label_ids in zip(
                     sample_ids, frame_numbers, label_ids
                 ):
@@ -787,6 +821,73 @@ class SampleCollection(object):
                 counts[tag] += count
 
         return dict(counts)
+
+    def split_labels(self, in_field, out_field, filter=None):
+        """Splits the labels from the given input field into the given output
+        field of the collection.
+
+        This method is typically invoked on a view that has filtered the
+        contents of the specified input field, so that the labels in the view
+        are moved to the output field and the remaining labels are left
+        in-place.
+
+        Alternatively, you can provide a ``filter`` expression that selects the
+        labels of interest to move in this collection.
+
+        Args:
+            in_field: the name of the input label field
+            out_field: the name of the output label field, which will be
+                created if necessary
+            filter (None): a boolean
+                :class:`fiftyone.core.expressions.ViewExpression` to apply to
+                each label in the input field to determine whether to move it
+                (True) or leave it (False)
+        """
+        if filter is not None:
+            move_view = self.filter_labels(in_field, filter)
+        else:
+            move_view = self
+
+        move_view.merge_labels(in_field, out_field)
+
+    def merge_labels(self, in_field, out_field):
+        """Merges the labels from the given input field into the given output
+        field of the collection.
+
+        If this collection is a dataset, the input field is deleted after the
+        merge.
+
+        If this collection is a view, the input field will still exist on the
+        underlying dataset but will only contain the labels not present in this
+        view.
+
+        Args:
+            in_field: the name of the input label field
+            out_field: the name of the output label field, which will be
+                created if necessary
+        """
+        if not isinstance(self, fod.Dataset):
+            # The label IDs that we'll need to delete from `in_field`
+            _, id_path = self._get_label_field_path(in_field, "id")
+            del_ids = self.values(id_path, unwind=True)
+
+        dataset = self._dataset
+        dataset.merge_samples(
+            self,
+            key_field="id",
+            skip_existing=False,
+            insert_new=False,
+            fields={in_field: out_field},
+            merge_lists=True,
+            overwrite=True,
+            expand_schema=True,
+            include_info=False,
+        )
+
+        if isinstance(self, fod.Dataset):
+            dataset.delete_sample_field(in_field)
+        else:
+            dataset.delete_labels(ids=del_ids, fields=in_field)
 
     def set_values(
         self,
