@@ -5069,6 +5069,7 @@ def _merge_samples_pipeline(
     # Prepare for merge
     #
 
+    in_key_field = key_field
     db_fields_map = src_collection._get_db_fields_map()
     key_field = db_fields_map.get(key_field, key_field)
 
@@ -5186,7 +5187,7 @@ def _merge_samples_pipeline(
         _omit_fields = set()
 
     _omit_fields.add("id")
-    _omit_fields.discard(key_field)
+    _omit_fields.discard(in_key_field)
 
     if insert_new:
         # Can't omit default fields here when new samples may be inserted.
