@@ -112,8 +112,8 @@ including the following commands in your notebook before creating any plots:
     po.init_notebook_mode(connected=True)
 
 Note that FiftyOne currently requires `plotly>=4.14,<5`, which should have been
-automatically installed when you installed FiftyOne. If you manually upgraded
-to Plotly v5 after installing FiftyOne, some interactive plotting features may
+automatically installed when you installed FiftyOne. If your Plotly package was
+upgraded after installing FiftyOne, some interactive plotting features may
 not work as expected.
 
 .. _faq-remote-server-data:

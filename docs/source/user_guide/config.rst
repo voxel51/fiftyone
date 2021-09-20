@@ -304,10 +304,10 @@ Example custom database usage
 
 In order to use a custom MongoDB database with FiftyOne, you must manually
 start the database before importing FiftyOne. MongoDB provides
-`a variety of operations <https://docs.mongodb.com/manual/tutorial/manage-mongodb-processes>`_
+`a variety of options <https://docs.mongodb.com/manual/tutorial/manage-mongodb-processes>`_
 for this, including running the database as a daemon automatically.
 
-In the  simplest case, you can just run `mongod` in one shell:
+In the simplest case, you can just run `mongod` in one shell:
 
 .. code-block:: shell
 
