@@ -2577,6 +2577,7 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(
             results.config.label_schema,
+            results.id_map,
             results.task_ids,
             results.frame_id_map,
             results.labels_task_map,
@@ -2995,9 +2996,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             a tuple of
 
             -   **task_id**: the id of the created task in CVAT
-            -   **attribute_id_map**: a dictionary mapping the ids assigned to
+            -   **attribute_id_map**: a dictionary mapping the IDs assigned to
                 attributes by CVAT for every class
-            -   **class_id_map**: a dictionary mapping the ids assigned to
+            -   **class_id_map**: a dictionary mapping the IDs assigned to
                 classes by CVAT
         """
         if labels is None:
@@ -3085,7 +3086,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             job_reviewers (None): a list of usernames to assign job reviews
 
         Returns:
-            a list of the job ids created for the task
+            a list of the job IDs created for the task
         """
         data = {"image_quality": image_quality}
 
@@ -3161,9 +3162,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             a tuple of
 
-            -   **task_ids**: a list of the task ids created by uploading
+            -   **task_ids**: a list of the task IDs created by uploading
                 samples
-            -   **job_ids**: a dictionary mapping task id to a list of job ids
+            -   **job_ids**: a dictionary mapping task id to a list of job IDs
                 created for that task
             -   **frame_id_map**: a dictionary mapping task id to another map
                 from the CVAT frame index of every image to the FiftyOne sample
@@ -3208,7 +3209,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     task_batch_size
                 )
 
-                # Only relevant to track label ids for existing non-scalar
+                # Only relevant to track label IDs for existing non-scalar
                 # Label fields
                 if is_existing_field and label_type != "scalar":
                     label_id_attr = {
@@ -3350,8 +3351,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 )
                 frame_id_map[task_id] = self._create_id_mapping(batch_samples)
 
-                # Creating task assigned ids to classes and attributes
-                # Remap annotations to these ids before uploading
+                # Creating task assigned IDs to classes and attributes
+                # Remap annotations to these IDs before uploading
                 anno_shapes = self._remap_ids(
                     anno_shapes, attribute_id_map, class_id_map
                 )
@@ -3400,6 +3401,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def download_annotations(
         self,
         label_schema,
+        id_map,
         task_ids,
         frame_id_map,
         labels_task_map,
@@ -3411,7 +3413,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             label_schema: a dictionary containing the description of label
                 fields, classes and attribute to annotate
-            task_ids: a list of the task ids created by uploading samples
+            id_map: a dictionary mapping sample IDs to label ID(s) that were
+                uploaded for annotation
+            task_ids: a list of the task IDs created by uploading samples
             frame_id_map: a dictionary mapping task id to another map from the
                 CVAT frame index of every image to the FiftyOne sample id
                 (for videos) and FiftyOne frame id
@@ -3465,6 +3469,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 tags,
                 frame_id_map[task_id],
                 label_type,
+                id_map,
                 class_map,
                 attr_id_map,
                 frames,
@@ -3479,6 +3484,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 shapes,
                 frame_id_map[task_id],
                 label_type,
+                id_map,
                 class_map,
                 attr_id_map,
                 frames,
@@ -3499,6 +3505,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     track["shapes"],
                     frame_id_map[task_id],
                     label_type,
+                    id_map,
                     class_map,
                     attr_id_map,
                     frames,
@@ -3548,33 +3555,40 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     sample_metadata["width"],
                     sample_metadata["height"],
                 )
-                for _id, _results in sample_results.items():
-                    if isinstance(_results, dict):
+                for _id, _content in sample_results.items():
+                    if isinstance(_content, dict):
                         frame_id = _id
-                        frame_results = _results
+                        frame_results = _content
                         for label_id, label in frame_results.items():
                             label = self._convert_polylines(
-                                label, label_info, frame_size
+                                label_id, label, label_info, frame_size
                             )
                             results[label_type][sample_id][frame_id][
                                 label_id
                             ] = label
                     else:
                         label_id = _id
-                        label = _results
+                        label = _content
                         label = self._convert_polylines(
-                            label, label_info, frame_size
+                            label_id, label, label_info, frame_size
                         )
                         results[label_type][sample_id][label_id] = label
 
-    def _convert_polylines(self, label, label_info, frame_size):
+    def _convert_polylines(self, label_id, label, label_info, frame_size):
+        # Convert Polyline to instance segmentation
         if isinstance(label, fol.Polyline):
-            label = CVATShape.polyline_to_detection(label, frame_size)
-        elif isinstance(label, fol.Polylines):
+            detection = CVATShape.polyline_to_detection(label, frame_size)
+            detection._id = ObjectId(label_id)
+            return detection
+
+        # Convert Polylines to semantic segmentation
+        if isinstance(label, fol.Polylines):
             mask_targets = label_info.get("mask_targets", None)
-            label = CVATShape.polylines_to_segmentation(
+            segmentation = CVATShape.polylines_to_segmentation(
                 label, frame_size, mask_targets
             )
+            segmentation._id = ObjectId(label_id)
+            return segmentation
 
         return label
 
@@ -3594,6 +3608,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         annos,
         frame_id_map,
         label_type,
+        id_map,
         class_map,
         attr_id_map,
         frames,
@@ -3607,9 +3622,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             anno_type: the type of annotations to parse, in
                 ``("shapes", "tags", "track")``
             annos: list of shapes or tags
-            frame_id_map: dict mapping CVAT frame ids to FiftyOne sample and
-                frame uuids
+            frame_id_map: dict mapping CVAT frame IDs to FiftyOne sample and
+                frame UUIDs
             label_type: expected label type to parse from the given annotations
+            id_map: dict mapping sample IDs to pre-existing label ID(s)
             class_map: dict mapping CVAT class id to class name
             attr_id_map: dict mapping CVAT class id to a map of attr name to
                 attr id
@@ -3666,6 +3682,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 prev_type,
                 frame_id_map,
                 label_type,
+                id_map,
                 class_map,
                 attr_id_map,
                 frames,
@@ -3695,6 +3712,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 prev_type,
                 frame_id_map,
                 label_type,
+                id_map,
                 class_map,
                 attr_id_map,
                 frames,
@@ -3712,6 +3730,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         prev_type,
         frame_id_map,
         expected_label_type,
+        id_map,
         class_map,
         attr_id_map,
         frames,
@@ -3725,10 +3744,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             metadata = frames[0]
 
         sample_id = frame_id_map[frame]["sample_id"]
-        store_frame = False
         if "frame_id" in frame_id_map[frame]:
-            store_frame = True
             frame_id = frame_id_map[frame]["frame_id"]
+        else:
+            frame_id = None
 
         label = None
 
@@ -3751,25 +3770,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label = cvat_shape.to_detection()
             elif shape_type == "polygon":
                 if expected_label_type == "segmentation":
+                    # A piece of a segmentation mask
                     label_type = "segmentation"
-                    label = cvat_shape.to_polylines(closed=True, filled=True)
-                    label.id = None  # @todo is this working?
+                    label = cvat_shape.to_polyline(closed=True, filled=True)
+                elif expected_label_type in (
+                    "detection",
+                    "detections",
+                    "instance",
+                    "instances",
+                ):
+                    # A piece of an instance mask
+                    label_type = "detections"
+                    label = cvat_shape.to_polyline(closed=True, filled=True)
                 else:
+                    # A regular polyline or polygon
                     if expected_label_type in ("polyline", "polylines"):
                         filled = False
                     else:
                         filled = True
 
+                    label_type = "polylines"
                     label = cvat_shape.to_polyline(closed=True, filled=filled)
-                    if expected_label_type in (
-                        "detection",
-                        "detections",
-                        "instance",
-                        "instances",
-                    ):
-                        label_type = "detections"
-                    else:
-                        label_type = "polylines"
             elif shape_type == "polyline":
                 label_type = "polylines"
                 label = cvat_shape.to_polyline()
@@ -3821,7 +3842,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if sample_id not in results[label_type]:
             results[label_type][sample_id] = {}
 
-        if store_frame:
+        if frame_id is not None:
             if frame_id not in results[label_type][sample_id]:
                 results[label_type][sample_id][frame_id] = {}
 
@@ -3829,66 +3850,59 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 results[label_type][sample_id][frame_id] = label
             else:
                 _results = results[label_type][sample_id][frame_id]
-                self._add_label_to_results(_results, label)
+
+                # @todo need to lookup ID of existing segmentation mask...
+                self._add_label_to_results(_results, label_type, label)
         else:
             if label_type == "scalar":
                 results[label_type][sample_id] = label
             else:
                 _results = results[label_type][sample_id]
-                self._add_label_to_results(_results, label)
+
+                if label_type == "segmentation":
+                    _id = id_map.get(sample_id, None)
+                    label_id = _id if etau.is_str(_id) else None
+                else:
+                    label_id = None
+
+                self._add_label_to_results(
+                    _results, label_type, label, label_id=label_id
+                )
 
         return prev_type
 
-    def _add_label_to_results(self, results, label):
-        """Adds the provided label to the results.
+    def _add_label_to_results(self, results, label_type, label, label_id=None):
+        if label_id is None:
+            label_id = label.id
 
-        Polyline(s) with the same label ID are merged, as these define instance
-        or semantic segmentation masks.
-        """
-        if label.id in results:
-            _label = results[label.id]
+        # Merge polylines representing a semantic segmentation
+        if label_type == "segmentation":
+            if label_id in results:
+                polylines = results[label_id]
 
-            if isinstance(label, fol.Polyline) and isinstance(
-                _label, fol.Polyline
-            ):
-                # Merge masks of detections with the same ID
-                _label.points.extend(label.points)
-            elif isinstance(label, fol.Polylines) and isinstance(
-                _label, fol.Polylines
-            ):
-                # Merge masks for each segmentation class
-                self._merge_polylines(_label, label)
+                found_existing_class = False
+                for polyline in polylines.polylines:
+                    if label.label == polyline.label:
+                        found_existing_class = True
+                        polyline.points.extend(label.points)
+
+                if not found_existing_class:
+                    polylines.polylines.append(label)
             else:
-                _label = label
-        elif isinstance(label, fol.Polylines):
-            # @todo is label.id == None working properly here?
-            if label.id is not None and None in results:
-                # Merge masks for each segmentation class
-                _label = results.pop(None)
-                self._merge_polylines(_label, label)
-                _label.id = label.id
-            elif results:
-                # Merge masks for each segmentation class
-                _label = list(results.values())[0]
-                self._merge_polylines(_label, label)
+                results[label_id] = fol.Polylines(polylines=[label])
+
+            return
+
+        # Merge polylines representing an instance segmentation
+        if label_type == "detections" and isinstance(label, fol.Polyline):
+            if label_id in results:
+                results[label_id].points.extend(label.points)
             else:
-                _label = label
-        else:
-            _label = label
+                results[label_id] = label
 
-        results[_label.id] = _label
+            return
 
-    def _merge_polylines(self, polylines, new_polylines):
-        new_polyline = new_polylines.polylines[0]
-
-        found_existing_class = False
-        for polyline in polylines.polylines:
-            if polyline.label == new_polyline.label:
-                found_existing_class = True
-                polyline.points.extend(new_polyline.points)
-
-        if not found_existing_class:
-            polylines.polylines.extend(new_polylines.polylines)
+        results[label_id] = label
 
     def _parse_arg(self, arg, config_arg):
         if arg is None:
@@ -4343,26 +4357,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return shapes, tracks, remapped_attr_names
 
     def _create_attributes(self, label, attributes, classes, label_id=None):
-        label_attrs = []
-        remapped_attr_names = {}
         if label_id is None:
             label_id = label.id
 
-        label_attrs.append({"spec_id": "label_id", "value": label_id})
+        label_attrs = [{"spec_id": "label_id", "value": label_id}]
+        remapped_attr_names = {}
+
         for attribute in attributes:
-            value = None
-            if attribute in label:
-                value = label[attribute]
+            value = label.get_attribute_value(attribute, None)
+            if value is None:
+                continue
 
-            elif "attributes" in label:
-                if attribute in label.attributes:
-                    value = label.get_attribute_value(attribute, None)
-                    new_attribute = "attribute:" + attribute
-                    remapped_attr_names[attribute] = new_attribute
-                    attribute = new_attribute
+            if attribute not in label:
+                new_attribute = "attribute:" + attribute
+                remapped_attr_names[attribute] = new_attribute
+                attribute = new_attribute
 
-            if value is not None:
-                label_attrs.append({"spec_id": attribute, "value": str(value)})
+            label_attrs.append({"spec_id": attribute, "value": str(value)})
 
         if "label" in label and label["label"] in classes:
             class_name = label["label"]
@@ -4445,8 +4456,8 @@ class CVATLabel(object):
     Args:
         label_dict: the dictionary containing the label information loaded from
             the CVAT API
-        class_map: a dictionary mapping label ids to class strings
-        attr_id_map: a dictionary mapping attribute ids attribute names for
+        class_map: a dictionary mapping label IDs to class strings
+        attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
     """
 
@@ -4501,8 +4512,8 @@ class CVATShape(CVATLabel):
     Args:
         label_dict: the dictionary containing the label information loaded from
             the CVAT API
-        class_map: a dictionary mapping label ids to class strings
-        attr_id_map: a dictionary mapping attribute ids attribute names for
+        class_map: a dictionary mapping label IDs to class strings
+        attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
         metadata: a dictionary containing the width and height of the frame
         index (None): the tracking index of the given shape
@@ -4623,16 +4634,9 @@ class CVATShape(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Segmentation`
         """
-        segmentation = polylines.to_segmentation(
+        return polylines.to_segmentation(
             frame_size=frame_size, mask_targets=mask_targets
         )
-
-        try:
-            segmentation._id = polylines._id
-        except:
-            pass
-
-        return segmentation
 
 
 class CVATTag(CVATLabel):
@@ -4641,8 +4645,8 @@ class CVATTag(CVATLabel):
     Args:
         label_dict: the dictionary containing the label information loaded from
             the CVAT API
-        class_map: a dictionary mapping label ids to class strings
-        attr_id_map: a dictionary mapping attribute ids attribute names for
+        class_map: a dictionary mapping label IDs to class strings
+        attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
     """
 
