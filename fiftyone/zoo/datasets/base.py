@@ -35,7 +35,7 @@ class FiftyOneDataset(fozd.ZooDataset):
     pass
 
 
-class ActivityNetDataset(FiftyOneDataset):
+class ActivityNet100Dataset(FiftyOneDataset):
     """
     Args:
         classes (None): a string or list of strings specifying required classes
@@ -69,7 +69,7 @@ class ActivityNetDataset(FiftyOneDataset):
 
     @property
     def name(self):
-        return "activitynet"
+        return "activitynet-100"
 
     @property
     def tags(self):
@@ -87,7 +87,7 @@ class ActivityNetDataset(FiftyOneDataset):
         return True
 
     def _download_and_prepare(self, dataset_dir, _, split):
-        num_samples, classes, downloaded = foua.download_activitynet_split(
+        num_samples, classes = foua.download_activitynet_split(
             dataset_dir,
             split,
             classes=self.classes,
@@ -95,12 +95,78 @@ class ActivityNetDataset(FiftyOneDataset):
             shuffle=self.shuffle,
             seed=self.seed,
             max_samples=self.max_samples,
+            version="100",
         )
 
-        dataset_type = fot.ActivityNetDataset()
+        dataset_type = fot.FiftyOneVideoClassificationDataset()
 
-        if not downloaded:
-            num_samples = None
+        return dataset_type, num_samples, classes
+
+
+class ActivityNet200Dataset(FiftyOneDataset):
+    """
+    Args:
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded.
+            By default, all matching samples are loaded
+    """
+
+    def __init__(
+        self,
+        classes=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.classes = classes
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "activitynet-200"
+
+    @property
+    def tags(self):
+        return (
+            "video",
+            "classification",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes = foua.download_activitynet_split(
+            dataset_dir,
+            split,
+            classes=self.classes,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            version="200",
+        )
+
+        dataset_type = fot.FiftyOneVideoClassificationDataset()
 
         return dataset_type, num_samples, classes
 
@@ -1598,7 +1664,8 @@ class UCF101Dataset(FiftyOneDataset):
 
 
 AVAILABLE_DATASETS = {
-    "activitynet": ActivityNetDataset,
+    "activitynet-200": ActivityNet200Dataset,
+    "activitynet-100": ActivityNet100Dataset,
     "bdd100k": BDD100KDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,

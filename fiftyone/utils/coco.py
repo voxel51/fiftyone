@@ -1430,7 +1430,7 @@ def download_coco_dataset_split(
     if split not in _IMAGE_DOWNLOAD_LINKS[year]:
         raise ValueError(
             "Unsupported split '%s'; supported values are %s"
-            % (year, tuple(_IMAGE_DOWNLOAD_LINKS[year].keys()))
+            % (split, tuple(_IMAGE_DOWNLOAD_LINKS[year].keys()))
         )
 
     if classes is not None and split == "test":
