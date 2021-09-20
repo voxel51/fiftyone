@@ -20,7 +20,7 @@ App
 
 Core
 
-- Added support for providing compound sort criteria when usng the
+- Added support for providing compound sort criteria when using the
   :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stage
 - Added support for configuring the wait time when using
   :meth:`Session.wait() <fiftyone.core.session.Session.wait>` to block

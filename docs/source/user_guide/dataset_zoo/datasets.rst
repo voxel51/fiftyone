@@ -407,9 +407,9 @@ The dataset is intended for:
 
         source_dir/
             leftImg8bit_trainvaltest.zip
-            gtFine_trainvaltest.zip         # optional
-            gtCoarse.zip                    # optional
-            gtBbox_cityPersons_trainval     # optional
+            gtFine_trainvaltest.zip             # optional
+            gtCoarse.zip                        # optional
+            gtBbox_cityPersons_trainval.zip     # optional
 
     You can register at https://www.cityscapes-dataset.com/register in order
     to get links to download the data.

@@ -267,10 +267,9 @@ class DatasetStatistics(object):
                 aggregations.append(foa.Count(field_name))
                 if _meets_type(field, (fof.IntField, fof.FloatField)):
                     aggregations.append(foa.Bounds(field_name))
-                elif _meets_type(
-                    field,
-                    (fof.BooleanField, fof.StringField, fof.ObjectIdField),
-                ):
+                elif _meets_type(field, fof.BooleanField):
+                    aggregations.append(foa.CountValues(field_name, _first=3))
+                elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
                     include = (
                         None
                         if filters is None

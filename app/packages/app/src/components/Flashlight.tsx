@@ -253,7 +253,7 @@ const useSelect = () => {
 export const useSampleUpdate = () => {
   const handler = useRecoilCallback(
     ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
-      updatedSamples.forEach(({ sample }) => {
+      updatedSamples.forEach((sample) => {
         samples.set(sample._id, { ...samples.get(sample._id), sample });
         lookers.has(sample._id) && lookers.get(sample._id).updateSample(sample);
       });

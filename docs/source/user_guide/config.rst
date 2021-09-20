@@ -242,7 +242,7 @@ session.
 Configuring a MongoDB connection
 --------------------------------
 
-By default, FiftyOne is installed with its own `mongod` database distribution.
+By default, FiftyOne is installed with its own MongoDB database distribution.
 This database is managed by FiftyOne automatically as a service that runs
 whenever at least one FiftyOne Python client is alive.
 
@@ -257,8 +257,14 @@ entry:
 .. code-block:: json
 
     {
-        "database_uri": "..."
+        "database_uri": "mongodb://[username:password@]host[:port]"
     }
+
+or you can set the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_URI=mongodb://[username:password@]host[:port]
 
 Very rarerly, upgrading your FiftyOne package may require running a database
 admin migration, in which case the `database_uri` must establish a connection
@@ -266,7 +272,17 @@ with administrative privileges.
 
 .. warning::
 
-    FiftyOne requires MongoDB v4.4.
+    FiftyOne is designed for and distributed with MongoDB v4.4.
+
+    Users have reported success connecting to MongoDB v5 databases, but you
+    should
+    `set the feature compatibility version <https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion>`_
+    to 4.4 to ensure proper function:
+
+    .. code-block:: shell
+
+        mongo --shell
+        > db.adminCommand({setFeatureCompatibilityVersion: "4.4"})
 
 .. note::
 
@@ -274,11 +290,43 @@ with administrative privileges.
     Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
     distribution that you have installed yourself.
 
-    Users have reported success installing MongoDB on Apple Silicon as follows:
+    Users have reported success
+    `installing MongoDB v4.4 on Apple Silicon <https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x>`_
+    as follows:
 
     .. code-block:: shell
 
+        brew tap mongodb/brew
         brew install mongodb-community@4.4
+
+Example custom database usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to use a custom MongoDB database with FiftyOne, you must manually
+start the database before importing FiftyOne. MongoDB provides
+`a variety of options <https://docs.mongodb.com/manual/tutorial/manage-mongodb-processes>`_
+for this, including running the database as a daemon automatically.
+
+In the simplest case, you can just run `mongod` in one shell:
+
+.. code-block:: shell
+
+    mkdir -p /path/for/db
+    mongod --dbpath /path/for/db
+
+Then, in another shell, configure the database URI and launch FiftyOne:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_URI=mongodb://localhost
+
+.. code-block:: python
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
 
 .. _configuring-fiftyone-app:
 
