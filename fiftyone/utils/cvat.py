@@ -2433,6 +2433,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             to videos
         image_quality (75): an int in `[0, 100]` determining the image quality
             uploaded to CVAT
+        use_cache (True): option to use a cache when preparing data chunks.
+            This will reduce the task creation time as data will be processed
+            on-the-fly and stored in a cache when requested
+        use_zip_chunks (True): for videos only, this option will force to use
+            zip chunks as compressed data. Note, setting this option to `False`
+            results in smoothing and a reduction in quality when uploading
+            videos at an `image_quality` of 100
         task_assignee (None): the username to which the task(s) were assigned
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
@@ -2449,6 +2456,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         password=None,
         segment_size=None,
         image_quality=75,
+        use_cache=True,
+        use_zip_chunks=True,
         task_assignee=None,
         job_assignees=None,
         job_reviewers=None,
@@ -2458,6 +2467,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.url = url
         self.segment_size = segment_size
         self.image_quality = image_quality
+        self.use_cache = use_cache
+        self.use_zip_chunks = use_zip_chunks
         self.task_assignee = task_assignee
         self.job_assignees = job_assignees
         self.job_reviewers = job_reviewers
@@ -2547,6 +2558,8 @@ class CVATBackend(foua.AnnotationBackend):
             media_field=self.config.media_field,
             segment_size=self.config.segment_size,
             image_quality=self.config.image_quality,
+            use_cache=self.config.use_cache,
+            use_zip_chunks=self.config.use_zip_chunks,
             task_assignee=self.config.task_assignee,
             job_assignees=self.config.job_assignees,
             job_reviewers=self.config.job_reviewers,
@@ -3092,6 +3105,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_id,
         paths,
         image_quality=75,
+        use_cache=True,
+        use_zip_chunks=True,
         job_assignees=None,
         job_reviewers=None,
     ):
@@ -3102,13 +3117,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             paths: a list of media paths to upload
             image_quality (75): an int in `[0, 100]` determining the image
                 quality to upload to CVAT
+            use_cache (True): option to use a cache when preparing data chunks.
+                This will reduce the task creation time as data will be processed
+                on-the-fly and stored in a cache when requested
+            use_zip_chunks (True): for videos only, this option will force to use
+                zip chunks as compressed data. Note, setting this option to `False`
+                results in smoothing and a reduction in quality when uploading
+                videos at an `image_quality` of 100
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
 
         Returns:
             a list of the job ids created for the task
         """
-        data = {"image_quality": image_quality}
+        data = {
+            "image_quality": image_quality,
+            "use_cache": use_cache,
+            "use_zip_chunks": use_zip_chunks,
+        }
 
         files = {}
         for idx, path in enumerate(paths):
@@ -3157,6 +3183,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         media_field="filepath",
         segment_size=None,
         image_quality=75,
+        use_cache=True,
+        use_zip_chunks=True,
         task_assignee=None,
         job_assignees=None,
         job_reviewers=None,
@@ -3175,6 +3203,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 Not applicable to videos
             image_quality (75): an int in `[0, 100]` determining the image
                 quality to upload to CVAT
+            use_cache (True): option to use a cache when preparing data chunks.
+                This will reduce the task creation time as data will be processed
+                on-the-fly and stored in a cache when requested. 
+            use_zip_chunks (True): for videos only, this option will force to use
+                zip chunks as compressed data. Note, setting this option to `False`
+                results in smoothing and a reduction in quality when uploading
+                videos at an `image_quality` of 100
             task_assignee (None): the username to assign the created task(s)
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
@@ -3376,6 +3411,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     task_id,
                     batch_samples.values(media_field),
                     image_quality=image_quality,
+                    use_cache=use_cache,
+                    use_zip_chunks=use_zip_chunks,
                     job_assignees=current_job_assignees,
                     job_reviewers=current_job_reviewers,
                 )
