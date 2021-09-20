@@ -3413,8 +3413,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             label_schema: a dictionary containing the description of label
                 fields, classes and attribute to annotate
-            id_map: a dictionary mapping sample IDs to label ID(s) that were
-                uploaded for annotation
+            id_map: a dictionary mapping label fields to dicts mapping sample
+                IDs to label ID(s) that were uploaded for annotation
             task_ids: a list of the task IDs created by uploading samples
             frame_id_map: a dictionary mapping task id to another map from the
                 CVAT frame index of every image to the FiftyOne sample id
@@ -3441,6 +3441,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_info = label_schema[label_field]
             label_type = label_info["type"]
             scalar_attrs = assigned_scalar_attrs.get(label_field, False)
+            _id_map = id_map.get(label_field, {})
 
             # Download task data
             task_json = self.get(self.task_url(task_id)).json()
@@ -3469,7 +3470,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 tags,
                 frame_id_map[task_id],
                 label_type,
-                id_map,
+                _id_map,
                 class_map,
                 attr_id_map,
                 frames,
@@ -3484,7 +3485,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 shapes,
                 frame_id_map[task_id],
                 label_type,
-                id_map,
+                _id_map,
                 class_map,
                 attr_id_map,
                 frames,
@@ -3505,7 +3506,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     track["shapes"],
                     frame_id_map[task_id],
                     label_type,
-                    id_map,
+                    _id_map,
                     class_map,
                     attr_id_map,
                     frames,
@@ -3842,67 +3843,86 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if sample_id not in results[label_type]:
             results[label_type][sample_id] = {}
 
-        if frame_id is not None:
-            if frame_id not in results[label_type][sample_id]:
-                results[label_type][sample_id][frame_id] = {}
+        if (
+            frame_id is not None
+            and frame_id not in results[label_type][sample_id]
+        ):
+            results[label_type][sample_id][frame_id] = {}
 
+        if label_type == "segmentation":
+            seg_id = self._get_segmentation_id(id_map, sample_id, frame_id)
+        else:
+            seg_id = None
+
+        if frame_id is not None:
             if label_type == "scalar":
                 results[label_type][sample_id][frame_id] = label
             else:
                 _results = results[label_type][sample_id][frame_id]
 
-                # @todo need to lookup ID of existing segmentation mask...
-                self._add_label_to_results(_results, label_type, label)
+                self._add_label_to_results(
+                    _results, label_type, label, seg_id=seg_id
+                )
         else:
             if label_type == "scalar":
                 results[label_type][sample_id] = label
             else:
                 _results = results[label_type][sample_id]
 
-                if label_type == "segmentation":
-                    _id = id_map.get(sample_id, None)
-                    label_id = _id if etau.is_str(_id) else None
-                else:
-                    label_id = None
-
                 self._add_label_to_results(
-                    _results, label_type, label, label_id=label_id
+                    _results, label_type, label, seg_id=seg_id
                 )
 
         return prev_type
 
-    def _add_label_to_results(self, results, label_type, label, label_id=None):
-        if label_id is None:
-            label_id = label.id
+    def _get_segmentation_id(self, id_map, sample_id, frame_id):
+        _id = id_map.get(sample_id, None)
 
+        # @todo need to update id_map to support this
+        if frame_id is not None and isinstance(_id, dict):
+            _id = _id.get(frame_id, None)
+
+        if etau.is_str(_id):
+            return _id
+
+        if isinstance(_id, list) and len(_id) == 1:
+            return _id[0]
+
+        return None
+
+    def _add_label_to_results(self, results, label_type, label, seg_id=None):
         # Merge polylines representing a semantic segmentation
         if label_type == "segmentation":
-            if label_id in results:
-                polylines = results[label_id]
+            if seg_id is None:
+                seg_id = str(ObjectId())
 
-                found_existing_class = False
-                for polyline in polylines.polylines:
-                    if label.label == polyline.label:
-                        found_existing_class = True
-                        polyline.points.extend(label.points)
-
-                if not found_existing_class:
-                    polylines.polylines.append(label)
+            if results:
+                polylines = next(iter(results.values()))
             else:
-                results[label_id] = fol.Polylines(polylines=[label])
+                polylines = fol.Polylines()
+                results[seg_id] = polylines
+
+            found_existing_class = False
+            for polyline in polylines.polylines:
+                if label.label == polyline.label:
+                    found_existing_class = True
+                    polyline.points.extend(label.points)
+
+            if not found_existing_class:
+                polylines.polylines.append(label)
 
             return
 
         # Merge polylines representing an instance segmentation
         if label_type == "detections" and isinstance(label, fol.Polyline):
-            if label_id in results:
-                results[label_id].points.extend(label.points)
+            if label.id in results:
+                results[label.id].points.extend(label.points)
             else:
-                results[label_id] = label
+                results[label.id] = label
 
             return
 
-        results[label_id] = label
+        results[label.id] = label
 
     def _parse_arg(self, arg, config_arg):
         if arg is None:

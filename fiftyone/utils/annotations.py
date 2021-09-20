@@ -968,6 +968,8 @@ def _merge_labels(samples, anno_dict, results, label_field, label_info):
 
             image_label = image[field]
 
+            # @todo this does not correctly handle cases where an annotation is
+            # deleted but then added back upon re-import
             if image_label is None:
                 # A previously unlabeled image is being labeled, or a single
                 # label (e.g. Classification) was deleted in CVAT or FiftyOne
