@@ -24,6 +24,7 @@ export const PATCHES_FIELDS = ["Detections", "Polylines"];
 export const CLIPS_SAMPLE_FIELDS = [
   "VideoClassification",
   "VideoClassifications",
+  "FrameSupportField",
 ];
 export const CLIPS_FRAME_FIELDS = [
   "Classifications",
@@ -80,6 +81,8 @@ export const CONFIDENCE_LABELS = [
   "VideoClassification",
   "VideoClassifications",
 ];
+
+export const SUPPORT_LABELS = ["VideoClassification", "VideoClassifications"];
 
 export const LABEL_LISTS = [
   "Classifications",
