@@ -702,19 +702,52 @@ class SampleCollection(object):
             view.set_values(tags_path, tags)
 
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
-        view = self.select_labels(ids=ids, tags=tags, fields=fields)
+        if ids is not None or tags is not None:
+            view = self.select_labels(ids=ids, tags=tags, fields=fields)
+        else:
+            view = self
 
-        sample_ids = view.values("id")
+        if fields is None:
+            label_fields = view._get_label_fields()
+        elif etau.is_str(fields):
+            label_fields = [fields]
+        else:
+            label_fields = fields
 
-        labels = []
-        for label_field in view._get_label_fields():
+        if not label_fields:
+            return []
+
+        paths = ["id"]
+        is_list_fields = []
+        is_frame_fields = []
+        for label_field in label_fields:
             label_type, id_path = view._get_label_field_path(label_field, "id")
             is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            is_frame_field = view._is_frame_field(label_field)
 
-            label_ids = view.values(id_path)
+            paths.append(id_path)
+            is_list_fields.append(is_list_field)
+            is_frame_fields.append(is_frame_field)
 
-            if self._is_frame_field(label_field):
-                frame_numbers = view.values("frames.frame_number")
+        has_frame_fields = any(is_frame_fields)
+
+        if has_frame_fields:
+            paths.insert(0, "frames.frame_number")
+
+        results = list(view.values(paths))
+
+        if has_frame_fields:
+            frame_numbers = results.pop(0)
+
+        sample_ids = results[0]
+        all_label_ids = results[1:]
+
+        labels = []
+
+        for label_field, label_ids, is_list_field, is_frame_field in zip(
+            label_fields, all_label_ids, is_list_fields, is_frame_fields
+        ):
+            if is_frame_field:
                 for sample_id, sample_frame_numbers, sample_label_ids in zip(
                     sample_ids, frame_numbers, label_ids
                 ):
