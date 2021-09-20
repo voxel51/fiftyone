@@ -508,7 +508,6 @@ class CountValues(Aggregation):
         Returns:
             a dict mapping values to counts
         """
-
         if self._first is None:
             return {i["k"]: i["count"] for i in d["result"]}
 
@@ -531,7 +530,7 @@ class CountValues(Aggregation):
             {"$group": {"_id": value, "count": {"$sum": 1}}},
         ]
 
-        if self._first:
+        if self._first is not None:
             sort = OrderedDict()
             limit = self._first
 
