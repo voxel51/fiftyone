@@ -799,7 +799,7 @@ class DatasetMixin(object):
         fields = getattr(dataset_doc, cls._fields_attr())
 
         # This is intentionally implemented without creating a new list, since
-        # clips datasets directly use their source datasets frame fields
+        # clips datasets directly use their source dataset's frame fields
         for idx, f in enumerate(fields):
             if f.name == field_name:
                 del fields[idx]

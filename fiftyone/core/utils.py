@@ -961,14 +961,14 @@ class UniqueFilenameMaker(object):
         Returns:
             the output path
         """
-        has_input = bool(input_path)
+        found_input = bool(input_path)
 
-        if has_input and input_path in self._filepath_map:
+        if found_input and input_path in self._filepath_map:
             return self._filepath_map[input_path]
 
         self._idx += 1
 
-        if not has_input:
+        if not found_input:
             input_path = self._default_filename_patt % self._idx
 
         filename = os.path.basename(input_path)
@@ -993,7 +993,7 @@ class UniqueFilenameMaker(object):
 
         output_path = os.path.join(self.output_dir, filename)
 
-        if has_input:
+        if found_input:
             self._filepath_map[input_path] = output_path
 
         return output_path

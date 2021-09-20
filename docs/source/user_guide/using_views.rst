@@ -603,7 +603,7 @@ detection dataset:
         sample_id:    fiftyone.core.fields.ObjectIdField
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
-        1. ToPatches(field='ground_truth')
+        1. ToPatches(field='ground_truth', config=None)
 
 .. note::
 
@@ -730,7 +730,7 @@ respectively.
         iou:          fiftyone.core.fields.FloatField
         crowd:        fiftyone.core.fields.BooleanField
     View stages:
-        1. ToEvaluationPatches(eval_key='eval')
+        1. ToEvaluationPatches(eval_key='eval', config=None)
 
 .. note::
 
@@ -1255,7 +1255,7 @@ sample per object patch in the frames of the dataset!
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
         1. ToFrames(config=None)
-        2. ToPatches(field='detections')
+        2. ToPatches(field='detections', config=None)
 
 .. _querying-frames:
 

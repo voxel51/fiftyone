@@ -4558,8 +4558,9 @@ class SampleCollection(object):
         Args:
             field_or_expr: can be any of the following:
 
-                -   a :class:`fiftyone.core.labels.VideoClassification` or
-                    :class:`fiftyone.core.labels.VideoClassifications` field
+                -   a :class:`fiftyone.core.labels.VideoClassification`,
+                    :class:`fiftyone.core.labels.VideoClassifications`, or
+                    :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
                     types:
                     -   :class:`fiftyone.core.labels.Classifications`

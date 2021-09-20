@@ -1752,6 +1752,36 @@ class VideoExportCoersionTests(VideoDatasetTests):
             dataset2.count("frames.predictions.detections"),
         )
 
+        #
+        # Export entire clips view as a dataset
+        #
+
+        export_dir = self._new_dir()
+
+        clips = dataset.to_clips("predictions")
+
+        clips.export(
+            export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+        )
+
+        self.assertEqual(len(clips), len(dataset2))
+        self.assertEqual(clips.count("frames"), dataset2.count("frames"))
+        self.assertListEqual(
+            clips.values("support"), dataset2.values("support")
+        )
+
+        dataset3 = clips.clone()
+
+        self.assertEqual(len(clips), len(dataset3))
+        self.assertEqual(clips.count("frames"), dataset3.count("frames"))
+        self.assertListEqual(
+            clips.values("support"), dataset3.values("support")
+        )
+
 
 class UnlabeledVideoDatasetTests(VideoDatasetTests):
     def _make_dataset(self):

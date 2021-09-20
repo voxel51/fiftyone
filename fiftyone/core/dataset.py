@@ -176,7 +176,13 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in _list_datasets(include_private=True):
-        dataset = Dataset(name, _create=False, _migrate=False)
+        try:
+            dataset = Dataset(name, _create=False, _migrate=False)
+        except:
+            # If the dataset can't be loaded, it likely requires migration,
+            # which means it is persistent, so we don't worry about it here
+            continue
+
         if not dataset.persistent and not dataset.deleted:
             dataset.delete()
             if verbose:
@@ -2095,9 +2101,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Clips datasets directly use their source dataset's frame collection,
         # so don't delete frames
-        if not self._is_clips:
-            self._frame_doc_cls.drop_collection()
-            fofr.Frame._reset_docs(self._frame_collection_name)
+        if self._is_clips:
+            return
+
+        self._frame_doc_cls.drop_collection()
+        fofr.Frame._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -4312,18 +4320,21 @@ def _create_dataset(
     if _clips:
         # Clips datasets directly inherit frames from source dataset
         src_dataset = _src_collection._dataset
+        media_type = fom.VIDEO
         frame_collection_name = src_dataset._doc.frame_collection_name
         frame_doc_cls = src_dataset._frame_doc_cls
         frame_fields = src_dataset._doc.frame_fields
     else:
+        # @todo don't create frame collection until media type is VIDEO?
+        media_type = None
         frame_collection_name = _make_frame_collection_name(
             sample_collection_name
         )
         frame_doc_cls = _create_frame_document_cls(frame_collection_name)
-        frame_fields = []  # not populated until `media_type` is video
+        frame_fields = []
 
     dataset_doc = foo.DatasetDocument(
-        media_type=None,
+        media_type=media_type,
         name=name,
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
@@ -4451,10 +4462,6 @@ def _load_dataset(name, migrate=True):
 
         sample_doc_cls._declare_field(sample_field)
 
-    # @todo REMOVE THIS, JUST A HACK TO WORK WITH NON-MIGRATED DATASETS
-    if dataset_doc.frame_collection_name is None:
-        dataset_doc.frame_collection_name = "frames." + sample_collection_name
-
     frame_collection_name = dataset_doc.frame_collection_name
 
     if sample_collection_name.startswith("clips."):
@@ -4557,51 +4564,20 @@ def _clone_dataset_or_view(dataset_or_view, name):
     # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
 
-    #
     # Clone samples
-    #
-
-    pipeline = dataset_or_view._pipeline(detach_frames=True)
+    coll, pipeline = _get_samples_pipeline(dataset_or_view)
     pipeline.append({"$out": sample_collection_name})
+    foo.aggregate(coll, pipeline)
 
-    foo.aggregate(dataset._sample_collection, pipeline)
-
-    #
     # Clone frames
-    #
-
     if dataset.media_type == fom.VIDEO:
-        # Clips datasets use `sample_id` to associated with frames, but now as
-        # a standalone collection, they must use `_id`
-        if dataset._is_clips:
-            coll = dataset._sample_collection
-            collection = view if view is not None else dataset
-            pipeline = collection._pipeline(attach_frames=True) + [
-                {"$project": {"frames": True}},
-                {"$unwind": "$frames"},
-                {"$set": {"frames._sample_id": "$_id"}},
-                {"$replaceRoot": {"newRoot": "$frames"}},
-                {"$unset": "_id"},
-            ]
-        elif view is not None:
-            # The view may modify the frames, so we route the frames though
-            # the sample collection
-            coll = dataset._sample_collection
-            pipeline = view._pipeline(frames_only=True)
-        else:
-            # Here we can directly aggregate on the frame collection
-            coll = dataset._frame_collection
-            pipeline = []
-
+        coll, pipeline = _get_frames_pipeline(dataset_or_view)
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
     clone_dataset = load_dataset(name)
 
-    #
     # Clone run results
-    #
-
     if (
         dataset.has_annotation_runs
         or dataset.has_brain_runs
@@ -4610,6 +4586,44 @@ def _clone_dataset_or_view(dataset_or_view, name):
         _clone_runs(clone_dataset, dataset._doc)
 
     return clone_dataset
+
+
+def _get_samples_pipeline(sample_collection):
+    coll = sample_collection._dataset._sample_collection
+    pipeline = sample_collection._pipeline(detach_frames=True)
+    return coll, pipeline
+
+
+def _get_frames_pipeline(sample_collection):
+    if isinstance(sample_collection, fov.DatasetView):
+        dataset = sample_collection._dataset
+        view = sample_collection
+    else:
+        dataset = sample_collection
+        view = None
+
+    if dataset._is_clips:
+        # Clips datasets use `sample_id` to associated with frames, but now as
+        # a standalone collection, they must use `_id`
+        coll = dataset._sample_collection
+        pipeline = sample_collection._pipeline(attach_frames=True) + [
+            {"$project": {"frames": True}},
+            {"$unwind": "$frames"},
+            {"$set": {"frames._sample_id": "$_id"}},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {"$unset": "_id"},
+        ]
+    elif view is not None:
+        # The view may modify the frames, so we route the frames though
+        # the sample collection
+        coll = dataset._sample_collection
+        pipeline = view._pipeline(frames_only=True)
+    else:
+        # Here we can directly aggregate on the frame collection
+        coll = dataset._frame_collection
+        pipeline = []
+
+    return coll, pipeline
 
 
 def _save_view(view, fields):
