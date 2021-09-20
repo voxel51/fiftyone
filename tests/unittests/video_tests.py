@@ -233,6 +233,27 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(schema["array_field"], fo.ArrayField)
 
     @drop_datasets
+    def test_reload(self):
+        sample = fo.Sample(filepath="video.mp4", hello="world")
+        frame = fo.Frame(hi="there")
+
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertTrue(sample._in_db)
+        self.assertTrue(frame._in_db)
+
+        dataset.reload()
+
+        self.assertTrue(sample._in_db)
+        self.assertTrue(frame._in_db)
+
+        self.assertEqual(sample.hello, "world")
+        self.assertEqual(frame.hi, "there")
+
+    @drop_datasets
     def test_modify_video_sample(self):
         dataset = fo.Dataset()
 
@@ -297,6 +318,33 @@ class VideoTests(unittest.TestCase):
             sample.frames.add_frame(
                 2, fo.Frame(foo="bar"), expand_schema=False
             )
+
+    @drop_datasets
+    def test_frame_overwrite(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(hello="world")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertEqual(sample.frames[1].hello, "world")
+
+        # Overwriting an existing frame is alloed
+        sample.frames[1] = fo.Frame(goodbye="world")
+        sample.save()
+
+        self.assertEqual(dataset.first().frames[1].goodbye, "world")
+
+        view = dataset.exclude_fields("frames.goodbye")
+        sample = view.first()
+        sample.frames[1] = fo.Frame(new="field")
+        sample.save()
+
+        frame = dataset.first().frames[1]
+
+        self.assertEqual(frame.hello, None)
+        self.assertEqual(frame.goodbye, "world")
+        self.assertEqual(frame.new, "field")
 
     @drop_datasets
     def test_save_frames(self):

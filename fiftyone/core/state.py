@@ -256,9 +256,9 @@ class DatasetStatistics(object):
                 field, (fof.DateTimeField, fof.FloatField, fof.IntField)
             ):
                 aggregations.append(foa.Bounds(field_name))
-            elif _meets_type(
-                field, (fof.BooleanField, fof.StringField, fof.ObjectIdField),
-            ):
+            elif _meets_type(field, fof.BooleanField):
+                aggregations.append(foa.CountValues(field_name, _first=3))
+            elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
                 aggregations.append(
                     _get_categorical_aggregation(path, filters)
                 )

@@ -917,7 +917,7 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
 
         self._select_inds(inds)
 
-    def _select_ids(self, ids):
+    def _select_ids(self, ids, view=None):
         if ids is not None:
             inds = [self._ids_to_inds[_id] for _id in ids]
         else:

@@ -2484,7 +2484,7 @@ class MigrateCommand(Command):
                 for name in fod.list_datasets()
             }
 
-            _print_migration_table(foc.VERSION, db_ver, dataset_vers)
+            _print_migration_table(db_ver, dataset_vers)
             return
 
         if args.all:
@@ -2508,8 +2508,8 @@ class MigrateCommand(Command):
         parser.print_help()
 
 
-def _print_migration_table(fo_ver, db_ver, dataset_vers):
-    print("FiftyOne package version: %s" % fo_ver)
+def _print_migration_table(db_ver, dataset_vers):
+    print("FiftyOne version: %s" % foc.VERSION)
     print("Database version: %s" % db_ver)
 
     if dataset_vers:
