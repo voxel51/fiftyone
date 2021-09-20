@@ -120,20 +120,20 @@ def _validate_db_version(config, client):
 
     min_ver, max_ver = foc.MONGODB_VERSION_RANGE
 
-    if min_ver <= version < max_ver:
-        return
-
-    if version >= max_ver and config.database_uri is not None:
+    if config.database_uri is not None:
+        # Allow custom databases to have version > max_ver, with the assumption
+        # that the user has set their feature compatibility version
+        # https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion
+        if version < min_ver:
+            raise RuntimeError(
+                "Found `mongod` version %s, but %s or later is required"
+                % (version, min_ver)
+            )
+    elif version < min_ver or version > max_ver:
         raise RuntimeError(
-            "Found `mongod` version %s, but [%s, %s) is required. Your "
-            "FiftyOne installation may be outdated; try upgrading it"
+            "Found `mongod` version %s, but [%s, %s) is required"
             % (version, min_ver, max_ver)
         )
-
-    raise RuntimeError(
-        "Found `mongod` version %s, but [%s, %s) is required"
-        % (version, min_ver, max_ver)
-    )
 
 
 def aggregate(collection, pipelines):
