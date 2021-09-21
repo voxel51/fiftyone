@@ -275,6 +275,7 @@ export default React.memo(() => {
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
   const schema = useRecoilValue(selectors.fieldSchema("sample"));
+  const isClips = useRecoilValue(selectors.isClipsView);
   lookerGeneratorRef.current = ({
     sample,
     dimensions,
@@ -282,6 +283,7 @@ export default React.memo(() => {
     frameRate,
   }: atoms.SampleData) => {
     const constructor = getLookerType(getMimeType(sample));
+    const etc = isClips ? { support: sample.support } : {};
 
     return new constructor(
       sample,
@@ -293,6 +295,7 @@ export default React.memo(() => {
         frameRate,
         frameNumber: constructor === FrameLooker ? frameNumber : null,
         fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
+        ...etc,
       },
       { ...lookerOptions, selected: selected.has(sample._id) }
     );

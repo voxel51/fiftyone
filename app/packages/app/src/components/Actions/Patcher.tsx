@@ -43,7 +43,6 @@ export const clipsFields = selector<string[]>({
     const types = get(selectors.labelTypesMap);
     const pschema = get(selectors.primitivesSchema("sample"));
 
-    console.log(pschema);
     return [
       ...paths.filter((p) =>
         p.startsWith("frames.")

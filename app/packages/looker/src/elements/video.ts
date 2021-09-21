@@ -337,10 +337,10 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private duration: number = null;
   private frameCount: number;
   private frameNumber: number;
-  private firstFrame: number;
   private frameRate: number = 0;
   private loop: boolean = false;
   private playbackRate: number = 1;
+  private posterFrame: number;
   private requestCallback: (callback: (frameNumber: number) => void) => void;
   private release: () => void;
   private src: string;
@@ -362,11 +362,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       loadedmetadata: ({ update }) => {
         update(({ config: { frameRate }, frameNumber }) => {
           this.frameRate = frameRate;
-          const duration = this.element.duration;
-          this.frameCount = getFrameNumber(duration, duration, frameRate);
+          this.duration = this.element.duration;
+          this.frameCount = getFrameNumber(
+            this.duration,
+            this.duration,
+            frameRate
+          );
           this.element.currentTime = getTime(frameNumber, frameRate);
-          this.frameNumber = frameNumber;
-          return { duration };
+          return { duration: this.duration };
         });
       },
       seeked: ({ update, dispatchEvent }) => {
@@ -400,11 +403,16 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       play: ({ update, dispatchEvent }) => {
         const callback = (newFrameNumber: number) => {
           update(
-            ({ playing, options: { loop }, config: { support } }) => {
+            ({
+              playing,
+              options: { loop },
+              config: { support },
+              lockedToSupport,
+            }) => {
               this.frameNumber = newFrameNumber;
 
-              if (support) {
-                if (newFrameNumber === support[1]) {
+              if (support && lockedToSupport) {
+                if (newFrameNumber > support[1]) {
                   playing = loop;
                   playing && (newFrameNumber = support[0]);
                 }
@@ -433,7 +441,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               frameNumber = support ? support[0] || 1 : 1;
             }
 
-            if (support && frameNumber === support[1]) {
+            if (support && frameNumber > support[1]) {
               frameNumber = support[0];
             }
 
@@ -491,34 +499,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.update = update;
     this.element = null;
     update(({ config: { thumbnail, dimensions, src, frameRate, support } }) => {
-      this.frameNumber = this.firstFrame;
+      this.frameRate = frameRate;
       this.src = src;
+      this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
         this.canvas.width = dimensions[0];
         this.canvas.height = dimensions[1];
         this.canvas.style.imageRendering = "pixelated";
         acquireThumbnailer().then(([video, release]) => {
-          const listener = () => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                setTimeout(() => {
-                  const ctx = this.canvas.getContext("2d");
-                  ctx.imageSmoothingEnabled = false;
-                  ctx.drawImage(video, 0, 0);
-                  release();
-                  video.removeEventListener("seeked", listener);
-                  this.update({
-                    hasPoster: true,
-                    duration: this.duration,
-                    loaded: true,
-                  });
-                }, 20);
-              });
-            });
-          };
-          video.addEventListener("seeked", listener);
-          video.src = src;
           const error = (event) => {
             // Chrome v60
             if (event.path && event.path[0]) {
@@ -531,10 +520,36 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             }
 
             video.removeEventListener("error", error);
+            video.removeEventListener("seeked", seeked);
             release();
             update({ error: true });
           };
-          video.addEventListener("error", error);
+
+          const seeked = () => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  const ctx = this.canvas.getContext("2d");
+                  ctx.imageSmoothingEnabled = false;
+                  ctx.drawImage(video, 0, 0);
+                  release();
+                  video.removeEventListener("seeked", seeked);
+                  video.removeEventListener("error", error);
+                  this.duration = video.duration;
+                  this.frameCount = getFrameNumber(
+                    this.duration,
+                    this.duration,
+                    this.frameRate
+                  );
+                  this.update({
+                    hasPoster: true,
+                    duration: this.duration,
+                    loaded: true,
+                  });
+                }, 20);
+              });
+            });
+          };
 
           const load = () => {
             this.duration = video.duration;
@@ -543,12 +558,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               this.duration,
               frameRate
             );
+            video.addEventListener("seeked", seeked);
             video.currentTime = support ? getTime(support[0], frameRate) : 0;
-            video.removeEventListener("error", error);
             video.removeEventListener("loadedmetadata", load);
           };
 
+          video.addEventListener("error", error);
           video.addEventListener("loadedmetadata", load);
+          video.src = src;
         });
       } else {
         this.element = document.createElement("video");
@@ -561,7 +578,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
     this.requestCallback = (callback: (frameNumber: number) => void) => {
       requestAnimationFrame(() => {
-        this.element &&
+        this.frameCount &&
+          this.element &&
           callback(
             Math.min(
               getFrameNumber(
@@ -629,7 +647,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.release && this.release();
     this.release = null;
 
-    this.update({ waitingForVideo: false, frameNumber: 1, playing: false });
+    this.update({
+      waitingForVideo: false,
+      frameNumber: this.posterFrame,
+      playing: false,
+    });
   }
 
   renderSelf({
@@ -661,7 +683,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       return null;
     }
 
-    if (frameNumber === 1 && hasPoster) {
+    if (hasPoster && frameNumber === this.posterFrame) {
       this.imageSource = this.canvas;
     } else {
       this.imageSource = this.element;
@@ -726,9 +748,10 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         });
       },
       mouseleave: ({ update }) => {
-        update(({ config: { thumbnail } }) => {
+        update(({ config: { thumbnail, support } }) => {
           if (thumbnail) {
             return {
+              frameNumber: support ? support[0] : 1,
               playing: false,
             };
           }
