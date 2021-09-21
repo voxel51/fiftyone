@@ -489,6 +489,7 @@ def _format_attributes(backend, attributes):
         attr_type = attr_info.get("type", None)
         values = attr_info.get("values", None)
         default = attr_info.get("default", None)
+        other = attr_info.get("other", None)
 
         if attr_type is None:
             if values is None:
@@ -530,6 +531,9 @@ def _format_attributes(backend, attributes):
                     )
 
                 formatted_info["default"] = default
+
+        backend.format_other_attr_info(other)
+        formatted_info["other"] = other
 
         output_attrs[attr] = formatted_info
 

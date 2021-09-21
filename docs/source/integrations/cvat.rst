@@ -574,6 +574,57 @@ take additional values:
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 
+
+**Other attribute information**
+
+Different backends can allow for various other types of information to be
+specified for each attribute. An example of this in CVAT is the `mutable
+property of attributes <https://openvinotoolkit.github.io/cvat/docs/manual/basics/vocabulary/>`_.
+
+The `mutable` property is relevant when annotating tracks on videos. Setting it
+to `False` makes it so that the attribute is immutable throughout the track
+and as such only has to be annotated once for it to apply to every frame. When
+uploading labels with immutable attributes, it is expected that the immutable
+attributes are the same for all labels of the same index in a track in
+FiftyOne.
+
+By default, the `mutable` property of all attributes is set to `True` unless
+specified as shown below.
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "occluded": {
+            "type": "radio",
+            "values": [True, False],
+            "default": True,
+            "other": {
+                "mutable": True,
+            }
+        },
+        "weather": {
+            "type": "select",
+            "values": ["cloudy", "sunny", "overcast"],
+            "other": {
+                "mutable": False,
+            }
+        },
+        "caption": {
+            "type": "text",
+        }
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="frames.new_field",
+        label_type="detections",
+        classes=["dog", "cat", "person"],
+        attributes=attributes,
+    )
+
 .. note::
 
     Only scalar-valued label attributes are supported. Other attribute types
