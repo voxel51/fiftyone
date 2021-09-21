@@ -3004,7 +3004,7 @@ The dataset will contain a |GeoLocation| field whose
 `(longitude, latitude)` coordinates of each image center and whose
 :attr:`polygon <fiftyone.core.labels.GeoLocation.polygon>` attribute contains
 the `(longitude, latitude)` coordinates of the corners of the image (clockwise,
-starting from the top-left cornder).
+starting from the top-left corner).
 
 .. note::
 
@@ -3053,7 +3053,7 @@ format as follows:
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.GeoTIFFDataset
+            --type fiftyone.types.GeoTIFFDataset \
             --kwargs label_field=location
 
         # View summary info about the dataset
