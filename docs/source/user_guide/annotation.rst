@@ -644,8 +644,20 @@ For example, CVAT supports the following choices for `type`:
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
 
-The `mutable` property can be used by most annotation backends when
-annotating object tracks in videos. Setting it
+
+When you are annotating existing label fields, the `attributes` parameter can
+take additional values:
+
+-   `True` (default): export all custom attributes observed on the existing
+    labels, using their observed values to determine the appropriate UI type
+    and possible values, if applicable
+-   `False`: do not include any custom attributes in the export
+-   a list of custom attributes to include in the export
+-   a full dictionary syntax described above
+
+
+**For videos,** the `mutable` property can be used by most annotation backends when
+annotating object tracks. Setting it
 to `False` makes it so that the attribute is immutable throughout the track
 and as such only has to be annotated once for it to apply to every frame. When
 uploading existing objects with an immutable attribute, it is expected that the value
@@ -657,15 +669,6 @@ FiftyOne. For example, CVAT supports the following choices for `mutable`:
 -   `False`: the value of the attribute is the same for every frame
     in which the object appears
 
-When you are annotating existing label fields, the `attributes` parameter can
-take additional values:
-
--   `True` (default): export all custom attributes observed on the existing
-    labels, using their observed values to determine the appropriate UI type
-    and possible values, if applicable
--   `False`: do not include any custom attributes in the export
--   a list of custom attributes to include in the export
--   a full dictionary syntax described above
 
 .. note::
 

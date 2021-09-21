@@ -532,10 +532,12 @@ attribute that you wish to label:
             "type": "radio",
             "values": [True, False],
             "default": True,
+            "mutable": True,
         },
         "weather": {
             "type": "select",
             "values": ["cloudy", "sunny", "overcast"],
+            "mutable": False,
         },
         "caption": {
             "type": "text",
@@ -545,7 +547,7 @@ attribute that you wish to label:
     view.annotate(
         anno_key,
         label_field="new_field",
-        label_type="detections",
+        label_type="frames.detections",
         classes=["dog", "cat", "person"],
         attributes=attributes,
     )
@@ -564,6 +566,7 @@ For CVAT, the following `type` values are supported:
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
 
+
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
 
@@ -575,55 +578,21 @@ take additional values:
 -   a full dictionary syntax described above
 
 
-**Other attribute information**
 
-Different backends can allow for various other types of information to be
-specified for each attribute. An example of this in CVAT is the `mutable
-property of attributes <https://openvinotoolkit.github.io/cvat/docs/manual/basics/vocabulary/>`_.
-
-The `mutable` property is relevant when annotating tracks on videos. Setting it
+**For videos**, the `mutable` property is 
+`used by CVAT <https://docs.labelbox.com/docs/model-assisted-labeling#part-1-prepare-your-json-file>`_
+when annotating object tracks. Setting it
 to `False` makes it so that the attribute is immutable throughout the track
 and as such only has to be annotated once for it to apply to every frame. When
-uploading labels with immutable attributes, it is expected that the immutable
-attributes are the same for all labels of the same index in a track in
-FiftyOne.
+uploading existing objects with an immutable attribute, it is expected that the value
+of the attribute is constant for all objects of the same index in a video in
+FiftyOne. CVAT supports the following choices for `mutable`:
 
-By default, the `mutable` property of all attributes is set to `True` unless
-specified as shown below.
+-   `True` (default): the attribute is dynamic and can have a different value
+    for every frame in which the object appears
+-   `False`: the value of the attribute is the same for every frame
+    in which the object appears
 
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    attributes = {
-        "occluded": {
-            "type": "radio",
-            "values": [True, False],
-            "default": True,
-            "other": {
-                "mutable": True,
-            }
-        },
-        "weather": {
-            "type": "select",
-            "values": ["cloudy", "sunny", "overcast"],
-            "other": {
-                "mutable": False,
-            }
-        },
-        "caption": {
-            "type": "text",
-        }
-    }
-
-    view.annotate(
-        anno_key,
-        label_field="frames.new_field",
-        label_type="detections",
-        classes=["dog", "cat", "person"],
-        attributes=attributes,
-    )
 
 .. note::
 
@@ -1169,8 +1138,8 @@ videos, which captures the identity of a single object as it moves through the
 video. These tracks are stored in the `index` field of the |Label| instances
 when you import the annotations into FiftyOne.
 
-Note that CVAT does not provide a straightforward way to annotate frame-level
-classification labels. Instead, we recommend that you use sample-level fields
+Note that CVAT does not provide a straightforward way to annotate sample-level
+classification labels. Instead, we recommend that you use frame-level fields
 to record classifications for your video datasets.
 
 .. note::
