@@ -360,11 +360,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         dispatchEvent("error", { event });
       },
       loadedmetadata: ({ update }) => {
-        this.element.currentTime = 0;
-        update(({ config: { frameRate } }) => {
+        update(({ config: { frameRate }, frameNumber }) => {
           this.frameRate = frameRate;
           const duration = this.element.duration;
           this.frameCount = getFrameNumber(duration, duration, frameRate);
+          this.element.currentTime = getTime(frameNumber, frameRate);
+          this.frameNumber = frameNumber;
           return { duration };
         });
       },
@@ -405,6 +406,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               if (support) {
                 if (newFrameNumber === support[1]) {
                   playing = loop;
+                  playing && (newFrameNumber = support[0]);
                 }
               }
 
@@ -426,12 +428,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         };
 
         update(
-          ({ frameNumber, duration, config: { frameRate } }) => {
-            duration = duration as number;
-            frameNumber =
-              frameNumber === getFrameNumber(duration, duration, frameRate)
-                ? 1
-                : frameNumber;
+          ({ frameNumber, duration, config: { frameRate, support } }) => {
+            if (frameNumber === getFrameNumber(duration, duration, frameRate)) {
+              frameNumber = support ? support[0] || 1 : 1;
+            }
+
+            if (support && frameNumber === support[1]) {
+              frameNumber = support[0];
+            }
 
             return {
               playing: true,
@@ -486,7 +490,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   createHTMLElement(update: StateUpdate<VideoState>) {
     this.update = update;
     this.element = null;
-    update(({ config: { thumbnail, dimensions, src, frameRate } }) => {
+    update(({ config: { thumbnail, dimensions, src, frameRate, support } }) => {
       this.frameNumber = this.firstFrame;
       this.src = src;
       if (thumbnail) {
@@ -539,7 +543,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               this.duration,
               frameRate
             );
-            video.currentTime = 0;
+            video.currentTime = support ? getTime(support[0], frameRate) : 0;
             video.removeEventListener("error", error);
             video.removeEventListener("loadedmetadata", load);
           };
