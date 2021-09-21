@@ -63,11 +63,11 @@ class GeoTIFFDatasetImporter(
             over the location of the GeoTIFF images. Can be any of the
             following:
 
+            -   a list of paths to GeoTIFF images. In this case,
+                ``dataset_dir`` has no effect
             -   a glob pattern like ``"*.tif"`` specifying the location of the
                 images in ``dataset_dir``
             -   an absolute glob pattern of GeoTIFF images. In this case,
-                ``dataset_dir`` has no effect
-            -   a list of paths to GeoTIFF images. In this case,
                 ``dataset_dir`` has no effect
         recursive (True): whether to recursively traverse subdirectories. Not
             applicable when ``image_path`` is provided
@@ -111,6 +111,7 @@ class GeoTIFFDatasetImporter(
         self.image_path = image_path
         self.recursive = recursive
         self.compute_metadata = compute_metadata
+
         self._filepaths = None
         self._iter_filepaths = None
         self._num_samples = None
