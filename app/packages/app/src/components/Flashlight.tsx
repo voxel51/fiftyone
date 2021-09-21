@@ -274,6 +274,7 @@ export default React.memo(() => {
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
+  const schema = useRecoilValue(selectors.fieldSchema("sample"));
   lookerGeneratorRef.current = ({
     sample,
     dimensions,
@@ -291,6 +292,7 @@ export default React.memo(() => {
         sampleId: sample._id,
         frameRate,
         frameNumber: constructor === FrameLooker ? frameNumber : null,
+        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
       },
       { ...lookerOptions, selected: selected.has(sample._id) }
     );

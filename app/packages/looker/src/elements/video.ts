@@ -404,6 +404,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
               if (support) {
                 if (newFrameNumber === support[1]) {
+                  playing = loop;
                 }
               }
 

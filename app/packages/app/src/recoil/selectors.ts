@@ -547,6 +547,15 @@ export const primitiveSubfields = selectorFamily({
   },
 });
 
+export const primitivesSchema = selectorFamily({
+  key: "primitivesSchema",
+  get: (dimension: string) => ({ get }) => {
+    return Object.fromEntries(
+      get(primitives(dimension)).map((p) => [p.name, p])
+    );
+  },
+});
+
 export const labelTuples = selectorFamily({
   key: "labelTuples",
   get: (dimension: string) => ({ get }) => {

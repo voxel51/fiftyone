@@ -10,6 +10,7 @@ import * as selectors from "../../recoil/selectors";
 import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
+  FRAME_SUPPORT_FIELD,
   PATCHES_FIELDS,
 } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
@@ -40,12 +41,22 @@ export const clipsFields = selector<string[]>({
   get: ({ get }) => {
     const paths = get(selectors.labelPaths);
     const types = get(selectors.labelTypesMap);
+    const pschema = get(selectors.primitivesSchema("sample"));
 
-    return paths.filter((p) =>
-      p.startsWith("frames.")
-        ? CLIPS_FRAME_FIELDS.includes(types[p])
-        : CLIPS_SAMPLE_FIELDS.includes(types[p])
-    );
+    return [
+      ...paths.filter((p) =>
+        p.startsWith("frames.")
+          ? CLIPS_FRAME_FIELDS.includes(types[p])
+          : CLIPS_SAMPLE_FIELDS.includes(types[p])
+      ),
+      ...Object.entries(pschema)
+        .filter(
+          ([_, s]) =>
+            s.ftype === FRAME_SUPPORT_FIELD ||
+            s.subfield === FRAME_SUPPORT_FIELD
+        )
+        .map(([p]) => p),
+    ].sort();
   },
 });
 

@@ -79,11 +79,24 @@ export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
 
+interface SchemaEntry {
+  name: string;
+  ftype: string;
+  subfield?: string;
+  embedded_doc_type?: string;
+  db_field: string;
+}
+
+interface Schema {
+  [name: string]: SchemaEntry;
+}
+
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
   dimensions: Dimensions;
   sampleId: string;
+  fieldSchema: Schema;
 }
 
 export interface FrameConfig extends BaseConfig {

@@ -390,6 +390,7 @@ const Looker = ({
   const fullscreen = useRecoilValue(atoms.fullscreen);
   const isClips = useRecoilValue(selectors.isClipsView);
   const mimetype = getMimeType(sample);
+  const schema = useRecoilValue(selectors.fieldSchema("sample"));
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
   const activePaths = useRecoilValue(labelAtoms.activeModalFields);
@@ -410,6 +411,7 @@ const Looker = ({
         frameNumber,
         sampleId: sample._id,
         thumbnail: false,
+        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
         ...etc,
       },
       {

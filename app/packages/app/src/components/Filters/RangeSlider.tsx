@@ -115,6 +115,7 @@ const BaseSlider = React.memo(
     if (!hasBounds) {
       return null;
     }
+
     let step = (bounds[1] - bounds[0]) / 100;
     if (int) {
       step = Math.ceil(step);
@@ -255,9 +256,8 @@ export const NamedRangeSlider = React.memo(
       const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
       const hasDefaultRange = isDefaultRange(range, bounds);
       const hasBounds = bounds.every((b) => b !== null);
-      const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
-      if (!hasBounds || (!hasNone && isSingleValue)) {
+      if (!hasBounds) {
         return null;
       }
 
@@ -265,7 +265,7 @@ export const NamedRangeSlider = React.memo(
         <NamedRangeSliderContainer ref={ref}>
           {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
           <RangeSliderContainer>
-            {hasBounds && !isSingleValue && (
+            {hasBounds && (
               <RangeSlider {...rangeSliderProps} showBounds={false} />
             )}
             {((hasNone && hasBounds && hasDefaultRange) ||

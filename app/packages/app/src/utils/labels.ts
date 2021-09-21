@@ -24,7 +24,6 @@ export const PATCHES_FIELDS = ["Detections", "Polylines"];
 export const CLIPS_SAMPLE_FIELDS = [
   "VideoClassification",
   "VideoClassifications",
-  "FrameSupportField",
 ];
 export const CLIPS_FRAME_FIELDS = [
   "Classifications",
@@ -132,7 +131,12 @@ export const VALID_SCALAR_TYPES = [
   STRING_FIELD,
 ];
 
-export const VALID_NUMERIC_TYPES = [FLOAT_FIELD, FRAME_NUMBER_FIELD, INT_FIELD];
+export const VALID_NUMERIC_TYPES = [
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+];
 
 export const RESERVED_FIELDS = [
   "_id",
