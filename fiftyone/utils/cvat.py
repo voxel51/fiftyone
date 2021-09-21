@@ -2526,6 +2526,7 @@ class CVATBackend(foua.AnnotationBackend):
 
         logger.info("Uploading samples to CVAT...")
         (
+            id_map,
             task_ids,
             job_ids,
             frame_id_map,
@@ -2542,10 +2543,6 @@ class CVATBackend(foua.AnnotationBackend):
             job_reviewers=self.config.job_reviewers,
         )
         logger.info("Upload complete")
-
-        # @todo need to omit things like polygons with 2 points that can't be
-        # uploaded
-        id_map = self.build_label_id_map(samples)
 
         results = CVATAnnotationResults(
             samples,
@@ -2605,9 +2602,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
         assigned_scalar_attrs,
         backend=None,
     ):
-        super().__init__(samples, config, backend=backend)
+        super().__init__(samples, config, id_map, backend=backend)
 
-        self.id_map = id_map
         self.task_ids = task_ids
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
@@ -2995,7 +2991,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             a tuple of
 
-            -   **task_id**: the id of the created task in CVAT
+            -   **task_id**: the ID of the created task in CVAT
             -   **attribute_id_map**: a dictionary mapping the IDs assigned to
                 attributes by CVAT for every class
             -   **class_id_map**: a dictionary mapping the IDs assigned to
@@ -3040,7 +3036,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """Deletes the given task from the CVAT server.
 
         Args:
-            task_id: the task id
+            task_id: the task ID
         """
         self.delete(self.task_url(task_id))
 
@@ -3078,7 +3074,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """Uploads a list of media to the task with the given ID.
 
         Args:
-            task_id: the task id
+            task_id: the task ID
             paths: a list of media paths to upload
             image_quality (75): an int in `[0, 100]` determining the image
                 quality to upload to CVAT
@@ -3162,13 +3158,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             a tuple of
 
+            -   **id_map**: a dict mapping field names to dicts mapping sample
+                IDs to existing label ID(s)
             -   **task_ids**: a list of the task IDs created by uploading
                 samples
-            -   **job_ids**: a dictionary mapping task id to a list of job IDs
+            -   **job_ids**: a dictionary mapping task ID to a list of job IDs
                 created for that task
-            -   **frame_id_map**: a dictionary mapping task id to another map
+            -   **frame_id_map**: a dictionary mapping task ID to another map
                 from the CVAT frame index of every image to the FiftyOne sample
-                id (for videos) and FiftyOne frame id
+                ID (for videos) and FiftyOne frame ID
             -   **labels_task_map**: a dictionary mapping label field names to
                 a list of tasks created for that label field
             -   **assigned_scalar_attrs**: a dictionary mapping the label field
@@ -3176,6 +3174,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 scalar field is being annotated through a dropdown selection of
                 through an attribute with a text input box named "value"
         """
+        id_map = {}
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3264,6 +3263,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "scalar",
                     ):
                         (
+                            _id_map,
                             anno_tags,
                             remapped_attr_names,
                         ) = self._create_shapes_tags_tracks(
@@ -3276,6 +3276,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         )
                     elif is_video:
                         (
+                            _id_map,
                             anno_shapes,
                             anno_tracks,
                             remapped_attr_names,
@@ -3289,6 +3290,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         )
                     else:
                         (
+                            _id_map,
                             anno_shapes,
                             remapped_attr_names,
                         ) = self._create_shapes_tags_tracks(
@@ -3298,6 +3300,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             attr_names,
                             is_shape=True,
                         )
+
+                    id_map[label_field] = _id_map
 
                     # If "attribute:" was prepended to any attribute names,
                     # update the names of attribute in labels before creating
@@ -3391,6 +3395,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     num_uploaded_tracks = len(anno_resp["tracks"])
 
         return (
+            id_map,
             task_ids,
             job_ids,
             frame_id_map,
@@ -3416,9 +3421,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             id_map: a dictionary mapping label fields to dicts mapping sample
                 IDs to label ID(s) that were uploaded for annotation
             task_ids: a list of the task IDs created by uploading samples
-            frame_id_map: a dictionary mapping task id to another map from the
-                CVAT frame index of every image to the FiftyOne sample id
-                (for videos) and FiftyOne frame id
+            frame_id_map: a dictionary mapping task ID to another map from the
+                CVAT frame index of every image to the FiftyOne sample ID
+                (for videos) and FiftyOne frame ID
             labels_task_map: a dictionary mapping label field names to a list
                 of tasks created for that label field
             assigned_scalar_attrs: a dictionary mapping the label field name
@@ -3627,9 +3632,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frame UUIDs
             label_type: expected label type to parse from the given annotations
             id_map: dict mapping sample IDs to pre-existing label ID(s)
-            class_map: dict mapping CVAT class id to class name
-            attr_id_map: dict mapping CVAT class id to a map of attr name to
-                attr id
+            class_map: dict mapping CVAT class ID to class name
+            attr_id_map: dict mapping CVAT class ID to a map of attr name to
+                attr ID
             frames: dictionary of metadata per frame
             assign_scalar_attrs (False): boolean indicating whether scalars are
                 annotated as text field attributes or a dropdown of classes
@@ -3878,7 +3883,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _get_segmentation_id(self, id_map, sample_id, frame_id):
         _id = id_map.get(sample_id, None)
 
-        # @todo need to update id_map to support this
         if frame_id is not None and isinstance(_id, dict):
             _id = _id.get(frame_id, None)
 
@@ -3960,6 +3964,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         classes = label_info["classes"]
         mask_targets = label_info.get("mask_targets", None)
 
+        id_map = {}
         tags_or_shapes = []
         tracks = {}
 
@@ -3992,28 +3997,36 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frame_id += 1
 
                 try:
-                    image_label = image[label_field]
+                    label = image[label_field]
                 except:
                     continue
 
-                if image_label is None:
+                if label is None:
                     continue
+
+                # Will hold the IDs that were uploaded, if any
+                ids = None
 
                 if label_type in ("classification", "classifications"):
                     if label_type == "classifications":
-                        classifications = image_label.classifications
+                        classifications = label.classifications
                     else:
-                        classifications = [image_label]
+                        classifications = [label]
 
-                    for cls in classifications:
+                    ids = []
+                    for classification in classifications:
                         (
                             attributes,
                             class_name,
                             remapped_attrs,
-                        ) = self._create_attributes(cls, attr_names, classes)
+                        ) = self._create_attributes(
+                            classification, attr_names, classes
+                        )
+
                         if class_name is None:
                             continue
 
+                        ids.append(classification.id)
                         remapped_attr_names.update(remapped_attrs)
                         tags_or_shapes.append(
                             {
@@ -4024,18 +4037,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                                 "attributes": attributes,
                             }
                         )
+
+                    if label_type == "classification":
+                        ids = ids[0] if ids else None
                 elif label_type == "scalar":
                     if assign_scalar_attrs:
                         attributes = [
-                            {
-                                "spec_id": attr_names[0],
-                                "value": str(image_label),
-                            }
+                            {"spec_id": attr_names[0], "value": str(label),}
                         ]
                         class_name = label_field
                     else:
                         attributes = []
-                        class_name = str(image_label)
+                        class_name = str(label)
 
                     tags_or_shapes.append(
                         {
@@ -4050,25 +4063,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     kwargs = {}
 
                     if label_type in ("detection", "instance"):
-                        labels = [image_label]
+                        labels = [label]
                         func = self._create_detection_shapes
                     elif label_type in ("detections", "instances"):
-                        labels = image_label.detections
+                        labels = label.detections
                         func = self._create_detection_shapes
                     elif label_type in ("polyline", "polygon"):
-                        labels = [image_label]
+                        labels = [label]
                         func = self._create_polyline_shapes
                     elif label_type in ("polylines", "polygons"):
-                        labels = image_label.polylines
+                        labels = label.polylines
                         func = self._create_polyline_shapes
                     elif label_type == "keypoint":
-                        labels = [image_label]
+                        labels = [label]
                         func = self._create_keypoint_shapes
                     elif label_type == "keypoints":
-                        labels = image_label.keypoints
+                        labels = label.keypoints
                         func = self._create_keypoint_shapes
                     elif label_type == "segmentation":
-                        labels = image_label
+                        labels = label
                         func = self._create_segmentation_shapes
                         kwargs["mask_targets"] = mask_targets
                     else:
@@ -4077,7 +4090,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             % (label_type, label_field)
                         )
 
-                    shapes, new_tracks, remapped_attrs = func(
+                    ids, shapes, new_tracks, remapped_attrs = func(
                         labels,
                         frame_size,
                         attr_names,
@@ -4092,11 +4105,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tags_or_shapes.extend(shapes)
                     tracks = self._update_tracks(tracks, new_tracks)
 
-        if load_tracks:
-            formatted_tracks = self._format_tracks(tracks, frame_id)
-            return tags_or_shapes, formatted_tracks, remapped_attr_names
+                if ids is not None:
+                    if is_video:
+                        id_map[sample.id][image.id] = ids
+                    else:
+                        id_map[sample.id] = ids
 
-        return tags_or_shapes, remapped_attr_names
+        if load_tracks:
+            tracks = self._format_tracks(tracks, frame_id)
+            return id_map, tags_or_shapes, tracks, remapped_attr_names
+
+        return id_map, tags_or_shapes, remapped_attr_names
 
     def _format_tracks(self, tracks, num_frames):
         formatted_tracks = []
@@ -4135,6 +4154,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         is_video = samples.media_type == fom.VIDEO
         frame_id = -1
 
+        # @todo what if frames don't exist?
         id_mapping = {}
         for sample in samples:
             if is_video:
@@ -4160,9 +4180,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         load_tracks=False,
     ):
+        ids = []
         shapes = []
         tracks = {}
         remapped_attr_names = {}
+
         for kp in keypoints:
             attributes, class_name, remapped_attrs = self._create_attributes(
                 kp, attr_names, classes
@@ -4174,6 +4196,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             abs_points = HasCVATPoints._to_abs_points(kp.points, frame_size)
             flattened_points = list(itertools.chain.from_iterable(abs_points))
 
+            ids.append(kp.id)
             shape = {
                 "type": "points",
                 "occluded": False,
@@ -4205,7 +4228,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 shapes.append(shape)
 
-        return shapes, tracks, remapped_attr_names
+        return ids, shapes, tracks, remapped_attr_names
 
     def _create_polyline_shapes(
         self,
@@ -4217,9 +4240,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         load_tracks=False,
     ):
+        ids = []
         shapes = []
         tracks = {}
         remapped_attr_names = {}
+
         for poly in polylines:
             curr_shapes = []
             attributes, class_name, remapped_attrs = self._create_attributes(
@@ -4238,6 +4263,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     itertools.chain.from_iterable(abs_points)
                 )
 
+                ids.append(poly.id)
                 shape = {
                     "type": "polygon" if poly.filled else "polyline",
                     "occluded": False,
@@ -4271,7 +4297,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 shapes.extend(curr_shapes)
 
-        return shapes, tracks, remapped_attr_names
+        return ids, shapes, tracks, remapped_attr_names
 
     def _create_detection_shapes(
         self,
@@ -4284,6 +4310,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_id=None,
         load_tracks=False,
     ):
+        ids = []
         shapes = []
         tracks = {}
         remapped_attr_names = {}
@@ -4300,10 +4327,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             remapped_attr_names.update(remapped_attrs)
 
-            if det.mask is None and label_type not in (
-                "instance",
-                "instances",
-            ):
+            if label_type in ("detection", "detections"):
                 x, y, w, h = det.bounding_box
                 xtl = float(round(x * width))
                 ytl = float(round(y * height))
@@ -4311,22 +4335,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ybr = float(round((y + h) * height))
                 bbox = [xtl, ytl, xbr, ybr]
 
-                shape = {
-                    "type": "rectangle",
-                    "occluded": False,
-                    "z_order": 0,
-                    "points": bbox,
-                    "label_id": class_name,
-                    "group": 0,
-                    "frame": frame_id,
-                    "source": "manual",
-                    "attributes": attributes,
-                }
-                curr_shapes.append(shape)
-            elif det.mask is not None and label_type not in (
-                "detection",
-                "detections",
-            ):
+                ids.append(det.id)
+                curr_shapes.append(
+                    {
+                        "type": "rectangle",
+                        "occluded": False,
+                        "z_order": 0,
+                        "points": bbox,
+                        "label_id": class_name,
+                        "group": 0,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": attributes,
+                    }
+                )
+            elif label_type in ("instance", "instances"):
+                if det.mask is None:
+                    continue
+
                 polygon = det.to_polyline()
                 for points in polygon.points:
                     if len(points) < 3:
@@ -4339,18 +4365,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         itertools.chain.from_iterable(abs_points)
                     )
 
-                    shape = {
-                        "type": "polygon",
-                        "occluded": False,
-                        "z_order": 0,
-                        "points": flattened_points,
-                        "label_id": class_name,
-                        "group": 0,
-                        "frame": frame_id,
-                        "source": "manual",
-                        "attributes": deepcopy(attributes),
-                    }
-                    curr_shapes.append(shape)
+                    ids.append(det.id)
+                    curr_shapes.append(
+                        {
+                            "type": "polygon",
+                            "occluded": False,
+                            "z_order": 0,
+                            "points": flattened_points,
+                            "label_id": class_name,
+                            "group": 0,
+                            "frame": frame_id,
+                            "source": "manual",
+                            "attributes": deepcopy(attributes),
+                        }
+                    )
             else:
                 continue
 
@@ -4374,7 +4402,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 shapes.extend(curr_shapes)
 
-        return shapes, tracks, remapped_attr_names
+        return ids, shapes, tracks, remapped_attr_names
 
     def _create_attributes(self, label, attributes, classes, label_id=None):
         if label_id is None:
@@ -4413,17 +4441,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         mask_targets=None,
         load_tracks=False,
     ):
+        label_id = segmentation.id
         detections = segmentation.to_detections(mask_targets=mask_targets)
-        return self._create_detection_shapes(
+        _, shapes, tracks, remapped_attr_names = self._create_detection_shapes(
             detections.detections,
             frame_size,
             attr_names,
             classes,
             frame_id,
             label_type="instances",
-            label_id=segmentation.id,
+            label_id=label_id,
             load_tracks=load_tracks,
         )
+
+        return label_id, shapes, tracks, remapped_attr_names
 
     def _remap_ids(self, shapes_or_tags, attribute_id_map, class_id_map):
         for obj in shapes_or_tags:
