@@ -5,6 +5,8 @@ GeoTIFF utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import eta.core.image as etai
 import eta.core.utils as etau
 
@@ -48,14 +50,27 @@ def get_geolocation(image_path):
     return fol.GeoLocation(point=cp, polygon=[[tl, tr, br, bl, tl]])
 
 
-class GeoTIFFDatasetImporter(foud.LabeledImageDatasetImporter):
+class GeoTIFFDatasetImporter(
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
+):
     """Importer for a directory of GeoTIFF images with geolocation data.
 
     See :ref:`this page <GeoTIFFDataset-import>` for format details.
 
     Args:
-        dataset_dir: the dataset directory
-        recursive (True): whether to recursively traverse subdirectories
+        dataset_dir (None): the dataset directory
+        image_path (None): an optional parameter that enables explicit control
+            over the location of the GeoTIFF images. Can be any of the
+            following:
+
+            -   a glob pattern like ``"*.tif"`` specifying the location of the
+                images in ``dataset_dir``
+            -   an absolute glob pattern of GeoTIFF images. In this case,
+                ``dataset_dir`` has no effect
+            -   a list of paths to GeoTIFF images. In this case,
+                ``dataset_dir`` has no effect
+        recursive (True): whether to recursively traverse subdirectories. Not
+            applicable when ``image_path`` is provided
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
@@ -68,19 +83,32 @@ class GeoTIFFDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def __init__(
         self,
-        dataset_dir,
+        dataset_dir=None,
+        image_path=None,
         recursive=True,
         compute_metadata=False,
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and image_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir` and `image_path` must be "
+                "provided"
+            )
+
+        image_path = self._parse_labels_path(
+            dataset_dir=dataset_dir, labels_path=image_path
+        )
+
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
         )
+
+        self.image_path = image_path
         self.recursive = recursive
         self.compute_metadata = compute_metadata
         self._filepaths = None
@@ -119,10 +147,24 @@ class GeoTIFFDatasetImporter(foud.LabeledImageDatasetImporter):
         return fol.GeoLocation
 
     def setup(self):
-        filepaths = etau.list_files(
-            self.dataset_dir, abs_paths=True, recursive=self.recursive
-        )
-        filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
+        if self.image_path is not None:
+            path = self.image_path
+
+            if etau.is_str(path):
+                if not os.path.isabs(path) and self.dataset_dir:
+                    path = os.path.join(self.dataset_dir, path)
+
+                # Glob pattern of images
+                filepaths = etau.get_glob_matches(path)
+            else:
+                # List of images
+                filepaths = list(path)
+        else:
+            # Directory of images
+            filepaths = etau.list_files(
+                self.dataset_dir, abs_paths=True, recursive=self.recursive
+            )
+            filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
 
         self._filepaths = self._preprocess_list(filepaths)
         self._num_samples = len(self._filepaths)
