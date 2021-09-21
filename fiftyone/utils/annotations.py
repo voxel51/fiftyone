@@ -1061,6 +1061,23 @@ class AnnotationBackend(foa.AnnotationMethod):
             "subclass must implement requires_attr_values()"
         )
 
+    def format_other_attr_info(self, other_attr_info):
+        """Parses and formats backend-specific properties of attributes other
+        than the default "type", "values", and "default". 
+
+        For example, CVAT allows the `mutable` property to be set on
+        attributes here.
+
+        Args:
+            other_attr_info: a dict of attribute property names mapped to the
+                value for that property for a given attribute
+
+        Returns:
+            a dict of the attribute property names to the parsed and formatted
+            property values
+        """
+        return {}
+
     def upload_annotations(self, samples, launch_editor=False):
         """Uploads the samples and relevant existing labels from the label
         schema to the annotation backend.
