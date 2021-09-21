@@ -606,10 +606,12 @@ attribute that you wish to label:
             "type": "radio",
             "values": [True, False],
             "default": True,
+            "mutable": True,
         },
         "weather": {
             "type": "select",
             "values": ["cloudy", "sunny", "overcast"],
+            "mutable": False,
         },
         "caption": {
             "type": "text",
@@ -619,7 +621,7 @@ attribute that you wish to label:
     view.annotate(
         anno_key,
         label_field="new_field",
-        label_type="detections",
+        label_type="frames.detections",
         classes=["dog", "cat", "person"],
         attributes=attributes,
     )
@@ -641,6 +643,19 @@ For example, CVAT supports the following choices for `type`:
     `default` is optional
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
+
+The `mutable` property can be used by most annotation backends when
+annotating object tracks in videos. Setting it
+to `False` makes it so that the attribute is immutable throughout the track
+and as such only has to be annotated once for it to apply to every frame. When
+uploading existing objects with an immutable attribute, it is expected that the value
+of the attribute is constant for all objects of the same index in a video in
+FiftyOne. For example, CVAT supports the following choices for `mutable`:
+
+-   `True` (default): the attribute is dynamic and can have a different value
+    for every frame in which the object appears
+-   `False`: the value of the attribute is the same for every frame
+    in which the object appears
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:

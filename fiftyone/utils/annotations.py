@@ -489,7 +489,7 @@ def _format_attributes(backend, attributes):
         attr_type = attr_info.get("type", None)
         values = attr_info.get("values", None)
         default = attr_info.get("default", None)
-        other = attr_info.get("other", None)
+        mutable = attr_info.get("mutable", True)
 
         if attr_type is None:
             if values is None:
@@ -532,9 +532,7 @@ def _format_attributes(backend, attributes):
 
                 formatted_info["default"] = default
 
-        backend.format_other_attr_info(other)
-        formatted_info["other"] = other
-
+        formatted_info["mutable"] = mutable
         output_attrs[attr] = formatted_info
 
     return output_attrs
@@ -1060,23 +1058,6 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError(
             "subclass must implement requires_attr_values()"
         )
-
-    def format_other_attr_info(self, other_attr_info):
-        """Parses and formats backend-specific properties of attributes other
-        than the default "type", "values", and "default". 
-
-        For example, CVAT allows the `mutable` property to be set on
-        attributes here.
-
-        Args:
-            other_attr_info: a dict of attribute property names mapped to the
-                value for that property for a given attribute
-
-        Returns:
-            a dict of the attribute property names to the parsed and formatted
-            property values
-        """
-        return {}
 
     def upload_annotations(self, samples, launch_editor=False):
         """Uploads the samples and relevant existing labels from the label

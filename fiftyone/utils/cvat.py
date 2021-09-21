@@ -2523,14 +2523,6 @@ class CVATBackend(foua.AnnotationBackend):
     def requires_attr_values(self, attr_type):
         return attr_type != "text"
 
-    def format_other_attr_info(self, other_attr_info):
-        formatted_info = {"mutable": True}
-        if other_attr_info is not None:
-            mutable = other_attr_info.get("mutable", True)
-            formatted_info["mutable"] = mutable
-
-        return formatted_info
-
     def connect_to_api(self):
         return CVATAnnotationAPI(
             self.config.name,
@@ -3828,8 +3820,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     cvat_attr["values"] = [str(v) for v in val]
                 elif attr_key == "default":
                     cvat_attr["default_value"] = str(val)
-                elif attr_key == "other":
-                    mutable = val.get("mutable", True)
+                elif attr_key == "mutable":
+                    mutable = bool(val)
                     if not mutable:
                         immutable_attrs.append(attr_name)
                     cvat_attr["mutable"] = mutable
