@@ -224,6 +224,9 @@ format when reading the dataset from disk.
     | :ref:`GeoJSONDataset <GeoJSONDataset-import>`                                         | An image or video dataset whose location data and labels are stored in             |
     |                                                                                       | `GeoJSON format <https://en.wikipedia.org/wiki/GeoJSON>`_.                         |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`GeoTIFFDataset <GeoTIFFDataset-import>`                                         | An image dataset whose image and geolocation data are stored in                    |
+    |                                                                                       | `GeoTIFF format <https://en.wikipedia.org/wiki/GeoTIFF>`_.                         |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneVideoLabelsDataset <FiftyOneVideoLabelsDataset-import>`                 | A labeled dataset consisting of videos and their associated multitask predictions  |
     |                                                                                       | stored in `ETA VideoLabels format \                                                |
     |                                                                                       | <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.        |
@@ -2966,6 +2969,150 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.GeoJSONDataset
+
+.. _GeoTIFFDataset-import:
+
+GeoTIFFDataset
+--------------
+
+The :class:`fiftyone.types.GeoTIFFDataset <fiftyone.types.dataset_types.GeoTIFFDataset>`
+type represents a dataset consisting of images and their associated geolocation
+data stored in `GeoTIFF format <https://en.wikipedia.org/wiki/GeoTIFF>`_.
+
+.. note::
+
+    You must have `rasterio <https://github.com/mapbox/rasterio>`_ installed in
+    order to load GeoTIFF datasets.
+
+The standard format for datasets of this type is the following:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <filename1>.tif
+        <filename2>.tif
+
+where each `.tif` file is a GeoTIFF image that can be read via
+:func:`rasterio.open <rasterio:rasterio.open>`.
+
+Alternatively, rather than providing a ``dataset_dir``, you can provide the
+``image_path`` argument, which can directly specify a list or glob pattern of
+GeoTIFF images to load.
+
+The dataset will contain a |GeoLocation| field whose
+:attr:`point <fiftyone.core.labels.GeoLocation.point>` attribute contains the
+`(longitude, latitude)` coordinates of each image center and whose
+:attr:`polygon <fiftyone.core.labels.GeoLocation.polygon>` attribute contains
+the `(longitude, latitude)` coordinates of the corners of the image (clockwise,
+starting from the top-left cornder).
+
+.. note::
+
+    See :class:`GeoTIFFDatasetImporter <fiftyone.utils.geotiff.GeoTIFFDatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a GeoTIFF dataset stored in standard
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/geotiff-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.GeoTIFFDataset,
+            label_field="location",
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/geotiff-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.GeoTIFFDataset
+            --kwargs label_field=location
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+You can create a FiftyOne dataset from a list or glob pattern of GeoTIFF images
+as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        image_path = "/path/to/*.tif"  # glob pattern of GeoTIFF images
+        # image_path = ["/path/to/image1.tif", ...]  # list of GeoTIFF images
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            image_path=image_path,
+            dataset_type=fo.types.GeoTIFFDataset,
+            label_field="location",
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        IMAGE_PATH='/path/to/*.tif'  # glob pattern of GeoTIFF images
+        # IMAGE_PATH='/path/to/image1.tif,...'  # list of GeoTIFF images
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.GeoTIFFDataset \
+            --kwargs \
+                image_path=$IMAGE_PATH \
+                label_field=location
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
 .. _FiftyOneDataset-import:
 
