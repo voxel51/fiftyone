@@ -408,6 +408,14 @@ provided:
     Not applicable to videos
 -   **image_quality** (*75*): an int in `[0, 100]` determining the image
     quality to upload to CVAT
+-   **use_cache** (*True*): whether to use a cache when uploading data. Using a
+    cache reduces task creation time as data will be processed on-the-fly and
+    stored in the cache when requested
+-   **use_zip_chunks** (*True*): when annotating videos, whether to upload
+    video frames in smaller chunks. Setting this option to `False` may result
+    in reduced video quality in CVAT due to size limitations on ZIP files that
+    can be uploaded to CVAT
+-   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
 -   **task_assignee** (*None*): a username to assign the generated tasks
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
@@ -535,11 +543,11 @@ attribute that you wish to label:
         "occluded": {
             "type": "radio",
             "values": [True, False],
-            "default": True,
+            "default": False,
         },
-        "weather": {
+        "gender": {
             "type": "select",
-            "values": ["cloudy", "sunny", "overcast"],
+            "values": ["male", "female"],
         },
         "caption": {
             "type": "text",
@@ -590,6 +598,49 @@ take additional values:
     modifications to existing labels, and changing or deleting these ID
     attributes in CVAT will result in labels being overwritten rather than
     merged when loading annotations back into FiftyOne.
+
+.. _cvat-video-label-attributes:
+
+Video label attributes
+----------------------
+
+When annotating spatiotemporal objects in videos, each object attribute
+specification can include a `mutable` property that controls whether the
+attribute's value can change between frames for each object:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "type": {
+            "type": "select",
+            "values": ["sedan", "suv", "truck"],
+            "mutable": False,
+        },
+        "occluded": {
+            "type": "radio",
+            "values": [True, False],
+            "default": False,
+            "mutable": True,
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="frames.new_field",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+The meaning of the `mutable` attribute is defined as follows:
+
+-   `True` (default): the attribute is dynamic and can have a different value
+    for every frame in which the object track appears
+-   `False`: the attribute is static and is the same for every frame in which
+    the object track appears
 
 .. _cvat-loading-annotations:
 
@@ -1122,8 +1173,8 @@ videos, which captures the identity of a single object as it moves through the
 video. These tracks are stored in the `index` field of the |Label| instances
 when you import the annotations into FiftyOne.
 
-Note that CVAT does not provide a straightforward way to annotate frame-level
-classification labels. Instead, we recommend that you use sample-level fields
+Note that CVAT does not provide a straightforward way to annotate sample-level
+classification labels. Instead, we recommend that you use frame-level fields
 to record classifications for your video datasets.
 
 .. note::

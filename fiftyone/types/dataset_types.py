@@ -709,6 +709,20 @@ class GeoJSONDataset(LabeledDataset):
         return foug.GeoJSONDatasetExporter
 
 
+class GeoTIFFDataset(ImageLabelsDataset):
+    """An image dataset whose image and geolocation data are stored in
+    `GeoTIFF format <https://en.wikipedia.org/wiki/GeoTIFF>`_.
+
+    See :ref:`this page <GeoTIFFDataset-import>` for importing datasets of this
+    type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.geotiff as foug
+
+        return foug.GeoTIFFDatasetImporter
+
+
 class FiftyOneDataset(Dataset):
     """A disk representation of an entire
     :class:`fiftyone.core.dataset.Dataset` stored on disk in a serialized JSON
