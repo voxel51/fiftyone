@@ -1187,8 +1187,75 @@ to record classifications for your video datasets.
 
 .. note::
 
+    CVAT only allows one video per task, so calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    on a video dataset will result multiple tasks per label field.
+
+Adding new frame labels
+-----------------------
+
+The example below demonstrates how to configure a video annotation task that
+populates a new frame-level field of a video dataset with detection tracks of
+vehicles with an immutable `type` attribute that denotes the type of each
+vehicle:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+    dataset.delete_frame_field("detections")  # delete existing labels
+
+    view = dataset.limit(1)
+
+    anno_key = "video"
+
+    # Create annotation task
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes={
+            "type": {
+                "type": "select",
+                "values": ["sedan", "suv", "truck", "other"],
+                "mutable": False,
+            }
+        },
+        launch_editor=True,
+    )
+
+    # Add annotations in CVAT...
+
+    # Download annotations
+    dataset.load_annotations(anno_key)
+
+    # Load the view that was annotated in the App
+    view = dataset.load_annotation_view(anno_key)
+    session = fo.launch_app(view=view)
+
+    # Cleanup
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+    dataset.delete_annotation_run(anno_key)
+
+.. note::
+
     Prepend `"frames."` to reference frame-level fields when calling
     :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
+
+.. image:: /images/integrations/cvat_video.png
+   :alt: cvat-video
+   :align: center
+
+Editing existing frame labels
+-----------------------------
+
+The example below demonstrates how to edit existing frame-level detections of a
+video dataset:
 
 .. code:: python
     :linenos:
@@ -1222,16 +1289,6 @@ to record classifications for your video datasets.
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
-
-.. note:
-
-    CVAT only allows one video per task, so calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    on a video dataset will result multiple tasks per label field.
-
-.. image:: /images/integrations/cvat_video.png
-   :alt: cvat-video
-   :align: center
 
 .. _cvat-utils:
 
