@@ -404,6 +404,14 @@ provided:
     Not applicable to videos
 -   **image_quality** (*75*): an int in `[0, 100]` determining the image
     quality to upload to CVAT
+-   **use_cache** (*True*): whether to use a cache when uploading data. Using a
+    cache reduces task creation time as data will be processed on-the-fly and
+    stored in the cache when requested
+-   **use_zip_chunks** (*True*): when annotating videos, whether to upload
+    video frames in smaller chunks. Setting this option to `False` may result
+    in reduced video quality in CVAT due to size limitations on ZIP files that
+    can be uploaded to CVAT
+-   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
 -   **task_assignee** (*None*): a username to assign the generated tasks
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
