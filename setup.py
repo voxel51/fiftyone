@@ -78,7 +78,7 @@ setup(
         "mongoengine==0.20.0",
         "motor>=2.3,<3",
         "numpy",
-        "opencv-python-headless>=4.4,<5",
+        "opencv-python-headless",
         "packaging",
         "pandas",
         "Pillow>=6.2",
