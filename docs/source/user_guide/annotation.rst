@@ -605,13 +605,11 @@ attribute that you wish to label:
         "occluded": {
             "type": "radio",
             "values": [True, False],
-            "default": True,
-            "mutable": True,
+            "default": False,
         },
-        "weather": {
+        "gender": {
             "type": "select",
-            "values": ["cloudy", "sunny", "overcast"],
-            "mutable": False,
+            "values": ["male", "female"],
         },
         "caption": {
             "type": "text",
@@ -621,7 +619,7 @@ attribute that you wish to label:
     view.annotate(
         anno_key,
         label_field="new_field",
-        label_type="frames.detections",
+        label_type="detections",
         classes=["dog", "cat", "person"],
         attributes=attributes,
     )
@@ -644,7 +642,6 @@ For example, CVAT supports the following choices for `type`:
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
 
-
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
 
@@ -655,25 +652,53 @@ take additional values:
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 
-
-**For videos,** the `mutable` property can be used by most annotation backends when
-annotating object tracks. Setting it
-to `False` makes it so that the attribute is immutable throughout the track
-and as such only has to be annotated once for it to apply to every frame. When
-uploading existing objects with an immutable attribute, it is expected that the value
-of the attribute is constant for all objects of the same index in a video in
-FiftyOne. For example, CVAT supports the following choices for `mutable`:
-
--   `True` (default): the attribute is dynamic and can have a different value
-    for every frame in which the object appears
--   `False`: the value of the attribute is the same for every frame
-    in which the object appears
-
-
 .. note::
 
     Only scalar-valued label attributes are supported. Other attribute types
     like lists, dictionaries, and arrays will be omitted.
+
+.. _annotation-video-label-attributes:
+
+Video label attributes
+----------------------
+
+When annotating spatiotemporal objects in videos, each object attribute
+specification can include a `mutable` property that controls whether the
+attribute's value can change between frames for each object:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "type": {
+            "type": "select",
+            "values": ["sedan", "suv", "truck"],
+            "mutable": False,
+        },
+        "occluded": {
+            "type": "radio",
+            "values": [True, False],
+            "default": False,
+            "mutable": True,
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="frames.new_field",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+The meaning of the `mutable` attribute is defined as follows:
+
+-   `True` (default): the attribute is dynamic and can have a different value
+    for every frame in which the object track appears
+-   `False`: the attribute is static and is the same for every frame in which
+    the object track appears
 
 .. _loading-annotations:
 
