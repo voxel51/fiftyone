@@ -120,9 +120,11 @@ def _validate_db_version(config, client):
         raise RuntimeError("Failed to validate `mongod` version") from e
 
     min_ver, max_ver = foc.MONGODB_VERSION_RANGE
-    if config.database_validation and version < min_ver or version > max_ver:
+    if config.database_validation and (version < min_ver or version > max_ver):
         raise RuntimeError(
-            "Found `mongod` version %s, but only [%s, %s) are compatible"
+            "Found `mongod` version %s, but only [%s, %s) are compatible. "
+            "Please set `database_validation` to `False` in your "
+            "`fiftyone.core.config.FiftyOneConfig` to suppress this exception"
             % (version, min_ver, max_ver)
         )
 
