@@ -120,18 +120,8 @@ def _validate_db_version(config, client):
         raise RuntimeError("Failed to validate `mongod` version") from e
 
     min_ver, max_ver = foc.MONGODB_VERSION_RANGE
-
-    if config.database_uri is not None:
-        # Allow custom databases to have version > max_ver, with the assumption
-        # that the user has set their feature compatibility version
-        # https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion
-        if version < min_ver:
-            logger.warning(
-                "Found `mongod` version %s, but only %s or later is compatible"
-                % (version, min_ver)
-            )
-    elif version < min_ver or version > max_ver:
-        logger.warning(
+    if config.database_validation and version < min_ver or version > max_ver:
+        raise RuntimeError(
             "Found `mongod` version %s, but only [%s, %s) are compatible"
             % (version, min_ver, max_ver)
         )

@@ -24,6 +24,10 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
 |                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_validation`         | `FIFTYONE_DATABASE_VALIDATION`      | `True`                        | Whether to validate the compatibility of database, i.e. `mongod`, connections. If      |
+|                               |                                     |                               | `False`, connections to `mongod` instances that fall outside the officially supported  |
+|                               |                                     |                               | versions will be allowed.                                                              |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -100,6 +104,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
+            "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -135,6 +140,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
+            "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
