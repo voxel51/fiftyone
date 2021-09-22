@@ -939,7 +939,9 @@ def _merge_labels(
 
         for image in images:
             if is_video:
-                image_annos = sample_annos[image.id]
+                image_annos = sample_annos.get(image.id, None)
+                if not image_annos:
+                    continue
             else:
                 image_annos = sample_annos
 
