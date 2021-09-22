@@ -4560,6 +4560,7 @@ class SampleCollection(object):
 
                 -   a :class:`fiftyone.core.labels.VideoClassification`,
                     :class:`fiftyone.core.labels.VideoClassifications`, or
+                    :class:`fiftyone.core.fields.FrameSupportField`, or list of
                     :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
                     types:

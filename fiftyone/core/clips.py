@@ -311,7 +311,8 @@ def make_clips_dataset(
         field_or_expr: can be any of the following:
 
             -   a :class:`fiftyone.core.labels.VideoClassification`,
-                :class:`fiftyone.core.labels.VideoClassifications`, or
+                :class:`fiftyone.core.labels.VideoClassifications`,
+                :class:`fiftyone.core.fields.FrameSupportField`, or list of
                 :class:`fiftyone.core.fields.FrameSupportField` field
             -   a frame-level label list field of any of the following types:
                 -   :class:`fiftyone.core.labels.Classifications`
@@ -355,8 +356,7 @@ def make_clips_dataset(
             else:
                 clips_type = "expression"
         else:
-            field_type = sample_collection._get_field_type(field_or_expr)
-            if isinstance(field_type, fof.FrameSupportField):
+            if _is_frame_support_field(sample_collection, field_or_expr):
                 clips_type = "support"
             else:
                 clips_type = "classifications"
@@ -443,6 +443,14 @@ def make_clips_dataset(
     return dataset
 
 
+def _is_frame_support_field(sample_collection, field):
+    field_type = sample_collection._get_field_type(field)
+    return isinstance(field_type, fof.FrameSupportField) or (
+        isinstance(field_type, fof.ListField)
+        and isinstance(field_type.field, fof.FrameSupportField)
+    )
+
+
 def _make_pretty_summary(dataset):
     set_fields = ["id", "sample_id", "filepath", "support"]
     all_fields = dataset._sample_doc_cls._fields_ordered
@@ -451,6 +459,9 @@ def _make_pretty_summary(dataset):
 
 
 def _write_support_clips(dataset, src_collection, field, other_fields=None):
+    field_type = src_collection._get_field_type(field)
+    is_list = isinstance(field_type, fof.ListField)
+
     src_dataset = src_collection._dataset
 
     project = {
@@ -467,12 +478,17 @@ def _write_support_clips(dataset, src_collection, field, other_fields=None):
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline(detach_frames=True)
-    pipeline.extend(
-        [{"$project": project}, {"$out": dataset._sample_collection_name}]
-    )
+    pipeline = src_collection._pipeline()
+    pipeline.append({"$project": project})
 
-    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
+    if is_list:
+        pipeline.extend(
+            [{"$unwind": "$support"}, {"$set": {"_rand": {"$rand": {}}}}]
+        )
+
+    pipeline.append({"$out": dataset._sample_collection_name})
+
+    src_dataset._aggregate(pipeline=pipeline)
 
 
 def _write_classification_clips(
@@ -492,6 +508,7 @@ def _write_classification_clips(
         "_id": False,
         "_sample_id": "$_id",
         "_media_type": True,
+        "_rand": True,
         "filepath": True,
         "metadata": True,
         "tags": True,
@@ -501,7 +518,7 @@ def _write_classification_clips(
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline = src_collection._pipeline()
 
     pipeline.append({"$project": project})
 
@@ -519,7 +536,7 @@ def _write_classification_clips(
                     "_id": "$" + field + "._id",
                     "support": "$" + support_path,
                     field + "._cls": "Classification",
-                    "_rand": {"$rand": {}},
+                    "_rand": {"$rand": {}},  # @todo only needed when unwinding
                 }
             },
             {"$unset": support_path},
@@ -527,7 +544,7 @@ def _write_classification_clips(
         ]
     )
 
-    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
+    src_dataset._aggregate(pipeline=pipeline)
 
 
 def _write_trajectories(dataset, src_collection, field, other_fields=None):
@@ -565,7 +582,7 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline = src_collection._pipeline()
 
     pipeline.extend(
         [
@@ -587,7 +604,7 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
         ]
     )
 
-    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
+    src_dataset._aggregate(pipeline=pipeline)
 
     cleanup_op = {"$unset": {_tmp_field: ""}}
     src_dataset._sample_collection.update_many({}, cleanup_op)
@@ -641,7 +658,7 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     if other_fields:
         project.update({f: True for f in other_fields})
 
-    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline = src_collection._pipeline()
 
     pipeline.extend(
         [
@@ -652,7 +669,7 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
         ]
     )
 
-    src_dataset._aggregate(pipeline=pipeline, attach_frames=False)
+    src_dataset._aggregate(pipeline=pipeline)
 
     cleanup_op = {"$unset": {_tmp_field: ""}}
     src_dataset._sample_collection.update_many({}, cleanup_op)
