@@ -3894,7 +3894,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if is_shape:
                     frame_size = (metadata.frame_width, metadata.frame_height)
             else:
-                iamges = [sample]
+                images = [sample]
                 if is_shape:
                     frame_size = (metadata.width, metadata.height)
 

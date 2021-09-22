@@ -448,7 +448,7 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
     if not _multiple_types:
         return _existing_type, True, _multiple_types
 
-    # Existing field contains multiple label types, so we must choose which
+    # Existing field contains multiple label types, so we must choose one
     if "detection" in _existing_type:
         _label_type = "detection"
     elif "detections" in _existing_type:
@@ -902,12 +902,12 @@ def _merge_labels(
         else:
             anno_ids.update(sample.keys())
 
-    deleted_ids = existing_ids - anno_ids
+    delete_ids = existing_ids - anno_ids
     new_ids = anno_ids - existing_ids
     merge_ids = anno_ids - new_ids
 
-    if deleted_ids:
-        samples._dataset.delete_labels(ids=deleted_ids, fields=label_field)
+    if delete_ids:
+        samples._dataset.delete_labels(ids=delete_ids, fields=label_field)
 
     if is_video and label_type in (
         "detections",
