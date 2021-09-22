@@ -3633,37 +3633,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs=immutable_attrs,
             )
 
-        remaining_annos = []
+        # For non-outside tracked objects, the last track goes to the end of
+        # the video, so fill all remaining frames with copies of the last
+        # instance
         if (
             prev_frame is not None
             and prev_frame + 1 < len(frame_id_map)
             and not prev_outside
         ):
-            # The last track annotation goes to the end of the video, so fill
-            # all remaining frames
-            for f in range(prev_frame + 1, len(frame_id_map)):
-                remaining_anno = deepcopy(prev_anno)
-                remaining_anno["frame"] = f
-                remaining_annos.append(remaining_anno)
+            for frame in range(prev_frame + 1, len(frame_id_map)):
+                anno = deepcopy(prev_anno)
+                anno["frame"] = frame
 
-        for anno in remaining_annos:
-            # Create labels for all non-key frames of this track
-            # This is skipped for non-track annotations
-            prev_type = self._parse_annotation(
-                anno,
-                results,
-                anno_type,
-                prev_type,
-                frame_id_map,
-                label_type,
-                id_map,
-                class_map,
-                attr_id_map,
-                frames,
-                assigned_scalar_attrs=assigned_scalar_attrs,
-                track_index=track_index,
-                immutable_attrs=immutable_attrs,
-            )
+                prev_type = self._parse_annotation(
+                    anno,
+                    results,
+                    anno_type,
+                    prev_type,
+                    frame_id_map,
+                    label_type,
+                    id_map,
+                    class_map,
+                    attr_id_map,
+                    frames,
+                    assigned_scalar_attrs=assigned_scalar_attrs,
+                    track_index=track_index,
+                    immutable_attrs=immutable_attrs,
+                )
 
         return results
 
