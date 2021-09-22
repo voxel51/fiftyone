@@ -3423,9 +3423,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             labels = task_json["labels"]
             for label in labels:
                 class_map[label["id"]] = label["name"]
-                attr_id_map[label["id"]] = dict(
-                    [(i["name"], i["id"]) for i in label["attributes"]]
-                )
+                attr_id_map[label["id"]] = {
+                    i["name"]: i["id"] for i in label["attributes"]
+                }
 
             task_resp = self.get(self.task_annotation_url(task_id)).json()
             shapes = task_resp["shapes"]
