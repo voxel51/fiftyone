@@ -411,8 +411,7 @@ provided:
     video frames in smaller chunks. Setting this option to `False` may result
     in reduced video quality in CVAT due to size limitations on ZIP files that
     may be uploaded to CVAT
--   **chunk_size** (*None*): the number of frames per ZIP chunk. Only
-    applicable when annotating videos and `use_zip_chunks` is True
+-   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
 -   **task_assignee** (*None*): a username to assign the generated tasks
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews

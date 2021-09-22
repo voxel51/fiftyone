@@ -2440,8 +2440,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             frames in smaller chunks. Setting this option to `False` may result
             in reduced video quality in CVAT due to size limitations on ZIP
             files that may be uploaded to CVAT
-        chunk_size (None): the number of frames per ZIP chunk. Only applicable
-            when annotating videos and ``use_zip_chunks`` is True
+        chunk_size (None): the number of frames to upload per ZIP chunk
         task_assignee (None): the username to which the task(s) were assigned
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
@@ -3130,9 +3129,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 video frames in smaller chunks. Setting this option to `False`
                 may result in reduced video quality in CVAT due to size
                 limitations on ZIP files that may be uploaded to CVAT
-            chunk_size (None): the number of frames per ZIP chunk. Only
-                applicable when annotating videos and ``use_zip_chunks`` is
-                True
+            chunk_size (None): the number of frames to upload per ZIP chunk
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
 
@@ -3145,7 +3142,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             "use_zip_chunks": use_zip_chunks,
         }
 
-        if use_zip_chunks and chunk_size:
+        if chunk_size:
             data["chunk_size"] = chunk_size
 
         files = {}
@@ -3223,9 +3220,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 video frames in smaller chunks. Setting this option to `False`
                 may result in reduced video quality in CVAT due to size
                 limitations on ZIP files that may be uploaded to CVAT
-            chunk_size (None): the number of frames per ZIP chunk. Only
-                applicable when annotating videos and ``use_zip_chunks`` is
-                True
+            chunk_size (None): the number of frames to upload per ZIP chunk
             task_assignee (None): the username to assign the created task(s)
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
