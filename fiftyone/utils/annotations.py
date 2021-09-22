@@ -5,7 +5,7 @@ Annotation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from copy import deepcopy
 import getpass
 import logging
@@ -265,18 +265,18 @@ _DEFAULT_LABEL_FIELDS_MAP = {
     fol.Segmentation: ["mask"],
 }
 
-_SCALAR_TYPES = [
+_SCALAR_TYPES = (
     fof.IntField,
     fof.FloatField,
     fof.StringField,
     fof.BooleanField,
-]
+)
 
-_TRACKABLE_TYPES = [
+_TRACKABLE_TYPES = (
     fol.Detection,
     fol.Polyline,
     fol.Keypoint,
-]
+)
 
 
 def _build_label_schema(
@@ -760,7 +760,7 @@ def load_annotations(
                         results,
                         label_field,
                         anno_type,
-                        attributes,
+                        attributes=attributes,
                     )
             else:
                 # Unexpected labels
@@ -771,7 +771,7 @@ def load_annotations(
 
                 if new_field:
                     _merge_labels(
-                        samples, annos, results, label_field, label_type, None,
+                        samples, annos, results, label_field, label_type
                     )
                 else:
                     logger.info(
@@ -866,10 +866,8 @@ def _load_scalars(samples, anno_dict, label_field):
 
 
 def _merge_labels(
-    samples, anno_dict, results, label_field, label_type, attributes
+    samples, anno_dict, results, label_field, label_type, attributes=None
 ):
-    id_map = results.id_map.get(label_field, {})
-
     fo_label_type = _LABEL_TYPES_MAP[label_type]
     if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
         is_list = True
@@ -878,6 +876,8 @@ def _merge_labels(
         is_list = False
 
     _ensure_label_field(samples, label_field, fo_label_type)
+
+    id_map = results.id_map.get(label_field, {})
 
     is_video = samples.media_type == fom.VIDEO
 
@@ -902,12 +902,12 @@ def _merge_labels(
         else:
             anno_ids.update(sample.keys())
 
-    delete_ids = existing_ids - anno_ids
+    deleted_ids = existing_ids - anno_ids
     new_ids = anno_ids - existing_ids
     merge_ids = anno_ids - new_ids
 
-    if delete_ids:
-        samples._dataset.delete_labels(ids=delete_ids, fields=label_field)
+    if deleted_ids:
+        samples._dataset.delete_labels(ids=deleted_ids, fields=label_field)
 
     if is_video and label_type in (
         "detections",
@@ -945,67 +945,67 @@ def _merge_labels(
 
             image_label = image[field]
 
-            # Add new labels
             if image_label is None:
+                # Add new labels to previously `None`-valued fields
                 if is_list:
-                    new_label = fo_label_type()
                     label_ids = list(image_annos.keys())
-                    new_label[list_field] = list(image_annos.values())
-                    image[field] = new_label
+                    image[field] = fo_label_type(
+                        **{list_field: list(image_annos.values())}
+                    )
 
                     if is_video:
                         added_id_map[sample_id][image.id].extend(label_ids)
                     else:
                         added_id_map[sample_id].extend(label_ids)
-                else:
-                    # Singular label, check if any annotations are new, set
-                    # the field to the first annotation if it exists
-                    for anno_id, anno_label in image_annos.items():
-                        if anno_id in new_ids:
-                            image[field] = anno_label
+                elif image_annos:
+                    anno_id, anno_label = next(iter(image_annos.items()))
+                    image[field] = anno_label
 
-                            if is_video:
-                                added_id_map[sample_id][image.id] = anno_id
-                            else:
-                                added_id_map[sample_id] = anno_id
-
-                            break
-
-                continue
-
-            if is_list:
-                labels = image_label[list_field]
+                    if is_video:
+                        added_id_map[sample_id][image.id] = anno_id
+                    else:
+                        added_id_map[sample_id] = anno_id
             else:
-                labels = [image_label]
+                if is_list:
+                    labels = image_label[list_field]
+                else:
+                    labels = [image_label]
 
-            # Merge labels that existed before and after annotation
-            for label in labels:
-                if label.id in merge_ids:
-                    anno_label = image_annos[label.id]
+                # Merge labels that existed before and after annotation
+                for label in labels:
+                    if label.id in merge_ids:
+                        anno_label = image_annos[label.id]
 
-                    if is_video and isinstance(anno_label, _TRACKABLE_TYPES):
-                        tracking_index.set_index(sample_id, anno_label)
+                        if is_video and _is_trackable(anno_label):
+                            tracking_index.set_index(sample_id, anno_label)
 
-                    _merge_label(label, anno_label, attributes=attributes)
+                        _merge_label(label, anno_label, attributes=attributes)
 
-            # Add new labels to label list fields
-            if is_list:
-                for anno_id, anno_label in image_annos.items():
-                    if anno_id in new_ids:
+                # Add new labels to label list fields
+                if is_list:
+                    for anno_id, anno_label in image_annos.items():
+                        if anno_id not in new_ids:
+                            continue
+
+                        if is_video and _is_trackable(anno_label):
+                            tracking_index.set_index(sample_id, anno_label)
+
                         labels.append(anno_label)
 
                         if is_video:
-                            if isinstance(anno_label, _TRACKABLE_TYPES):
-                                tracking_index.set_index(sample_id, anno_label)
-
                             added_id_map[sample_id][image.id].append(anno_id)
                         else:
                             added_id_map[sample_id].append(anno_id)
 
         sample.save()
 
-    # Must update ID map so re-imports of this run will be properly processed
+    # Record newly added IDs so that re-imports of this run will be properly
+    # processed
     results._update_id_map(label_field, added_id_map)
+
+
+def _is_trackable(label):
+    return isinstance(label, _TRACKABLE_TYPES)
 
 
 def _ensure_label_field(samples, label_field, fo_label_type):
@@ -1119,6 +1119,9 @@ class AnnotationBackendConfig(foa.AnnotationMethodConfig):
         return self.name
 
     def _sanitize_label_schema(self, label_schema):
+        if not label_schema:
+            return
+
         # Mask target keys are serialized as strings; must undo this...
         for label_info in label_schema.values():
             mask_targets = label_info.get("mask_targets", None)
@@ -1126,6 +1129,20 @@ class AnnotationBackendConfig(foa.AnnotationMethodConfig):
                 label_info["mask_targets"] = {
                     int(k): v for k, v in mask_targets.items()
                 }
+
+    def serialize(self, *args, **kwargs):
+        d = super().serialize(*args, **kwargs)
+
+        # Must serialize mask targets with string keys...
+        label_schema = d.get("label_schema", {})
+        for label_info in label_schema.values():
+            mask_targets = label_info.get("mask_targets", None)
+            if isinstance(mask_targets, dict):
+                label_info["mask_targets"] = OrderedDict(
+                    (str(k), v) for k, v in mask_targets.items()
+                )
+
+        return d
 
 
 class AnnotationBackend(foa.AnnotationMethod):

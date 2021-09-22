@@ -4107,6 +4107,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 if ids is not None:
                     if is_video:
+                        if sample.id not in id_map:
+                            id_map[sample.id] = {}
+
                         id_map[sample.id][image.id] = ids
                     else:
                         id_map[sample.id] = ids
