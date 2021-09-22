@@ -312,7 +312,7 @@ You can achieve this by adding the following entry to your
 .. code-block:: json
 
     {
-        "database_validation": False
+        "database_validation": false
     }
 
 or you can set the following environment variable:

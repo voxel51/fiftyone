@@ -123,7 +123,7 @@ def _validate_db_version(config, client):
     if config.database_validation and not (min_ver <= version < max_ver):
         raise RuntimeError(
             "Found `mongod` version %s, but only [%s, %s) are compatible. "
-            "You can suppress this exception if desired by setting your "
+            "You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
             "https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection "
             "for more information" % (version, min_ver, max_ver)
