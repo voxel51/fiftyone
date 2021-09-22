@@ -3214,7 +3214,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         for label_field, label_info in label_schema.items():
             label_type = label_info["type"]
             classes = label_info["classes"]
-            cvat_attrs = self._construct_cvat_attributes(
+            cvat_attrs, immutable_attrs = self._construct_cvat_attributes(
                 label_info["attributes"]
             )
             is_existing_field = label_info["existing_field"]
@@ -3298,6 +3298,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             classes,
                             is_shape=True,
                             load_tracks=True,
+                            immutable_attr_names=immutable_attrs,
                         )
                     elif label_type in (
                         "classification",
@@ -3525,6 +3526,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for shape in shapes:
                     shape["label_id"] = label_id
 
+                immutable_attrs = track["attributes"]
+
                 track_shape_results = self._parse_shapes_tags(
                     "track",
                     track["shapes"],
@@ -3535,6 +3538,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frames,
                     assigned_scalar_attrs=_scalar_attrs,
                     track_index=track_index,
+                    immutable_attrs=immutable_attrs,
                 )
                 label_field_results = self._merge_results(
                     label_field_results, track_shape_results
@@ -3567,6 +3571,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frames,
         assigned_scalar_attrs=False,
         track_index=None,
+        immutable_attrs=None,
     ):
         """Parses the shapes or tags from the given CVAT annotations into a
         label results dict.
@@ -3640,6 +3645,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frames,
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
+                immutable_attrs=immutable_attrs,
             )
 
         if (
@@ -3669,6 +3675,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frames,
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
+                immutable_attrs=immutable_attrs,
             )
 
         return results
@@ -3686,6 +3693,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frames,
         assigned_scalar_attrs=False,
         track_index=None,
+        immutable_attrs=None,
     ):
         frame = anno["frame"]
         if len(frames) > frame:
@@ -3712,7 +3720,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     anno["attributes"] = []
 
             cvat_shape = CVATShape(
-                anno, class_map, attr_id_map, metadata, index=track_index
+                anno,
+                class_map,
+                attr_id_map,
+                metadata,
+                index=track_index,
+                immutable_attrs=immutable_attrs,
             )
             if shape_type == "rectangle":
                 label_type = "detections"
@@ -3798,6 +3811,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _construct_cvat_attributes(self, attributes):
         cvat_attrs = {}
+        immutable_attrs = []
         for attr_name, info in attributes.items():
             cvat_attr = {"name": attr_name, "mutable": True}
             for attr_key, val in info.items():
@@ -3807,10 +3821,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     cvat_attr["values"] = [str(v) for v in val]
                 elif attr_key == "default":
                     cvat_attr["default_value"] = str(val)
+                elif attr_key == "mutable":
+                    mutable = bool(val)
+                    if not mutable:
+                        immutable_attrs.append(attr_name)
+
+                    cvat_attr["mutable"] = mutable
 
             cvat_attrs[attr_name] = cvat_attr
 
-        return cvat_attrs
+        return cvat_attrs, immutable_attrs
 
     def _create_shapes_tags_tracks(
         self,
@@ -3822,6 +3842,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         is_shape=False,
         load_tracks=False,
         assign_scalar_attrs=False,
+        immutable_attr_names=None,
     ):
         tags_or_shapes = []
         tracks = {}
@@ -3876,6 +3897,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             attributes,
                             class_name,
                             remapped_attrs,
+                            _,
                         ) = self._create_attributes(cls, attr_names, classes)
                         if class_name is None:
                             continue
@@ -3945,6 +3967,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         classes,
                         frame_id,
                         load_tracks=load_tracks,
+                        immutable_attr_names=immutable_attr_names,
                     )
                     remapped_attr_names.update(remapped_attrs)
                     tags_or_shapes.extend(shapes)
@@ -3985,6 +4008,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             track["shapes"]
                         )
                         if tracks[class_name][index]["frame"] > track["frame"]:
+                            # The track frame indicates the first frame with a
+                            # shape from this track
                             tracks[class_name][index]["frame"] = track["frame"]
 
         return tracks
@@ -4017,13 +4042,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         classes,
         frame_id,
         load_tracks=False,
+        immutable_attr_names=None,
     ):
         shapes = []
         tracks = {}
         remapped_attr_names = {}
         for kp in keypoints:
-            attributes, class_name, remapped_attrs = self._create_attributes(
-                kp, attr_names, classes
+            (
+                attributes,
+                class_name,
+                remapped_attrs,
+                immutable_attrs,
+            ) = self._create_attributes(
+                kp,
+                attr_names,
+                classes,
+                immutable_attr_names=immutable_attr_names,
             )
             if class_name is None:
                 continue
@@ -4057,7 +4091,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tracks[class_name][index]["shapes"] = []
                     tracks[class_name][index]["frame"] = frame_id
                     tracks[class_name][index]["group"] = 0
-                    tracks[class_name][index]["attributes"] = []
+                    tracks[class_name][index]["attributes"] = immutable_attrs
 
                 shape["outside"] = False
                 del shape["label_id"]
@@ -4076,13 +4110,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         classes,
         frame_id,
         load_tracks=False,
+        immutable_attr_names=None,
     ):
         shapes = []
         tracks = {}
         remapped_attr_names = {}
         for poly in polylines:
-            attributes, class_name, remapped_attrs = self._create_attributes(
-                poly, attr_names, classes
+            (
+                attributes,
+                class_name,
+                remapped_attrs,
+                immutable_attrs,
+            ) = self._create_attributes(
+                poly,
+                attr_names,
+                classes,
+                immutable_attr_names=immutable_attr_names,
             )
             if class_name is None:
                 continue
@@ -4130,7 +4173,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tracks[class_name][index]["shapes"] = []
                     tracks[class_name][index]["frame"] = frame_id
                     tracks[class_name][index]["group"] = 0
-                    tracks[class_name][index]["attributes"] = []
+                    tracks[class_name][index]["attributes"] = immutable_attrs
 
                 shape["outside"] = False
                 del shape["label_id"]
@@ -4149,13 +4192,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         classes,
         frame_id,
         load_tracks=False,
+        immutable_attr_names=None,
     ):
         shapes = []
         tracks = {}
         remapped_attr_names = {}
         for det in detections:
-            attributes, class_name, remapped_attrs = self._create_attributes(
-                det, attr_names, classes
+            (
+                attributes,
+                class_name,
+                remapped_attrs,
+                immutable_attrs,
+            ) = self._create_attributes(
+                det,
+                attr_names,
+                classes,
+                immutable_attr_names=immutable_attr_names,
             )
             if class_name is None:
                 continue
@@ -4216,7 +4268,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tracks[class_name][index]["shapes"] = []
                     tracks[class_name][index]["frame"] = frame_id
                     tracks[class_name][index]["group"] = 0
-                    tracks[class_name][index]["attributes"] = []
+                    tracks[class_name][index]["attributes"] = immutable_attrs
 
                 shape["outside"] = False
                 del shape["label_id"]
@@ -4226,12 +4278,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return shapes, tracks, remapped_attr_names
 
-    def _create_attributes(self, label, attributes, classes):
+    def _create_attributes(
+        self, label, attributes, classes, immutable_attr_names=None
+    ):
         label_attrs = []
         remapped_attr_names = {}
+        immutable_attrs = []
         label_attrs.append({"spec_id": "label_id", "value": label.id})
         for attribute in attributes:
             value = None
+            is_immutable = (immutable_attr_names is not None) and (
+                attribute in immutable_attr_names
+            )
+
             if attribute in label:
                 value = label[attribute]
 
@@ -4243,14 +4302,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     attribute = new_attribute
 
             if value is not None:
-                label_attrs.append({"spec_id": attribute, "value": str(value)})
+                attr_dict = {"spec_id": attribute, "value": str(value)}
+                if is_immutable:
+                    immutable_attrs.append(attr_dict)
+                else:
+                    label_attrs.append(attr_dict)
 
         if "label" in label and label["label"] in classes:
             class_name = label["label"]
         else:
             class_name = None
 
-        return label_attrs, class_name, remapped_attr_names
+        return label_attrs, class_name, remapped_attr_names, immutable_attrs
 
     def _remap_ids(self, shapes_or_tags, attribute_id_map, class_id_map):
         for obj in shapes_or_tags:
@@ -4274,6 +4337,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for attr in shape["attributes"]:
                     attr_name = attr["spec_id"]
                     attr["spec_id"] = attr_id_map[attr_name]
+
+            for attr in track["attributes"]:
+                attr_name = attr["spec_id"]
+                attr["spec_id"] = attr_id_map[attr_name]
 
         return tracks
 
@@ -4314,10 +4381,10 @@ class CVATLabel(object):
         self.label_id = label_id
         self.class_name = class_map[label_id]
         self.attributes = {}
-        attr_id_map_rev = {v: k for k, v in attr_id_map[label_id].items()}
+        self.attr_id_map_rev = {v: k for k, v in attr_id_map[label_id].items()}
 
         for attr in label_dict["attributes"]:
-            name = attr_id_map_rev[attr["spec_id"]]
+            name = self.attr_id_map_rev[attr["spec_id"]]
             val = _parse_attribute(attr["value"])
             if val is not None and val != "":
                 self.attributes[name] = CVATAttribute(name=name, value=val)
@@ -4376,16 +4443,33 @@ class CVATShape(CVATLabel):
         class_map: a dictionary mapping label ids to class strings
         attr_id_map: a dictionary mapping attribute ids attribute names for
             every label
+        index (None): the track index of the shape
+        immutable_attrs (None): immutable attributes inherited by this shape
+            from its track
     """
 
     def __init__(
-        self, label_dict, class_map, attr_id_map, metadata, index=None
+        self,
+        label_dict,
+        class_map,
+        attr_id_map,
+        metadata,
+        index=None,
+        immutable_attrs=None,
     ):
         super().__init__(label_dict, class_map, attr_id_map)
         self.width = metadata["width"]
         self.height = metadata["height"]
         self.points = label_dict["points"]
         self.index = index
+
+        # Add immutable attributes to shape
+        if immutable_attrs is not None:
+            for attr in immutable_attrs:
+                name = self.attr_id_map_rev[attr["spec_id"]]
+                val = _parse_attribute(attr["value"])
+                if val is not None and val != "":
+                    self.attributes[name] = CVATAttribute(name=name, value=val)
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
