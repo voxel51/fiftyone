@@ -93,24 +93,44 @@ def objects_to_segmentations(
 
 
 def segmentations_to_detections(
-    sample_collection, in_field, out_field, mask_targets=None,
+    sample_collection,
+    in_field,
+    out_field,
+    mask_targets=None,
+    mask_types="stuff",
 ):
-    """Converts the semantic segmentations masks in the specific field of the
-    collection into :class:`fiftyone.core.labels.Detections` with each class as
-    one instance segmentation.
+    """Converts the semantic segmentations masks in the specified field of the
+    collection into :class:`fiftyone.core.labels.Detections` with instance
+    masks populated.
+
+    Each ``"stuff"`` class will be converted to a single
+    :class:`fiftyone.core.labels.Detection` whose instance mask spans all
+    region(s) of the class.
+
+    Each ``"thing"`` class will result in one
+    :class:`fiftyone.core.labels.Detection` instance per connected region of
+    that class in the segmentation.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        out_field: the name of the
-            :class:`fiftyone.core.labels.Detections` field to create from
-            the given segmentation masks
         in_field: the name of the :class:`fiftyone.core.labels.Segmentation`
             field to convert
+        out_field: the name of the
+            :class:`fiftyone.core.labels.Detections` field to populate
         mask_targets (None): a dict mapping integer pixel values in
             ``[0, 255]`` to label strings defining which object classes to
             label and which pixel values to use for each class. If
             omitted, all labels are assigned to the integer pixel values
+        mask_types ("stuff"): whether the classes are ``"stuff"`` (amorphous
+            regions of pixels) or ``"thing"`` (connected regions, each
+            representing an instance of the thing). Can be any of the
+            following:
+
+            -   ``"stuff"`` if all classes are stuff classes
+            -   ``"thing"`` if all classes are thing classes
+            -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
+                for each class
     """
     fov.validate_image_collection(sample_collection)
     fov.validate_collection_label_fields(
@@ -128,8 +148,75 @@ def segmentations_to_detections(
         if label is None:
             continue
 
-        detections = label.to_detections(mask_targets=mask_targets)
-        sample[out_field] = detections
+        sample[out_field] = label.to_detections(
+            mask_targets=mask_targets, mask_types=mask_types
+        )
+        sample.save()
+
+
+def segmentations_to_polylines(
+    sample_collection,
+    in_field,
+    out_field,
+    mask_targets=None,
+    mask_types="stuff",
+    tolerance=2,
+):
+    """Converts the semantic segmentations masks in the specified field of the
+    collection into :class:`fiftyone.core.labels.Polylines` instances.
+
+    Each ``"stuff"`` class will be converted to a single
+    :class:`fiftyone.core.labels.Polylines` that may contain multiple disjoint
+    shapes capturing the class.
+
+    Each ``"thing"`` class will result in one
+    :class:`fiftyone.core.labels.Polylines` instance per connected region of
+    that class.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the :class:`fiftyone.core.labels.Segmentation`
+            field to convert
+        out_field: the name of the
+            :class:`fiftyone.core.labels.Polylines` field to populate
+        mask_targets (None): a dict mapping integer pixel values in
+            ``[0, 255]`` to label strings defining which object classes to
+            label and which pixel values to use for each class. If
+            omitted, all labels are assigned to the integer pixel values
+        mask_types ("stuff"): whether the classes are ``"stuff"`` (amorphous
+            regions of pixels) or ``"thing"`` (connected regions, each
+            representing an instance of the thing). Can be any of the
+            following:
+
+            -   ``"stuff"`` if all classes are stuff classes
+            -   ``"thing"`` if all classes are thing classes
+            -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
+                for each class
+        tolerance (2): a tolerance, in pixels, when generating approximate
+                polylines for each region. Typical values are 1-3 pixels
+    """
+    fov.validate_image_collection(sample_collection)
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Segmentation,
+    )
+
+    if mask_targets is None:
+        if out_field in sample_collection.mask_targets:
+            mask_targets = sample_collection.mask_targets[out_field]
+        elif sample_collection.default_mask_targets:
+            mask_targets = sample_collection.default_mask_targets
+
+    for sample in sample_collection.iter_samples(progress=True):
+        label = sample[in_field]
+        if label is None:
+            continue
+
+        sample[out_field] = label.to_polylines(
+            mask_targets=mask_targets,
+            mask_types=mask_types,
+            tolerance=tolerance,
+        )
         sample.save()
 
 

@@ -561,7 +561,7 @@ class Detection(ImageLabel, _HasID, _HasAttributesDict):
 
         mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
         _render_instance(mask, self, target)
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -711,10 +711,10 @@ class Detections(ImageLabel, _HasLabelList):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values in
-                ``[0, 255]`` to label strings defining which object classes to
-                render and which pixel values to use for each class. If
-                omitted, all objects are rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which object classes to render and which pixel
+                values to use for each class. If omitted, all objects are
+                rendered with pixel value 255
 
         Returns:
             a :class:`Segmentation`
@@ -733,13 +733,13 @@ class Detections(ImageLabel, _HasLabelList):
             if labels_to_targets is not None:
                 target = labels_to_targets.get(detection.label, None)
                 if target is None:
-                    continue
+                    continue  # skip unknown target
             else:
                 target = 255
 
             _render_instance(mask, detection, target)
 
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -812,8 +812,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributesDict):
         encoding the polyline's shape is included.
 
         Alternatively, if a ``frame_size`` is provided, the required mask size
-            is then computed based off of the polyline points and
-            ``frame_size``
+        is then computed based off of the polyline points and ``frame_size``.
 
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
@@ -878,7 +877,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributesDict):
         """
         mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
         _render_polyline(mask, self, target, thickness)
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -1014,8 +1013,7 @@ class Polylines(ImageLabel, _HasLabelList):
         encoding the polyline's shape are included in each :class:`Detection`.
 
         Alternatively, if a ``frame_size`` is provided, the required mask size
-        is then computed based off of the polyline points and ``frame_size``
-
+        is then computed based off of the polyline points and ``frame_size``.
 
         Args:
             mask_size (None): an optional ``(width, height)`` at which to
@@ -1023,7 +1021,6 @@ class Polylines(ImageLabel, _HasLabelList):
             frame_size (None): used when no ``mask_size`` is provided.
                 an optional ``(width, height)`` of the frame containing these
                 polylines that is used to compute the required ``mask_size``
-
 
         Returns:
             a :class:`Detections`
@@ -1049,10 +1046,10 @@ class Polylines(ImageLabel, _HasLabelList):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            mask_targets (None): a dict mapping integer pixel values in
-                ``[0, 255]`` to label strings defining which object classes to
-                render and which pixel values to use for each class. If
-                omitted, all objects are rendered with pixel value 255
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which object classes to render and which
+                pixel values to use for each class. If omitted, all objects are
+                rendered with pixel value 255
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
@@ -1068,13 +1065,13 @@ class Polylines(ImageLabel, _HasLabelList):
             if labels_to_targets is not None:
                 target = labels_to_targets.get(polyline.label, None)
                 if target is None:
-                    continue
+                    continue  # skip unknown target
             else:
                 target = 255
 
             _render_polyline(mask, polyline, target, thickness)
 
-        return Segmentation(mask=mask.astype(np.int))
+        return Segmentation(mask=mask)
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -1278,61 +1275,71 @@ class Segmentation(ImageLabel, _HasID):
         """
         return etai.ImageLabels(mask=self.mask, tags=self.tags)
 
-    def to_detections(self, mask_targets=None):
-        """Returns a :class:`Detections` representation of this instance.
+    def to_detections(self, mask_targets=None, mask_types="stuff"):
+        """Returns a :class:`Detections` representation of this instance with
+        instance masks populated.
 
-        Every class will be converted to a single :class:`Detection`.
+        Each ``"stuff"`` class will be converted to a single :class:`Detection`
+        whose instance mask spans all region(s) of the class.
+
+        Each ``"thing"`` class will result in one :class:`Detection` instance
+        per connected region of that class in the segmentation.
 
         Args:
-            mask_targets (None): a dict mapping integer pixel values in
-                ``[0, 255]`` to label strings defining which object classes to
-                label and which pixel values to use for each class. If
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which classes to generate detections for. If
                 omitted, all labels are assigned to the integer pixel values
+            mask_types ("stuff"): whether the classes are ``"stuff"``
+                (amorphous regions of pixels) or ``"thing"`` (connected
+                regions, each representing an instance of the thing). Can be
+                any of the following:
+
+                -   ``"stuff"`` if all classes are stuff classes
+                -   ``"thing"`` if all classes are thing classes
+                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
+                    for each class
 
         Returns:
             a :class:`Detections`
         """
-        detections = []
-
-        # pylint: disable=no-member
-        mask_h, mask_w = self.mask.shape
-
-        for target in np.unique(self.mask):
-            if target == 0:
-                # Skip background class
-                continue
-
-            if mask_targets is not None and target in mask_targets:
-                label = mask_targets[target]
-            else:
-                label = target
-
-            label_mask = (self.mask == target).astype(int)
-
-            # Crop mask and get bbox
-
-            # pylint: disable=no-member
-            coords = cv2.findNonZero(label_mask)
-            # pylint: disable=no-member
-            x, y, w, h = cv2.boundingRect(coords)
-
-            bbox = [
-                x / mask_w,
-                y / mask_h,
-                w / mask_w,
-                h / mask_h,
-            ]
-            label_mask = label_mask[y : y + h, x : x + w]
-
-            detections.append(
-                Detection(
-                    label=str(label),
-                    bounding_box=bbox,
-                    mask=label_mask.astype(bool),
-                )
-            )
-
+        detections = _segmentation_to_detections(
+            self, mask_targets, mask_types
+        )
         return Detections(detections=detections)
+
+    def to_polylines(self, mask_targets=None, mask_types="stuff", tolerance=2):
+        """Returns a :class:`Polylines` representation of this instance.
+
+        Each ``"stuff"`` class will be converted to a single :class:`Polyline`
+        that may contain multiple disjoint shapes capturing the class.
+
+        Each ``"thing"`` class will result in one :class:`Polyline` instance
+        per connected region of that class.
+
+        Args:
+            mask_targets (None): a dict mapping integer pixel values to label
+                strings defining which object classes to generate polylines
+                for. If omitted, all labels are assigned to the integer pixel
+                values
+            mask_types ("stuff"): whether the classes are ``"stuff"``
+                (amorphous regions of pixels) or ``"thing"`` (connected
+                regions, each representing an instance of the thing). Can be
+                any of the following:
+
+                -   ``"stuff"`` if all classes are stuff classes
+                -   ``"thing"`` if all classes are thing classes
+                -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
+                    for each class
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polylines for each region. Typical values are 1-3 pixels
+
+        Returns:
+            a :class:`Polylines`
+        """
+        polylines = _segmentation_to_polylines(
+            self, mask_targets, mask_types, tolerance
+        )
+        return Polylines(polylines=polylines)
 
     @classmethod
     def from_mask(cls, mask):
@@ -1481,8 +1488,13 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
         if frame_size is None:
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
+        if mask_targets is not None and max(mask_targets) > 255:
+            dtype = np.int
+        else:
+            dtype = np.uint8
+
         width, height = frame_size
-        mask = np.zeros((height, width), dtype=np.uint8)
+        mask = np.zeros((height, width), dtype=dtype)
     else:
         height, width = mask.shape[:2]
 
@@ -1519,6 +1531,160 @@ def _render_polyline(mask, polyline, target, thickness):
         mask = cv2.polylines(  # pylint: disable=no-member
             mask, points, polyline.closed, target, thickness=thickness
         )
+
+
+def _segmentation_to_detections(segmentation, mask_targets, mask_types):
+    if isinstance(mask_types, dict):
+        default = None
+    else:
+        default = mask_types
+        mask_types = {}
+
+    mask = segmentation.mask
+
+    detections = []
+    for target in np.unique(mask):
+        if target == 0:
+            continue  # skip background
+
+        if mask_targets is not None:
+            label = mask_targets.get(target, None)
+            if label is None:
+                continue  # skip unknown target
+        else:
+            label = str(target)
+
+        label_type = mask_types.get(target, None)
+        if label_type is None:
+            if default is None:
+                continue  # skip unknown type
+
+            label_type = default
+
+        label_mask = mask == target
+
+        if label_type == "stuff":
+            instances = [_parse_stuff_instance(label_mask)]
+        elif label_type == "thing":
+            instances = _parse_thing_instances(label_mask)
+        else:
+            raise ValueError(
+                "Unsupported mask type '%s'. Supported values are "
+                "('stuff', 'thing')"
+            )
+
+        for bbox, instance_mask in instances:
+            detections.append(
+                Detection(label=label, bounding_box=bbox, mask=instance_mask)
+            )
+
+    return detections
+
+
+def _segmentation_to_polylines(
+    segmentation, mask_targets, mask_types, tolerance
+):
+    if isinstance(mask_types, dict):
+        default = None
+    else:
+        default = mask_types
+        mask_types = {}
+
+    mask = segmentation.mask
+
+    polylines = []
+    for target in np.unique(mask):
+        if target == 0:
+            continue  # skip background
+
+        if mask_targets is not None:
+            label = mask_targets.get(target, None)
+            if label is None:
+                continue  # skip unknown target
+        else:
+            label = str(target)
+
+        label_type = mask_types.get(target, None)
+        if label_type is None:
+            if default is None:
+                continue  # skip unknown type
+
+            label_type = default
+
+        label_mask = mask == target
+
+        polygons = _get_polygons(label_mask, tolerance)
+
+        if label_type == "stuff":
+            polygons = [polygons]
+        elif label_type == "thing":
+            polygons = [[p] for p in polygons]
+        else:
+            raise ValueError(
+                "Unsupported mask type '%s'. Supported values are "
+                "('stuff', 'thing')"
+            )
+
+        for points in polygons:
+            polyline = Polyline(
+                label=label, points=points, filled=True, closed=True
+            )
+            polylines.append(polyline)
+
+    return polylines
+
+
+def _parse_stuff_instance(mask):
+    cols = np.any(mask, axis=0)
+    rows = np.any(mask, axis=1)
+    xmin, xmax = np.where(cols)[0][[0, -1]]
+    ymin, ymax = np.where(rows)[0][[0, -1]]
+
+    height, width = mask.shape
+    x = xmin / width
+    y = ymin / height
+    w = (xmax - xmin + 1) / width
+    h = (ymax - ymin + 1) / height
+
+    bbox = [x, y, w, h]
+    instance_mask = mask[ymin:ymax, xmin:xmax]
+
+    return bbox, instance_mask
+
+
+def _parse_thing_instances(mask):
+    height, width = mask.shape
+    polygons = _get_polygons(mask, 2, abs_coords=True)
+
+    instances = []
+    for p in polygons:
+        p = np.array(p)
+        xmin, ymin = np.floor(p.min(axis=0)).astype(int)
+        xmax, ymax = np.ceil(p.max(axis=0)).astype(int)
+
+        xmax = max(xmin + 1, xmax)
+        ymax = max(ymin + 1, ymax)
+
+        x = xmin / width
+        y = ymin / height
+        w = (xmax - xmin) / width
+        h = (ymax - ymin) / height
+
+        bbox = [x, y, w, h]
+        instance_mask = mask[ymin:ymax, xmin:xmax]
+
+        instances.append((bbox, instance_mask))
+
+    return instances
+
+
+def _get_polygons(mask, tolerance, abs_coords=False):
+    polygons = etai._mask_to_polygons(mask, tolerance=tolerance)
+    if abs_coords:
+        return polygons
+
+    height, width = mask.shape
+    return [[(x / width, y / height) for x, y in p] for p in polygons]
 
 
 def _from_geo_json_single(d):
