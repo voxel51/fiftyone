@@ -933,7 +933,6 @@ export class VideoLooker extends Looker<VideoState> {
     return {
       duration: null,
       seeking: false,
-      locked: false,
       fragment: null,
       playing: false,
       frameNumber: firstFrame,
@@ -1033,7 +1032,7 @@ export class VideoLooker extends Looker<VideoState> {
         getCurrentFrame: () => this.frameNumber,
         sampleId: this.state.config.sampleId,
         frameCount,
-        frameNumber: Math.max(state.frameNumber, 2),
+        frameNumber: state.frameNumber,
         update: this.updater,
         dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       });

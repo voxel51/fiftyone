@@ -402,13 +402,18 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               lockedToSupport,
             }) => {
               const end = lockedToSupport ? support[1] : this.frameCount;
-              const start = lockedToSupport ? support[0] : 1;
 
               if (newFrameNumber >= end) {
+                const start = lockedToSupport ? support[0] : 1;
                 playing = loop;
                 newFrameNumber = loop ? start : end;
+
+                if (!loop) {
+                  this.frameNumber = newFrameNumber;
+                }
+              } else {
+                this.frameNumber = newFrameNumber;
               }
-              this.frameNumber = newFrameNumber;
 
               return {
                 frameNumber: newFrameNumber,
@@ -424,21 +429,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         };
 
         update(
-          ({ frameNumber, duration, config: { frameRate, support } }) => {
-            if (frameNumber === getFrameNumber(duration, duration, frameRate)) {
-              frameNumber = support ? support[0] || 1 : 1;
-            }
-
-            if (support && frameNumber > support[1]) {
-              frameNumber = support[0];
-            }
-
-            return {
-              playing: true,
-              frameNumber,
-              disableOverlays: true,
-              rotate: 0,
-            };
+          {
+            disableOverlays: true,
+            rotate: 0,
           },
           (state, overlays) => {
             dispatchTooltipEvent(dispatchEvent, state.playing)(state, overlays);
@@ -447,25 +440,13 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         );
       },
       pause: ({ update, dispatchEvent }) => {
-        this.requestCallback((frameNumber) => {
-          this.frameNumber = null;
-          update(
-            {
-              disableOverlays: false,
-              frameNumber,
-            },
-            (state, overlays) =>
-              dispatchTooltipEvent(dispatchEvent, false)(state, overlays)
-          );
-        });
-      },
-      ended: ({ update }) => {
-        requestAnimationFrame(() => {
-          update(({ options: { loop } }) => ({
-            frameNumber: loop ? 1 : this.frameCount,
-            playing: loop,
-          }));
-        });
+        update(
+          {
+            disableOverlays: false,
+          },
+          (state, overlays) =>
+            dispatchTooltipEvent(dispatchEvent, false)(state, overlays)
+        );
       },
       timeupdate: ({ dispatchEvent, update }) => {
         update(({ duration, config: { frameRate } }) => {
@@ -739,7 +720,7 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         update(({ config: { thumbnail, support } }) => {
           if (thumbnail) {
             return {
-              frameNumber: support ? support[0] : 1,
+              frameNumber: Boolean(support) ? support[0] : 1,
               playing: false,
             };
           }

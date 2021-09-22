@@ -200,7 +200,6 @@ export interface VideoState extends BaseState {
   options: VideoOptions;
   seeking: boolean;
   playing: boolean;
-  locked: boolean;
   frameNumber: number;
   duration: number | null;
   fragment: [number, number] | null;
