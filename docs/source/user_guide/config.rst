@@ -319,7 +319,7 @@ or you can set the following environment variable:
 
 .. code-block:: shell
 
-    export FIFTYONE_DATABASE_VALIDATION=False
+    export FIFTYONE_DATABASE_VALIDATION=false
 
 Example custom database usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
