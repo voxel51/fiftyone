@@ -147,6 +147,7 @@ intersphinx_mapping = {
     "mongoengine": ("https://docs.mongoengine.org/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "pydicom": ("https://pydicom.github.io/pydicom/stable/", None),
+    "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
