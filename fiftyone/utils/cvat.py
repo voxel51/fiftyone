@@ -3436,7 +3436,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 track_shape_results = self._parse_shapes_tags(
                     "track",
-                    track["shapes"],
+                    shapes,
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
@@ -3556,34 +3556,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # For filling in tracked objects
         prev_frame = None
         prev_outside = True
-        filled_annos = []
+
+        if anno_type == "track":
+            if len(annos) > 1:
+                # If more than two shapes exist in the track, interpolate all
+                # frames between them
+                end_frame = annos[-1]["frame"]
+                annos = _get_interpolated_shapes(annos, end_frame)
 
         for anno in annos:
-            # Iterate through all keyframes in this track
-            # Fill in shapes for all frames between keyframes that are not
-            # outside of the frame
-            # For non-track annotation, this is skipped
             frame = anno["frame"]
-            if (
-                prev_frame is not None
-                and (frame - 1) > prev_frame
-                and not prev_outside
-            ):
-                # For tracks, fill in previous missing frames if shape was not
-                # outside
-                for f in range(prev_frame + 1, frame):
-                    filled_anno = deepcopy(prev_anno)
-                    filled_anno["frame"] = f
-                    filled_annos.append(filled_anno)
-
             prev_anno = anno
             prev_frame = frame
-            if "outside" in anno:
-                prev_outside = anno["outside"]
-            else:
-                prev_outside = True
+            prev_outside = anno.get("outside", True)
 
-            if "outside" in anno and anno["outside"]:
+            if anno.get("outside", False):
                 # If a tracked object is not in the frame
                 continue
 
@@ -3602,6 +3589,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 track_index=track_index,
             )
 
+        remaining_annos = []
         if (
             prev_frame is not None
             and prev_frame + 1 < len(frame_id_map)
@@ -3610,11 +3598,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # The last track annotation goes to the end of the video, so fill
             # all remaining frames
             for f in range(prev_frame + 1, len(frame_id_map)):
-                filled_anno = deepcopy(prev_anno)
-                filled_anno["frame"] = f
-                filled_annos.append(filled_anno)
+                remaining_anno = deepcopy(prev_anno)
+                remaining_anno["frame"] = f
+                remaining_annos.append(remaining_anno)
 
-        for anno in filled_annos:
+        for anno in remaining_annos:
             # Create labels for all non-key frames of this track
             # This is skipped for non-track annotations
             prev_type = self._parse_annotation(
@@ -4875,7 +4863,7 @@ def _parse_attribute(value):
 
 # Track interpolation code sourced from CVAT:
 # https://github.com/openvinotoolkit/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
-def _get_interpolated_shapes(track, end_frame):
+def _get_interpolated_shapes(track_shapes, end_frame):
     def copy_shape(source, frame, points=None):
         copied = deepcopy(source)
         copied["keyframe"] = False
@@ -5169,9 +5157,9 @@ def _get_interpolated_shapes(track, end_frame):
         return shapes
 
     shapes = []
-    curr_frame = track["shapes"][0]["frame"]
+    curr_frame = track_shapes[0]["frame"]
     prev_shape = {}
-    for shape in track["shapes"]:
+    for shape in track_shapes:
         if prev_shape:
             assert shape["frame"] > curr_frame
             for attr in prev_shape["attributes"]:
