@@ -84,7 +84,7 @@ class FiftyOneConfig(EnvConfig):
             default=None,
         )
         self.model_zoo_dir = self.parse_string(
-            d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None,
+            d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
         self.dataset_zoo_manifest_paths = self.parse_string_array(
             d,
