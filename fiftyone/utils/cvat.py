@@ -2437,9 +2437,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             cache reduces task creation time as data will be processed
             on-the-fly and stored in the cache when requested
         use_zip_chunks (True): when annotating videos, whether to upload video
-            frames in smaller chunks. Setting this option to `False` may result
-            in reduced video quality in CVAT due to size limitations on ZIP
-            files that may be uploaded to CVAT
+            frames in smaller chunks. Setting this option to ``False`` may
+            result in reduced video quality in CVAT due to size limitations on
+            ZIP files that can be uploaded to CVAT
         chunk_size (None): the number of frames to upload per ZIP chunk
         task_assignee (None): the username to which the task(s) were assigned
         job_assignees (None): a list of usernames to which jobs were assigned
@@ -3126,9 +3126,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 a cache reduces task creation time as data will be processed
                 on-the-fly and stored in the cache when requested
             use_zip_chunks (True): when annotating videos, whether to upload
-                video frames in smaller chunks. Setting this option to `False`
-                may result in reduced video quality in CVAT due to size
-                limitations on ZIP files that may be uploaded to CVAT
+                video frames in smaller chunks. Setting this option to
+                ``False`` may result in reduced video quality in CVAT due to
+                size limitations on ZIP files that can be uploaded to CVAT
             chunk_size (None): the number of frames to upload per ZIP chunk
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
@@ -3217,9 +3217,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 a cache reduces task creation time as data will be processed
                 on-the-fly and stored in the cache when requested
             use_zip_chunks (True): when annotating videos, whether to upload
-                video frames in smaller chunks. Setting this option to `False`
-                may result in reduced video quality in CVAT due to size
-                limitations on ZIP files that may be uploaded to CVAT
+                video frames in smaller chunks. Setting this option to
+                ``False`` may result in reduced video quality in CVAT due to
+                size limitations on ZIP files that can be uploaded to CVAT
             chunk_size (None): the number of frames to upload per ZIP chunk
             task_assignee (None): the username to assign the created task(s)
             job_assignees (None): a list of usernames to assign jobs
