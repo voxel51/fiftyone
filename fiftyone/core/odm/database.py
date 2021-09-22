@@ -126,13 +126,13 @@ def _validate_db_version(config, client):
         # that the user has set their feature compatibility version
         # https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion
         if version < min_ver:
-            raise RuntimeError(
-                "Found `mongod` version %s, but %s or later is required"
+            logger.warning(
+                "Found `mongod` version %s, but only %s or later is compatible"
                 % (version, min_ver)
             )
     elif version < min_ver or version > max_ver:
-        raise RuntimeError(
-            "Found `mongod` version %s, but [%s, %s) is required"
+        logger.warning(
+            "Found `mongod` version %s, but only [%s, %s) are compatible"
             % (version, min_ver, max_ver)
         )
 
