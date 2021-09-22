@@ -373,32 +373,24 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         });
       },
       seeked: ({ update, dispatchEvent }) => {
-        if (this.duration === null) {
-          this.duration = this.element.duration;
+        requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              update(({ loaded, playing, options: { autoplay } }) => {
-                if (!loaded) {
-                  return {
-                    loaded: true,
-                    playing: autoplay || playing,
-                    waitingForVideo: false,
-                  };
-                }
+            update(({ loaded, playing, options: { autoplay } }) => {
+              if (!loaded) {
+                return {
+                  loaded: true,
+                  playing: autoplay || playing,
+                  waitingForVideo: false,
+                };
+              }
 
-                return {};
-              });
-              dispatchEvent("load");
+              return {
+                waitingForVideo: false,
+              };
             });
+            dispatchEvent("load");
           });
-        } else {
-          requestAnimationFrame(() => {
-            update(({ frameNumber }) => ({
-              frameNumber,
-              waitingForVideo: false,
-            }));
-          });
-        }
+        });
       },
       play: ({ update, dispatchEvent }) => {
         const callback = (newFrameNumber: number) => {
@@ -409,18 +401,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               config: { support },
               lockedToSupport,
             }) => {
-              this.frameNumber = newFrameNumber;
+              const end = lockedToSupport ? support[1] : this.frameCount;
+              const start = lockedToSupport ? support[0] : 1;
 
-              if (support && lockedToSupport) {
-                if (newFrameNumber > support[1]) {
-                  playing = loop;
-                  playing && (newFrameNumber = support[0]);
-                }
-              }
-
-              if (newFrameNumber === this.frameCount) {
+              if (newFrameNumber >= end) {
                 playing = loop;
+                newFrameNumber = loop ? start : end;
               }
+              this.frameNumber = newFrameNumber;
 
               return {
                 frameNumber: newFrameNumber,

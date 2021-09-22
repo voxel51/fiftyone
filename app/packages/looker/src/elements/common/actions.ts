@@ -410,16 +410,18 @@ export const nextFrame: Control<VideoState> = {
         frameNumber,
         duration,
         playing,
-        config: { frameRate },
-        config: { thumbnail },
+        config: { frameRate, support, thumbnail },
+        lockedToSupport,
       }) => {
         if (playing || thumbnail) {
           return {};
         }
-        const total = getFrameNumber(duration, duration, frameRate);
+        const end = lockedToSupport
+          ? support[1]
+          : getFrameNumber(duration, duration, frameRate);
 
         return {
-          frameNumber: Math.min(total, frameNumber + 1),
+          frameNumber: Math.min(end, frameNumber + 1),
         };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
@@ -434,11 +436,21 @@ export const previousFrame: Control<VideoState> = {
   detail: "Seek to the previous frame",
   action: (update, dispatchEvent) => {
     update(
-      ({ frameNumber, playing, config: { thumbnail } }) => {
+      ({
+        frameNumber,
+        playing,
+        config: { support, thumbnail },
+        lockedToSupport,
+      }) => {
         if (playing || thumbnail) {
           return {};
         }
-        return { frameNumber: Math.max(1, frameNumber - 1) };
+        return {
+          frameNumber: Math.max(
+            lockedToSupport ? support[0] : 1,
+            frameNumber - 1
+          ),
+        };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -451,17 +463,34 @@ export const playPause: Control<VideoState> = {
   eventKeys: " ",
   detail: "Play or pause the video",
   action: (update, dispatchEvent) => {
-    update(({ playing, config: { thumbnail } }) => {
-      if (thumbnail) {
-        return {};
-      }
+    update(
+      ({
+        frameNumber,
+        playing,
+        duration,
+        config: { frameRate, support, thumbnail },
+        lockedToSupport,
+      }) => {
+        if (thumbnail) {
+          return {};
+        }
+        const end = lockedToSupport
+          ? support[1]
+          : getFrameNumber(duration, duration, frameRate);
 
-      dispatchEvent("options", { showJSON: false });
-      return {
-        playing: !playing,
-        options: { showJSON: false },
-      };
-    });
+        dispatchEvent("options", { showJSON: false });
+        return {
+          playing: !playing,
+          frameNumber:
+            end === frameNumber
+              ? lockedToSupport
+                ? support[0]
+                : 1
+              : frameNumber,
+          options: { showJSON: false },
+        };
+      }
+    );
   },
 };
 
