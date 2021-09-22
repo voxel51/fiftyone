@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Installs FiftyOne.
+Installs FiftyOne Teams.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.13.2"
+VERSION = "0.5.0"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.16,<0.17"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop<0.6.0"]}
 
 
 with open("README.md", "r") as fh:
@@ -49,14 +49,12 @@ setup(
     name="fiftyone",
     version=get_version(),
     description=(
-        "FiftyOne: the open-source tool for building high-quality datasets "
+        "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
-    url="https://github.com/voxel51/fiftyone",
     extras_require=EXTRAS_REQUIREMENTS,
-    license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
