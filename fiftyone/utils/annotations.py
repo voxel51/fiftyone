@@ -1365,6 +1365,10 @@ class AnnotationResults(foa.AnnotationResults):
         """
         raise NotImplementedError("subclass must implement load_credentials()")
 
+    def launch_editor(self):
+        """Launches the annotation backend's editor for these results."""
+        raise NotImplementedError("subclass must implement launch_editor()")
+
     def cleanup(self):
         """Deletes all information for this run from the annotation backend."""
         raise NotImplementedError("subclass must implement cleanup()")

@@ -2543,15 +2543,7 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Upload complete")
 
         if launch_editor:
-            task_id = results.task_ids[0]
-            job_ids = results.job_ids
-            if job_ids and job_ids[task_id]:
-                editor_url = api.base_job_url(task_id, job_ids[task_id][0])
-            else:
-                editor_url = api.base_task_url(task_id)
-
-            logger.info("Launching editor at '%s'...", editor_url)
-            api.launch_editor(url=editor_url)
+            results.launch_editor()
 
         return results
 
@@ -2610,6 +2602,22 @@ class CVATAnnotationResults(foua.AnnotationResults):
             a :class:`CVATAnnotationAPI`
         """
         return self._backend.connect_to_api()
+
+    def launch_editor(self):
+        """Launches the CVAT editor and loads the first task for this
+        annotation run.
+        """
+        api = self.connect_to_api()
+        task_id = self.task_ids[0]
+        job_ids = self.job_ids
+
+        if job_ids and job_ids[task_id]:
+            editor_url = api.base_job_url(task_id, job_ids[task_id][0])
+        else:
+            editor_url = api.base_task_url(task_id)
+
+        logger.info("Launching editor at '%s'...", editor_url)
+        api.launch_editor(url=editor_url)
 
     def get_status(self):
         """Gets the status of the assigned tasks and jobs.
