@@ -3525,6 +3525,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 shapes = track["shapes"]
                 for shape in shapes:
                     shape["label_id"] = label_id
+
                 immutable_attrs = track["attributes"]
 
                 track_shape_results = self._parse_shapes_tags(
@@ -3824,6 +3825,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     mutable = bool(val)
                     if not mutable:
                         immutable_attrs.append(attr_name)
+
                     cvat_attr["mutable"] = mutable
 
             cvat_attrs[attr_name] = cvat_attr
@@ -4335,6 +4337,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for attr in shape["attributes"]:
                     attr_name = attr["spec_id"]
                     attr["spec_id"] = attr_id_map[attr_name]
+
             for attr in track["attributes"]:
                 attr_name = attr["spec_id"]
                 attr["spec_id"] = attr_id_map[attr_name]
@@ -4441,8 +4444,8 @@ class CVATShape(CVATLabel):
         attr_id_map: a dictionary mapping attribute ids attribute names for
             every label
         index (None): the track index of the shape
-        immutable_attrs (None): attributes that are immutable for all shapes in the
-            track, this shape included
+        immutable_attrs (None): immutable attributes inherited by this shape
+            from its track
     """
 
     def __init__(
@@ -4460,8 +4463,7 @@ class CVATShape(CVATLabel):
         self.points = label_dict["points"]
         self.index = index
 
-        # Immutable attributes are simply added like every other attribute to
-        # this Shape
+        # Add immutable attributes to shape
         if immutable_attrs is not None:
             for attr in immutable_attrs:
                 name = self.attr_id_map_rev[attr["spec_id"]]
