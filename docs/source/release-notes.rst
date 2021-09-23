@@ -3,6 +3,56 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.13.3:
+
+FiftyOne 0.13.3
+---------------
+*Released September 22, 2021*
+
+App
+
+- Improved the efficiency of loading label graphs for fields with many distinct
+  values
+- Fixed some audio-related bugs when viewing video samples with audio channels
+- Fixed a bug that prevented boolean App filters from working properly
+
+Core
+
+- Added support for annotating semantic segmentations and instance
+  segmentations using the :ref:`CVAT backend <cvat-requesting-annotations>`
+- Added support for annotating polylines using the CVAT backend
+- Added support for immutable attributes when annotating object tracks for
+  video datasets using the CVAT backend
+- Exposed the `use_cache`, `use_zip_chunks`, and `chunk_size` parameters when
+  uploading annotations via the CVAT backend
+- Added support for importing/exporting segmentation masks with greater than
+  256 classes when working with the
+  :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-export>` format
+- Fixed a bug that prevented multiple imports of the same annotation run from
+  working as expected when a label is deleted but then later re-added
+- Fixed a bug that prevented annotations for new label fields of video datasets
+  from being imported properly
+- Fixed a bug that would cause unsuppoted shapes such as polygons with less
+  than 3 vertices to be deleted when editing existing labels with the CVAT
+  backend
+- Added support for importing GeoTIFF images via a new
+  :ref:`GeoTIFFDataset <GeoTIFFDataset-import>` format
+- Added new
+  :meth:`split_labels() <fiftyone.core.collections.SampleCollection.split_labels>`
+  and :meth:`merge_labels() <fiftyone.core.collections.SampleCollection.merge_labels>`
+  methods that provide convenient syntaxes for moving labels between new and
+  existing label fields of a dataset
+- Added :meth:`ensure_frames() <fiftyone.core.dataset.Dataset.ensure_frames>`
+  and :meth:`clear_frames() <fiftyone.core.dataset.Dataset.clear_frames>`
+  methods that can be used to conveniently initialize and clear the frames of
+  video datasets, respectively
+- Added support for using a MongoDB dataset whose version is
+  :ref:`not explicitly supported <configuring-mongodb-connection>`
+- Removed the `opencv-python-headless` maximum version requirement
+- Fixed a race condition that could prevent callbacks on
+  :ref:`interactive plots <interactive-plots>` from working properly on
+  sufficiently large datasets
+
 .. _release-notes-v0.13.2:
 
 FiftyOne 0.13.2
@@ -20,7 +70,7 @@ App
 
 Core
 
-- Added support for providing compound sort criteria when usng the
+- Added support for providing compound sort criteria when using the
   :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stage
 - Added support for configuring the wait time when using
   :meth:`Session.wait() <fiftyone.core.session.Session.wait>` to block

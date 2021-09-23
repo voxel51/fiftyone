@@ -17,7 +17,7 @@ import os
 import shutil
 
 
-VERSION = "0.16.0"
+VERSION = "0.17.0"
 
 
 def get_version():
@@ -163,7 +163,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="fiftyone_desktop",
+    name="fiftyone-desktop",
     version=get_version(),
     description="FiftyOne Desktop",
     author="Voxel51, Inc.",

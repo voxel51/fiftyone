@@ -24,6 +24,9 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
 |                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_validation`         | `FIFTYONE_DATABASE_VALIDATION`      | `True`                        | Whether to validate the compatibility of database before connecting to it. See         |
+|                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -100,6 +103,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
+            "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -135,6 +139,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
+            "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -242,7 +247,7 @@ session.
 Configuring a MongoDB connection
 --------------------------------
 
-By default, FiftyOne is installed with its own `mongod` database distribution.
+By default, FiftyOne is installed with its own MongoDB database distribution.
 This database is managed by FiftyOne automatically as a service that runs
 whenever at least one FiftyOne Python client is alive.
 
@@ -251,22 +256,20 @@ MongoDB instance. To do so, simply set the `database_uri` property of your
 FiftyOne config to any valid
 `MongoDB connection string URI <https://docs.mongodb.com/manual/reference/connection-string/>`_.
 
-For example, you can create a `~/.fiftyone/config.json` file with the following
-entry:
+You can achieve this by adding the following entry to your
+`~/.fiftyone/config.json` file:
 
 .. code-block:: json
 
     {
-        "database_uri": "..."
+        "database_uri": "mongodb://[username:password@]host[:port]"
     }
 
-Very rarerly, upgrading your FiftyOne package may require running a database
-admin migration, in which case the `database_uri` must establish a connection
-with administrative privileges.
+or you can set the following environment variable:
 
-.. warning::
+.. code-block:: shell
 
-    FiftyOne requires MongoDB v4.4.
+    export FIFTYONE_DATABASE_URI=mongodb://[username:password@]host[:port]
 
 .. note::
 
@@ -274,11 +277,78 @@ with administrative privileges.
     Apple Silicon, so you currently must use `dataset_uri` with a MongoDB
     distribution that you have installed yourself.
 
-    Users have reported success installing MongoDB on Apple Silicon as follows:
+    Users have reported success
+    `installing MongoDB v4.4 on Apple Silicon <https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x>`_
+    as follows:
 
     .. code-block:: shell
 
+        brew tap mongodb/brew
         brew install mongodb-community@4.4
+
+Using a different MongoDB version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne is designed for and distributed with **MongoDB v4.4**.
+
+Users have reported success connecting to MongoDB v5 databases, but if you wish
+to do this, you should
+`set the feature compatibility version <https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion>`_
+to 4.4 to ensure proper function:
+
+.. code-block:: shell
+
+    mongo --shell
+    > db.adminCommand({setFeatureCompatibilityVersion: "4.4"})
+
+If you wish to connect FiftyOne to a MongoDB database whose version is not
+explicitly supported, you will also need to set the `database_validation`
+property of your FiftyOne config to `False` to suppress a runtime error that
+will otherwise occur.
+
+You can achieve this by adding the following entry to your
+`~/.fiftyone/config.json` file:
+
+.. code-block:: json
+
+    {
+        "database_validation": false
+    }
+
+or you can set the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_VALIDATION=false
+
+Example custom database usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to use a custom MongoDB database with FiftyOne, you must manually
+start the database before importing FiftyOne. MongoDB provides
+`a variety of options <https://docs.mongodb.com/manual/tutorial/manage-mongodb-processes>`_
+for this, including running the database as a daemon automatically.
+
+In the simplest case, you can just run `mongod` in one shell:
+
+.. code-block:: shell
+
+    mkdir -p /path/for/db
+    mongod --dbpath /path/for/db
+
+Then, in another shell, configure the database URI and launch FiftyOne:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_URI=mongodb://localhost
+
+.. code-block:: python
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
 
 .. _configuring-fiftyone-app:
 

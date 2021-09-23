@@ -606,6 +606,23 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_frame_fields(field_names, view=self)
 
+    def clear(self):
+        """Removes all samples in the view from the underlying dataset."""
+        self._dataset._clear(view=self)
+
+    def clear_frames(self):
+        """Removes all frame labels from the samples in the view."""
+        self._dataset._clear_frames(view=self)
+
+    def ensure_frames(self):
+        """Ensures that the video view contains frame instances for every frame
+        of each sample's source video.
+
+        Empty frames will be inserted for missing frames, and already existing
+        frames are left unchanged.
+        """
+        self._dataset._ensure_frames(view=self)
+
     def save(self, fields=None):
         """Overwrites the underlying dataset with the contents of the view.
 
@@ -858,3 +875,55 @@ class DatasetView(foc.SampleCollection):
         )
         filtered_fields = self._get_filtered_fields(frames=frames)
         return not any((selected_fields, excluded_fields, filtered_fields))
+
+
+def make_optimized_select_view(sample_collection, sample_ids, ordered=False):
+    """Returns a view that selects the provided sample IDs that is optimized
+    to reduce the document list as early as possible in the pipeline.
+
+    .. warning::
+
+        This method **deletes** any other view stages that reorder/select
+        documents, so the returned view may not respect the order of the
+        documents in the input collection.
+
+    Args:
+        sample_collection:  a
+            :class:`fiftyone.core.collections.SampleCollection`
+        sample_ids: a sample ID or iterable of sample IDs to select
+        ordered (False): whether to sort the samples in the returned view to
+            match the order of the provided IDs
+
+    Returns:
+        a :class:`DatasetView`
+    """
+    view = sample_collection.view()
+
+    if any(isinstance(stage, fost.Mongo) for stage in view._stages):
+        #
+        # We have no way of knowing what a `Mongo()` stage might do, so we must
+        # run the entire view's aggregation first and then select the samples
+        # of interest at the end
+        #
+        return view.select(sample_ids, ordered=ordered)
+
+    #
+    # Selecting the samples of interest first can be significantly faster than
+    # running the entire aggregation and then selecting them.
+    #
+    # However, in order to do that, we must omit any `Skip()` stages, which
+    # depend on the number of documents in the pipeline.
+    #
+    # In addition, we take the liberty of omitting other stages that are known
+    # to only select/reorder documents.
+    #
+    # @note this is brittle because if any new stages like `Skip()` are added
+    # that could affect our ability to select the samples of interest first,
+    # we'll need to account for that here...
+    #
+    optimized_view = view._dataset.select(sample_ids, ordered=ordered)
+    for stage in view._stages:
+        if type(stage) not in fost._STAGES_THAT_SELECT_OR_REORDER:
+            optimized_view._stages.append(stage)
+
+    return optimized_view
