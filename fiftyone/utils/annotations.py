@@ -353,13 +353,17 @@ def _build_label_schema(
         else:
             _attributes = {}
 
-        _label_schema[_label_field] = {
+        label_info = {
             "type": _label_type,
             "classes": _classes,
             "attributes": _attributes,
-            "mask_targets": _mask_targets,
             "existing_field": _existing_field,
         }
+
+        if _mask_targets is not None:
+            label_info["mask_targets"] = _mask_targets
+
+        _label_schema[_label_field] = label_info
 
     return _label_schema, samples
 
