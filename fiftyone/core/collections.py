@@ -5761,11 +5761,11 @@ class SampleCollection(object):
                     attributes populated
                 -   ``"polylines"``: polylines stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``False``
                 -   ``"polygons"``: polygons stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``True``
                 -   ``"keypoints"``: keypoints stored in
                     :class:`fiftyone.core.labels.Keypoints` fields
