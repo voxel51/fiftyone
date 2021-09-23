@@ -90,9 +90,9 @@ below).
     You can manipulate the `session` object on the remote machine as usual to
     programmatically interact with the App instance that you view locally.
 
-If you do not have `fiftyone` installed on your local machine, open a new
-terminal window on your local machine and execute the following command to
-setup port forwarding to connect to your remote session:
+To connect to your remote session, open a new terminal window on your local
+machine and execute the following command to setup port forwarding to connect
+to your remote session:
 
 .. code-block:: shell
 
