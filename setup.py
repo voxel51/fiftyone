@@ -96,7 +96,7 @@ setup(
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
-        "voxel51-eta>=0.5.2,<0.6",
+        "voxel51-eta>=0.5.3,<0.6",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
