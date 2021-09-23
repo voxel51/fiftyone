@@ -90,9 +90,9 @@ below).
     You can manipulate the `session` object on the remote machine as usual to
     programmatically interact with the App instance that you view locally.
 
-If you do not have `fiftyone` installed on your local machine, open a new
-terminal window on your local machine and execute the following command to
-setup port forwarding to connect to your remote session:
+To connect to your remote session, open a new terminal window on your local
+machine and execute the following command to setup port forwarding to connect
+to your remote session:
 
 .. code-block:: shell
 
@@ -348,8 +348,8 @@ Cloud storage
 _____________
 
 In order to work with data stored in cloud storage buckets using the open
-source FiftyOne package, we recommend that you mount the cloud bucket as a
-local drive on a cloud compute instance.
+source FiftyOne package, you can mount the cloud bucket as a local drive on a
+cloud compute instance.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
 :ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>` cloud
@@ -357,7 +357,8 @@ environments.
 
 .. note::
 
-    Need native cloud data support?
+    Want native cloud data support?
+
     `Contact us <https://voxel51.com/#teams-form>`_ about becoming an early
     adopter of FiftyOne Teams, an open source-compatible enterprise deployment
     of FiftyOne with multiuser collaboration features, native cloud dataset
@@ -365,8 +366,8 @@ environments.
 
 .. _aws:
 
-Amazon Web Services
-~~~~~~~~~~~~~~~~~~~
+AWS
+~~~
 
 If your data is stored in an AWS S3 bucket, we recommend mounting the bucket as
 a local drive on an EC2 instance and then accessing the data using the standard
