@@ -92,6 +92,30 @@ is served from a remote machine.
 Refer to :ref:`this section <remote-notebooks>` of the environment guide for
 instructions to achieve this.
 
+.. _faq-plots-not-appearing:
+
+Why aren't plots appearing in my notebook?
+------------------------------------------
+
+If you are trying to :ref:`view plots <interactive-plots>` in a Jupyter
+notebook but nothing appears after you call `plot.show()`, then you likely need
+to :ref:`follow these instructions <working-in-notebooks>` to install the
+proper packages and/or Jupyter notebook extensions.
+
+If the proper packages are installed but plots are still not displaying, try
+including the following commands in your notebook before creating any plots:
+
+.. code-block:: python
+
+    # Ensure that plotly.js is downloaded
+    import plotly.offline as po
+    po.init_notebook_mode(connected=True)
+
+Note that FiftyOne currently requires `plotly>=4.14,<5`, which should have been
+automatically installed when you installed FiftyOne. If your Plotly package was
+upgraded after installing FiftyOne, some interactive plotting features may
+not work as expected.
+
 .. _faq-remote-server-data:
 
 Can I access data stored on a remote server?
@@ -137,8 +161,8 @@ which includes standard image types like JPEG, PNG, and BMP.
 Some browsers like Safari natively support other image types such as TIFF,
 while others do not. You may be able to install a browser extension to work
 with additional image types. For example, you can install
-`this extension <https://chrome.google.com/webstore/detail/tiff-viewer/fciggfkkblggmebjbekbebbcffeacknj>`_
-to view TIFF images in Chrome.
+`this extension <https://github.com/my-codeworks/tiff-viewer-extension>`_ to
+view TIFF images in Chrome or Firefox.
 
 .. note::
 

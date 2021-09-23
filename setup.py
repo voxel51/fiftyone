@@ -78,6 +78,7 @@ setup(
         "mongoengine==0.20.0",
         "motor>=2.3,<3",
         "numpy",
+        "opencv-python-headless",
         "packaging",
         "pandas",
         "Pillow>=6.2",
@@ -96,12 +97,6 @@ setup(
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
         "voxel51-eta>=0.5.2,<0.6",
-        # ETA dependency - restricted to a maximum version known to provide
-        # wheels here because it tends to publish sdists several hours before
-        # wheels. When users install FiftyOne in this window, they will need to
-        # compile OpenCV from source, leading to either errors or a
-        # time-consuming installation.
-        "opencv-python-headless<=4.4.0.46",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

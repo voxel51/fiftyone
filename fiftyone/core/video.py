@@ -612,7 +612,7 @@ def _populate_frames(
         ]
     )
 
-    src_collection._dataset._aggregate(pipeline=pipeline, attach_frames=False)
+    src_collection._dataset._aggregate(pipeline=pipeline)
 
     return ids_to_sample, frames_to_sample
 

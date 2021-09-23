@@ -120,21 +120,14 @@ def _validate_db_version(config, client):
         raise RuntimeError("Failed to validate `mongod` version") from e
 
     min_ver, max_ver = foc.MONGODB_VERSION_RANGE
-
-    if min_ver <= version < max_ver:
-        return
-
-    if version >= max_ver and config.database_uri is not None:
+    if config.database_validation and not (min_ver <= version < max_ver):
         raise RuntimeError(
-            "Found `mongod` version %s, but [%s, %s) is required. Your "
-            "FiftyOne installation may be outdated; try upgrading it"
-            % (version, min_ver, max_ver)
+            "Found `mongod` version %s, but only [%s, %s) are compatible. "
+            "You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information" % (version, min_ver, max_ver)
         )
-
-    raise RuntimeError(
-        "Found `mongod` version %s, but [%s, %s) is required"
-        % (version, min_ver, max_ver)
-    )
 
 
 def aggregate(collection, pipelines):
