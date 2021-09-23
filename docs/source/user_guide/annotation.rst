@@ -479,6 +479,7 @@ more details:
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
 
+|br|
 In addition, each annotation backend can typically be configured in a variety
 of backend-specific ways. See :ref:`this section <configuring-your-backend>`
 for more details.

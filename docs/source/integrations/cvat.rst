@@ -402,6 +402,7 @@ details:
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
 
+|br|
 In addition, the following CVAT-specific parameters from
 :class:`CVATBackendConfig <fiftyone.utils.cvat.CVATBackendConfig>` can also be
 provided:
@@ -1308,7 +1309,7 @@ Viewing task statuses
 ---------------------
 
 You can use the
-:meth:`get_status() <fiftyone.utils.cvat.CVATAnnotationResults.print_status>` and
+:meth:`get_status() <fiftyone.utils.cvat.CVATAnnotationResults.get_status>` and
 :meth:`print_status() <fiftyone.utils.cvat.CVATAnnotationResults.print_status>`
 methods to get information about the current status of the task(s) and job(s)
 for that annotation run:
@@ -1321,6 +1322,8 @@ for that annotation run:
 
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(3)
+
+    anno_key = "cvat_status"
 
     view.annotate(
         anno_key,
