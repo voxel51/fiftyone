@@ -447,10 +447,10 @@ more details:
         with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
         attributes populated
     -   ``"polylines"``: polylines stored in |Polylines| fields with their
-        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `False`
     -   ``"polygons"``: polygons stored in |Polylines| fields with their
-        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `True`
     -   ``"keypoints"``: keypoints stored in |Keypoints| fields
     -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
