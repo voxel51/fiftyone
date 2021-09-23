@@ -474,13 +474,14 @@ export const playPause: Control<VideoState> = {
         if (thumbnail) {
           return {};
         }
+        const start = lockedToSupport ? support[0] : 1;
         const end = lockedToSupport
           ? support[1]
           : getFrameNumber(duration, duration, frameRate);
 
         dispatchEvent("options", { showJSON: false });
         return {
-          playing: !playing,
+          playing: !playing && start !== end,
           frameNumber:
             end === frameNumber
               ? lockedToSupport

@@ -55,10 +55,13 @@ export class LoaderBar extends BaseElement<VideoState> {
   }
 
   renderSelf({
+    duration,
     buffering,
     hovering,
     waitingForVideo,
     error,
+    lockedToSupport,
+    config: { frameRate, support },
   }: Readonly<VideoState>) {
     if (
       (buffering || waitingForVideo) &&
@@ -67,7 +70,12 @@ export class LoaderBar extends BaseElement<VideoState> {
     ) {
       return this.element;
     }
-    this.buffering = (buffering || waitingForVideo) && hovering && !error;
+    const start = lockedToSupport ? support[0] : 1;
+    const end = lockedToSupport
+      ? support[1]
+      : getFrameNumber(duration, duration, frameRate);
+    this.buffering =
+      (buffering || waitingForVideo) && hovering && !error && start !== end;
 
     if (this.buffering) {
       this.element.style.display = "block";
@@ -84,6 +92,8 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
   private play: SVGElement;
   private pause: SVGElement;
   private buffering: SVGElement;
+  private locked: boolean = null;
+  private singleFrame: boolean = null;
 
   getEvents(): Events<VideoState> {
     return {
@@ -152,7 +162,25 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     return element;
   }
 
-  renderSelf({ playing, buffering, loaded }: Readonly<VideoState>) {
+  renderSelf({
+    playing,
+    buffering,
+    loaded,
+    duration,
+    lockedToSupport,
+    config: { frameRate, support },
+  }: Readonly<VideoState>) {
+    let updatePlay = false;
+    if (this.singleFrame === null && loaded) {
+      if (this.locked !== lockedToSupport) {
+        this.singleFrame = lockedToSupport
+          ? support[0] === support[1]
+          : getFrameNumber(duration, duration, frameRate) === 1;
+        this.locked = lockedToSupport;
+        updatePlay = true;
+      }
+    }
+
     if (
       playing !== this.isPlaying ||
       this.isBuffering !== buffering ||
@@ -161,7 +189,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
       this.element.innerHTML = "";
       if (buffering || !loaded) {
         this.element.appendChild(this.buffering);
-        this.element.title = "Loading labels";
+        this.element.title = "Loading";
         this.element.style.cursor = "default";
       } else if (playing) {
         this.element.appendChild(this.pause);
@@ -174,6 +202,16 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
       }
       this.isPlaying = playing;
       this.isBuffering = buffering || !loaded;
+    }
+
+    if (updatePlay) {
+      const path = this.play.children[0];
+      path.setAttribute(
+        "fill",
+        this.singleFrame ? "rgb(138, 138, 138)" : "rgb(238, 238, 238)"
+      );
+      this.element.style.cursor = this.singleFrame ? "unset" : "pointer";
+      this.element.title = this.singleFrame ? "Only one frame" : "Play (space)";
     }
     return this.element;
   }
@@ -464,6 +502,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.update = update;
     this.element = null;
     update(({ config: { thumbnail, dimensions, src, frameRate, support } }) => {
+      this.src = src;
       this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
@@ -543,13 +582,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       if (!waitingForVideo && !error) {
         acquirePlayer().then(([video, release]) => {
           this.update(
-            ({ hovering, frameNumber, config: { frameRate, thumbnail } }) => {
+            ({ frameNumber, hovering, config: { frameRate, thumbnail } }) => {
               this.element = video;
               this.release = release;
               if ((!hovering && thumbnail) || this.waitingToRelease) {
                 this.releaseVideo();
               } else {
                 this.attachEvents();
+                this.frameNumber = getTime(frameNumber, frameRate);
                 this.element.currentTime = getTime(frameNumber, frameRate);
                 this.element.src = this.src;
               }
