@@ -117,16 +117,16 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
   width: 100%;
   background: linear-gradient(
     to right,
-    hsl(210, 11%, 11%) 0%,
-    hsl(210, 11%, 11%) var(--start, 0%),
+    hsla(210, 11%, 11%, 0.9) 0%,
+    hsla(210, 11%, 11%, 0.9) var(--start, 0%),
     rgb(225, 100, 40) var(--start, 0%),
     rgb(225, 100, 40) var(--progress, 0%),
     rgb(138, 138, 138) var(--progress, 0%),
     rgb(138, 138, 138) var(--buffer-progress, 0%),
     rgb(238, 238, 238) var(--buffer-progress, 0%),
     rgb(238, 238, 238) var(--end, 0%),
-    hsl(210, 11%, 11%) var(--end, 100%),
-    hsl(210, 11%, 11%) 100%
+    hsla(210, 11%, 11%, 0.9) var(--end, 100%),
+    hsla(210, 11%, 11%, 0.9) 100%
   );
 }
 

@@ -541,13 +541,16 @@ const seekTo: Control<VideoState> = {
   shortcut: "0-9",
   eventKeys: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
   action: (update, dispatchEvent, eventKey) => {
-    update(({ duration, config: { frameRate } }) => {
-      const total = getFrameNumber(duration, duration, frameRate);
+    update(({ duration, config: { frameRate, support }, lockedToSupport }) => {
+      const frameCount = getFrameNumber(duration, duration, frameRate);
+      const total = lockedToSupport ? support[1] - support[0] : frameCount;
+      const base = lockedToSupport ? support[0] : 1;
+
       dispatchEvent("options", { showJSON: false });
       return {
         frameNumber: Math.max(
           1,
-          Math.round((parseInt(eventKey, 10) / 10) * total)
+          Math.round((parseInt(eventKey, 10) / 10) * total) + base
         ),
         options: { showJSON: false },
       };
@@ -561,9 +564,13 @@ export const supportLock: Control<VideoState> = {
   detail: "Toggle the lock on the support frame(s)",
   shortcut: "l",
   action: (update) => {
-    update(({ lockedToSupport, config: { support } }) => {
+    update(({ lockedToSupport, config: { support }, frameNumber }) => {
       return {
         lockedToSupport: support ? !lockedToSupport : false,
+        frameNumber:
+          frameNumber < support[0] || frameNumber > support[1]
+            ? support[0]
+            : frameNumber,
       };
     });
   },

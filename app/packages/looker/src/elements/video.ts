@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { StateUpdate, VideoState } from "../state";
+import { Optional, StateUpdate, VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import {
   muteUnmute,
@@ -467,10 +467,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 const start = lockedToSupport ? support[0] : 1;
                 playing = loop;
                 newFrameNumber = loop ? start : end;
-
-                if (!loop) {
-                  this.frameNumber = newFrameNumber;
-                }
               } else {
                 this.frameNumber = newFrameNumber;
               }
@@ -773,49 +769,48 @@ export function withVideoLookerEvents(): () => Events<VideoState> {
         });
       },
       mousemove: ({ event, update }) => {
-        update(({ seeking, duration, config: { frameRate } }) => {
-          if (duration && seeking) {
-            const element = event.currentTarget as HTMLDivElement;
-            const { width, left } = element.getBoundingClientRect();
-            const frameCount = getFrameNumber(duration, duration, frameRate);
-
-            return {
-              frameNumber: Math.min(
-                Math.max(
-                  1,
-                  Math.round(((event.clientX + 6 - left) / width) * frameCount)
-                ),
-                frameCount
-              ),
-            };
-          }
-          return {};
-        });
+        update((state) => seekFn(state, event));
       },
       mouseup: ({ event, update }) => {
-        update(({ seeking, duration, config: { frameRate } }) => {
-          if (seeking && duration) {
-            const element = event.currentTarget as HTMLDivElement;
-            const { width, left } = element.getBoundingClientRect();
-            const frameCount = getFrameNumber(duration, duration, frameRate);
-
-            return {
-              seeking: false,
-              frameNumber: Math.min(
-                Math.max(
-                  1,
-                  Math.round(((event.clientX + 6 - left) / width) * frameCount)
-                ),
-                frameCount
-              ),
-            };
-          }
-          return {};
-        });
+        update((state) => ({ ...seekFn(state, event), seeking: false }));
       },
     };
   };
 }
+
+const seekFn = (
+  {
+    seeking,
+    duration,
+    config: { frameRate, support },
+    lockedToSupport,
+  }: Readonly<VideoState>,
+  event: MouseEvent
+): Optional<VideoState> => {
+  if (duration && seeking) {
+    const element = event.currentTarget as HTMLDivElement;
+    const { width, left } = element.getBoundingClientRect();
+    const frameCount = getFrameNumber(duration, duration, frameRate);
+
+    const frameNumber = Math.min(
+      Math.max(
+        1,
+        Math.round(((event.clientX + 6 - left) / width) * frameCount)
+      ),
+      frameCount
+    );
+
+    return {
+      frameNumber,
+      lockedToSupport: support
+        ? lockedToSupport &&
+          frameNumber >= support[0] &&
+          frameNumber <= support[1]
+        : false,
+    };
+  }
+  return {};
+};
 
 class VolumeBarContainerElement extends BaseElement<
   VideoState,
