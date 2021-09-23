@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.13.2"
+VERSION = "0.13.3"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.16,<0.17"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.17,<0.18"]}
 
 
 with open("README.md", "r") as fh:
@@ -96,7 +96,7 @@ setup(
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
-        "voxel51-eta>=0.5.2,<0.6",
+        "voxel51-eta>=0.5.3,<0.6",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
