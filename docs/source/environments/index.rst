@@ -348,8 +348,8 @@ Cloud storage
 _____________
 
 In order to work with data stored in cloud storage buckets using the open
-source FiftyOne package, we recommend that you mount the cloud bucket as a
-local drive on a cloud compute instance.
+source FiftyOne package, you can mount the cloud bucket as a local drive on a
+cloud compute instance.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
 :ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>` cloud
