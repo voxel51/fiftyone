@@ -641,7 +641,7 @@ export const VIDEO = {
   nextFrame,
   previousFrame,
   seekTo,
-  toggleSupportLock,
+  supportLock,
 };
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);

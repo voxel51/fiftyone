@@ -194,6 +194,7 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: video.TimeElement },
           video.PLAYBACK_RATE,
           video.VOLUME,
+          { node: video.SupportLockButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },

@@ -4,8 +4,17 @@
 
 import { StateUpdate, VideoState } from "../state";
 import { BaseElement, Events } from "./base";
-import { muteUnmute, playPause, resetPlaybackRate } from "./common/actions";
-import { lookerClickable, lookerTime } from "./common/controls.module.css";
+import {
+  muteUnmute,
+  playPause,
+  resetPlaybackRate,
+  supportLock,
+} from "./common/actions";
+import {
+  lookerControlActive,
+  lookerClickable,
+  lookerTime,
+} from "./common/controls.module.css";
 import {
   acquirePlayer,
   acquireThumbnailer,
@@ -27,6 +36,8 @@ import {
 import volumeOff from "../icons/volumeOff.svg";
 import volumeOn from "../icons/volume.svg";
 import playbackRateIcon from "../icons/playbackRate.svg";
+import lockIcon from "../icons/lock.svg";
+import lockOpenIcon from "../icons/lockOpen.svg";
 
 import { lookerLoader } from "./common/looker.module.css";
 import { dispatchTooltipEvent } from "./common/util";
@@ -998,3 +1009,45 @@ export const PLAYBACK_RATE = {
     { node: PlaybackRateBarElement },
   ],
 };
+
+export class SupportLockButtonElement extends BaseElement<
+  VideoState,
+  HTMLImageElement
+> {
+  private active: boolean;
+
+  isShown(config: Readonly<VideoState["config"]>) {
+    return Boolean(config.support);
+  }
+
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        supportLock.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.style.padding = "2px";
+    element.title = `${supportLock.title} (${supportLock.shortcut})`;
+    element.style.gridArea = "2 / 8 / 2 / 8";
+    element.style.cursor = "pointer";
+    return element;
+  }
+
+  renderSelf({ lockedToSupport }) {
+    if (this.active !== lockedToSupport) {
+      lockedToSupport
+        ? this.element.classList.add(lookerControlActive)
+        : this.element.classList.remove(lookerControlActive);
+      this.element.src = lockedToSupport ? lockIcon : lockOpenIcon;
+      this.active = lockedToSupport;
+    }
+
+    return this.element;
+  }
+}
