@@ -1121,6 +1121,10 @@ class VideoTests(unittest.TestCase):
     @drop_datasets
     def test_to_clips(self):
         dataset = fo.Dataset()
+        dataset.add_sample_field("support", fo.FrameSupportField)
+        dataset.add_sample_field(
+            "supports", fo.ListField, subfield=fo.FrameSupportField
+        )
 
         sample1 = fo.Sample(
             filepath="video1.mp4",
@@ -1133,6 +1137,8 @@ class VideoTests(unittest.TestCase):
                     fo.VideoClassification(label="party", support=[2, 4]),
                 ]
             ),
+            support=[1, 2],
+            supports=[[1, 1], [2, 3]],
         )
         sample1.frames[1] = fo.Frame(hello="world")
         sample1.frames[3] = fo.Frame(hello="goodbye")
@@ -1148,12 +1154,16 @@ class VideoTests(unittest.TestCase):
                     fo.VideoClassification(label="meeting", support=[1, 3]),
                 ]
             ),
+            support=[1, 4],
+            supports=[[1, 3], [4, 5]],
         )
         sample2.frames[1] = fo.Frame(hello="goodbye")
         sample2.frames[3] = fo.Frame()
         sample2.frames[5] = fo.Frame(hello="there")
 
         dataset.add_samples([sample1, sample2])
+        self.assertEqual(dataset.to_clips("support").count("frames"), 3)
+        self.assertEqual(dataset.to_clips("supports").count("frames"), 5)
 
         view = dataset.to_clips("events")
 

@@ -460,7 +460,9 @@ def _make_pretty_summary(dataset):
 
 def _write_support_clips(dataset, src_collection, field, other_fields=None):
     field_type = src_collection._get_field_type(field)
-    is_list = isinstance(field_type, fof.ListField)
+    is_list = isinstance(field_type, fof.ListField) and not isinstance(
+        field_type, fof.FrameSupportField
+    )
 
     src_dataset = src_collection._dataset
 

@@ -429,10 +429,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         };
 
         update(
-          {
+          ({ frameNumber }) => ({
+            playing: true,
             disableOverlays: true,
+            frameNumber,
             rotate: 0,
-          },
+          }),
           (state, overlays) => {
             dispatchTooltipEvent(dispatchEvent, state.playing)(state, overlays);
             this.requestCallback(callback);
@@ -577,6 +579,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             if ((!hovering && thumbnail) || this.waitingToRelease) {
               this.releaseVideo();
             } else {
+              this.requestCallback(() => {});
               this.attachEvents();
               this.element.src = this.src;
             }
