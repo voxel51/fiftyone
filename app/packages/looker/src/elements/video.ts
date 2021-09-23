@@ -573,19 +573,23 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.update(({ waitingForVideo, error }) => {
       if (!waitingForVideo && !error) {
         acquirePlayer().then(([video, release]) => {
-          this.update(({ hovering, config: { thumbnail } }) => {
-            this.element = video;
-            this.release = release;
-            if ((!hovering && thumbnail) || this.waitingToRelease) {
-              this.releaseVideo();
-            } else {
-              this.requestCallback(() => {});
-              this.attachEvents();
-              this.element.src = this.src;
-            }
+          this.update(
+            ({ hovering, frameNumber, config: { frameRate, thumbnail } }) => {
+              this.element = video;
+              this.release = release;
+              if ((!hovering && thumbnail) || this.waitingToRelease) {
+                this.releaseVideo();
+              } else {
+                this.requestCallback(() => {});
+                this.attachEvents();
+                this.element.currentTime = getTime(frameNumber, frameRate);
+                this.element.src = this.src;
+                hovering && thumbnail && this.element.play();
+              }
 
-            return {};
-          });
+              return {};
+            }
+          );
         });
 
         called = true;
