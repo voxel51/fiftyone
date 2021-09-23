@@ -134,8 +134,7 @@ Yes! The recommended best practice is to mount the cloud bucket to a cloud
 compute instance in your cloud environment and then use the
 :ref:`remote server workflow <remote-data>` to work with the data.
 
-Check out the :doc:`environments guide </environments/index>` for instructions
-for working in AWS, GCP, and Azure.
+Check out :ref:`this page <cloud-storage>` for more details.
 
 .. _faq-supported-os:
 
