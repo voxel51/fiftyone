@@ -94,7 +94,7 @@ class FiftyOneHandler(RequestHandler):
             submitted = False
 
         return {
-            "version": foc.VERSION,
+            "version": foc.TEAMS_VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
             "teams": {"submitted": submitted, "minimized": isfile},

@@ -20,7 +20,7 @@ __path__ = _extend_path(__path__, __name__)
 
 import fiftyone.constants as _foc
 
-__version__ = _foc.VERSION
+__version__ = _foc.TEAMS_VERSION
 
 from fiftyone.__public__ import *
 from fiftyone.core.uid import log_import_if_allowed as _log_import
