@@ -123,20 +123,13 @@ def _validate_db_version(config, client):
         raise RuntimeError("Failed to validate `mongod` version") from e
 
     min_ver, max_ver = foc.MONGODB_VERSION_RANGE
-
-    if config.database_uri is not None:
-        # Allow custom databases to have version > max_ver, with the assumption
-        # that the user has set their feature compatibility version
-        # https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion
-        if version < min_ver:
-            raise RuntimeError(
-                "Found `mongod` version %s, but %s or later is required"
-                % (version, min_ver)
-            )
-    elif version < min_ver or version > max_ver:
+    if config.database_validation and not (min_ver <= version < max_ver):
         raise RuntimeError(
-            "Found `mongod` version %s, but [%s, %s) is required"
-            % (version, min_ver, max_ver)
+            "Found `mongod` version %s, but only [%s, %s) are compatible. "
+            "You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information" % (version, min_ver, max_ver)
         )
 
 

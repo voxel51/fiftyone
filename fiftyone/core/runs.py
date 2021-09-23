@@ -5,7 +5,7 @@ Dataset runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy
+from copy import copy, deepcopy
 import datetime
 import logging
 
@@ -49,7 +49,7 @@ class RunInfo(Config):
             key=doc.key,
             version=doc.version,
             timestamp=doc.timestamp,
-            config=cls.config_cls().from_dict(doc.config),
+            config=cls.config_cls().from_dict(deepcopy(doc.config)),
         )
 
 
@@ -360,7 +360,7 @@ class Run(Configurable):
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,
-            config=run_info.config.serialize(),
+            config=deepcopy(run_info.config.serialize()),
             view_stages=view_stages,
             results=None,
         )
