@@ -171,13 +171,9 @@ class LabelboxBackend(foua.AnnotationBackend):
             invite_users=self.config.invite_users,
         )
 
-        # @todo update this
-        """
-        id_map = self.build_label_id_map(
+        id_map = self._build_label_id_map(
             samples, store_label_ids=self.config.upload_annotations
         )
-        """
-        id_map = {}
 
         is_video = samples.media_type == fomm.VIDEO
 
@@ -203,6 +199,33 @@ class LabelboxBackend(foua.AnnotationBackend):
         logger.info("Download complete")
 
         return annotations
+
+    def _build_label_id_map(self, samples, store_label_ids=True):
+        id_map = {}
+        for label_field, label_info in self.config.label_schema.items():
+            if (
+                not label_info["existing_field"]
+                or label_info["type"] == "scalar"
+            ):
+                continue
+
+            if store_label_ids:
+                _, label_id_path = samples._get_label_field_path(
+                    label_field, "id"
+                )
+                sample_ids, label_ids = samples.values(["id", label_id_path])
+
+                # Flatten frames lists
+                for ind, ids in enumerate(label_ids):
+                    if ids is not None and ids and isinstance(ids[0], list):
+                        ids = [i for frame in ids for i in frame]
+                        label_ids[ind] = ids
+
+                id_map[label_field] = dict(zip(sample_ids, label_ids))
+            else:
+                id_map[label_field] = {sid: [] for sid in samples.values("id")}
+
+        return id_map
 
 
 class LabelboxAnnotationAPI(foua.AnnotationAPI):
