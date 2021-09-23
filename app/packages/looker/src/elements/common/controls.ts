@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState } from "../../state";
+import { BaseState, VideoState } from "../../state";
 import { BaseElement, Events } from "../base";
 import { ICONS } from "../util";
 import {
@@ -15,6 +15,7 @@ import {
   zoomOut,
   cropToContent,
   json,
+  supportLock,
 } from "./actions";
 import cropIcon from "../../icons/crop.svg";
 import jsonIcon from "../../icons/json.svg";
@@ -427,6 +428,40 @@ export class JSONButtonElement<State extends BaseState> extends BaseElement<
         ? this.element.classList.add(lookerControlActive)
         : this.element.classList.remove(lookerControlActive);
       this.active = showJSON;
+    }
+
+    return this.element;
+  }
+}
+
+export class SupportLockButtonElement extends BaseElement<VideoState> {
+  private active: boolean;
+
+  getEvents(): Events<VideoState> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        supportLock.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.style.padding = "2px";
+    element.src = jsonIcon;
+    element.title = `${json.title} (${json.shortcut})`;
+    element.style.gridArea = "2 / 12 / 2 / 12";
+    return element;
+  }
+
+  renderSelf({ lockedToSupport }) {
+    if (this.active !== lockedToSupport) {
+      lockedToSupport
+        ? this.element.classList.add(lookerControlActive)
+        : this.element.classList.remove(lookerControlActive);
+      this.active = lockedToSupport;
     }
 
     return this.element;

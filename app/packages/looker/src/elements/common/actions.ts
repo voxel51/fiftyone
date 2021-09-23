@@ -555,6 +555,20 @@ const seekTo: Control<VideoState> = {
   },
 };
 
+export const supportLock: Control<VideoState> = {
+  title: "Toggle support lock",
+  filter: (config) => Boolean(config.support),
+  detail: "Toggle the lock on the support frame(s)",
+  shortcut: "l",
+  action: (update, dispatchEvent) => {
+    update(({ lockedToSupport, config: { support } }) => {
+      return {
+        lockedToSupport: support ? !lockedToSupport : false,
+      };
+    });
+  },
+};
+
 const videoEscape: Control<VideoState> = {
   title: "Escape context",
   shortcut: "Esc",
@@ -627,6 +641,7 @@ export const VIDEO = {
   nextFrame,
   previousFrame,
   seekTo,
+  toggleSupportLock,
 };
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);

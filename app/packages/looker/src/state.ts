@@ -38,6 +38,7 @@ export type Action<State extends BaseState> = (
 
 export interface Control<State extends BaseState = BaseState> {
   eventKeys?: string | string[];
+  filter?: (config: Readonly<State["config"]>) => boolean;
   title: string;
   shortcut: string;
   detail: string;
