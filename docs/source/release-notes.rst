@@ -18,16 +18,6 @@ App
 
 Core
 
-- Added support for using a MongoDB dataset whose version is
-  :ref:`not explicitly supported <configuring-mongodb-connection>`
-- Removed the `opencv-python-headless` maximum version requirement
-- Added support for importing GeoTIFF images via a new
-  :ref:`GeoTIFFDataset <GeoTIFFDataset-import>` format
-- Added new
-  :meth:`split_labels() <fiftyone.core.collections.SampleCollection.split_labels>`
-  and :meth:`merge_labels() <fiftyone.core.collections.SampleCollection.merge_labels>`
-  methods that provide convenient syntaxes for moving labels between new and
-  existing label fields of a dataset
 - Added support for annotating semantic segmentations and instance
   segmentations using the :ref:`CVAT backend <cvat-requesting-annotations>`
 - Added support for annotating polylines using the CVAT backend
@@ -45,8 +35,22 @@ Core
 - Fixed a bug that would cause unsuppoted shapes such as polygons with less
   than 3 vertices to be deleted when editing existing labels with the CVAT
   backend
+- Added support for importing GeoTIFF images via a new
+  :ref:`GeoTIFFDataset <GeoTIFFDataset-import>` format
+- Added new
+  :meth:`split_labels() <fiftyone.core.collections.SampleCollection.split_labels>`
+  and :meth:`merge_labels() <fiftyone.core.collections.SampleCollection.merge_labels>`
+  methods that provide convenient syntaxes for moving labels between new and
+  existing label fields of a dataset
+- Added :meth:`ensure_frames() <fiftyone.core.dataset.Dataset.ensure_frames>`
+  and :meth:`clear_frames() <fiftyone.core.dataset.Dataset.clear_frames>`
+  methods that can be used to conveniently initialize and clear the frames of
+  video datasets, respectively
+- Added support for using a MongoDB dataset whose version is
+  :ref:`not explicitly supported <configuring-mongodb-connection>`
+- Removed the `opencv-python-headless` maximum version requirement
 - Fixed a race condition that could prevent callbacks on
-  :ref:`interactive plots <interactive-plots>` from working properly for
+  :ref:`interactive plots <interactive-plots>` from working properly on
   sufficiently large datasets
 
 .. _release-notes-v0.13.2:
