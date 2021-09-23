@@ -24,9 +24,8 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
 |                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
-|                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
-|                               |                                     |                               | more information.                                                                      |
+| `database_validation`         | `FIFTYONE_DATABASE_VALIDATION`      | `True`                        | Whether to validate the compatibility of database before connecting to it. See         |
+|                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
 |                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
@@ -50,9 +49,6 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
-|                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -74,9 +70,16 @@ FiftyOne supports the configuration options described below:
 | `model_zoo_manifest_paths`    | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                        | A list of manifest JSON files specifying additional zoo models. See                    |
 |                               |                                     |                               | :ref:`adding models to the zoo <model-zoo-add>` for more information.                  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
+|                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
 |                               |                                     |                               | operations such reading/writing large datasets or activiating FiftyOne                 |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
+|                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
+|                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 
 Viewing your config
@@ -104,7 +107,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
-            "timezone": null,
+            "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -120,7 +123,8 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "requirement_error_level": 0,
-            "show_progress_bars": true
+            "show_progress_bars": true,
+            "timezone": null
         }
 
         torch
@@ -140,7 +144,7 @@ and the CLI:
         {
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
-            "timezone": null,
+            "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
@@ -156,7 +160,8 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "requirement_error_level": 0,
-            "show_progress_bars": true
+            "show_progress_bars": true,
+            "timezone": null
         }
 
         torch
@@ -257,8 +262,8 @@ MongoDB instance. To do so, simply set the `database_uri` property of your
 FiftyOne config to any valid
 `MongoDB connection string URI <https://docs.mongodb.com/manual/reference/connection-string/>`_.
 
-For example, you can create a `~/.fiftyone/config.json` file with the following
-entry:
+You can achieve this by adding the following entry to your
+`~/.fiftyone/config.json` file:
 
 .. code-block:: json
 
@@ -271,24 +276,6 @@ or you can set the following environment variable:
 .. code-block:: shell
 
     export FIFTYONE_DATABASE_URI=mongodb://[username:password@]host[:port]
-
-Very rarerly, upgrading your FiftyOne package may require running a database
-admin migration, in which case the `database_uri` must establish a connection
-with administrative privileges.
-
-.. warning::
-
-    FiftyOne is designed for and distributed with MongoDB v4.4.
-
-    Users have reported success connecting to MongoDB v5 databases, but you
-    should
-    `set the feature compatibility version <https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion>`_
-    to 4.4 to ensure proper function:
-
-    .. code-block:: shell
-
-        mongo --shell
-        > db.adminCommand({setFeatureCompatibilityVersion: "4.4"})
 
 .. note::
 
@@ -304,6 +291,41 @@ with administrative privileges.
 
         brew tap mongodb/brew
         brew install mongodb-community@4.4
+
+Using a different MongoDB version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne is designed for and distributed with **MongoDB v4.4**.
+
+Users have reported success connecting to MongoDB v5 databases, but if you wish
+to do this, you should
+`set the feature compatibility version <https://docs.mongodb.com/manual/reference/command/setFeatureCompatibilityVersion>`_
+to 4.4 to ensure proper function:
+
+.. code-block:: shell
+
+    mongo --shell
+    > db.adminCommand({setFeatureCompatibilityVersion: "4.4"})
+
+If you wish to connect FiftyOne to a MongoDB database whose version is not
+explicitly supported, you will also need to set the `database_validation`
+property of your FiftyOne config to `False` to suppress a runtime error that
+will otherwise occur.
+
+You can achieve this by adding the following entry to your
+`~/.fiftyone/config.json` file:
+
+.. code-block:: json
+
+    {
+        "database_validation": false
+    }
+
+or you can set the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_VALIDATION=false
 
 Example custom database usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1868,7 +1868,7 @@ can easily retrieve the raw GeoJSON data for a slice of your dataset using the
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
 
-    values = dataset.take(5).values("location.point")
+    values = dataset.take(5).values("location.point", _raw=True)
     print(values)
 
 .. code-block:: text
