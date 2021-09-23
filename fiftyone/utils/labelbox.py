@@ -297,7 +297,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         api_key = self._api_key
 
         if api_key is None:
-            api_key = self._prompt_api_key(self._name, api_key=api_key)
+            api_key = self._prompt_api_key(self._name)
 
         self._client = lb.client.Client(
             api_key=api_key,

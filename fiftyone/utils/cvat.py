@@ -3945,13 +3945,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_size = (metadata.width, metadata.height)
 
             for image in images:
-                cvat_frame_id += 1
-                if is_video:
-                    frame_number = image
-                    if frame_number not in sample.frames:
-                        continue
-                    else:
-                        image = sample.frames[frame_number]
+                frame_id += 1
 
                 label = image[label_field]
 
@@ -3987,7 +3981,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             {
                                 "label_id": class_name,
                                 "group": 0,
-                                "frame": cvat_frame_id,
+                                "frame": frame_id,
                                 "source": "manual",
                                 "attributes": attributes,
                             }
@@ -4009,7 +4003,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         {
                             "label_id": class_name,
                             "group": 0,
-                            "frame": cvat_frame_id,
+                            "frame": frame_id,
                             "source": "manual",
                             "attributes": attributes,
                         }
@@ -4056,7 +4050,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frame_size,
                         attr_names,
                         classes,
-                        cvat_frame_id,
+                        frame_id,
                         label_type=label_type,
                         load_tracks=load_tracks,
                         **kwargs,
@@ -4114,12 +4108,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _build_frame_id_map(self, samples):
         is_video = samples.media_type == fom.VIDEO
-        cvat_frame_id = -1
+        frame_id = -1
 
         frame_id_map = {}
         for sample in samples:
             if is_video:
-                images = range(1, sample.metadata.total_frame_count + 1)
+                images = sample.frames.values()
             else:
                 images = [sample]
 

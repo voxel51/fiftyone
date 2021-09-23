@@ -857,16 +857,21 @@ def _load_scalars(samples, anno_dict, label_field):
     logger.info("Loading annotations for field '%s'...", label_field)
     with fou.ProgressBar(total=len(anno_dict)) as pb:
         for sample_id, value in pb(anno_dict.items()):
-            sample = samples[sample_id]
             if isinstance(value, dict):
                 field, _ = samples._handle_frame_field(label_field)
-                for frame_number, frame_label in value.items():
-                    frame = sample.frames[frame_number]
-                    frame[field] = frame_label
+                sample = (
+                    samples.select(sample_id)
+                    .select_frames(list(value.keys()))
+                    .first()
+                )
+                for frame in sample.frames.values():
+                    frame[field] = value[frame.id]
 
+                sample.save()
             else:
+                sample = samples[sample_id]
                 sample[label_field] = value
-            sample.save()
+                sample.save()
 
 
 def _merge_labels(
@@ -936,7 +941,7 @@ def _merge_labels(
 
         if is_video:
             field, _ = samples._handle_frame_field(label_field)
-            images = [sample.frames[i] for i in sample_annos.keys()]
+            images = sample.frames.values()
         else:
             field = label_field
             images = [sample]
@@ -1473,18 +1478,15 @@ class AnnotationAPI(object):
 
         return username, password
 
-    def _prompt_api_key(self, backend, api_key=None):
-        if api_key is None:
-            prefix = "FIFTYONE_%s_" % backend.upper()
-            logger.info(
-                "Please enter your API key.\nYou can avoid this in the future by "
-                "setting your `%sKEY` environment variable",
-                prefix,
-            )
+    def _prompt_api_key(self, backend):
+        prefix = "FIFTYONE_%s_" % backend.upper()
+        logger.info(
+            "Please enter your API key.\nYou can avoid this in the future by "
+            "setting your `%sKEY` environment variable",
+            prefix,
+        )
 
-            api_key = getpass.getpass(prompt="API key: ")
-
-        return api_key
+        return getpass.getpass(prompt="API key: ")
 
 
 #
