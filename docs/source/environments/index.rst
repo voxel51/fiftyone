@@ -357,7 +357,8 @@ environments.
 
 .. note::
 
-    Need native cloud data support?
+    Want native cloud data support?
+
     `Contact us <https://voxel51.com/#teams-form>`_ about becoming an early
     adopter of FiftyOne Teams, an open source-compatible enterprise deployment
     of FiftyOne with multiuser collaboration features, native cloud dataset
@@ -365,8 +366,8 @@ environments.
 
 .. _aws:
 
-Amazon Web Services
-~~~~~~~~~~~~~~~~~~~
+AWS
+~~~
 
 If your data is stored in an AWS S3 bucket, we recommend mounting the bucket as
 a local drive on an EC2 instance and then accessing the data using the standard
