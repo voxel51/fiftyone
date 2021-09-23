@@ -134,8 +134,7 @@ Yes! The recommended best practice is to mount the cloud bucket to a cloud
 compute instance in your cloud environment and then use the
 :ref:`remote server workflow <remote-data>` to work with the data.
 
-Check out the :doc:`environments guide </environments/index>` for instructions
-for working in AWS, GCP, and Azure.
+Check out :ref:`this page <cloud-storage>` for more details.
 
 .. _faq-supported-os:
 
@@ -161,8 +160,8 @@ which includes standard image types like JPEG, PNG, and BMP.
 Some browsers like Safari natively support other image types such as TIFF,
 while others do not. You may be able to install a browser extension to work
 with additional image types. For example, you can install
-`this extension <https://chrome.google.com/webstore/detail/tiff-viewer/fciggfkkblggmebjbekbebbcffeacknj>`_
-to view TIFF images in Chrome.
+`this extension <https://github.com/my-codeworks/tiff-viewer-extension>`_ to
+view TIFF images in Chrome or Firefox.
 
 .. note::
 

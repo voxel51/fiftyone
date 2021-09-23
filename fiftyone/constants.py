@@ -36,7 +36,7 @@ AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
-VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+VERSION_LONG = "FiftyOne v%s, %s" % (VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 DEV_INSTALL = os.path.isdir(

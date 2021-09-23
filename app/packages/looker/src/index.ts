@@ -853,6 +853,11 @@ export class VideoLooker extends Looker<VideoState> {
     );
   }
 
+  destroy() {
+    this.pause();
+    super.destroy();
+  }
+
   dispatchImpliedEvents(
     previousState: Readonly<VideoState>,
     state: Readonly<VideoState>

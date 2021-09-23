@@ -33,6 +33,7 @@ datasets:
 - :ref:`Polygons and polylines <polylines>`
 - :ref:`Keypoints <keypoints>`
 - :ref:`Scalar fields <adding-sample-fields>`
+- :ref:`Semantic segmentation <semantic-segmentation>`
 
 .. image:: /images/integrations/cvat_example.png
    :alt: cvat-example
@@ -357,25 +358,28 @@ details:
     `label_type`
 -   **label_field** (*None*): a string indicating a new or existing label field
     to annotate
--   **label_type** (*None*): a string or type indicating the type of labels to
-    annotate. The possible label strings/types are:
+-   **label_type** (*None*): a string indicating the type of labels to
+    annotate. The possible label types are:
 
-    -   `"classification"`: :class:`fiftyone.core.labels.Classification`
-    -   `"classifications"`: :class:`fiftyone.core.labels.Classifications`
-    -   `"detection"`: :class:`fiftyone.core.labels.Detection`
-    -   `"detections"`: :class:`fiftyone.core.labels.Detections`
-    -   `"polyline"`: :class:`fiftyone.core.labels.Polyline`
-    -   `"polylines"`: :class:`fiftyone.core.labels.Polylines`
-    -   `"keypoint"`: :class:`fiftyone.core.labels.Keypoint`
-    -   `"keypoints"`: :class:`fiftyone.core.labels.Keypoints`
-
-    You can also specify `"scalar"` for a primitive scalar field or pass any of
-    the supported scalar field types:
-
-    -   :class:`fiftyone.core.fields.IntField`
-    -   :class:`fiftyone.core.fields.FloatField`
-    -   :class:`fiftyone.core.fields.StringField`
-    -   :class:`fiftyone.core.fields.BooleanField`
+    -   ``"classification"``: a single classification stored in
+        |Classification| fields
+    -   ``"classifications"``: multilabel classifications stored in
+        |Classifications| fields
+    -   ``"detections"``: object detections stored in |Detections| fields
+    -   ``"instances"``: instance segmentations stored in |Detections| fields
+        with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
+        attributes populated
+    -   ``"polylines"``: polylines stored in |Polylines| fields with their
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
+        `False`
+    -   ``"polygons"``: polygons stored in |Polylines| fields with their
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
+        `True`
+    -   ``"keypoints"``: keypoints stored in |Keypoints| fields
+    -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
+        fields
+    -   ``"scalar"``: scalar labels stored in |IntField|, |FloatField|,
+        |StringField|, or |BooleanField| fields
 
     All new label fields must have their type specified via this argument or in
     `label_schema`
@@ -395,7 +399,10 @@ details:
     -   a list of label attributes to export
     -   a dict mapping attribute names to dicts specifying the `type`,
         `values`, and `default` for each attribute
+-   **mask_targets** (*None*): a dict mapping pixel values to semantic label
+    strings. Only applicable when annotating semantic segmentations
 
+|br|
 In addition, the following CVAT-specific parameters from
 :class:`CVATBackendConfig <fiftyone.utils.cvat.CVATBackendConfig>` can also be
 provided:
@@ -404,6 +411,14 @@ provided:
     Not applicable to videos
 -   **image_quality** (*75*): an int in `[0, 100]` determining the image
     quality to upload to CVAT
+-   **use_cache** (*True*): whether to use a cache when uploading data. Using a
+    cache reduces task creation time as data will be processed on-the-fly and
+    stored in the cache when requested
+-   **use_zip_chunks** (*True*): when annotating videos, whether to upload
+    video frames in smaller chunks. Setting this option to `False` may result
+    in reduced video quality in CVAT due to size limitations on ZIP files that
+    can be uploaded to CVAT
+-   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
 -   **task_assignee** (*None*): a username to assign the generated tasks
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
@@ -413,8 +428,8 @@ provided:
 Label schema
 ------------
 
-The `label_schema`, `label_field`, `label_type`, `classes`, and `attributes`
-parameters to
+The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
+`mask_targets` parameters to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
 you to define the annotation schema that you wish to be used.
 
@@ -462,8 +477,9 @@ label field:
     dataset.annotate(anno_key, label_schema=label_schema)
 
 Alternatively, if you are only editing or creating a single label field, you
-can use the `label_field`, `label_type`, `classes`, and `attributes` parameters
-to specify the components of the label schema individually:
+can use the `label_field`, `label_type`, `classes`, `attributes`, and
+`mask_targets` parameters to specify the components of the label schema
+individually:
 
 .. code:: python
     :linenos:
@@ -503,11 +519,16 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted, the class lists from the
-    :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
+-   **classes**: if omitted for a non-semantic segmentation field, the class
+    lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
     properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list
+    observed labels on your dataset will be used to construct a classes list.
+-   **mask_targets**: if omitted for a semantic segmentation field, the mask
+    targets from the
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    properties of your dataset will be used, if available
 
 .. _cvat-label-attributes:
 
@@ -531,11 +552,11 @@ attribute that you wish to label:
         "occluded": {
             "type": "radio",
             "values": [True, False],
-            "default": True,
+            "default": False,
         },
-        "weather": {
+        "gender": {
             "type": "select",
-            "values": ["cloudy", "sunny", "overcast"],
+            "values": ["male", "female"],
         },
         "caption": {
             "type": "text",
@@ -586,6 +607,49 @@ take additional values:
     modifications to existing labels, and changing or deleting these ID
     attributes in CVAT will result in labels being overwritten rather than
     merged when loading annotations back into FiftyOne.
+
+.. _cvat-video-label-attributes:
+
+Video label attributes
+----------------------
+
+When annotating spatiotemporal objects in videos, each object attribute
+specification can include a `mutable` property that controls whether the
+attribute's value can change between frames for each object:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "type": {
+            "type": "select",
+            "values": ["sedan", "suv", "truck"],
+            "mutable": False,
+        },
+        "occluded": {
+            "type": "radio",
+            "values": [True, False],
+            "default": False,
+            "mutable": True,
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="frames.new_field",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+The meaning of the `mutable` attribute is defined as follows:
+
+-   `True` (default): the attribute is dynamic and can have a different value
+    for every frame in which the object track appears
+-   `False`: the attribute is static and is the same for every frame in which
+    the object track appears
 
 .. _cvat-loading-annotations:
 
@@ -1118,14 +1182,81 @@ videos, which captures the identity of a single object as it moves through the
 video. These tracks are stored in the `index` field of the |Label| instances
 when you import the annotations into FiftyOne.
 
-Note that CVAT does not provide a straightforward way to annotate frame-level
-classification labels. Instead, we recommend that you use sample-level fields
+Note that CVAT does not provide a straightforward way to annotate sample-level
+classification labels. Instead, we recommend that you use frame-level fields
 to record classifications for your video datasets.
+
+.. note::
+
+    CVAT only allows one video per task, so calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    on a video dataset will result multiple tasks per label field.
+
+Adding new frame labels
+-----------------------
+
+The example below demonstrates how to configure a video annotation task that
+populates a new frame-level field of a video dataset with detection tracks of
+vehicles with an immutable `type` attribute that denotes the type of each
+vehicle:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+    dataset.delete_frame_field("detections")  # delete existing labels
+
+    view = dataset.limit(1)
+
+    anno_key = "video"
+
+    # Create annotation task
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes={
+            "type": {
+                "type": "select",
+                "values": ["sedan", "suv", "truck", "other"],
+                "mutable": False,
+            }
+        },
+        launch_editor=True,
+    )
+
+    # Add annotations in CVAT...
+
+    # Download annotations
+    dataset.load_annotations(anno_key)
+
+    # Load the view that was annotated in the App
+    view = dataset.load_annotation_view(anno_key)
+    session = fo.launch_app(view=view)
+
+    # Cleanup
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+    dataset.delete_annotation_run(anno_key)
 
 .. note::
 
     Prepend `"frames."` to reference frame-level fields when calling
     :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
+
+.. image:: /images/integrations/cvat_video.png
+   :alt: cvat-video
+   :align: center
+
+Editing existing frame labels
+-----------------------------
+
+The example below demonstrates how to edit existing frame-level detections of a
+video dataset:
 
 .. code:: python
     :linenos:
@@ -1160,16 +1291,6 @@ to record classifications for your video datasets.
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
-.. note:
-
-    CVAT only allows one video per task, so calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    on a video dataset will result multiple tasks per label field.
-
-.. image:: /images/integrations/cvat_video.png
-   :alt: cvat-video
-   :align: center
-
 .. _cvat-utils:
 
 Additional utilities
@@ -1188,7 +1309,7 @@ Viewing task statuses
 ---------------------
 
 You can use the
-:meth:`get_status() <fiftyone.utils.cvat.CVATAnnotationResults.print_status>` and
+:meth:`get_status() <fiftyone.utils.cvat.CVATAnnotationResults.get_status>` and
 :meth:`print_status() <fiftyone.utils.cvat.CVATAnnotationResults.print_status>`
 methods to get information about the current status of the task(s) and job(s)
 for that annotation run:
@@ -1201,6 +1322,8 @@ for that annotation run:
 
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(3)
+
+    anno_key = "cvat_status"
 
     view.annotate(
         anno_key,

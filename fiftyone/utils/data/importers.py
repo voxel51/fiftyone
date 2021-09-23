@@ -2676,6 +2676,15 @@ class ImageSegmentationDirectoryImporter(
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
+def _read_mask(mask_path, force_grayscale=False):
+    # pylint: disable=no-member
+    mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
+    if force_grayscale and mask.ndim > 1:
+        mask = mask[:, :, 0]
+
+    return mask
+
+
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for labeled image datasets whose labels are stored in
     `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
@@ -2924,12 +2933,3 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
         return len(etads.load_dataset(dataset_dir))
-
-
-def _read_mask(mask_path, force_grayscale=False):
-    # pylint: disable=no-member
-    mask = etai.read(mask_path, cv2.IMREAD_UNCHANGED)
-    if force_grayscale and mask.ndim > 1:
-        mask = mask[:, :, 0]
-
-    return mask
