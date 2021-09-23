@@ -661,50 +661,27 @@ class Detection(ImageLabel, _HasID, _HasAttributesDict):
         )
 
     @classmethod
-    def from_mask(cls, mask, label, attributes={}):
-        """Creates a :class:`Detection` instance from an
-        array and a class label. This method finds the bounding box contour of
-        the non-zero portion of the mask and crops it.
+    def from_mask(cls, mask, label, **attributes):
+        """Creates a :class:`Detection` instance with its ``mask`` attribute
+        populated from the given full image mask.
+
+        The instance mask for the object is extracted by computing the bounding
+        rectangle of the non-zero values in the image mask.
 
         Args:
-            mask: a numpy array containing 0 or False for the background and
-                non-zero or True values where this detected object exists in
-                the image
-            label: the label string for this detected object
-            attributes: a dictionary containing the attribute names and values
-                to apply to this object
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            **attributes: additional attributes for the :class:`Detection`
 
         Returns:
             a :class:`Detection`
         """
-        # Force grayscale
-        if mask.ndim > 1:
+        if mask.ndim > 2:
             mask = mask[:, :, 0]
 
-        mask_h, mask_w = mask.shape[:2]
-        mask = mask.astype(bool).astype(int)
+        bbox, mask = _parse_stuff_instance(mask.astype(bool))
 
-        # Crop mask and get bbox
-
-        # pylint: disable=no-member
-        coords = cv2.findNonZero(mask)
-        # pylint: disable=no-member
-        x, y, w, h = cv2.boundingRect(coords)
-
-        bbox = [
-            x / mask_w,
-            y / mask_h,
-            w / mask_w,
-            h / mask_h,
-        ]
-        mask = mask[y : y + h, x : x + w]
-
-        return Detection(
-            label=str(label),
-            bounding_box=bbox,
-            mask=mask.astype(bool),
-            **attributes,
-        )
+        return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
 
 
 class Detections(ImageLabel, _HasLabelList):
@@ -1012,6 +989,30 @@ class Polyline(ImageLabel, _HasID, _HasAttributesDict):
         image_labels = etai.ImageLabels()
         image_labels.add_polyline(self.to_eta_polyline(name=name))
         return image_labels
+
+    @classmethod
+    def from_mask(cls, mask, label, tolerance=2, **attributes):
+        """Creates a :class:`Polyline` instance with polygons describing the
+        non-zero region(s) of the given full image mask.
+
+        Args:
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polygons for each region. Typical values are 1-3 pixels
+            **attributes: additional attributes for the :class:`Polyline`
+
+        Returns:
+            a :class:`Polyline`
+        """
+        if mask.ndim > 2:
+            mask = mask[:, :, 0]
+
+        points = _get_polygons(mask.astype(bool), tolerance)
+
+        return cls(
+            label=label, points=points, filled=True, closed=True, **attributes
+        )
 
     @classmethod
     def from_eta_polyline(cls, polyline):

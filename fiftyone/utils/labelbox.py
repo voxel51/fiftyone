@@ -171,9 +171,13 @@ class LabelboxBackend(foua.AnnotationBackend):
             invite_users=self.config.invite_users,
         )
 
+        # @todo update this
+        """
         id_map = self.build_label_id_map(
             samples, store_label_ids=self.config.upload_annotations
         )
+        """
+        id_map = {}
 
         is_video = samples.media_type == fomm.VIDEO
 
@@ -1152,17 +1156,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return output_labels
 
     def _convert_segmentations(self, labels_list, label_type):
-        """Convert the masks loaded from Labelbox into either Detection or
-        Segmentation labels
-        """
         labels = []
         for seg_dict in labels_list:
             mask = seg_dict["mask"]
-            label = seg_dict["label"]
+            label = str(seg_dict["label"])
             attrs = seg_dict["attributes"]
-            labels.append(
-                fol.Detection.from_mask(mask, label, attributes=attrs)
-            )
+            labels.append(fol.Detection.from_mask(mask, label, **attrs))
 
         if label_type == "semantic_segmentation":
             detections = fol.Detections(detections=labels)
