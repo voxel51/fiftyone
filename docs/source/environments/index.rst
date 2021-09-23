@@ -347,13 +347,21 @@ Note that you can also open the App
 Cloud storage
 _____________
 
-FiftyOne does not yet support accessing data directly in a cloud bucket.
-Instead, the best practice that we recommend is to mount the cloud bucket as a
+In order to work with data stored in cloud storage buckets using the open
+source FiftyOne package, we recommend that you mount the cloud bucket as a
 local drive on a cloud compute instance.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
 :ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>` cloud
 environments.
+
+.. note::
+
+    Need native cloud data support?
+    `Contact us <https://voxel51.com/#teams-form>`_ about becoming an early
+    adopter of FiftyOne Teams, an open source-compatible enterprise deployment
+    of FiftyOne with multiuser collaboration features, native cloud dataset
+    support, and much more!
 
 .. _aws:
 
