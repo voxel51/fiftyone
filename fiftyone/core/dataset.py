@@ -1701,8 +1701,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
 
-        If reference to a sample exists in memory, the sample object will be
-        updated such that ``sample.in_dataset == False``.
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
 
         Args:
             samples_or_ids: the sample(s) to delete. Can be any of the
@@ -1718,22 +1718,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :class:`fiftyone.core.sample.SampleView` instances
         """
         sample_ids = _get_sample_ids(samples_or_ids)
-        _sample_ids = [ObjectId(_id) for _id in sample_ids]
-
-        self._sample_collection.delete_many({"_id": {"$in": _sample_ids}})
-
-        fos.Sample._reset_docs(
-            self._sample_collection_name, sample_ids=sample_ids
-        )
-
-        if self.media_type == fom.VIDEO:
-            self._frame_collection.delete_many(
-                {"_sample_id": {"$in": _sample_ids}}
-            )
-
-            fofr.Frame._reset_docs(
-                self._frame_collection_name, sample_ids=sample_ids
-            )
+        self._clear(sample_ids=sample_ids)
 
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
@@ -2009,8 +1994,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
 
-        If reference to a sample exists in memory, the sample object will be
-        updated such that ``sample.in_dataset == False``.
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
 
         .. warning::
 
@@ -2030,8 +2015,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.
 
-        If reference to a sample exists in memory, the sample object will be
-        updated such that ``sample.in_dataset == False``.
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
 
         .. warning::
 
@@ -2093,19 +2078,106 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def clear(self):
         """Removes all samples from the dataset.
 
-        If reference to a sample exists in memory, the sample object will be
-        updated such that ``sample.in_dataset == False``.
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
         """
-        self._sample_doc_cls.drop_collection()
-        fos.Sample._reset_docs(self._sample_collection_name)
+        self._clear()
+
+    def _clear(self, view=None, sample_ids=None):
+        if view is not None:
+            sample_ids = view.values("id")
+
+        if sample_ids is not None:
+            d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+        else:
+            sample_ids = None
+            d = {}
+
+        self._sample_collection.delete_many(d)
+        fos.Sample._reset_docs(
+            self._sample_collection_name, sample_ids=sample_ids
+        )
+
+        self._clear_frames(sample_ids=sample_ids)
+
+    def clear_frames(self):
+        """Removes all frame labels from the video dataset.
+
+        If reference to a frame exists in memory, the frame will be updated
+        such that ``frame.in_dataset`` is False.
+        """
+        self._clear_frames()
+
+    def _clear_frames(self, view=None, sample_ids=None):
+        if self.media_type != fom.VIDEO:
+            return
 
         # Clips datasets directly use their source dataset's frame collection,
         # so don't delete frames
         if self._is_clips:
             return
 
-        self._frame_doc_cls.drop_collection()
-        fofr.Frame._reset_docs(self._frame_collection_name)
+        if view is not None:
+            sample_ids = view.values("id")
+
+        if sample_ids is not None:
+            d = {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+        else:
+            d = {}
+
+        self._frame_collection.delete_many(d)
+        fofr.Frame._reset_docs(
+            self._frame_collection_name, sample_ids=sample_ids
+        )
+
+    def ensure_frames(self):
+        """Ensures that the video dataset contains frame instances for every
+        frame of each sample's source video.
+
+        Empty frames will be inserted for missing frames, and already existing
+        frames are left unchanged.
+        """
+        self._ensure_frames()
+
+    def _ensure_frames(self, view=None):
+        if self.media_type != fom.VIDEO:
+            return
+
+        if view is not None:
+            sample_collection = view
+        else:
+            sample_collection = self
+
+        sample_collection.compute_metadata()
+
+        pipeline = sample_collection._pipeline()
+        pipeline.extend(
+            [
+                {
+                    "$project": {
+                        "_id": False,
+                        "_sample_id": "$_id",
+                        "frame_number": {
+                            "$range": [
+                                1,
+                                {"$add": ["$metadata.total_frame_count", 1]},
+                            ]
+                        },
+                    }
+                },
+                {"$unwind": "$frame_number"},
+                {
+                    "$merge": {
+                        "into": self._frame_collection_name,
+                        "on": ["_sample_id", "frame_number"],
+                        "whenMatched": "keepExisting",
+                        "whenNotMatched": "insert",
+                    }
+                },
+            ]
+        )
+
+        self._aggregate(pipeline=pipeline)
 
     def delete(self):
         """Deletes the dataset.
@@ -2113,8 +2185,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Once deleted, only the ``name`` and ``deleted`` attributes of a dataset
         may be accessed.
 
-        If reference to a sample exists in memory, the sample object will be
-        updated such that ``sample.in_dataset == False``.
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
         """
         self.clear()
         _delete_dataset_doc(self._doc)

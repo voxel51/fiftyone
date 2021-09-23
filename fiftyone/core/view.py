@@ -607,6 +607,23 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_frame_fields(field_names, view=self)
 
+    def clear(self):
+        """Removes all samples in the view from the underlying dataset."""
+        self._dataset._clear(view=self)
+
+    def clear_frames(self):
+        """Removes all frame labels from the samples in the view."""
+        self._dataset._clear_frames(view=self)
+
+    def ensure_frames(self):
+        """Ensures that the video view contains frame instances for every frame
+        of each sample's source video.
+
+        Empty frames will be inserted for missing frames, and already existing
+        frames are left unchanged.
+        """
+        self._dataset._ensure_frames(view=self)
+
     def save(self, fields=None):
         """Overwrites the underlying dataset with the contents of the view.
 
