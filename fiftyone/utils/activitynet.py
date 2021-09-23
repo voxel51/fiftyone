@@ -11,19 +11,57 @@ import logging
 import os
 import random
 
-import youtube_dl
-
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+
+youtube_dl = fou.lazy_import("youtube_dl")
 
 
 logger = logging.getLogger(__name__)
 
 
-# Possibly create Importer to add class hierarchy
+class ActivityNetDatasetImporter(
+    foud.FiftyOneVideoClassificationDatasetImporter
+):
+    @property
+    def has_dataset_info(self):
+        return self._classes is not None or self._taxonomy is not None
+
+    def setup(self):
+        self._sample_parser = foud.FiftyOneVideoClassificationSampleParser(
+            compute_metadata=self.compute_metadata
+        )
+
+        self._video_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True, recursive=True
+        )
+
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
+            labels = etas.load_json(self.labels_path)
+        else:
+            labels = {}
+
+        self._taxonomy = labels.get("taxonomy", None)
+        self._classes = labels.get("classes", None)
+        self._sample_parser.classes = self._classes
+        self._labels_map = labels.get("labels", {})
+        self._has_labels = any(self._labels_map.values())
+
+        uuids = sorted(self._labels_map.keys())
+        self._uuids = self._preprocess_list(uuids)
+        self._num_samples = len(self._uuids)
+
+    def get_dataset_info(self):
+        info = {}
+        if self._classes is not None:
+            info["classes"] = self._classes
+        if self._taxonomy is not None:
+            info["taxonomy"] = self._taxonomy
+        return info
 
 
 def download_activitynet_split(
@@ -112,7 +150,8 @@ def download_activitynet_split(
 
     raw_annotations = etas.load_json(raw_anno_path)
 
-    all_classes = _get_all_classes(raw_annotations)
+    taxonomy = raw_annotations["taxonomy"]
+    all_classes = _get_all_classes(taxonomy)
     target_map = {c: i for i, c in enumerate(all_classes)}
 
     if classes is not None:
@@ -149,14 +188,13 @@ def download_activitynet_split(
     else:
         num_samples = num_downloaded_samples + len(prev_downloaded_ids)
 
-    # Save labels for this run in FiftyOneVideoClassificationDataset format
-    _write_annotations(selected_samples, anno_path, target_map)
+    # Save labels for this run in AcitivityNetDataset format
+    _write_annotations(selected_samples, anno_path, target_map, taxonomy)
 
     return num_samples, all_classes
 
 
-def _get_all_classes(raw_annotations):
-    taxonomy = raw_annotations["taxonomy"]
+def _get_all_classes(taxonomy):
     classes = set()
     parents = set()
     for node in taxonomy:
@@ -328,12 +366,14 @@ def _do_download(url, output_path):
         return False, e
 
 
-def _write_annotations(matching_samples, anno_path, target_map):
-    fo_matching_labels = _convert_label_format(matching_samples, target_map)
+def _write_annotations(matching_samples, anno_path, target_map, taxonomy):
+    fo_matching_labels = _convert_label_format(
+        matching_samples, target_map, taxonomy
+    )
     etas.write_json(fo_matching_labels, anno_path)
 
 
-def _convert_label_format(activitynet_labels, target_map):
+def _convert_label_format(activitynet_labels, target_map, taxonomy):
     labels = {}
     for annot_id, annot_info in activitynet_labels.items():
         fo_annot_labels = []
@@ -344,7 +384,11 @@ def _convert_label_format(activitynet_labels, target_map):
 
         labels[annot_id] = fo_annot_labels
 
-    fo_annots = {"classes": list(target_map.keys()), "labels": labels}
+    fo_annots = {
+        "classes": list(target_map.keys()),
+        "labels": labels,
+        "taxonomy": taxonomy,
+    }
     return fo_annots
 
 

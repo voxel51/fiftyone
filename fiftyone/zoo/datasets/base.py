@@ -104,7 +104,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
             version="100",
         )
 
-        dataset_type = fot.FiftyOneVideoClassificationDataset()
+        dataset_type = fot.ActivityNetDataset()
 
         return dataset_type, num_samples, classes
 
@@ -178,7 +178,7 @@ class ActivityNet200Dataset(FiftyOneDataset):
             version="200",
         )
 
-        dataset_type = fot.FiftyOneVideoClassificationDataset()
+        dataset_type = fot.ActivityNetDataset()
 
         return dataset_type, num_samples, classes
 
