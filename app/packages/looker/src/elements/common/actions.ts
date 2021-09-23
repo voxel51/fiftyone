@@ -556,11 +556,11 @@ const seekTo: Control<VideoState> = {
 };
 
 export const supportLock: Control<VideoState> = {
-  title: "Toggle support lock",
+  title: "Support lock",
   filter: (config) => Boolean(config.support),
   detail: "Toggle the lock on the support frame(s)",
   shortcut: "l",
-  action: (update, dispatchEvent) => {
+  action: (update) => {
     update(({ lockedToSupport, config: { support } }) => {
       return {
         lockedToSupport: support ? !lockedToSupport : false,
@@ -747,7 +747,18 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
 
 export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
   createHTMLElement(update) {
-    return this.createHelpPanel(update, VIDEO);
+    let config = null;
+    update(({ config: _config }) => {
+      config = _config;
+      return {};
+    });
+
+    return this.createHelpPanel(
+      update,
+      Object.fromEntries(
+        Object.entries(VIDEO).filter(([k, v]) => !v.filter || v.filter(config))
+      )
+    );
   }
 }
 

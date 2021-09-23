@@ -318,9 +318,10 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
 
   renderSelf({
     frameNumber,
-    config: { frameRate, thumbnail },
+    config: { frameRate, support, thumbnail },
     duration,
     buffers,
+    lockedToSupport,
   }: Readonly<VideoState>) {
     if (thumbnail) {
       return this.element;
@@ -328,6 +329,17 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
 
     if (duration !== null) {
       const frameCount = getFrameNumber(duration, duration, frameRate);
+      const start = lockedToSupport
+        ? ((support[0] - 1) / (frameCount - 1)) * 100
+        : 0;
+
+      this.element.style.setProperty("--start", `${start}%`);
+
+      const end = lockedToSupport
+        ? ((support[1] - 1) / (frameCount - 1)) * 100
+        : 100;
+
+      this.element.style.setProperty("--end", `${end}%`);
       let bufferValue = 100;
 
       if (frameCount - 1 > 0) {
@@ -341,10 +353,15 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
         }
         bufferValue = ((buffers[bufferIndex][1] - 1) / (frameCount - 1)) * 100;
       }
-      this.element.style.setProperty("--buffer-progress", `${bufferValue}%`);
+
+      this.element.style.setProperty(
+        "--buffer-progress",
+        `${Math.min(bufferValue, end)}%`
+      );
       const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
       this.element.style.display = "block";
       this.element.style.setProperty("--progress", `${value}%`);
+
       //@ts-ignore
       this.element.value = value;
     } else {
