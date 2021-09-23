@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.13.2"
+VERSION = "0.13.3"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.16,<0.17"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.17,<0.18"]}
 
 
 with open("README.md", "r") as fh:
@@ -78,6 +78,7 @@ setup(
         "mongoengine==0.20.0",
         "motor>=2.3,<3",
         "numpy",
+        "opencv-python-headless",
         "packaging",
         "pandas",
         "Pillow>=6.2",
@@ -95,13 +96,7 @@ setup(
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
-        "voxel51-eta>=0.5.2,<0.6",
-        # ETA dependency - restricted to a maximum version known to provide
-        # wheels here because it tends to publish sdists several hours before
-        # wheels. When users install FiftyOne in this window, they will need to
-        # compile OpenCV from source, leading to either errors or a
-        # time-consuming installation.
-        "opencv-python-headless<=4.4.0.46",
+        "voxel51-eta>=0.5.3,<0.6",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
