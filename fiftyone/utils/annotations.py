@@ -668,7 +668,7 @@ def _format_attributes(backend, attributes):
         attr_type = attr_info.get("type", None)
         values = attr_info.get("values", None)
         default = attr_info.get("default", None)
-        mutable = attr_info.get("mutable", True)
+        mutable = attr_info.get("mutable", None)
 
         if attr_type is None:
             if values is None:
@@ -711,7 +711,9 @@ def _format_attributes(backend, attributes):
 
                 formatted_info["default"] = default
 
-        formatted_info["mutable"] = mutable
+        if mutable is not None:
+            formatted_info["mutable"] = mutable
+
         output_attrs[attr] = formatted_info
 
     return output_attrs
