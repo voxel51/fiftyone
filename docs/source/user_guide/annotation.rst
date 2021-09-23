@@ -435,25 +435,28 @@ more details:
     If this argument is provided, it takes precedence over the remaining fields
 -   **label_field** (*None*): a string indicating a new or existing label field
     to annotate
--   **label_type** (*None*): a string or type indicating the type of labels to
-    annotate. The possible label strings/types are:
+-   **label_type** (*None*): a string indicating the type of labels to
+    annotate. The possible label types are:
 
-    -   `"classification"`: :class:`fiftyone.core.labels.Classification`
-    -   `"classifications"`: :class:`fiftyone.core.labels.Classifications`
-    -   `"detection"`: :class:`fiftyone.core.labels.Detection`
-    -   `"detections"`: :class:`fiftyone.core.labels.Detections`
-    -   `"polyline"`: :class:`fiftyone.core.labels.Polyline`
-    -   `"polylines"`: :class:`fiftyone.core.labels.Polylines`
-    -   `"keypoint"`: :class:`fiftyone.core.labels.Keypoint`
-    -   `"keypoints"`: :class:`fiftyone.core.labels.Keypoints`
-
-    You can also specify `"scalar"` for a primitive scalar field or pass any of
-    the supported scalar field types:
-
-    -   :class:`fiftyone.core.fields.IntField`
-    -   :class:`fiftyone.core.fields.FloatField`
-    -   :class:`fiftyone.core.fields.StringField`
-    -   :class:`fiftyone.core.fields.BooleanField`
+    -   ``"classification"``: a single classification stored in
+        |Classification| fields
+    -   ``"classifications"``: multilabel classifications stored in
+        |Classifications| fields
+    -   ``"detections"``: object detections stored in |Detections| fields
+    -   ``"instances"``: instance segmentations stored in |Detections| fields
+        with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
+        attributes populated
+    -   ``"polylines"``: polylines stored in |Polylines| fields with their
+        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        `False`
+    -   ``"polygons"``: polygons stored in |Polylines| fields with their
+        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        `True`
+    -   ``"keypoints"``: keypoints stored in |Keypoints| fields
+    -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
+        fields
+    -   ``"scalar"``: scalar labels stored in |IntField|, |FloatField|,
+        |StringField|, or |BooleanField| fields
 
     All new label fields must have their type specified via this argument or in
     `label_schema`
@@ -473,7 +476,10 @@ more details:
     -   a list of label attributes to export
     -   a dict mapping attribute names to dicts specifying the `type`,
         `values`, and `default` for each attribute
+-   **mask_targets** (*None*): a dict mapping pixel values to semantic label
+    strings. Only applicable when annotating semantic segmentations
 
+|br|
 In addition, each annotation backend can typically be configured in a variety
 of backend-specific ways. See :ref:`this section <configuring-your-backend>`
 for more details.
@@ -487,8 +493,8 @@ for more details.
 Label schema
 ------------
 
-The `label_schema`, `label_field`, `label_type`, `classes`, and `attributes`
-parameters to
+The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
+`mask_targets` parameters to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
 you to define the annotation schema that you wish to be used.
 
@@ -536,8 +542,9 @@ label field:
     dataset.annotate(anno_key, label_schema=label_schema)
 
 Alternatively, if you are only editing or creating a single label field, you
-can use the `label_field`, `label_type`, `classes`, and `attributes` parameters
-to specify the components of the label schema individually:
+can use the `label_field`, `label_type`, `classes`, `attributes`, and
+`mask_targets` parameters to specify the components of the label schema
+individually:
 
 .. code:: python
     :linenos:
@@ -577,9 +584,16 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted, the classes are retrieved from
-    :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
-    if possible, or else the observed labels on your dataset are used
+-   **classes**: if omitted for a non-semantic segmentation field, the class
+    lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
+    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+    properties of your dataset will be used, if available. Otherwise, the
+    observed labels on your dataset will be used to construct a classes list
+-   **mask_targets**: if omitted for a semantic segmentation field, the mask
+    targets from the
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    properties of your dataset will be used, if available
 
 .. _annotation-label-attributes:
 
@@ -603,11 +617,11 @@ attribute that you wish to label:
         "occluded": {
             "type": "radio",
             "values": [True, False],
-            "default": True,
+            "default": False,
         },
-        "weather": {
+        "gender": {
             "type": "select",
-            "values": ["cloudy", "sunny", "overcast"],
+            "values": ["male", "female"],
         },
         "caption": {
             "type": "text",
@@ -654,6 +668,49 @@ take additional values:
 
     Only scalar-valued label attributes are supported. Other attribute types
     like lists, dictionaries, and arrays will be omitted.
+
+.. _annotation-video-label-attributes:
+
+Video label attributes
+----------------------
+
+When annotating spatiotemporal objects in videos, each object attribute
+specification can include a `mutable` property that controls whether the
+attribute's value can change between frames for each object:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "type": {
+            "type": "select",
+            "values": ["sedan", "suv", "truck"],
+            "mutable": False,
+        },
+        "occluded": {
+            "type": "radio",
+            "values": [True, False],
+            "default": False,
+            "mutable": True,
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="frames.new_field",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+The meaning of the `mutable` attribute is defined as follows:
+
+-   `True` (default): the attribute is dynamic and can have a different value
+    for every frame in which the object track appears
+-   `False`: the attribute is static and is the same for every frame in which
+    the object track appears
 
 .. _loading-annotations:
 

@@ -5789,6 +5789,7 @@ class SampleCollection(object):
         label_type=None,
         classes=None,
         attributes=True,
+        mask_targets=None,
         media_field="filepath",
         backend=None,
         launch_editor=False,
@@ -5817,25 +5818,36 @@ class SampleCollection(object):
                 other schema-related arguments
             label_field (None): a string indicating a new or existing label
                 field to annotate
-            label_type (None): a string or type indicating the type of labels
-                to annotate. The possible label strings/types are:
+            label_type (None): a string indicating the type of labels to
+                annotate. The possible values are:
 
-                -   ``"classification"``: :class:`fiftyone.core.labels.Classification`
-                -   ``"classifications"``: :class:`fiftyone.core.labels.Classifications`
-                -   ``"detection"``: :class:`fiftyone.core.labels.Detection`
-                -   ``"detections"``: :class:`fiftyone.core.labels.Detections`
-                -   ``"polyline"``: :class:`fiftyone.core.labels.Polyline`
-                -   ``"polylines"``: :class:`fiftyone.core.labels.Polylines`
-                -   ``"keypoint"``: :class:`fiftyone.core.labels.Keypoint`
-                -   ``"keypoints"``: :class:`fiftyone.core.labels.Keypoints`
-
-                You can also specify ``"scalar"`` for a primitive scalar field
-                or pass any of the supported scalar field types:
-
-                -   :class:`fiftyone.core.fields.IntField`
-                -   :class:`fiftyone.core.fields.FloatField`
-                -   :class:`fiftyone.core.fields.StringField`
-                -   :class:`fiftyone.core.fields.BooleanField`
+                -   ``"classification"``: a single classification stored in
+                    :class:`fiftyone.core.labels.Classification` fields
+                -   ``"classifications"``: multilabel classifications stored in
+                    :class:`fiftyone.core.labels.Classifications` fields
+                -   ``"detections"``: object detections stored in
+                    :class:`fiftyone.core.labels.Detections` fields
+                -   ``"instances"``: instance segmentations stored in
+                    :class:`fiftyone.core.labels.Detections` fields with their
+                    :attr:`mask <fiftyone.core.labels.Detection.mask>`
+                    attributes populated
+                -   ``"polylines"``: polylines stored in
+                    :class:`fiftyone.core.labels.Polylines` fields with their
+                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    attributes set to ``False``
+                -   ``"polygons"``: polygons stored in
+                    :class:`fiftyone.core.labels.Polylines` fields with their
+                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    attributes set to ``True``
+                -   ``"keypoints"``: keypoints stored in
+                    :class:`fiftyone.core.labels.Keypoints` fields
+                -   ``"segmentation"``: semantic segmentations stored in
+                    :class:`fiftyone.core.labels.Segmentation` fields
+                -   ``"scalar"``: scalar labels stored in
+                    :class:`fiftyone.core.fields.IntField`,
+                    :class:`fiftyone.core.fields.FloatField`,
+                    :class:`fiftyone.core.fields.StringField`, or
+                    :class:`fiftyone.core.fields.BooleanField` fields
 
                 All new label fields must have their type specified via this
                 argument or in ``label_schema``. Note that annotation backends
@@ -5861,6 +5873,8 @@ class SampleCollection(object):
 
                 If provided, this parameter will apply to all label fields in
                 ``label_schema`` that do not define their attributes
+            mask_targets (None): a dict mapping pixel values to semantic label
+                strings. Only applicable when annotating semantic segmentations
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -5882,6 +5896,7 @@ class SampleCollection(object):
             label_type=label_type,
             classes=classes,
             attributes=attributes,
+            mask_targets=mask_targets,
             media_field=media_field,
             backend=backend,
             launch_editor=launch_editor,
@@ -6920,20 +6935,17 @@ class SampleCollection(object):
             ignore_primitives=ignore_primitives,
         )
 
-    def _unwind_values(self, field_name, values):
+    def _unwind_values(self, field_name, values, keep_top_level=False):
         if values is None:
             return None
 
         list_fields = self._parse_field_name(field_name, auto_unwind=False)[-2]
         level = len(list_fields)
 
-        while level > 0:
-            values = list(
-                itertools.chain.from_iterable(v for v in values if v)
-            )
-            level -= 1
+        if keep_top_level:
+            return [_unwind_values(v, level - 1) for v in values]
 
-        return values
+        return _unwind_values(values, level)
 
     def _make_set_field_pipeline(
         self, field, expr, embedded_root=False, allow_missing=False
@@ -6941,6 +6953,17 @@ class SampleCollection(object):
         return _make_set_field_pipeline(
             self, field, expr, embedded_root, allow_missing=allow_missing
         )
+
+
+def _unwind_values(values, level):
+    if not values:
+        return values
+
+    while level > 0:
+        values = list(itertools.chain.from_iterable(v for v in values if v))
+        level -= 1
+
+    return values
 
 
 def _parse_label_field(

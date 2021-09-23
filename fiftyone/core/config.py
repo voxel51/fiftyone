@@ -68,6 +68,12 @@ class FiftyOneConfig(EnvConfig):
         self.database_uri = self.parse_string(
             d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
         )
+        self.database_validation = self.parse_bool(
+            d,
+            "database_validation",
+            env_var="FIFTYONE_DATABASE_VALIDATION",
+            default=True,
+        )
         self.database_dir = self.parse_string(
             d,
             "database_dir",
@@ -81,7 +87,7 @@ class FiftyOneConfig(EnvConfig):
             default=None,
         )
         self.model_zoo_dir = self.parse_string(
-            d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None,
+            d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
         self.dataset_zoo_manifest_paths = self.parse_string_array(
             d,

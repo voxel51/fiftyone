@@ -12,6 +12,7 @@ import os
 import warnings
 
 from bson import json_util
+import numpy as np
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -2428,10 +2429,20 @@ class ImageSegmentationDirectoryExporter(
             raise ValueError("Unsupported label type '%s'" % type(label))
 
         out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
-        etai.write(mask, out_mask_path)
+        _write_mask(mask, out_mask_path)
 
     def close(self, *args):
         self._media_exporter.close()
+
+
+def _write_mask(mask, mask_path):
+    if mask.dtype not in (np.uint8, np.uint16):
+        if mask.max() <= 255:
+            mask = mask.astype(np.uint8)
+        else:
+            mask = mask.astype(np.uint16)
+
+    etai.write(mask, mask_path)
 
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
