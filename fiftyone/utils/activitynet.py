@@ -165,6 +165,21 @@ def download_activitynet_split(
 
     # Get ids of previously downloaded samples
     prev_downloaded_ids = _get_downloaded_sample_ids(videos_dir)
+    num_downloaded = len(prev_downloaded_ids)
+    num_total = _NUM_TOTAL_SAMPLES[version][split]
+
+    if load_entire_split and num_downloaded != num_total:
+        raise ValueError(
+            "Found %d samples out of %d for split `%s`. When loading a full "
+            "split of ActivityNet %s, it is required you "
+            "download videos directly from the dataset providers to "
+            "account for videos missing from YouTube."
+            "\n\nFill out this form to gain access: "
+            "https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform"
+            "\n\nAlternatively, provide `max_samples`, `max_duration`, or "
+            "`classes` to download a subset of the dataset from YouTube instead."
+            % (num_downloaded, num_total, split, version)
+        )
 
     # Find all samples that match either all classes specified or any
     # classes specified
@@ -401,4 +416,9 @@ _SPLIT_MAP = {
     "train": "training",
     "test": "testing",
     "validation": "validation",
+}
+
+_NUM_TOTAL_SAMPLES = {
+    "100": {"train": 4819, "test": 2480, "validation": 2383,},
+    "200": {"train": 10024, "test": 5044, "validation": 4926,},
 }
