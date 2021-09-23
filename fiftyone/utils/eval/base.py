@@ -53,7 +53,10 @@ class BaseEvaluationResults(foe.EvaluationResults):
         if missing is None:
             missing = "(none)"
 
-        ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
+        ytrue, ypred, classes, found_missing = _parse_labels(
+            ytrue, ypred, classes, missing
+        )
+
         self.ytrue = np.asarray(ytrue)
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
@@ -69,7 +72,9 @@ class BaseEvaluationResults(foe.EvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
+
         self._samples = samples
+        self._has_missing = found_missing
 
     def _get_labels(self, classes, include_missing=False):
         if classes is not None:
@@ -252,7 +257,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
     def plot_confusion_matrix(
         self,
         classes=None,
-        include_missing=True,
+        include_missing=None,
         include_other=True,
         other_label="(other)",
         backend="plotly",
@@ -271,9 +276,14 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Args:
             classes (None): an optional list of classes to include in the
                 confusion matrix
-            include_missing (True): whether to include an extra row/column for
-                missing ground truth/predictions. This setting has no effect if
-                ``self.missing`` already appears in ``classes``
+            include_missing (None): whether to include a row/column for missing
+                ground truth/predictions in the confusion matrix. The supported
+                values are:
+
+                -   None (default): only include a row/column for missing
+                    labels if there are any
+                -   True: do include a row/column for missing labels
+                -   False: do not include a row/column for missing labels
             include_other (True): whether to include an extra column for
                 **predictions** that are not missing but do not appear in
                 ``classes``. Only applicable if a ``classes`` list is provided
@@ -292,6 +302,9 @@ class BaseEvaluationResults(foe.EvaluationResults):
                 the plotly backend is used
             -   a matplotlib figure, otherwise
         """
+        if include_missing is None:
+            include_missing = self._has_missing
+
         _labels = self._get_labels(classes, include_missing=include_missing)
         confusion_matrix, labels, ids = self._confusion_matrix(
             _labels,
@@ -374,10 +387,11 @@ def _parse_labels(ytrue, ypred, classes, missing):
     ypred, found_missing_pred = _clean_labels(ypred, missing)
 
     found_missing = found_missing_true or found_missing_pred
+
     if found_missing and missing not in classes:
         classes.append(missing)
 
-    return ytrue, ypred, classes
+    return ytrue, ypred, classes, found_missing
 
 
 def _clean_labels(y, missing):
