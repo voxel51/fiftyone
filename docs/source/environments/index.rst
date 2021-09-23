@@ -347,12 +347,11 @@ Note that you can also open the App
 Cloud storage
 _____________
 
-In order to work with data stored in cloud storage buckets using the open
-source FiftyOne package, you can mount the cloud bucket as a local drive on a
-cloud compute instance.
+You can work with data in cloud storage buckets in FiftyOne by mounting the
+buckets as local drives on a cloud compute instance.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
-:ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>` cloud
+:ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>`
 environments.
 
 .. note::
