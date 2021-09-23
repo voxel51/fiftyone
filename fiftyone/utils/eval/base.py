@@ -215,7 +215,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Returns:
             a ``num_classes x num_classes`` confusion matrix
         """
-        labels = self._get_labels(classes)
+        labels = self._get_labels(classes, include_missing=True)
         confusion_matrix, _, _ = self._confusion_matrix(
             labels, include_other=include_other
         )
