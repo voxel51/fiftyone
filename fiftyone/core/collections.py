@@ -2486,7 +2486,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def filter_labels(self, field, filter, only_matches=True):
+    def filter_labels(
+        self, field, filter, only_matches=True, trajectories=False
+    ):
         """Filters the :class:`fiftyone.core.labels.Label` field of each
         sample in the collection.
 
@@ -2754,12 +2756,21 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
             only_matches (True): whether to only include samples with at least
                 one label after filtering (True) or include all samples (False)
+            trajectories (False): whether to match entire object trajectories
+                for which the object matches the given filter on at least one
+                frame. Only applicable to video datasets and frame-level label
+                fields whose objects have their ``index`` attributes populated
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.FilterLabels(field, filter, only_matches=only_matches)
+            fos.FilterLabels(
+                field,
+                filter,
+                only_matches=only_matches,
+                trajectories=trajectories,
+            )
         )
 
     @deprecated(reason="Use filter_labels() instead")
