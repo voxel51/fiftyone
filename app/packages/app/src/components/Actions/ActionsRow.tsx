@@ -320,6 +320,7 @@ type ActionsRowProps = {
 
 const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const isClips = useRecoilValue(selectors.isClipsView);
   const style = modal
     ? {
         overflowX: "auto",
@@ -335,7 +336,7 @@ const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
     <ActionsRowDiv style={style}>
       <Options modal={modal} />
       <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
-      {!modal && <Patches />}
+      {!modal && !isClips && <Patches />}
       {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
