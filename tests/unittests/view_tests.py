@@ -1022,6 +1022,140 @@ class ViewStageTests(unittest.TestCase):
                 self.assertGreater(det.confidence, 0.5)
                 self.assertEqual(det.label, "friend")
 
+    def test_filter_label_trajectories(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="sedan",
+                index=1,
+            )
+        )
+        sample1.frames[2] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="truck",
+                index=2,
+            )
+        )
+        sample1.frames[3] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="sedan",
+            )
+        )
+        sample1.frames[4] = fo.Frame()
+        sample1.frames[5] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="truck",
+                index=1,
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.filter_labels(
+            "frames.detection", F("type") == "sedan", trajectories=True
+        )
+
+        self.assertEqual(len(view), 1)
+
+        num_detections = 0
+        for sample in view:
+            for frame in sample.frames.values():
+                num_detections += int(frame.detection is not None)
+
+        self.assertEqual(num_detections, 2)
+        self.assertListEqual(view.distinct("frames.detection.index"), [1])
+        self.assertDictEqual(
+            view.count_values("frames.detection.type"),
+            {"sedan": 1, None: 3, "truck": 1},
+        )
+
+    def test_filter_label_list_trajectories(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                        type="sedan",
+                        index=1,
+                    ),
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.4, 0.4, 0.2, 0.2],
+                        type="sedan",
+                        index=2,
+                    ),
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.6, 0.6, 0.2, 0.2],
+                        type="sedan",
+                    ),
+                ]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                        type="sedan",
+                        index=1,
+                    ),
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.4, 0.4, 0.2, 0.2],
+                        type="coupe",
+                        index=2,
+                    ),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.filter_labels(
+            "frames.detections", F("type") == "sedan", trajectories=True
+        )
+
+        self.assertEqual(len(view), 1)
+
+        num_detections = 0
+        for sample in view:
+            for frame in sample.frames.values():
+                num_detections += len(frame.detections.detections)
+
+        self.assertEqual(num_detections, 4)
+        self.assertListEqual(
+            view.distinct("frames.detections.detections.index"), [1, 2],
+        )
+        self.assertDictEqual(
+            view.count_values("frames.detections.detections.type"),
+            {"coupe": 1, "sedan": 3},
+        )
+
     def test_limit(self):
         result = list(self.dataset.limit(1))
         self.assertIs(len(result), 1)
