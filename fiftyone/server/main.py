@@ -42,6 +42,7 @@ import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
@@ -1444,6 +1445,7 @@ class Application(tornado.web.Application):
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
+            (r"/colorscales", ColorscalesHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),

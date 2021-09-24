@@ -55,10 +55,18 @@ interface BaseOptions {
   activePaths: string[];
   colorByLabel: boolean;
   filter: {
-    [key: string]: (label: { label?: string; confidence?: number }) => boolean;
+    [fieldName: string]: (label: {
+      label?: string;
+      confidence?: number;
+    }) => boolean;
+  };
+  fieldSettings: {
+    [fieldName: string]: {
+      colorTransparency: boolean;
+      colorscale: RGB[];
+    };
   };
   colorMap: (key: string | number | null | undefined) => string;
-  colorscale?: RGB[];
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;

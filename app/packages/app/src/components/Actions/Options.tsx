@@ -1,13 +1,15 @@
+import { Autorenew } from "@material-ui/icons";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Autorenew } from "@material-ui/icons";
 
-import Popout from "./Popout";
-import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
-import { Button } from "../FieldsSidebar";
+import * as selectors from "../../recoil/selectors";
+
 import Checkbox from "../Common/Checkbox";
-import { isPatchesView } from "../../recoil/selectors";
+import { PopoutSectionTitle, TabOption } from "../utils";
+
+import { Button } from "../FieldsSidebar";
+import Popout from "./Popout";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -99,7 +101,7 @@ const SortFilterResults = ({ modal }) => {
 };
 
 const Patches = ({ modal }) => {
-  const isPatches = useRecoilValue(isPatchesView);
+  const isPatches = useRecoilValue(selectors.isPatchesView);
   const [crop, setCrop] = useRecoilState(atoms.cropToContent(modal));
 
   if (!isPatches) {

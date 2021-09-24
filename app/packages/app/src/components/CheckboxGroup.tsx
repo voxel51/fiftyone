@@ -9,12 +9,13 @@ import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
+import HeatmapSettings from "./FieldSettings/Heatmap";
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
 import { isBooleanField } from "./Filters/BooleanFieldFilter.state";
 import { isNumericField } from "./Filters/NumericFieldFilter.state";
 import { isStringField } from "./Filters/StringFieldFilter.state";
 
-import { labelTypeIsFilterable } from "../utils/labels";
+import { HEATMAP, labelTypeIsFilterable } from "../utils/labels";
 
 import LabelFieldFilter from "./Filters/LabelFieldFilter";
 import NumericFieldFilter from "./Filters/NumericFieldFilter";
@@ -240,9 +241,9 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
+  const isBoolean = useRecoilValue(isBooleanField(path));
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
-  const isBoolean = useRecoilValue(isBooleanField(path));
   const fieldFiltered =
     useRecoilValue(fieldIsFiltered({ path, modal })) &&
     canFilter &&
@@ -339,6 +340,9 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
       {entry.labelType && labelTypeIsFilterable(entry.labelType) ? (
         <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
       ) : null}
+      {entry.labelType === HEATMAP && (
+        <HeatmapSettings expanded={expanded} entry={entry} modal={modal} />
+      )}
     </CheckboxContainer>
   );
 });

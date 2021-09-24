@@ -24,7 +24,7 @@ export default class HeatmapOverlay<State extends BaseState>
   private readonly label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
-  private colorscale?: RGB[];
+  private colorscale?: RGB[] | ((key: string | number) => string);
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
 
@@ -61,7 +61,8 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (this.targets && this.colorscale !== state.options.colorscale) {
+    const colorscale = state.options.colorscale || state.options.colorMap;
+    if (this.targets && this.colorscale !== colorscale) {
       const imageMask = new Uint32Array(this.imageData.data.buffer);
       const getColor = this.getColor(state);
       for (let i = 0; i < this.targets.length; i++) {
@@ -76,6 +77,7 @@ export default class HeatmapOverlay<State extends BaseState>
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+    this.colorscale = colorscale;
   }
 
   getMouseDistance(state: Readonly<State>): number {

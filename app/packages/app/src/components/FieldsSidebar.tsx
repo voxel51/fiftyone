@@ -31,7 +31,7 @@ import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import * as fieldAtoms from "./Filters/utils";
 import * as selectors from "../recoil/selectors";
-import { FILTERABLE_TYPES } from "../utils/labels";
+import { FILTERABLE_TYPES, HEATMAP } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
 import { prettify } from "../utils/generic";
@@ -467,7 +467,8 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           name,
           disabled: false,
           hideCheckbox: false,
-          hasDropdown: FILTERABLE_TYPES.includes(types[path]),
+          hasDropdown:
+            FILTERABLE_TYPES.includes(types[path]) || types[path] === HEATMAP,
           selected: activeLabels.includes(path),
           color: colorByLabel ? theme.brand : colorMap(path),
           title: name,

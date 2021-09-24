@@ -425,10 +425,29 @@ export const gridZoom = selector<number | null>({
   },
 });
 
-export const colorscale = selector<[number, number, number][]>({
+export const colorscale = selector<string>({
   key: "colorscale",
   get: ({ get }) => {
     return get(atoms.stateDescription).colorscale;
+  },
+  set: ({ get, set }, value) => {
+    const state = get(atoms.stateDescription);
+    const newState = {
+      ...state,
+      config: {
+        ...state.config,
+        colorscale: value,
+      },
+    };
+    set(atoms.stateDescription, newState);
+    socket.send(packageMessage("update", { state: newState }));
+  },
+});
+
+export const colorscaleTransparency = selector<boolean>({
+  key: "colorscaleTransparency",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).colorscale_transparency;
   },
 });
 

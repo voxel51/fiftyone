@@ -7,6 +7,7 @@ export const VALID_OBJECT_TYPES = [
   "Polylines",
 ];
 
+export const HEATMAP = "Heatmap";
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
 export const VALID_MASK_TYPES = ["Heatmap", "Segmentation"];
 export const VALID_LIST_TYPES = [

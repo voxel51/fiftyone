@@ -92,8 +92,6 @@ const flashlightLookerOptions = selector({
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       fieldsMap: get(selectors.primitivesDbMap("sample")),
       frameFieldsMap: get(selectors.primitivesDbMap("frame")),
-      colorscale: get(selectors.colorscale),
-      colorscaleTransparency: get(selectors.appConfig).colorscale_transparency,
     };
   },
 });

@@ -334,8 +334,6 @@ const lookerOptions = selector({
     const colorByLabel = get(atoms.colorByLabel(true));
 
     return {
-      colorscale: get(selectors.colorscale),
-      colorscaleTransparency: get(selectors.appConfig).colorscale_transparency,
       colorByLabel,
       showConfidence,
       showIndex,
