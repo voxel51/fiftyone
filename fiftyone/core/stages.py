@@ -1155,8 +1155,8 @@ class FilterField(ViewStage):
     def __init__(self, field, filter, only_matches=True, _new_field=None):
         self._field = field
         self._filter = filter
-        self._new_field = _new_field or field
         self._only_matches = only_matches
+        self._new_field = _new_field or field
         self._is_frame_field = None
         self._validate_params()
 
@@ -1634,9 +1634,9 @@ class FilterLabels(ViewStage):
     ):
         self._field = field
         self._filter = filter
-        self._new_field = _new_field or field
         self._only_matches = only_matches
         self._trajectories = trajectories
+        self._new_field = _new_field or field
         self._prefix = _prefix
         self._labels_field = None
         self._is_frame_field = None
