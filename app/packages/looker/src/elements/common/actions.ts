@@ -588,6 +588,7 @@ const videoEscape: Control<VideoState> = {
         showHelp,
         showOptions,
         frameNumber,
+        config: { support },
         options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
         lockedToSupport,
       }) => {
@@ -604,9 +605,10 @@ const videoEscape: Control<VideoState> = {
           return { options: { showJSON: false } };
         }
 
-        if (lockedToSupport) {
+        if (!lockedToSupport && Boolean(support)) {
           return {
-            lockedToSupport: false,
+            frameNumber: support[0],
+            lockedToSupport: true,
           };
         }
 

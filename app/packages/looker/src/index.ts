@@ -738,23 +738,30 @@ const { aquireReader, addFrame } = (() => {
       } = message;
       if (uuid === subscription && method === "frameChunk") {
         addFrameBuffers([start, end]);
-        Array(end - start + 1)
-          .fill(0)
-          .forEach((_, i) => {
-            const frameNumber = start + i;
-            const frameSample = frames[i] || { frame_number: frameNumber };
-            const prefixedFrameSample = Object.fromEntries(
-              Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
-            ) as FrameSample;
+        for (let i = start; i <= end; i++) {
+          const frame = {
+            sample: {
+              frame_number: i,
+            },
+            overlays: [],
+          };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(i, frame);
+        }
 
-            const overlays = loadOverlays(prefixedFrameSample);
-            overlays.forEach((overlay) => {
-              streamSize += overlay.getSizeBytes();
-            });
-            const frame = { sample: frameSample, overlays };
-            frameCache.set(new WeakRef(removeFrame), frame);
-            addFrame(frameNumber, frame);
+        for (const frameSample of frames) {
+          const prefixedFrameSample = Object.fromEntries(
+            Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
+          );
+
+          const overlays = loadOverlays(prefixedFrameSample);
+          overlays.forEach((overlay) => {
+            streamSize += overlay.getSizeBytes();
           });
+          const frame = { sample: frameSample, overlays };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(frameSample.frame_number, frame);
+        }
 
         const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
 
