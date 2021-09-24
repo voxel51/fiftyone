@@ -1921,7 +1921,8 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
             % (field, label_type)
         )
 
-    indexes_expr = F("frames").reduce(reduce_expr, [])
+    # union() removes duplicates
+    indexes_expr = F("frames").reduce(reduce_expr, []).union()
 
     set_pipeline = [{"$set": {"_indexes": indexes_expr.to_mongo()}}]
     label_filter = (F("$_indexes") != None) & F("$_indexes").contains(
