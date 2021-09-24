@@ -12,6 +12,7 @@ from datetime import datetime
 from itertools import groupby
 import logging
 import multiprocessing
+import multiprocessing.dummy
 import os
 import random
 import shutil
@@ -1780,7 +1781,7 @@ def _download_images(images_dir, image_ids, images, num_workers):
                 _do_download(task)
     else:
         with fou.ProgressBar(total=len(tasks), iters_str="images") as pb:
-            with multiprocessing.Pool(num_workers) as pool:
+            with multiprocessing.dummy.Pool(num_workers) as pool:
                 for _ in pool.imap_unordered(_do_download, tasks):
                     pb.update()
 

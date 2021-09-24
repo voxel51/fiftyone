@@ -11,6 +11,7 @@ from collections import defaultdict
 import csv
 import logging
 import multiprocessing
+import multiprocessing.dummy
 import os
 import random
 import warnings
@@ -1626,7 +1627,9 @@ def _download_images_if_necessary(
                 s3_client.download_file(_BUCKET_NAME, obj, filepath)
     else:
         with fou.ProgressBar(total=num_images, iters_str="images") as pb:
-            with multiprocessing.Pool(num_workers, _initialize_worker) as pool:
+            with multiprocessing.dummy.Pool(
+                num_workers, _initialize_worker
+            ) as pool:
                 for _ in pool.imap_unordered(_do_s3_download, inputs):
                     pb.update()
 

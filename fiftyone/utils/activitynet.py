@@ -8,8 +8,11 @@ dataset.
 |
 """
 import logging
+import multiprocessing
+import multiprocessing.dummy
 import os
 import random
+import time
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -138,6 +141,8 @@ def download_activitynet_split(
         logger.warning("Test split is unlabeled; ignoring classes requirement")
         classes = None
 
+    num_workers = _parse_num_workers(num_workers)
+
     videos_dir = os.path.join(dataset_dir, "data")
     anno_path = os.path.join(dataset_dir, "labels.json")
     raw_anno_path = os.path.join(dataset_dir, "raw_labels.json")
@@ -196,6 +201,7 @@ def download_activitynet_split(
         max_samples,
         seed,
         shuffle,
+        num_workers,
     )
 
     if not num_downloaded_samples:
@@ -233,6 +239,15 @@ def _get_downloaded_sample_ids(videos_dir):
             video_ids.append(video_id)
 
     return video_ids
+
+
+def _cleanup_partial_downloads(videos_dir):
+    video_filenames = os.listdir(videos_dir)
+    for vfn in video_filenames:
+        video_id, ext = os.path.splitext(vfn)
+        if ext != ".mp4":
+            logger.warning("Removing partially downloaded video %s...", vfn)
+            os.remove(os.path.join(videos_dir, vfn))
 
 
 def _get_matching_samples(raw_annotations, classes, split, max_duration):
@@ -277,6 +292,7 @@ def _downloaded_necessary_samples(
     max_samples,
     seed,
     shuffle,
+    num_workers,
 ):
     all_class_ids = list(all_class_samples.keys())
     set_all_ids = set(all_class_ids)
@@ -323,7 +339,11 @@ def _downloaded_necessary_samples(
             random.shuffle(not_dl_all_class_ids)
 
         downloaded_ids = _attempt_to_download(
-            videos_dir, not_dl_all_class_ids, all_class_samples, requested_num
+            videos_dir,
+            not_dl_all_class_ids,
+            all_class_samples,
+            requested_num,
+            num_workers,
         )
         num_downloaded_samples += len(downloaded_ids)
         requested_samples.update(
@@ -341,33 +361,62 @@ def _downloaded_necessary_samples(
             random.shuffle(not_dl_any_class_ids)
 
         downloaded_ids = _attempt_to_download(
-            videos_dir, not_dl_any_class_ids, any_class_samples, requested_num
+            videos_dir,
+            not_dl_any_class_ids,
+            any_class_samples,
+            requested_num,
+            num_workers,
         )
         num_downloaded_samples += len(downloaded_ids)
         requested_samples.update(
             {i: any_class_samples[i] for i in downloaded_ids}
         )
 
+    # Give buffer to let thread closed
+    time.sleep(2)
+    _cleanup_partial_downloads(videos_dir)
+
     return requested_samples, num_downloaded_samples
 
 
-def _attempt_to_download(videos_dir, ids, samples_info, num_samples):
+def _attempt_to_download(
+    videos_dir, ids, samples_info, num_samples, num_workers
+):
     downloaded = []
+    tasks = []
     for sample_id in ids:
         sample_info = samples_info[sample_id]
         url = sample_info["url"]
         output_path = os.path.join(videos_dir, "%s.mp4" % sample_id)
-        success, error = _do_download(url, output_path)
-        if not success:
-            continue
-        else:
-            downloaded.append(sample_id)
-            if num_samples is not None and len(downloaded) >= num_samples:
-                return downloaded
+        tasks.append((url, output_path, sample_id))
+    if num_workers == 1:
+        for url, output_path, sample_id in tasks:
+            is_success, _ = _do_download((url, output_path, sample_id))
+            if is_success:
+                downloaded.append(sample_id)
+                if num_samples is not None and len(downloaded) >= num_samples:
+                    return downloaded
+    else:
+        with fou.ProgressBar(total=num_samples, iters_str="videos") as pb:
+            with multiprocessing.dummy.Pool(num_workers) as pool:
+                for is_success, sample_id in pool.imap_unordered(
+                    _do_download, tasks
+                ):
+                    if is_success:
+                        if len(downloaded) < num_samples:
+                            downloaded.append(sample_id)
+                            pb.update()
+                    if (
+                        num_samples is not None
+                        and len(downloaded) >= num_samples
+                    ):
+                        return downloaded
+
     return downloaded
 
 
-def _do_download(url, output_path):
+def _do_download(args):
+    url, output_path, sample_id = args
     try:
         ydl_opts = {
             "outtmpl": output_path,
@@ -376,9 +425,9 @@ def _do_download(url, output_path):
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        return True, None
+        return True, sample_id
     except Exception as e:
-        return False, e
+        return False, sample_id
 
 
 def _write_annotations(matching_samples, anno_path, target_map, taxonomy):
@@ -405,6 +454,23 @@ def _convert_label_format(activitynet_labels, target_map, taxonomy):
         "taxonomy": taxonomy,
     }
     return fo_annots
+
+
+def _parse_num_workers(num_workers):
+    if num_workers is None:
+        if os.name == "nt":
+            # Default to 1 worker for Windows
+            return 1
+        else:
+            return multiprocessing.cpu_count()
+
+    elif not isinstance(num_workers, int) or num_workers < 1:
+        raise ValueError(
+            "The `num_workers` argument must be a positive integer or `None` "
+            "found %s" % str(type(num_workers))
+        )
+    else:
+        return num_workers
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {
