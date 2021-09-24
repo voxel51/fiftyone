@@ -465,10 +465,11 @@ def _write_support_clips(dataset, src_collection, field, other_fields=None):
     )
 
     src_dataset = src_collection._dataset
+    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
 
     project = {
         "_id": False,
-        "_sample_id": "$_id",
+        "_sample_id": "$" + id_field,
         "_media_type": True,
         "_rand": True,
         "filepath": True,
@@ -506,9 +507,11 @@ def _write_classification_clips(
             % (field, supported_types, label_type)
         )
 
+    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
+
     project = {
         "_id": False,
-        "_sample_id": "$_id",
+        "_sample_id": "$" + id_field,
         "_media_type": True,
         "_rand": True,
         "filepath": True,
@@ -538,7 +541,7 @@ def _write_classification_clips(
                     "_id": "$" + field + "._id",
                     "support": "$" + support_path,
                     field + "._cls": "Classification",
-                    "_rand": {"$rand": {}},  # @todo only needed when unwinding
+                    "_rand": {"$rand": {}},
                 }
             },
             {"$unset": support_path},
@@ -570,9 +573,11 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
 
+    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
+
     project = {
         "_id": False,
-        "_sample_id": "$_id",
+        "_sample_id": "$" + id_field,
         _tmp_field: True,
         "_media_type": True,
         "filepath": True,
@@ -647,9 +652,11 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
 
+    id_field = "_id" if not src_dataset._is_clips else "_sample_id"
+
     project = {
         "_id": False,
-        "_sample_id": "$_id",
+        "_sample_id": "$" + id_field,
         "_media_type": True,
         "filepath": True,
         "support": "$" + _tmp_field,
