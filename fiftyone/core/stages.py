@@ -5649,10 +5649,14 @@ class ToTrajectories(ViewStage):
 
         dataset = foz.load_zoo_dataset("quickstart-video")
 
-        # Create a trajectories view for each vehicle in the dataset
+        #
+        # Create a trajectories view for the vehicles in the dataset
+        #
+
         stage1 = fo.FilterLabels("frames.detections", F("label") == "vehicle")
         stage2 = fo.ToTrajectories("frames.detections")
         trajectories = dataset.add_stage(stage1).add_stage(stage2)
+
         print(trajectories)
 
     Args:

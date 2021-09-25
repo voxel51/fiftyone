@@ -4606,12 +4606,16 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("quickstart-video")
 
-            # Create a trajectories view for each vehicle in the dataset
+            #
+            # Create a trajectories view for the vehicles in the dataset
+            #
+
             trajectories = (
                 dataset
                 .filter_labels("frames.detections", F("label") == "vehicle")
                 .to_trajectories("frames.detections")
             )
+
             print(trajectories)
 
         Args:
