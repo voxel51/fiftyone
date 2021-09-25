@@ -325,28 +325,6 @@ class TrajectoriesView(ClipsView):
         )
 
     @property
-    def _base_view(self):
-        return self.__class__(
-            self._source_collection, self._clips_stage, self._clips_dataset,
-        )
-
-    @property
-    def _dataset(self):
-        return self._clips_dataset
-
-    @property
-    def _root_dataset(self):
-        return self._source_collection._root_dataset
-
-    @property
-    def _sample_cls(self):
-        return ClipView
-
-    @property
-    def _stages(self):
-        return self.__stages
-
-    @property
     def _all_stages(self):
         return (
             self._source_collection.view()._all_stages
