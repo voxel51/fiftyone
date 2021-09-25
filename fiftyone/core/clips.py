@@ -325,6 +325,10 @@ class TrajectoriesView(ClipsView):
         )
 
     @property
+    def _stages(self):
+        return self.__stages
+
+    @property
     def _all_stages(self):
         return (
             self._source_collection.view()._all_stages
