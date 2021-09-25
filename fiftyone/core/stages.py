@@ -19,7 +19,6 @@ import numpy as np
 
 import eta.core.utils as etau
 
-import fiftyone.core.clips as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
@@ -32,6 +31,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
+foc = fou.lazy_import("fiftyone.core.clips")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
 fov = fou.lazy_import("fiftyone.core.video")
@@ -5547,6 +5547,11 @@ class ToClips(ViewStage):
     @property
     def has_view(self):
         return True
+
+    @property
+    def field_or_expr(self):
+        """The field or expression defining how to extract the clips."""
+        return self._field_or_expr
 
     @property
     def config(self):

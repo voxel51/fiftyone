@@ -7,6 +7,8 @@ Defines the shared state between the FiftyOne App and backend.
 """
 import logging
 
+from mongoengine.base import document
+
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -18,7 +20,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from mongoengine.base import document
 
 
 logger = logging.getLogger(__name__)

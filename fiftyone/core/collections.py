@@ -4579,7 +4579,7 @@ class SampleCollection(object):
                 to perform the conversion
 
         Returns:
-            a :class:`fiftyone.core.video.FramesView`
+            a :class:`fiftyone.core.clips.ClipsView`
         """
         return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
 
