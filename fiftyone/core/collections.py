@@ -4584,6 +4584,55 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
 
     @view_stage
+    def to_trajectories(self, field, **kwargs):
+        """Creates a view that contains one clip for each unique object
+        trajectory defined by their ``(label, index)`` in a frame-level field
+        of a video collection.
+
+        The returned view will contain:
+
+        -   A ``sample_id`` field that records the sample ID from which each
+            clip was taken
+        -   A ``support`` field that records the ``[first, last]`` frame
+            support of each clip
+        -   A sample-level label field that records the ``label`` and ``index``
+            of each trajectory
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Create a trajectories view for each vehicle in the dataset
+            trajectories = (
+                dataset
+                .filter_labels("frames.detections", F("label") == "vehicle")
+                .to_trajectories("frames.detections")
+            )
+            print(trajectories)
+
+        Args:
+            field: a frame-level label list field of any of the following
+                types:
+                -   :class:`fiftyone.core.labels.Detections`
+                -   :class:`fiftyone.core.labels.Polylines`
+                -   :class:`fiftyone.core.labels.Keypoints`
+            config (None): an optional dict of keyword arguments for
+                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
+                to perform the conversion
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
+                to perform the conversion
+
+        Returns:
+            a :class:`fiftyone.core.clips.ClipsView`
+        """
+        return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
+
+    @view_stage
     def to_frames(self, **kwargs):
         """Creates a view that contains one sample per frame in the video
         collection.

@@ -5627,6 +5627,120 @@ class ToClips(ViewStage):
         ]
 
 
+class ToTrajectories(ViewStage):
+    """Creates a view that contains one clip for each unique object trajectory
+    defined by their ``(label, index)`` in a frame-level field of a video
+    collection.
+
+    The returned view will contain:
+
+    -   A ``sample_id`` field that records the sample ID from which each clip
+        was taken
+    -   A ``support`` field that records the ``[first, last]`` frame support of
+        each clip
+    -   A sample-level label field that records the ``label`` and ``index`` of
+        each trajectory
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        # Create a trajectories view for each vehicle in the dataset
+        stage1 = fo.FilterLabels("frames.detections", F("label") == "vehicle")
+        stage2 = fo.ToTrajectories("frames.detections")
+        trajectories = dataset.add_stage(stage1).add_stage(stage2)
+        print(trajectories)
+
+    Args:
+        field: a frame-level label list field of any of the following types:
+            -   :class:`fiftyone.core.labels.Detections`
+            -   :class:`fiftyone.core.labels.Polylines`
+            -   :class:`fiftyone.core.labels.Keypoints`
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+    """
+
+    def __init__(self, field, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
+        self._field = field
+        self._config = config
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def field(self):
+        """The label field for which to extract trajectories."""
+        return self._field
+
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "field": self._field,
+            "config": self._config,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
+            clips_dataset = foc.make_clips_dataset(
+                sample_collection, self._field, trajectories=True, **kwargs
+            )
+
+            state["name"] = clips_dataset.name
+            self._state = state
+        else:
+            clips_dataset = fod.load_dataset(name)
+
+        return foc.TrajectoriesView(sample_collection, self, clips_dataset)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["config", self._config],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field", "placeholder": "field",},
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
 class ToFrames(ViewStage):
     """Creates a view that contains one sample per frame in a video collection.
 
@@ -6067,6 +6181,7 @@ _STAGES = [
     ToPatches,
     ToEvaluationPatches,
     ToClips,
+    ToTrajectories,
     ToFrames,
 ]
 

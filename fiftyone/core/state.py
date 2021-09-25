@@ -14,6 +14,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
+import fiftyone.core.clips as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -83,7 +84,12 @@ class StateDescription(etas.Serializable):
 
                 if self.view is not None:
                     _view = self.view._serialize()
-                    _view_cls = etau.get_class_name(self.view)
+
+                    # @todo update App so this isn't needed
+                    if isinstance(self.view, foc.TrajectoriesView):
+                        _view_cls = etau.get_class_name(foc.ClipsView)
+                    else:
+                        _view_cls = etau.get_class_name(self.view)
 
                     # If the view uses a temporary dataset, we must use its
                     # media type and field schemas
