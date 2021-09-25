@@ -4624,9 +4624,6 @@ class SampleCollection(object):
                 -   :class:`fiftyone.core.labels.Detections`
                 -   :class:`fiftyone.core.labels.Polylines`
                 -   :class:`fiftyone.core.labels.Keypoints`
-            config (None): an optional dict of keyword arguments for
-                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
-                to perform the conversion
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
                 to perform the conversion
