@@ -73,9 +73,11 @@ class ClipsView(fov.DatasetView):
         if _stages is None:
             _stages = []
 
-        field = clips_stage._get_video_classification_field(source_collection)
+        classification_field = self._get_video_classification_field(
+            source_collection, clips_stage
+        )
 
-        self._classification_field = field
+        self._classification_field = classification_field
         self._source_collection = source_collection
         self._clips_stage = clips_stage
         self._clips_dataset = clips_dataset
@@ -88,6 +90,18 @@ class ClipsView(fov.DatasetView):
             self._clips_dataset,
             _stages=deepcopy(self.__stages),
         )
+
+    @staticmethod
+    def _get_video_classification_field(source_collection, clips_stage):
+        try:
+            fova.validate_collection_label_fields(
+                source_collection,
+                clips_stage.field_or_expr,
+                (fol.VideoClassification, fol.VideoClassifications),
+            )
+            return clips_stage.field_or_expr
+        except:
+            return None
 
     @property
     def _base_view(self):

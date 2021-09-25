@@ -5585,17 +5585,6 @@ class ToClips(ViewStage):
 
         return foc.ClipsView(sample_collection, self, clips_dataset)
 
-    def _get_video_classification_field(self, sample_collection):
-        try:
-            fova.validate_collection_label_fields(
-                sample_collection,
-                self._field_or_expr,
-                (fol.VideoClassification, fol.VideoClassifications),
-            )
-            return self._field_or_expr
-        except:
-            return None
-
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewExpression):
             return self._field_or_expr.to_mongo()
