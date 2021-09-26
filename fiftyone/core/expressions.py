@@ -2202,8 +2202,8 @@ class ViewExpression(object):
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
     def contains(self, values):
-        """Checks whether any of the given value(s) are in this expression,
-        which must resolve to an array.
+        """Checks whether this expression, which must resolve to an array,
+        contains any of the given values.
 
         Examples::
 
@@ -2245,6 +2245,209 @@ class ViewExpression(object):
             [ViewExpression({"$in": [value, self]}) for value in values]
         )
         return self.let_in(expr)
+
+    def is_subset(self, values):
+        """Checks whether this expression's contents, which must resolve to an
+        array, are a subset of the given array of array expression's values.
+
+        The arrays are treated as sets, so duplicate values are ignored.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b", "a", "b"],
+                        other_tags=["a", "b", "c"],
+                    )
+                ]
+            )
+
+            print(dataset.values(F("tags").is_subset(F("other_tags"))))
+
+        Args:
+            values: an iterable of values or an array :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if isinstance(values, ViewExpression):
+            other = values
+        else:
+            other = list(values)
+
+        return ViewExpression({"$setIsSubset": [self, other]})
+
+    def set_equals(self, *args):
+        """Checks whether this expression, which must resolve to an array,
+        contains the same distinct values as each of the given array(s) or
+        array expression(s).
+
+        The arrays are treated as sets, so all duplicates are ignored.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b", "a", "b"],
+                        other_tags=["a", "b", "b"],
+                    )
+                ]
+            )
+
+            print(dataset.values(F("tags").set_equals(F("other_tags"))))
+
+        Args:
+            *args: one or more arrays or :class:`ViewExpression` instances that
+                resolve to array expressions
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$setEquals": [self] + list(args)})
+
+    def unique(self):
+        """Returns an array containing the unique values in this expression,
+        which must resolve to an array.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b", "a", "b"],
+                    )
+                ]
+            )
+
+            print(dataset.values(F("tags").unique()))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return self.union()
+
+    def union(self, *args):
+        """Computes the set union of this expression, which must resolve to an
+        array, and the given array(s) or array expression(s).
+
+        The arrays are treated as sets, so all duplicates are removed.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b"],
+                        other_tags=["a", "c"]
+                    )
+                ]
+            )
+
+            print(dataset.values(F("tags").union(F("other_tags"))))
+            # [['a', 'b', 'c']]
+
+        Args:
+            *args: one or more arrays or :class:`ViewExpression` instances that
+                resolve to array expressions
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$setUnion": [self] + list(args)})
+
+    def intersection(self, *args):
+        """Computes the set intersection of this expression, which must resolve
+        to an array, and the given array(s) or array expression(s).
+
+        The arrays are treated as sets, so all duplicates are removed.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b"],
+                        other_tags=["a", "c"]
+                    )
+                ]
+            )
+
+            print(dataset.values(F("tags").intersection(F("other_tags"))))
+            # [['a']]
+
+        Args:
+            *args: one or more arrays or :class:`ViewExpression` instances that
+                resolve to array expressions
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$setIntersection": [self] + list(args)})
+
+    def difference(self, values):
+        """Computes the set difference of this expression, which must resolve
+        to an array, and the given array or array expression.
+
+        The arrays are treated as sets, so all duplicates are removed.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b"],
+                        other_tags=["a", "c"]
+                    )
+                ]
+            )
+
+            print(dataset.values(F("tags").difference(F("other_tags"))))
+            # [['b']]
+
+        Args:
+            values: an iterable of values or an array :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if isinstance(values, ViewExpression):
+            other = values
+        else:
+            other = list(values)
+
+        return ViewExpression({"$setDifference": [self, other]})
 
     def reverse(self):
         """Reverses the order of the elements in the expression, which must
@@ -2424,6 +2627,71 @@ class ViewExpression(object):
             {"$map": {"input": self, "as": "this", "in": expr}}
         )
 
+    def reduce(self, expr, init_val=0):
+        """Applies the given reduction to this expression, which must resolve
+        to an array, and returns the single value computed.
+
+        The provided ``expr`` must include the :const:`VALUE` expression to
+        properly define the reduction.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+            from fiftyone.core.expressions import VALUE
+
+            #
+            # Compute the number of keypoints in each sample of a dataset
+            #
+
+            dataset = fo.Dataset()
+            dataset.add_sample(
+                fo.Sample(
+                    filepath="image.jpg",
+                    keypoints=fo.Keypoints(
+                        keypoints=[
+                            fo.Keypoint(points=[(0, 0), (1, 1)]),
+                            fo.Keypoint(points=[(0, 0), (1, 0), (1, 1), (0, 1)]),
+                        ]
+                    )
+                )
+            )
+
+            view = dataset.set_field(
+                "keypoints.count",
+                F("$keypoints.keypoints").reduce(VALUE + F("points").length()),
+            )
+
+            print(view.first().keypoints.count)
+
+            #
+            # Generate a `list,of,labels` for the `predictions` of each sample
+            #
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            join_labels = F("detections").reduce(
+                VALUE.concat(",", F("label")), init_val=""
+            ).lstrip(",")
+
+            view = dataset.set_field("predictions.labels", join_labels)
+
+            print(view.first().predictions.labels)
+
+        Args:
+            expr: a :class:`ViewExpression` defining the reduction expression
+                to apply. Must contain the :const:`VALUE` expression
+            init_val (0): an initial value for the reduction
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        expr._freeze_prefix("$$this")
+        return ViewExpression(
+            {"$reduce": {"input": self, "initialValue": init_val, "in": expr}}
+        )
+
     def prepend(self, value):
         """Prepends the given value to this expression, which must resolve to
         an array.
@@ -2550,42 +2818,6 @@ class ViewExpression(object):
         """
         return ViewExpression({"$concatArrays": [self] + list(args)})
 
-    def union(self, *args):
-        """Takes the union of the given array(s) or array expression(s) to this
-        expression, which must resolve to an array.
-
-        The arrays are treated as sets, and all duplicates are removed.
-
-        Examples::
-
-            import fiftyone as fo
-            from fiftyone import ViewField as F
-
-            dataset = fo.Dataset()
-            dataset.add_samples(
-                [
-                    fo.Sample(
-                        filepath="image1.jpg",
-                        tags=["a", "b"],
-                        other_tags=["a", "c"]
-                    )
-                ]
-            )
-
-            # Sets `tags` as the union of `tags` and `other_tags`
-            view = dataset.set_field("tags", F("tags").union(F("other_tags")))
-
-            print(view.first().tags)
-
-        Args:
-            *args: one or more arrays or :class:`ViewExpression` instances that
-                resolve to array expressions
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        return ViewExpression({"$setUnion": [self] + list(args)})
-
     def sum(self):
         """Returns the sum of the values in this expression, which must resolve
         to a numeric array.
@@ -2683,71 +2915,6 @@ class ViewExpression(object):
             return ViewExpression({"$stdDevSamp": self})
 
         return ViewExpression({"$stdDevPop": self})
-
-    def reduce(self, expr, init_val=0):
-        """Applies the given reduction to this expression, which must resolve
-        to an array, and returns the single value computed.
-
-        The provided ``expr`` must include the :const:`VALUE` expression to
-        properly define the reduction.
-
-        Examples::
-
-            import fiftyone as fo
-            import fiftyone.zoo as foz
-            from fiftyone import ViewField as F
-            from fiftyone.core.expressions import VALUE
-
-            #
-            # Compute the number of keypoints in each sample of a dataset
-            #
-
-            dataset = fo.Dataset()
-            dataset.add_sample(
-                fo.Sample(
-                    filepath="image.jpg",
-                    keypoints=fo.Keypoints(
-                        keypoints=[
-                            fo.Keypoint(points=[(0, 0), (1, 1)]),
-                            fo.Keypoint(points=[(0, 0), (1, 0), (1, 1), (0, 1)]),
-                        ]
-                    )
-                )
-            )
-
-            view = dataset.set_field(
-                "keypoints.count",
-                F("$keypoints.keypoints").reduce(VALUE + F("points").length()),
-            )
-
-            print(view.first().keypoints.count)
-
-            #
-            # Generate a `list,of,labels` for the `predictions` of each sample
-            #
-
-            dataset = foz.load_zoo_dataset("quickstart")
-
-            join_labels = F("detections").reduce(
-                VALUE.concat(",", F("label")), init_val=""
-            ).lstrip(",")
-
-            view = dataset.set_field("predictions.labels", join_labels)
-
-            print(view.first().predictions.labels)
-
-        Args:
-            expr: a :class:`ViewExpression` defining the reduction expression
-                to apply. Must contain the :const:`VALUE` expression
-            init_val (0): an initial value for the reduction
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        expr._freeze_prefix("$$this")
-        return ViewExpression(
-            {"$reduce": {"input": self, "initialValue": init_val, "in": expr}}
-        )
 
     def join(self, delimiter):
         """Joins the elements of this expression, which must resolve to a
