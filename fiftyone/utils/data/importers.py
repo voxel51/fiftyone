@@ -1466,22 +1466,26 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         if empty_import:
             #
-            # The `dataset` we're importing into is empty, so we mostly replace
-            # its backing document with `dataset_dict`
+            # The `dataset` we're importing into is empty, so we replace its
+            # backing document with `dataset_dict`, except for the
+            # metadata-related fields listed below, which we keep in `dataset`
             #
             # Note that we must work with dicts instead of `DatasetDocument`s
             # here because the import may need migration
             #
+            doc = dataset._doc
             dataset_dict.update(
                 dict(
-                    _id=dataset._doc.id,
-                    name=dataset._doc.name,
-                    sample_collection_name=dataset._doc.sample_collection_name,
-                    persistent=dataset._doc.persistent,
+                    _id=doc.id,
+                    name=doc.name,
+                    persistent=doc.persistent,
+                    created_at=doc.created_at,
+                    last_loaded_at=doc.last_loaded_at,
+                    sample_collection_name=doc.sample_collection_name,
                 )
             )
 
-            # RunResults are imported separately
+            # Run results are imported separately
 
             for run_doc in dataset_dict.get("evaluations", {}).values():
                 run_doc["results"] = None
@@ -1552,7 +1556,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import RunResults
+        # Import Run results
         #
 
         if empty_import:

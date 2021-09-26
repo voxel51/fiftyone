@@ -319,23 +319,33 @@ Print information about FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets info [-h] NAME
+    fiftyone datasets info [-h] [-s FIELD] [-r] [NAME]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME        the name of the dataset
+      NAME                  the name of a dataset
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help            show this help message and exit
+      -s FIELD, --sort-by FIELD
+                            a field to sort the dataset rows by
+      -r, --reverse         whether to print the results in reverse order
 
 **Examples**
 
 .. code-block:: shell
 
-    # Print information about the given dataset
+    # Print basic information about all datasets
+    fiftyone datasets info
+    fiftyone datasets info --sort-by created_at
+    fiftyone datasets info --sort-by name --reverse
+
+.. code-block:: shell
+
+    # Print information about a specific dataset
     fiftyone datasets info <name>
 
 .. _cli-fiftyone-datasets-stats:

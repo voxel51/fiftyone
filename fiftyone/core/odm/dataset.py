@@ -13,6 +13,7 @@ from fiftyone.core.fields import (
     Field,
     BooleanField,
     ClassesField,
+    DateTimeField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
@@ -187,22 +188,24 @@ class DatasetDocument(Document):
 
     meta = {"collection": "datasets"}
 
-    media_type = StringField()
     name = StringField(unique=True, required=True)
-    sample_collection_name = StringField(unique=True, required=True)
+    version = StringField(required=True, null=True)
+    created_at = DateTimeField()
+    last_loaded_at = DateTimeField()
     persistent = BooleanField(default=False)
+    media_type = StringField()
     info = DictField()
+    classes = DictField(ClassesField())
+    default_classes = ClassesField()
+    mask_targets = DictField(TargetsField())
+    default_mask_targets = TargetsField()
+    sample_collection_name = StringField(unique=True, required=True)
+    sample_fields = EmbeddedDocumentListField(
+        document_type=SampleFieldDocument
+    )
+    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
     annotation_runs = DictField(
         EmbeddedDocumentField(document_type=RunDocument)
     )
     brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
     evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
-    sample_fields = EmbeddedDocumentListField(
-        document_type=SampleFieldDocument
-    )
-    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    classes = DictField(ClassesField())
-    default_classes = ClassesField()
-    mask_targets = DictField(TargetsField())
-    default_mask_targets = TargetsField()
-    version = StringField(required=True, null=True)

@@ -7,6 +7,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
+from datetime import datetime
 import json
 import os
 import subprocess
@@ -383,20 +384,83 @@ class DatasetsInfoCommand(Command):
 
     Examples::
 
-        # Print information about the given dataset
+        # Print basic information about all datasets
+        fiftyone datasets info
+        fiftyone datasets info --sort-by created_at
+        fiftyone datasets info --sort-by name --reverse
+
+        # Print information about a specific dataset
         fiftyone datasets info <name>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name", nargs="?", metavar="NAME", help="the name of a dataset",
+        )
+        parser.add_argument(
+            "-s",
+            "--sort-by",
+            metavar="FIELD",
+            default="last_loaded_at",
+            help="a field to sort the dataset rows by",
+        )
+        parser.add_argument(
+            "-r",
+            "--reverse",
+            action="store_true",
+            help="whether to print the results in reverse order",
         )
 
     @staticmethod
     def execute(parser, args):
-        dataset = fod.load_dataset(args.name)
-        print(dataset)
+        if args.name:
+            _print_dataset_info(args.name)
+        else:
+            _print_all_dataset_info(args.sort_by, args.reverse)
+
+
+def _print_dataset_info(name):
+    dataset = fod.load_dataset(name)
+    print(dataset)
+
+
+def _print_all_dataset_info(sort_by, reverse):
+    info = fod.list_datasets(info=True)
+
+    headers = [
+        "name",
+        "created_at",
+        "last_loaded_at",
+        "version",
+        "persistent",
+        "media_type",
+        "num_samples",
+    ]
+
+    if sort_by in headers:
+        key = lambda d: (d[sort_by] is not None, d[sort_by])
+        info = sorted(info, key=key, reverse=not reverse)
+    else:
+        print("Ignoring invalid sort-by field '%s'" % sort_by)
+
+    records = []
+    for i in info:
+        i["persistent"] = "\u2713" if i["persistent"] else ""
+        records.append(tuple(_format_cell(i[key]) for key in headers))
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+def _format_cell(cell):
+    if cell is None:
+        return "???"
+
+    if isinstance(cell, datetime):
+        return cell.replace(microsecond=0)
+
+    return cell
 
 
 class DatasetsStatsCommand(Command):
