@@ -2260,7 +2260,7 @@ class ViewExpression(object):
 
     def is_subset(self, values):
         """Checks whether this expression's contents, which must resolve to an
-        array, are a subset of the given array or array expression's values.
+        array, are a subset of the given array or array expression's contents.
 
         The arrays are treated as sets, so duplicate values are ignored.
 
