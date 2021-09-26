@@ -2281,9 +2281,11 @@ class ViewExpression(object):
             )
 
             print(dataset.values(F("tags").is_subset(F("other_tags"))))
+            # [True]
 
         Args:
-            values: an iterable of values or an array :class:`ViewExpression`
+            values: an iterable of values or a :class:`ViewExpression` that
+                resolves to an array
 
         Returns:
             a :class:`ViewExpression`
@@ -2319,6 +2321,7 @@ class ViewExpression(object):
             )
 
             print(dataset.values(F("tags").set_equals(F("other_tags"))))
+            # [True]
 
         Args:
             *args: one or more arrays or :class:`ViewExpression` instances that
@@ -2349,6 +2352,7 @@ class ViewExpression(object):
             )
 
             print(dataset.values(F("tags").unique()))
+            # [['a', 'b']]
 
         Returns:
             a :class:`ViewExpression`
@@ -2449,7 +2453,8 @@ class ViewExpression(object):
             # [['b']]
 
         Args:
-            values: an iterable of values or an array :class:`ViewExpression`
+            values: an iterable of values or a :class:`ViewExpression` that
+                resolves to an array
 
         Returns:
             a :class:`ViewExpression`
