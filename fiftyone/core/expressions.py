@@ -2201,9 +2201,12 @@ class ViewExpression(object):
         """
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
-    def contains(self, values):
+    def contains(self, values, all=False):
         """Checks whether this expression, which must resolve to an array,
         contains any of the given values.
+
+        Pass ``all=True`` to require that this expression contains all of the
+        given values.
 
         Examples::
 
@@ -2212,43 +2215,52 @@ class ViewExpression(object):
             from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
+            print(dataset.count())
 
             # Only contains samples with a "cat" prediction
             view = dataset.match(
-                F("predictions.detections").map(F("label")).contains("cat")
+                F("predictions.detections.label").contains("cat")
             )
-
-            print(dataset.count())
             print(view.count())
 
             # Only contains samples with "cat" or "dog" predictions
             view = dataset.match(
-                F("predictions.detections").map(F("label")).contains(["cat", "dog"])
+                F("predictions.detections.label").contains(["cat", "dog"])
             )
+            print(view.count())
 
-            print(dataset.count())
+            # Only contains samples with "cat" and "dog" predictions
+            view = dataset.match(
+                F("predictions.detections.label").contains(["cat", "dog"], all=True)
+            )
             print(view.count())
 
         Args:
-            values: a value or iterable of values, which may be
-                :class:`ViewExpression` instances
+            values: a value, iterable of values, or :class:`ViewExpression`
+                that resolves to an array of values
+            all (False): whether this expression must contain all (True) or
+                any (False) of the given values
 
         Returns:
             a :class:`ViewExpression`
         """
-        if isinstance(values, ViewExpression) or not etau.is_container(values):
-            values = [values]
-        else:
+        if not isinstance(values, ViewExpression):
+            if not etau.is_container(values):
+                return ViewExpression({"$in": [values, self]})
+
             values = list(values)
 
-        expr = ViewExpression.any(
-            [ViewExpression({"$in": [value, self]}) for value in values]
-        )
-        return self.let_in(expr)
+        if not all:
+            return self.intersection(values).length() > 0
+
+        if not isinstance(values, ViewExpression):
+            values = ViewExpression(values)
+
+        return values.is_subset(self)
 
     def is_subset(self, values):
         """Checks whether this expression's contents, which must resolve to an
-        array, are a subset of the given array of array expression's values.
+        array, are a subset of the given array or array expression's values.
 
         The arrays are treated as sets, so duplicate values are ignored.
 
