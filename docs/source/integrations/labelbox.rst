@@ -9,16 +9,16 @@ Labelbox Integration
 image and video annotation tools available, and we've made it easy to upload
 your data directly from FiftyOne to Labelbox for labeling.
 
-You can `create a free Labelbox account <https://app.labelbox.com/signin>`_ to
+You can create a  `free Labelbox account <https://app.labelbox.com/signin>`_ to
 upload and annotate raw data in the user-friendly Labelbox editor. FiftyOne
 provides :ref:`simple setup <labelbox-setup>` instructions that you can use to
 specify the necessary API key and server endpoint to use.
 
 If you have a `paid Labelbox account <https://labelbox.com/pricing>`_, then you
-can also take advantage of the 
+can also take advantage of
 `Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
-feature to upload existing labels from your FiftyOne Datasets to edit them
-directly without needing to annotate them from scratch.
+to upload existing labels from your FiftyOne Datasets to edit them directly
+without needing to annotate them from scratch.
 
 FiftyOne provides an API to create projects, upload data, define label schemas,
 and download annotations using Labelbox, all programmatically in Python. All of
