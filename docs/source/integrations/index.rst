@@ -63,19 +63,10 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: Labelbox
-    :description: Use our Labelbox integration to annotate your FiftyOne datasets in the elegant Labelbox editor.
+    :description: Use our Labelbox integration to annotate your FiftyOne datasets using the Labelbox platform.
     :link: labelbox.html
     :image: ../_static/images/integrations/labelbox.jpeg
     :tags: Annotation
-
-.. Upcoming integrations :)
-
-    .. customcarditem::
-        :header: Scale AI
-        :description: Use our Scale integration to easily annotate and edit your FiftyOne datasets.
-        :link: ../api/fiftyone.utils.scale.html
-        :image: https://voxel51.com/images/integrations/scale-128.png
-        :tags: Annotation
 
 .. End of integrations cards
 
