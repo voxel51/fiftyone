@@ -19,6 +19,7 @@ import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
 
 import {
   FrameLooker,
+  freeVideos,
   ImageLooker,
   VideoLooker,
   zoomAspectRatio,
@@ -354,6 +355,7 @@ export default React.memo(() => {
 
     samples = new Map();
     lookers.reset();
+    freeVideos();
     sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();

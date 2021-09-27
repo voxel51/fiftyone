@@ -69,6 +69,7 @@ import { zoomToContent } from "./zoom";
 import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
+export { freeVideos } from "./elements/util";
 
 const labelsWorker = createWorker();
 
@@ -1013,12 +1014,11 @@ export class VideoLooker extends Looker<VideoState> {
       hideSampleOverlays = frameNumber < start || frameNumber > end;
     }
 
-    const overlays = hideSampleOverlays ? [] : this.sampleOverlays;
-    let pluckedOverlays = this.pluckedOverlays;
+    let pluckedOverlays = hideSampleOverlays ? [] : this.sampleOverlays;
     if (this.hasFrame(state.frameNumber)) {
       const frame = this.frames.get(state.frameNumber)?.deref();
       if (frame !== undefined) {
-        pluckedOverlays = [...overlays, ...frame.overlays];
+        pluckedOverlays = [...pluckedOverlays, ...frame.overlays];
       }
     }
 
