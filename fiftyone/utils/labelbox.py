@@ -50,14 +50,13 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             media files on disk to upload
         url (None): the url of the Labelbox server
         api_key (None): the Labelbox API key
-        project_name (None): the name of the project that will be created,
-            defaults to FiftyOne_<dataset-name>
-        upload_annotations (False): whether to upload annotations to Labelbox.
-            This is considered "Model Assisted Labeling" and is only available
-            for paid Labelbox accounts
-        invite_users ([]): a list of email and role tuples specifying the users
-            to invite and their roles in the created project. Options for roles
-            are ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]
+        project_name (None): the name of the Labelbox project. The default is
+            ``"FiftyOne_<dataset_name>"``
+        members (None): an optional list of ``(email, role)`` tuples specifying
+            the email addresses and roles of users to add to the project. If a
+            user is not a member of the project's organization, an email
+            invitation will be sent to them. The supported roles are
+            ``["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]``
     """
 
     def __init__(
@@ -68,23 +67,21 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         url=None,
         api_key=None,
         project_name=None,
-        upload_annotations=False,
-        invite_users=[],
+        members=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
 
         self.url = url
         self.project_name = project_name
-        self.upload_annotations = upload_annotations
-        self.invite_users = invite_users
+        self.members = members
 
         # store privately so it isn't serialized
         self._api_key = api_key
 
-        # @todo Support _classes_as_attrs=False which allows classes to be
-        # stored at the top level when annotating a
-        # single label field rather than as an attribute under the label field
+        # @todo support `_classes_as_attrs=False`, which allows classes to be
+        # stored at the top level when annotating a single label field rather
+        # than as an attribute under the label field
         self._classes_as_attrs = True
 
     @property
@@ -96,10 +93,8 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self._api_key = value
 
     @property
-    def _requires_experimental(self):
-        """If the Labelbox client that gets created requires experimental
-        features based on the given configuration"""
-        if self.invite_users:
+    def _experimental(self):
+        if self.members:
             return True
 
         return False
@@ -110,30 +105,26 @@ class LabelboxBackend(foua.AnnotationBackend):
 
     @property
     def supported_label_types(self):
-        return {
-            fol.Classification,
-            fol.Classifications,
-            fol.Detection,
-            fol.Detections,
-            fol.Keypoint,
-            fol.Keypoints,
-            fol.Polyline,
-            fol.Polylines,
-            fol.Segmentation,
-        }
-
-    @property
-    def supported_scalar_types(self):
-        return {
-            fof.IntField,
-            fof.FloatField,
-            fof.StringField,
-            fof.BooleanField,
-        }
+        return [
+            "classification",
+            "classifications",
+            "detection",
+            "detections",
+            "instance",
+            "instances",
+            "polyline",
+            "polylines",
+            "polygon",
+            "polygons",
+            "keypoint",
+            "keypoints",
+            "segmentation",
+            "scalar",
+        ]
 
     @property
     def supported_attr_types(self):
-        return {"text", "select", "radio", "checkbox"}
+        return ["text", "select", "radio", "checkbox"]
 
     @property
     def default_attr_type(self):
@@ -147,85 +138,33 @@ class LabelboxBackend(foua.AnnotationBackend):
         return False
 
     def connect_to_api(self):
-        """Returns an API instance connected to the Labelbox server.
-
-        Returns:
-            a :class:`LabelboxAnnotationAPI`
-        """
         return LabelboxAnnotationAPI(
             self.config.name,
             self.config.url,
             api_key=self.config.api_key,
-            _requires_experimental=self.config._requires_experimental,
+            _experimental=self.config._experimental,
         )
 
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
 
-        project_id = api.upload_samples(
-            samples,
-            label_schema=self.config.label_schema,
-            media_field=self.config.media_field,
-            classes_as_attrs=self.config._classes_as_attrs,
-            project_name=self.config.project_name,
-            invite_users=self.config.invite_users,
-        )
-
-        id_map = self._build_label_id_map(
-            samples, store_label_ids=self.config.upload_annotations
-        )
-
-        is_video = samples.media_type == fomm.VIDEO
+        logger.info("Uploading samples to Labelbox...")
+        results = api.upload_samples(samples, self)
+        logger.info("Upload complete")
 
         if launch_editor:
-            editor_url = api.editor_url(project_id)
-            logger.info("Launching editor at '%s'...", editor_url)
-            api.launch_editor(url=editor_url)
+            results.launch_editor()
 
-        return LabelboxAnnotationResults(
-            samples, self.config, id_map, project_id, is_video, backend=self
-        )
+        return results
 
     def download_annotations(self, results):
         api = self.connect_to_api()
 
         logger.info("Downloading labels from Labelbox...")
-        annotations = api.download_annotations(
-            results.config.label_schema,
-            results.project_id,
-            is_video=results.is_video,
-            classes_as_attrs=results.config._classes_as_attrs,
-        )
+        annotations = api.download_annotations(results)
         logger.info("Download complete")
 
         return annotations
-
-    def _build_label_id_map(self, samples, store_label_ids=True):
-        id_map = {}
-        for label_field, label_info in self.config.label_schema.items():
-            if (
-                not label_info["existing_field"]
-                or label_info["type"] == "scalar"
-            ):
-                continue
-
-            if store_label_ids:
-                _, label_id_path = samples._get_label_field_path(
-                    label_field, "id"
-                )
-                sample_ids, label_ids = samples.values(["id", label_id_path])
-
-                # Flatten frames lists
-                for ind, ids in enumerate(label_ids):
-                    if ids is not None and ids and isinstance(ids[0], list):
-                        ids = [i for frame in ids for i in frame]
-                        label_ids[ind] = ids
-
-                id_map[label_field] = dict(zip(sample_ids, label_ids))
-            else:
-                id_map[label_field] = {sid: [] for sid in samples.values("id")}
-
-        return id_map
 
 
 class LabelboxAnnotationAPI(foua.AnnotationAPI):
@@ -243,50 +182,42 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
     Args:
         name: the name of the backend
-        url: url of the Labelbox serverPI
+        url: url of the Labelbox server
         api_key (None): the Labelbox API key
     """
 
-    def __init__(self, name, url, api_key=None, _requires_experimental=False):
-        self._name = name
+    def __init__(self, name, url, api_key=None, _experimental=False):
         if "://" not in url:
             protocol = "http"
             base_url = url
         else:
             protocol, base_url = url.split("://")
+
+        self._name = name
         self._url = base_url
         self._protocol = protocol
         self._api_key = api_key
-        self._requires_experimental = _requires_experimental
+        self._experimental = _experimental
+        self._roles = None
 
-        self._setup()
-
-        self._tools_per_label_type = {
-            "detections": [lbo.Tool.Type.BBOX],
-            "detection": [lbo.Tool.Type.BBOX],
-            "segmentation": [lbo.Tool.Type.SEGMENTATION],
-            "segmentations": [lbo.Tool.Type.SEGMENTATION],
-            "_segmentations_and_detections": [
-                lbo.Tool.Type.BBOX,
-                lbo.Tool.Type.SEGMENTATION,
-            ],
-            "_segmentation_and_detection": [
-                lbo.Tool.Type.BBOX,
-                lbo.Tool.Type.SEGMENTATION,
-            ],
-            "semantic_segmentation": [lbo.Tool.Type.SEGMENTATION],
-            "polyline": [lbo.Tool.Type.LINE],
-            "polylines": [lbo.Tool.Type.LINE],
-            "polygon": [lbo.Tool.Type.POLYGON],
-            "polygons": [lbo.Tool.Type.POLYGON],
-            "keypoint": [lbo.Tool.Type.POINT],
-            "keypoints": [lbo.Tool.Type.POINT],
-            "classification": [lbo.Classification],
-            "classifications": [lbo.Classification],
-            "scalar": [lbo.Classification],
+        self._tool_types_map = {
+            "detections": lbo.Tool.Type.BBOX,
+            "detection": lbo.Tool.Type.BBOX,
+            "instance": lbo.Tool.Type.SEGMENTATION,
+            "instances": lbo.Tool.Type.SEGMENTATION,
+            "segmentation": lbo.Tool.Type.SEGMENTATION,
+            "polyline": lbo.Tool.Type.LINE,
+            "polylines": lbo.Tool.Type.LINE,
+            "polygon": lbo.Tool.Type.POLYGON,
+            "polygons": lbo.Tool.Type.POLYGON,
+            "keypoint": lbo.Tool.Type.POINT,
+            "keypoints": lbo.Tool.Type.POINT,
+            "classification": lbo.Classification,
+            "classifications": lbo.Classification,
+            "scalar": lbo.Classification,
         }
 
-        self._roles = None
+        self._setup()
 
     def _setup(self):
         if not self._url:
@@ -302,13 +233,14 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self._client = lb.client.Client(
             api_key=api_key,
             endpoint=self.base_graphql_url,
-            enable_experimental=self._requires_experimental,
+            enable_experimental=self._experimental,
         )
 
     @property
     def roles(self):
         if self._roles is None:
             self._roles = self._client.get_roles()
+
         return self._roles
 
     @property
@@ -344,12 +276,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
     def get_project_users(self, project=None, project_id=None):
         """Returns a list of users that are assigned to the given project.
-        
+
+        Provide either ``project`` or ``project_id`` to this method.
+
         Args:
-            project: the ``labelbox.schema.project.Project`` for which to get
-                the user IDs
-            project_id: the ID of the ``labelbox.schema.project.Project`` for
-                which to get the user IDs
+            project: a ``labelbox.schema.project.Project``
+            project_id: the project ID
+
         Returns:
             a list of ``labelbox.schema.user.User`` objects
         """
@@ -367,71 +300,65 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         for user in users:
             if project in user.projects():
                 project_users.append(user)
+
         return users
 
-    def invite_user(self, project, email, role):
-        """Invite a given user to the project to perform a specific role. Users
-        are always added with project-level permissions, not organization-level
-        permissions.
-        
-        Possible roles are:
-        
-            ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]
+    def add_member(self, project, email, role):
+        """Adds a member to the given Labelbox project with the given
+        project-level role.
 
-        Note: This function can only be used if the API was initialized with
-            `_requires_experimental=True`
+        If the user is not a member of the project's parent organization, an
+        email invitivation will be sent.
 
         Args:
-            project: the ``labelbox.schema.project.Project`` to which to invite the user
-            email: the email of the user to which to send the invite
-            role: the string indicating the role of the user
-
-        Returns:
-            the invitation object for this user
+            project: the ``labelbox.schema.project.Project``
+            email: the email of the user
+            role: the role for the user. Supported values are
+                ``["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]``
         """
-        if not self._requires_experimental:
-            logger.warning(
-                "The method `invite_user()` can only be used if the "
-                "`LabelboxAnnotationAPI` object was initialized with "
-                "`_requires_experimental=True`"
+        if not self._experimental:
+            raise ValueError(
+                "This method can only be used if the `LabelboxAnnotationAPI` "
+                "object was initialized with `_experimental=True`"
             )
-            return None
 
         if role not in self.roles or role == "NONE":
-            raise ValueError("Users with role `%s` is not supported" % role)
+            raise ValueError("Unsupported user role '%s'" % role)
 
-        organization = self._client.get_organization()
-        existing_users = {u.email: u for u in organization.users()}
         role_id = self.roles[role]
+        organization = self._client.get_organization()
+
+        existing_users = {u.email: u for u in organization.users()}
         if email in existing_users:
-            logger.info(
-                "User %s is already in the organization, updating their "
-                "role...",
-                email,
-            )
             user = existing_users[email]
             user.upsert_project_role(project, role_id)
-            return None
+            return
 
         limit = organization.invite_limit()
         if limit.remaining == 0:
             logger.warning(
-                "Organization has reached the limit of %d invites. User %s will "
-                "not be invited for role %s." % (limit.limit, email, role)
+                "Your organization has reached its limit of %d members. "
+                "Cannot invite new member %s to project '%s'",
+                limit.limit,
+                email,
+                project.name,
             )
-            return None
+            return
 
         project_role = lbs.organization.ProjectRole(
             project=project, role=role_id
         )
 
-        invite = organization.invite_user(
+        organization.invite_user(
             email, self.roles["NONE"], project_roles=[project_role]
         )
-        return invite
 
     def list_datasets(self):
-        """List the IDs of all datasets associated to your Labelbox account."""
+        """Retrieves the list of datasets in your Labelbox account.
+
+        Returns:
+            a list of dataset IDs
+        """
         datasets = self._client.get_datasets()
         return [d.uid for d in datasets]
 
@@ -448,21 +375,23 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 dataset.delete()
 
     def list_projects(self):
-        """List the IDs of all projects associated to your Labelbox account."""
+        """Retrieves the list of projects in your Labelbox account.
+
+        Returns:
+            a list of project IDs
+        """
         projects = self._client.get_projects()
         return [p.uid for p in projects]
 
     def get_project(self, project_id):
-        """Returns the ``labelbox.schema.project.Project`` corresponding to the
-        given ID.
+        """Retrieves the ``labelbox.schema.project.Project`` for the project
+        with the given ID.
 
         Args:
-            project_id: the unique ID of the project to get from the Labelbox
-                client
-        
+            project_id: the project ID
+
         Returns:
-            the ``labelbox.schema.project.Project`` corresponding to the given
-                ID
+            a ``labelbox.schema.project.Project``
         """
         return self._client.get_project(project_id)
 
@@ -470,14 +399,16 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         """Deletes the given project from the Labelbox server.
 
         Args:
-            project_id: the project id
+            project_id: the project ID
             delete_datasets: whether to delete the attached datasets as well
         """
-        logger.info("Deleting project %s...", str(project_id))
+        logger.info("Deleting project '%s'...", project_id)
         project = self._client.get_project(project_id)
+
         if delete_datasets:
             for dataset in project.datasets():
                 dataset.delete()
+
         project.delete()
 
     def delete_projects(self, project_ids, delete_datasets=True):
@@ -487,40 +418,29 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_ids: an iterable of project IDs
             delete_datasets: whether to delete the attached datasets as well
         """
-        logger.info("Deleting projects...")
-        with fou.ProgressBar() as pb:
-            for project_id in pb(list(project_ids)):
-                self.delete_project(
-                    project_id, delete_datasets=delete_datasets
-                )
+        for project_id in project_ids:
+            self.delete_project(project_id, delete_datasets=delete_datasets)
 
-    @classmethod
-    def upload_data(
-        cls, samples, lb_client, lb_dataset, media_field="filepath"
-    ):
-        """
-        Upload sample media to a given Labelbox client and dataset. This method
-        uses ``labelbox.schema.dataset.Dataset.create_data_rows()`` to add
-        data in batches and match the external id of the DataRow to the Sample
-        id.
+    def upload_data(self, samples, lb_dataset, media_field="filepath"):
+        """Uploads the media for the given samples to Labelbox.
+
+        This method uses ``labelbox.schema.dataset.Dataset.create_data_rows()``
+        to add data in batches, and sets the external ID of each DataRow to the
+        ID of the corresponding sample.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
                 containing the media to upload
-            lb_client: a ``labelbox.client.Client`` to which to upload the
-                media files
             lb_dataset: a ``labelbox.schema.dataset.Dataset`` to which to
                 add the media
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
-
-        Returns:
-            the Labelbox dataset data row creation task
         """
-        upload_info = []
         media_paths, sample_ids = samples.values([media_field, "id"])
+
+        upload_info = []
         for media_path, sample_id in zip(media_paths, sample_ids):
-            item_url = lb_client.upload_file(media_path)
+            item_url = self._client.upload_file(media_path)
             upload_info.append(
                 {
                     lb.DataRow.row_data: item_url,
@@ -531,87 +451,160 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         task = lb_dataset.create_data_rows(upload_info)
         task.wait_till_done()
 
-    def upload_samples(
-        self,
-        samples,
-        label_schema,
-        media_field="filepath",
-        classes_as_attrs=True,
-        project_name=None,
-        upload_annotations=False,
-        invite_users=[],
-    ):
-        """Parse the given samples and use the label schema to create project,
-        upload data, and upload formatted annotations to Labelbox.
+    def upload_samples(self, samples, backend):
+        """Uploads the given samples to Labelbox according to the given
+        backend's annotation and server configuration.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` to
-                upload to Labelbox
-            label_schema: a dictionary containing the description of label
-                fields, classes and attribute to annotate
-            media_field ("filepath"): string field name containing the paths to
-                media files on disk to upload
-            classes_as_attrs (True): whether to show every class at the top
-                level of the editor (False) or whether to show the label field
-                at the top level and annotate the class as a required
-                attribute (True)
-            project_name (None): the name of the project that will be created,
-                defaults to FiftyOne_<dataset-name>
-            upload_annotations (False): whether to upload annotations to Labelbox.
-                This is considered "Model Assisted Labeling" and is only
-                available for paid Labelbox accounts
-            invite_users ([]): a list of (email, role) tuples specifying the users
-                to invite and their roles in the created project. Options for roles
-                are ["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]
+                upload to CVAT
+            backend: a :class:`LabelboxBackend` to use to perform the upload
 
-        Returns: 
-            the ID of the created Labelbox project
+        Returns:
+            a :class:`LabelboxAnnotationResults`
         """
+        config = backend.config
+        label_schema = config.label_schema
+        media_field = config.media_field
+        project_name = config.project_name
+        members = config.members
+        classes_as_attrs = config._classes_as_attrs
+
         if not classes_as_attrs:
-            # @todo
+            # @todo implement this
             raise NotImplementedError(
-                "Annotating classes at the top level is not yet supported."
+                "Annotating classes at the top level is not yet supported"
             )
+
+        # @todo implement this
+        for label_field, label_info in label_schema.items():
+            if label_info["existing_field"]:
+                raise NotImplementedError(
+                    "Uploading existing labels in field '%s' to Labelbox is "
+                    "not yet supported" % label_field
+                )
+
         if project_name is None:
             project_name = "FiftyOne_%s" % (
                 samples._root_dataset.name.replace(" ", "_"),
             )
 
         dataset = self._client.create_dataset(name=project_name)
-        self.upload_data(
-            samples, self._client, dataset, media_field=media_field,
-        )
+        self.upload_data(samples, dataset, media_field=media_field)
 
         project = self._setup_project(
-            project_name, dataset, label_schema, classes_as_attrs,
+            project_name, dataset, label_schema, classes_as_attrs
         )
 
-        for email, role in invite_users:
-            invite = self.invite_user(project, email, role)
+        if members:
+            for email, role in members:
+                self.add_member(project, email, role)
 
-        if upload_annotations:
-            # @todo Upload annotations for paid Labelbox users with the Model
-            # Assisted Labeling feature
+        id_map = {}
+        project_id = project.uid
+        is_video = samples.media_type == fomm.VIDEO
+
+        return LabelboxAnnotationResults(
+            samples, config, id_map, project_id, is_video, backend=backend
+        )
+
+    def download_annotations(self, results):
+        """Download the annotations from the Labelbox server for the given
+        results instance and parses them into the appropriate FiftyOne types.
+
+        Args:
+            results: a :class:`LabelboxAnnotationResults`
+
+        Returns:
+            the annotations dict
+        """
+        project_id = results.project_id
+        label_schema = results.config.label_schema
+        is_video = results.is_video
+        classes_as_attrs = results.config._classes_as_attrs
+
+        if not classes_as_attrs:
+            # @todo implement this
             raise NotImplementedError(
-                "Uploading annotations to Labelbox is not yet supported."
+                "Annotating classes at the top level is not yet supported"
             )
 
-        project_id = project.uid
+        project = self._client.get_project(project_id)
+        labels_json = self._download_project_labels(project=project)
 
-        return project_id
+        annotations = {}
+
+        if classes_as_attrs:
+            class_attr = "class_name"
+        else:
+            class_attr = None
+
+        for d in labels_json:
+            labelbox_id = d["DataRow ID"]
+            sample_id = d["External ID"]
+
+            if sample_id is None:
+                logger.warning(
+                    "Skipping DataRow '%s' with no sample ID", labelbox_id
+                )
+                continue
+
+            metadata = self._get_sample_metadata(project, sample_id)
+            if metadata is None:
+                logger.warning(
+                    "Skipping sample '%s' with no metadata", sample_id
+                )
+                continue
+
+            frame_size = (metadata["width"], metadata["height"])
+
+            if is_video:
+                video_d_list = self._get_video_labels(d["Label"])
+                frames = {}
+                for label_d in video_d_list:
+                    frame_number = label_d["frameNumber"]
+                    frames[frame_number] = _parse_image_labels(
+                        label_d, frame_size, class_attr=class_attr
+                    )
+
+                self._add_video_labels_to_results(
+                    annotations, frames, sample_id, label_schema
+                )
+
+            else:
+                labels_dict = _parse_image_labels(
+                    d["Label"], frame_size, class_attr=class_attr
+                )
+                annotations = self._add_labels_to_results(
+                    annotations, labels_dict, sample_id, label_schema
+                )
+
+        return annotations
+
+    def launch_editor(self, url=None):
+        """Launches the Labelbox editor in your default web browser.
+
+        Args:
+            url (None): an optional URL to open. By default, the base URL of
+                the server is opened
+        """
+        if url is None:
+            url = self.projects_url
+
+        webbrowser.open(url, new=2)
 
     def _setup_project(
         self, project_name, dataset, label_schema, classes_as_attrs
     ):
-        """Create a new Labelbox project, connect it to the dataset, and
-        construct the ontology and editor for the given schema.
-        """
         project = self._client.create_project(name=project_name)
         project.datasets.connect(dataset)
+
         self._setup_editor(project, label_schema, classes_as_attrs)
 
         if project.setup_complete is None:
-            raise ValueError("Labelbox project failed to be created")
+            raise ValueError(
+                "Failed to create Labelbox project '%s'" % project_name
+            )
 
         return project
 
@@ -625,9 +618,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         tools = []
         classifications = []
 
-        for label_field, schema_info in label_schema.items():
+        for label_field, label_info in label_schema.items():
             field_tools, field_classifications = self._create_ontology_tools(
-                schema_info, label_field, classes_as_attrs
+                label_info, label_field, classes_as_attrs
             )
             tools.extend(field_tools)
             classifications.extend(field_classifications)
@@ -638,21 +631,18 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project.setup(editor, ontology_builder.asdict())
 
     def _create_ontology_tools(
-        self, schema_info, label_field, classes_as_attrs
+        self, label_info, label_field, classes_as_attrs
     ):
-        tools = []
-        classifications = []
-        label_type = schema_info["type"]
-        classes = schema_info["classes"]
-        attr_schema = schema_info["attributes"]
-
+        label_type = label_info["type"]
+        classes = label_info["classes"]
+        attr_schema = label_info["attributes"]
         general_attrs = self._build_attributes(attr_schema)
 
         if label_type in ["scalar", "classification", "classifications"]:
+            tools = []
             classifications = self._build_classifications(
                 classes, label_field, general_attrs, label_type, label_field
             )
-
         else:
             tools = self._build_tools(
                 classes,
@@ -661,6 +651,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 general_attrs,
                 classes_as_attrs,
             )
+            classifications = []
 
         return tools, classifications
 
@@ -682,6 +673,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     options=options,
                 )
             attributes.append(attr)
+
         return attributes
 
     def _build_classifications(
@@ -692,7 +684,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         text entry for scalars without provided classes.
 
         Attributes are available for Classification and Classifications types
-        in nested dropdowns
+        in nested dropdowns.
         """
         classifications = []
         options = []
@@ -748,7 +740,18 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self, classes, label_field, label_type, general_attrs, classes_as_attrs
     ):
         tools = []
-        if not classes_as_attrs:
+
+        if classes_as_attrs:
+            tool_type = self._tool_types_map[label_type]
+            attributes = self._create_classes_as_attrs(classes, general_attrs)
+            tools.append(
+                lbo.Tool(
+                    name=label_field,
+                    tool=tool_type,
+                    classifications=attributes,
+                )
+            )
+        else:
             for c in classes:
                 if isinstance(c, dict):
                     subset_classes = c["classes"]
@@ -756,46 +759,27 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     subset_attrs = self._build_attributes(subset_attr_schema)
                     all_attrs = general_attrs + subset_attrs
                     for sc in subset_classes:
-                        tools.extend(
-                            self._build_tool_for_class(
-                                sc, label_type, all_attrs
-                            )
+                        tool = self._build_tool_for_class(
+                            sc, label_type, all_attrs
                         )
+                        tools.append(tool)
                 else:
-                    tools.extend(
-                        self._build_tool_for_class(
-                            c, label_type, general_attrs
-                        )
+                    tool = self._build_tool_for_class(
+                        c, label_type, general_attrs
                     )
-        else:
-            tool_types = self._tools_per_label_type[label_type]
-            attributes = self._create_classes_as_attrs(classes, general_attrs)
-            for tool_type in tool_types:
-                tools.append(
-                    lbo.Tool(
-                        name=label_field,
-                        tool=tool_type,
-                        classifications=attributes,
-                    )
-                )
+                    tools.append(tool)
+
         return tools
 
     def _build_tool_for_class(self, class_name, label_type, attributes):
-        tools = []
-        tool_types = self._tools_per_label_type[label_type]
-        for tool_type in tool_types:
-            tools.append(
-                lbo.Tool(
-                    name=str(class_name),
-                    tool=tool_type,
-                    classifications=attributes,
-                )
-            )
-        return tools
+        tool_type = self._tool_types_map[label_type]
+        return lbo.Tool(
+            name=str(class_name), tool=tool_type, classifications=attributes,
+        )
 
     def _create_classes_as_attrs(self, classes, general_attrs):
-        """Create a RADIO attribute for classes and format all class
-        specific attributes.
+        """Creates RADIO attributes for all classes and formats all
+        class-specific attributes.
         """
         options = []
         for c in classes:
@@ -805,151 +789,69 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     options.append(
                         lbo.Option(value=str(sc), options=subset_attrs)
                     )
-
             else:
                 options.append(lbo.Option(value=str(c)))
+
         classes_attr = lbo.Classification(
             class_type=lbo.Classification.Type.RADIO,
             instructions="class_name",
             options=options,
             required=True,
         )
-        attributes = [classes_attr] + general_attrs
-        return attributes
+
+        return [classes_attr] + general_attrs
 
     def _get_sample_metadata(self, project, sample_id):
         metadata = None
         for dataset in project.datasets():
             try:
-                metadata = dataset.data_row_for_external_id(
-                    sample_id
-                ).media_attributes
+                data_row = dataset.data_row_for_external_id(sample_id)
+                metadata = data_row.media_attributes
             except lb.exceptions.ResourceNotFoundError:
                 pass
+
         return metadata
-
-    def download_annotations(
-        self, label_schema, project_id, is_video, classes_as_attrs=True
-    ):
-        """Download annotations from the Labelbox server and parses them into the
-        appropriate FiftyOne types.
-
-        Args:
-            label_schema: a dictionary containing the description of label
-                fields, classes and attribute to annotate
-            project_id: the id of the project created by uploading samples
-            classes_as_attrs (True): whether to show every class at the top
-                level of the editor (False) or whether to show the label field
-                at the top level and annotate the class as a required
-                attribute (True)
-            is_video: boolean indicating whether the `samples` are a collection of
-                videos (True) or images (False)
-
-        Returns:
-            the label results dict
-        """
-        if not classes_as_attrs:
-            # @todo
-            raise NotImplementedError(
-                "Annotating classes at the top level is not yet supported."
-            )
-        project = self._client.get_project(project_id)
-        labels_json = self._download_project_labels(project=project)
-
-        results = {}
-        if classes_as_attrs:
-            class_attr = "class_name"
-        else:
-            class_attr = None
-
-        for d in labels_json:
-            labelbox_id = d["DataRow ID"]
-            sample_id = d["External ID"]
-            if sample_id is None:
-                logger.warning(
-                    "No sample id found for DataRow %s. " "Skipping...",
-                    labelbox_id,
-                )
-                continue
-
-            metadata = self._get_sample_metadata(project, sample_id)
-            if metadata is None:
-                logger.warning(
-                    "No metadata found for sample %s. Skipping...", sample_id
-                )
-                continue
-
-            if is_video:
-                frame_size = (
-                    metadata["width"],
-                    metadata["height"],
-                )
-                video_d_list = self._get_video_labels(d["Label"])
-                frames = {}
-                for label_d in video_d_list:
-                    frame_number = label_d["frameNumber"]
-                    frames[frame_number] = _parse_image_labels(
-                        label_d, frame_size, class_attr=class_attr
-                    )
-                results = self._add_video_labels_to_results(
-                    frames, sample_id, results, label_schema,
-                )
-
-            else:
-                frame_size = (metadata["width"], metadata["height"])
-                labels_dict = _parse_image_labels(
-                    d["Label"], frame_size, class_attr=class_attr
-                )
-                results = self._add_labels_to_results(
-                    labels_dict, sample_id, results, label_schema
-                )
-
-        return results
 
     def _get_video_labels(self, label_dict):
         url = label_dict["frames"]
-        headers = {"Authorization": f"Bearer {self._api_key}"}
+        headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
-        video_d_list = ndjson.loads(response.text)
-        return video_d_list
+        return ndjson.loads(response.text)
 
     def _download_project_labels(self, project_id=None, project=None):
         if project is None:
             if project_id is None:
                 raise ValueError(
-                    "Either `project_id` or `project` is required"
+                    "Either `project_id` or `project` must be provided"
                 )
+
             project = self._client.get_project(project_id)
 
         return download_labels_from_labelbox(project)
 
     def _add_labels_to_results(
-        self, labels_dict, sample_id, results, label_schema
+        self, results, labels_dict, sample_id, label_schema
     ):
-        """
-        Convert the labels_dict parsed from Labelbox output to the results
-        expected by `fiftyone.utils.annotations.load_annotations()`
+        """Adds the labels in ``labels_dict`` to ``results``.
 
-        results:
+        results::
+
             <label_field>: {
                 <label_type>: {
                     <sample_id>: {
-                        <label_id>: 
+                        <label_id>:
                             <fo.Label> or <label - for scalars>
                     }
-                }   
+                }
             }
-        labels_dict: {
-            <label_field>: {
-                <label_type>: [<fo.Label>, ...]
-            }
-        }
 
-        Labelbox label type to annotations label type conversion
-        detections -> detections
-        keypoints -> keypoints
-        polylines -> detections, semantic_segmentation, polylines
-        segmentations -> detections, semantic_segmentation
+        labels_dict::
+
+            {
+                <label_field>: {
+                    <label_type>: [<fo.Label>, ...]
+                }
+            }
         """
         # Parse all classification attributes first
         attributes = self._gather_classification_attributes(
@@ -959,19 +861,18 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         # Parse remaining label fields and add classification attributes if
         # necessary
         results = self._parse_expected_label_fields(
-            labels_dict, label_schema, sample_id, attributes, results
+            results, labels_dict, sample_id, label_schema, attributes
         )
 
         return results
 
     def _add_video_labels_to_results(
-        self, frames_dict, sample_id, results, label_schema
+        self, results, frames_dict, sample_id, label_schema
     ):
-        """
-        Convert the labels_dict parsed from Labelbox output to the results
-        expected by `fiftyone.utils.annotations.load_annotations()`
+        """Adds the video labels in ``frames_dict`` to ``results``.
 
-        results:
+        results::
+
             <label_field>: {
                 <label_type>: {
                     <sample_id>: {
@@ -979,22 +880,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                             <label_id>: <fo.Label>
                         }
                         or <label - for scalars>
-                    } 
+                    }
                 }
             }
-        frames_dict: {
-            <frame_number>: {
-                <label_field>: {
-                    <label_type>: [<fo.Label>, ...]
-                }
-            }
-        }
 
-        Labelbox label type to annotations label type conversion
-        detections -> detections
-        keypoints -> keypoints
-        polylines -> detections, semantic_segmentation, polylines
-        segmentations -> detections, semantic_segmentation
+        frames_dict::
+
+            {
+                <frame_number>: {
+                    <label_field>: {
+                        <label_type>: [<fo.Label>, ...]
+                    }
+                }
+            }
         """
         for frame_number, labels_dict in frames_dict.items():
             # Parse all classification attributes first
@@ -1005,11 +903,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             # Parse remaining label fields and add classification attributes if
             # necessary
             results = self._parse_expected_label_fields(
-                labels_dict,
-                label_schema,
-                sample_id,
-                attributes,
                 results,
+                labels_dict,
+                sample_id,
+                label_schema,
+                attributes,
                 frame_number=frame_number,
             )
 
@@ -1019,60 +917,62 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         attributes = {}
         for label_field, labels in labels_dict.items():
             if label_field not in label_schema:
-                if all(
-                    [
-                        "field:" in label_field,
-                        "_class:" in label_field,
-                        "_attr:" in label_field,
-                    ]
+                if (
+                    "field:" not in label_field
+                    or "_class:" not in label_field
+                    or "_attr:" not in label_field
                 ):
-                    label_field, substr = label_field.replace(
-                        "field:", ""
-                    ).split("_class:")
-                    class_name, attr_name = substr.split("_attr:")
-
-                    # Only classification or classifictions attributes are
-                    # formatted this way
-                    if isinstance(labels, fol.Classifications):
-                        val = [
-                            _parse_attribute(c.label)
-                            for c in labels.classifications
-                        ]
-                    elif isinstance(labels, fol.Classification):
-                        val = _parse_attribute(labels.label)
-                    else:
-                        raise ValueError(
-                            "A classification attribute was not parsed as a "
-                            "'Classification' or 'Classifications'"
-                        )
-
-                    if label_field not in attributes:
-                        attributes[label_field] = {}
-                    if class_name not in attributes[label_field]:
-                        attributes[label_field][class_name] = {}
-
-                    attributes[label_field][class_name][attr_name] = val
-
-                else:
                     logger.warning(
-                        "Found unexpected label field '%s'. Ignoring...",
+                        "Ignoring invalid classification label field '%s'",
                         label_field,
                     )
+                    continue
+
+                label_field, substr = label_field.replace("field:", "").split(
+                    "_class:"
+                )
+                class_name, attr_name = substr.split("_attr:")
+
+                if isinstance(labels, fol.Classification):
+                    val = _parse_attribute(labels.label)
+                elif isinstance(labels, fol.Classifications):
+                    val = [
+                        _parse_attribute(c.label)
+                        for c in labels.classifications
+                    ]
+                else:
+                    msg = (
+                        "Ignoring invalid label of type %s in label field "
+                        "'%s'. Expected a %s or %s"
+                        % (
+                            type(labels),
+                            label_field,
+                            fol.Classification,
+                            fol.Classifications,
+                        )
+                    )
+                    warnings.warn(msg)
+                    continue
+
+                if label_field not in attributes:
+                    attributes[label_field] = {}
+
+                if class_name not in attributes[label_field]:
+                    attributes[label_field][class_name] = {}
+
+                attributes[label_field][class_name][attr_name] = val
+
         return attributes
 
     def _parse_expected_label_fields(
         self,
-        labels_dict,
-        label_schema,
-        sample_id,
-        attributes,
         results,
+        labels_dict,
+        sample_id,
+        label_schema,
+        attributes,
         frame_number=None,
     ):
-        """Iterate through the labels and parse them into the results
-        dictionary. Add any classification attributes to the labels at this
-        time.
-        """
         for label_field, labels in labels_dict.items():
             if label_field in label_schema:
                 label_info = label_schema[label_field]
@@ -1104,7 +1004,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                         sample_results = {
                             c.id: c for c in labels.classifications
                         }
-
                     elif expected_type == "classification":
                         # Update attributes
                         if label_field in attributes:
@@ -1117,7 +1016,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
                         result_type = "classifications"
                         sample_results = {labels.id: labels}
-
                     else:
                         # Scalar
                         result_type = "scalar"
@@ -1125,6 +1023,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
                     if frame_number is not None:
                         sample_results = {frame_number: sample_results}
+
                     label_results = {result_type: {sample_id: sample_results}}
 
                 label_results = {label_field: label_results}
@@ -1135,31 +1034,36 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     def _convert_label_types(
         self, labels_dict, expected_type, sample_id, frame_number=None
     ):
-        """Convert the labels loaded from Labelbox into the format expected by
-        the FiftyOne annotation API
+        """Converts labels into the format expected by the Fiftyone annotation
+        API.
         """
         output_labels = {}
         for lb_type, labels_list in labels_dict.items():
             if lb_type == "detections":
                 fo_type = "detections"
+
             if lb_type == "keypoints":
                 fo_type = "keypoints"
+
             if lb_type == "polylines":
-                if expected_type in ["detections", "segmentations"]:
+                if expected_type in ["detections", "instances"]:
                     fo_type = "detections"
-                elif expected_type == "semantic_segmentation":
-                    fo_type = "semantic_segmentation"
+                elif expected_type == "segmentation":
+                    fo_type = "segmentation"
                 else:
                     fo_type = "polylines"
+
             if lb_type == "segmentations":
-                if expected_type == "semantic_segmentation":
-                    fo_type = "semantic_segmentation"
+                if expected_type == "segmentation":
+                    fo_type = "segmentation"
                 else:
                     fo_type = "detections"
+
                 labels_list = self._convert_segmentations(labels_list, fo_type)
 
             if fo_type not in output_labels:
                 output_labels[fo_type] = {}
+
             if sample_id not in output_labels[fo_type]:
                 output_labels[fo_type][sample_id] = {}
 
@@ -1186,26 +1090,18 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             attrs = seg_dict["attributes"]
             labels.append(fol.Detection.from_mask(mask, label, **attrs))
 
-        if label_type == "semantic_segmentation":
-            detections = fol.Detections(detections=labels)
+        if label_type != "segmentation":
+            return labels
 
-            try:
-                mask_targets = {int(d.label): d.label for d in labels}
-            except ValueError:
-                logger.warning(
-                    "Semantic segmentation labels only support integer class "
-                    "annotations but found another type. Skipping..."
-                )
-                return []
+        # @todo support mask targets
+        mask_targets = {int(d.label): d.label for d in labels}
 
-            h, w, _ = mask.shape
-            labels = [
-                detections.to_segmentation(
-                    frame_size=(w, h), mask_targets=mask_targets
-                )
-            ]
-
-        return labels
+        frame_size = (mask.shape[1], mask.shape[0])
+        detections = fol.Detections(detections=labels)
+        segmentation = detections.to_segmentation(
+            frame_size=frame_size, mask_targets=mask_targets
+        )
+        return [segmentation]
 
     def _merge_results(self, results, new_results):
         if isinstance(new_results, dict):
@@ -1216,18 +1112,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     results[key] = self._merge_results(results[key], val)
 
         return results
-
-    def launch_editor(self, url=None):
-        """Launches the Labelbox editor in your default web browser.
-
-        Args:
-            url (None): an optional URL to open. By default, the base URL of
-                the server is opened
-        """
-        if url is None:
-            url = self.projects_url
-
-        webbrowser.open(url, new=2)
 
 
 class LabelboxAnnotationResults(foua.AnnotationResults):
@@ -1245,7 +1129,7 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     """
 
     def __init__(
-        self, samples, config, id_map, project_id, is_video, backend=None,
+        self, samples, config, id_map, project_id, is_video, backend=None
     ):
         super().__init__(samples, config, backend=backend)
         self.id_map = id_map
@@ -1262,6 +1146,25 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         """
         self._load_config_parameters(url=url, api_key=api_key)
 
+    def connect_to_api(self):
+        """Returns an API instance connected to the Labelbox server.
+
+        Returns:
+            a :class:`LabelboxAnnotationAPI`
+        """
+        return self._backend.connect_to_api()
+
+    def launch_editor(self):
+        """Launches the Labelbox editor and loads the project for this
+        annotation run.
+        """
+        api = self.connect_to_api()
+        project_id = self.project_id
+
+        editor_url = api.editor_url(project_id)
+        logger.info("Launching editor at '%s'...", editor_url)
+        api.launch_editor(url=editor_url)
+
     def get_status(self):
         """Gets the status of the annotation run.
 
@@ -1273,14 +1176,6 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     def print_status(self):
         """Print the status of the annotation run."""
         self._get_status(log=True)
-
-    def connect_to_api(self):
-        """Returns an API instance connected to the Labelbox server.
-
-        Returns:
-            a :class:`LabelboxAnnotationAPI`
-        """
-        return self._backend.connect_to_api()
 
     def cleanup(self):
         """Deletes the project associated with this annotation run from the
@@ -1296,82 +1191,72 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     def _get_status(self, log=False):
         api = self.connect_to_api()
 
-        status = {}
         project = api.get_project(self.project_id)
-        updated_at = project.updated_at
+
         created_at = project.created_at
+        updated_at = project.updated_at
         num_labeled_samples = len(list(project.labels()))
-        if log:
-            logger.info(
-                "\nProject: %s\n"
-                "\tID: %s\n"
-                "\tCreated at: %s\n"
-                "\tUpdated at: %s\n"
-                "\tNumber of labeled samples: %d\n"
-                "\tMembers:\n"
-                % (
-                    project.name,
-                    project.uid,
-                    str(created_at),
-                    str(updated_at),
-                    num_labeled_samples,
-                )
-            )
-        else:
-            status["updated"] = updated_at
-            status["created"] = created_at
-            status["name"] = project.name
-            status["id"] = project.uid
-            status["num_labeled_samples"] = num_labeled_samples
-
         members = list(project.members())
-        status["members"] = []
-        if not members:
-            if log:
-                logger.info("\t\tNone\n")
-        else:
-            for member in project.members():
-                if log:
-                    user = member.user()
-                    role = member.role()
-                    user_id = user.uid
-                    user_role = role.name
-                    user_name = user.name
-                    user_nickname = user.nickname
-                    user_email = user.email
-                    logger.info(
-                        "\t\tUser: %s\n"
-                        "\t\t\tRole: %s\n"
-                        "\t\t\tName: %s\n"
-                        "\t\t\tID: %s\n"
-                        "\t\t\tEmail: %s\n"
-                        % (
-                            user_nickname,
-                            user_role,
-                            user_name,
-                            user_id,
-                            user_email,
-                        )
-                    )
-                else:
-                    status["members"].append(member)
-
         positive = project.review_metrics(lbr.Review.NetScore.Positive)
         negative = project.review_metrics(lbr.Review.NetScore.Negative)
         zero = project.review_metrics(lbr.Review.NetScore.Zero)
+
+        status = {}
+        status["name"] = project.name
+        status["id"] = project.uid
+        status["created"] = created_at
+        status["updated"] = updated_at
+        status["num_labeled_samples"] = num_labeled_samples
+        status["members"] = members
+        status["review"] = {
+            "positive": positive,
+            "negative": negative,
+            "zero": zero,
+        }
+
         if log:
             logger.info(
-                "\tReviews:\n"
-                "\t\tPositive: %d\n"
-                "\t\tZero: %d\n"
-                "\t\tNegative: %d\n" % (positive, zero, negative,)
+                "\nProject: %s\n"
+                "ID: %s\n"
+                "Created at: %s\n"
+                "Updated at: %s\n"
+                "Number of labeled samples: %d\n"
+                "Members:\n",
+                project.name,
+                project.uid,
+                str(created_at),
+                str(updated_at),
+                num_labeled_samples,
             )
-        else:
-            status["review"] = {
-                "positive": positive,
-                "negative": negative,
-                "zero": zero,
-            }
+
+            if not members:
+                logger.info("\t-")
+
+            for member in members:
+                user = member.user()
+                role = member.role()
+                logger.info(
+                    "\tUser: %s\n"
+                    "\tName: %s\n"
+                    "\tRole: %s\n"
+                    "\tEmail: %s\n"
+                    "\tID: %s\n",
+                    user.name,
+                    user.nickname,
+                    role.name,
+                    user.email,
+                    user.uid,
+                )
+
+            logger.info(
+                "\nReviews:\n"
+                "\tPositive: %d\n"
+                "\tNegative: %d\n"
+                "\tZero: %d",
+                positive,
+                negative,
+                zero,
+            )
 
         return status
 
@@ -1444,8 +1329,6 @@ def import_from_labelbox(
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         json_path: the path to the Labelbox JSON export to load
-        labelbox_project_or_json_path: a ``labelbox.schema.project.Project`` or
-            the path to the JSON export of a Labelbox project on disk
         label_prefix (None): a prefix to prepend to the sample label field(s)
             that are created, separated by an underscore
         download_dir (None): a directory into which to download the media for
@@ -2244,6 +2127,7 @@ def _parse_objects(od_list, frame_size, class_attr=None):
             else:
                 if "detections" not in label_fields[label_field]:
                     label_fields[label_field]["detections"] = []
+
                 label_fields[label_field]["detections"].append(det)
 
         elif "polygon" in od:
@@ -2261,6 +2145,7 @@ def _parse_objects(od_list, frame_size, class_attr=None):
             else:
                 if "polylines" not in label_fields[label_field]:
                     label_fields[label_field]["polylines"] = []
+
                 label_fields[label_field]["polylines"].append(polyline)
 
         elif "line" in od:
@@ -2278,6 +2163,7 @@ def _parse_objects(od_list, frame_size, class_attr=None):
             else:
                 if "polylines" not in label_fields[label_field]:
                     label_fields[label_field]["polylines"] = []
+
                 label_fields[label_field]["polylines"].append(polyline)
 
         elif "point" in od:
@@ -2289,6 +2175,7 @@ def _parse_objects(od_list, frame_size, class_attr=None):
             else:
                 if "keypoints" not in label_fields[label_field]:
                     label_fields[label_field]["keypoints"] = []
+
                 label_fields[label_field]["keypoints"].append(keypoint)
 
         elif "instanceURI" in od:
@@ -2299,8 +2186,8 @@ def _parse_objects(od_list, frame_size, class_attr=None):
                     mask = _parse_mask(mask_instance_uri)
                 elif od["instanceURI"] != mask_instance_uri:
                     msg = (
-                        "Only one segmentation mask per image/frame is allowed; "
-                        "skipping additional mask(s)"
+                        "Only one segmentation mask per image/frame is "
+                        "allowed; skipping additional mask(s)"
                     )
                     warnings.warn(msg)
             else:
@@ -2313,6 +2200,7 @@ def _parse_objects(od_list, frame_size, class_attr=None):
                 }
                 if "segmentations" not in label_fields[label_field]:
                     label_fields[label_field]["segmentations"] = []
+
                 label_fields[label_field]["segmentations"].append(segmentation)
         else:
             msg = "Ignoring unsupported label"
