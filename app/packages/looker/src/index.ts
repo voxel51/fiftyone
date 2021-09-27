@@ -1005,7 +1005,15 @@ export class VideoLooker extends Looker<VideoState> {
   }
 
   pluckOverlays(state: VideoState) {
-    const overlays = this.sampleOverlays;
+    const frameNumber = state.frameNumber;
+    let hideSampleOverlays = false;
+
+    if (state.config.support && !state.lockedToSupport) {
+      const [start, end] = state.config.support;
+      hideSampleOverlays = frameNumber < start || frameNumber > end;
+    }
+
+    const overlays = hideSampleOverlays ? [] : this.sampleOverlays;
     let pluckedOverlays = this.pluckedOverlays;
     if (this.hasFrame(state.frameNumber)) {
       const frame = this.frames.get(state.frameNumber)?.deref();
