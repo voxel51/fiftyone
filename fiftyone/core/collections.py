@@ -7257,12 +7257,14 @@ def _parse_field_name(
     allow_missing,
 ):
     unwind_list_fields = []
-    other_list_fields = []
+    explicit_unwinds = set()
+    other_list_fields = set()
 
     # Parse explicit array references
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
-        unwind_list_fields.append("".join(chunks[: (idx + 1)]))
+        path = "".join(chunks[: (idx + 1)])
+        explicit_unwinds.add(path)
 
     # Array references [] have been stripped
     field_name = "".join(chunks)
@@ -7320,11 +7322,10 @@ def _parse_field_name(
             if omit_terminal_lists and path == field_name:
                 break
 
-            if auto_unwind or path not in unwind_list_fields:
-                add_to = (
-                    unwind_list_fields if auto_unwind else other_list_fields
-                )
-                _unwind_list_recursively(field_type, add_to, path)
+            if path in explicit_unwinds or auto_unwind:
+                _unwind_list_recursively(field_type, unwind_list_fields, path)
+            else:
+                other_list_fields.add(path)
 
     if is_frame_field:
         if auto_unwind:
@@ -7337,11 +7338,11 @@ def _parse_field_name(
             unwind_list_fields = [
                 prefix + f if f else "frames" for f in unwind_list_fields
             ]
-            other_list_fields = [
+            other_list_fields = {
                 prefix + f if f else "frames" for f in other_list_fields
-            ]
+            }
             if "frames" not in unwind_list_fields:
-                other_list_fields.append("frames")
+                other_list_fields.add("frames")
 
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
