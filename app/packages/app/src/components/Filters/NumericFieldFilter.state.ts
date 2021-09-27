@@ -9,6 +9,7 @@ import * as selectors from "../../recoil/selectors";
 import { Range } from "./RangeSlider";
 import {
   AGGS,
+  FRAME_SUPPORT_FIELD,
   VALID_LIST_FIELDS,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
@@ -24,6 +25,15 @@ export const isNumericField = selectorFamily<boolean, string>({
     }
 
     return VALID_NUMERIC_TYPES.includes(map[name]);
+  },
+});
+
+export const isSupportField = selectorFamily<boolean, string>({
+  key: "isSupportField",
+  get: (name) => ({ get }) => {
+    let map = get(selectors.primitivesMap("sample"));
+
+    return FRAME_SUPPORT_FIELD === map[name];
   },
 });
 

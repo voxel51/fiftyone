@@ -11,7 +11,10 @@ import { animated, useSpring } from "react-spring";
 
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
 import { isBooleanField } from "./Filters/BooleanFieldFilter.state";
-import { isNumericField } from "./Filters/NumericFieldFilter.state";
+import {
+  isNumericField,
+  isSupportField,
+} from "./Filters/NumericFieldFilter.state";
 import { isStringField } from "./Filters/StringFieldFilter.state";
 
 import { labelTypeIsFilterable } from "../utils/labels";
@@ -221,7 +224,7 @@ type EntryProps = {
 };
 
 const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
-  const {
+  let {
     disabled,
     color,
     hasDropdown,
@@ -247,6 +250,9 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
     useRecoilValue(fieldIsFiltered({ path, modal })) &&
     canFilter &&
     !((isNumeric || isBoolean || isString) && modal);
+
+  const isSupport = useRecoilValue(isSupportField(path));
+  hasDropdown = hasDropdown && (!isSupport || !modal);
 
   const checkboxClass = hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
