@@ -5,28 +5,24 @@ Labelbox Integration
 
 .. default-role:: code
 
-`Labelbox <https://labelbox.com/>`_ is one of the most popular
-cloud-based image and video annotation tools available, and we've made it easy
-to upload your data directly from FiftyOne to Labelbox for labeling.
+`Labelbox <https://labelbox.com/>`_ is one of the most popular cloud-based
+image and video annotation tools available, and we've made it easy to upload
+your data directly from FiftyOne to Labelbox for labeling.
 
-You can `create a free Labelbox account <https://app.labelbox.com/signin>`_
-to upload and annotate raw data in the user-friendly Labelbox editor.
-FiftyOne provides :ref:`simple setup <labelbox-setup>` instructions
-that you can use to specify the necessary API key and server
-endpoint to use.
+You can `create a free Labelbox account <https://app.labelbox.com/signin>`_ to
+upload and annotate raw data in the user-friendly Labelbox editor. FiftyOne
+provides :ref:`simple setup <labelbox-setup>` instructions that you can use to
+specify the necessary API key and server endpoint to use.
 
 If you have a `paid Labelbox account <https://labelbox.com/pricing>`_, then you
 can also take advantage of the 
 `Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
-feature to upload
-existing labels from your FiftyOne Datasets to edit them directly without
-needing to annotate them from scratch.
+feature to upload existing labels from your FiftyOne Datasets to edit them
+directly without needing to annotate them from scratch.
 
-FiftyOne provides an API to create projects, upload data, define label
-schemas, and download annotations using Labelbox, all programmatically in Python.
-All of the following label types are supported, for both image and video
-datasets:
-
+FiftyOne provides an API to create projects, upload data, define label schemas,
+and download annotations using Labelbox, all programmatically in Python. All of
+the following label types are supported, for both image and video datasets:
 
 - :ref:`Classifications <classification>`
 - :ref:`Detections <object-detection>`
@@ -45,8 +41,8 @@ datasets:
 Basic recipe
 ____________
 
-The basic workflow to use Labelbox to add or edit labels on your FiftyOne datasets
-is as follows:
+The basic workflow to use Labelbox to add or edit labels on your FiftyOne
+datasets is as follows:
 
 1) Load a :ref:`labeled or unlabeled dataset <loading-datasets>` into FiftyOne
 
@@ -65,20 +61,20 @@ is as follows:
    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
    method to merge the annotations back into your FiftyOne dataset
 
-6) If desired, delete the Labelbox tasks and the record of the annotation run from
-   your FiftyOne dataset
+6) If desired, delete the Labelbox tasks and the record of the annotation run
+   from your FiftyOne dataset
 
 |br|
 The example below demonstrates this workflow.
 
 .. note::
 
-    You must create an account at `labelbox.com <https://labelbox.com>`_ in order to
-    run this example.
+    You must create an account at `labelbox.com <https://labelbox.com>`_ in
+    order to run this example.
 
     Note that you can store your credentials as described in
-    :ref:`this section <labelbox-setup>` to avoid entering them manually each time
-    you interact with Labelbox.
+    :ref:`this section <labelbox-setup>` to avoid entering them manually each
+    time you interact with Labelbox.
 
 First, we create the annotation tasks in Labelbox:
 
@@ -161,35 +157,67 @@ FiftyOne:
 
 .. note::
 
-    Skip to :ref:`this section <labelbox-examples>` to see a variety of common Labelbox
-    annotation patterns.
+    See :ref:`this section <labelbox-examples>` to see a variety of common
+    Labelbox annotation patterns.
 
 .. _labelbox-setup:
 
 Setup
 _____
 
-FiftyOne supports both `standard Labelbox cloud accounts <https://app.labelbox.com/signin>`_ 
-as well as Labelbox
-`enterprise on-premesis solutions <https://docs.labelbox.com/docs/labelbox-on-premises>`_.
+FiftyOne supports both
+`standard Labelbox cloud accounts <https://app.labelbox.com/signin>`_  and
+`on-premesis Labelbox deployments <https://docs.labelbox.com/docs/labelbox-on-premises>`_.
 
-The easiest way to get started is to use the default
-`Labelbox server <https://app.labelbox.com/>`_,
-which simply requires creating an account and
-then providing your API key as shown below.
+The easiest way to get started is to use
+`app.labelbox.com <https://app.labelbox.com>`_, which simply requires creating
+an account and then providing your API key as shown below.
+
+Using the Labelbox backend
+--------------------------
+
+By default, calling
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` will
+use the :ref:`CVAT backend <cvat-integration>`.
+
+To use the Labelbox backend, simply set the optional `backend` parameter of
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+`"labelbox"`:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(anno_key, backend="labelbox", ...)
+
+Alternatively, you can permanently configure FiftyOne to use the Labelbox
+backend by setting the `FIFTYONE_ANNOTATION_DEFAULT_BACKEND` environment
+variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_ANNOTATION_DEFAULT_BACKEND=labelbox
+
+or by setting the `default_backend` parameter of your
+:ref:`annotation config <annotation-config>` located at
+`~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "default_backend": "labelbox"
+    }
 
 Authentication
 --------------
 
-In order to connect to a Labelbox server, you must provide your API key,
-which can be done in a variety of ways.
+In order to connect to a Labelbox server, you must provide your API key, which
+can be done in a variety of ways.
 
 **Environment variables (recommended)**
 
-The recommended way to configure your Labelbox API key is to store it
-in the `FIFTYONE_LABELBOX_API_KEY` environment
-variable. This is automatically accessed by FiftyOne whenever a connection
-to Labelbox is made.
+The recommended way to configure your Labelbox API key is to store it in the
+`FIFTYONE_LABELBOX_API_KEY` environment variable. This is automatically
+accessed by FiftyOne whenever a connection to Labelbox is made.
 
 .. code-block:: shell
 
@@ -215,8 +243,8 @@ Note that this file will not exist until you create it.
 
 **Keyword arguments**
 
-You can manually provide your API key as a keyword argument each time
-you call methods like
+You can manually provide your API key as a keyword argument each time you call
+methods like
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
 that require connections to Labelbox:
@@ -233,14 +261,19 @@ that require connections to Labelbox:
 
 **Command line prompt**
 
-If you have not stored your login credentials via another method, you will be
-prompted to enter them interactively in your shell each time you call a method
-that requires a connection to Labelbox:
+If you have not stored your API key via another method, you will be prompted to
+enter it interactively in your shell each time you call a method that requires
+a connection to Labelbox:
 
 .. code:: python
     :linenos:
 
-    view.annotate(anno_key, backend="labelbox", label_field="ground_truth", launch_editor=True)
+    view.annotate(
+        anno_key,
+        backend="labelbox",
+        label_field="ground_truth",
+        launch_editor=True,
+    )
 
 .. code-block:: text
 
@@ -248,13 +281,13 @@ that requires a connection to Labelbox:
     You can avoid this in the future by setting your `FIFTYONE_LABELBOX_API_KEY` environment variable.
     API key: ...
 
-.. _labelbox-on-prem-server:
+.. _labelbox-on-premises:
 
 On-premises servers
 -------------------
 
-If you wish to use an
-`on-premises server <https://docs.labelbox.com/docs/labelbox-on-premises>`_,
+If you have an
+`on-premises Labelbox server <https://docs.labelbox.com/docs/labelbox-on-premises>`_,
 you can configure the URL of your server in any of the following ways:
 
 -   Set the `FIFTYONE_LABELBOX_URL` environment variable:
@@ -330,8 +363,8 @@ that you wish to be performed.
 
 The following parameters are supported by all annotation backends:
 
--   **backend** (*None*): the annotation backend to use. Use `"labelbox"` for the
-    Labelbox backend. The supported values are
+-   **backend** (*None*): the annotation backend to use. Use `"labelbox"` for
+    the Labelbox backend. The supported values are
     `fiftyone.annotation_config.backends.keys()` and the default is
     `fiftyone.annotation_config.default_backend`
 -   **media_field** (*"filepath"*): the sample field containing the path to the
@@ -348,30 +381,28 @@ details:
     `label_type`
 -   **label_field** (*None*): a string indicating a new or existing label field
     to annotate
--   **label_type** (*None*): a string or type indicating the type of labels to
-    annotate. The possible label strings/types are:
+-   **label_type** (*None*): a string indicating the type of labels to
+    annotate. The possible label types are:
 
-    -   `"classification"`: :class:`fiftyone.core.labels.Classification`
-    -   `"classifications"`: :class:`fiftyone.core.labels.Classifications`
-    -   `"detection"`: :class:`fiftyone.core.labels.Detection`
-    -   `"detections"`: :class:`fiftyone.core.labels.Detections`
-    -   `"segmentation"`: :class:`fiftyone.core.labels.Detection`
-    -   `"segmentations"`: :class:`fiftyone.core.labels.Detections`
-    -   `"polyline"`: :class:`fiftyone.core.labels.Polyline`
-    -   `"polylines"`: :class:`fiftyone.core.labels.Polylines`
-    -   `"polygon"`: :class:`fiftyone.core.labels.Polyline`
-    -   `"polygons"`: :class:`fiftyone.core.labels.Polylines`
-    -   `"keypoint"`: :class:`fiftyone.core.labels.Keypoint`
-    -   `"keypoints"`: :class:`fiftyone.core.labels.Keypoints`
-    -   `"semantic_segmentation"`: :class:`fiftyone.core.labels.Segmentation`
-
-    You can also specify `"scalar"` for a primitive scalar field or pass any of
-    the supported scalar field types:
-
-    -   :class:`fiftyone.core.fields.IntField`
-    -   :class:`fiftyone.core.fields.FloatField`
-    -   :class:`fiftyone.core.fields.StringField`
-    -   :class:`fiftyone.core.fields.BooleanField`
+    -   ``"classification"``: a single classification stored in
+        |Classification| fields
+    -   ``"classifications"``: multilabel classifications stored in
+        |Classifications| fields
+    -   ``"detections"``: object detections stored in |Detections| fields
+    -   ``"instances"``: instance segmentations stored in |Detections| fields
+        with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
+        attributes populated
+    -   ``"polylines"``: polylines stored in |Polylines| fields with their
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
+        `False`
+    -   ``"polygons"``: polygons stored in |Polylines| fields with their
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
+        `True`
+    -   ``"keypoints"``: keypoints stored in |Keypoints| fields
+    -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
+        fields
+    -   ``"scalar"``: scalar labels stored in |IntField|, |FloatField|,
+        |StringField|, or |BooleanField| fields
 
     All new label fields must have their type specified via this argument or in
     `label_schema`
@@ -391,30 +422,33 @@ details:
     -   a list of label attributes to export
     -   a dict mapping attribute names to dicts specifying the `type`,
         `values`, and `default` for each attribute
+-   **mask_targets** (*None*): a dict mapping pixel values to semantic label
+    strings. Only applicable when annotating semantic segmentations
 
+|br|
 In addition, the following Labelbox-specific parameters from
-:class:`LabelboxBackendConfig <fiftyone.utils.labelbox.LabelboxBackendConfig>` can also be
-provided:
+:class:`LabelboxBackendConfig <fiftyone.utils.labelbox.LabelboxBackendConfig>`
+can also be provided:
 
 -   **project_name** (*None*):  the name of the project that will be created,
-    defaults to *"FiftyOne_<dataset-name>"*
--   **invite_users** (*[]*): a list of email and role tuples specifying the users
-    to invite and their roles in the created project. Options for roles
+    defaults to `*"FiftyOne_<dataset-name>"*`
+-   **invite_users** (*[]*): a list of `(email, role)` tuples specifying the
+    users to invite and their roles in the created project. Options for roles
     are `["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]`
 
-Coming Soon:
+.. note::
 
--   **upload_annotations** (*False*): whether to upload annotations to Labelbox.
-    This is considered "Model Assisted Labeling" and is only available for paid
-    Labelbox accounts
+    Uploading existing annotations for editing requires access to Labelbox's
+    Model Assited Labeling feature, which is only available for paid Labelbox
+    accounts.
 
 .. _labelbox-label-schema:
 
 Label schema
 ------------
 
-The `label_schema`, `label_field`, `label_type`, `classes`, and `attributes`
-parameters to
+The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
+`mask_targets` parameters to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
 you to define the annotation schema that you wish to be used.
 
@@ -423,9 +457,9 @@ it may also include existing label field(s), in which case you can add, delete,
 or edit the existing labels on your FiftyOne dataset.
 
 The `label_schema` argument is the most flexible way to define how to construct
-tasks in Labelbox. In its most verbose form, it is a dictionary that defines the
-label type, annotation type, possible classes, and possible attributes for each
-label field:
+tasks in Labelbox. In its most verbose form, it is a dictionary that defines
+the label type, annotation type, possible classes, and possible attributes for
+each label field:
 
 .. code:: python
     :linenos:
@@ -459,13 +493,10 @@ label field:
 
     dataset.annotate(anno_key, backend="labelbox", label_schema=label_schema)
 
-You can also define attributes that are specific to certain classes. The
-`classes` key contains a list of elements that are either string class names or
-a nested dict with separate `classes` and `attributes` that only apply to those
-classes. 
-
-In the example below, `attr1` only applies to `class1` and `class2`
-while `attr2` applies to all classes.
+You can also define class-specific attributes by setting elements of the
+`classes` list to dicts that specify groups of `classes` and their
+corresponding `attributes`. For example, in the configuration below, `attr1`
+only applies to `class1` and `class2` while `attr2` applies to all classes:
 
 .. code:: python
     :linenos:
@@ -499,10 +530,10 @@ while `attr2` applies to all classes.
 
     dataset.annotate(anno_key, backend="labelbox", label_schema=label_schema)
 
-
 Alternatively, if you are only editing or creating a single label field, you
-can use the `label_field`, `label_type`, `classes`, and `attributes` parameters
-to specify the components of the label schema individually:
+can use the `label_field`, `label_type`, `classes`, `attributes`, and
+`mask_targets` parameters to specify the components of the label schema
+individually:
 
 .. code:: python
     :linenos:
@@ -541,11 +572,16 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted, the class lists from the
-    :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
+-   **classes**: if omitted for a non-semantic segmentation field, the class
+    lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
     properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list
+    observed labels on your dataset will be used to construct a classes list.
+-   **mask_targets**: if omitted for a semantic segmentation field, the mask
+    targets from the
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    properties of your dataset will be used, if available
 
 .. _labelbox-label-attributes:
 
@@ -608,15 +644,58 @@ take additional values:
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 
-.. note::
-
-    Only scalar-valued label attributes are supported. Other attribute types
-    like lists, dictionaries, and arrays will be omitted.
+Note that only scalar-valued label attributes are supported. Other attribute
+types like lists, dictionaries, and arrays will be omitted.
 
 .. note:: 
 
-    Unlike CVAT, Labelbox does not support default values for attributes so the
-    `default` key on attributes is ignored.
+    Labelbox does not support default values for attributes, so the `default`
+    key :ref:`described here <annotation-label-attributes>` is not included in
+    the examples above and will be ignored if included in label schemas
+    provided when annotating with Labelbox.
+
+.. _labelbox-video-label-attributes:
+
+Video label attributes
+----------------------
+
+When annotating spatiotemporal objects in videos, each object attribute
+specification can include a `mutable` property that controls whether the
+attribute's value can change between frames for each object:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "type": {
+            "type": "select",
+            "values": ["sedan", "suv", "truck"],
+            "mutable": False,
+        },
+        "occluded": {
+            "type": "radio",
+            "values": [True, False],
+            "mutable": True,
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        backend="labelbox",
+        label_field="frames.new_field",
+        label_type="detections",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+The meaning of the `mutable` attribute is defined as follows:
+
+-   `True` (default): the attribute is dynamic and can have a different value
+    for every frame in which the object track appears
+-   `False`: the attribute is static and is the same for every frame in which
+    the object track appears
 
 .. _labelbox-loading-annotations:
 
@@ -723,8 +802,8 @@ FiftyOne dataset using the Labelbox backend.
 
 .. note::
 
-    All of the examples below assume you have configured your Labelbox server and
-    credentials as described in :ref:`this section <labelbox-setup>`.
+    All of the examples below assume you have configured your Labelbox server
+    and API key as described in :ref:`this section <labelbox-setup>`.
 
 Adding new label fields
 -----------------------
@@ -798,23 +877,22 @@ labeling task:
    :alt: labelbox-tag
    :align: center
 
-Modifying an existing label field
----------------------------------
+Editing annotations with a free Labelbox account
+------------------------------------------------
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
 
-While this most easily done by uploading annotations directly to Labelbox,
-editing them, and merging them back into FiftyOne. The ability to upload
-annotations to Labelbox requires a paid Labelbox account.
+If you have a paid Labelbox account with access to Labelbox's Model Assisted
+Labeling feature, see the next section for the recommended workflow for
+uploading existing labels on your FiftyOne datasets to Labelbox for in-place
+editing.
 
-Editing annotations with a free Labelbox account
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The suggested way to edit annotations without the ability to upload annotations
-is to tag annotations in FiftyOne, upload and reannotate the raw media in
-Labelbox, and merge in the updated annotations into FiftyOne while deleting the
-old annotations.
+For free Labelbox users, a recommended workflow for editing existing
+annotations is to tag the annotations of interest in FiftyOne, then upload and
+reannotate the corresponding raw media in Labelbox, then delete the tagged
+annotations and merge the updated annotations back into FiftyOne when the
+reannotation work is complete in Labelbox.
 
 By providing an existing label field to the `label_field` parameter, the
 Labelbox editor is constructed to automatically allow you to add labels and
@@ -829,13 +907,13 @@ attributes matching what exists in the field currently.
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    anno_key = "labelbox_existing_field"
-
     session = fo.launch_app(view=view)
 
     # Tag labels to be edited with the tag "edit"
 
     editing_view = view.select_labels(tags="edit")
+
+    anno_key = "labelbox_existing_field"
 
     editing_view.annotate(
         anno_key,
@@ -862,8 +940,9 @@ attributes matching what exists in the field currently.
 
 |br|
 The above code snippet will infer the possible classes and label attributes
-from your FiftyOne dataset. However, the `classes` and `attributes` parameters
-can be used to annotate new classes and/or attributes:
+from your FiftyOne dataset. However, if necessary, you can use the `classes`
+and `attributes` parameters to configure the annotation schema to include new
+classes and/or attributes:
 
 .. code:: python
     :linenos:
@@ -874,13 +953,13 @@ can be used to annotate new classes and/or attributes:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    anno_key = "labelbox_existing_field"
-
     session = fo.launch_app(view=view)
 
     # Tag labels to be edited with the tag "edit"
 
     editing_view = view.select_labels(tags="edit")
+
+    anno_key = "labelbox_existing_field"
 
     # The list of possible `label` values
     classes = ["person", "dog", "cat", "helicopter"]
@@ -921,15 +1000,14 @@ can be used to annotate new classes and/or attributes:
    :align: center
 
 Uploading annotations to Labelbox
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 
-**Coming Soon**
+A common use case is to fix annotation mistakes that you discovered in your
+datasets through FiftyOne.
 
-If you have a paid Labelbox account, you can upload annotations with the "Model
-Assisted Labeling" feature. 
-
-You can easily edit the labels in an existing field of your FiftyOne dataset
-by simply passing the name of the field via the `label_field` parameter of
+If you have a paid Labelbox account, you can upload existing labels from a
+FiftyOne dataset for editing by simply passing the name of the field via the
+`label_field` parameter of
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
 
 .. code:: python
@@ -955,7 +1033,6 @@ by simply passing the name of the field via the `label_field` parameter of
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
-
 
 Annotating multiple fields
 --------------------------
@@ -1003,11 +1080,6 @@ fields at once:
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. note::
-
-    Unlike CVAT, multiple fields can be annotated in one Labelbox project since
-    the editor allows different label field names to be separately listed. 
-
 .. image:: /images/integrations/labelbox_multiple_fields.png
    :alt: labelbox-multiple-fields
    :align: center
@@ -1019,26 +1091,22 @@ Every Labelbox account allows you to specify the organization that you are a
 part of. When projects are created, members of this organization can be
 assigned to different roles to projects or within the organization as a whole.
 
-When using the Labelbox backend, you can provide the optional `invite_users` parameter
-to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+When using the Labelbox backend, you can provide the optional `invite_users`
+parameter to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
 specify the members of the project that will be created and their roles.
 
-This parameter accepts a list of tuples containing `(email, role)` where the
-options for roles are the following strings:
+This parameter accepts a list of `(email, role)` tuples defining the invitees
+and their roles. The options for `role` are:
 
-- `LABELER`
-- `REVIEWER`
-- `TEAM_MANAGER`
-- `ADMIN`
+- `"LABELER"`
+- `"REVIEWER"`
+- `"TEAM_MANAGER"`
+- `"ADMIN"`
 
-If the invited users are not part of your organization, they will receive an
-email invite to join it. If they are part of your organization, they will
-automatically be assigned to the newly created project.
-
-.. note::
-
-    Only a limited number of users can be in any organization. This limit changes
-    depending on your Labelbox plan.
+If the invited users are part of your organization, they will automatically be
+assigned to the newly created project. Otherwise, they will receive an email
+invitation to join.
 
 .. code:: python
     :linenos:
@@ -1052,9 +1120,9 @@ automatically be assigned to the newly created project.
     anno_key = "labelbox_assign_users"
 
     invite_users = [
-        ("fiftyone_labelbox_user1@gmail.com", "LABELER"),
-        ("fiftyone_labelbox_user2@gmail.com", "REVIEWER"),
-        ("fiftyone_labelbox_user3@gmail.com", "TEAM_MANAGER"),
+        ("user1@domain.com", "LABELER"),
+        ("user2@domain.com", "REVIEWER"),
+        ("user3@domain.com", "TEAM_MANAGER"),
     ]
 
     # Set up the Labelbox editor to annotate
@@ -1077,7 +1145,7 @@ automatically be assigned to the newly created project.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Cleanup without downloading results
+    # Cleanup (without downloading results)
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
@@ -1087,16 +1155,16 @@ Scalar labels
 
 |Label| fields are the preferred way to store information for common tasks
 such as classification and detection in your FiftyOne datasets. However, you
-can also store Labelbox annotations in scalar fields of type `float`, `int`, `str`,
-or  `bool`.
+can also store Labelbox annotations in scalar fields of type `float`, `int`,
+`str`, or  `bool`.
 
 When storing annotations in scalar fields, the `label_field` parameter is still
 used to define the name of the field, but the `classes` argument is now
 optional and the `attributes` argument is unused.
 
 If `classes` are provided, you will be able to select from these values in
-Labelbox; otherwise, the Labelbox tag will show the `label_field` name and you must
-enter the appropriate scalar in the `value` attribute of the tag.
+Labelbox; otherwise, the Labelbox tag will show the `label_field` name and you
+must enter the appropriate scalar in the `value` attribute of the tag.
 
 .. code:: python
     :linenos:
@@ -1128,7 +1196,7 @@ enter the appropriate scalar in the `value` attribute of the tag.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Cleanup without downloading results
+    # Cleanup (without downloading results)
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
@@ -1164,8 +1232,6 @@ For example, let's upload some blurred images to Labelbox for annotation:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    anno_key = "labelbox_alt_media"
-
     alt_dir = "/tmp/blurred"
     if not os.path.exists(alt_dir):
         os.makedirs(alt_dir)
@@ -1180,6 +1246,8 @@ For example, let's upload some blurred images to Labelbox for annotation:
 
         sample["alt_filepath"] = alt_filepath
         sample.save()
+
+    anno_key = "labelbox_alt_media"
 
     view.annotate(
         anno_key,
@@ -1204,18 +1272,9 @@ For example, let's upload some blurred images to Labelbox for annotation:
 Annotating videos
 _________________
 
-You can annotate for video datasets using the Labelbox backend
-through the
+You can annotate for video datasets using the Labelbox backend through the
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 method.
-
-Note that some features (like text attributes) are not yet available for video
-annotation in Labelbox.
-
-.. note::
-
-    Prepend `"frames."` to reference frame-level fields when calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
 
 .. code:: python
     :linenos:
@@ -1251,6 +1310,11 @@ annotation in Labelbox.
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
+.. note::
+
+    Prepend `"frames."` to reference frame-level fields when calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
+
 .. image:: /images/integrations/labelbox_video.png
    :alt: labelbox-video
    :align: center
@@ -1273,9 +1337,11 @@ Viewing project status
 ----------------------
 
 You can use the
-:meth:`get_status() <fiftyone.utils.labelbox.LabelboxAnnotationResults.get_status>` and
+:meth:`get_status() <fiftyone.utils.labelbox.LabelboxAnnotationResults.get_status>`
+and
 :meth:`print_status() <fiftyone.utils.labelbox.LabelboxAnnotationResults.print_status>`
-methods to get information about the current status of the project for that annotation run:
+methods to get information about the current status of the project for that
+annotation run:
 
 .. code:: python
     :linenos:
@@ -1329,12 +1395,14 @@ Deleting projects
 -----------------
 
 You can use 
-:meth:`delete_projects() <fiftyone.utils.labelbox.LabelboxAnnotationAPI.delete_projects>`
-or
 :meth:`delete_project() <fiftyone.utils.labelbox.LabelboxAnnotationAPI.delete_project>`
-method to delete specific Labelbox project(s) associated with an annotation
-run. Use the `delete_datasets=True` flag to also delete the corresponding
-datasets that were created.
+or
+:meth:`delete_projects() <fiftyone.utils.labelbox.LabelboxAnnotationAPI.delete_projects>`
+methods to delete specific Labelbox project(s) associated with an annotation
+run.
+
+Use the `delete_datasets=True` flag to also delete the corresponding datasets
+that were created.
 
 .. code:: python
     :linenos:
@@ -1360,7 +1428,6 @@ datasets that were created.
     # OR
     
     api.delete_projects([results.project_id], delete_datasets=True)
-
 
     # List all projects or datasets associated with your Labelbox account
     project_ids = api.list_projects()
