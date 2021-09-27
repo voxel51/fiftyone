@@ -2245,10 +2245,15 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         if not isinstance(values, ViewExpression):
-            if not etau.is_container(values):
-                return ViewExpression({"$in": [values, self]})
+            if etau.is_container(values):
+                values = list(values)
+                if len(values) == 1:
+                    values = values[0]
 
-            values = list(values)
+            if isinstance(values, ViewExpression) or not etau.is_container(
+                values
+            ):
+                return ViewExpression({"$in": [values, self]})
 
         if not all:
             return self.intersection(values).length() > 0
