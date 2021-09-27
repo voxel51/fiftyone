@@ -7,7 +7,7 @@ Open Images Integration
 
 We've collaborated with the team behind the
 `Open Images Dataset <https://storage.googleapis.com/openimages/web/download.html>`_
-to make it easy to dowload, visualize, and evaluate on the Open Images dataset
+to make it easy to download, visualize, and evaluate on the Open Images dataset
 natively in FiftyOne!
 
 .. note::
