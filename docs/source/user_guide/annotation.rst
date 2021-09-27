@@ -651,7 +651,8 @@ For example, CVAT supports the following choices for `type`:
     `default` is optional
 -   `radio`: a radio button list UI. In this case, `values` is required and
     `default` is optional
--   `checkbox`: a checkbox UI. The specifications vary with the backend used
+-   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
+    `values` is unused
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
