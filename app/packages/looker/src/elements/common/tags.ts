@@ -137,7 +137,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
         const appendElement = (value) => {
           if (isSupport && Array.isArray(value)) {
-            value = `[${prettify(value[0])}, ${prettify(value[1])}]`;
+            value = `[${value.map(prettify).join(", ")}]`;
           }
           const pretty = prettify(value);
           elements = [
@@ -153,9 +153,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (isScalar(value) || (entry && entry.ftype === FRAME_SUPPORT_FIELD)) {
           appendElement(value);
         } else if (Array.isArray(value)) {
-          const filtered = filter[path]
-            ? value.filter((v) => filter[path](v))
-            : value;
+          const filtered =
+            filter[path] && !isSupport
+              ? value.filter((v) => filter[path](v))
+              : value;
           const shown = [...filtered].sort().slice(0, 3);
           shown.forEach((v) => appendElement(v));
 
