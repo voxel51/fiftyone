@@ -1587,13 +1587,21 @@ def _download_images_if_necessary(
     data_dir = os.path.join(dataset_dir, "data")
     etau.ensure_dir(data_dir)
 
+    s3_client = boto3.client(
+        "s3",
+        config=botocore.config.Config(
+            signature_version=botocore.UNSIGNED,
+            max_pool_connections=max(10, num_workers),
+        ),
+    )
+
     inputs = []
     num_existing = 0
     for image_id in image_ids:
         filepath = os.path.join(data_dir, image_id + ".jpg")
         obj = split + "/" + image_id + ".jpg"  # AWS path, always use "/"
         if not os.path.isfile(filepath):
-            inputs.append((filepath, obj))
+            inputs.append((filepath, obj, s3_client))
         else:
             num_existing += 1
 
@@ -1618,34 +1626,20 @@ def _download_images_if_necessary(
         logger.info("Downloading %d images", num_images)
 
     if num_workers == 1:
-        s3_client = boto3.client(
-            "s3",
-            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-        )
         with fou.ProgressBar(iters_str="images") as pb:
-            for filepath, obj in pb(inputs):
+            for filepath, obj, s3_client in pb(inputs):
                 s3_client.download_file(_BUCKET_NAME, obj, filepath)
     else:
         with fou.ProgressBar(total=num_images, iters_str="images") as pb:
-            with multiprocessing.dummy.Pool(
-                num_workers, _initialize_worker
-            ) as pool:
+            with multiprocessing.dummy.Pool(num_workers) as pool:
                 for _ in pool.imap_unordered(_do_s3_download, inputs):
                     pb.update()
 
     return num_images
 
 
-def _initialize_worker():
-    global s3_client
-    s3_client = boto3.client(
-        "s3",
-        config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-    )
-
-
 def _do_s3_download(args):
-    filepath, obj = args
+    filepath, obj, s3_client = args
     s3_client.download_file(_BUCKET_NAME, obj, filepath)
 
 
