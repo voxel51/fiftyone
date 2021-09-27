@@ -213,9 +213,24 @@ def _make_filter_stages(
     return stages, cleanup, filtered_labels
 
 
+def _is_support(field):
+    if isinstance(field, fof.FrameSupportField):
+        return True
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if field.document_type in {
+            fol.VideoClassification,
+            fol.VideoClassifications,
+        }:
+            return True
+
+    return False
+
+
 def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
+
     if cls == _BOOL_FILTER:
         true, false = args["true"], args["false"]
         if true and false:
@@ -230,9 +245,9 @@ def _make_scalar_expression(f, args, field):
         if not true and not false:
             expr = (f != True) & (f != False)
 
-    elif cls == _NUMERIC_FILTER and isinstance(field, fof.FrameSupportField):
+    elif cls == _NUMERIC_FILTER and _is_support(field):
         mn, mx = args["range"]
-        expr = (f[0] >= mn) & (f[1] <= mx)
+        expr = F.any(f.map((F() >= mn) & (F() <= mx)))
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
