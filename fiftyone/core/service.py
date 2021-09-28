@@ -345,16 +345,18 @@ class ServerService(Service):
     working_dir = foc.SERVER_DIR
     allow_headless = True
 
-    def __init__(self, port, do_not_track=False):
+    def __init__(self, port, address=None, do_not_track=False):
         self._port = port
+        self._address = address
         self._do_not_track = do_not_track
         super().__init__()
 
     def start(self):
         server_version = None
         try:
+            address = self._address or "127.0.0.1"
             server_version = requests.get(
-                "http://127.0.0.1:%i/fiftyone" % self._port, timeout=2
+                "http://%s:%i/fiftyone" % (address, self._port), timeout=2
             ).json()["version"]
         except Exception:
             pass
@@ -367,7 +369,11 @@ class ServerService(Service):
             super().start()
             self._wait_for_child_port(self._port)
         else:
-            logger.info("Connected to FiftyOne on local port %i", self._port)
+            logger.info(
+                "Connected to FiftyOne on port %i at %s",
+                self._port,
+                self.address or "127.0.0.1",
+            )
             logger.info(
                 "If you are not connecting to a remote session, you may need\n"
                 "to start a new session and specify a port.\n"
@@ -387,12 +393,21 @@ class ServerService(Service):
             "--port",
             str(self.port),
         ]
+
+        if self.address:
+            command += ["--address", self.address]
+
         return command
 
     @property
     def port(self):
-        """Getter for the current port"""
+        """Getter for the port"""
         return self._port
+
+    @property
+    def address(self):
+        """Getter for the address"""
+        return self._address
 
     @property
     def env(self):
@@ -406,9 +421,10 @@ class AppService(Service):
     service_name = "app"
     working_dir = foc.FIFTYONE_DESKTOP_APP_DIR
 
-    def __init__(self, server_port=None):
+    def __init__(self, server_port=None, server_address=None):
         # initialize before start() is called
         self.server_port = server_port
+        self.server_address = server_address
         super().__init__()
 
     @property
@@ -453,5 +469,8 @@ class AppService(Service):
                 # override port 1212 used by "yarn dev" for hot-reloading
                 # (specifying port 0 doesn't work here)
                 env["PORT"] = str(self.server_port + 1)
+
+        if self.server_address:
+            env["FIFTYONE_SERVER_ADDRESS"] = str(self.server_address)
 
         return env

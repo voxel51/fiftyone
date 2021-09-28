@@ -88,6 +88,7 @@ def launch_app(
     dataset=None,
     view=None,
     port=None,
+    address=None,
     remote=False,
     desktop=None,
     height=None,
@@ -106,6 +107,8 @@ def launch_app(
             load
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as
@@ -139,6 +142,7 @@ def launch_app(
         dataset=dataset,
         view=view,
         port=port,
+        address=address,
         remote=remote,
         desktop=desktop,
         height=height,
@@ -234,6 +238,8 @@ class Session(foc.HasClient):
             session
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as
@@ -258,6 +264,7 @@ class Session(foc.HasClient):
         view=None,
         plots=None,
         port=None,
+        address=None,
         remote=False,
         desktop=None,
         height=None,
@@ -268,6 +275,9 @@ class Session(foc.HasClient):
 
         if port is None:
             port = fo.config.default_app_port
+
+        if address is None:
+            address = fo.config.default_app_address
 
         if config is None:
             config = fo.app_config.copy()
@@ -281,6 +291,7 @@ class Session(foc.HasClient):
         self._context = focx._get_context()
         self._plots = None
         self._port = port
+        self._address = address
         self._remote = remote
         self._wait_closed = False
 
@@ -296,12 +307,12 @@ class Session(foc.HasClient):
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
             _server_services[port] = fos.ServerService(
-                port, do_not_track=fo.config.do_not_track
+                port, address=address, do_not_track=fo.config.do_not_track
             )
 
         global _subscribed_sessions  # pylint: disable=global-statement
         _subscribed_sessions[port].add(self)
-        super().__init__(self._port)
+        super().__init__(self._port, self._address)
 
         if desktop is None:
             if self._context == focx._NONE:
@@ -344,7 +355,9 @@ class Session(foc.HasClient):
             if not focn.DEV_INSTALL:
                 _import_desktop()
 
-            self._app_service = fos.AppService(server_port=port)
+            self._app_service = fos.AppService(
+                server_port=port, server_address=address
+            )
             return
 
         if self._context == focx._NONE:
@@ -412,6 +425,11 @@ class Session(foc.HasClient):
         return self._port
 
     @property
+    def server_address(self):
+        """The server address for the session."""
+        return self._address
+
+    @property
     def remote(self):
         """Whether the session is remote."""
         return self._remote
@@ -433,7 +451,8 @@ class Session(foc.HasClient):
             )
             return "%s?fiftyoneColab=true" % url
 
-        return "http://localhost:%d/" % self.server_port
+        address = self.server_address or "localhost"
+        return "http://%s:%d/" % (address, self.server_port)
 
     @property
     def config(self):
@@ -951,7 +970,8 @@ class Session(foc.HasClient):
                 "google.colab.kernel.proxyPort(%d)" % self.server_port
             )
 
-        return "http://localhost:%d/" % self.server_port
+        address = self.server_address or "localhost"
+        return "http://%s:%d/" % (address, self.server_port)
 
     def _reactivate(self, data):
         handle = data["handle"]
@@ -964,6 +984,7 @@ class Session(foc.HasClient):
                 source["target"],
                 handle,
                 self._port,
+                self._address,
                 source["height"],
                 update=True,
             )
@@ -1000,7 +1021,7 @@ class Session(foc.HasClient):
             "active": True,
         }
 
-        _display(self, handle, uuid, self._port, height)
+        _display(self, handle, uuid, self._port, self._address, height)
         return uuid
 
     def _update_state(self):
@@ -1010,17 +1031,20 @@ class Session(foc.HasClient):
         self.state = self.state
 
 
-def _display(session, handle, uuid, port, height, update=False):
+def _display(session, handle, uuid, port, address, height, update=False):
     """Displays a running FiftyOne instance."""
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]
-    fn(session, handle, uuid, port, height, update=update)
+    fn(session, handle, uuid, port, address, height, update=update)
 
 
-def _display_ipython(session, handle, uuid, port, height, update=False):
+def _display_ipython(
+    session, handle, uuid, port, address, height, update=False
+):
     import IPython.display
 
-    src = "http://localhost:%d/?notebook=true&handleId=%s" % (port, uuid)
+    address = address or "localhost"
+    src = "http://%s:%d/?notebook=true&handleId=%s" % (address, port, uuid)
     iframe = IPython.display.IFrame(src, height=height, width="100%")
     if update:
         handle.update(iframe)
@@ -1028,7 +1052,7 @@ def _display_ipython(session, handle, uuid, port, height, update=False):
         handle.display(iframe)
 
 
-def _display_colab(session, handle, uuid, port, height, update=False):
+def _display_colab(session, handle, uuid, port, address, height, update=False):
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime
