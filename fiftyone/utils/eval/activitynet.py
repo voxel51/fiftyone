@@ -126,7 +126,7 @@ class ActivityNetEvaluation(VideoClassificationEvaluation):
         """Generates aggregate evaluation results for the samples.
 
         If ``self.config.compute_mAP`` is True, this method performs ActivityNet-style
-        evaluation as in :meth:`evaluate_image` to generate precision and
+        evaluation as in :meth:`evaluate_video` to generate precision and
         recall sweeps over the range of IoU thresholds in
         ``self.config.iou_threshs``. In this case, a
         :class:`ActivityNetVideoClassificationResults` instance is returned that can compute
@@ -163,7 +163,6 @@ class ActivityNetEvaluation(VideoClassificationEvaluation):
             )
 
         _samples = samples.select_fields([gt_field, pred_field])
-        processing_frames = samples._is_frame_field(pred_field)
 
         iou_threshs = self.config.iou_threshs
         thresh_matches = {t: {} for t in iou_threshs}
@@ -176,45 +175,39 @@ class ActivityNetEvaluation(VideoClassificationEvaluation):
         # IoU sweep
         logger.info("Performing IoU sweep...")
         for sample in _samples.iter_samples(progress=True):
-            if processing_frames:
-                images = sample.frames.values()
-            else:
-                images = [sample]
+            # Don't edit user's data during sweep
+            gts = _copy_labels(sample[self.gt_field])
+            preds = _copy_labels(sample[self.pred_field])
 
-            for image in images:
-                # Don't edit user's data during sweep
-                gts = _copy_labels(image[self.gt_field])
-                preds = _copy_labels(image[self.pred_field])
+            video_matches = _activitynet_evaluation_iou_sweep(
+                gts, preds, self.config
+            )
 
-                image_matches = _activitynet_evaluation_iou_sweep(
-                    gts, preds, self.config
-                )
+            for t, t_matches in video_matches.items():
+                for match in t_matches:
+                    gt_label = match[0]
+                    pred_label = match[1]
 
-                for t, t_matches in image_matches.items():
-                    for match in t_matches:
-                        gt_label = match[0]
-                        pred_label = match[1]
+                    if _classes is not None:
+                        _classes.add(gt_label)
+                        _classes.add(pred_label)
 
-                        if _classes is not None:
-                            _classes.add(gt_label)
-                            _classes.add(pred_label)
+                    c = gt_label if gt_label is not None else pred_label
 
-                        c = gt_label if gt_label is not None else pred_label
+                    if c not in thresh_matches[t]:
+                        thresh_matches[t][c] = {
+                            "tp": [],
+                            "fp": [],
+                            "num_gt": 0,
+                        }
 
-                        if c not in thresh_matches[t]:
-                            thresh_matches[t][c] = {
-                                "tp": [],
-                                "fp": [],
-                                "num_gt": 0,
-                            }
+                    if gt_label == pred_label:
+                        thresh_matches[t][c]["tp"].append(match)
+                    elif pred_label:
+                        thresh_matches[t][c]["fp"].append(match)
 
-                        if gt_label == pred_label:
-                            thresh_matches[t][c]["tp"].append(match)
-                        elif pred_label:
-                            thresh_matches[t][c]["fp"].append(match)
-
-                        if gt_label:
-                            thresh_matches[t][c]["num_gt"] += 1
+                    if gt_label:
+                        thresh_matches[t][c]["num_gt"] += 1
 
         if _classes is not None:
             _classes.discard(None)
