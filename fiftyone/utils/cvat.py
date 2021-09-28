@@ -2516,13 +2516,11 @@ class CVATBackend(foua.AnnotationBackend):
     def supported_attr_types(self):
         return ["text", "select", "radio", "checkbox"]
 
-    @property
-    def default_attr_type(self):
-        return "text"
+    def recommend_attr_tool(self, name, value):
+        if isinstance(value, bool):
+            return {"type": "checkbox"}
 
-    @property
-    def default_categorical_attr_type(self):
-        return "select"
+        return {"type": "text"}
 
     def requires_attr_values(self, attr_type):
         return attr_type in ("select", "radio")
