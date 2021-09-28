@@ -6,7 +6,6 @@ import {
   BACKGROUND_ALPHA,
   DASH_COLOR,
   MASK_ALPHA,
-  SELECTED_MASK_ALPHA,
   TEXT_COLOR,
 } from "../constants";
 
@@ -64,12 +63,9 @@ export default class DetectionOverlay<
     this.label.mask && this.drawMask(ctx, state);
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
-
-    const selected = this.isSelected(state);
-
     this.strokeRect(ctx, state, this.getColor(state));
 
-    if (selected) {
+    if (this.isSelected(state)) {
       this.strokeRect(ctx, state, DASH_COLOR, state.dashLength);
     }
   }
@@ -143,11 +139,7 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
-    const selected = this.isSelected(state);
-    const bitColor = get32BitColor(
-      this.getColor(state),
-      selected ? SELECTED_MASK_ALPHA : MASK_ALPHA
-    );
+    const bitColor = get32BitColor(this.getColor(state), MASK_ALPHA);
     const imagePixels = new Uint32Array(this.imageData.data.buffer);
     if (this.bitColor !== bitColor) {
       this.bitColor = bitColor;

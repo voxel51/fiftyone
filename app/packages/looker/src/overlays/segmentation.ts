@@ -6,7 +6,7 @@ import { getSegmentationColorArray } from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
-import { sizeBytes, t } from "./util";
+import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: NumpyResult;
@@ -18,7 +18,6 @@ export default class SegmentationOverlay<State extends BaseState>
   private readonly label: SegmentationLabel;
   private targets?: TypedArray;
   private colorMap?: (key: string | number) => string;
-  private selected?: boolean;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
 
@@ -46,14 +45,9 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const selected = this.isSelected(state);
-    if (
-      this.targets &&
-      (this.colorMap !== state.options.colorMap || this.selected !== selected)
-    ) {
+    if (this.targets && this.colorMap !== state.options.colorMap) {
       this.colorMap = state.options.colorMap;
-      this.selected = selected;
-      const colors = getSegmentationColorArray(this.colorMap, selected);
+      const colors = getSegmentationColorArray(this.colorMap);
       const imageMask = new Uint32Array(this.imageData.data.buffer);
 
       for (let i = 0; i < this.targets.length; i++) {
@@ -75,6 +69,10 @@ export default class SegmentationOverlay<State extends BaseState>
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+
+    if (this.isSelected(state)) {
+      strokeCanvasRect(ctx, state, state.options.colorMap(this.field));
+    }
   }
 
   getMouseDistance(state: Readonly<State>): number {

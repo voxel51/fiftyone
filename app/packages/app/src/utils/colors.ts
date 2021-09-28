@@ -18,7 +18,7 @@ function shuffle(array: string[], seed: number) {
 }
 
 function random(seed: number) {
-  const x = Math.sin(seed + 1) * 10000;
+  const x = Math.sin(seed + 2) * 10000;
   return x - Math.floor(x);
 }
 

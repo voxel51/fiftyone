@@ -5,9 +5,9 @@
 import { get32BitColor, getRGBA, getRGBAColor } from "../color";
 import { MASK_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
-import { BaseState, Coordinates, RGB } from "../state";
+import { BaseState, BoundingBox, Coordinates, RGB } from "../state";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
-import { sizeBytes, t } from "./util";
+import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface HeatmapLabel extends BaseLabel {
   map?: NumpyResult;
@@ -76,6 +76,10 @@ export default class HeatmapOverlay<State extends BaseState>
     const [brx, bry] = t(state, 1, 1);
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
     this.cached = cache;
+
+    if (this.isSelected(state)) {
+      strokeCanvasRect(ctx, state, state.options.colorMap(this.field));
+    }
   }
 
   getMouseDistance(state: Readonly<State>): number {

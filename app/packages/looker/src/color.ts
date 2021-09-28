@@ -2,19 +2,10 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import colorString from "color-string";
-import { MASK_ALPHA, SELECTED_MASK_ALPHA } from "./constants";
+import { MASK_ALPHA } from "./constants";
 import { RGB, RGBA } from "./state";
 
 const alphaCache: { [key: string]: string } = {};
-
-const getRGBAAlphaArray = (color: string | RGB, alpha: number = 1): RGBA => {
-  const rgba =
-    typeof color === "string" ? colorString.get.rgb(color) : [...color, 255];
-
-  rgba[3] = Math.min(Math.floor(Math.max(rgba[3], 255) * alpha), 255);
-  return rgba as RGBA;
-};
 
 export const getAlphaColor = (color: string, alpha: number = 1): string => {
   const key = `${color}${alpha}`;
@@ -23,23 +14,44 @@ export const getAlphaColor = (color: string, alpha: number = 1): string => {
     return alphaCache[key];
   }
 
-  alphaCache[key] = colorString.to.rgb(getRGBAAlphaArray(color, alpha));
+  alpha = alpha > 1 ? 1 : alpha < 0 ? 0 : alpha;
+  const rgba = [...color, Math.round(alpha * 255)];
+
+  alphaCache[key] = `rgba(${rgba.join(",")})`;
   return alphaCache[key];
 };
 
 const bitColorCache: { [color: string]: number } = {};
 
 export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
-  alpha = Math.round(alpha * 256) / 256;
   const key = `${color}${alpha}`;
+
   if (key in bitColorCache) {
     return bitColorCache[key];
   }
 
-  bitColorCache[key] = new Uint32Array(
-    new Uint8Array(getRGBAAlphaArray(color, alpha)).buffer
-  )[0];
+  let r,
+    g,
+    b,
+    a = 0;
 
+  if (typeof color === "string") {
+    if (color.startsWith("#")) {
+      [r, g, b] = hexToRGB(color);
+    } else if (color.startsWith("rgb")) {
+      let sep = color.indexOf(",") > -1 ? "," : " ";
+      [r, g, b] = color.slice(4).split(")")[0].split(sep);
+    } else if (color.startsWith("hsl")) {
+      [r, g, b] = hslToRGB(color);
+    }
+  }
+
+  r = r << 24;
+  g = g << 16;
+  b = b << 8;
+  a = Math.round(alpha * 255) / 255;
+
+  bitColorCache[key] = r | g | b | a;
   return bitColorCache[key];
 };
 
@@ -55,26 +67,20 @@ export const getRGBAColor = ([r, g, b, a]: RGBA) => {
 };
 
 let rawMaskColors = new Uint32Array(256);
-let rawMaskColorsSelected = new Uint32Array(256);
 
 let cachedColorMap = null;
 
 export const getSegmentationColorArray = (
-  colorMap: Function,
-  selected: boolean
+  colorMap: Function
 ): Readonly<Uint32Array> => {
   if (cachedColorMap !== colorMap) {
     cachedColorMap = colorMap;
     for (let i = 0; i < 256; i++) {
       rawMaskColors[i] = get32BitColor(colorMap(i), MASK_ALPHA);
-      rawMaskColorsSelected[i] = get32BitColor(
-        colorMap(i),
-        SELECTED_MASK_ALPHA
-      );
     }
   }
 
-  return selected ? rawMaskColorsSelected : rawMaskColors;
+  return rawMaskColors;
 };
 
 let rawColorscale = new Uint32Array(256);
@@ -92,4 +98,51 @@ export const getColorscaleArray = (
   }
 
   return rawColorscale;
+};
+
+const hexToRGB = (hex: string): RGB => {
+  let r = 0,
+    g = 0,
+    b = 0;
+
+  if (hex.length == 4) {
+    r = +("0x" + hex[1] + hex[1]);
+    g = +("0x" + hex[2] + hex[2]);
+    b = +("0x" + hex[3] + hex[3]);
+  } else if (hex.length == 7) {
+    r = +("0x" + hex[1] + hex[2]);
+    g = +("0x" + hex[3] + hex[4]);
+    b = +("0x" + hex[5] + hex[6]);
+  }
+
+  return [r, g, b];
+};
+
+const hslToRGB = (hsl): RGB => {
+  let sep = hsl.indexOf(",") > -1 ? "," : " ";
+  let [h, s, l] = hsl.slice(4).split(")")[0].split(sep);
+
+  h /= 360;
+  s /= 100;
+  l /= 100;
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l; // achromatic
+  } else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+
+  return [r, g, b];
 };

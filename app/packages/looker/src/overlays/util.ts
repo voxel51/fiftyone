@@ -43,3 +43,20 @@ export const sizeBytes = (label: BaseLabel) => {
 
   return bytes;
 };
+
+export const strokeCanvasRect = (
+  ctx: CanvasRenderingContext2D,
+  state: Readonly<BaseState>,
+  color: string
+): void => {
+  ctx.beginPath();
+  ctx.lineWidth = state.strokeWidth;
+  ctx.strokeStyle = color;
+  ctx.setLineDash([]);
+  ctx.moveTo(...t(state, 0, 0));
+  ctx.lineTo(...t(state, 1, 0));
+  ctx.lineTo(...t(state, 1, 1));
+  ctx.lineTo(...t(state, 0, 1));
+  ctx.closePath();
+  ctx.stroke();
+};

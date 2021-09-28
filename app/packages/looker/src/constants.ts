@@ -11,7 +11,6 @@ export const TOLERANCE = 1.15;
 export const POINT_RADIUS = 4;
 export const BACKGROUND_ALPHA = 0.8;
 export const MASK_ALPHA = 0.4;
-export const SELECTED_MASK_ALPHA = 0.7;
 export const RADIUS = 12;
 export const STROKE_WIDTH = 3;
 export const FONT_SIZE = 16;
@@ -49,6 +48,7 @@ export const LABELS = {
   [DETECTIONS]: DETECTIONS,
   [GEOLOCATION]: GEOLOCATION,
   [GEOLOCATIONS]: GEOLOCATIONS,
+  [HEATMAP]: HEATMAP,
   [KEYPOINT]: KEYPOINT,
   [KEYPOINTS]: KEYPOINTS,
   [POLYLINE]: POLYLINE,

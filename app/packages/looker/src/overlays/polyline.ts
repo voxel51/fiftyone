@@ -2,12 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import {
-  DASH_COLOR,
-  MASK_ALPHA,
-  SELECTED_MASK_ALPHA,
-  TOLERANCE,
-} from "../constants";
+import { DASH_COLOR, MASK_ALPHA, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -52,18 +47,10 @@ export default class PolylineOverlay<
         continue;
       }
 
-      this.strokePath(ctx, state, path, color, this.label.filled, selected);
+      this.strokePath(ctx, state, path, color, this.label.filled);
 
       if (selected) {
-        this.strokePath(
-          ctx,
-          state,
-          path,
-          DASH_COLOR,
-          false,
-          false,
-          state.dashLength
-        );
+        this.strokePath(ctx, state, path, DASH_COLOR, false, state.dashLength);
       }
     }
   }
@@ -115,7 +102,6 @@ export default class PolylineOverlay<
     path: Coordinates[],
     color: string,
     filled: boolean,
-    selected: boolean,
     dash?: number
   ) {
     ctx.beginPath();
@@ -128,7 +114,7 @@ export default class PolylineOverlay<
     }
     if (filled) {
       ctx.fillStyle = color;
-      ctx.globalAlpha = selected ? SELECTED_MASK_ALPHA : MASK_ALPHA;
+      ctx.globalAlpha = MASK_ALPHA;
       ctx.fill();
       ctx.globalAlpha = 1;
     }
