@@ -84,6 +84,7 @@ def evaluate_video_classifications(
     )
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
+    eval_method.register_samples(samples)
 
     if not config.requires_additional_fields:
         _samples = samples.select_fields([gt_field, pred_field])
@@ -104,7 +105,8 @@ def evaluate_video_classifications(
 
     matches = []
     logger.info("Evaluating video classifications...")
-    for sample in _samples.iter_samples(progress=True):
+    # for sample in _samples.iter_samples(progress=True):
+    for sample in _samples:
         sample_tp = 0
         sample_fp = 0
         sample_fn = 0
@@ -172,6 +174,22 @@ class VideoClassificationEvaluation(foe.EvaluationMethod):
         super().__init__(config)
         self.gt_field = None
         self.pred_field = None
+
+    def register_samples(self, samples):
+        """Registers the sample collection on which evaluation will be
+        performed.
+
+        This method will be called before the first call to
+        :meth:`evaluate_video`. Subclasses can extend this method to perform
+        any setup required for an evaluation run.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        self.gt_field, _ = samples._handle_frame_field(self.config.gt_field)
+        self.pred_field, _ = samples._handle_frame_field(
+            self.config.pred_field
+        )
 
     def evaluate_video(self, sample, eval_key=None):
         """Evaluates the ground truth and predicted segments in a video.

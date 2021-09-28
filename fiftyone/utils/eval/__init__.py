@@ -18,3 +18,7 @@ from .segmentation import (
     evaluate_segmentations,
     SegmentationResults,
 )
+from .video_classification import (
+    evaluate_video_classifications,
+    VideoClassificationResults,
+)
