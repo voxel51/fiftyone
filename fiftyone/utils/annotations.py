@@ -333,6 +333,7 @@ def _build_label_schema(
             _mask_targets = None
             _classes = _get_classes(
                 samples,
+                backend,
                 classes,
                 _label_field,
                 _label_info,
@@ -575,13 +576,34 @@ def _get_existing_label_type(samples, backend, label_field, field_type):
 
 
 def _get_classes(
-    samples, classes, label_field, label_info, existing_field, label_type
+    samples,
+    backend,
+    classes,
+    label_field,
+    label_info,
+    existing_field,
+    label_type,
 ):
     if "classes" in label_info:
-        return label_info["classes"]
+        classes = label_info["classes"]
 
     if classes:
-        return classes
+        _classes = []
+        for c in classes:
+            if isinstance(c, dict):
+                c = _parse_classes_dict(
+                    c,
+                    samples,
+                    backend,
+                    label_field,
+                    label_info,
+                    existing_field,
+                    label_type,
+                )
+
+            _classes.append(c)
+
+        return _classes
 
     if label_type == "scalar":
         return []
@@ -600,6 +622,35 @@ def _get_classes(
 
     _, label_path = samples._get_label_field_path(label_field, "label")
     return samples._dataset.distinct(label_path)
+
+
+def _parse_classes_dict(
+    d, samples, backend, label_field, label_info, existing_field, label_type,
+):
+    if "classes" not in d or "attributes" not in d:
+        raise ValueError("Invalid classes dict %s" % str(d))
+
+    classes = d["classes"]
+
+    if etau.is_str(classes):
+        classes = [classes]
+    else:
+        classes = list(classes)
+
+    attributes = d["attributes"]
+
+    attributes = _get_attributes(
+        samples,
+        backend,
+        attributes,
+        label_field,
+        label_info,
+        existing_field,
+        label_type,
+        classes=classes,
+    )
+
+    return {"classes": classes, "attributes": attributes}
 
 
 def _get_mask_targets(samples, mask_targets, label_field, label_info):
@@ -629,6 +680,7 @@ def _get_attributes(
     label_info,
     existing_field,
     label_type,
+    classes=None,
 ):
     if "attributes" in label_info:
         attributes = label_info["attributes"]
@@ -637,14 +689,19 @@ def _get_attributes(
         if label_type == "scalar":
             attributes = {}
         elif existing_field and attributes == True:
-            attributes = _get_label_attributes(samples, backend, label_field)
+            attributes = _get_label_attributes(
+                samples, backend, label_field, classes=classes
+            )
         else:
             attributes = {}
 
     return _format_attributes(backend, attributes)
 
 
-def _get_label_attributes(samples, backend, label_field):
+def _get_label_attributes(samples, backend, label_field, classes=None):
+    if classes is not None:
+        samples = samples.filter_labels(label_field, F("label").is_in(classes))
+
     _, label_path = samples._get_label_field_path(label_field)
     labels = samples.values(label_path, unwind=True)
 
