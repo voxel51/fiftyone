@@ -181,8 +181,6 @@ const DetectionInfo = ({ detail }) => {
 };
 
 const HeatmapInfo = ({ detail }) => {
-  const targetValue = useTarget(detail.field, detail.target);
-
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
       <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
@@ -343,6 +341,7 @@ const lookerOptions = selector({
       ...video,
       zoom,
       colorMap: get(selectors.colorMap(true)),
+      colorscale: get(atoms.stateDescription).colorscale,
       filter: get(labelFilters(true)),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],

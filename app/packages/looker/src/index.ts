@@ -18,6 +18,7 @@ import {
   JSON_COLORS,
   LABELS,
   MASK_LABELS,
+  HEATMAP,
 } from "./constants";
 import {
   getFrameElements,
@@ -1232,6 +1233,10 @@ const filterSample = <S extends Sample | FrameSample>(
       } else if (MASK_LABELS.has(sample[field]._cls) && sample[field].mask) {
         sample[field].mask = {
           shape: sample[field].mask.shape,
+        };
+      } else if (sample[field]._cls === HEATMAP && sample[field].map) {
+        sample[field].map = {
+          shape: sample[field].map.shape,
         };
       }
     }

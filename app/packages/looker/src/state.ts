@@ -60,13 +60,8 @@ interface BaseOptions {
       confidence?: number;
     }) => boolean;
   };
-  fieldSettings: {
-    [fieldName: string]: {
-      colorTransparency: boolean;
-      colorscale: RGB[];
-    };
-  };
   colorMap: (key: string | number | null | undefined) => string;
+  colorscale: RGB[];
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;
@@ -235,6 +230,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   onlyShowHoveredLabel: false,
   filter: null,
   colorMap: null,
+  colorscale: null,
   smoothMasks: true,
   hasNext: false,
   hasPrevious: false,
@@ -243,7 +239,6 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
-  colorscale: null,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

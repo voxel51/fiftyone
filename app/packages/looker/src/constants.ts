@@ -26,6 +26,7 @@ export const DETECTION = "Detection";
 export const DETECTIONS = "Detections";
 export const GEOLOCATION = "GeoLocation";
 export const GEOLOCATIONS = "GeoLocations";
+export const HEATMAP = "Heatmap";
 export const KEYPOINT = "Keypoint";
 export const KEYPOINTS = "Keypoints";
 export const POLYLINE = "Polyline";

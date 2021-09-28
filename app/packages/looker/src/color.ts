@@ -30,6 +30,7 @@ export const getAlphaColor = (color: string, alpha: number = 1): string => {
 const bitColorCache: { [color: string]: number } = {};
 
 export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
+  alpha = Math.round(alpha * 256) / 256;
   const key = `${color}${alpha}`;
   if (key in bitColorCache) {
     return bitColorCache[key];

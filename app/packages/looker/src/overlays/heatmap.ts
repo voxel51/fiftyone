@@ -2,12 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import {
-  get32BitColor,
-  getColorscaleArray,
-  getRGBA,
-  getRGBAColor,
-} from "../color";
+import { get32BitColor, getRGBA, getRGBAColor } from "../color";
+import { MASK_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
@@ -24,7 +20,7 @@ export default class HeatmapOverlay<State extends BaseState>
   private readonly label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
-  private colorscale?: RGB[] | ((key: string | number) => string);
+  private cached?: RGB[] | ((key: string | number) => string);
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
 
@@ -61,10 +57,12 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const colorscale = state.options.colorscale || state.options.colorMap;
-    if (this.targets && this.colorscale !== colorscale) {
+    const cache = !state.options.colorByLabel
+      ? state.options.colorMap
+      : state.options.colorscale || state.options.colorMap;
+    if (this.targets && this.cached !== cache) {
       const imageMask = new Uint32Array(this.imageData.data.buffer);
-      const getColor = this.getColor(state);
+      const getColor = this.getColor(cache);
       for (let i = 0; i < this.targets.length; i++) {
         imageMask[i] = getColor(this.targets[i]);
       }
@@ -77,7 +75,7 @@ export default class HeatmapOverlay<State extends BaseState>
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
-    this.colorscale = colorscale;
+    this.cached = cache;
   }
 
   getMouseDistance(state: Readonly<State>): number {
@@ -90,7 +88,7 @@ export default class HeatmapOverlay<State extends BaseState>
   getPointInfo(state: Readonly<State>): PointInfo {
     const target = this.getTarget(state);
     return {
-      color: getRGBAColor(getRGBA(this.getColor(state)(target))),
+      color: getRGBAColor(getRGBA(this.getColor(this.cached)(target))),
       label: {
         ...this.label,
         map: {
@@ -146,12 +144,27 @@ export default class HeatmapOverlay<State extends BaseState>
     return [sx, sy];
   }
 
-  private getColor(state: Readonly<State>): (value: number) => number {
+  private getColor(
+    picker: RGB[] | ((key: string | number) => string)
+  ): (value: number) => number {
     const [start, stop] = this.range;
+
+    if (Array.isArray(picker)) {
+      return (value) => {
+        if (value === 0) {
+          return 0;
+        }
+
+        const index = Math.round(
+          (Math.max(value - start, 0) / (stop - start)) * picker.length
+        );
+
+        return get32BitColor(picker[index], MASK_ALPHA);
+      };
+    }
+
+    const color = picker(this.field);
     const max = Math.max(Math.abs(start), Math.abs(stop));
-
-    const color = state.options.colorMap(this.field);
-
     return (value) => {
       if (value === 0) {
         return 0;
