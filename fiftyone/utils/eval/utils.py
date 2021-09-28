@@ -98,6 +98,49 @@ def compute_ious(
     return _compute_bbox_ious(preds, gts, iscrowd=iscrowd)
 
 
+def compute_segment_ious(
+    preds, gts,
+):
+    """Computes the pairwise temporal IoUs between the predicted and ground
+    truth video classification segments.
+
+    Args:
+        preds: a list of predicted
+            :class:`fiftyone.core.labels.VideoClassification` instances
+        gt_field: a list of ground truth
+            :class:`fiftyone.core.labels.VideoClassification` instances
+
+    Returns:
+        a ``num_preds x num_gts`` array of segment IoUs
+    """
+    if not preds or not gts:
+        return np.zeros((len(preds), len(gts)))
+
+    ious = np.zeros((len(preds), len(gts)))
+    for j, gt in enumerate(gts):
+        gst, get = gt.support
+        gt_len = get - gst
+
+        for i, pred in enumerate(preds):
+            pst, pet = pred.support
+            pred_len = pet - pst
+
+            max_st = max(gst, pst)
+            min_et = min(get, pet)
+
+            # Length of temporal intersection
+            inter = min_et - max_st
+            if inter <= 0:
+                # Segments don't intersect, leave iou at 0
+                continue
+
+            union = pred_len + gt_len - inter
+
+            ious[i, j] = min(etan.safe_divide(inter, union), 1)
+
+    return ious
+
+
 def _compute_bbox_ious(preds, gts, iscrowd=None):
     num_pred = len(preds)
     num_gt = len(gts)
