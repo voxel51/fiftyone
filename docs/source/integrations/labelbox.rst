@@ -961,8 +961,8 @@ Editing existing labels
 
 .. warning::
 
-    This feature is not yet implemented for the Labelbox backend, but it is
-    coming soon!
+    Editing existing labels is not yet implemented for the Labelbox backend,
+    but it is coming soon!
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
@@ -1383,13 +1383,11 @@ that were created.
     api.delete_project(results.project_id, delete_datasets=True)
 
     # OR
-    
-    api.delete_projects([results.project_id], delete_datasets=True)
 
     # List all projects or datasets associated with your Labelbox account
     project_ids = api.list_projects()
     dataset_ids = api.list_datasets()
 
-    # Delete all projects and datsets from your Labelbox account
-    api.delete_projects(project_ids_to_delete)
-    api.delete_datasets(dataset_ids_to_delete)
+    # Delete all projects and datasets from your Labelbox account
+    api.delete_projects(project_ids)
+    api.delete_datasets(dataset_ids)
