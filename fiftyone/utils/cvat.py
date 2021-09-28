@@ -2525,7 +2525,7 @@ class CVATBackend(foua.AnnotationBackend):
         return "select"
 
     def requires_attr_values(self, attr_type):
-        return attr_type != "text"
+        return attr_type in ("select", "radio")
 
     def connect_to_api(self):
         return CVATAnnotationAPI(
@@ -3872,7 +3872,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attrs = attributes
             else:
                 _classes = _class["classes"]
-                _attrs = _class["attributes"]
+                _attrs = self._to_cvat_attributes(_class["attributes"])
 
                 if "label_id" in _attrs:
                     raise ValueError(

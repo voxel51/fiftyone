@@ -596,7 +596,6 @@ def _get_classes(
                     samples,
                     backend,
                     label_field,
-                    label_info,
                     existing_field,
                     label_type,
                 )
@@ -625,26 +624,25 @@ def _get_classes(
 
 
 def _parse_classes_dict(
-    d, samples, backend, label_field, label_info, existing_field, label_type,
+    d, samples, backend, label_field, existing_field, label_type
 ):
     if "classes" not in d or "attributes" not in d:
         raise ValueError("Invalid classes dict %s" % str(d))
 
     classes = d["classes"]
+    attributes = d["attributes"]
 
     if etau.is_str(classes):
         classes = [classes]
     else:
         classes = list(classes)
 
-    attributes = d["attributes"]
-
     attributes = _get_attributes(
         samples,
         backend,
         attributes,
         label_field,
-        label_info,
+        {},
         existing_field,
         label_type,
         classes=classes,
