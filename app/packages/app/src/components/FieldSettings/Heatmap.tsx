@@ -46,20 +46,17 @@ interface HeatmapSettings {
 const colorscales = selector<string[]>({
   key: "colorscales",
   get: async () => {
-    const scales = await fetch(`${http}/colorscales`);
-    console.log(scales);
-    return [];
+    const scales = await (await fetch(`${http}/colorscales`)).json();
+    return scales.colorscales;
   },
 });
 
-const fieldHeatmapSettings = selectorFamily<HeatmapSettings, string>({
+const heatmapFieldSettings = selectorFamily<HeatmapSettings, string>({
   key: "heatmapFieldSettings",
   get: (path) => ({ get }) => {
-    const defaultColorscale = useRecoilValue(selectors.colorscale);
-    const defaultTransparency = useRecoilValue(
-      selectors.colorscaleTransparency
-    );
-    const settings = useRecoilValue(atoms.stateDescription).settings;
+    const defaultColorscale = get(selectors.colorscale);
+    const defaultTransparency = get(selectors.colorscaleTransparency);
+    const settings = get(atoms.stateDescription).settings;
 
     if (settings && settings[path]) {
       return settings[path];
@@ -70,7 +67,15 @@ const fieldHeatmapSettings = selectorFamily<HeatmapSettings, string>({
       colorscale: defaultColorscale,
     };
   },
-  set: () => () => {},
+  set: (path) => ({ get, set }, value) => {
+    const state = get(atoms.stateDescription);
+    const newState = {
+      ...state,
+      settings: {},
+    };
+    set(atoms.stateDescription, newState);
+    socket.send(packageMessage("update", { state: newState }));
+  },
 });
 
 const ResultsWrapper = ({
@@ -108,7 +113,7 @@ interface Props {
 const HeatmapSettings = ({ modal, expanded, entry }: Props) => {
   const [ref, props] = useExpand(expanded);
   const [{ colorscale, transparency }, setSettings] = useRecoilState(
-    fieldHeatmapSettings(entry.path)
+    heatmapFieldSettings(entry.path)
   );
   const [search, setSearch] = useState<string>("");
   const [focused, setFocused] = useState(false);
@@ -137,6 +142,23 @@ const HeatmapSettings = ({ modal, expanded, entry }: Props) => {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           />
+          {(focused || hovering) && (
+            <ResultsContainer
+              onMouseEnter={() => setHovering(true)}
+              onMouseLeave={() => setHovering(false)}
+            >
+              <Suspense fallback={"Loading"}>
+                <ResultsWrapper
+                  active={active}
+                  entry={entry}
+                  search={search}
+                  onSelect={(value) =>
+                    setSettings({ transparency, colorscale: value })
+                  }
+                />
+              </Suspense>
+            </ResultsContainer>
+          )}
           <Checkbox
             name={"Use transparency"}
             color={entry.color}
@@ -145,21 +167,6 @@ const HeatmapSettings = ({ modal, expanded, entry }: Props) => {
               setSettings({ transparency: value, colorscale })
             }
           />
-          <ResultsContainer
-            onMouseEnter={() => setHovering(true)}
-            onMouseLeave={() => setHovering(false)}
-          >
-            <Suspense fallback={"Loading"}>
-              <ResultsWrapper
-                active={active}
-                entry={entry}
-                search={search}
-                onSelect={(value) =>
-                  setSettings({ transparency, colorscale: value })
-                }
-              />
-            </Suspense>
-          </ResultsContainer>
         </SettingsContainer>
       </Container>
     </animated.div>

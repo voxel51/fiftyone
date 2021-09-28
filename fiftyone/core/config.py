@@ -230,7 +230,10 @@ class AppConfig(EnvConfig):
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
         self.colorscale = self.parse_string(
-            d, "colorscale", env_var="FIFTYONE_APP_COLORSCALE", default=None
+            d,
+            "colorscale",
+            env_var="FIFTYONE_APP_COLORSCALE",
+            default="viridis",
         )
         self.colorscale_transparency = self.parse_bool(
             d,

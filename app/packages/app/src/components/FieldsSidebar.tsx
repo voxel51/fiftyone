@@ -541,11 +541,7 @@ const useClearFiltersPill = (
     : null;
 };
 
-type OthersCellProps = {
-  modal: boolean;
-};
-
-const OthersCell = ({ modal }: ScalarsCellProps) => {
+const OthersCell = ({ modal }: { modal: boolean }) => {
   const scalars = useRecoilValue(selectors.primitiveNames("sample"));
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
