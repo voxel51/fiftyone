@@ -563,7 +563,10 @@ def _write_annotations(matching_samples, anno_path, target_map, taxonomy):
 
 
 def _merge_and_write_errors(download_errors, error_path):
-    prev_errors = etas.load_json(error_path)
+    if os.path.isfile(error_path):
+        prev_errors = etas.load_json(error_path)
+    else:
+        prev_errors = {}
     download_errors = _merge_errors(prev_errors, download_errors)
     etas.write_json(download_errors, error_path, pretty_print=True)
 
