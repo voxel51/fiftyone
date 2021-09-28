@@ -70,6 +70,7 @@ class ActivityNetDatasetImporter(
 def download_activitynet_split(
     dataset_dir,
     split,
+    source_dir=None,
     classes=None,
     max_duration=None,
     num_workers=None,
@@ -86,6 +87,8 @@ def download_activitynet_split(
 
     Args:
         dataset_dir: the directory to download the dataset
+        source_dir (None): the directory containing the manually downloaded
+            ActivityNet files
         split: the split to download. Supported values are
             ``("train", "validation", "test")``
         classes (None): a string or list of strings specifying required classes
@@ -174,17 +177,22 @@ def download_activitynet_split(
     num_total = _NUM_TOTAL_SAMPLES[version][split]
 
     if load_entire_split and num_downloaded != num_total:
-        raise ValueError(
-            "Found %d samples out of %d for split `%s`. When loading a full "
-            "split of ActivityNet %s, it is required you "
-            "download videos directly from the dataset providers to "
-            "account for videos missing from YouTube."
-            "\n\nFill out this form to gain access: "
-            "https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform"
-            "\n\nAlternatively, provide `max_samples`, `max_duration`, or "
-            "`classes` to download a subset of the dataset from YouTube instead."
-            % (num_downloaded, num_total, split, version)
-        )
+        if source_dir is None:
+            raise ValueError(
+                "Found %d samples out of %d for split `%s`. When loading a full "
+                "split of ActivityNet %s, it is required you "
+                "download videos directly from the dataset providers to "
+                "account for videos missing from YouTube."
+                "\n\nFill out this form to gain access: "
+                "https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform"
+                "\n\nAlternatively, provide `max_samples`, `max_duration`, or "
+                "`classes` to download a subset of the dataset from YouTube instead."
+                % (num_downloaded, num_total, split, version)
+            )
+        else:
+            # @todo move the samples from the manually downloaded dataset
+            # location
+            pass
 
     # Find all samples that match either all classes specified or any
     # classes specified
