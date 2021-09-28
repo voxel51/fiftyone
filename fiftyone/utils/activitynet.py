@@ -30,6 +30,63 @@ logger = logging.getLogger(__name__)
 class ActivityNetDatasetImporter(
     foud.FiftyOneVideoClassificationDatasetImporter
 ):
+    """Base class for importing datasets in ActivityNet format.
+
+    See :class:`fiftyone.types.dataset_types.ActivityNetDataset` for format
+    details.
+
+    Args:
+        dataset_dir: the directory to download the dataset
+        split: the split to download. Supported values are
+            ``("train", "validation", "test")``
+        source_dir (None): the directory containing the manually downloaded
+            ActivityNet files
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the `max_duration` will be downloaded. By
+            default, all videos are downloaded
+        copy_files (True): whether to move (False) or create copies (True) of
+            the source files when populating ``dataset_dir``. This is only
+            relevant when a ``source_dir`` is provided
+        num_workers (None): the number of processes to use when downloading
+            individual video. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded.
+            By default, all matching samples are loaded
+        version ("200"): the version of the ActivityNet dataset to download
+            ("200", or "100")
+
+    """
+
+    def __init__(
+        self,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
+        compute_metadata=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            compute_metadata=compute_metadata,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self._taxonomy = None
+
     @property
     def has_dataset_info(self):
         return self._classes is not None or self._taxonomy is not None
@@ -73,6 +130,7 @@ def download_activitynet_split(
     source_dir=None,
     classes=None,
     max_duration=None,
+    copy_files=True,
     num_workers=None,
     shuffle=None,
     seed=None,
@@ -87,16 +145,19 @@ def download_activitynet_split(
 
     Args:
         dataset_dir: the directory to download the dataset
-        source_dir (None): the directory containing the manually downloaded
-            ActivityNet files
         split: the split to download. Supported values are
             ``("train", "validation", "test")``
+        source_dir (None): the directory containing the manually downloaded
+            ActivityNet files
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
         max_duration (None): only videos with a duration in seconds that is
             less than or equal to the `max_duration` will be downloaded. By
             default, all videos are downloaded
+        copy_files (True): whether to move (False) or create copies (True) of
+            the source files when populating ``dataset_dir``. This is only
+            relevant when a ``source_dir`` is provided
         num_workers (None): the number of processes to use when downloading
             individual video. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -126,10 +187,9 @@ def download_activitynet_split(
             % (split, tuple(_SPLIT_MAP.keys()))
         )
 
-    if max_duration is None and max_samples is None and classes is None:
-        load_entire_split = True
-    else:
-        load_entire_split = False
+    load_entire_split = bool(
+        max_duration is None and max_samples is None and classes is None
+    )
 
     if version not in _ANNOTATION_DOWNLOAD_LINKS:
         raise ValueError(
@@ -148,6 +208,7 @@ def download_activitynet_split(
 
     videos_dir = os.path.join(dataset_dir, "data")
     anno_path = os.path.join(dataset_dir, "labels.json")
+    error_path = os.path.join(dataset_dir, "download_errors.json")
     raw_anno_path = os.path.join(dataset_dir, "raw_labels.json")
 
     etau.ensure_dir(videos_dir)
@@ -176,46 +237,61 @@ def download_activitynet_split(
     num_downloaded = len(prev_downloaded_ids)
     num_total = _NUM_TOTAL_SAMPLES[version][split]
 
-    if load_entire_split and num_downloaded != num_total:
-        if source_dir is None:
+    if source_dir is not None:
+        # Copy/move all media if a source dir is provided
+        prev_downloaded_ids = _process_source_dir(
+            source_dir, videos_dir, split, copy_files
+        )
+
+    if load_entire_split:
+        if num_downloaded != num_total and source_dir is None:
             raise ValueError(
-                "Found %d samples out of %d for split `%s`. When loading a full "
-                "split of ActivityNet %s, it is required you "
+                "Found %d samples out of %d for split `%s`. When loading a "
+                "full split of ActivityNet %s, it is required you "
                 "download videos directly from the dataset providers to "
                 "account for videos missing from YouTube."
                 "\n\nFill out this form to gain access: "
                 "https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform"
                 "\n\nAlternatively, provide `max_samples`, `max_duration`, or "
-                "`classes` to download a subset of the dataset from YouTube instead."
-                % (num_downloaded, num_total, split, version)
+                "`classes` to download a subset of the dataset from YouTube "
+                "instead." % (num_downloaded, num_total, split, version)
             )
-        else:
-            # @todo move the samples from the manually downloaded dataset
-            # location
-            pass
-
-    # Find all samples that match either all classes specified or any
-    # classes specified
-    any_class_samples, all_class_samples = _get_matching_samples(
-        raw_annotations, classes, split, max_duration
-    )
-
-    # Check if the downloaded samples are enough, else download more
-    selected_samples, num_downloaded_samples = _downloaded_necessary_samples(
-        videos_dir,
-        all_class_samples,
-        any_class_samples,
-        prev_downloaded_ids,
-        max_samples,
-        seed,
-        shuffle,
-        num_workers,
-    )
-
-    if not num_downloaded_samples:
-        num_samples = None
+        selected_samples = raw_annotations["database"]
+        num_samples = len(prev_downloaded_ids)
     else:
-        num_samples = num_downloaded_samples + len(prev_downloaded_ids)
+        # We are loading a subset of the dataset, load only the matching
+        # samples for the given parameters
+
+        # Find all samples that match either all classes specified or any
+        # classes specified
+        any_class_samples, all_class_samples = _get_matching_samples(
+            raw_annotations, classes, split, max_duration
+        )
+
+        # Check if the downloaded samples are enough, else download more
+        (
+            selected_samples,
+            num_downloaded_samples,
+            download_errors,
+        ) = _select_and_download_necessary_samples(
+            videos_dir,
+            all_class_samples,
+            any_class_samples,
+            prev_downloaded_ids,
+            max_samples,
+            seed,
+            shuffle,
+            num_workers,
+        )
+
+        _merge_and_write_errors(download_errors, error_path)
+
+        if source_dir is not None:
+            num_samples = len(prev_downloaded_ids)
+        elif not num_downloaded_samples:
+            num_samples = None
+        else:
+            num_samples = num_downloaded_samples + len(prev_downloaded_ids)
 
     # Save labels for this run in AcitivityNetDataset format
     _write_annotations(selected_samples, anno_path, target_map, taxonomy)
@@ -241,7 +317,6 @@ def _get_downloaded_sample_ids(videos_dir):
     for vfn in video_filenames:
         video_id, ext = os.path.splitext(vfn)
         if ext != ".mp4":
-            logger.warning("Removing partially downloaded video %s...", vfn)
             os.remove(os.path.join(videos_dir, vfn))
         else:
             video_ids.append(video_id)
@@ -249,13 +324,10 @@ def _get_downloaded_sample_ids(videos_dir):
     return video_ids
 
 
-def _cleanup_partial_downloads(videos_dir):
-    video_filenames = os.listdir(videos_dir)
-    for vfn in video_filenames:
-        video_id, ext = os.path.splitext(vfn)
-        if ext != ".mp4":
-            logger.warning("Removing partially downloaded video %s...", vfn)
-            os.remove(os.path.join(videos_dir, vfn))
+def _process_source_dir(source_dir, videos_dir, split, copy_files):
+    raise NotImplementedError(
+        "Loading videos from source is not yet implemented"
+    )
 
 
 def _get_matching_samples(raw_annotations, classes, split, max_duration):
@@ -292,7 +364,7 @@ def _get_matching_samples(raw_annotations, classes, split, max_duration):
     return any_class_match, all_class_match
 
 
-def _downloaded_necessary_samples(
+def _select_and_download_necessary_samples(
     videos_dir,
     all_class_samples,
     any_class_samples,
@@ -339,6 +411,8 @@ def _downloaded_necessary_samples(
         if requested_num:
             requested_num -= len(add_ids)
 
+    download_errors = {}
+
     # 3) Download all class ids up to max_samples
     if requested_num is None or requested_num:
         not_dl_all_class_ids = list(set_all_ids - set(dl_all_class_ids))
@@ -346,7 +420,7 @@ def _downloaded_necessary_samples(
         if shuffle:
             random.shuffle(not_dl_all_class_ids)
 
-        downloaded_ids = _attempt_to_download(
+        downloaded_ids, errors = _attempt_to_download(
             videos_dir,
             not_dl_all_class_ids,
             all_class_samples,
@@ -361,6 +435,8 @@ def _downloaded_necessary_samples(
         if requested_num:
             requested_num -= len(downloaded_ids)
 
+        download_errors = _merge_errors(download_errors, errors)
+
     # 4) Download any class ids up to max_samples
     if requested_num is None or requested_num:
         not_dl_any_class_ids = list(set_any_ids - set(dl_any_class_ids))
@@ -368,7 +444,7 @@ def _downloaded_necessary_samples(
         if shuffle:
             random.shuffle(not_dl_any_class_ids)
 
-        downloaded_ids = _attempt_to_download(
+        downloaded_ids, errors = _attempt_to_download(
             videos_dir,
             not_dl_any_class_ids,
             any_class_samples,
@@ -380,11 +456,20 @@ def _downloaded_necessary_samples(
             {i: any_class_samples[i] for i in downloaded_ids}
         )
 
-    # Give buffer to let thread closed
-    time.sleep(2)
+        download_errors = _merge_errors(download_errors, errors)
+
     _cleanup_partial_downloads(videos_dir)
 
-    return requested_samples, num_downloaded_samples
+    return requested_samples, num_downloaded_samples, download_errors
+
+
+def _merge_errors(download_errors, errors):
+    for e, num in errors.items():
+        if e in download_errors:
+            download_errors[e] += num
+        else:
+            download_errors[e] = num
+    return download_errors
 
 
 def _attempt_to_download(
@@ -392,35 +477,51 @@ def _attempt_to_download(
 ):
     downloaded = []
     tasks = []
+    errors = {}
     for sample_id in ids:
         sample_info = samples_info[sample_id]
         url = sample_info["url"]
         output_path = os.path.join(videos_dir, "%s.mp4" % sample_id)
         tasks.append((url, output_path, sample_id))
     if num_workers == 1:
-        for url, output_path, sample_id in tasks:
-            is_success, _ = _do_download((url, output_path, sample_id))
-            if is_success:
-                downloaded.append(sample_id)
-                if num_samples is not None and len(downloaded) >= num_samples:
-                    return downloaded
+        with fou.ProgressBar(total=num_samples, iters_str="videos") as pb:
+            for url, output_path, sample_id in tasks:
+                is_success, _, error_type = _do_download(
+                    (url, output_path, sample_id)
+                )
+                if is_success:
+                    downloaded.append(sample_id)
+                    pb.update()
+                    if (
+                        num_samples is not None
+                        and len(downloaded) >= num_samples
+                    ):
+                        return downloaded, errors
+                else:
+                    if error_type not in errors:
+                        errors[error_type] = 0
+                    errors[error_type] += 1
     else:
         with fou.ProgressBar(total=num_samples, iters_str="videos") as pb:
             with multiprocessing.dummy.Pool(num_workers) as pool:
-                for is_success, sample_id in pool.imap_unordered(
+                for is_success, sample_id, error_type in pool.imap_unordered(
                     _do_download, tasks
                 ):
                     if is_success:
                         if len(downloaded) < num_samples:
                             downloaded.append(sample_id)
                             pb.update()
+                    else:
+                        if error_type not in errors:
+                            errors[error_type] = 0
+                        errors[error_type] += 1
                     if (
                         num_samples is not None
                         and len(downloaded) >= num_samples
                     ):
-                        return downloaded
+                        return downloaded, errors
 
-    return downloaded
+    return downloaded, errors
 
 
 def _do_download(args):
@@ -429,13 +530,29 @@ def _do_download(args):
         ydl_opts = {
             "outtmpl": output_path,
             "format": "bestvideo[ext=mp4]",
+            "logtostderr": True,
+            "quiet": True,
+            "logger": logger,
+            "age_limit": 99,
+            "ignorerrors": True,
         }
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        return True, sample_id
+        return True, sample_id, None
     except Exception as e:
-        return False, sample_id
+        if isinstance(e, youtube_dl.utils.DownloadError):
+            # pylint: disable=no-member
+            return False, sample_id, str(e.exc_info[1])
+        return False, sample_id, "other"
+
+
+def _cleanup_partial_downloads(videos_dir):
+    video_filenames = os.listdir(videos_dir)
+    for vfn in video_filenames:
+        video_id, ext = os.path.splitext(vfn)
+        if ext != ".mp4":
+            os.remove(os.path.join(videos_dir, vfn))
 
 
 def _write_annotations(matching_samples, anno_path, target_map, taxonomy):
@@ -443,6 +560,12 @@ def _write_annotations(matching_samples, anno_path, target_map, taxonomy):
         matching_samples, target_map, taxonomy
     )
     etas.write_json(fo_matching_labels, anno_path)
+
+
+def _merge_and_write_errors(download_errors, error_path):
+    prev_errors = etas.load_json(error_path)
+    download_errors = _merge_errors(prev_errors, download_errors)
+    etas.write_json(download_errors, error_path, pretty_print=True)
 
 
 def _convert_label_format(activitynet_labels, target_map, taxonomy):
@@ -469,16 +592,14 @@ def _parse_num_workers(num_workers):
         if os.name == "nt":
             # Default to 1 worker for Windows
             return 1
-        else:
-            return multiprocessing.cpu_count()
+        return multiprocessing.cpu_count()
 
-    elif not isinstance(num_workers, int) or num_workers < 1:
+    if not isinstance(num_workers, int) or num_workers < 1:
         raise ValueError(
             "The `num_workers` argument must be a positive integer or `None` "
             "found %s" % str(type(num_workers))
         )
-    else:
-        return num_workers
+    return num_workers
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {

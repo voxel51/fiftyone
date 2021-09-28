@@ -277,7 +277,7 @@ class FiftyOneImageClassificationDataset(ImageClassificationDataset):
         return foud.FiftyOneImageClassificationDatasetExporter
 
 
-class FiftyOneVideoClassificationDataset(ImageClassificationDataset):
+class FiftyOneVideoClassificationDataset(VideoClassificationDataset):
     """A labeled dataset consisting of videos and their associated
     temporal classification labels stored in a simple JSON format.
 
@@ -712,10 +712,59 @@ class DICOMDataset(ImageLabelsDataset):
 
 class ActivityNetDataset(VideoClassificationDataset):
     """A video dataset composed of temporal activity detections loaded as
-    VideoClassification labels stored in 
+    :class:`fiftyone.core.labels.VideoClassification` labels stored in 
     `ActivityNet format <http://activity-net.org/download.html>`_.
 
-    See :ref:`this page <ActivityNetDataset-import>` for importing datasets of this type.
+    This format is the same as the  
+    :ref:`FiftyOneVideoClassificationDataset <FiftyOneVideoClassificationDataset-import>`
+    format except that the `labels.json` may also contain a `taxonomy` like the
+    one provided by the raw ActivityNet annotations::
+    
+    
+        {
+            "classes": [
+                "<labelA>",
+                "<labelB>",
+                ...
+            ],
+            "labels": {
+                "<uuid1>": [
+                    {
+                        "label": <target>,
+                        "support": [<first-frame>, <last-frame>],
+                        "confidence": <optional-confidence>
+                    },
+                    {
+                        "label": <target>,
+                        "support": [<first-frame>, <last-frame>],
+                        "confidence": <optional-confidence>
+                    },
+                    ...
+                ],
+                "<uuid2>": [
+                    {
+                        "label": <target>,
+                        "timestamps": [<start-timestamp>, <stop-timestamp>],
+                        "confidence": <optional-confidence>
+                    },
+                    {
+                        "label": <target>,
+                        "timestamps": [<start-timestamp>, <stop-timestamp>],
+                        "confidence": <optional-confidence>
+                    },
+                ],
+                ...
+            },
+            "taxonomy": [
+                {
+                    "nodeId": <node-id>, 
+                    "nodeName": <node-str-name>, 
+                    "parentId": <parent-node-id>, 
+                    "parentName": <parent-node-str-name> 
+                }, 
+                ...
+            ]
+        }
     """
 
     def get_dataset_importer_cls(self):
