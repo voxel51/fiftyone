@@ -505,8 +505,8 @@ def _compute_matches(cats, pred_ious, iou_thresh, eval_key, id_key, iou_key):
                 for gt_id, iou in pred_ious[pred.id]:
                     gt = gt_map[gt_id]
 
-                    # If matching classwise=False
-                    if gt.label != pred.label:
+                    # Each gt can only match with one prediction
+                    if gt[id_key] != _NO_MATCH_ID:
                         continue
 
                     if iou < best_match_iou:
@@ -518,12 +518,9 @@ def _compute_matches(cats, pred_ious, iou_thresh, eval_key, id_key, iou_key):
                 if best_match:
                     gt = gt_map[best_match]
 
-                    # For crowd GTs, record info for first (highest confidence)
-                    # matching prediction on the GT segment
-                    if gt[id_key] == _NO_MATCH_ID:
-                        gt[eval_key] = "tp" if gt.label == pred.label else "fn"
-                        gt[id_key] = pred.id
-                        gt[iou_key] = best_match_iou
+                    gt[eval_key] = "tp" if gt.label == pred.label else "fn"
+                    gt[id_key] = pred.id
+                    gt[iou_key] = best_match_iou
 
                     pred[eval_key] = "tp" if gt.label == pred.label else "fp"
                     pred[id_key] = best_match
