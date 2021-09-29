@@ -3866,25 +3866,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 }
 
         cvat_schema = {}
+
+        # Global attributes
         for _class in classes:
             if etau.is_str(_class):
                 _classes = [_class]
-                attrs = attributes
             else:
                 _classes = _class["classes"]
-                _attrs = self._to_cvat_attributes(_class["attributes"])
-
-                if "label_id" in _attrs:
-                    raise ValueError(
-                        "Label field '%s' attribute schema cannot use "
-                        "reserved name 'label_id'" % label_field
-                    )
-
-                attrs = deepcopy(attributes)
-                attrs.update(_attrs)
 
             for name in _classes:
-                cvat_schema[name] = attrs
+                cvat_schema[name] = deepcopy(attributes)
+
+        # Class-specific attributes
+        for _class in classes:
+            if etau.is_str(_class):
+                continue
+
+            _classes = _class["classes"]
+            _attrs = self._to_cvat_attributes(_class["attributes"])
+
+            if "label_id" in _attrs:
+                raise ValueError(
+                    "Label field '%s' attribute schema cannot use "
+                    "reserved name 'label_id'" % label_field
+                )
+
+            for name in _classes:
+                cvat_schema[name].update(_attrs)
 
         return cvat_schema, assign_scalar_attrs
 
