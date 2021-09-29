@@ -160,7 +160,7 @@ export default class HeatmapOverlay<State extends BaseState>
         }
 
         const index = Math.round(
-          (Math.max(value - start, 0) / (stop - start)) * picker.length
+          (Math.max(value - start, 0) / (stop - start)) * (picker.length - 1)
         );
 
         return get32BitColor(picker[index], MASK_ALPHA);

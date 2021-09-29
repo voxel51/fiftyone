@@ -5,35 +5,18 @@
 import { MASK_ALPHA } from "./constants";
 import { RGB, RGBA } from "./state";
 
-const alphaCache: { [key: string]: string } = {};
-
-export const getAlphaColor = (color: string, alpha: number = 1): string => {
-  const key = `${color}${alpha}`;
-
-  if (key in alphaCache) {
-    return alphaCache[key];
-  }
-
-  alpha = alpha > 1 ? 1 : alpha < 0 ? 0 : alpha;
-  const rgba = [...color, Math.round(alpha * 255)];
-
-  alphaCache[key] = `rgba(${rgba.join(",")})`;
-  return alphaCache[key];
-};
-
 const bitColorCache: { [color: string]: number } = {};
 
 export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
+  alpha = Math.round(alpha * 255);
   const key = `${color}${alpha}`;
-
   if (key in bitColorCache) {
     return bitColorCache[key];
   }
 
   let r,
     g,
-    b,
-    a = 0;
+    b = 0;
 
   if (typeof color === "string") {
     if (color.startsWith("#")) {
@@ -44,14 +27,14 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
     } else if (color.startsWith("hsl")) {
       [r, g, b] = hslToRGB(color);
     }
+  } else {
+    [r, g, b] = color;
   }
 
-  r = r << 24;
-  g = g << 16;
-  b = b << 8;
-  a = Math.round(alpha * 255) / 255;
+  bitColorCache[key] = new Uint32Array(
+    new Uint8Array([r, g, b, alpha]).buffer
+  )[0];
 
-  bitColorCache[key] = r | g | b | a;
   return bitColorCache[key];
 };
 

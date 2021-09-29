@@ -1,13 +1,8 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { get32BitColor, getAlphaColor } from "../color";
-import {
-  BACKGROUND_ALPHA,
-  DASH_COLOR,
-  MASK_ALPHA,
-  TEXT_COLOR,
-} from "../constants";
+import { get32BitColor } from "../color";
+import { DASH_COLOR, MASK_ALPHA, TEXT_COLOR } from "../constants";
 
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
@@ -111,7 +106,7 @@ export default class DetectionOverlay<
     const color = this.getColor(state);
     const [tlx, tly, _, __] = this.label.bounding_box;
     ctx.beginPath();
-    ctx.fillStyle = getAlphaColor(color, BACKGROUND_ALPHA);
+    ctx.fillStyle = color;
     let [ox, oy] = t(state, tlx, tly);
     [ox, oy] = [ox - state.strokeWidth / 2, oy];
     ctx.moveTo(ox, oy);
