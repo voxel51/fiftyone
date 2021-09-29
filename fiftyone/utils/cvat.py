@@ -3201,11 +3201,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 and label_type
                 not in ("classification", "classifications", "scalar",)
             ):
+                # If we're uploading existing video tracks and there is at
+                # least one object marked as a `keyframe`, then upload *only*
+                # keyframes
                 _, keyframe_path = samples._get_label_field_path(
                     label_field, "keyframe"
                 )
-                keyframes_only = True in samples.distinct(keyframe_path)
-                if not keyframes_only:
+                keyframe_values = samples.distinct(keyframe_path)
+                keyframes_only = True in keyframe_values
+                if not keyframes_only and keyframe_values:
                     logger.warning(
                         "No keyframes found for existing labels in field "
                         "'%s'. All labels will be uploaded",
