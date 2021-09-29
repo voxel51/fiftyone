@@ -10,7 +10,7 @@
   z-index: 20;
   padding-bottom: 0.25rem;
   display: grid;
-  grid-template-columns: 0.5rem max-content max-content max-content max-content 1fr max-content max-content max-content max-content max-content max-content max-content max-content 0.5rem;
+  grid-template-columns: 0.5rem max-content max-content max-content max-content 1fr max-content max-content max-content max-content max-content max-content max-content max-content max-content 0.5rem;
   grid-gap: 0.25rem;
   justify-items: center;
   align-items: center;

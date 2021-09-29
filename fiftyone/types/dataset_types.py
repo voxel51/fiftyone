@@ -277,6 +277,27 @@ class FiftyOneImageClassificationDataset(ImageClassificationDataset):
         return foud.FiftyOneImageClassificationDatasetExporter
 
 
+class FiftyOneVideoClassificationDataset(ImageClassificationDataset):
+    """A labeled dataset consisting of videos and their associated
+    temporal classification labels stored in a simple JSON format.
+
+    See :ref:`this page <FiftyOneVideoClassificationDataset-import>` for
+    importing datasets of this type, and see
+    :ref:`this page <FiftyOneVideoClassificationDataset-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoClassificationDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoClassificationDatasetExporter
+
+
 class ImageClassificationDirectoryTree(ImageClassificationDataset):
     """A directory tree whose subfolders define an image classification
     dataset.

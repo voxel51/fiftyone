@@ -8,7 +8,8 @@ import {
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   VALID_LIST_TYPES,
-  LIST_FIELD,
+  UNSUPPORTED_IMAGE,
+  VALID_LIST_FIELDS,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -105,18 +106,21 @@ export const isRootView = selector<boolean>({
   },
 });
 
+const CLIPS_VIEW = "fiftyone.core.clips.ClipsView";
 const FRAMES_VIEW = "fiftyone.core.video.FramesView";
 const EVALUATION_PATCHES_VIEW = "fiftyone.core.patches.EvaluationPatchesView";
 const PATCHES_VIEW = "fiftyone.core.patches.PatchesView";
 const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
 
 enum ELEMENT_NAMES {
+  CLIP = "clip",
   FRAME = "frame",
   PATCH = "patch",
   SAMPLE = "sample",
 }
 
 enum ELEMENT_NAMES_PLURAL {
+  CLIP = "clips",
   FRAME = "frames",
   PATCH = "patches",
   SAMPLE = "samples",
@@ -130,6 +134,8 @@ export const rootElementName = selector<string>({
       return ELEMENT_NAMES.PATCH;
     }
 
+    if (cls === CLIPS_VIEW) return ELEMENT_NAMES.CLIP;
+
     if (cls === FRAMES_VIEW) return ELEMENT_NAMES.FRAME;
 
     return ELEMENT_NAMES.SAMPLE;
@@ -142,6 +148,8 @@ export const rootElementNamePlural = selector<string>({
     const elementName = get(rootElementName);
 
     switch (elementName) {
+      case ELEMENT_NAMES.CLIP:
+        return ELEMENT_NAMES_PLURAL.CLIP;
       case ELEMENT_NAMES.FRAME:
         return ELEMENT_NAMES_PLURAL.FRAME;
       case ELEMENT_NAMES.PATCH:
@@ -159,6 +167,13 @@ export const elementNames = selector<{ plural: string; singular: string }>({
       plural: get(rootElementNamePlural),
       singular: get(rootElementName),
     };
+  },
+});
+
+export const isClipsView = selector<boolean>({
+  key: "isClipsView",
+  get: ({ get }) => {
+    return get(rootElementName) === ELEMENT_NAMES.CLIP;
   },
 });
 
@@ -335,10 +350,15 @@ export const fieldSchema = selectorFamily({
   },
 });
 
-const labelFilter = (f) => {
+const getLabelFilter = (video: boolean, dimension: string) => (f) => {
+  if (!f.embedded_doc_type) {
+    return false;
+  }
+
+  const type = f.embedded_doc_type.split(".").slice(-1)[0];
   return (
-    f.embedded_doc_type &&
-    VALID_LABEL_TYPES.includes(f.embedded_doc_type.split(".").slice(-1)[0])
+    ((dimension !== "frame" && video) || !UNSUPPORTED_IMAGE.includes(type)) &&
+    VALID_LABEL_TYPES.includes(type)
   );
 };
 
@@ -351,7 +371,10 @@ const primitiveFilter = (f) => {
     return true;
   }
 
-  if (f.ftype === LIST_FIELD && VALID_SCALAR_TYPES.includes(f.subfield)) {
+  if (
+    VALID_LIST_FIELDS.includes(f.ftype) &&
+    VALID_SCALAR_TYPES.includes(f.subfield)
+  ) {
     return true;
   }
 
@@ -450,9 +473,10 @@ const labels = selectorFamily<
   key: "labels",
   get: (dimension: string) => ({ get }) => {
     const fieldsValue = get(selectedFields(dimension));
+    const video = get(isVideoDataset) && get(isRootView);
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
-      .filter(labelFilter)
+      .filter(getLabelFilter(video, dimension))
       .sort((a, b) => (a.name < b.name ? -1 : 1));
   },
 });
@@ -530,6 +554,15 @@ export const primitiveSubfields = selectorFamily({
   get: (dimension: string) => ({ get }) => {
     const l = get(primitives(dimension));
     return l.map((l) => l.subfield);
+  },
+});
+
+export const primitivesSchema = selectorFamily({
+  key: "primitivesSchema",
+  get: (dimension: string) => ({ get }) => {
+    return Object.fromEntries(
+      get(primitives(dimension)).map((p) => [p.name, p])
+    );
   },
 });
 

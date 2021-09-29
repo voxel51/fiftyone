@@ -142,7 +142,7 @@ def _make_filter_stages(
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_scalar_expression(F(keys[-1]), args)
+            expr = _make_scalar_expression(F(keys[-1]), args, field)
             if expr is not None:
                 if hide_result:
                     new_field = "__%s" % path.split(".")[0]
@@ -215,9 +215,24 @@ def _make_filter_stages(
     return stages, cleanup, filtered_labels
 
 
-def _make_scalar_expression(f, args, field=None):
+def _is_support(field):
+    if isinstance(field, fof.FrameSupportField):
+        return True
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if field.document_type in {
+            fol.VideoClassification,
+            fol.VideoClassifications,
+        }:
+            return True
+
+    return False
+
+
+def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
+
     if cls == _BOOL_FILTER:
         true, false = args["true"], args["false"]
         if true and false:
@@ -232,6 +247,9 @@ def _make_scalar_expression(f, args, field=None):
         if not true and not false:
             expr = (f != True) & (f != False)
 
+    elif cls == _NUMERIC_FILTER and _is_support(field):
+        mn, mx = args["range"]
+        expr = F.any(f.map((F() >= mn) & (F() <= mx)))
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         if isinstance(field, fof.DateTimeField):

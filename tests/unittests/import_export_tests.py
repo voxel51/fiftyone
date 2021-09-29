@@ -59,6 +59,92 @@ class ImageDatasetTests(unittest.TestCase):
         return os.path.join(self._tmp_dir, self._new_name())
 
 
+class DuplicateImageExportTests(ImageDatasetTests):
+    @drop_datasets
+    def test_duplicate_images(self):
+        sample = fo.Sample(
+            filepath=self._new_image(),
+            cls=fo.Classification(label="sunny"),
+            det=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 1, 1])
+                ]
+            ),
+        )
+
+        # This dataset contains two samples with the same `filepath`
+        dataset = fo.Dataset()
+        dataset.add_samples([sample, sample])
+
+        export_dir = self._new_dir()
+
+        #
+        # In general, duplicate copies of the same images are NOT created
+        #
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageDirectory,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.ImageDirectory
+        )
+
+        # We didn't create a duplicate image during export, so there's only
+        # one image to import here
+        self.assertEqual(len(dataset2), 1)
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+        )
+
+        self.assertEqual(len(dataset2), 2)
+
+        # Use COCODetectionDataset as a representative for other labeled image
+        # dataset types
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.COCODetectionDataset
+        )
+
+        self.assertEqual(len(dataset2), 2)
+
+        #
+        # The one exception is labeled dataset types where the location of the
+        # exported media encodes the label (what if the same image has
+        # different labels in different samples). In this case, duplicate
+        # images ARE exported
+        #
+        #
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+            overwrite=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+        )
+
+        self.assertEqual(len(dataset2), 2)
+
+
 class ImageExportCoersionTests(ImageDatasetTests):
     @drop_datasets
     def test_field_inference(self):
@@ -298,6 +384,30 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         self.assertEqual(
             dataset.count("predictions"), dataset2.count("predictions")
         )
+
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            label_field="predictions",
+        )
+
+        confs = dataset.values("predictions.confidence", missing_value=-1)
+        confs2 = dataset2.values("predictions.confidence", missing_value=-1)
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertTrue(np.allclose(sorted(confs), sorted(confs2)))
 
         # Labels-only
 
@@ -1074,7 +1184,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
 class DICOMDatasetTests(ImageDatasetTests):
     def _get_dcm_path(self):
-        import pydicom
+        import pydicom  # pylint: disable=unused-import
         from pydicom.data import get_testdata_file
 
         return get_testdata_file("MR_small.dcm")
@@ -1490,6 +1600,189 @@ class VideoDatasetTests(unittest.TestCase):
         return os.path.join(self._tmp_dir, self._new_name())
 
 
+class VideoExportCoersionTests(VideoDatasetTests):
+    @drop_datasets
+    def test_clip_exports(self):
+        sample1 = fo.Sample(
+            filepath=self._new_video(),
+            predictions=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(
+                        label="cat", support=[1, 3], confidence=0.9
+                    )
+                ]
+            ),
+        )
+        sample1.frames[1] = fo.Frame(
+            weather=fo.Classification(label="sunny", confidence=0.9),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    ),
+                    fo.Detection(
+                        label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                    ),
+                ]
+            ),
+        )
+        sample1.frames[2] = fo.Frame(
+            weather=fo.Classification(label="cloudy", confidence=0.95),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        confidence=0.9,
+                        age=51,
+                        cute=True,
+                        mood="surly",
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        confidence=0.95,
+                        age=52,
+                        cute=False,
+                        mood="derpy",
+                    ),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath=self._new_video(),
+            predictions=fo.VideoClassifications(
+                classifications=[
+                    fo.VideoClassification(
+                        label="cat", support=[1, 4], confidence=0.95,
+                    ),
+                    fo.VideoClassification(
+                        label="dog", support=[2, 5], confidence=0.95,
+                    ),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        #
+        # Export unlabeled video clips
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoDirectory,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.VideoDirectory,
+        )
+
+        self.assertEqual(
+            len(dataset2), dataset.count("predictions.classifications")
+        )
+
+        #
+        # Export video classification clips in a VideoClassifications field
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+        )
+
+        self.assertEqual(
+            len(dataset2), dataset.count("predictions.classifications")
+        )
+
+        #
+        # Export video classification clips directly from a ClipsView
+        #
+
+        export_dir = self._new_dir()
+
+        dataset.to_clips("predictions").export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+            label_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+        )
+
+        self.assertEqual(
+            len(dataset2), dataset.count("predictions.classifications")
+        )
+
+        #
+        # Export frame labels for clips
+        #
+
+        export_dir = self._new_dir()
+
+        clips = dataset.to_clips("predictions")
+        clips.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+            frame_labels_field="predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+        )
+
+        self.assertEqual(
+            clips.count("frames.predictions.detections"),
+            dataset2.count("frames.predictions.detections"),
+        )
+
+        #
+        # Export entire clips view as a dataset
+        #
+
+        export_dir = self._new_dir()
+
+        clips = dataset.to_clips("predictions")
+
+        clips.export(
+            export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
+        )
+
+        self.assertEqual(len(clips), len(dataset2))
+        self.assertEqual(clips.count("frames"), dataset2.count("frames"))
+        self.assertListEqual(
+            clips.values("support"), dataset2.values("support")
+        )
+
+        dataset3 = clips.clone()
+
+        self.assertEqual(len(clips), len(dataset3))
+        self.assertEqual(clips.count("frames"), dataset3.count("frames"))
+        self.assertListEqual(
+            clips.values("support"), dataset3.values("support")
+        )
+
+
 class UnlabeledVideoDatasetTests(VideoDatasetTests):
     def _make_dataset(self):
         samples = [fo.Sample(filepath=self._new_video()) for _ in range(5)]
@@ -1556,6 +1849,98 @@ class VideoClassificationDatasetTests(VideoDatasetTests):
         self.assertEqual(len(dataset), len(dataset2))
         self.assertEqual(
             dataset.count("predictions"), dataset2.count("predictions")
+        )
+
+
+class TemporalVideoClassificationDatasetTests(VideoDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_video(),
+                predictions=fo.VideoClassifications(
+                    classifications=[
+                        fo.VideoClassification(
+                            label="cat", support=[1, 3], confidence=0.9
+                        )
+                    ]
+                ),
+            ),
+            fo.Sample(
+                filepath=self._new_video(),
+                predictions=fo.VideoClassifications(
+                    classifications=[
+                        fo.VideoClassification(
+                            label="cat", support=[1, 4], confidence=0.95,
+                        ),
+                        fo.VideoClassification(
+                            label="dog", support=[2, 5], confidence=0.95,
+                        ),
+                    ]
+                ),
+            ),
+            fo.Sample(filepath=self._new_video()),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_fiftyone_video_classification_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            label_field="predictions",
+        )
+
+        supports = dataset.values("predictions.classifications.support")
+        supports2 = dataset2.values("predictions.classifications.support")
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertListEqual(
+            sorted(supports, key=lambda k: (k is None, k)),
+            sorted(supports2, key=lambda k: (k is None, k)),
+        )
+
+        # Use timestamps
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            use_timestamps=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            label_field="predictions",
+        )
+
+        supports = dataset.values("predictions.classifications.support")
+        supports2 = dataset2.values("predictions.classifications.support")
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertListEqual(
+            sorted(supports, key=lambda k: (k is None, k)),
+            sorted(supports2, key=lambda k: (k is None, k)),
         )
 
 

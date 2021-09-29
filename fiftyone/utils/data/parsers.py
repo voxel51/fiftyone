@@ -5,16 +5,24 @@ Sample parsers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import numpy as np
 
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-import fiftyone.core.eta_utils as foe
+import fiftyone as fo
+import fiftyone.core.clips as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
+import fiftyone.utils.eta as foue
+
+fouv = fou.lazy_import("fiftyone.utils.video")
 
 
 def add_images(dataset, samples, sample_parser, tags=None):
@@ -395,7 +403,7 @@ class SampleParser(object):
         """Sets the current sample so that subsequent calls to methods of this
         parser will return information from the given sample.
 
-        Guaranteed to call :func:`clear_sample` before setting the current
+        Guaranteed to call :meth:`clear_sample` before setting the current
         sample.
 
         Args:
@@ -879,11 +887,20 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
     This implementation supports samples that are ``(image_or_path, target)``
     tuples, where:
 
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
+        -   ``image_or_path`` is either an image that can be converted to numpy
+            format via ``np.asarray()`` or the path to an image on disk
 
-        - ``target`` is either a class ID (if ``classes`` is provided) or a
-          label string. For unlabeled images, ``target`` can be ``None``
+        -   ``target`` can be any of the following:
+
+            -   a label string
+            -   a class ID, if ``classes`` is provided
+            -   None, for unlabeled images
+            -   a dict of the following form::
+
+                {
+                    "label": <label-or-target>,
+                    "confidence": <confidence>,
+                }
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -915,12 +932,19 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
         if target is None:
             return None
 
-        try:
-            label = self.classes[target]
-        except:
-            label = str(target)
+        if isinstance(target, dict):
+            label = target.get("label", None)
+            confidence = target.get("confidence", None)
+        else:
+            label = target
+            confidence = None
 
-        return fol.Classification(label=label)
+        try:
+            label = self.classes[label]
+        except:
+            label = str(label)
+
+        return fol.Classification(label=label, confidence=confidence)
 
 
 class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
@@ -1089,9 +1113,9 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
             expanded label dictionary
         labels_dict (None): a dictionary mapping names of attributes/objects
             in the image labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 
@@ -1122,7 +1146,7 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
         return self._parse_label(labels)
 
     def _parse_label(self, labels):
-        return foe.load_image_labels(
+        return foue.from_image_labels(
             labels,
             prefix=self.prefix,
             labels_dict=self.labels_dict,
@@ -1145,6 +1169,104 @@ class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
 
     def __init__(self, classes=None):
         super().__init__(classes=classes)
+
+
+class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
+    """Parser for samples in FiftyOne video classification datasets.
+
+    See :ref:`this page <FiftyOneImageClassificationDataset-import>` for format
+    details.
+
+    Args:
+        classes (None): an optional list of class label strings. If provided,
+            it is assumed that ``target`` is a class ID that should be mapped
+            to a label string via ``classes[target]``
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
+            if :meth:`get_video_metadata` is called and no metadata is
+            available
+    """
+
+    def __init__(self, classes=None, compute_metadata=False):
+        super().__init__()
+        self.classes = classes
+        self.compute_metadata = compute_metadata
+        self._current_metadata = None
+
+    @property
+    def has_video_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.VideoClassifications
+
+    @property
+    def frame_labels_cls(self):
+        return None
+
+    def get_video_path(self):
+        return self.current_sample[0]
+
+    def get_video_metadata(self):
+        if self._current_metadata is None and self.compute_metadata:
+            video_path = self.current_sample[0]
+            self._current_metadata = fom.VideoMetadata.build_for(video_path)
+
+        return self._current_metadata
+
+    def get_label(self):
+        video_path, labels = self.current_sample
+
+        if labels is None:
+            return None
+
+        classifications = []
+        for label_dict in labels:
+            label = label_dict["label"]
+
+            try:
+                label = self.classes[label]
+            except:
+                label = str(label)
+
+            confidence = label_dict.get("confidence", None)
+
+            if "support" in label_dict:
+                classification = fol.VideoClassification(
+                    label=label,
+                    support=label_dict["support"],
+                    confidence=confidence,
+                )
+            elif "timestamps" in label_dict:
+                if self._current_metadata is not None:
+                    metadata = self._current_metadata
+                else:
+                    metadata = fom.VideoMetadata.build_for(video_path)
+                    self._current_metadata = metadata
+
+                classification = fol.VideoClassification.from_timestamps(
+                    label_dict["timestamps"],
+                    metadata=metadata,
+                    label=label,
+                    confidence=confidence,
+                )
+            else:
+                raise ValueError(
+                    "All video classification label dicts must have either "
+                    "`support` or `timestamps` populated"
+                )
+
+            classifications.append(classification)
+
+        return fol.VideoClassifications(classifications=classifications)
+
+    def get_frame_labels(self):
+        return None
+
+    def clear_sample(self):
+        super().clear_sample()
+        self._current_metadata = None
 
 
 class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
@@ -1181,9 +1303,9 @@ class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
             expanded label dictionary
         labels_dict (None): a dictionary mapping names of attributes/objects
             in the image labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 
@@ -1205,12 +1327,16 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
 
     Args:
         prefix (None): a string prefix to prepend to each label name in the
-            expanded frame label dictionaries
+            expanded sample/frame label dictionaries
         labels_dict (None): a dictionary mapping names of attributes/objects
-            in the frame labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+            in the sample labels to field names into which to expand them. By
+            default, all sample labels are loaded
+        frame_labels_dict (None): a dictionary mapping names of
+            attributes/objects in the frame labels to field names into which to
+            expand them. By default, all frame labels are loaded
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 
@@ -1218,14 +1344,19 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
         self,
         prefix=None,
         labels_dict=None,
+        frame_labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
     ):
         super().__init__()
         self.prefix = prefix
         self.labels_dict = labels_dict
+        self.frame_labels_dict = frame_labels_dict
         self.multilabel = multilabel
         self.skip_non_categorical = skip_non_categorical
+
+        self._curr_label = None
+        self._curr_frames = None
 
     @property
     def has_video_metadata(self):
@@ -1243,20 +1374,33 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
         return self.current_sample[0]
 
     def get_label(self):
-        return None
+        self._parse_labels()
+        return self._curr_label
 
     def get_frame_labels(self):
-        labels = self.current_sample[1]
-        return self._parse_labels(labels)
+        self._parse_labels()
+        return self._curr_frames
 
-    def _parse_labels(self, labels):
-        return foe.load_video_labels(
-            labels,
+    def clear_sample(self):
+        super().clear_sample()
+        self._curr_label = None
+        self._curr_frames = None
+
+    def _parse_labels(self):
+        if self._curr_label is not None or self._curr_frames is not None:
+            return
+
+        label, frames = foue.from_video_labels(
+            self.current_sample[1],
             prefix=self.prefix,
             labels_dict=self.labels_dict,
+            frame_labels_dict=self.frame_labels_dict,
             multilabel=self.multilabel,
             skip_non_categorical=self.skip_non_categorical,
         )
+
+        self._curr_label = label
+        self._curr_frames = frames
 
 
 class FiftyOneVideoLabelsSampleParser(VideoLabelsSampleParser):
@@ -1272,9 +1416,9 @@ class FiftyOneVideoLabelsSampleParser(VideoLabelsSampleParser):
             expanded frame label dictionaries
         labels_dict (None): a dictionary mapping names of attributes/objects
             in the frame labels to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
+        multilabel (False): whether to store attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance
-        skip_non_categorical (False): whether to skip non-categorical frame
+        skip_non_categorical (False): whether to skip non-categorical
             attributes (True) or cast them to strings (False)
     """
 
@@ -1288,7 +1432,7 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
     Args:
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
-            if :func:`get_image_metadata` is called and no metadata is
+            if :meth:`get_image_metadata` is called and no metadata is
             available
     """
 
@@ -1305,12 +1449,15 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
         return True
 
     def get_image(self):
+        fov.validate_image_sample(self.current_sample)
         return etai.read(self.current_sample.filepath)
 
     def get_image_path(self):
+        fov.validate_image_sample(self.current_sample)
         return self.current_sample.filepath
 
     def get_image_metadata(self):
+        fov.validate_image_sample(self.current_sample)
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.ImageMetadata.build_for(
@@ -1332,7 +1479,7 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
             each label before returning it
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
-            if :func:`get_image_metadata` is called and no metadata is
+            if :meth:`get_image_metadata` is called and no metadata is
             available
     """
 
@@ -1355,12 +1502,15 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
         return None
 
     def get_image(self):
+        fov.validate_image_sample(self.current_sample)
         return etai.read(self.current_sample.filepath)
 
     def get_image_path(self):
+        fov.validate_image_sample(self.current_sample)
         return self.current_sample.filepath
 
     def get_image_metadata(self):
+        fov.validate_image_sample(self.current_sample)
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.ImageMetadata.build_for(
@@ -1393,29 +1543,131 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
         return label
 
 
-class FiftyOneUnlabeledVideoSampleParser(UnlabeledVideoSampleParser):
-    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
-    videos.
+class ExtractClipsMixin(object):
+    """Mixin for sample parsers that extract clips from
+    :class:`fiftyone.core.clips.ClipView` instances.
 
     Args:
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
-            if :func:`get_video_metadata` is called and no metadata is
-            available
+            when no pre-computed metadata is available
+        export_media (True): whether to actually write clips when their paths
+            are requested
+        clip_dir (None): a directory to write clips. Only applicable when
+            parsing :class:`fiftyone.core.clips.ClipView` instances
+        video_format (None): the video format to use when writing video clips
+            to disk. By default, ``fiftyone.config.default_video_ext`` is used
     """
 
-    def __init__(self, compute_metadata=False):
-        super().__init__()
+    def __init__(
+        self,
+        compute_metadata=False,
+        export_media=True,
+        clip_dir=None,
+        video_format=None,
+    ):
+        if video_format is None:
+            video_format = fo.config.default_video_ext
+
         self.compute_metadata = compute_metadata
+        self.export_media = export_media
+        self.clip_dir = clip_dir
+        self.video_format = video_format
+
+        self._curr_clip_path = None
+
+    def _get_clip_path(self, sample):
+        video_path = sample.filepath
+        basename, ext = os.path.splitext(os.path.basename(video_path))
+
+        if self.export_media:
+            if self.clip_dir is None:
+                self.clip_dir = etau.make_temp_dir()
+
+            dirname = self.clip_dir
+            ext = self.video_format
+        else:
+            dirname = os.path.dirname(video_path)
+
+        clip_name = "%s-clip-%d-%d%s" % (
+            basename,
+            sample.support[0],
+            sample.support[1],
+            ext,
+        )
+        clip_path = os.path.join(dirname, clip_name)
+
+        if self.export_media:
+            self._curr_clip_path = clip_path
+            fouv.extract_clip(
+                video_path,
+                clip_path,
+                support=sample.support,
+                metadata=sample.metadata,
+            )
+        else:
+            self._curr_clip_path = None
+
+        return clip_path
+
+    def _get_clip_metadata(self, sample):
+        if not self.compute_metadata or self._curr_clip_path is None:
+            return None
+
+        return fom.VideoMetadata.build_for(self._curr_clip_path)
+
+
+class FiftyOneUnlabeledVideoSampleParser(
+    ExtractClipsMixin, UnlabeledVideoSampleParser
+):
+    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
+    videos.
+
+    This class also supports :class:`fiftyone.core.clips.ClipView` instances.
+
+    Args:
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
+            if :meth:`get_video_metadata` is called and no metadata is
+            available
+        export_media (True): whether to write clips when :meth:`get_video_path`
+            is called
+        clip_dir (None): a directory to write clips. Only applicable when
+            parsing :class:`fiftyone.core.clips.ClipView` instances
+        video_format (None): the video format to use when writing video clips
+            to disk. By default, ``fiftyone.config.default_video_ext`` is used
+    """
+
+    def __init__(
+        self,
+        compute_metadata=False,
+        export_media=True,
+        clip_dir=None,
+        video_format=None,
+    ):
+        ExtractClipsMixin.__init__(
+            self,
+            compute_metadata=compute_metadata,
+            export_media=export_media,
+            clip_dir=clip_dir,
+            video_format=video_format,
+        )
+        UnlabeledVideoSampleParser.__init__(self)
 
     @property
     def has_video_metadata(self):
         return True
 
     def get_video_path(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_path(self.current_sample)
+
         return self.current_sample.filepath
 
     def get_video_metadata(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_metadata(self.current_sample)
+
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.VideoMetadata.build_for(
@@ -1425,9 +1677,13 @@ class FiftyOneUnlabeledVideoSampleParser(UnlabeledVideoSampleParser):
         return metadata
 
 
-class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
+class FiftyOneLabeledVideoSampleParser(
+    ExtractClipsMixin, LabeledVideoSampleParser
+):
     """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
     labeled videos.
+
+    This class also supports :class:`fiftyone.core.clips.ClipView` instances.
 
     Args:
         label_field (None): the name of a label field to parse, or a dictionary
@@ -1445,8 +1701,14 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
             returning it
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.VideoMetadata` instances on-the-fly
-            if :func:`get_video_metadata` is called and no metadata is
+            if :meth:`get_video_metadata` is called and no metadata is
             available
+        export_media (True): whether to write clips when :meth:`get_video_path`
+            is called
+        clip_dir (None): a directory to write clips. Only applicable when
+            parsing :class:`fiftyone.core.clips.ClipView` instances
+        video_format (None): the video format to use when writing video clips
+            to disk. By default, ``fiftyone.config.default_video_ext`` is used
     """
 
     def __init__(
@@ -1456,17 +1718,27 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         label_fcn=None,
         frame_labels_fcn=None,
         compute_metadata=False,
+        export_media=True,
+        clip_dir=None,
+        video_format=None,
     ):
         frame_labels_dict, frame_fcn_dict = self._parse_frame_args(
             frame_labels_field, frame_labels_fcn
         )
 
-        super().__init__()
+        ExtractClipsMixin.__init__(
+            self,
+            compute_metadata=compute_metadata,
+            export_media=export_media,
+            clip_dir=clip_dir,
+            video_format=video_format,
+        )
+        LabeledVideoSampleParser.__init__(self)
+
         self.label_field = label_field
         self.frame_labels_dict = frame_labels_dict
         self.label_fcn = label_fcn
         self.frame_fcn_dict = frame_fcn_dict
-        self.compute_metadata = compute_metadata
 
     @property
     def has_video_metadata(self):
@@ -1481,9 +1753,15 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         return None
 
     def get_video_path(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_path(self.current_sample)
+
         return self.current_sample.filepath
 
     def get_video_metadata(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            return self._get_clip_metadata(self.current_sample)
+
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.VideoMetadata.build_for(
@@ -1519,6 +1797,11 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         return label
 
     def get_frame_labels(self):
+        if isinstance(self.current_sample, foc.ClipView):
+            df = self.current_sample.support[0] - 1
+        else:
+            df = 0
+
         frames = self.current_sample.frames
         frame_labels_dict = self.frame_labels_dict
         frame_fcn_dict = self.frame_fcn_dict
@@ -1537,11 +1820,11 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
                     else:
                         new_frame[v] = frame[k]
 
-                new_frames[frame_number] = new_frame
+                new_frames[frame_number - df] = new_frame
         else:
             new_frames = {}
             for frame_number, frame in frames.items():
-                new_frames[frame_number] = {
+                new_frames[frame_number - df] = {
                     v: frame[k] for k, v in frame_labels_dict.items()
                 }
 

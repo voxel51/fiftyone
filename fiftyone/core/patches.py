@@ -232,8 +232,7 @@ class _PatchesView(fov.DatasetView):
         self._sync_source_root(fields)
 
     def reload(self):
-        """Reloads this view from the object patches of the source collection
-        in the database.
+        """Reloads this view from the source collection in the database.
 
         Note that :class:`PatchView` instances are not singletons, so any
         in-memory patches extracted from this view will not be updated by
@@ -419,13 +418,17 @@ class EvaluationPatchesView(_PatchesView):
         return self._pred_field
 
 
-def make_patches_dataset(sample_collection, field, keep_label_lists=False):
+def make_patches_dataset(
+    sample_collection, field, other_fields=None, keep_label_lists=False
+):
     """Creates a dataset that contains one sample per object patch in the
     specified field of the collection.
 
-    Fields other than ``field`` and the default sample fields will not be
-    included in the returned dataset. A ``sample_id`` field will be added that
-    records the sample ID from which each patch was taken.
+    A ``sample_id`` field will be added that records the sample ID from which
+    each patch was taken.
+
+    By default, fields other than ``field`` and the default sample fields will
+    not be included in the returned dataset.
 
     Args:
         sample_collection: a
@@ -433,6 +436,13 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
         field: the patches field, which must be of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        other_fields (None): controls whether fields other than ``field`` and
+            the default sample fields are included. Can be any of the
+            following:
+
+            -   a field or list of fields to include
+            -   ``True`` to include all other fields
+            -   ``None``/``False`` to include no other fields
         keep_label_lists (False): whether to store the patches in label list
             fields of the same type as the input collection rather than using
             their single label variants
@@ -446,6 +456,11 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
             "convert your video dataset to frames via `to_frames()`"
         )
 
+    if etau.is_str(other_fields):
+        other_fields = [other_fields]
+
+    is_frame_patches = sample_collection._is_frames
+
     if keep_label_lists:
         field_type = sample_collection._get_label_field_type(field)
     else:
@@ -458,7 +473,7 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
     )
     dataset.create_index("sample_id")
 
-    if sample_collection._is_frames:
+    if is_frame_patches:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
@@ -470,8 +485,25 @@ def make_patches_dataset(sample_collection, field, keep_label_lists=False):
         field, fof.EmbeddedDocumentField, embedded_doc_type=field_type
     )
 
+    if other_fields:
+        src_schema = sample_collection.get_field_schema()
+        curr_schema = dataset.get_field_schema()
+
+        if other_fields == True:
+            other_fields = [f for f in src_schema if f not in curr_schema]
+
+        add_fields = [f for f in other_fields if f not in curr_schema]
+        dataset._sample_doc_cls.merge_field_schema(
+            {k: v for k, v in src_schema.items() if k in add_fields}
+        )
+
+    _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
+
     patches_view = _make_patches_view(
-        sample_collection, field, keep_label_lists=keep_label_lists
+        sample_collection,
+        field,
+        other_fields=other_fields,
+        keep_label_lists=keep_label_lists,
     )
     _write_samples(dataset, patches_view)
 
@@ -487,7 +519,9 @@ def _get_single_label_field_type(sample_collection, field):
     return _SINGLE_TYPES_MAP[label_type]
 
 
-def make_evaluation_dataset(sample_collection, eval_key):
+def make_evaluation_patches_dataset(
+    sample_collection, eval_key, other_fields=None
+):
     """Creates a dataset based on the results of the evaluation with the given
     key that contains one sample for each true positive, false positive, and
     false negative example in the input collection, respectively.
@@ -526,6 +560,13 @@ def make_evaluation_dataset(sample_collection, eval_key):
             ground truth/predicted fields that are of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        other_fields (None): controls whether fields other than the
+            ground truth/predicted fields and the default sample fields are
+            included. Can be any of the following:
+
+            -   a field or list of fields to include
+            -   ``True`` to include all other fields
+            -   ``None``/``False`` to include no other fields
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -539,7 +580,9 @@ def make_evaluation_dataset(sample_collection, eval_key):
     else:
         crowd_attr = None
 
-    if sample_collection._is_frames:
+    is_frame_patches = sample_collection._is_frames
+
+    if is_frame_patches:
         if not pred_field.startswith(sample_collection._FRAMES_PREFIX):
             raise ValueError(
                 "Cannot extract evaluation patches for sample-level "
@@ -554,6 +597,9 @@ def make_evaluation_dataset(sample_collection, eval_key):
             "first convert your video dataset to frames via `to_frames()`"
         )
 
+    if etau.is_str(other_fields):
+        other_fields = [other_fields]
+
     pred_type = sample_collection._get_label_field_type(pred_field)
     gt_type = sample_collection._get_label_field_type(gt_field)
 
@@ -561,17 +607,11 @@ def make_evaluation_dataset(sample_collection, eval_key):
     dataset = fod.Dataset(_patches=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
-        pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
-    )
-    dataset.add_sample_field(
-        gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
-    )
-    dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
     dataset.create_index("sample_id")
 
-    if sample_collection._is_frames:
+    if is_frame_patches:
         dataset.add_sample_field(
             "frame_id", fof.ObjectIdField, db_field="_frame_id"
         )
@@ -579,14 +619,40 @@ def make_evaluation_dataset(sample_collection, eval_key):
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
 
-    dataset.add_sample_field("type", fof.StringField)
-    dataset.add_sample_field("iou", fof.FloatField)
+    dataset.add_sample_field(
+        gt_field, fof.EmbeddedDocumentField, embedded_doc_type=gt_type
+    )
+    dataset.add_sample_field(
+        pred_field, fof.EmbeddedDocumentField, embedded_doc_type=pred_type
+    )
+
     if crowd_attr is not None:
         dataset.add_sample_field("crowd", fof.BooleanField)
 
+    dataset.add_sample_field("type", fof.StringField)
+    dataset.add_sample_field("iou", fof.FloatField)
+
+    if other_fields:
+        src_schema = sample_collection.get_field_schema()
+        curr_schema = dataset.get_field_schema()
+
+        if other_fields == True:
+            other_fields = [f for f in src_schema if f not in curr_schema]
+
+        add_fields = [f for f in other_fields if f not in curr_schema]
+        dataset._sample_doc_cls.merge_field_schema(
+            {k: v for k, v in src_schema.items() if k in add_fields}
+        )
+
+    _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
+
     # Add ground truth patches
     gt_view = _make_eval_view(
-        sample_collection, eval_key, gt_field, crowd_attr=crowd_attr
+        sample_collection,
+        eval_key,
+        gt_field,
+        other_fields=other_fields,
+        crowd_attr=crowd_attr,
     )
     _write_samples(dataset, gt_view)
 
@@ -595,14 +661,37 @@ def make_evaluation_dataset(sample_collection, eval_key):
 
     # Add unmatched predictions
     unmatched_pred_view = _make_eval_view(
-        sample_collection, eval_key, pred_field, skip_matched=True
+        sample_collection,
+        eval_key,
+        pred_field,
+        other_fields=other_fields,
+        skip_matched=True,
     )
     _add_samples(dataset, unmatched_pred_view)
 
     return dataset
 
 
-def _make_patches_view(sample_collection, field, keep_label_lists=False):
+def _make_pretty_summary(dataset, is_frame_patches=False):
+    if is_frame_patches:
+        set_fields = [
+            "id",
+            "sample_id",
+            "frame_id",
+            "filepath",
+            "frame_number",
+        ]
+    else:
+        set_fields = ["id", "sample_id", "filepath"]
+
+    all_fields = dataset._sample_doc_cls._fields_ordered
+    pretty_fields = set_fields + [f for f in all_fields if f not in set_fields]
+    dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
+
+
+def _make_patches_view(
+    sample_collection, field, other_fields=None, keep_label_lists=False
+):
     label_type = sample_collection._get_label_field_type(field)
     if issubclass(label_type, _PATCHES_TYPES):
         list_field = field + "." + label_type._LABEL_LIST_FIELD
@@ -622,6 +711,9 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
         field + "._cls": True,
         list_field: True,
     }
+
+    if other_fields is not None:
+        project.update({f: True for f in other_fields})
 
     if sample_collection._is_frames:
         project["_sample_id"] = True
@@ -646,13 +738,20 @@ def _make_patches_view(sample_collection, field, keep_label_lists=False):
 
 
 def _make_eval_view(
-    sample_collection, eval_key, field, skip_matched=False, crowd_attr=None
+    sample_collection,
+    eval_key,
+    field,
+    other_fields=None,
+    skip_matched=False,
+    crowd_attr=None,
 ):
     eval_type = field + "." + eval_key
     eval_id = field + "." + eval_key + "_id"
     eval_iou = field + "." + eval_key + "_iou"
 
-    view = _make_patches_view(sample_collection, field)
+    view = _make_patches_view(
+        sample_collection, field, other_fields=other_fields
+    )
 
     if skip_matched:
         view = view.mongo(
@@ -677,7 +776,7 @@ def _make_eval_view(
     if crowd_attr is not None:
         crowd_path1 = "$" + field + "." + crowd_attr
 
-        # @todo remove Attributes usage
+        # @todo can remove this when `Attributes` are deprecated
         crowd_path2 = "$" + field + ".attributes." + crowd_attr + ".value"
 
         view = view.mongo(

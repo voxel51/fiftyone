@@ -11,34 +11,30 @@ from bson import ObjectId
 
 import fiftyone.core.fields as fof
 
-from .document import Document, SampleDocument
+from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
 
-class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
+class DatasetFrameDocument(DatasetMixin, Document):
 
     meta = {"abstract": True}
+
+    _is_frames_doc = True
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     frame_number = fof.FrameNumberField(required=True)
 
     _sample_id = fof.ObjectIdField(required=True)
 
-    @classmethod
-    def _sample_collection_name(cls):
-        return ".".join(cls.__name__.split(".")[1:])
 
-    @classmethod
-    def _dataset_doc_fields_col(cls):
-        return "frame_fields"
+class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
 
-
-class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
+    _is_frames_doc = True
 
     # pylint: disable=no-member
-    default_fields = DatasetFrameSampleDocument._fields
+    default_fields = DatasetFrameDocument._fields
     default_fields_ordered = get_default_fields(
-        DatasetFrameSampleDocument, include_private=True
+        DatasetFrameDocument, include_private=True
     )
 
     def __init__(self, **kwargs):

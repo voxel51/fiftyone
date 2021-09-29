@@ -13,6 +13,7 @@
 
 .. |ToPatches| replace:: :class:`ToPatches <fiftyone.core.stages.ToPatches>`
 .. |ToEvaluationPatches| replace:: :class:`ToEvaluationPatches <fiftyone.core.stages.ToEvaluationPatches>`
+.. |ToClips| replace:: :class:`ToClips <fiftyone.core.stages.ToClips>`
 .. |SortBySimilarity| replace:: :class:`SortBySimilarity <fiftyone.core.stages.SortBySimilarity>`
 
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
@@ -46,6 +47,8 @@
 .. |Segmentation| replace:: :class:`Segmentation <fiftyone.core.labels.Segmentation>`
 .. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
 .. |GeoLocations| replace:: :class:`GeoLocations <fiftyone.core.labels.GeoLocations>`
+.. |VideoClassification| replace:: :class:`VideoClassification <fiftyone.core.labels.VideoClassification>`
+.. |VideoClassifications| replace:: :class:`VideoClassifications <fiftyone.core.labels.VideoClassifications>`
 
 .. |Attribute| replace:: :class:`Attribute <fiftyone.core.labels.Attribute>`
 .. |BooleanAttribute| replace:: :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`

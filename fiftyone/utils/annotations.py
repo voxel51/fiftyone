@@ -9,6 +9,8 @@ from collections import defaultdict, OrderedDict
 from copy import deepcopy
 import getpass
 import logging
+import os
+import warnings
 
 import eta.core.annotations as etaa
 import eta.core.frames as etaf
@@ -19,13 +21,14 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.core.aggregations as foag
 import fiftyone.core.annotation as foa
+import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
-import fiftyone.core.video as fov
+import fiftyone.core.validation as fov
+import fiftyone.utils.eta as foue
 
 
 logger = logging.getLogger(__name__)
@@ -139,11 +142,15 @@ def annotate(
         an :class:`AnnnotationResults`
     """
     # @todo support this?
-    if isinstance(samples, fov.FramesView):
+    if samples._dataset._is_frames:
         raise ValueError("Annotating frames views is not supported")
 
+    # @todo support this?
+    if samples._dataset._is_clips:
+        raise ValueError("Annotating clips views is not supported")
+
     # Convert to equivalent regular view containing the same labels
-    if isinstance(samples, (fop.PatchesView, fop.EvaluationPatchesView)):
+    if samples._dataset._is_patches:
         ids = _get_patches_view_label_ids(samples)
         samples = samples._root_dataset.select_labels(
             ids=ids, fields=samples._label_fields,
@@ -1529,8 +1536,8 @@ def draw_labeled_images(samples, output_dir, label_fields=None, config=None):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated images
-        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
-            fields to render. If omitted, all compatiable fields are rendered
+        label_fields (None): a list of label fields to render. If omitted, all
+            compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
 
@@ -1563,18 +1570,20 @@ def draw_labeled_image(sample, outpath, label_fields=None, config=None):
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
-        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
-            fields to render. If omitted, all compatiable fields are rendered
+        label_fields (None): a list of label fields to render. If omitted, all
+            compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
     """
     if config is None:
         config = DrawConfig.default()
 
+    fov.validate_image_sample(sample)
     img = etai.read(sample.filepath)
-    frame_labels = _to_frame_labels(sample, label_fields=label_fields)
 
-    anno_img = etaa.annotate_image(img, frame_labels, annotation_config=config)
+    image_labels = _to_image_labels(sample, label_fields=label_fields)
+
+    anno_img = etaa.annotate_image(img, image_labels, annotation_config=config)
     etai.write(anno_img, outpath)
 
 
@@ -1591,8 +1600,7 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated videos
-        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
-            fields on the frames of the samples to render. If omitted, all
+        label_fields (None): a list of label fields to render. If omitted, all
             compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
@@ -1606,11 +1614,21 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
     output_ext = fo.config.default_video_ext
 
+    is_clips = samples._dataset._is_clips
+    num_videos = len(samples)
+
     outpaths = []
-    for sample in samples.iter_samples(progress=True):
-        outpath = filename_maker.get_output_path(
-            sample.filepath, output_ext=output_ext
-        )
+    for idx, sample in enumerate(samples, 1):
+        if is_clips:
+            logger.info("Drawing labels for clip %d/%d", idx, num_videos)
+            base, ext = os.path.splitext(sample.filepath)
+            first, last = sample.support
+            inpath = "%s-clip-%d-%d%s" % (base, first, last, ext)
+        else:
+            logger.info("Drawing labels for video %d/%d", idx, num_videos)
+            inpath = sample.filepath
+
+        outpath = filename_maker.get_output_path(inpath, output_ext=output_ext)
         draw_labeled_video(
             sample, outpath, label_fields=label_fields, config=config
         )
@@ -1626,8 +1644,7 @@ def draw_labeled_video(sample, outpath, label_fields=None, config=None):
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
-        label_fields (None): a list of :class:`fiftyone.core.labels.ImageLabel`
-            fields on the frames of the sample to render. If omitted, all
+        label_fields (None): a list of label fields to render. If omitted, all
             compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
@@ -1638,32 +1655,66 @@ def draw_labeled_video(sample, outpath, label_fields=None, config=None):
     video_path = sample.filepath
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
+    if isinstance(sample, foc.ClipView):
+        support = sample.support
+    else:
+        support = None
+
     etaa.annotate_video(
-        video_path, video_labels, outpath, annotation_config=config
+        video_path,
+        video_labels,
+        outpath,
+        support=support,
+        annotation_config=config,
     )
 
 
-def _to_frame_labels(sample_or_frame, label_fields=None):
-    frame_labels = etaf.FrameLabels()
-
-    if label_fields is None:
-        for name, field in sample_or_frame.iter_fields():
-            if isinstance(field, fol.ImageLabel):
-                frame_labels.merge_labels(field.to_image_labels(name=name))
-    else:
-        for name in label_fields:
-            label = sample_or_frame[name]
-            if label is not None:
-                frame_labels.merge_labels(label.to_image_labels(name=name))
-
-    return frame_labels
+def _to_image_labels(sample, label_fields=None):
+    labels = _get_sample_labels(sample, label_fields)
+    return foue.to_image_labels(labels)
 
 
 def _to_video_labels(sample, label_fields=None):
-    video_labels = etav.VideoLabels()
-    for frame_number, frame in sample.frames.items():
-        video_labels[frame_number] = _to_frame_labels(
-            frame, label_fields=label_fields
-        )
+    if label_fields is not None:
+        label_fields, frame_label_fields = fou.split_frame_fields(label_fields)
+    else:
+        frame_label_fields = None
 
-    return video_labels
+    label = _get_sample_labels(sample, label_fields)
+    frames = _get_frame_labels(sample, frame_label_fields)
+
+    return foue.to_video_labels(label=label, frames=frames)
+
+
+def _get_sample_labels(sample, label_fields):
+    if label_fields is None:
+        return {
+            name: value
+            for name, value in sample.iter_fields()
+            if isinstance(value, fol.Label)
+        }
+
+    if label_fields:
+        return {name: sample[name] for name in label_fields}
+
+    return None
+
+
+def _get_frame_labels(sample, frame_label_fields):
+    if frame_label_fields is not None and not frame_label_fields:
+        return None
+
+    frames = {}
+    for frame_number, frame in sample.frames.items():
+        if frame_label_fields is None:
+            frames[frame_number] = {
+                name: value
+                for name, value in frame.iter_fields()
+                if isinstance(value, fol.Label)
+            }
+        else:
+            frames[frame_number] = {
+                name: frame[name] for name in frame_label_fields
+            }
+
+    return frames

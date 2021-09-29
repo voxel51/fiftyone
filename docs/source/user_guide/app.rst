@@ -600,17 +600,16 @@ excluded.
 Viewing object patches
 ______________________
 
-Whenever you load a |Dataset| in the App that contains label list fields in
+Whenever you load a dataset in the App that contains label list fields in
 |Detections| or |Polylines| format, you can use the patches menu to create a
 view into your data that contains one sample per object patch in a specified
 label field of your dataset.
 
 To switch to patches view, simply click the patches icon above the sample grid
 in the App, toggle to the ``Labels`` submenu, and then choose the field whose
-object patches you want to view.
-
-After you make a selection, a new |ToPatches| view stage will be appended to
-the view bar and your view will be updated to show the patches.
+object patches you want to view. After you make a selection, a new |ToPatches|
+view stage will be appended to the view bar and your view will be updated to
+show the patches.
 
 By default, patches are cropped so only the label patch is visible, but you can
 zoom in/out and pan as desired in the
@@ -622,7 +621,8 @@ expanded sample view.
 .. note::
 
     Switching to patches view will create patches for **only** the contents of
-    your current view.
+    your current view, so you can use the view bar and the filters sidebar to
+    select only the content of interest prior to extracting patches.
 
 .. image:: /images/app/app-object-patches.gif
     :alt: object-patches
@@ -651,19 +651,17 @@ opposed to their labels) will not affect the sample tags of the underlying
 Viewing evaluation patches
 __________________________
 
-Whenever you load a |Dataset| in the App that contains object detections on
-which you have :ref:`run evaluation <evaluating-detections>`, you can use the
-patches menu to create a view into your data that contains one sample for each
-true positive, false positive, and false negative example.
+Whenever you load a dataset in the App that contains object detections on which
+you have :ref:`run evaluation <evaluating-detections>`, you can use the patches
+menu to create a view into your data that contains one sample for each true
+positive, false positive, and false negative example.
 
 To switch to evaluation patches view, simply click the patches icon above the
 sample grid in the App, toggle to the ``Evaluations`` submenu, and then choose
 the ``eval_key`` under which you saved the evaluation results that you want
-view.
-
-After you make a selection, a new |ToEvaluationPatches| view stage will be
-appended to the view bar and your view will be updated to show the evaluation
-patches!
+view. After you make a selection, a new |ToEvaluationPatches| view stage will
+be appended to the view bar and your view will be updated to show the
+evaluation patches!
 
 By default, evaluation patches are cropped so only the label(s) that make up
 the patch are visible, but you can zoom in/out and pan as desired in the
@@ -707,6 +705,64 @@ opposed to their labels) will not affect the sample tags of the underlying
     evaluation was performed, first call
     :meth:`load_evaluation_view() <fiftyone.core.collections.SampleCollection.load_evaluation_view>`
     to load the view and then convert to patches.
+
+.. _app-video-clips:
+
+Viewing video clips
+___________________
+
+Whenever you load a video dataset in the App that contains
+|VideoClassification| labels or frame-level label lists such as |Detections|,
+you can use the patches menu to create a view into your data that contains one
+sample per clip defined by a specified label field of your dataset.
+
+To switch to clips view, simply click the patches icon above the sample grid
+in the App, toggle to the ``Labels`` submenu, and then choose the field whose
+clips you want to view. After you make a selection, a new |ToClips| view stage
+will be appended to the view bar and your view will be updated to show the
+clips.
+
+Creating a clips view for a |VideoClassification| or |VideoClassifications|
+field will create one sample per video classification defined by its
+`[first, last]` frame support, while creating a clips view for a frame-level
+label list field such as |Detections| will contain one sample per contiguous
+range of frames that contains at least one label in the specified field. See
+:ref:`this section <clip-views>` for more information about defining clip
+views.
+
+When you hover over a clip in the grid view, the clip and its labels will play
+on loop. Similarly, when you open a clip in the
+:ref:`video visualizer <app-video-visualizer>`, you will see only the clip when
+you play the video. If you would like to see other segments of the video from
+which a clip was extracted, simply drag the video scrubber outside the range of
+the clip.
+
+.. note::
+
+    Switching to clips view will create clips for **only** the contents of
+    your current view, so you can use the view bar and the filters sidebar to
+    select only the content of interest prior to extracting clips.
+
+.. image:: /images/app/app-clip-views.gif
+    :alt: clip-views
+    :align: center
+
+|br|
+You can interact with clip views in the App just like you would with any other
+view, including:
+
+-   You can filter and transform clip views using the filter sidebar or the
+    view bar
+-   Any modifications to label tags that you make via the
+    :ref:`tagging menu <app-tagging>` will be reflected on the source dataset
+
+One notable exception is that tagging or untagging clips themselves (as opposed
+to their labels) will not affect the sample tags of the underlying |Sample|.
+
+.. note::
+
+    Did you know? You can construct clip views programmatically via
+    :ref:`dataset views <clip-views>`!
 
 .. _app-similarity:
 

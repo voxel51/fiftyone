@@ -12,18 +12,15 @@ from bson import ObjectId
 import cv2
 import numpy as np
 
-import eta.core.data as etad
-import eta.core.geometry as etag
-import eta.core.keypoints as etak
+import eta.core.frameutils as etaf
 import eta.core.image as etai
-import eta.core.objects as etao
-import eta.core.polylines as etap
-import eta.core.utils as etau
 
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
+foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
 sg = fou.lazy_import(
     "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
@@ -347,25 +344,7 @@ class _HasLabelList(object):
     _LABEL_LIST_FIELD = None
 
 
-class ImageLabel(Label):
-    """Base class for labels associated with images."""
-
-    meta = {"allow_inheritance": True}
-
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
-
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        raise NotImplementedError("Subclass must implement to_image_labels()")
-
-
-class Classification(ImageLabel, _HasID):
+class Classification(_HasID, Label):
     """A classification label.
 
     Args:
@@ -380,49 +359,9 @@ class Classification(ImageLabel, _HasID):
     confidence = fof.FloatField()
     logits = fof.VectorField()
 
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-        image_labels.add_attribute(
-            etad.CategoricalAttribute(
-                name, self.label, confidence=self.confidence, tags=self.tags
-            )
-        )
-        return image_labels
-
-    @classmethod
-    def from_attribute(cls, attr):
-        """Creates a :class:`Classification` instance from an attribute.
-
-        The attribute value is cast to a string, if necessary.
-
-        Args:
-            attr: an :class:`Attribute` or ``eta.core.data.Attribute``
-
-        Returns:
-            a :class:`Classification`
-        """
-        classification = cls(label=str(attr.value))
-
-        try:
-            classification.confidence = attr.confidence
-        except:
-            pass
-
-        return classification
-
-
-class Classifications(ImageLabel, _HasLabelList):
-    """A list of classifications (typically from a multilabel model) in an
-    image.
+class Classifications(_HasLabelList, Label):
+    """A list of classifications for an image.
 
     Args:
         classifications (None): a list of :class:`Classification` instances
@@ -435,57 +374,8 @@ class Classifications(ImageLabel, _HasLabelList):
     classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
     logits = fof.VectorField()
 
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-
-        # pylint: disable=not-an-iterable
-        for classification in self.classifications:
-            image_labels.add_attribute(
-                etad.CategoricalAttribute(
-                    name,
-                    classification.label,
-                    confidence=classification.confidence,
-                    tags=classification.tags,
-                )
-            )
-
-        return image_labels
-
-    @classmethod
-    def from_attributes(cls, attrs, skip_non_categorical=False):
-        """Creates a :class:`Classifications` instance from a list of
-        attributes.
-
-        Args:
-            attrs: an iterable of :class:`Attribute` or
-                ``eta.core.data.Attribute`` instances
-            skip_non_categorical (False): whether to skip non-categorical
-                attributes (True) or cast all attribute values to strings
-                (False)
-
-        Returns:
-            a :class:`Classifications`
-        """
-        classifications = []
-        for attr in attrs:
-            if skip_non_categorical and not etau.is_str(attr.value):
-                continue
-
-            classifications.append(Classification.from_attribute(attr))
-
-        return cls(classifications=classifications)
-
-
-class Detection(ImageLabel, _HasID, _HasAttributesDict):
+class Detection(_HasID, _HasAttributesDict, Label):
     """An object detection.
 
     Args:
@@ -528,11 +418,11 @@ class Detection(ImageLabel, _HasID, _HasAttributesDict):
         Returns:
             a :class:`Polyline`
         """
-        dobj = self.to_detected_object()
+        dobj = foue.to_detected_object(self)
         polyline = etai.convert_object_to_polygon(
             dobj, tolerance=tolerance, filled=filled
         )
-        return Polyline.from_eta_polyline(polyline)
+        return foue.from_polyline(polyline)
 
     def to_segmentation(self, mask=None, frame_size=None, target=255):
         """Returns a :class:`Segmentation` representation of this instance.
@@ -585,83 +475,8 @@ class Detection(ImageLabel, _HasID, _HasAttributesDict):
 
         return sg.box(x, y, x + w, y + h)
 
-    def to_detected_object(self, name=None):
-        """Returns an ``eta.core.objects.DetectedObject`` representation of
-        this instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.objects.DetectedObject``
-        """
-        label = self.label
-        index = self.index
-
-        # pylint: disable=unpacking-non-sequence
-        tlx, tly, w, h = self.bounding_box
-        brx = tlx + w
-        bry = tly + h
-        bounding_box = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
-
-        mask = self.mask
-        confidence = self.confidence
-
-        attrs = _to_eta_attributes(self)
-
-        return etao.DetectedObject(
-            label=label,
-            index=index,
-            bounding_box=bounding_box,
-            mask=mask,
-            confidence=confidence,
-            name=name,
-            attrs=attrs,
-            tags=self.tags,
-        )
-
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
-
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-        image_labels.add_object(self.to_detected_object(name=name))
-        return image_labels
-
-    @classmethod
-    def from_detected_object(cls, dobj):
-        """Creates a :class:`Detection` instance from an
-        ``eta.core.objects.DetectedObject``.
-
-        Args:
-            dobj: a ``eta.core.objects.DetectedObject``
-
-        Returns:
-            a :class:`Detection`
-        """
-        xtl, ytl, xbr, ybr = dobj.bounding_box.to_coords()
-        bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
-
-        attributes = _from_eta_attributes(dobj.attrs)
-
-        return cls(
-            label=dobj.label,
-            bounding_box=bounding_box,
-            confidence=dobj.confidence,
-            index=dobj.index,
-            mask=dobj.mask,
-            tags=dobj.tags,
-            **attributes,
-        )
-
-
-class Detections(ImageLabel, _HasLabelList):
+class Detections(_HasLabelList, Label):
     """A list of object detections in an image.
 
     Args:
@@ -741,43 +556,8 @@ class Detections(ImageLabel, _HasLabelList):
 
         return Segmentation(mask=mask)
 
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-
-        # pylint: disable=not-an-iterable
-        for detection in self.detections:
-            image_labels.add_object(detection.to_detected_object(name=name))
-
-        return image_labels
-
-    @classmethod
-    def from_detected_objects(cls, objects):
-        """Creates a :class:`Detections` instance from an
-        ``eta.core.objects.DetectedObjectContainer``.
-
-        Args:
-            objects: a ``eta.core.objects.DetectedObjectContainer``
-
-        Returns:
-            a :class:`Detections`
-        """
-        return cls(
-            detections=[
-                Detection.from_detected_object(dobj) for dobj in objects
-            ]
-        )
-
-
-class Polyline(ImageLabel, _HasID, _HasAttributesDict):
+class Polyline(_HasID, _HasAttributesDict, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -824,7 +604,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributesDict):
         Returns:
             a :class:`Detection`
         """
-        polyline = self.to_eta_polyline()
+        polyline = foue.to_polyline(self)
         if mask_size is not None:
             bbox, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
         else:
@@ -929,70 +709,8 @@ class Polyline(ImageLabel, _HasID, _HasAttributesDict):
 
         return sg.MultiLineString(points)
 
-    def to_eta_polyline(self, name=None):
-        """Returns an ``eta.core.polylines.Polyline`` representation of this
-        instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.polylines.Polyline``
-        """
-        attrs = _to_eta_attributes(self)
-
-        return etap.Polyline(
-            label=self.label,
-            confidence=self.confidence,
-            index=self.index,
-            name=name,
-            points=self.points,
-            closed=self.closed,
-            filled=self.filled,
-            attrs=attrs,
-            tags=self.tags,
-        )
-
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
-
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-        image_labels.add_polyline(self.to_eta_polyline(name=name))
-        return image_labels
-
-    @classmethod
-    def from_eta_polyline(cls, polyline):
-        """Creates a :class:`Polyline` instance from an
-        ``eta.core.polylines.Polyline``.
-
-        Args:
-            polyline: an ``eta.core.polylines.Polyline``
-
-        Returns:
-            a :class:`Polyline`
-        """
-        attributes = _from_eta_attributes(polyline.attrs)
-
-        return cls(
-            label=polyline.label,
-            points=polyline.points,
-            confidence=polyline.confidence,
-            index=polyline.index,
-            closed=polyline.closed,
-            filled=polyline.filled,
-            tags=polyline.tags,
-            **attributes,
-        )
-
-
-class Polylines(ImageLabel, _HasLabelList):
+class Polylines(_HasLabelList, Label):
     """A list of polylines or polygons in an image.
 
     Args:
@@ -1073,41 +791,8 @@ class Polylines(ImageLabel, _HasLabelList):
 
         return Segmentation(mask=mask)
 
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-
-        # pylint: disable=not-an-iterable
-        for polyline in self.polylines:
-            image_labels.add_polyline(polyline.to_eta_polyline(name=name))
-
-        return image_labels
-
-    @classmethod
-    def from_eta_polylines(cls, polylines):
-        """Creates a :class:`Polylines` instance from an
-        ``eta.core.polylines.PolylineContainer``.
-
-        Args:
-            polylines: an ``eta.core.polylines.PolylineContainer``
-
-        Returns:
-            a :class:`Polylines`
-        """
-        return cls(
-            polylines=[Polyline.from_eta_polyline(p) for p in polylines]
-        )
-
-
-class Keypoint(ImageLabel, _HasID, _HasAttributesDict):
+class Keypoint(_HasID, _HasAttributesDict, Label):
     """A list of keypoints in an image.
 
     Args:
@@ -1145,66 +830,8 @@ class Keypoint(ImageLabel, _HasID, _HasAttributesDict):
 
         return sg.MultiPoint(points)
 
-    def to_eta_keypoints(self, name=None):
-        """Returns an ``eta.core.keypoints.Keypoints`` representation of this
-        instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.keypoints.Keypoints``
-        """
-        attrs = _to_eta_attributes(self)
-
-        return etak.Keypoints(
-            name=name,
-            label=self.label,
-            confidence=self.confidence,
-            index=self.index,
-            points=self.points,
-            attrs=attrs,
-            tags=self.tags,
-        )
-
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
-
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-        image_labels.add_keypoints(self.to_eta_keypoints(name=name))
-        return image_labels
-
-    @classmethod
-    def from_eta_keypoints(cls, keypoints):
-        """Creates a :class:`Keypoint` instance from an
-        ``eta.core.keypoints.Keypoints``.
-
-        Args:
-            keypoints: an ``eta.core.keypoints.Keypoints``
-
-        Returns:
-            a :class:`Keypoint`
-        """
-        attributes = _from_eta_attributes(keypoints.attrs)
-
-        return cls(
-            label=keypoints.label,
-            points=keypoints.points,
-            confidence=keypoints.confidence,
-            index=keypoints.index,
-            tags=keypoints.tags,
-            **attributes,
-        )
-
-
-class Keypoints(ImageLabel, _HasLabelList):
+class Keypoints(_HasLabelList, Label):
     """A list of :class:`Keypoint` instances in an image.
 
     Args:
@@ -1217,41 +844,8 @@ class Keypoints(ImageLabel, _HasLabelList):
 
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
 
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        image_labels = etai.ImageLabels()
-
-        # pylint: disable=not-an-iterable
-        for keypoint in self.keypoints:
-            image_labels.add_keypoints(keypoint.to_eta_keypoints(name=name))
-
-        return image_labels
-
-    @classmethod
-    def from_eta_keypoints(cls, keypoints):
-        """Creates a :class:`Keypoints` instance from an
-        ``eta.core.keypoints.KeypointsContainer``.
-
-        Args:
-            keypoints: an ``eta.core.keypoints.KeypointsContainer``
-
-        Returns:
-            a :class:`Keypoints`
-        """
-        return cls(
-            keypoints=[Keypoint.from_eta_keypoints(k) for k in keypoints]
-        )
-
-
-class Segmentation(ImageLabel, _HasID):
+class Segmentation(_HasID, Label):
     """A semantic segmentation mask for an image.
 
     Args:
@@ -1262,18 +856,6 @@ class Segmentation(ImageLabel, _HasID):
     meta = {"allow_inheritance": True}
 
     mask = fof.ArrayField()
-
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
-
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        return etai.ImageLabels(mask=self.mask, tags=self.tags)
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -1340,18 +922,6 @@ class Segmentation(ImageLabel, _HasID):
             self, mask_targets, mask_types, tolerance
         )
         return Polylines(polylines=polylines)
-
-    @classmethod
-    def from_mask(cls, mask):
-        """Creates a :class:`Segmentation` instance from a mask.
-
-        Args:
-            mask: a semantic segmentation mask
-
-        Returns:
-            a :class:`Segmentation`
-        """
-        return cls(mask=mask)
 
 
 class GeoLocation(_HasID, Label):
@@ -1443,6 +1013,104 @@ class GeoLocations(_HasID, Label):
         return cls(points=points, lines=lines, polygons=polygons)
 
 
+class VideoClassification(_HasID, Label):
+    """A video classification with a temporal support specified by a start
+    and end frame.
+
+    Args:
+        label (None): the label string
+        support (None): the ``[first, last]`` frame numbers, inclusive
+        confidence (None): a confidence in ``[0, 1]`` for the classification
+    """
+
+    meta = {"allow_inheritance": True}
+
+    label = fof.StringField()
+    support = fof.FrameSupportField()
+    confidence = fof.FloatField()
+
+    @classmethod
+    def from_timestamps(cls, timestamps, sample=None, metadata=None, **kwargs):
+        """Creates a :class:`VideoClassification` instance from
+        ``[start, stop]`` timestamps for the specified video.
+
+        You must provide either ``sample`` or ``metadata`` to inform the
+        conversion.
+
+        Args:
+            timestamps: the ``[start, stop]`` timestamps, in seconds or
+                "HH:MM:SS.XXX" format
+            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
+                ``metadata`` field is populated
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance
+            **kwargs: additional arguments for :class:`VideoClassification`
+
+        Returns:
+            a :class:`VideoClassification`
+        """
+        start, end = timestamps
+        total_frame_count, duration = _parse_video_metadata(sample, metadata)
+        support = [
+            etaf.timestamp_to_frame_number(start, duration, total_frame_count),
+            etaf.timestamp_to_frame_number(end, duration, total_frame_count),
+        ]
+        return cls(support=support, **kwargs)
+
+    def to_timestamps(self, sample=None, metadata=None):
+        """Returns the ``[start, stop]`` timestamps, in seconds, for this video
+        classification in the given video.
+
+        You must provide either ``sample`` or ``metadata`` to inform the
+        conversion.
+
+        Args:
+            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
+                ``metadata`` field is populated
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance
+
+        Returns:
+            the ``[start, stop]`` timestamps of this classification, in seconds
+        """
+        first, last = self.support  # pylint: disable=unpacking-non-sequence
+        total_frame_count, duration = _parse_video_metadata(sample, metadata)
+        return [
+            etaf.frame_number_to_timestamp(first, total_frame_count, duration),
+            etaf.frame_number_to_timestamp(last, total_frame_count, duration),
+        ]
+
+
+def _parse_video_metadata(sample, metadata):
+    if sample is not None:
+        metadata = sample.metadata
+
+    if not isinstance(metadata, fom.VideoMetadata):
+        raise ValueError(
+            "You must provide either `metadata` or a `sample` whose "
+            "`metadata` field is populated containing `VideoMetadata`"
+        )
+
+    return metadata.total_frame_count, metadata.duration
+
+
+class VideoClassifications(_HasLabelList, Label):
+    """A list of video classifications for a video.
+
+    Args:
+        classifications (None): a list of :class:`VideoClassification`
+            instances
+    """
+
+    _LABEL_LIST_FIELD = "classifications"
+
+    meta = {"allow_inheritance": True}
+
+    classifications = fof.ListField(
+        fof.EmbeddedDocumentField(VideoClassification)
+    )
+
+
 _SINGLE_LABEL_FIELDS = (
     Classification,
     Detection,
@@ -1450,6 +1118,7 @@ _SINGLE_LABEL_FIELDS = (
     Keypoint,
     Polyline,
     Segmentation,
+    VideoClassification,
 )
 
 _LABEL_LIST_FIELDS = (
@@ -1457,9 +1126,28 @@ _LABEL_LIST_FIELDS = (
     Detections,
     Keypoints,
     Polylines,
+    VideoClassifications,
 )
 
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
+
+_CONFIDENCE_LABELS = (
+    Classification,
+    Detection,
+    Keypoint,
+    Polyline,
+    VideoClassification,
+)
+
+_LABEL_LABELS = (
+    Classification,
+    Detection,
+    Keypoint,
+    Polyline,
+    VideoClassification,
+)
+
+_SUPPORT_LABELS = (VideoClassification,)
 
 _PATCHES_FIELDS = (
     Detection,
@@ -1473,6 +1161,7 @@ _SINGLE_LABEL_TO_LIST_MAP = {
     Detection: Detections,
     Keypoint: Keypoints,
     Polyline: Polylines,
+    VideoClassification: VideoClassifications,
 }
 
 _LABEL_LIST_TO_SINGLE_MAP = {
@@ -1480,6 +1169,7 @@ _LABEL_LIST_TO_SINGLE_MAP = {
     Detections: Detection,
     Keypoints: Keypoint,
     Polylines: Polyline,
+    VideoClassifications: VideoClassification,
 }
 
 
@@ -1507,7 +1197,7 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
 
 
 def _render_instance(mask, detection, target):
-    dobj = detection.to_detected_object()
+    dobj = foue.to_detected_object(detection)
     obj_mask, offset = etai.render_instance_mask(
         dobj.mask, dobj.bounding_box, img=mask
     )
@@ -1521,7 +1211,7 @@ def _render_instance(mask, detection, target):
 
 
 def _render_polyline(mask, polyline, target, thickness):
-    points = polyline.to_eta_polyline().coords_in(img=mask)
+    points = foue.to_polyline(polyline).coords_in(img=mask)
     points = [np.array(shape, dtype=np.int32) for shape in points]
 
     if polyline.filled:
@@ -1736,28 +1426,3 @@ def _from_geo_json(d):
         polygons = None
 
     return points, lines, polygons
-
-
-def _from_eta_attributes(attrs):
-    return {a.name: a.value for a in attrs}
-
-
-def _to_eta_attributes(label):
-    attrs = etad.AttributeContainer()
-    for name, value in label.iter_attributes():
-        if etau.is_str(value):
-            _attr = etad.CategoricalAttribute(name, value)
-        elif etau.is_numeric(value):
-            _attr = etad.NumericAttribute(name, value)
-        elif isinstance(value, bool):
-            _attr = etad.BooleanAttribute(name, value)
-        elif value is None:
-            continue
-        else:
-            msg = "Ignoring unsupported attribute type '%s'" % type(value)
-            warnings.warn(msg)
-            continue
-
-        attrs.add(_attr)
-
-    return attrs

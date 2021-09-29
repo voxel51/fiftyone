@@ -49,6 +49,9 @@ const ActionDiv = styled.div`
 const Patches = () => {
   const [open, setOpen] = useState(false);
   const loading = useRecoilValue(patching);
+  const isVideo =
+    useRecoilValue(selectors.isVideoDataset) &&
+    useRecoilValue(selectors.isRootView);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const fields = useRecoilValue(patchesFields);
@@ -64,7 +67,7 @@ const Patches = () => {
         open={open}
         onClick={() => !loading && setOpen(!open)}
         highlight={open || Boolean(fields.length)}
-        title={"Patches"}
+        title={isVideo ? "Clips" : "Patches"}
         style={{ cursor: loading ? "default" : "pointer" }}
       />
       {open && <Patcher close={() => setOpen(false)} />}
@@ -316,8 +319,8 @@ type ActionsRowProps = {
 };
 
 const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
-  const isRootView = useRecoilValue(selectors.isRootView);
   const isVideo = useRecoilValue(selectors.isVideoDataset);
+  const isClips = useRecoilValue(selectors.isClipsView);
   const style = modal
     ? {
         overflowX: "auto",
@@ -333,7 +336,7 @@ const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
     <ActionsRowDiv style={style}>
       <Options modal={modal} />
       <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
-      {!modal && (!isRootView || !isVideo) && <Patches />}
+      {!modal && <Patches />}
       {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}

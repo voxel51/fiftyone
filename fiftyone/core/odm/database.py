@@ -361,6 +361,17 @@ def get_collection_stats(collection_name):
     return stats
 
 
+def count_documents(coll, pipeline):
+    result = aggregate(coll, pipeline + [{"$count": "count"}])
+
+    try:
+        return list(result)[0]["count"]
+    except:
+        pass
+
+    return 0
+
+
 def export_document(doc, json_path):
     """Exports the document to disk in JSON format.
 

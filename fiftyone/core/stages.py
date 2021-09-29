@@ -31,6 +31,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
+foc = fou.lazy_import("fiftyone.core.clips")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
 fov = fou.lazy_import("fiftyone.core.video")
@@ -5358,9 +5359,11 @@ class ToPatches(ViewStage):
     """Creates a view that contains one sample per object patch in the
     specified field of a collection.
 
-    Fields other than ``field`` and the default sample fields will not be
-    included in the returned view. A ``sample_id`` field will be added that
-    records the sample ID from which each patch was taken.
+    A ``sample_id`` field will be added that records the sample ID from which
+    each patch was taken.
+
+    By default, fields other than ``field`` and the default sample fields will
+    not be included in the returned view.
 
     Examples::
 
@@ -5385,10 +5388,23 @@ class ToPatches(ViewStage):
         field: the patches field, which must be of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.patches.make_patches_dataset` specifying how
+            to perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.patches.make_patches_dataset` specifying how
+            to perform the conversion
     """
 
-    def __init__(self, field, _state=None):
+    def __init__(self, field, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
         self._field = field
+        self._config = config
         self._state = _state
 
     @property
@@ -5400,11 +5416,17 @@ class ToPatches(ViewStage):
         """The patches field."""
         return self._field
 
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field": self._field,
+            "config": self._config,
         }
 
         last_state = deepcopy(self._state)
@@ -5414,8 +5436,9 @@ class ToPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
             patches_dataset = fop.make_patches_dataset(
-                sample_collection, self._field
+                sample_collection, self._field, **kwargs
             )
 
             state["name"] = patches_dataset.name
@@ -5428,6 +5451,7 @@ class ToPatches(ViewStage):
     def _kwargs(self):
         return [
             ["field", self._field],
+            ["config", self._config],
             ["_state", self._state],
         ]
 
@@ -5435,6 +5459,12 @@ class ToPatches(ViewStage):
     def _params(self):
         return [
             {"name": "field", "type": "field", "placeholder": "label field"},
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
@@ -5496,10 +5526,23 @@ class ToEvaluationPatches(ViewStage):
             ground truth/predicted fields that are of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
+            specifying how to perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
+            specifying how to perform the conversion
     """
 
-    def __init__(self, eval_key, _state=None):
+    def __init__(self, eval_key, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
         self._eval_key = eval_key
+        self._config = config
         self._state = _state
 
     @property
@@ -5511,11 +5554,17 @@ class ToEvaluationPatches(ViewStage):
         """The evaluation key to extract patches for."""
         return self._eval_key
 
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "eval_key": self._eval_key,
+            "config": self._config,
         }
 
         last_state = deepcopy(self._state)
@@ -5525,8 +5574,9 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            eval_patches_dataset = fop.make_evaluation_dataset(
-                sample_collection, self._eval_key
+            kwargs = self._config or {}
+            eval_patches_dataset = fop.make_evaluation_patches_dataset(
+                sample_collection, self._eval_key, **kwargs
             )
 
             state["name"] = eval_patches_dataset.name
@@ -5541,6 +5591,7 @@ class ToEvaluationPatches(ViewStage):
     def _kwargs(self):
         return [
             ["eval_key", self._eval_key],
+            ["config", self._config],
             ["_state", self._state],
         ]
 
@@ -5548,6 +5599,171 @@ class ToEvaluationPatches(ViewStage):
     def _params(self):
         return [
             {"name": "eval_key", "type": "str", "placeholder": "eval key"},
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
+class ToClips(ViewStage):
+    """Creates a view that contains one sample per clip defined by the given
+    field or expression in a video collection.
+
+    The returned view will contain:
+
+    -   A ``sample_id`` field that records the sample ID from which each clip
+        was taken
+    -   A ``support`` field that records the ``[first, last]`` frame support of
+        each clip
+    -   All frame-level information from the underlying dataset of the input
+        collection
+
+    Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
+    available configuration options for generating clips.
+
+    .. note::
+
+        The clip generation logic will respect any frame-level modifications
+        defined in the input collection, but the output clips will always
+        contain all frame-level labels.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Create a clips view that contains one clip for each contiguous
+        # segment that contains at least one road sign in every frame
+        #
+
+        stage1 = fo.FilterLabels("frames.detections", F("label") == "road sign")
+        stage2 = fo.ToClips("frames.detections")
+        clips = dataset.add_stage(stage1).add_stage(stage2)
+        print(clips)
+
+        #
+        # Create a clips view that contains one clip for each contiguous
+        # segment that contains at least two road signs in every frame
+        #
+
+        signs = F("detections.detections").filter(F("label") == "road sign")
+        stage = fo.ToClips(signs.length() >= 2)
+        clips = dataset.add_stage(stage)
+        print(clips)
+
+    Args:
+        field_or_expr: can be any of the following:
+
+            -   a :class:`fiftyone.core.labels.VideoClassification`,
+                :class:`fiftyone.core.labels.VideoClassifications`, or
+                :class:`fiftyone.core.fields.FrameSupportField`, or list of
+                :class:`fiftyone.core.fields.FrameSupportField` field
+            -   a frame-level label list field of any of the following types:
+                -   :class:`fiftyone.core.labels.Classifications`
+                -   :class:`fiftyone.core.labels.Detections`
+                -   :class:`fiftyone.core.labels.Polylines`
+                -   :class:`fiftyone.core.labels.Keypoints`
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                returns a boolean to apply to each frame of the input
+                collection to determine if the frame should be clipped
+            -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
+                defining the frame numbers of the clips to extract from each
+                sample
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+    """
+
+    def __init__(self, field_or_expr, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
+        self._field_or_expr = field_or_expr
+        self._config = config
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def field_or_expr(self):
+        """The field or expression defining how to extract the clips."""
+        return self._field_or_expr
+
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "field_or_expr": self._get_mongo_field_or_expr(),
+            "config": self._config,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
+            clips_dataset = foc.make_clips_dataset(
+                sample_collection, self._field_or_expr, **kwargs
+            )
+
+            state["name"] = clips_dataset.name
+            self._state = state
+        else:
+            clips_dataset = fod.load_dataset(name)
+
+        return foc.ClipsView(sample_collection, self, clips_dataset)
+
+    def _get_mongo_field_or_expr(self):
+        if isinstance(self._field_or_expr, foe.ViewExpression):
+            return self._field_or_expr.to_mongo()
+
+        return self._field_or_expr
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["config", self._config],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "field_or_expr",
+                "type": "field|str|json",
+                "placeholder": "field or expression",
+            },
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
@@ -5662,7 +5878,7 @@ class ToFrames(ViewStage):
 
     def _kwargs(self):
         return [
-            ["config", self.config],
+            ["config", self._config],
             ["_state", self._state],
         ]
 
@@ -5680,7 +5896,7 @@ class ToFrames(ViewStage):
 
 
 def _get_sample_ids(samples_or_ids):
-    import fiftyone.core.collections as foc
+    from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(samples_or_ids):
         return [samples_or_ids]
@@ -5688,7 +5904,7 @@ def _get_sample_ids(samples_or_ids):
     if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
         return [samples_or_ids.id]
 
-    if isinstance(samples_or_ids, foc.SampleCollection):
+    if isinstance(samples_or_ids, SampleCollection):
         return samples_or_ids.values("id")
 
     if isinstance(samples_or_ids, np.ndarray):
@@ -5704,7 +5920,7 @@ def _get_sample_ids(samples_or_ids):
 
 
 def _get_frame_ids(frames_or_ids):
-    import fiftyone.core.collections as foc
+    from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(frames_or_ids):
         return [frames_or_ids]
@@ -5712,7 +5928,7 @@ def _get_frame_ids(frames_or_ids):
     if isinstance(frames_or_ids, (fofr.Frame, fofr.FrameView)):
         return [frames_or_ids.id]
 
-    if isinstance(frames_or_ids, foc.SampleCollection):
+    if isinstance(frames_or_ids, SampleCollection):
         return frames_or_ids.values("frames.id", unwind=True)
 
     if isinstance(frames_or_ids, np.ndarray):
@@ -5991,6 +6207,7 @@ _STAGES = [
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToClips,
     ToFrames,
 ]
 

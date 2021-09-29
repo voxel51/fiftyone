@@ -163,45 +163,6 @@ For your convenience, the
 will automatically coerce the data to match the requested export types in a
 variety of common cases listed below.
 
-Object patches
-~~~~~~~~~~~~~~
-
-When exporting in either an unlabeled image or image classification format, if
-a spatial label field (|Detection|, |Detections|, |Polyline|, or |Polylines|)
-is provided to
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
-object patches of the provided samples will be exported.
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-
-    # No label field is provided; only images are exported
-    dataset.export(
-        export_dir="/tmp/quickstart/images",
-        dataset_type=fo.types.ImageDirectory,
-    )
-
-    # A detections field is provided, so the object patches are exported as a
-    # directory of images
-    dataset.export(
-        export_dir="/tmp/quickstart/patches",
-        dataset_type=fo.types.ImageDirectory,
-        label_field="ground_truth",
-    )
-
-    # A detections field is provided, so the object patches are exported as an
-    # image classification directory tree
-    dataset.export(
-        export_dir="/tmp/quickstart/objects",
-        dataset_type=fo.types.ImageClassificationDirectoryTree,
-        label_field="ground_truth",
-    )
-
 Single labels to lists
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -258,6 +219,130 @@ to detections that span the entire images.
         label_field="attribute",
     )
 
+Object patches
+~~~~~~~~~~~~~~
+
+When exporting in either an unlabeled image or image classification format, if
+a spatial label field (|Detection|, |Detections|, |Polyline|, or |Polylines|)
+is provided to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
+:ref:`object patches <app-object-patches>` of the provided samples will be
+exported.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # No label field is provided; only images are exported
+    dataset.export(
+        export_dir="/tmp/quickstart/images",
+        dataset_type=fo.types.ImageDirectory,
+    )
+
+    # A detections field is provided, so the object patches are exported as a
+    # directory of images
+    dataset.export(
+        export_dir="/tmp/quickstart/patches",
+        dataset_type=fo.types.ImageDirectory,
+        label_field="ground_truth",
+    )
+
+    # A detections field is provided, so the object patches are exported as an
+    # image classification directory tree
+    dataset.export(
+        export_dir="/tmp/quickstart/objects",
+        dataset_type=fo.types.ImageClassificationDirectoryTree,
+        label_field="ground_truth",
+    )
+
+Video clips
+~~~~~~~~~~~
+
+When exporting in either an unlabeled video or video classification format, if
+a |VideoClassification| or |VideoClassifications| field is provided to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
+specified :ref:`video clips <app-video-clips>` will be exported.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video").limit(2).clone()
+
+    # Add some temporal video classifications to the dataset
+    sample1 = dataset.first()
+    sample1["events"] = fo.VideoClassifications(
+        classifications=[
+            fo.VideoClassification(label="first", support=[31, 60]),
+            fo.VideoClassification(label="second", support=[90, 120]),
+        ]
+    )
+    sample1.save()
+
+    sample2 = dataset.last()
+    sample2["events"] = fo.VideoClassifications(
+        classifications=[
+            fo.VideoClassification(label="first", support=[16, 45]),
+            fo.VideoClassification(label="second", support=[75, 104]),
+        ]
+    )
+    sample2.save()
+
+    # A temporal video classification field is provided, so the clips are
+    # exported as a directory of videos
+    dataset.export(
+        export_dir="/tmp/quickstart-video/clips",
+        dataset_type=fo.types.VideoDirectory,
+        label_field="events",
+    )
+
+    # A temporal video classification field is provided, so the clips are
+    # exported as a video classification directory tree
+    dataset.export(
+        export_dir="/tmp/quickstart-video/video-classifications",
+        dataset_type=fo.types.VideoClassificationDirectoryTree,
+        label_field="events",
+    )
+
+You can also directly call
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` on
+:ref:`clip views <clip-views>` to export the specified video clips along with
+their appropriately typed labels.
+
+.. code-block:: python
+    :linenos:
+
+    # Continuing from above...
+
+    clips = dataset.to_clips("events")
+
+    # Export the clips as a directory of videos
+    clips.export(
+        export_dir="/tmp/quickstart-video/also-clips",
+        dataset_type=fo.types.VideoDirectory,
+    )
+
+    # A classification field is provided, so the clips are exported as a video
+    # classification directory tree
+    clips.export(
+        export_dir="/tmp/quickstart-video/clip-classifications",
+        dataset_type=fo.types.VideoClassificationDirectoryTree,
+        label_field="events",
+    )
+
+    # Export the clips along with their associated frame labels
+    clips.export(
+        export_dir="/tmp/quickstart-video/clip-frame-labels",
+        dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+        frame_labels_field="detections",
+    )
+
 .. _supported-export-formats:
 
 Supported formats
@@ -280,6 +365,9 @@ format when writing the dataset to disk.
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageClassificationDataset                           | A labeled dataset consisting of images and their associated classification labels  |
     | <FiftyOneImageClassificationDataset-export>`                       | in a simple JSON format.                                                           |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOneVideoClassificationDataset                           | A labeled dataset consisting of videos and their associated temporal               |
+    | <FiftyOneVideoClassificationDataset-export>`                       | classification labels in a simple JSON format.                                     |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`ImageClassificationDirectoryTree                             | A directory tree whose subfolders define an image classification dataset.          |
     | <ImageClassificationDirectoryTree-export>`                         |                                                                                    |
@@ -489,8 +577,8 @@ where `labels.json` is a JSON file in the following format:
             ...
         ],
         "labels": {
-            "<uuid1>": "<target1>",
-            "<uuid2>": "<target2>",
+            "<uuid1>": <target>,
+            "<uuid2>": <target>,
             ...
         }
     }
@@ -500,6 +588,31 @@ mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
+
+Alternatively, if you include the `include_confidence=True` parameter when
+exporting datasets of this type, the `labels.json` file will contain
+predictions with associated confidences in the following format:
+
+.. code-block:: text
+
+    {
+        "classes": [
+            "<labelA>",
+            "<labelB>",
+            ...
+        ],
+        "labels": {
+            "<uuid1>": {
+                "label": <target>,
+                "confidence": <optional-confidence>
+            },
+            "<uuid2>": {
+                "label": <target>,
+                "confidence": <optional-confidence>
+            },
+            ...
+        }
+    }
 
 .. note::
 
@@ -546,6 +659,123 @@ disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageClassificationDataset
+
+.. _FiftyOneVideoClassificationDataset-export:
+
+FiftyOneVideoClassificationDataset
+----------------------------------
+
+The :class:`fiftyone.types.FiftyOneVideoClassificationDataset <fiftyone.types.dataset_types.FiftyOneVideoClassificationDataset>`
+type represents a labeled dataset consisting of videos and their associated
+temporal classification labels stored in a simple JSON format.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels.json
+
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: text
+
+    {
+        "classes": [
+            "<labelA>",
+            "<labelB>",
+            ...
+        ],
+        "labels": {
+            "<uuid1>": [
+                {
+                    "label": <target>,
+                    "support": [<first-frame>, <last-frame>],
+                    "confidence": <optional-confidence>
+                },
+                {
+                    "label": <target>,
+                    "support": [<first-frame>, <last-frame>],
+                    "confidence": <optional-confidence>
+                },
+                ...
+            ],
+            "<uuid2>": [
+                {
+                    "label": <target>,
+                    "timestamps": [<start-timestamp>, <stop-timestamp>],
+                    "confidence": <optional-confidence>
+                },
+                {
+                    "label": <target>,
+                    "timestamps": [<start-timestamp>, <stop-timestamp>],
+                    "confidence": <optional-confidence>
+                },
+            ],
+            ...
+        }
+    }
+
+By default, the `support` keys will be populated with the `[first, last]` frame
+numbers of the classifications, but you can pass the `use_timestamps=True` key
+during export to instead populate the `timestamps` keys with the
+`[start, stop]` timestamps of the classifications, in seconds.
+
+If the `classes` field is provided, the `target` values are class IDs that are
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
+
+The target value in `labels` for unlabeled videos is `None`.
+
+.. note::
+
+    See :class:`FiftyOneVideoClassificationDatasetExporter <fiftyone.utils.data.exporters.FiftyOneVideoClassificationDatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    to customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a video classification dataset stored on
+disk in the above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/video-classification-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/video-classification-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneVideoClassificationDataset
 
 .. _ImageClassificationDirectoryTree-export:
 

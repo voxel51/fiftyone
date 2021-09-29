@@ -934,12 +934,12 @@ class CVATImage(object):
         return fomt.ImageMetadata(width=self.width, height=self.height)
 
     def to_labels(self):
-        """Returns :class:`fiftyone.core.labels.ImageLabel` representations of
-        the annotations.
+        """Returns :class:`fiftyone.core.labels.Label` representations of the
+        annotations.
 
         Returns:
-            a dictionary mapping field keys to
-            :class:`fiftyone.core.labels.ImageLabel` containers
+            a dict mapping field keys to :class:`fiftyone.core.labels.Label`
+            instances
         """
         frame_size = (self.width, self.height)
 
@@ -965,8 +965,8 @@ class CVATImage(object):
         """Creates a :class:`CVATImage` from a dictionary of labels.
 
         Args:
-            labels: a dictionary mapping keys to
-                :class:`fiftyone.core.labels.ImageLabel` containers
+            labels: a dict mapping keys to :class:`fiftyone.core.labels.Label`
+                instances
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
                 image
 
@@ -1593,12 +1593,12 @@ class CVATTrack(object):
         )
 
     def to_labels(self):
-        """Returns :class:`fiftyone.core.labels.ImageLabel` representations of
-        the annotations.
+        """Returns :class:`fiftyone.core.labels.Label` representations of the
+        annotations.
 
         Returns:
-            a dictionary mapping frame numbers to
-            :class:`fiftyone.core.labels.ImageLabel` instances
+            a dict mapping frame numbers to
+            :class:`fiftyone.core.labels.Label` instances
         """
         frame_size = (self.width, self.height)
 
@@ -1634,8 +1634,8 @@ class CVATTrack(object):
 
         Args:
             id: the ID of the track
-            labels: a dictionary mapping frame numbers to
-                :class:`fiftyone.core.labels.ImageLabel` instances
+            labels: a dict mapping frame numbers to
+                :class:`fiftyone.core.labels.Label` instances
             frame_size: the ``(width, height)`` of the video frames
 
         Returns:

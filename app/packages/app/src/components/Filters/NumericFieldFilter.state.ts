@@ -11,6 +11,8 @@ import {
   AGGS,
   DATE_TIME_FIELD,
   LIST_FIELD,
+  FRAME_SUPPORT_FIELD,
+  VALID_LIST_FIELDS,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
 import { filterStage } from "./atoms";
@@ -33,11 +35,20 @@ export const isNumericField = selectorFamily<boolean, string>({
   get: (name) => ({ get }) => {
     let map = get(selectors.primitivesMap("sample"));
 
-    if (map[name] === LIST_FIELD) {
+    if (VALID_LIST_FIELDS.includes(map[name])) {
       map = get(selectors.primitivesSubfieldMap("sample"));
     }
 
     return VALID_NUMERIC_TYPES.includes(map[name]);
+  },
+});
+
+export const isSupportField = selectorFamily<boolean, string>({
+  key: "isSupportField",
+  get: (name) => ({ get }) => {
+    let map = get(selectors.primitivesMap("sample"));
+
+    return FRAME_SUPPORT_FIELD === map[name];
   },
 });
 

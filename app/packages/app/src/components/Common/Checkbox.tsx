@@ -9,11 +9,10 @@ import { useTheme } from "../../utils/hooks";
 import { summarizeLongStr } from "../../utils/generic";
 import { getValueString } from "../Filters/utils";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
-import { Value } from "../Filters/types";
 
 interface CheckboxProps {
   color?: string;
-  name: Value;
+  name: number | string | boolean | null | [number, number];
   value: boolean;
   setValue: (value: boolean) => void;
   count?: number;

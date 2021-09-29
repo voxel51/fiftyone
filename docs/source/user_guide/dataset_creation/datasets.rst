@@ -173,6 +173,9 @@ format when reading the dataset from disk.
     | :ref:`FiftyOneImageClassificationDataset <FiftyOneImageClassificationDataset-import>` | A labeled dataset consisting of images and their associated classification labels  |
     |                                                                                       | in a simple JSON format.                                                           |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOneVideoClassificationDataset <FiftyOneVideoClassificationDataset-import>` | A labeled dataset consisting of videos and their associated temporal               |
+    |                                                                                       | classification labels in a simple JSON format.                                     |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`ImageClassificationDirectoryTree <ImageClassificationDirectoryTree-import>`     | A directory tree whose subfolders define an image classification dataset.          |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`VideoClassificationDirectoryTree <VideoClassificationDirectoryTree-import>`     | A directory tree whose subfolders define a video classification dataset.           |
@@ -441,8 +444,8 @@ where `labels.json` is a JSON file in the following format:
             ...
         ],
         "labels": {
-            "<uuid1>": "<target1>",
-            "<uuid2>": "<target2>",
+            "<uuid1>": <target>,
+            "<uuid2>": <target>,
             ...
         }
     }
@@ -452,6 +455,30 @@ mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None` (or missing).
+
+Alternatively, `labels.json` can contain predictions with associated
+confidences in the following format:
+
+.. code-block:: text
+
+    {
+        "classes": [
+            "<labelA>",
+            "<labelB>",
+            ...
+        ],
+        "labels": {
+            "<uuid1>": {
+                "label": <target>,
+                "confidence": <optional-confidence>
+            },
+            "<uuid2>": {
+                "label": <target>,
+                "confidence": <optional-confidence>
+            },
+            ...
+        }
+    }
 
 The UUIDs can also be relative paths like `path/to/uuid`, in which case the
 images in `data/` should be arranged in nested subfolders with the
@@ -522,6 +549,147 @@ in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageClassificationDataset
+
+.. _FiftyOneVideoClassificationDataset-import:
+
+FiftyOneVideoClassificationDataset
+----------------------------------
+
+The :class:`fiftyone.types.FiftyOneVideoClassificationDataset <fiftyone.types.dataset_types.FiftyOneVideoClassificationDataset>`
+type represents a labeled dataset consisting of videos and their associated
+temporal classification labels stored in a simple JSON format.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels.json
+
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: text
+
+    {
+        "classes": [
+            "<labelA>",
+            "<labelB>",
+            ...
+        ],
+        "labels": {
+            "<uuid1>": [
+                {
+                    "label": <target>,
+                    "support": [<first-frame>, <last-frame>],
+                    "confidence": <optional-confidence>
+                },
+                {
+                    "label": <target>,
+                    "support": [<first-frame>, <last-frame>],
+                    "confidence": <optional-confidence>
+                },
+                ...
+            ],
+            "<uuid2>": [
+                {
+                    "label": <target>,
+                    "timestamps": [<start-timestamp>, <stop-timestamp>],
+                    "confidence": <optional-confidence>
+                },
+                {
+                    "label": <target>,
+                    "timestamps": [<start-timestamp>, <stop-timestamp>],
+                    "confidence": <optional-confidence>
+                },
+            ],
+            ...
+        }
+    }
+
+The temporal range of each video classification can be specified either via the
+`support` key, which should contain the `[first, last]` frame numbers of the
+classification, or the `timestamps` key, which should contain the
+`[start, stop]` timestamps of the classification in seconds.
+
+If the `classes` field is provided, the `target` values are class IDs that are
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
+
+Unlabeled videos can have a `None` (or missing) key in `labels`.
+
+The UUIDs can also be relative paths like `path/to/uuid`, in which case the
+images in `data/` should be arranged in nested subfolders with the
+corresponding names.
+
+.. note::
+
+    See :class:`FiftyOneVideoClassificationDatasetImporter <fiftyone.utils.data.importers.FiftyOneVideoClassificationDatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a video classification dataset stored in
+the above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/video-classification-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/video-classification-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.FiftyOneVideoClassificationDataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a video classification dataset in the FiftyOne App without creating
+    a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/video-classification-dataset
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.FiftyOneVideoClassificationDataset
 
 .. _ImageClassificationDirectoryTree-import:
 

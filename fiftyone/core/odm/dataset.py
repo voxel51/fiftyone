@@ -192,6 +192,8 @@ class DatasetDocument(Document):
     version = StringField(required=True, null=True)
     created_at = DateTimeField()
     last_loaded_at = DateTimeField()
+    sample_collection_name = StringField(unique=True, required=True)
+    frame_collection_name = StringField()
     persistent = BooleanField(default=False)
     media_type = StringField()
     info = DictField()
@@ -199,7 +201,6 @@ class DatasetDocument(Document):
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
     default_mask_targets = TargetsField()
-    sample_collection_name = StringField(unique=True, required=True)
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )

@@ -3,9 +3,10 @@
  */
 
 import {
-  CLASSIFICATIONS,
+  FRAME_SUPPORT_FIELD,
   LABEL_LISTS,
   LABEL_TAGS_CLASSES,
+  MOMENT_CLASSIFICATIONS,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
 import { BaseElement } from "../base";
@@ -35,7 +36,15 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      options: { filter, activePaths, colorMap, colorByLabel, fieldsMap },
+      options: {
+        filter,
+        activePaths,
+        colorMap,
+        colorByLabel,
+        fieldsMap,
+        mimetype,
+      },
+      config: { fieldSchema },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
@@ -79,21 +88,35 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       ) {
         const cls = sample[path]._cls;
 
-        const labels =
-          cls === CLASSIFICATIONS
-            ? sample[path][LABEL_LISTS[cls]]
-            : [sample[path]];
+        const isList = cls in LABEL_LISTS;
+        const labels = isList ? sample[path][LABEL_LISTS[cls]] : [sample[path]];
 
         elements = [
           ...elements,
-          ...labels
-            .filter((label) => filter[path](label))
-            .map((label) => label.label)
-            .map((label) => ({
-              color: colorMap(colorByLabel ? label : path),
-              title: `${path}: ${label}`,
-              value: label,
-            })),
+          ...Object.entries(
+            labels
+              .filter(
+                (label) =>
+                  label.label &&
+                  filter[path](label) &&
+                  (mimetype.includes("video") ||
+                    MOMENT_CLASSIFICATIONS.includes(label._cls))
+              )
+              .map((label) => label.label)
+              .reduce((acc, cur) => {
+                if (!acc[cur]) {
+                  acc[cur] = 0;
+                }
+                acc[cur] += 1;
+                return acc;
+              }, {})
+          ).map(([label, count]) => ({
+            color: colorMap(colorByLabel ? label : path),
+            title: `${path}: ${label}`,
+            value: isList
+              ? `${prettify(label)}: ${count.toLocaleString()}`
+              : prettify(label),
+          })),
         ];
       } else {
         let valuePath = path;
@@ -102,12 +125,20 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         }
 
         const value = sample[valuePath];
+        const entry = fieldSchema[path];
+        const isSupport =
+          entry &&
+          (entry.ftype === FRAME_SUPPORT_FIELD ||
+            entry.subfield === FRAME_SUPPORT_FIELD);
 
         if ([undefined, null].includes(value)) {
           return elements;
         }
 
         const appendElement = (value) => {
+          if (isSupport && Array.isArray(value)) {
+            value = `[${value.map(prettify).join(", ")}]`;
+          }
           const pretty = prettify(value);
           elements = [
             ...elements,
@@ -119,12 +150,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ];
         };
 
-        if (isScalar(value)) {
+        if (isScalar(value) || (entry && entry.ftype === FRAME_SUPPORT_FIELD)) {
           appendElement(value);
         } else if (Array.isArray(value)) {
-          const filtered = filter[path]
-            ? value.filter((v) => filter[path](v))
-            : value;
+          const filtered =
+            filter[path] && !isSupport
+              ? value.filter((v) => filter[path](v))
+              : value;
           const shown = [...filtered].sort().slice(0, 3);
           shown.forEach((v) => appendElement(v));
 
