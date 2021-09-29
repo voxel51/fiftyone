@@ -1379,6 +1379,8 @@ async def _numeric_histograms(view, schema, prefix=""):
         num_ticks = None
         if range_[0] == range_[1]:
             bins = 1
+            if range_[0] is None:
+                range_ = [0, 1]
 
         if fos._meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]

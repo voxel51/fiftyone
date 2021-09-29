@@ -13,6 +13,7 @@ import * as selectors from "../recoil/selectors";
 import { AGGS } from "../utils/labels";
 import { filterStages } from "./Filters/atoms";
 import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
+import { isDateTimeField } from "./Filters/NumericFieldFilter.state";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -91,6 +92,8 @@ const Distribution = ({ distribution }) => {
     }),
     {}
   );
+
+  const isDateTime = useRecoilValue(isDateTimeField(name));
 
   return (
     <Container ref={ref}>

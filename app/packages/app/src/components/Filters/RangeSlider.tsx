@@ -83,7 +83,7 @@ const getDateFormatter = (timeZone) =>
   new Intl.DateTimeFormat("en-GB", {
     dateStyle: "short",
     timeStyle: "short",
-    timeZone: timeZone || "UTC",
+    timeZone,
   });
 
 const getFormatter = (fieldType, timeZone) => (v) =>

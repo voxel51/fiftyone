@@ -70,6 +70,7 @@ interface BaseOptions {
   selected: boolean;
   fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
+  timeZone: string;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -231,6 +232,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
+  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

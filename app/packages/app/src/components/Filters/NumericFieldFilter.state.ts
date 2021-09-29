@@ -119,7 +119,7 @@ export const boundsAtom = selectorFamily<
         }
 
         if (isDateTime) {
-          return cur.result.map((v) => v.$date);
+          return cur.result.map((v) => (v ? v.$date : v));
         }
 
         return cur.result;

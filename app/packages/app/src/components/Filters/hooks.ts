@@ -3,6 +3,7 @@ import useMeasure from "react-use-measure";
 
 interface ExpandStyle {
   height: number;
+  overflow: "hidden";
 }
 
 export const useExpand = (
@@ -18,5 +19,5 @@ export const useExpand = (
       duration: 0,
     },
   });
-  return [ref, props];
+  return [ref, { ...props, overflow: "hidden" }];
 };

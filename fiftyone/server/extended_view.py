@@ -5,6 +5,8 @@ FiftyOne extended view.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import datetime
+import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -164,11 +166,11 @@ def _make_filter_stages(
             view_field = get_view_field(fields_map, path)
 
             if isinstance(field, fof.ListField):
-                filter = _make_scalar_expression(F(), args)
+                filter = _make_scalar_expression(F(), args, field.field)
                 if filter is not None:
                     expr = view_field.filter(filter).length() > 0
             else:
-                expr = _make_scalar_expression(view_field, args)
+                expr = _make_scalar_expression(view_field, args, field)
 
             if expr is not None:
                 stages.append(fosg.Match(expr))
@@ -213,7 +215,7 @@ def _make_filter_stages(
     return stages, cleanup, filtered_labels
 
 
-def _make_scalar_expression(f, args):
+def _make_scalar_expression(f, args, field=None):
     expr = None
     cls = args["_CLS"]
     if cls == _BOOL_FILTER:
@@ -232,6 +234,10 @@ def _make_scalar_expression(f, args):
 
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
+        if isinstance(field, fof.DateTimeField):
+            mn = datetime.fromtimestamp(mn / 1000)
+            mx = datetime.fromtimestamp(mx / 1000)
+
         expr = (f >= mn) & (f <= mx)
     elif cls == _STR_FILTER:
         values = args["values"]

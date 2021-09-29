@@ -416,8 +416,10 @@ export const defaultGridZoom = selector<number | null>({
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {
-    console.log(get(appConfig));
-    return get(appConfig).timezone;
+    return (
+      get(appConfig).timezone ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone
+    );
   },
 });
 
