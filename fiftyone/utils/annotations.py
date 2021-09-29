@@ -1137,28 +1137,37 @@ class _TrackingIndex(object):
         if label.index in sample_index_map:
             label.index = sample_index_map[label.index]
         else:
-            self.max_index += 1
-            sample_index_map[label.index] = self.max_index
-            label.index = self.max_index
+            _index = self.max_index[sample_id] + 1
+            sample_index_map[label.index] = _index
+            label.index = _index
+            self.max_index[sample_id] = _index
 
     @classmethod
     def build_for(cls, samples, label_field, anno_dict):
         _, id_path = samples._get_label_field_path(label_field, "id")
         _, index_path = samples._get_label_field_path(label_field, "index")
 
-        ids, indexes = samples._dataset.values(
-            [id_path, index_path], unwind=True
+        # Using the whole dataset is important here because we need to ensure
+        # that any new indexes never clash with any existingn labels
+        sample_ids, label_ids, indexes = samples._dataset.values(
+            ["id", id_path, index_path], unwind=-1
         )
 
-        existing_map = dict(zip(ids, indexes))
-        max_index = max([i for i in indexes if i is not None] or [0])
+        max_index = defaultdict(int)
+        existing_map = {}
+        for _id, _label_ids, _indexes in zip(sample_ids, label_ids, indexes):
+            _label_ids = _label_ids or []
+            _indexes = _indexes or []
+            max_index[_id] = max([i for i in _indexes if i is not None] or [0])
+            for _label_id, _index in zip(_label_ids, _indexes):
+                existing_map[_label_id] = _index
 
         index_map = defaultdict(dict)
-        for sid, sample_annos in anno_dict.items():
+        for _id, sample_annos in anno_dict.items():
             for frame_annos in sample_annos.values():
-                for lid, label in frame_annos.items():
-                    if lid in existing_map:
-                        index_map[sid][label.index] = existing_map[lid]
+                for _label_id, label in frame_annos.items():
+                    if _label_id in existing_map:
+                        index_map[_id][label.index] = existing_map[_label_id]
 
         return cls(index_map, max_index)
 
