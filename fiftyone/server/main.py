@@ -8,6 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
+from datetime import timedelta
 import math
 import os
 import traceback
@@ -1360,7 +1361,7 @@ def _numeric_bounds(paths):
 async def _numeric_histograms(view, schema, prefix=""):
     paths = []
     fields = []
-    numerics = (fof.IntField, fof.FloatField)
+    numerics = (fof.IntField, fof.FloatField, fof.DateTimeField)
     for name, field in schema.items():
         if prefix != "" and name == "frame_number":
             continue
@@ -1379,16 +1380,12 @@ async def _numeric_histograms(view, schema, prefix=""):
         if range_[0] == range_[1]:
             bins = 1
 
-        if range_ == (None, None):
-            range_ = (0, 1)
-        elif fos._meets_type(field, fof.IntField):
+        if fos._meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]
             range_ = (range_[0] - 0.5, range_[1] + 0.5)
             if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
                 bins = delta + 1
                 num_ticks = 0
-        else:
-            range_ = (range_[0], range_[1] + 0.01)
 
         ticks.append(num_ticks)
         aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))

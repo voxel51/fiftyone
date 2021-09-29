@@ -7,6 +7,7 @@ Aggregations.
 """
 from collections import OrderedDict
 from copy import deepcopy
+from datetime import datetime, timedelta
 
 import numpy as np
 
@@ -693,6 +694,7 @@ class HistogramValues(Aggregation):
 
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -779,6 +781,22 @@ class HistogramValues(Aggregation):
         self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
         super().__init__(field_or_expr, expr=expr)
+        self._is_datetime = False
+
+        if range is not None:
+            self._is_datetime = any(
+                map(lambda dt: isinstance(dt, datetime), range)
+            )
+            if self._is_datetime:
+                range = list(map(foe._datetime_to_timestamp, range))
+
+        if (
+            bins is not None
+            and not etau.is_numeric(bins)
+            and self._is_datetime
+        ):
+            bins = list(map(foe._datetime_to_timestamp, range))
+
         self._bins = bins
         self._range = range
         self._auto = auto
@@ -848,6 +866,10 @@ class HistogramValues(Aggregation):
                 edges = self._compute_bin_edges(sample_collection)
 
             self._edges_last_used = edges
+
+            if self._is_datetime:
+                edges = list(map(lambda dt: {"$toDate": int(dt)}, edges))
+
             pipeline.append(
                 {
                     "$bucket": {
@@ -896,13 +918,19 @@ class HistogramValues(Aggregation):
         if any(b is None for b in bounds):
             bounds = (-1, -1)
 
-        return list(
-            np.linspace(bounds[0], bounds[1] + 1e-6, self._num_bins + 1)
-        )
+        if isinstance(bounds[0], datetime):
+            self._is_datetime = True
+            bounds = list(map(foe._datetime_to_timestamp, bounds))
+            bounds[1] += 1
+        else:
+            bounds[1] += 1e-6
+
+        return list(np.linspace(bounds[0], bounds[1], self._num_bins + 1))
 
     def _parse_result_edges(self, d):
         _edges_array = np.array(self._edges_last_used)
         edges = list(_edges_array)
+
         counts = [0] * (len(edges) - 1)
         other = 0
         for di in d["bins"]:
@@ -910,6 +938,11 @@ class HistogramValues(Aggregation):
             if left == "other":
                 other = di["count"]
             else:
+                left = (
+                    foe._datetime_to_timestamp(left)
+                    if isinstance(left, datetime)
+                    else left
+                )
                 idx = np.abs(_edges_array - left).argmin()
                 counts[idx] = di["count"]
 
