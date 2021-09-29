@@ -1148,7 +1148,7 @@ class _TrackingIndex(object):
         _, index_path = samples._get_label_field_path(label_field, "index")
 
         # Using the whole dataset is important here because we need to ensure
-        # that any new indexes never clash with any existingn labels
+        # that any new indexes never clash with any existing labels
         sample_ids, label_ids, indexes = samples._dataset.values(
             ["id", id_path, index_path], unwind=-1
         )

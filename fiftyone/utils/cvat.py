@@ -3202,7 +3202,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 not in ("classification", "classifications", "scalar")
             ):
                 # If we're uploading existing video tracks and there is at
-                # least one object marked as a `keyframe`, then upload *only*
+                # least one object marked as a keyframe, then upload *only*
                 # keyframes
                 _, keyframe_path = samples._get_label_field_path(
                     label_field, "keyframe"
@@ -3692,7 +3692,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
-            # should not inherit label IDs from keyframes
+            # should not inherit their label IDs
             if anno_type == "track" and not keyframe:
                 cvat_shape._id = None
 
