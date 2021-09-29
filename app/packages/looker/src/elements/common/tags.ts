@@ -3,12 +3,14 @@
  */
 
 import {
+  DATE_TIME,
   FRAME_SUPPORT_FIELD,
   LABEL_LISTS,
   LABEL_TAGS_CLASSES,
   MOMENT_CLASSIFICATIONS,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
+import { formatDateTime } from "../../util";
 import { BaseElement } from "../base";
 
 import { lookerTags } from "./tags.module.css";
@@ -43,6 +45,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         colorByLabel,
         fieldsMap,
         mimetype,
+        timeZone,
       },
       config: { fieldSchema },
     }: Readonly<State>,
@@ -139,6 +142,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           if (isSupport && Array.isArray(value)) {
             value = `[${value.map(prettify).join(", ")}]`;
           }
+
           const pretty = prettify(value);
           elements = [
             ...elements,
@@ -162,6 +166,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
           const more = filtered.length - shown.length;
           more > 0 && appendElement(`+${more} more`);
+        } else if (value._cls === DATE_TIME) {
+          appendElement(formatDateTime(value.datetime, timeZone));
         }
       }
       return elements;

@@ -229,6 +229,10 @@ def _is_support(field):
     return False
 
 
+def _is_datetime(field):
+    return isinstance(field, fof.DateTimeField)
+
+
 def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
@@ -250,12 +254,13 @@ def _make_scalar_expression(f, args, field):
     elif cls == _NUMERIC_FILTER and _is_support(field):
         mn, mx = args["range"]
         expr = F.any(f.map((F() >= mn) & (F() <= mx)))
+    elif cls == _NUMERIC_FILTER and _is_datetime(field):
+        mn, mx = list(
+            map(lambda t: datetime.fromtimestamp(t / 1000), args["range"])
+        )
+        expr = (f >= mn) & (f <= mx)
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
-        if isinstance(field, fof.DateTimeField):
-            mn = datetime.fromtimestamp(mn / 1000)
-            mx = datetime.fromtimestamp(mx / 1000)
-
         expr = (f >= mn) & (f <= mx)
     elif cls == _STR_FILTER:
         values = args["values"]

@@ -10,8 +10,7 @@ from collections import OrderedDict
 from datetime import datetime
 from json import JSONEncoder
 
-import numpy as np
-
+import fiftyone.core.expressions as foe
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
@@ -40,7 +39,10 @@ def convert(d):
             if isinstance(v, bytes):
                 d[k] = _handle_numpy_array(v, k)
             elif isinstance(v, datetime):
-                d[k] = {"_cls": "DateTime", "datetime": v.timestamp()}
+                d[k] = {
+                    "_cls": "DateTime",
+                    "datetime": foe._datetime_to_timestamp(v),
+                }
             elif isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
@@ -51,7 +53,10 @@ def convert(d):
             if isinstance(i, bytes):
                 d[idx] = _handle_numpy_array(i)
             elif isinstance(i, datetime):
-                d[idx] = {"_cls": "DateTime", "datetime": v.timestamp()}
+                d[idx] = {
+                    "_cls": "DateTime",
+                    "datetime": foe._datetime_to_timestamp(v),
+                }
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
             elif isinstance(i, (dict, OrderedDict, list)):

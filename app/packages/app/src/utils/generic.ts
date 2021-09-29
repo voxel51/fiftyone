@@ -89,3 +89,19 @@ export const getMimeType = (sample: any) => {
     "image/jpg"
   );
 };
+
+export const formatDateTime = (() => {
+  const formatters = {};
+
+  return (timeStamp: number, timeZone: string): string => {
+    if (!(timeZone in formatters)) {
+      formatters[timeZone] = new Intl.DateTimeFormat("en-GB", {
+        dateStyle: "short",
+        timeStyle: "short",
+        timeZone,
+      });
+    }
+
+    return formatters[timeZone].format(new Date(timeStamp));
+  };
+})();
