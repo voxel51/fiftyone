@@ -7,6 +7,7 @@ Aggregations.
 """
 from collections import OrderedDict
 from copy import deepcopy
+import itertools
 
 import numpy as np
 
@@ -1357,7 +1358,8 @@ class Values(Aggregation):
         missing_value (None): a value to insert for missing or ``None``-valued
             fields
         unwind (False): whether to automatically unwind all recognized list
-            fields
+            fields (True) or unwind all list fields except the top-level sample
+            field (-1)
     """
 
     def __init__(
@@ -1370,6 +1372,12 @@ class Values(Aggregation):
         _big_result=True,
         _raw=False,
     ):
+        if unwind < 0:
+            keep_top_level = True
+            unwind = False
+        else:
+            keep_top_level = False
+
         super().__init__(field_or_expr, expr=expr)
 
         self._missing_value = missing_value
@@ -1380,6 +1388,7 @@ class Values(Aggregation):
         self._raw = _raw
         self._parse_fcn = None
         self._num_list_fields = None
+        self._keep_top_level = keep_top_level
 
     @property
     def _has_big_result(self):
@@ -1417,12 +1426,13 @@ class Values(Aggregation):
         else:
             values = d["values"]
 
-        if self._raw:
-            return values
-
-        if self._parse_fcn is not None:
+        if not self._raw and self._parse_fcn is not None:
             level = 1 + self._num_list_fields
-            return _transform_values(values, self._parse_fcn, level=level)
+            values = _transform_values(values, self._parse_fcn, level=level)
+
+        if self._keep_top_level:
+            level = self._num_list_fields
+            values = [_unwind_values(v, level - 1) for v in values]
 
         return values
 
@@ -1480,6 +1490,17 @@ def _transform_values(values, fcn, level=1):
         return fcn(values)
 
     return [_transform_values(v, fcn, level=level - 1) for v in values]
+
+
+def _unwind_values(values, level):
+    if not values:
+        return values
+
+    while level > 0:
+        values = list(itertools.chain.from_iterable(v for v in values if v))
+        level -= 1
+
+    return values
 
 
 def _make_extract_values_pipeline(
