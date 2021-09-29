@@ -69,3 +69,11 @@ export const JSON_COLORS = {
   trueColor: "rgb(225, 100, 40)",
   falseColor: "rgb(225, 100, 40)",
 };
+
+export const BIG_ENDIAN = (() => {
+  let buf = new ArrayBuffer(4);
+  let u32data = new Uint32Array(buf);
+  let u8data = new Uint8Array(buf);
+  u32data[0] = 0xcafebabe;
+  return u8data[0] === 0xca;
+})();

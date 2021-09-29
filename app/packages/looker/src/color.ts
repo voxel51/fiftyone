@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { MASK_ALPHA } from "./constants";
+import { BIG_ENDIAN, MASK_ALPHA } from "./constants";
 import { RGB, RGBA } from "./state";
 
 const bitColorCache: { [color: string]: number } = {};
@@ -31,9 +31,9 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
     [r, g, b] = color;
   }
 
-  bitColorCache[key] = new Uint32Array(
-    new Uint8Array([r, g, b, alpha]).buffer
-  )[0];
+  bitColorCache[key] = BIG_ENDIAN
+    ? (r << 24) | (g << 16) | (b << 8) | alpha
+    : (alpha << 24) | (b << 16) | (g << 8) | r;
 
   return bitColorCache[key];
 };
