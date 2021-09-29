@@ -688,7 +688,7 @@ def _get_attributes(
             attributes = {}
         elif existing_field and attributes == True:
             attributes = _get_label_attributes(
-                samples, backend, label_field, classes=classes
+                samples, backend, label_field, label_type, classes=classes
             )
         else:
             attributes = {}
@@ -696,7 +696,9 @@ def _get_attributes(
     return _format_attributes(backend, attributes)
 
 
-def _get_label_attributes(samples, backend, label_field, classes=None):
+def _get_label_attributes(
+    samples, backend, label_field, label_type, classes=None
+):
     if classes is not None:
         samples = samples.filter_labels(label_field, F("label").is_in(classes))
 
@@ -709,6 +711,13 @@ def _get_label_attributes(samples, backend, label_field, classes=None):
             for name, _ in label.iter_attributes():
                 if name not in attributes:
                     attributes[name] = {"type": backend.default_attr_type}
+
+    if samples._is_frame_field(label_field) and label_type not in (
+        "scalar",
+        "classification",
+        "classifications",
+    ):
+        attributes.pop("keyframe", None)
 
     return attributes
 
