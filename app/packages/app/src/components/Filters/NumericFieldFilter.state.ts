@@ -14,6 +14,7 @@ import {
   FRAME_SUPPORT_FIELD,
   VALID_LIST_FIELDS,
   VALID_NUMERIC_TYPES,
+  INT_FIELD,
 } from "../../utils/labels";
 import { filterStage } from "./atoms";
 
@@ -49,6 +50,19 @@ export const isSupportField = selectorFamily<boolean, string>({
     let map = get(selectors.primitivesMap("sample"));
 
     return FRAME_SUPPORT_FIELD === map[name];
+  },
+});
+
+export const isIntField = selectorFamily<boolean, string>({
+  key: "isIntField",
+  get: (name) => ({ get }) => {
+    let map = get(selectors.primitivesMap("sample"));
+
+    if (VALID_LIST_FIELDS.includes(map[name])) {
+      map = get(selectors.primitivesSubfieldMap("sample"));
+    }
+
+    return [FRAME_SUPPORT_FIELD, INT_FIELD].includes(map[name]);
   },
 });
 

@@ -793,6 +793,18 @@ export const fieldType = selectorFamily<string, string>({
   },
 });
 
+export const subfieldType = selectorFamily<string, string>({
+  key: "subfieldType",
+  get: (path) => ({ get }) => {
+    const frame = path.startsWith("frames.") && get(isVideoDataset);
+
+    const entry = get(fields(frame ? "frame" : "sample"));
+    return frame
+      ? entry[path.slice("frames.".length)].subfield
+      : entry[path].subfield;
+  },
+});
+
 interface BrainMethod {
   config: {
     method: string;

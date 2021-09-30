@@ -55,7 +55,7 @@ def convert(d):
             elif isinstance(i, datetime):
                 d[idx] = {
                     "_cls": "DateTime",
-                    "datetime": foe._datetime_to_timestamp(v),
+                    "datetime": foe._datetime_to_timestamp(i),
                 }
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)

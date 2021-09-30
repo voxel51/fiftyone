@@ -8,10 +8,12 @@ import { useExpand } from "./hooks";
 import { boundsAtom, rangeAtom, noneAtom } from "./NumericFieldFilter.state";
 import { countsAtom, noneCount } from "./atoms";
 import CategoricalFilter from "./CategoricalFilter";
+import { LIST_FIELD } from "../../utils/labels";
 
 const NumericFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
   const type = useRecoilValue(selectors.fieldType(entry.path));
+  const subType = useRecoilValue(selectors.subfieldType(entry.path));
 
   return (
     <animated.div style={props}>
@@ -32,7 +34,7 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
           noneCountAtom={noneCount({ modal, path: entry.path })}
           valueAtom={rangeAtom({ modal, path: entry.path })}
           noneAtom={noneAtom({ modal, path: entry.path })}
-          fieldType={type}
+          fieldType={type === LIST_FIELD ? subType : type}
           ref={ref}
         />
       )}

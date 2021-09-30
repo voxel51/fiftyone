@@ -255,6 +255,7 @@ def _make_scalar_expression(f, args, field):
         mn, mx = args["range"]
         expr = F.any(f.map((F() >= mn) & (F() <= mx)))
     elif cls == _NUMERIC_FILTER and _is_datetime(field):
+        print(args["range"])
         mn, mx = list(
             map(lambda t: datetime.fromtimestamp(t / 1000), args["range"])
         )

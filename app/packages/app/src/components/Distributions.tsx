@@ -7,7 +7,7 @@ import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
-import { isFloat, prettify } from "../utils/generic";
+import { formatDateTime, isFloat, prettify } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
 import { AGGS } from "../utils/labels";
@@ -94,6 +94,7 @@ const Distribution = ({ distribution }) => {
   );
 
   const isDateTime = useRecoilValue(isDateTimeField(name));
+  const timeZone = useRecoilValue(selectors.timeZone);
 
   return (
     <Container ref={ref}>
@@ -129,7 +130,13 @@ const Distribution = ({ distribution }) => {
             let title = `Value: ${key}`;
             if (map[key]) {
               title = `Range: [${map[key]
-                .map((e) => (type === "IntField" ? e : e.toFixed(3)))
+                .map((e) =>
+                  type === "IntField"
+                    ? e
+                    : isDateTime
+                    ? formatDateTime(e, timeZone)
+                    : e.toFixed(3)
+                )
                 .join(", ")})`;
             }
             return <PlotTooltip title={title} count={count} />;

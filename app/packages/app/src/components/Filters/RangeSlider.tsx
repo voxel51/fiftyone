@@ -14,6 +14,7 @@ import { Button } from "../FieldsSidebar";
 import { DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
+import { formatDateTime } from "../../utils/generic";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -79,25 +80,18 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 `;
 
-const getDateFormatter = (timeZone) =>
-  new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone,
-  });
-
 const getFormatter = (fieldType, timeZone) => (v) =>
   fieldType === DATE_TIME_FIELD
-    ? getDateFormatter(timeZone).format(new Date(v))
+    ? formatDateTime(v, timeZone)
     : numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
 
 const getStep = (bounds: [number, number], fieldType?: string): number => {
   const delta = bounds[1] - bounds[0];
-  const max = 120;
+  const max = 1200;
 
   if (fieldType === DATE_TIME_FIELD) {
-    if (delta <= 120) {
-      return 1;
+    if (delta <= max) {
+      return 100;
     }
 
     if (delta <= max * 60) {
@@ -169,6 +163,7 @@ const BaseSlider = React.memo(
     if (!hasBounds) {
       return null;
     }
+
     const step = getStep(bounds, fieldType);
     const formatter = getFormatter(fieldType, timeZone);
 
