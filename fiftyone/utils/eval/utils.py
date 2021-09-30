@@ -125,18 +125,27 @@ def compute_segment_ious(
             pst, pet = pred.support
             pred_len = pet - pst
 
-            max_st = max(gst, pst)
-            min_et = min(get, pet)
+            if pred_len == 0 and gt_len == 0 and pet == get:
+                # In the specific case of a length 0 segments
+                # The IoU is 1 if both segments are on the same frame
+                iou = 1
 
-            # Length of temporal intersection
-            inter = min_et - max_st
-            if inter <= 0:
-                # Segments don't intersect, leave iou at 0
-                continue
+            else:
 
-            union = pred_len + gt_len - inter
+                max_st = max(gst, pst)
+                min_et = min(get, pet)
 
-            ious[i, j] = min(etan.safe_divide(inter, union), 1)
+                # Length of temporal intersection
+                inter = min_et - max_st
+                if inter <= 0:
+                    # Segments don't intersect, leave iou at 0
+                    continue
+
+                union = pred_len + gt_len - inter
+
+                iou = min(etan.safe_divide(inter, union), 1)
+
+            ious[i, j] = iou
 
     return ious
 

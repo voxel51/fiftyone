@@ -216,6 +216,7 @@ class ActivityNetEvaluation(VideoClassificationEvaluation):
         # Compute precision-recall array
         # https://github.com/activitynet/ActivityNet/blob/master/Evaluation/eval_detection.py
         precision = -np.ones((len(iou_threshs), len(classes), 101))
+        classwise_AP = -np.ones((len(iou_threshs), len(classes)))
         recall = np.linspace(0, 1, 101)
         for t in thresh_matches.keys():
             for c in thresh_matches[t].keys():
@@ -247,6 +248,14 @@ class ActivityNetEvaluation(VideoClassificationEvaluation):
                     if pre[i] > pre[i - 1]:
                         pre[i - 1] = pre[i]
 
+                # ActivityNet mAP is calculated without interpolated precision
+                # This slightly differs from COCO evaluation
+                mprec = np.hstack([[0], pre, [0]])
+                mrec = np.hstack([[0], rec, [1]])
+                idx = np.where(mrec[1::] != mrec[0:-1])[0] + 1
+                ap = np.sum((mrec[idx] - mrec[idx - 1]) * mprec[idx])
+
+                # Interpolate precision values for PR curve plotting purposes
                 inds = np.searchsorted(rec, recall, side="left")
                 try:
                     for ri, pi in enumerate(inds):
@@ -255,11 +264,13 @@ class ActivityNetEvaluation(VideoClassificationEvaluation):
                     pass
 
                 precision[iou_threshs.index(t)][classes.index(c)] = q
+                classwise_AP[iou_threshs.index(t)][classes.index(c)] = ap
 
         return ActivityNetVideoClassificationResults(
             matches,
             precision,
             recall,
+            classwise_AP,
             iou_threshs,
             classes,
             eval_key=eval_key,
@@ -281,6 +292,8 @@ class ActivityNetVideoClassificationResults(VideoClassificationResults):
         precision: an array of precision values of shape
             ``num_iou_threshs x num_classes x num_recall``
         recall: an array of recall values
+        classwise_AP: an array of average precision values of shape
+            ``num_iou_threshs x num_classes``
         iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
         eval_key (None): the evaluation key for this evaluation
@@ -297,6 +310,7 @@ class ActivityNetVideoClassificationResults(VideoClassificationResults):
         matches,
         precision,
         recall,
+        classwise_AP,
         iou_threshs,
         classes,
         eval_key=None,
@@ -317,7 +331,7 @@ class ActivityNetVideoClassificationResults(VideoClassificationResults):
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
         self.iou_threshs = np.asarray(iou_threshs)
-        self._classwise_AP = np.mean(precision, axis=(0, 2))
+        self._classwise_AP = classwise_AP.mean(0)
 
     def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
         """Plots precision-recall (PR) curves for the results.
