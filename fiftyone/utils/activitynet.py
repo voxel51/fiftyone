@@ -20,6 +20,7 @@ import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.utils.youtubedl as fouy
 
 youtube_dl = fou.lazy_import("youtube_dl")
 
@@ -181,47 +182,17 @@ def download_activitynet_split(
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
-    if split not in _SPLIT_MAP.keys():
-        raise ValueError(
-            "Unsupported split '%s'; supported values are %s"
-            % (split, tuple(_SPLIT_MAP.keys()))
-        )
-
-    load_entire_split = bool(
-        max_duration is None and max_samples is None and classes is None
+    load_entire_split, classes, num_workers = _parse_args(
+        split, max_duration, max_samples, classes, version, num_workers
     )
 
-    if version not in _ANNOTATION_DOWNLOAD_LINKS:
-        raise ValueError(
-            "Unsupported version '%s'; supported values are %s"
-            % (version, tuple(_ANNOTATION_DOWNLOAD_LINKS.keys()))
-        )
-
-    if max_duration is not None and max_duration <= 0:
-        raise ValueError("`max_duration` must be a positive integer or float")
-
-    if classes is not None and split == "test":
-        logger.warning("Test split is unlabeled; ignoring classes requirement")
-        classes = None
-
-    num_workers = _parse_num_workers(num_workers)
-
-    videos_dir = os.path.join(dataset_dir, "data")
-    anno_path = os.path.join(dataset_dir, "labels.json")
-    error_path = os.path.join(dataset_dir, "download_errors.json")
-    raw_anno_path = os.path.join(dataset_dir, "raw_labels.json")
-
-    etau.ensure_dir(videos_dir)
-
-    if not os.path.isfile(raw_anno_path):
-        anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
-        etaw.download_file(anno_link, path=raw_anno_path)
+    videos_dir, anno_path, error_path, raw_anno_path = _get_paths(
+        dataset_dir, version
+    )
 
     raw_annotations = etas.load_json(raw_anno_path)
-
     taxonomy = raw_annotations["taxonomy"]
     all_classes = _get_all_classes(taxonomy)
-    target_map = {c: i for i, c in enumerate(all_classes)}
 
     if classes is not None:
         non_existant_classes = list(set(classes) - set(all_classes))
@@ -232,18 +203,19 @@ def download_activitynet_split(
                 tuple(non_existant_classes),
             )
 
-    # Get ids of previously downloaded samples
-    prev_downloaded_ids = _get_downloaded_sample_ids(videos_dir)
-    num_downloaded = len(prev_downloaded_ids)
-    num_total = _NUM_TOTAL_SAMPLES[version][split]
+    if source_dir is None:
+        # Get ids of previously downloaded samples
+        prev_downloaded_ids = _get_downloaded_sample_ids(videos_dir)
 
-    if source_dir is not None:
+    else:
         # Copy/move all media if a source dir is provided
         prev_downloaded_ids = _process_source_dir(
             source_dir, videos_dir, split, copy_files
         )
 
     if load_entire_split:
+        num_downloaded = len(prev_downloaded_ids)
+        num_total = _NUM_TOTAL_SAMPLES[version][split]
         if num_downloaded != num_total and source_dir is None:
             raise ValueError(
                 "Found %d samples out of %d for split `%s`. When loading a "
@@ -257,7 +229,7 @@ def download_activitynet_split(
                 "instead." % (num_downloaded, num_total, split, version)
             )
         selected_samples = raw_annotations["database"]
-        num_samples = len(prev_downloaded_ids)
+        num_samples = num_downloaded
     else:
         # We are loading a subset of the dataset, load only the matching
         # samples for the given parameters
@@ -294,9 +266,54 @@ def download_activitynet_split(
             num_samples = num_downloaded_samples + len(prev_downloaded_ids)
 
     # Save labels for this run in AcitivityNetDataset format
-    _write_annotations(selected_samples, anno_path, target_map, taxonomy)
+    _write_annotations(selected_samples, anno_path, all_classes, taxonomy)
 
     return num_samples, all_classes
+
+
+def _parse_args(
+    split, max_duration, max_samples, classes, version, num_workers
+):
+    num_workers = _parse_num_workers(num_workers)
+    if split not in _SPLIT_MAP.keys():
+        raise ValueError(
+            "Unsupported split '%s'; supported values are %s"
+            % (split, tuple(_SPLIT_MAP.keys()))
+        )
+
+    load_entire_split = bool(
+        max_duration is None and max_samples is None and classes is None
+    )
+
+    if version not in _ANNOTATION_DOWNLOAD_LINKS:
+        raise ValueError(
+            "Unsupported version '%s'; supported values are %s"
+            % (version, tuple(_ANNOTATION_DOWNLOAD_LINKS.keys()))
+        )
+
+    if max_duration is not None and max_duration <= 0:
+        raise ValueError("`max_duration` must be a positive integer or float")
+
+    if classes is not None and split == "test":
+        logger.warning("Test split is unlabeled; ignoring classes requirement")
+        classes = None
+
+    return load_entire_split, classes, num_workers
+
+
+def _get_paths(dataset_dir, version):
+    videos_dir = os.path.join(dataset_dir, "data")
+    anno_path = os.path.join(dataset_dir, "labels.json")
+    error_path = os.path.join(dataset_dir, "download_errors.json")
+    raw_anno_path = os.path.join(dataset_dir, "raw_labels.json")
+
+    etau.ensure_dir(videos_dir)
+
+    if not os.path.isfile(raw_anno_path):
+        anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
+        etaw.download_file(anno_link, path=raw_anno_path)
+
+    return videos_dir, anno_path, error_path, raw_anno_path
 
 
 def _get_all_classes(taxonomy):
@@ -555,7 +572,8 @@ def _cleanup_partial_downloads(videos_dir):
             os.remove(os.path.join(videos_dir, vfn))
 
 
-def _write_annotations(matching_samples, anno_path, target_map, taxonomy):
+def _write_annotations(matching_samples, anno_path, all_classes, taxonomy):
+    target_map = {c: i for i, c in enumerate(all_classes)}
     fo_matching_labels = _convert_label_format(
         matching_samples, target_map, taxonomy
     )
