@@ -45,14 +45,14 @@ on the cards below to see how!
     :description: See why FiftyOne is a recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
     :link: open_images.html
     :image: ../_static/images/integrations/open_images.png
-    :tags: Dataset,Model-Evaluation
+    :tags: Datasets,Model-Evaluation
 
 .. customcarditem::
     :header: COCO Dataset
     :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or your own COCO-formatted data) a breeze.
     :link: coco.html
     :image: ../_static/images/integrations/coco.png
-    :tags: Dataset,Model-Evaluation
+    :tags: Datasets,Model-Evaluation
 
 .. customcarditem::
     :header: CVAT
