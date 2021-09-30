@@ -541,6 +541,45 @@ label field:
 
     dataset.annotate(anno_key, label_schema=label_schema)
 
+You can also define class-specific attributes by setting elements of the
+`classes` list to dicts that specify groups of `classes` and their
+corresponding `attributes`. For example, in the configuration below, `attr1`
+only applies to `class1` and `class2` while `attr2` applies to all classes:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    label_schema = {
+        "new_field": {
+            "type": "detections",
+            "classes": [
+                {
+                    "classes": ["class1", "class2"],
+                    "attributes": {
+                        "attr1": {
+                            "type": "select",
+                            "values": ["val1", "val2"],
+                            "default": "val1",
+                        }
+                     }
+                },
+                "class3",
+                "class4",
+            ],
+            "attributes": {
+                "attr2": {
+                    "type": "radio",
+                    "values": [True, False],
+                    "default": False,
+                }
+            },
+        },
+    }
+
+    dataset.annotate(anno_key, label_schema=label_schema)
+
 Alternatively, if you are only editing or creating a single label field, you
 can use the `label_field`, `label_type`, `classes`, `attributes`, and
 `mask_targets` parameters to specify the components of the label schema
@@ -664,10 +703,8 @@ take additional values:
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 
-.. note::
-
-    Only scalar-valued label attributes are supported. Other attribute types
-    like lists, dictionaries, and arrays will be omitted.
+Note that only scalar-valued label attributes are supported. Other attribute
+types like lists, dictionaries, and arrays will be omitted.
 
 .. _annotation-video-label-attributes:
 
