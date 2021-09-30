@@ -5400,7 +5400,8 @@ class SampleCollection(object):
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
             unwind (False): whether to automatically unwind all recognized list
-                fields
+                fields (True) or unwind all list fields except the top-level
+                sample field (-1)
 
         Returns:
             the list of values
