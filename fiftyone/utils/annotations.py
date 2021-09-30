@@ -383,7 +383,15 @@ def _build_label_schema(
             )
             only_keyframes = True in samples.distinct(keyframe_path)
 
-            if not only_keyframes:
+            if only_keyframes and not backend.supports_keyframes:
+                logger.warning(
+                    "The '%s' backend does not support uploading only "
+                    "keyframes when editing existing video tracks",
+                    backend.config.name,
+                )
+
+                only_keyframes = False
+            elif not only_keyframes:
                 logger.warning(
                     "No keyframes found for existing labels in field '%s'. "
                     "All labels will be uploaded",
@@ -1329,6 +1337,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError(
             "subclass must implement supported_attr_types"
         )
+
+    @property
+    def supports_keyframes(self):
+        """Whether this backend supports uploading only keyframes when editing
+        existing video track annotations.
+        """
+        raise NotImplementedError("subclass must implement supports_keyframes")
 
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name

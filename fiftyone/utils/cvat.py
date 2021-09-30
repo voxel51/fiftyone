@@ -2516,6 +2516,10 @@ class CVATBackend(foua.AnnotationBackend):
     def supported_attr_types(self):
         return ["text", "select", "radio", "checkbox"]
 
+    @property
+    def supports_keyframes(self):
+        return True
+
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
             return {"type": "checkbox"}
