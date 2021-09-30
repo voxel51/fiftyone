@@ -1927,7 +1927,7 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
 
     set_pipeline = [{"$set": {"_indexes": indexes_expr.to_mongo()}}]
     label_filter = (F("$_indexes") != None) & F("$_indexes").contains(
-        F("index")
+        [F("index")]
     )
     unset_pipeline = [{"$unset": "_indexes"}]
 

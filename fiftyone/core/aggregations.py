@@ -1499,6 +1499,9 @@ class Values(Aggregation):
 
 
 def _is_frame_path(sample_collection, field_name):
+    if not field_name:
+        return False
+
     # Remove array references
     path = "".join(field_name.split("[]"))
 

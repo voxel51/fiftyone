@@ -340,6 +340,7 @@ def _build_label_schema(
             _mask_targets = None
             _classes = _get_classes(
                 samples,
+                backend,
                 classes,
                 _label_field,
                 _label_info,
@@ -582,13 +583,33 @@ def _get_existing_label_type(samples, backend, label_field, field_type):
 
 
 def _get_classes(
-    samples, classes, label_field, label_info, existing_field, label_type
+    samples,
+    backend,
+    classes,
+    label_field,
+    label_info,
+    existing_field,
+    label_type,
 ):
     if "classes" in label_info:
-        return label_info["classes"]
+        classes = label_info["classes"]
 
     if classes:
-        return classes
+        _classes = []
+        for c in classes:
+            if isinstance(c, dict):
+                c = _parse_classes_dict(
+                    c,
+                    samples,
+                    backend,
+                    label_field,
+                    existing_field,
+                    label_type,
+                )
+
+            _classes.append(c)
+
+        return _classes
 
     if label_type == "scalar":
         return []
@@ -607,6 +628,34 @@ def _get_classes(
 
     _, label_path = samples._get_label_field_path(label_field, "label")
     return samples._dataset.distinct(label_path)
+
+
+def _parse_classes_dict(
+    d, samples, backend, label_field, existing_field, label_type
+):
+    if "classes" not in d or "attributes" not in d:
+        raise ValueError("Invalid classes dict %s" % str(d))
+
+    classes = d["classes"]
+    attributes = d["attributes"]
+
+    if etau.is_str(classes):
+        classes = [classes]
+    else:
+        classes = list(classes)
+
+    attributes = _get_attributes(
+        samples,
+        backend,
+        attributes,
+        label_field,
+        {},
+        existing_field,
+        label_type,
+        classes=classes,
+    )
+
+    return {"classes": classes, "attributes": attributes}
 
 
 def _get_mask_targets(samples, mask_targets, label_field, label_info):
@@ -636,6 +685,7 @@ def _get_attributes(
     label_info,
     existing_field,
     label_type,
+    classes=None,
 ):
     if "attributes" in label_info:
         attributes = label_info["attributes"]
@@ -644,23 +694,28 @@ def _get_attributes(
         if label_type == "scalar":
             attributes = {}
         elif existing_field and attributes == True:
-            attributes = _get_label_attributes(samples, backend, label_field)
+            attributes = _get_label_attributes(
+                samples, backend, label_field, classes=classes
+            )
         else:
             attributes = {}
 
     return _format_attributes(backend, attributes)
 
 
-def _get_label_attributes(samples, backend, label_field):
+def _get_label_attributes(samples, backend, label_field, classes=None):
+    if classes is not None:
+        samples = samples.filter_labels(label_field, F("label").is_in(classes))
+
     _, label_path = samples._get_label_field_path(label_field)
     labels = samples.values(label_path, unwind=True)
 
     attributes = {}
     for label in labels:
         if label is not None:
-            for name, _ in label.iter_attributes():
-                if name not in attributes:
-                    attributes[name] = {"type": backend.default_attr_type}
+            for name, value in label.iter_attributes():
+                if value is not None and name not in attributes:
+                    attributes[name] = backend.recommend_attr_tool(name, value)
 
     return attributes
 
@@ -672,62 +727,62 @@ def _format_attributes(backend, attributes):
     if isinstance(attributes, list):
         attributes = {a: {} for a in attributes}
 
-    output_attrs = {}
-    for attr, attr_info in attributes.items():
-        formatted_info = {}
+    _attributes = {}
 
-        attr_type = attr_info.get("type", None)
-        values = attr_info.get("values", None)
-        default = attr_info.get("default", None)
-        mutable = attr_info.get("mutable", None)
+    for name, attr in attributes.items():
+        if not attr:
+            attr = backend.recommend_attr_tool(name, None)
+
+        attr_type = attr.get("type", None)
+        values = attr.get("values", None)
+        default = attr.get("default", None)
+        mutable = attr.get("mutable", None)
 
         if attr_type is None:
-            if values is None:
-                formatted_info["type"] = backend.default_attr_type
-            else:
-                formatted_info["type"] = backend.default_categorical_attr_type
-                formatted_info["values"] = values
-                if default not in (None, "") and default in values:
-                    formatted_info["default"] = default
-        else:
-            if attr_type in backend.supported_attr_types:
-                formatted_info["type"] = attr_type
-            else:
+            raise ValueError(
+                "Attribute definition %s is missing a `type` key" % str(attr)
+            )
+
+        if attr_type not in backend.supported_attr_types:
+            raise ValueError(
+                "Attribute '%s' has unsupported type '%s'. The '%s' "
+                "backend supports types %s"
+                % (
+                    name,
+                    attr_type,
+                    backend.config.name,
+                    backend.supported_attr_types,
+                )
+            )
+
+        _attr = {"type": attr_type}
+
+        # Parse `values` property
+        if values is not None:
+            _attr["values"] = list(values)
+        elif backend.requires_attr_values(attr_type):
+            raise ValueError(
+                "Attribute '%s' of type '%s' requires a list of values"
+                % (name, attr_type)
+            )
+
+        # Parse `default` property
+        if default is not None:
+            if values is not None and default not in values:
                 raise ValueError(
-                    "Attribute '%s' has unsupported type '%s'. The '%s' "
-                    "backend supports types %s"
-                    % (
-                        attr,
-                        attr_type,
-                        backend.config.name,
-                        backend.supported_attr_types,
-                    )
+                    "Default value '%s' for attribute '%s' does not "
+                    "appear in the list of values %s" % (default, name, values)
                 )
 
-            if values is not None:
-                formatted_info["values"] = values
-            elif backend.requires_attr_values(attr_type):
-                raise ValueError(
-                    "Attribute '%s' of type '%s' requires a list of values"
-                    % (attr, attr_type)
-                )
+            _attr["default"] = default
 
-            if default not in (None, ""):
-                if values is not None and default not in values:
-                    raise ValueError(
-                        "Default value '%s' for attribute '%s' does not "
-                        "appear in the list of values %s"
-                        % (default, attr, values)
-                    )
-
-                formatted_info["default"] = default
-
+        # Parse `mutable` property
         if mutable is not None:
-            formatted_info["mutable"] = mutable
+            _attr["mutable"] = mutable
 
-        output_attrs[attr] = formatted_info
+        _attributes[name] = _attr
 
-    return output_attrs
+    return _attributes
 
 
 def load_annotations(
@@ -1207,22 +1262,31 @@ class AnnotationBackend(foa.AnnotationMethod):
             "subclass must implement supported_attr_types"
         )
 
-    @property
-    def default_attr_type(self):
-        """The default type for attributes with values of unspecified type.
+    def recommend_attr_tool(self, name, value):
+        """Recommends an attribute tool for an attribute with the given name
+        and value.
 
-        Must be a supported type from :meth:`supported_attr_types`.
-        """
-        raise NotImplementedError("subclass must implement default_attr_type")
+        For example, a backend may recommend a tool as follows for a boolean
+        value::
 
-    @property
-    def default_categorical_attr_type(self):
-        """The default type for attributes with categorical values.
+            {
+                "type": "radio",
+                "values": [False, True],
+            }
 
-        Must be a supported type from :meth:`supported_attr_types`.
+        or a tool as follows for a generic value::
+
+            {"type": "text"}
+
+        Args:
+            name: the name of the attribute
+            value: the attribute value, which may be ``None``
+
+        Returns:
+            an attribute type dict
         """
         raise NotImplementedError(
-            "subclass must implement default_categorical_attr_type"
+            "subclass must implement recommend_attr_tool()"
         )
 
     def requires_attr_values(self, attr_type):

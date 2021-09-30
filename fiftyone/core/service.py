@@ -146,8 +146,8 @@ class Service(object):
         """Waits for any child process of this service to bind to a TCP port.
 
         Args:
-            port: if specified, wait for a child to bind to this port
-            timeout: the number of seconds to wait before failing
+            port (None): if specified, wait for a child to bind to this port
+            timeout (10): the number of seconds to wait before failing
 
         Returns:
             the port the child has bound to (equal to the ``port`` argument
@@ -159,7 +159,7 @@ class Service(object):
 
         @retry(
             wait_fixed=250,
-            stop_max_delay=timeout * 2000,
+            stop_max_delay=1000 * timeout,
             retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
@@ -365,7 +365,7 @@ class ServerService(Service):
             # running that didn't respond to /fiftyone, the local server will
             # fail to start but the app will still connect successfully.
             super().start()
-            self._wait_for_child_port(self._port)
+            self._wait_for_child_port(port=self._port)
         else:
             logger.info("Connected to FiftyOne on local port %i", self._port)
             logger.info(
