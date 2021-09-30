@@ -659,14 +659,17 @@ types like lists, dictionaries, and arrays will be omitted.
     attributes in CVAT will result in labels being overwritten rather than
     merged when loading annotations back into FiftyOne.
 
-.. _cvat-video-label-attributes:
+.. _cvat-labeling-videos:
 
-Video label attributes
-----------------------
+Labeling videos
+---------------
 
-When annotating spatiotemporal objects in videos, each object attribute
-specification can include a `mutable` property that controls whether the
-attribute's value can change between frames for each object:
+When annotating spatiotemporal objects in videos, you have a few additional
+options at your fingertips.
+
+First, each object attribute specification can include a `mutable` property
+that controls whether the attribute's value can change between frames for each
+object:
 
 .. code:: python
     :linenos:
@@ -701,6 +704,22 @@ The meaning of the `mutable` attribute is defined as follows:
     for every frame in which the object track appears
 -   `False`: the attribute is static and is the same for every frame in which
     the object track appears
+
+In addition, note that when you :ref:`download <cvat-loading-annotations>`
+annotation runs that include track annotations, the downloaded label
+corresponding to each keyframe of an object track will have its `keyframe=True`
+attribute set to denote that it was a keyframe.
+
+Similarly, when you create an annotation run on a video dataset that involves
+*editing* existing video tracks, if at least one existing label has its
+`keyframe=True` attribute populated, then the available keyframe information
+will be uploaded to CVAT (otherwise all track frames will be marked as
+keyframes).
+
+.. note::
+
+    See :ref:`this section <cvat-annotating-videos>` for video annotation
+    examples!
 
 .. _cvat-loading-annotations:
 
@@ -1231,7 +1250,8 @@ method.
 All CVAT label types except `tags` provide an option to annotate **tracks** in
 videos, which captures the identity of a single object as it moves through the
 video. These tracks are stored in the `index` field of the |Label| instances
-when you import the annotations into FiftyOne.
+when you import the annotations into FiftyOne, and the keyframes of each
+trajectory will have their `keyframe=True` attribute set.
 
 Note that CVAT does not provide a straightforward way to annotate sample-level
 classification labels. Instead, we recommend that you use frame-level fields
@@ -1303,11 +1323,24 @@ vehicle:
    :alt: cvat-video
    :align: center
 
-Editing existing frame labels
------------------------------
+Editing frame-level label tracks
+--------------------------------
 
-The example below demonstrates how to edit existing frame-level detections of a
-video dataset:
+You can also edit existing frame-level labels of video datasets using the CVAT
+backend.
+
+.. note::
+
+    If at least one existing label has its `keyframe=True` attribute set, only
+    the keyframe labels will be uploaded to CVAT, which provides a better
+    editing experience when performing spatial or time-varying attribute edits.
+
+    If no keyframe information is available, every existing label must be
+    marked as a keyframe in CVAT.
+
+The example below edits the existing detections of a video dataset. Note that,
+since the dataset's labels do not have keyframe markings, we artifically tag
+every 10th frame as a keyframe to provide a better editing experience in CVAT:
 
 .. code:: python
     :linenos:
@@ -1315,8 +1348,20 @@ video dataset:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset("quickstart-video")
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+
     view = dataset.take(1)
+
+    # Mark some keyframes
+    sample = view.first()
+    num_frames = len(sample.frames)
+    keyframes = set(range(1, num_frames, 10)).union({1, num_frames})
+    for frame_number in keyframes:
+        frame = sample.frames[frame_number]
+        for det in frame.detections.detections:
+            det.keyframe = True
+
+    sample.save()
 
     anno_key = "cvat_video"
 

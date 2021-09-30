@@ -706,14 +706,17 @@ take additional values:
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
 
-.. _annotation-video-label-attributes:
+.. _annotation-labeling-videos:
 
-Video label attributes
-----------------------
+Labeling videos
+---------------
 
-When annotating spatiotemporal objects in videos, each object attribute
-specification can include a `mutable` property that controls whether the
-attribute's value can change between frames for each object:
+When annotating spatiotemporal objects in videos, you have a few additional
+options at your fingertips.
+
+First, each object attribute specification can include a `mutable` property
+that controls whether the attribute's value can change between frames for each
+object:
 
 .. code:: python
     :linenos:
@@ -748,6 +751,18 @@ The meaning of the `mutable` attribute is defined as follows:
     for every frame in which the object track appears
 -   `False`: the attribute is static and is the same for every frame in which
     the object track appears
+
+In addition, if you are using an annotation backend
+:ref:`like CVAT <cvat-annotating-videos>` that supports keyframes when
+annotating video object tracks, then any labels that you
+:ref:`download <loading-annotations>` for video annotation runs will have a
+`keyframe=True` attribute set for each label that is a keyframe of its object's
+track.
+
+Similarly, when you create an annotation run on a video dataset involves
+*editing* existing video tracks, if at least one existing label has its
+`keyframe=True` attribute populated, then the available keyframe information
+will be shared with the annotation backend to improve the editing experience.
 
 .. _loading-annotations:
 
