@@ -3204,7 +3204,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
 
-                # Parse label data into format expected by CVAT
                 anno_tags = []
                 anno_shapes = []
                 anno_tracks = []
@@ -3215,6 +3214,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "classifications",
                         "scalar",
                     ):
+                        # Tag annotations
                         (
                             _id_map,
                             anno_tags,
@@ -3226,7 +3226,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             is_shape=False,
                             assign_scalar_attrs=assign_scalar_attrs,
                         )
-                    elif is_video:
+                    elif is_video and label_type != "segmentation":
+                        # Video track annotations
                         (
                             _id_map,
                             anno_shapes,
@@ -3241,6 +3242,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             only_keyframes=only_keyframes,
                         )
                     else:
+                        # Shape annotations
                         (
                             _id_map,
                             anno_shapes,
@@ -3980,6 +3982,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "scalar",
                     "classification",
                     "classifications",
+                    "segmentation",
                 ):
                     kwargs["load_tracks"] = load_tracks
                     kwargs["only_keyframes"] = only_keyframes
@@ -4397,28 +4400,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id,
         frame_size,
         label_type=None,
-        load_tracks=False,
-        only_keyframes=False,
         mask_targets=None,
     ):
         label_id = segmentation.id
         detections = segmentation.to_detections(mask_targets=mask_targets)
-        detections = detections.detections
-
-        if load_tracks and only_keyframes:
-            keyframe = segmentation.get_attribute_value("keyframe", False)
-            for det in detections:
-                det.keyframe = keyframe
 
         _, shapes, tracks, remapped_attrs = self._create_detection_shapes(
-            detections,
+            detections.detections,
             cvat_schema,
             frame_id,
             frame_size,
             label_type="instances",
             label_id=label_id,
-            load_tracks=load_tracks,
-            only_keyframes=only_keyframes,
         )
 
         return label_id, shapes, tracks, remapped_attrs

@@ -282,7 +282,6 @@ _TRACKABLE_TYPES = (
     "polylines",
     "polygons",
     "keypoints",
-    "segmentation",
 )
 
 
@@ -1157,16 +1156,9 @@ def _merge_label(label, anno_label, only_keyframes=False, attributes=None):
 
 
 def _update_tracks(samples, label_field, anno_dict, only_keyframes):
-    label_type = samples._get_label_field_type(label_field)
-    update_indexes = not issubclass(label_type, fol.Segmentation)
-
-    if not update_indexes and not only_keyframes:
-        return  # nothing to do
-
     # Using unfiltered samples is important here because we need to ensure
     # that any new indexes never clash with *any* existing tracks
-    sample_ids = list(anno_dict.keys())
-    view = samples._dataset.select(sample_ids)
+    view = samples._dataset.select(list(anno_dict.keys()))
 
     _, id_path = samples._get_label_field_path(label_field, "id")
     _, index_path = samples._get_label_field_path(label_field, "index")
@@ -1194,9 +1186,6 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
             _label_ids = _to_list(_label_ids)
             _indexes = _to_list(_indexes)
             for _label_id, _index in zip(_label_ids, _indexes):
-                if not update_indexes:
-                    _index = None
-
                 existing_map[_label_id] = _index
                 id_map[(_id, _frame_id, _index)] = _label_id
 
@@ -1214,16 +1203,13 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
                 label = frame_annos[_label_id]
 
                 # Map annotation track index to dataset track index
-                if update_indexes:
-                    _index = index_map.get((_id, label.index), None)
-                    if _index is None:
-                        _index = max_index.get(_id, 0) + 1
-                        index_map[(_id, label.index)] = _index
-                        max_index[_id] = _index
+                _index = index_map.get((_id, label.index), None)
+                if _index is None:
+                    _index = max_index.get(_id, 0) + 1
+                    index_map[(_id, label.index)] = _index
+                    max_index[_id] = _index
 
-                    label.index = _index
-                else:
-                    _index = None
+                label.index = _index
 
                 # If only keyframes were uploaded and this label coincides with
                 # an existing observation of its track, inherit the label ID
