@@ -705,16 +705,16 @@ The meaning of the `mutable` attribute is defined as follows:
 -   `False`: the attribute is static and is the same for every frame in which
     the object track appears
 
-In addition, note that when you :ref:`download <cvat-loading-annotations>`
-annotation runs that include track annotations, the downloaded label
-corresponding to each keyframe of an object track will have its `keyframe=True`
-attribute set to denote that it was a keyframe.
+In addition, note that when you
+:ref:`download annotation runs <cvat-loading-annotations>` that include track
+annotations, the downloaded label corresponding to each keyframe of an object
+track will have its `keyframe=True` attribute set to denote that it was a
+keyframe.
 
 Similarly, when you create an annotation run on a video dataset that involves
-*editing* existing video tracks, if at least one existing label has its
+editing existing video tracks, if at least one existing label has its
 `keyframe=True` attribute populated, then the available keyframe information
-will be uploaded to CVAT (otherwise all track frames will be marked as
-keyframes).
+will be uploaded to CVAT.
 
 .. note::
 
@@ -1249,13 +1249,13 @@ method.
 
 All CVAT label types except `tags` provide an option to annotate **tracks** in
 videos, which captures the identity of a single object as it moves through the
-video. These tracks are stored in the `index` field of the |Label| instances
-when you import the annotations into FiftyOne, and the keyframes of each
-trajectory will have their `keyframe=True` attribute set.
+video. When you import video tracks into FiftyOne, the `index` attribute of
+each label will contain the integer number of its track, and any labels that
+are keyframes will have their `keyframe=True` attribute set.
 
 Note that CVAT does not provide a straightforward way to annotate sample-level
-classification labels. Instead, we recommend that you use frame-level fields
-to record classifications for your video datasets.
+classification labels for videos. Instead, we recommend that you use
+frame-level fields to record classifications for your video datasets.
 
 .. note::
 
@@ -1267,9 +1267,14 @@ Adding new frame labels
 -----------------------
 
 The example below demonstrates how to configure a video annotation task that
-populates a new frame-level field of a video dataset with detection tracks of
-vehicles with an immutable `type` attribute that denotes the type of each
+populates a new frame-level field of a video dataset with vehicle detection
+tracks with an immutable `type` attribute that denotes the type of each
 vehicle:
+
+.. note::
+
+    Prepend `"frames."` to reference frame-level fields when calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
 
 .. code:: python
     :linenos:
@@ -1314,11 +1319,6 @@ vehicle:
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
-.. note::
-
-    Prepend `"frames."` to reference frame-level fields when calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
-
 .. image:: /images/integrations/cvat_video.png
    :alt: cvat-video
    :align: center
@@ -1326,8 +1326,7 @@ vehicle:
 Editing frame-level label tracks
 --------------------------------
 
-You can also edit existing frame-level labels of video datasets using the CVAT
-backend.
+You can also edit existing frame-level labels of video datasets in CVAT.
 
 .. note::
 

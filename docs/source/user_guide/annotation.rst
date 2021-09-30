@@ -753,16 +753,16 @@ The meaning of the `mutable` attribute is defined as follows:
     the object track appears
 
 In addition, if you are using an annotation backend
-:ref:`like CVAT <cvat-annotating-videos>` that supports keyframes when
-annotating video object tracks, then any labels that you
-:ref:`download <loading-annotations>` for video annotation runs will have a
-`keyframe=True` attribute set for each label that is a keyframe of its object's
-track.
+:ref:`like CVAT <cvat-annotating-videos>` that supports keyframes, then when
+you :ref:`download annotation runs <loading-annotations>` that include track
+annotations, the downloaded label corresponding to each keyframe of an object
+track will have its `keyframe=True` attribute set to denote that it was a
+keyframe.
 
-Similarly, when you create an annotation run on a video dataset involves
-*editing* existing video tracks, if at least one existing label has its
-`keyframe=True` attribute populated, then the available keyframe information
-will be shared with the annotation backend to improve the editing experience.
+Similarly, when you create an annotation run on a video dataset that involves
+*editing* existing video tracks, if at least one existing label has a
+`keyframe=True` attribute set, then the available keyframe information will be
+uploaded to the annotation backend.
 
 .. _loading-annotations:
 
