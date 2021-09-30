@@ -180,6 +180,20 @@ The easiest way to get started is to use the default server
 `cvat.org <https://cvat.org>`_, which simply requires creating an account and
 then providing your authentication credentials as shown below.
 
+.. note::
+
+    CVAT is the default annotation backend used by FiftyOne. However, if you
+    have changed your default backend, you can opt-in to using CVAT on a
+    one-off basis by passing the optional `backend` parameter to
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+    .. code:: python
+
+        view.annotate(anno_key, backend="cvat", ...)
+
+    Refer to :ref:`these instructions <annotation-setup>` to see how to
+    permanently change your default backend.
+
 Authentication
 --------------
 
@@ -476,6 +490,45 @@ label field:
 
     dataset.annotate(anno_key, label_schema=label_schema)
 
+You can also define class-specific attributes by setting elements of the
+`classes` list to dicts that specify groups of `classes` and their
+corresponding `attributes`. For example, in the configuration below, `attr1`
+only applies to `class1` and `class2` while `attr2` applies to all classes:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    label_schema = {
+        "new_field": {
+            "type": "detections",
+            "classes": [
+                {
+                    "classes": ["class1", "class2"],
+                    "attributes": {
+                        "attr1": {
+                            "type": "select",
+                            "values": ["val1", "val2"],
+                            "default": "val1",
+                        }
+                     }
+                },
+                "class3",
+                "class4",
+            ],
+            "attributes": {
+                "attr2": {
+                    "type": "radio",
+                    "values": [True, False],
+                    "default": False,
+                }
+            },
+        },
+    }
+
+    dataset.annotate(anno_key, label_schema=label_schema)
+
 Alternatively, if you are only editing or creating a single label field, you
 can use the `label_field`, `label_type`, `classes`, `attributes`, and
 `mask_targets` parameters to specify the components of the label schema
@@ -595,10 +648,8 @@ take additional values:
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 
-.. note::
-
-    Only scalar-valued label attributes are supported. Other attribute types
-    like lists, dictionaries, and arrays will be omitted.
+Note that only scalar-valued label attributes are supported. Other attribute
+types like lists, dictionaries, and arrays will be omitted.
 
 .. note::
 
@@ -759,8 +810,74 @@ FiftyOne dataset using the CVAT backend.
     All of the examples below assume you have configured your CVAT server and
     credentials as described in :ref:`this section <cvat-setup>`.
 
-Modifying an existing label field
----------------------------------
+Adding new label fields
+-----------------------
+
+In order to annotate a new label field, you can provide the `label_field`,
+`label_type`, and `classes` parameters to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+define the annotation schema for the field:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "cvat_new_field"
+
+    view.annotate(
+        anno_key,
+        label_field="new_classifications",
+        label_type="classifications",
+        classes=["dog", "cat", "person"],
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Create annotations in CVAT
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+Alternatively, you can use the `label_schema` argument to define the same
+labeling task:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "cvat_new_field"
+
+    label_schema = {
+        "new_classifications": {
+            "type": "classifications",
+            "classes": ["dog", "cat", "person"],
+        }
+    }
+
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Create annotations in CVAT
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. image:: /images/integrations/cvat_tag.png
+   :alt: cvat-tag
+   :align: center
+
+Editing existing labels
+-----------------------
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
@@ -846,72 +963,6 @@ can be used to annotate new classes and/or attributes:
     been modified, added, or deleted, and thus editing these label IDs will
     result in labels being overwritten when
     loaded into FiftyOne rather than being merged.
-
-Adding new label fields
------------------------
-
-In order to annotate a new label field, you can provide the `label_field`,
-`label_type`, and `classes` parameters to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
-define the annotation schema for the field:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    anno_key = "cvat_new_field"
-
-    view.annotate(
-        anno_key,
-        label_field="new_classifications",
-        label_type="classifications",
-        classes=["dog", "cat", "person"],
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # Create annotations in CVAT
-
-    dataset.load_annotations(anno_key, cleanup=True)
-    dataset.delete_annotation_run(anno_key)
-
-Alternatively, you can use the `label_schema` argument to define the same
-labeling task:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    anno_key = "cvat_new_field"
-
-    label_schema = {
-        "new_classifications": {
-            "type": "classifications",
-            "classes": ["dog", "cat", "person"],
-        }
-    }
-
-    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
-    print(dataset.get_annotation_info(anno_key))
-
-    # Create annotations in CVAT
-
-    dataset.load_annotations(anno_key, cleanup=True)
-    dataset.delete_annotation_run(anno_key)
-
-.. image:: /images/integrations/cvat_tag.png
-   :alt: cvat-tag
-   :align: center
 
 Annotating multiple fields
 --------------------------
@@ -1097,7 +1148,7 @@ enter the appropriate scalar in the `value` attribute of the tag.
     view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
     print(dataset.get_annotation_info(anno_key))
 
-    # Cleanup
+    # Cleanup (without downloading results)
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
@@ -1133,8 +1184,6 @@ For example, let's upload some blurred images to CVAT for annotation:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    anno_key = "cvat_alt_media"
-
     alt_dir = "/tmp/blurred"
     if not os.path.exists(alt_dir):
         os.makedirs(alt_dir)
@@ -1149,6 +1198,8 @@ For example, let's upload some blurred images to CVAT for annotation:
 
         sample["alt_filepath"] = alt_filepath
         sample.save()
+
+    anno_key = "cvat_alt_media"
 
     view.annotate(
         anno_key,
