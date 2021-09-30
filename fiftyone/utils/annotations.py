@@ -380,7 +380,8 @@ def _build_label_schema(
             _, keyframe_path = samples._get_label_field_path(
                 _label_field, "keyframe"
             )
-            only_keyframes = True in samples.distinct(keyframe_path)
+            keyframe_values = samples.distinct(keyframe_path)
+            only_keyframes = True in keyframe_values
 
             if only_keyframes and not backend.supports_keyframes:
                 logger.warning(
@@ -390,7 +391,7 @@ def _build_label_schema(
                 )
 
                 only_keyframes = False
-            elif not only_keyframes:
+            elif keyframe_values and not only_keyframes:
                 logger.warning(
                     "No keyframes found for existing labels in field '%s'. "
                     "All labels will be uploaded",
