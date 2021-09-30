@@ -10,6 +10,8 @@ from copy import deepcopy
 import getpass
 import logging
 
+from bson import ObjectId
+
 import eta.core.annotations as etaa
 import eta.core.frames as etaf
 import eta.core.image as etai
@@ -265,17 +267,12 @@ _DEFAULT_LABEL_FIELDS_MAP = {
     fol.Segmentation: ["mask"],
 }
 
+# Valid field types for the scalar annotation type
 _SCALAR_TYPES = (
     fof.IntField,
     fof.FloatField,
     fof.StringField,
     fof.BooleanField,
-)
-
-_TRACKABLE_TYPES = (
-    fol.Detection,
-    fol.Polyline,
-    fol.Keypoint,
 )
 
 
@@ -487,6 +484,20 @@ def _to_list(value):
         return list(value)
 
     return [value]
+
+
+def _flatten_list(values):
+    if not values:
+        return []
+
+    out = []
+    for v in values:
+        if isinstance(v, (list, tuple)):
+            out.extend(v)
+        elif v is not None:
+            out.append(v)
+
+    return out
 
 
 def _unwrap(value):
@@ -949,9 +960,20 @@ def _merge_labels(
 
     _ensure_label_field(samples, label_field, fo_label_type)
 
-    id_map = results.id_map.get(label_field, {})
-
     is_video = samples.media_type == fom.VIDEO
+
+    # @todo segmentations are also allowed to use keyframes
+    # @todo need to handle keyframes only
+    if is_video and label_type in (
+        "detections",
+        "instances",
+        "polylines",
+        "polygons",
+        "keypoints",
+    ):
+        _update_tracks(samples, label_field, anno_dict)
+
+    id_map = results.id_map.get(label_field, {})
 
     if is_video:
         added_id_map = defaultdict(lambda: defaultdict(list))
@@ -981,17 +1003,6 @@ def _merge_labels(
     if delete_ids:
         samples._dataset.delete_labels(ids=delete_ids, fields=label_field)
 
-    if is_video and label_type in (
-        "detections",
-        "instances",
-        "polylines",
-        "polygons",
-        "keypoints",
-    ):
-        tracking_index = _TrackingIndex.build_for(
-            samples, label_field, anno_dict
-        )
-
     sample_ids = list(anno_dict.keys())
     annotated_samples = samples._dataset.select(sample_ids).select_fields(
         label_field
@@ -1020,7 +1031,7 @@ def _merge_labels(
             image_label = image[field]
 
             if image_label is None:
-                # Add new labels to previously `None`-valued fields
+                # Add new labels to `None`-valued fields
                 if is_list:
                     label_ids = list(image_annos.keys())
                     image[field] = fo_label_type(
@@ -1050,9 +1061,6 @@ def _merge_labels(
                     if label.id in merge_ids:
                         anno_label = image_annos[label.id]
 
-                        if is_video and _is_trackable(anno_label):
-                            tracking_index.set_index(sample_id, anno_label)
-
                         _merge_label(label, anno_label, attributes=attributes)
 
                 # Add new labels to label list fields
@@ -1060,9 +1068,6 @@ def _merge_labels(
                     for anno_id, anno_label in image_annos.items():
                         if anno_id not in new_ids:
                             continue
-
-                        if is_video and _is_trackable(anno_label):
-                            tracking_index.set_index(sample_id, anno_label)
 
                         labels.append(anno_label)
 
@@ -1076,10 +1081,6 @@ def _merge_labels(
     # Record newly added IDs so that re-imports of this run will be properly
     # processed
     results._update_id_map(label_field, added_id_map)
-
-
-def _is_trackable(label):
-    return isinstance(label, _TRACKABLE_TYPES)
 
 
 def _ensure_label_field(samples, label_field, fo_label_type):
@@ -1100,20 +1101,6 @@ def _ensure_label_field(samples, label_field, fo_label_type):
             )
 
 
-def _flatten_ids(id_map):
-    if not id_map:
-        return set()
-
-    ids = set()
-    for labels in id_map.values():
-        if isinstance(labels, list):
-            ids.update(labels)
-        elif ids is not None:
-            ids.add(labels)
-
-    return ids
-
-
 def _merge_label(label, anno_label, attributes=None):
     for field in _DEFAULT_LABEL_FIELDS_MAP.get(type(label), []):
         label[field] = anno_label[field]
@@ -1127,49 +1114,73 @@ def _merge_label(label, anno_label, attributes=None):
             label.set_attribute_value(name, value)
 
 
-class _TrackingIndex(object):
-    def __init__(self, index_map, max_index):
-        self.index_map = index_map
-        self.max_index = max_index
+def _update_tracks(samples, label_field, anno_dict):
+    # Using unfiltered samples is important here because we need to ensure
+    # that any new indexes never clash with *any* existing tracks
+    sample_ids = list(anno_dict.keys())
+    view = samples._dataset.select(sample_ids)
 
-    def set_index(self, sample_id, label):
-        sample_index_map = self.index_map[sample_id]
-        if label.index in sample_index_map:
-            label.index = sample_index_map[label.index]
-        else:
-            _index = self.max_index[sample_id] + 1
-            sample_index_map[label.index] = _index
-            label.index = _index
-            self.max_index[sample_id] = _index
+    _, id_path = samples._get_label_field_path(label_field, "id")
+    _, index_path = samples._get_label_field_path(label_field, "index")
 
-    @classmethod
-    def build_for(cls, samples, label_field, anno_dict):
-        _, id_path = samples._get_label_field_path(label_field, "id")
-        _, index_path = samples._get_label_field_path(label_field, "index")
+    sample_ids, frame_ids, label_ids, indexes = view.values(
+        ["id", "frames.id", id_path, index_path]
+    )
 
-        # Using the whole dataset is important here because we need to ensure
-        # that any new indexes never clash with any existing labels
-        sample_ids, label_ids, indexes = samples._dataset.values(
-            ["id", id_path, index_path], unwind=-1
-        )
+    id_map = {}
+    index_map = {}
+    max_index = {}
+    existing_map = {}
 
-        max_index = defaultdict(int)
-        existing_map = {}
-        for _id, _label_ids, _indexes in zip(sample_ids, label_ids, indexes):
-            _label_ids = _label_ids or []
-            _indexes = _indexes or []
-            max_index[_id] = max([i for i in _indexes if i is not None] or [0])
+    # Index existing labels
+    for _id, _frame_ids, _frame_lids, _frame_inds in zip(
+        sample_ids, frame_ids, label_ids, indexes
+    ):
+        # Max index for sample
+        _sample_inds = [i for i in _flatten_list(_frame_inds) if i is not None]
+        max_index[_id] = max(_sample_inds) if _sample_inds else 0
+
+        for _frame_id, _label_ids, _indexes in zip(
+            _frame_ids, _frame_lids, _frame_inds
+        ):
+            _label_ids = _to_list(_label_ids)
+            _indexes = _to_list(_indexes)
             for _label_id, _index in zip(_label_ids, _indexes):
                 existing_map[_label_id] = _index
+                id_map[(_id, _frame_id, _index)] = _label_id
 
-        index_map = defaultdict(dict)
-        for _id, sample_annos in anno_dict.items():
-            for frame_annos in sample_annos.values():
-                for _label_id, label in frame_annos.items():
-                    if _label_id in existing_map:
-                        index_map[_id][label.index] = existing_map[_label_id]
+    # Generate mapping from annotation track index to dataset track index
+    for _id, sample_annos in anno_dict.items():
+        for frame_annos in sample_annos.values():
+            for _label_id, label in frame_annos.items():
+                if _label_id in existing_map:
+                    index_map[(_id, label.index)] = existing_map[_label_id]
 
-        return cls(index_map, max_index)
+    # Perform necessary transformations
+    for _id, sample_annos in anno_dict.items():
+        for _frame_id, frame_annos in sample_annos.items():
+            for _label_id in list(frame_annos.keys()):  # list b/c we'll edit
+                label = frame_annos[_label_id]
+
+                # Map annotation track index to dataset track index
+                _index = index_map.get((_id, label.index), None)
+                if _index is None:
+                    _index = max_index.get(_id, 0) + 1
+                    index_map[(_id, label.index)] = _index
+                    max_index[_id] = _index
+
+                label.index = _index
+
+                # If the label is not a keyframe but coincides with an existing
+                # observation of the track with the same index, inherit the
+                # label ID from the existing observation so that these labels
+                # can be merged
+                if not label.get_attribute_value("keyframe", False):
+                    _existing_id = id_map.get((_id, _frame_id, _index), None)
+                    if _existing_id is not None:
+                        label._id = ObjectId(_existing_id)
+                        del frame_annos[_label_id]
+                        frame_annos[_existing_id] = label
 
 
 class AnnotationBackendConfig(foa.AnnotationMethodConfig):
