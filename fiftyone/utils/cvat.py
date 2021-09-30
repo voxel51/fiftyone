@@ -2516,13 +2516,11 @@ class CVATBackend(foua.AnnotationBackend):
     def supported_attr_types(self):
         return ["text", "select", "radio", "checkbox"]
 
-    @property
-    def default_attr_type(self):
-        return "text"
+    def recommend_attr_tool(self, name, value):
+        if isinstance(value, bool):
+            return {"type": "checkbox"}
 
-    @property
-    def default_categorical_attr_type(self):
-        return "select"
+        return {"type": "text"}
 
     def requires_attr_values(self, attr_type):
         return attr_type in ("select", "radio")
@@ -3894,25 +3892,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 }
 
         cvat_schema = {}
+
+        # Global attributes
         for _class in classes:
             if etau.is_str(_class):
                 _classes = [_class]
-                attrs = attributes
             else:
                 _classes = _class["classes"]
-                _attrs = self._to_cvat_attributes(_class["attributes"])
-
-                if "label_id" in _attrs:
-                    raise ValueError(
-                        "Label field '%s' attribute schema cannot use "
-                        "reserved name 'label_id'" % label_field
-                    )
-
-                attrs = deepcopy(attributes)
-                attrs.update(_attrs)
 
             for name in _classes:
-                cvat_schema[name] = attrs
+                cvat_schema[name] = deepcopy(attributes)
+
+        # Class-specific attributes
+        for _class in classes:
+            if etau.is_str(_class):
+                continue
+
+            _classes = _class["classes"]
+            _attrs = self._to_cvat_attributes(_class["attributes"])
+
+            if "label_id" in _attrs:
+                raise ValueError(
+                    "Label field '%s' attribute schema cannot use "
+                    "reserved name 'label_id'" % label_field
+                )
+
+            for name in _classes:
+                cvat_schema[name].update(_attrs)
 
         return cvat_schema, assign_scalar_attrs
 
