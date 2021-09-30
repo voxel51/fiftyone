@@ -3183,6 +3183,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         for label_field, label_info in label_schema.items():
             label_type = label_info["type"]
             is_existing_field = label_info["existing_field"]
+            only_keyframes = label_info.get("only_keyframes", False)
 
             cvat_schema, assign_scalar_attrs = self._build_cvat_schema(
                 label_field, label_info
@@ -3192,27 +3193,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # True: scalars are annotated as tag attributes
                 # False: scalars are annotated as tag labels
                 assigned_scalar_attrs[label_field] = assign_scalar_attrs
-
-            if (
-                is_existing_field
-                and is_video
-                and label_type
-                not in ("classification", "classifications", "scalar")
-            ):
-                # If we're uploading existing video tracks and there is at
-                # least one object marked as a keyframe, then upload *only*
-                # keyframes
-                _, keyframe_path = samples._get_label_field_path(
-                    label_field, "keyframe"
-                )
-                keyframe_values = samples.distinct(keyframe_path)
-                keyframes_only = True in keyframe_values
-                if not keyframes_only and keyframe_values:
-                    logger.warning(
-                        "No keyframes found for existing labels in field "
-                        "'%s'. All labels will be uploaded",
-                        label_field,
-                    )
 
             labels_task_map[label_field] = []
 
@@ -3254,7 +3234,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             cvat_schema,
                             is_shape=True,
                             load_tracks=True,
-                            keyframes_only=keyframes_only,
+                            only_keyframes=only_keyframes,
                         )
                     else:
                         (
@@ -3949,7 +3929,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         is_shape=False,
         assign_scalar_attrs=False,
         load_tracks=False,
-        keyframes_only=False,
+        only_keyframes=False,
     ):
         label_type = label_info["type"]
         classes = label_info["classes"]
@@ -3998,7 +3978,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "classifications",
                 ):
                     kwargs["load_tracks"] = load_tracks
-                    kwargs["keyframes_only"] = keyframes_only
+                    kwargs["only_keyframes"] = only_keyframes
 
                 if label_type == "scalar":
                     labels = label
@@ -4153,7 +4133,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         label_id=None,
         load_tracks=False,
-        keyframes_only=False,
+        only_keyframes=False,
     ):
         ids = []
         shapes = []
@@ -4173,7 +4153,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if (
                 load_tracks
-                and keyframes_only
+                and only_keyframes
                 and det.index is not None
                 and not det.get_attribute_value("keyframe", False)
             ):
@@ -4264,7 +4244,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_size,
         label_type=None,
         load_tracks=False,
-        keyframes_only=False,
+        only_keyframes=False,
     ):
         ids = []
         shapes = []
@@ -4284,7 +4264,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if (
                 load_tracks
-                and keyframes_only
+                and only_keyframes
                 and kp.index is not None
                 and not kp.get_attribute_value("keyframe", False)
             ):
@@ -4333,7 +4313,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_size,
         label_type=None,
         load_tracks=False,
-        keyframes_only=False,
+        only_keyframes=False,
     ):
         ids = []
         shapes = []
@@ -4353,7 +4333,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if (
                 load_tracks
-                and keyframes_only
+                and only_keyframes
                 and poly.index is not None
                 and not poly.get_attribute_value("keyframe", False)
             ):
@@ -4414,14 +4394,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_size,
         label_type=None,
         load_tracks=False,
-        keyframes_only=False,
+        only_keyframes=False,
         mask_targets=None,
     ):
         label_id = segmentation.id
         detections = segmentation.to_detections(mask_targets=mask_targets)
         detections = detections.detections
 
-        if load_tracks and keyframes_only:
+        if load_tracks and only_keyframes:
             keyframe = segmentation.get_attribute_value("keyframe", False)
             for det in detections:
                 det.keyframe = keyframe
@@ -4434,7 +4414,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_type="instances",
             label_id=label_id,
             load_tracks=load_tracks,
-            keyframes_only=keyframes_only,
+            only_keyframes=only_keyframes,
         )
 
         return label_id, shapes, tracks, remapped_attrs

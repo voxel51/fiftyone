@@ -275,6 +275,16 @@ _SCALAR_TYPES = (
     fof.BooleanField,
 )
 
+# Label types that can be annotated as tracks in videos
+_TRACKABLE_TYPES = (
+    "detections",
+    "instances",
+    "polylines",
+    "polygons",
+    "keypoints",
+    "segmentation",
+)
+
 
 def _build_label_schema(
     samples,
@@ -360,6 +370,27 @@ def _build_label_schema(
 
         if _mask_targets is not None:
             label_info["mask_targets"] = _mask_targets
+
+        if (
+            _existing_field
+            and samples.media_type == fom.VIDEO
+            and _label_type in _TRACKABLE_TYPES
+        ):
+            # If we're uploading existing video tracks and there is at least
+            # one object marked as a keyframe, then upload *only* keyframes
+            _, keyframe_path = samples._get_label_field_path(
+                _label_field, "keyframe"
+            )
+            only_keyframes = True in samples.distinct(keyframe_path)
+
+            if not only_keyframes:
+                logger.warning(
+                    "No keyframes found for existing labels in field '%s'. "
+                    "All labels will be uploaded",
+                    _label_field,
+                )
+
+            label_info["only_keyframes"] = only_keyframes
 
         _label_schema[_label_field] = label_info
 
@@ -723,11 +754,8 @@ def _get_label_attributes(
                 if value is not None and name not in attributes:
                     attributes[name] = backend.recommend_attr_tool(name, value)
 
-    if samples._is_frame_field(label_field) and label_type not in (
-        "scalar",
-        "classification",
-        "classifications",
-    ):
+    # The keyframe attribute has special semantics for video track annotations
+    if samples.media_type == fom.VIDEO and label_type in _TRACKABLE_TYPES:
         attributes.pop("keyframe", None)
 
     return attributes
@@ -826,7 +854,6 @@ def load_annotations(
 
     for label_field, label_info in label_schema.items():
         label_type = label_info["type"]
-        attributes = label_info.get("attributes", {})
         expected_type = _RETURN_TYPES_MAP[label_type]
 
         anno_dict = annotations.get(label_field, {})
@@ -843,7 +870,7 @@ def load_annotations(
                         results,
                         label_field,
                         anno_type,
-                        attributes=attributes,
+                        label_info=label_info,
                     )
             else:
                 # Unexpected labels
@@ -949,8 +976,15 @@ def _load_scalars(samples, anno_dict, label_field):
 
 
 def _merge_labels(
-    samples, anno_dict, results, label_field, label_type, attributes=None
+    samples, anno_dict, results, label_field, label_type, label_info=None
 ):
+    if label_info is not None:
+        attributes = label_info.get("attributes", {})
+        only_keyframes = label_info.get("only_keyframes", False)
+    else:
+        attributes = None
+        only_keyframes = False
+
     fo_label_type = _LABEL_TYPES_MAP[label_type]
     if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
         is_list = True
@@ -962,16 +996,8 @@ def _merge_labels(
 
     is_video = samples.media_type == fom.VIDEO
 
-    # @todo segmentations are also allowed to use keyframes
-    # @todo need to handle keyframes only
-    if is_video and label_type in (
-        "detections",
-        "instances",
-        "polylines",
-        "polygons",
-        "keypoints",
-    ):
-        _update_tracks(samples, label_field, anno_dict)
+    if is_video and label_type in _TRACKABLE_TYPES:
+        _update_tracks(samples, label_field, anno_dict, only_keyframes)
 
     id_map = results.id_map.get(label_field, {})
 
@@ -1061,7 +1087,12 @@ def _merge_labels(
                     if label.id in merge_ids:
                         anno_label = image_annos[label.id]
 
-                        _merge_label(label, anno_label, attributes=attributes)
+                        _merge_label(
+                            label,
+                            anno_label,
+                            only_keyframes=only_keyframes,
+                            attributes=attributes,
+                        )
 
                 # Add new labels to label list fields
                 if is_list:
@@ -1101,9 +1132,12 @@ def _ensure_label_field(samples, label_field, fo_label_type):
             )
 
 
-def _merge_label(label, anno_label, attributes=None):
+def _merge_label(label, anno_label, only_keyframes=False, attributes=None):
     for field in _DEFAULT_LABEL_FIELDS_MAP.get(type(label), []):
         label[field] = anno_label[field]
+
+    if only_keyframes:
+        label.keyframe = anno_label.get_attribute_value("keyframe", None)
 
     if attributes is not None:
         for name in attributes:
@@ -1114,7 +1148,13 @@ def _merge_label(label, anno_label, attributes=None):
             label.set_attribute_value(name, value)
 
 
-def _update_tracks(samples, label_field, anno_dict):
+def _update_tracks(samples, label_field, anno_dict, only_keyframes):
+    label_type = samples._get_label_field_type(label_field)
+    update_indexes = not issubclass(label_type, fol.Segmentation)
+
+    if not update_indexes and not only_keyframes:
+        return  # nothing to do
+
     # Using unfiltered samples is important here because we need to ensure
     # that any new indexes never clash with *any* existing tracks
     sample_ids = list(anno_dict.keys())
@@ -1137,8 +1177,8 @@ def _update_tracks(samples, label_field, anno_dict):
         sample_ids, frame_ids, label_ids, indexes
     ):
         # Max index for sample
-        _sample_inds = [i for i in _flatten_list(_frame_inds) if i is not None]
-        max_index[_id] = max(_sample_inds) if _sample_inds else 0
+        _indexes = [i for i in _flatten_list(_frame_inds) if i is not None]
+        max_index[_id] = max(_indexes) if _indexes else 0
 
         for _frame_id, _label_ids, _indexes in zip(
             _frame_ids, _frame_lids, _frame_inds
@@ -1146,6 +1186,9 @@ def _update_tracks(samples, label_field, anno_dict):
             _label_ids = _to_list(_label_ids)
             _indexes = _to_list(_indexes)
             for _label_id, _index in zip(_label_ids, _indexes):
+                if not update_indexes:
+                    _index = None
+
                 existing_map[_label_id] = _index
                 id_map[(_id, _frame_id, _index)] = _label_id
 
@@ -1163,19 +1206,22 @@ def _update_tracks(samples, label_field, anno_dict):
                 label = frame_annos[_label_id]
 
                 # Map annotation track index to dataset track index
-                _index = index_map.get((_id, label.index), None)
-                if _index is None:
-                    _index = max_index.get(_id, 0) + 1
-                    index_map[(_id, label.index)] = _index
-                    max_index[_id] = _index
+                if update_indexes:
+                    _index = index_map.get((_id, label.index), None)
+                    if _index is None:
+                        _index = max_index.get(_id, 0) + 1
+                        index_map[(_id, label.index)] = _index
+                        max_index[_id] = _index
 
-                label.index = _index
+                    label.index = _index
+                else:
+                    _index = None
 
-                # If the label is not a keyframe but coincides with an existing
-                # observation of the track with the same index, inherit the
-                # label ID from the existing observation so that these labels
-                # can be merged
-                if not label.get_attribute_value("keyframe", False):
+                # If only keyframes were uploaded and this label coincides with
+                # an existing observation of its track, inherit the label ID
+                # from the existing observation so that the labels can be
+                # merged
+                if only_keyframes:
                     _existing_id = id_map.get((_id, _frame_id, _index), None)
                     if _existing_id is not None:
                         label._id = ObjectId(_existing_id)
