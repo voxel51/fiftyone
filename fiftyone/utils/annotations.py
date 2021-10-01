@@ -1122,7 +1122,7 @@ def _merge_scalars(samples, anno_dict, results, label_field, label_info):
 
         sample.save()
 
-    if num_additions and not allow_additions:
+    if num_additions > 0 and not allow_additions:
         logger.warning(
             "Ignored %d added scalars in field '%s' because "
             "`allow_additions=False`",
@@ -1130,7 +1130,7 @@ def _merge_scalars(samples, anno_dict, results, label_field, label_info):
             label_field,
         )
 
-    if num_deletions and not allow_deletions:
+    if num_deletions > 0 and not allow_deletions:
         logger.warning(
             "Ignored %d deleted scalars in field '%s' because "
             "`allow_deletions=False`",
