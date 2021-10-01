@@ -5,9 +5,7 @@ ActivityNet Integration
 
 .. default-role:: code
 
-We've collaborated with the team behind the
-`ActivityNet Dataset <>`_
-to make it easy to download, visualize, and evaluate on the ActivityNet dataset
+We've worked to make it easy to download, visualize, and evaluate on the ActivityNet dataset
 natively in FiftyOne!
 
 
@@ -34,16 +32,6 @@ and load an ActivityNet split into FiftyOne:
     dataset = foz.load_zoo_dataset("activitynet-200", split="validation", max_samples=10)
 
     session = fo.launch_app(dataset)
-
-.. note::
-
-    FiftyOne supports loading annotations for the
-    `detection task <https://cocodataset.org/#detection-2020>`_, including
-    bounding boxes and segmentations.
-
-    By default, only the bounding boxes are loaded, but you can customize which
-    label types are loaded via the optional ``label_types`` argument (see below
-    for details).
 
 
 In addition, FiftyOne provides parameters that can be used to efficiently
@@ -101,22 +89,30 @@ ActivityNet-100 and ActivityNet-200 by passing them to
 
 -   **split** (*None*) and **splits** (*None*): a string or list of strings,
     respectively, specifying the splits to load. Supported values are
-    ``("train", "test", "validation")``. If neither is provided, all available
+    ``("train", "test", "validation")``. If none are provided, all available
     splits are loaded
 
--   **classes** (*None*): a string or list of strings specifying required
-    classes to load. If provided, only samples containing at least one instance
+-   **source_dir** (*None*): the directory containing the manually downloaded
+    ActivityNet files used to avoid downloading videos from YouTube
+
+-   **classes** (*None*): a string or list of strings specifying required classes
+    to load. If provided, only samples containing at least one instance
     of a specified class will be loaded
 
 -   **max_duration** (*None*): only videos with a duration in seconds that is
     less than or equal to the `max_duration` will be downloaded. By
     default, all videos are downloaded
 
--   **num_workers** (*None*): the number of processes to use when downloading
-    individual images. By default, `multiprocessing.cpu_count()` is used
+-   **copy_files** (*True*): whether to move (False) or create copies (True) of
+    the source files when populating ``dataset_dir``. This is only
+    relevant when a ``source_dir`` is provided
 
--   **shuffle** (*False*): whether to randomly shuffle the order in which
-    samples are chosen for partial downloads
+-   **num_workers** (*None*): the number of processes to use when downloading
+    individual images. By default, ``multiprocessing.cpu_count()`` is
+    used
+
+-   **shuffle** (*False*): whether to randomly shuffle the order in which samples
+    are chosen for partial downloads
 
 -   **seed** (*None*): a random seed to use when shuffling
 

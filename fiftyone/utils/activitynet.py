@@ -38,7 +38,7 @@ class ActivityNetDatasetImporter(
         split: the split to download. Supported values are
             ``("train", "validation", "test")``
         source_dir (None): the directory containing the manually downloaded
-            ActivityNet files
+            ActivityNet files used to avoid downloading videos from YouTube
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
