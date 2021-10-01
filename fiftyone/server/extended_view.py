@@ -6,6 +6,8 @@ FiftyOne extended view.
 |
 """
 from datetime import datetime
+import pytz
+
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -255,9 +257,11 @@ def _make_scalar_expression(f, args, field):
         mn, mx = args["range"]
         expr = F.any(f.map((F() >= mn) & (F() <= mx)))
     elif cls == _NUMERIC_FILTER and _is_datetime(field):
-        print(args["range"])
         mn, mx = list(
-            map(lambda t: datetime.fromtimestamp(t / 1000), args["range"])
+            map(
+                lambda t: datetime.fromtimestamp(t / 1000, pytz.utc),
+                args["range"],
+            )
         )
         expr = (f >= mn) & (f <= mx)
     elif cls == _NUMERIC_FILTER:
