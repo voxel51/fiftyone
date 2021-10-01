@@ -1060,11 +1060,11 @@ parameters to configure whether certain types of edits are allowed in your
 annotation run. See :ref:`this section <cvat-restricting-edits>` for more
 information about the available options.
 
-For example, suppose you have an existing `objects` field that contains
-detections of various types of objects and you would like to add new `type` and
-`occluded` attributes to all vehicles in this field while also strictly
-enforcing that no objects can be added, deleted, or have their bounding boxes
-modified. You can configure an annotation run for this as follows:
+For example, suppose you have an existing `ground_truth` field that contains
+objects of various types and you would like to add new `sex` and `age`
+attributes to all people in this field while also strictly enforcing that no
+objects can be added, deleted, or have their bounding boxes modified. You can
+configure an annotation run for this as follows:
 
 .. code:: python
     :linenos:
