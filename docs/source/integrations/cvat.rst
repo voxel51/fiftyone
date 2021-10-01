@@ -718,10 +718,42 @@ configure an annotation run for this as follows:
         allow_spatial_edits=False,
     )
 
+You can also include a `read_only=True` parameter when uploading existing
+label attributes to specify that the attribute's value should be uploaded to
+the annotation backend for informational purposes, but any edits to the
+attribute's value should not be imported back into FiftyOne.
+
+For example, if you have vehicles with their `make` attribute populated and you
+want to populate a new `model` attribute based on this information without
+allowing changes to the vehicle's `make`, you can configure an annotation run
+for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "make": {
+            "type": "text",
+            "read_only": True,
+        },
+        "model": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
 .. note::
 
-    The CVAT backend does not support restrictions to additions, deletions, and
-    spatial edits in its editing interface.
+    The CVAT backend does not support restrictions to additions, deletions,
+    spatial edits, and read-only attributes in its editing interface.
 
     However, any restrictions that you specify via the above parameters will
     still be enforced when you call
@@ -1111,6 +1143,64 @@ configure an annotation run for this as follows:
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
+
+Similarly, you can include a `read_only=True` parameter when uploading existing
+label attributes to specify that the attribute's value should be uploaded to
+the annotation backend for informational purposes, but any edits to the
+attribute's value should not be imported back into FiftyOne.
+
+For example, the snippet below uploads the vehicle tracks in a video dataset
+along with their existing `type` attributes and requests that a new `make`
+attribute be populated without allowing edits of any other kind:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    view = dataset.take(1)
+
+    anno_key = "cvat_read_only_attrs"
+
+    # Upload existing `type` attribute as read-only and add new `make` attribute
+    attributes = {
+        "type": {
+            "type": "text",
+            "read_only": True,
+        },
+        "make": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        classes=["vehicle"],
+        attributes=attributes,
+        allow_additions=False,
+        allow_deletions=False,
+        allow_spatial_edits=False,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Populate make attributes in CVAT
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. note::
+
+    The CVAT backend does not support restrictions to additions, deletions,
+    spatial edits, and read-only attributes in its editing interface.
+
+    However, any restrictions that you specify via the above parameters will
+    still be enforced when you call
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    to merge the annotations back into FiftyOne.
 
 Annotating multiple fields
 --------------------------
