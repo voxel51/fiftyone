@@ -3204,8 +3204,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
             if label_type == "scalar":
-                # True: scalars are annotated as tag attributes
-                # False: scalars are annotated as tag labels
                 assigned_scalar_attrs[label_field] = assign_scalar_attrs
 
             labels_task_map[label_field] = []
@@ -3870,7 +3868,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "mutable": True,
             }
 
-        assign_scalar_attrs = bool(classes)
+        # True: scalars are annotated as tag attributes
+        # False: scalars are annotated as tag labels
+        assign_scalar_attrs = not bool(classes)
 
         if not classes:
             classes = [label_field]
