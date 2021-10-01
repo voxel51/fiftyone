@@ -481,87 +481,38 @@ def _select_and_download_necessary_samples(
 
 
 def _merge_errors(download_errors, errors):
-    for e, num in errors.items():
+    for e, videos in errors.items():
         if e in download_errors:
-            download_errors[e] += num
+            download_errors[e].extend(videos)
         else:
-            download_errors[e] = num
+            download_errors[e] = videos
     return download_errors
 
 
 def _attempt_to_download(
     videos_dir, ids, samples_info, num_samples, num_workers
 ):
-    downloaded = []
-    tasks = []
-    errors = {}
+    download_ids = []
+    download_urls = []
+    url_id_map = {}
     for sample_id in ids:
         sample_info = samples_info[sample_id]
         url = sample_info["url"]
-        output_path = os.path.join(videos_dir, "%s.mp4" % sample_id)
-        tasks.append((url, output_path, sample_id))
-    if num_workers == 1:
-        with fou.ProgressBar(total=num_samples, iters_str="videos") as pb:
-            for url, output_path, sample_id in tasks:
-                is_success, _, error_type = _do_download(
-                    (url, output_path, sample_id)
-                )
-                if is_success:
-                    downloaded.append(sample_id)
-                    pb.update()
-                    if (
-                        num_samples is not None
-                        and len(downloaded) >= num_samples
-                    ):
-                        return downloaded, errors
-                else:
-                    if error_type not in errors:
-                        errors[error_type] = 0
-                    errors[error_type] += 1
-    else:
-        with fou.ProgressBar(total=num_samples, iters_str="videos") as pb:
-            with multiprocessing.dummy.Pool(num_workers) as pool:
-                for is_success, sample_id, error_type in pool.imap_unordered(
-                    _do_download, tasks
-                ):
-                    if is_success:
-                        if len(downloaded) < num_samples:
-                            downloaded.append(sample_id)
-                            pb.update()
-                    else:
-                        if error_type not in errors:
-                            errors[error_type] = 0
-                        errors[error_type] += 1
-                    if (
-                        num_samples is not None
-                        and len(downloaded) >= num_samples
-                    ):
-                        return downloaded, errors
+        url_id_map[url] = sample_id
+        download_urls.append(url)
+        download_ids.append(sample_id)
 
-    return downloaded, errors
+    downloaded_urls, errors = fouy.download_from_youtube(
+        videos_dir=videos_dir,
+        urls=download_urls,
+        ids=download_ids,
+        max_videos=num_samples,
+        num_workers=num_workers,
+        ext=".mp4",
+    )
+    downloaded_ids = [url_id_map[url] for url in downloaded_urls]
 
-
-def _do_download(args):
-    url, output_path, sample_id = args
-    try:
-        ydl_opts = {
-            "outtmpl": output_path,
-            "format": "bestvideo[ext=mp4]",
-            "logtostderr": True,
-            "quiet": True,
-            "logger": logger,
-            "age_limit": 99,
-            "ignorerrors": True,
-        }
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-
-        return True, sample_id, None
-    except Exception as e:
-        if isinstance(e, youtube_dl.utils.DownloadError):
-            # pylint: disable=no-member
-            return False, sample_id, str(e.exc_info[1])
-        return False, sample_id, "other"
+    return downloaded_ids, errors
 
 
 def _cleanup_partial_downloads(videos_dir):

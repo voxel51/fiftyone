@@ -40,8 +40,7 @@ def download_from_youtube(
         ids (None): an optional list of ids to use as filenames that matches
             one to one with the list of ``urls``
         max_videos (None): the maximum number of videos to download from the
-            given ``urls``. By
-            default, all ``urls`` will be downloaded
+            given ``urls``. By default, all ``urls`` will be downloaded
         num_workers (None): the number of processes to use when downloading
             individual video. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -79,7 +78,7 @@ def download_from_youtube(
     errors = defaultdict(list)
 
     if num_workers == 1:
-        with fou.ProgressBar(total=num_videos, iters_str="videos") as pb:
+        with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
             for url, output_dir, video_id in tasks:
                 is_success, url, error_type = _do_download(
                     (url, output_dir, video_id)
@@ -92,7 +91,7 @@ def download_from_youtube(
                 else:
                     errors[error_type].append(url)
     else:
-        with fou.ProgressBar(total=num_videos, iters_str="videos") as pb:
+        with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
             with multiprocessing.dummy.Pool(num_workers) as pool:
                 for is_success, url, error_type in pool.imap_unordered(
                     _do_download, tasks
