@@ -39,7 +39,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
     """
     Args:
         source_dir (None): the directory containing the manually downloaded
-            ActivityNet files
+            ActivityNet files used to avoid downloading videos from YouTube
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
@@ -124,7 +124,7 @@ class ActivityNet200Dataset(FiftyOneDataset):
     """
     Args:
         source_dir (None): the directory containing the manually downloaded
-            ActivityNet files
+            ActivityNet files used to avoid downloading videos from YouTube
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded

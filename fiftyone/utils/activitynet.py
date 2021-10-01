@@ -8,11 +8,8 @@ dataset.
 |
 """
 import logging
-import multiprocessing
-import multiprocessing.dummy
 import os
 import random
-import time
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -20,6 +17,7 @@ import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.utils.youtubedl as fouy
 
 youtube_dl = fou.lazy_import("youtube_dl")
 
@@ -40,7 +38,7 @@ class ActivityNetDatasetImporter(
         split: the split to download. Supported values are
             ``("train", "validation", "test")``
         source_dir (None): the directory containing the manually downloaded
-            ActivityNet files
+            ActivityNet files used to avoid downloading videos from YouTube
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
@@ -181,47 +179,17 @@ def download_activitynet_split(
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
-    if split not in _SPLIT_MAP.keys():
-        raise ValueError(
-            "Unsupported split '%s'; supported values are %s"
-            % (split, tuple(_SPLIT_MAP.keys()))
-        )
-
-    load_entire_split = bool(
-        max_duration is None and max_samples is None and classes is None
+    load_entire_split, classes = _parse_args(
+        split, max_duration, max_samples, classes, version
     )
 
-    if version not in _ANNOTATION_DOWNLOAD_LINKS:
-        raise ValueError(
-            "Unsupported version '%s'; supported values are %s"
-            % (version, tuple(_ANNOTATION_DOWNLOAD_LINKS.keys()))
-        )
-
-    if max_duration is not None and max_duration <= 0:
-        raise ValueError("`max_duration` must be a positive integer or float")
-
-    if classes is not None and split == "test":
-        logger.warning("Test split is unlabeled; ignoring classes requirement")
-        classes = None
-
-    num_workers = _parse_num_workers(num_workers)
-
-    videos_dir = os.path.join(dataset_dir, "data")
-    anno_path = os.path.join(dataset_dir, "labels.json")
-    error_path = os.path.join(dataset_dir, "download_errors.json")
-    raw_anno_path = os.path.join(dataset_dir, "raw_labels.json")
-
-    etau.ensure_dir(videos_dir)
-
-    if not os.path.isfile(raw_anno_path):
-        anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
-        etaw.download_file(anno_link, path=raw_anno_path)
+    videos_dir, anno_path, error_path, raw_anno_path = _get_paths(
+        dataset_dir, version
+    )
 
     raw_annotations = etas.load_json(raw_anno_path)
-
     taxonomy = raw_annotations["taxonomy"]
     all_classes = _get_all_classes(taxonomy)
-    target_map = {c: i for i, c in enumerate(all_classes)}
 
     if classes is not None:
         non_existant_classes = list(set(classes) - set(all_classes))
@@ -232,18 +200,19 @@ def download_activitynet_split(
                 tuple(non_existant_classes),
             )
 
-    # Get ids of previously downloaded samples
-    prev_downloaded_ids = _get_downloaded_sample_ids(videos_dir)
-    num_downloaded = len(prev_downloaded_ids)
-    num_total = _NUM_TOTAL_SAMPLES[version][split]
+    if source_dir is None:
+        # Get ids of previously downloaded samples
+        prev_downloaded_ids = _get_downloaded_sample_ids(videos_dir)
 
-    if source_dir is not None:
+    else:
         # Copy/move all media if a source dir is provided
         prev_downloaded_ids = _process_source_dir(
             source_dir, videos_dir, split, copy_files
         )
 
     if load_entire_split:
+        num_downloaded = len(prev_downloaded_ids)
+        num_total = _NUM_TOTAL_SAMPLES[version][split]
         if num_downloaded != num_total and source_dir is None:
             raise ValueError(
                 "Found %d samples out of %d for split `%s`. When loading a "
@@ -257,7 +226,7 @@ def download_activitynet_split(
                 "instead." % (num_downloaded, num_total, split, version)
             )
         selected_samples = raw_annotations["database"]
-        num_samples = len(prev_downloaded_ids)
+        num_samples = num_downloaded
     else:
         # We are loading a subset of the dataset, load only the matching
         # samples for the given parameters
@@ -294,9 +263,56 @@ def download_activitynet_split(
             num_samples = num_downloaded_samples + len(prev_downloaded_ids)
 
     # Save labels for this run in AcitivityNetDataset format
-    _write_annotations(selected_samples, anno_path, target_map, taxonomy)
+    _write_annotations(selected_samples, anno_path, all_classes, taxonomy)
 
     return num_samples, all_classes
+
+
+def _parse_args(split, max_duration, max_samples, classes, version):
+    if split not in _SPLIT_MAP.keys():
+        raise ValueError(
+            "Unsupported split '%s'; supported values are %s"
+            % (split, tuple(_SPLIT_MAP.keys()))
+        )
+
+    load_entire_split = bool(
+        max_duration is None and max_samples is None and classes is None
+    )
+
+    if version not in _ANNOTATION_DOWNLOAD_LINKS:
+        raise ValueError(
+            "Unsupported version '%s'; supported values are %s"
+            % (version, tuple(_ANNOTATION_DOWNLOAD_LINKS.keys()))
+        )
+
+    if max_duration is not None and max_duration <= 0:
+        raise ValueError("`max_duration` must be a positive integer or float")
+
+    if isinstance(classes, list):
+        classes = [c.replace(" ", "_") for c in classes]
+    if isinstance(classes, str):
+        classes = classes.replace(" ", "_")
+
+    if classes is not None and split == "test":
+        logger.warning("Test split is unlabeled; ignoring classes requirement")
+        classes = None
+
+    return load_entire_split, classes
+
+
+def _get_paths(dataset_dir, version):
+    videos_dir = os.path.join(dataset_dir, "data")
+    anno_path = os.path.join(dataset_dir, "labels.json")
+    error_path = os.path.join(dataset_dir, "download_errors.json")
+    raw_anno_path = os.path.join(dataset_dir, "raw_labels.json")
+
+    etau.ensure_dir(videos_dir)
+
+    if not os.path.isfile(raw_anno_path):
+        anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
+        etaw.download_file(anno_link, path=raw_anno_path)
+
+    return videos_dir, anno_path, error_path, raw_anno_path
 
 
 def _get_all_classes(taxonomy):
@@ -308,7 +324,10 @@ def _get_all_classes(taxonomy):
         classes.add(node_name)
         parents.add(parent_name)
 
-    return sorted(classes - parents)
+    classes = sorted(classes - parents)
+    classes = [c.replace(" ", "_") for c in classes]
+
+    return classes
 
 
 def _get_downloaded_sample_ids(videos_dir):
@@ -350,12 +369,13 @@ def _get_matching_samples(raw_annotations, classes, split, max_duration):
         if not is_correct_split or not is_correct_dur:
             continue
 
+        for a in annot_info["annotations"]:
+            a["label"] = a["label"].replace(" ", "_")
+
         if classes is None:
             any_class_match[sample_id] = annot_info
         else:
-            annot_labels = set(
-                {annot["label"] for annot in annot_info["annotations"]}
-            )
+            annot_labels = set([a["label"] for a in annot_info["annotations"]])
             if class_set.issubset(annot_labels):
                 all_class_match[sample_id] = annot_info
             elif class_set & annot_labels:
@@ -464,87 +484,38 @@ def _select_and_download_necessary_samples(
 
 
 def _merge_errors(download_errors, errors):
-    for e, num in errors.items():
+    for e, videos in errors.items():
         if e in download_errors:
-            download_errors[e] += num
+            download_errors[e].extend(videos)
         else:
-            download_errors[e] = num
+            download_errors[e] = videos
     return download_errors
 
 
 def _attempt_to_download(
     videos_dir, ids, samples_info, num_samples, num_workers
 ):
-    downloaded = []
-    tasks = []
-    errors = {}
+    download_ids = []
+    download_urls = []
+    url_id_map = {}
     for sample_id in ids:
         sample_info = samples_info[sample_id]
         url = sample_info["url"]
-        output_path = os.path.join(videos_dir, "%s.mp4" % sample_id)
-        tasks.append((url, output_path, sample_id))
-    if num_workers == 1:
-        with fou.ProgressBar(total=num_samples, iters_str="videos") as pb:
-            for url, output_path, sample_id in tasks:
-                is_success, _, error_type = _do_download(
-                    (url, output_path, sample_id)
-                )
-                if is_success:
-                    downloaded.append(sample_id)
-                    pb.update()
-                    if (
-                        num_samples is not None
-                        and len(downloaded) >= num_samples
-                    ):
-                        return downloaded, errors
-                else:
-                    if error_type not in errors:
-                        errors[error_type] = 0
-                    errors[error_type] += 1
-    else:
-        with fou.ProgressBar(total=num_samples, iters_str="videos") as pb:
-            with multiprocessing.dummy.Pool(num_workers) as pool:
-                for is_success, sample_id, error_type in pool.imap_unordered(
-                    _do_download, tasks
-                ):
-                    if is_success:
-                        if len(downloaded) < num_samples:
-                            downloaded.append(sample_id)
-                            pb.update()
-                    else:
-                        if error_type not in errors:
-                            errors[error_type] = 0
-                        errors[error_type] += 1
-                    if (
-                        num_samples is not None
-                        and len(downloaded) >= num_samples
-                    ):
-                        return downloaded, errors
+        url_id_map[url] = sample_id
+        download_urls.append(url)
+        download_ids.append(sample_id)
 
-    return downloaded, errors
+    downloaded_urls, errors = fouy.download_from_youtube(
+        videos_dir=videos_dir,
+        urls=download_urls,
+        ids=download_ids,
+        max_videos=num_samples,
+        num_workers=num_workers,
+        ext=".mp4",
+    )
+    downloaded_ids = [url_id_map[url] for url in downloaded_urls]
 
-
-def _do_download(args):
-    url, output_path, sample_id = args
-    try:
-        ydl_opts = {
-            "outtmpl": output_path,
-            "format": "bestvideo[ext=mp4]",
-            "logtostderr": True,
-            "quiet": True,
-            "logger": logger,
-            "age_limit": 99,
-            "ignorerrors": True,
-        }
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-
-        return True, sample_id, None
-    except Exception as e:
-        if isinstance(e, youtube_dl.utils.DownloadError):
-            # pylint: disable=no-member
-            return False, sample_id, str(e.exc_info[1])
-        return False, sample_id, "other"
+    return downloaded_ids, errors
 
 
 def _cleanup_partial_downloads(videos_dir):
@@ -555,7 +526,8 @@ def _cleanup_partial_downloads(videos_dir):
             os.remove(os.path.join(videos_dir, vfn))
 
 
-def _write_annotations(matching_samples, anno_path, target_map, taxonomy):
+def _write_annotations(matching_samples, anno_path, all_classes, taxonomy):
+    target_map = {c: i for i, c in enumerate(all_classes)}
     fo_matching_labels = _convert_label_format(
         matching_samples, target_map, taxonomy
     )
@@ -588,21 +560,6 @@ def _convert_label_format(activitynet_labels, target_map, taxonomy):
         "taxonomy": taxonomy,
     }
     return fo_annots
-
-
-def _parse_num_workers(num_workers):
-    if num_workers is None:
-        if os.name == "nt":
-            # Default to 1 worker for Windows
-            return 1
-        return multiprocessing.cpu_count()
-
-    if not isinstance(num_workers, int) or num_workers < 1:
-        raise ValueError(
-            "The `num_workers` argument must be a positive integer or `None` "
-            "found %s" % str(type(num_workers))
-        )
-    return num_workers
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {

@@ -41,6 +41,13 @@ on the cards below to see how!
     :tags: Model-Training,Model-Evaluation
 
 .. customcarditem::
+    :header: ActivityNet Dataset
+    :description: See how to use FiftyOne to download, visualize, and evaluate on the ActivityNet dataset with ease.
+    :link: activitynet.html
+    :image: ../_static/images/integrations/activitynet.png
+    :tags: Datasets,Model-Evaluation
+
+.. customcarditem::
     :header: Open Images Dataset
     :description: See why FiftyOne is a recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
     :link: open_images.html
@@ -96,6 +103,7 @@ on the cards below to see how!
    :hidden:
 
     Lightning Flash <lightning_flash.rst>
+    ActivityNet <activitynet.rst>
     Open Images <open_images.rst>
     COCO <coco.rst>
     CVAT <cvat.rst>
