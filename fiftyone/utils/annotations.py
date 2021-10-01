@@ -927,6 +927,9 @@ def load_annotations(
 
         anno_dict = annotations.get(label_field, {})
 
+        if expected_type not in anno_dict:
+            anno_dict[expected_type] = {}
+
         for anno_type, annos in anno_dict.items():
             if anno_type == expected_type:
                 # Expected labels
