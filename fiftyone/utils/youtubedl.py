@@ -9,7 +9,10 @@ Utilities for working with
 from collections import defaultdict
 import logging
 import multiprocessing
+import multiprocessing.dummy
 import os
+
+import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
 
@@ -20,7 +23,13 @@ logger = logging.getLogger(__name__)
 
 
 def download_from_youtube(
-    videos_dir, urls, max_videos=None, num_workers=None, ext=None,
+    videos_dir,
+    urls,
+    ids=None,
+    max_videos=None,
+    num_workers=None,
+    ext=None,
+    verbose=False,
 ):
     """
     Attempts to download a list of videos from YouTube.
@@ -39,12 +48,15 @@ def download_from_youtube(
         ext (None): the extension to use to store the downloaded videos or a
             list of extensions corresponding to the given ``urls``. By default,
             the default extension of each video is used 
+        verbose (False): whether to log messages from YouTube DL during
+            downloads
 
     Returns:
         ids or names or successfully downloaded videos
         a dict of the videos unsuccessfully downloaded and the corresponding
             errors
     """
+    etau.ensure_dir(videos_dir)
     num_workers = _parse_num_workers(num_workers)
     num_videos = len(urls)
 
@@ -60,10 +72,10 @@ def download_from_youtube(
         ext_list = [ext] * num_videos
 
     videos_dir_list = [videos_dir] * num_videos
+    verbose_list = [verbose] * num_videos
 
-    tasks = zip(urls, videos_dir_list, ids, ext_list)
+    tasks = zip(urls, videos_dir_list, ids, ext_list, verbose_list)
     downloaded = []
-    tasks = []
     errors = defaultdict(list)
 
     if num_workers == 1:
@@ -98,15 +110,26 @@ def download_from_youtube(
 
 
 def _do_download(args):
-    url, videos_dir, video_id, ext = args
+    url, videos_dir, video_id, ext, verbose = args
 
     ydl_opts = {
-        "logtostderr": True,
-        "quiet": True,
-        "logger": logger,
         "age_limit": 99,
-        "ignorerrors": True,
     }
+
+    if not verbose:
+        ydl_opts.update(
+            {
+                "logtostderr": True,
+                "quiet": True,
+                "logger": logger,
+                "ignorerrors": True,
+            }
+        )
+
+    else:
+        ydl_opts.update(
+            {"logger": logger,}
+        )
 
     if ext is not None:
         ext = ext.lstrip(".")
