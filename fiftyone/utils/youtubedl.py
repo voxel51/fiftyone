@@ -56,7 +56,7 @@ def download_from_youtube(
             errors
     """
     num_workers = _parse_num_workers(num_workers)
-    tasks = _build_tasks(urls, videos_dir, ids, ext, verbose)
+    tasks = _build_tasks(urls, videos_dir, ids, max_videos, ext, verbose)
 
     if num_workers == 1:
         downloaded, errors = _single_thread_download(tasks, max_videos)
@@ -84,7 +84,7 @@ def _parse_num_workers(num_workers):
     return num_workers
 
 
-def _build_tasks(urls, videos_dir, ids, ext, verbose):
+def _build_tasks(urls, videos_dir, ids, max_videos, ext, verbose):
     etau.ensure_dir(videos_dir)
     num_videos = len(urls)
 
