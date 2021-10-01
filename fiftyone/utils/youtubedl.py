@@ -55,62 +55,104 @@ def download_from_youtube(
         a dict of the videos unsuccessfully downloaded and the corresponding
             errors
     """
-    etau.ensure_dir(videos_dir)
     num_workers = _parse_num_workers(num_workers)
+    tasks = _build_tasks(urls, videos_dir, ids, ext, verbose)
+
+    if num_workers == 1:
+        downloaded, errors = _single_thread_download(tasks, max_videos)
+
+    else:
+        downloaded, errors = _multi_thread_download(
+            tasks, max_videos, num_workers
+        )
+
+    return downloaded, errors
+
+
+def _parse_num_workers(num_workers):
+    if num_workers is None:
+        if os.name == "nt":
+            # Default to 1 worker for Windows OS
+            return 1
+        return multiprocessing.cpu_count()
+
+    if not isinstance(num_workers, int) or num_workers < 1:
+        raise ValueError(
+            "The `num_workers` argument must be a positive integer or `None` "
+            "found %s" % str(type(num_workers))
+        )
+    return num_workers
+
+
+def _build_tasks(urls, videos_dir, ids, ext, verbose):
+    etau.ensure_dir(videos_dir)
     num_videos = len(urls)
 
     if max_videos is None:
         max_videos = num_videos
 
-    if ids is None:
-        ids = [None] * num_videos
-
-    if isinstance(ext, list):
-        ext_list = ext
-    else:
-        ext_list = [ext] * num_videos
+    ids_list = _parse_list_arg(ids, num_videos)
+    ext_list = _parse_list_arg(ext, num_videos)
 
     videos_dir_list = [videos_dir] * num_videos
     verbose_list = [verbose] * num_videos
 
-    tasks = zip(urls, videos_dir_list, ids, ext_list, verbose_list)
+    return zip(urls, videos_dir_list, ids_list, ext_list, verbose_list)
+
+
+def _parse_list_arg(arg, list_len):
+    if isinstance(arg, list):
+        if len(arg) != list_len:
+            # If arg list is not the right length, ignore it and set all arg to
+            # `None`
+            arg_list = [None] * list_len
+        else:
+            arg_list = arg
+    else:
+        # If a non-list arg is given, repeat it for the length of the list
+        arg_list = [arg] * list_len
+
+    return arg_list
+
+
+def _single_thread_download(tasks, max_videos):
     downloaded = []
     errors = defaultdict(list)
-
-    if num_workers == 1:
-        with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
-            for url, output_dir, video_id in tasks:
-                is_success, url, error_type = _do_download(
-                    (url, output_dir, video_id)
-                )
-                if is_success:
-                    downloaded.append(url)
-                    pb.update()
-                    if len(downloaded) >= max_videos:
-                        return downloaded, errors
-                else:
-                    errors[error_type].append(url)
-    else:
-        with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
-            with multiprocessing.dummy.Pool(num_workers) as pool:
-                for is_success, url, error_type in pool.imap_unordered(
-                    _do_download, tasks
-                ):
-                    if is_success:
-                        if len(downloaded) < max_videos:
-                            downloaded.append(url)
-                            pb.update()
-                        else:
-                            return downloaded, errors
-                    else:
-                        errors[error_type].append(url)
-
+    with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
+        for url, output_dir, video_id in tasks:
+            is_success, url, error_type = _do_download(
+                (url, output_dir, video_id)
+            )
+            if is_success:
+                downloaded.append(url)
+                pb.update()
+                if len(downloaded) >= max_videos:
+                    return downloaded, errors
+            else:
+                errors[error_type].append(url)
     return downloaded, errors
 
 
-def _do_download(args):
-    url, videos_dir, video_id, ext, verbose = args
+def _multi_thread_download(tasks, max_videos, num_workers):
+    downloaded = []
+    errors = defaultdict(list)
+    with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
+        with multiprocessing.dummy.Pool(num_workers) as pool:
+            for is_success, url, error_type in pool.imap_unordered(
+                _do_download, tasks
+            ):
+                if is_success:
+                    if len(downloaded) < max_videos:
+                        downloaded.append(url)
+                        pb.update()
+                    else:
+                        return downloaded, errors
+                else:
+                    errors[error_type].append(url)
+    return downloaded, errors
 
+
+def _build_ydl_opts(verbose, ext, video_id, videos_dir):
     ydl_opts = {
         "age_limit": 99,
     }
@@ -145,6 +187,13 @@ def _do_download(args):
     output_path = os.path.join(videos_dir, "%s.%s" % (path_name, path_ext))
     ydl_opts["outtmpl"] = output_path
 
+    return ydl_opts
+
+
+def _do_download(args):
+    url, videos_dir, video_id, ext, verbose = args
+    ydl_opts = _build_ydl_opts(verbose, ext, video_id, videos_dir)
+
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
@@ -156,18 +205,3 @@ def _do_download(args):
             # pylint: disable=no-member
             return False, url, str(e.exc_info[1])
         return False, url, "other"
-
-
-def _parse_num_workers(num_workers):
-    if num_workers is None:
-        if os.name == "nt":
-            # Default to 1 worker for Windows
-            return 1
-        return multiprocessing.cpu_count()
-
-    if not isinstance(num_workers, int) or num_workers < 1:
-        raise ValueError(
-            "The `num_workers` argument must be a positive integer or `None` "
-            "found %s" % str(type(num_workers))
-        )
-    return num_workers
