@@ -83,17 +83,29 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 `;
 
-const getFormatter = (fieldType, timeZone, bounds) => (v) => {
+const getFormatter = (fieldType, timeZone, bounds) => {
+  let hasTitle = false;
+  let dtFormatters;
   if (fieldType === DATE_TIME_FIELD) {
-    const fmt = getDateTimeRangeFormattersWithPrecision(
+    dtFormatters = getDateTimeRangeFormattersWithPrecision(
       timeZone,
       bounds[0],
       bounds[1]
-    )[1];
-    return fmt.format(v);
+    );
+
+    hasTitle = dtFormatters[0] !== null;
   }
 
-  return numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
+  return {
+    hasTitle,
+    formatter: (v) => {
+      if (fieldType === DATE_TIME_FIELD) {
+        return dtFormatters[1].format(v);
+      }
+
+      return numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
+    },
+  };
 };
 
 const getStep = (bounds: [number, number], fieldType?: string): number => {
@@ -152,11 +164,11 @@ const BaseSlider = React.memo(
     }
 
     const step = getStep(bounds, fieldType);
-    const formatter = getFormatter(fieldType, timeZone, bounds);
+    const { formatter, hasTitle } = getFormatter(fieldType, timeZone, bounds);
 
     return (
       <>
-        {fieldType === DATE_TIME_FIELD ? (
+        {hasTitle ? (
           <>
             {
               <div

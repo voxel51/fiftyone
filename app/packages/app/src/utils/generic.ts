@@ -143,7 +143,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     timeZone: string,
     d1: number,
     d2: number
-  ): [Intl.DateTimeFormat, Intl.DateTimeFormat] => {
+  ): [Intl.DateTimeFormat | null, Intl.DateTimeFormat] => {
     const delta = Math.abs(d1 - d2);
     let common: Intl.DateTimeFormatOptions = { timeZone };
     let diff: Intl.DateTimeFormatOptions = { timeZone };
@@ -184,27 +184,17 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         hour: twoDigit,
         minute: twoDigit,
       };
-    } else if (delta < H) {
-      common = {
-        year: twoDigit,
-        month: twoDigit,
-      };
+    } else {
+      common = null;
       diff = {
-        day: twoDigit,
-        hour: twoDigit,
-      };
-    } else if (delta < MM) {
-      common = {
         year: twoDigit,
-      };
-      diff = {
         month: twoDigit,
         day: twoDigit,
       };
     }
 
     return [
-      new Intl.DateTimeFormat(locale, common),
+      common ? new Intl.DateTimeFormat(locale, common) : null,
       new Intl.DateTimeFormat(locale, diff),
     ];
   };
