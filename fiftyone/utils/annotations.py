@@ -598,7 +598,7 @@ def _unwrap(value):
 
 def _get_existing_label_type(samples, backend, label_field, field_type):
     if not isinstance(field_type, fof.EmbeddedDocumentField):
-        if field_type not in backend.supported_scalar_types:
+        if not isinstance(field_type, tuple(backend.supported_scalar_types)):
             raise ValueError(
                 "Field '%s' has unsupported scalar type %s. The '%s' backend "
                 "supports %s"
