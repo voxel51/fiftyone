@@ -3231,7 +3231,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            is_shape=False,
                             assign_scalar_attrs=assign_scalar_attrs,
                         )
                     elif is_video and label_type != "segmentation":
@@ -3245,7 +3244,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            is_shape=True,
                             load_tracks=True,
                             only_keyframes=only_keyframes,
                         )
@@ -3259,7 +3257,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            is_shape=True,
                         )
 
                     id_map[label_field] = _id_map
@@ -3937,7 +3934,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field,
         label_info,
         cvat_schema,
-        is_shape=False,
         assign_scalar_attrs=False,
         load_tracks=False,
         only_keyframes=False,
@@ -3966,12 +3962,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if is_video:
                 images = sample.frames.values()
-                if is_shape:
-                    frame_size = (metadata.frame_width, metadata.frame_height)
+                frame_size = (metadata.frame_width, metadata.frame_height)
             else:
                 images = [sample]
-                if is_shape:
-                    frame_size = (metadata.width, metadata.height)
+                frame_size = (metadata.width, metadata.height)
 
             for image in images:
                 frame_id += 1
