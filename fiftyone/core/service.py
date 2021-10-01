@@ -142,12 +142,12 @@ class Service(object):
         """
         pass
 
-    def _wait_for_child_port(self, port=None, timeout=10):
+    def _wait_for_child_port(self, port=None, timeout=30):
         """Waits for any child process of this service to bind to a TCP port.
 
         Args:
             port (None): if specified, wait for a child to bind to this port
-            timeout (10): the number of seconds to wait before failing
+            timeout (30): the number of seconds to wait before failing
 
         Returns:
             the port the child has bound to (equal to the ``port`` argument
