@@ -110,8 +110,10 @@ version of the dataset.
 **Full dataset download**
 
 Many videos have been removed from YouTube since the creation of ActivityNet.
-Due to this, if you do not specify any partial download parameters defined in
-the next section, then you are required to manually download the entire
+Due to this, if you do not specify any partial download parameters 
+`classes`, `max_duration`, or `max_samples` (defined below), then it
+is means that the entire split is requested. 
+In this case, you are required to manually download the entire
 dataset.
 
 In order to manually download the entire source dataset, you must fill out 
@@ -209,7 +211,7 @@ ActivityNet-100 by passing them to
     
         #
         # Load 10 samples from the validation split that
-        # contain the actions "Disc dog" and "Grooming dog"
+        # contain the actions "Bathing dog" and "Walking the dog"
         #
         # Videos that contain all `classes` will be prioritized first, followed
         # by videos that contain at least one of the required `classes`. If
@@ -225,7 +227,7 @@ ActivityNet-100 by passing them to
         dataset = foz.load_zoo_dataset(
             "activitynet-100",
             split="validation",
-            classes=["Disc dog", "Grooming dog"],
+            classes=["Bathing dog", "Walking the dog"],
             max_samples=10,
         )
     
@@ -250,7 +252,7 @@ ActivityNet-100 by passing them to
 
         #
         # Load 10 samples from the validation split that
-        # contain the actions "Disc dog" and "Grooming dog"
+        # contain the actions "Bathing dog" and "Walking the dog"
         #
         # Videos that contain all `classes` will be prioritized first, followed
         # by videos that contain at least one of the required `classes`. If
@@ -266,11 +268,10 @@ ActivityNet-100 by passing them to
         fiftyone zoo datasets load activitynet-100 \
             --split validation \
             --kwargs \
-                label_types=segmentations \
-                classes=Disc dog,Grooming dog \
-                max_samples=5
+                classes=Bathing_dog,Walking_the_dog \
+                max_samples=10
 
-        fiftyone app launch activitynet-100-validation-5
+        fiftyone app launch activitynet-100-validation-10
 
 
 .. image:: /images/dataset_zoo/activitynet-100-validation.png
@@ -418,7 +419,7 @@ ActivityNet-200 by passing them to
     
         #
         # Load 10 samples from the validation split that
-        # contain the actions "Disc dog" and "Grooming dog"
+        # contain the actions "Bathing dog" and "Walking the dog"
         #
         # Videos that contain all `classes` will be prioritized first, followed
         # by videos that contain at least one of the required `classes`. If
@@ -434,7 +435,7 @@ ActivityNet-200 by passing them to
         dataset = foz.load_zoo_dataset(
             "activitynet-200",
             split="validation",
-            classes=["Disc dog", "Grooming dog"],
+            classes=["Bathing dog", "Walking the dog"],
             max_samples=10,
         )
     
@@ -459,7 +460,7 @@ ActivityNet-200 by passing them to
 
         #
         # Load 10 samples from the validation split that
-        # contain the actions "Disc dog" and "Grooming dog"
+        # contain the actions "Bathing dog" and "Walking the dog"
         #
         # Videos that contain all `classes` will be prioritized first, followed
         # by videos that contain at least one of the required `classes`. If
@@ -475,11 +476,10 @@ ActivityNet-200 by passing them to
         fiftyone zoo datasets load activitynet-200 \
             --split validation \
             --kwargs \
-                label_types=segmentations \
-                classes=Disc dog,Grooming dog \
-                max_samples=5
+                classes=Bathing_dog,Walking_the_dog \
+                max_samples=10
 
-        fiftyone app launch activitynet-200-validation-5
+        fiftyone app launch activitynet-200-validation-10
 
 
 .. image:: /images/dataset_zoo/activitynet-200-validation.png

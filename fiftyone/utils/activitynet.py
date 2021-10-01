@@ -288,6 +288,11 @@ def _parse_args(split, max_duration, max_samples, classes, version):
     if max_duration is not None and max_duration <= 0:
         raise ValueError("`max_duration` must be a positive integer or float")
 
+    if isinstance(classes, list):
+        classes = [c.replace(" ", "_") for c in classes]
+    if isinstance(classes, str):
+        classes = classes.replace(" ", "_")
+
     if classes is not None and split == "test":
         logger.warning("Test split is unlabeled; ignoring classes requirement")
         classes = None
@@ -319,7 +324,10 @@ def _get_all_classes(taxonomy):
         classes.add(node_name)
         parents.add(parent_name)
 
-    return sorted(classes - parents)
+    classes = sorted(classes - parents)
+    classes = [c.replace(" ", "_") for c in classes]
+
+    return classes
 
 
 def _get_downloaded_sample_ids(videos_dir):
@@ -361,12 +369,13 @@ def _get_matching_samples(raw_annotations, classes, split, max_duration):
         if not is_correct_split or not is_correct_dur:
             continue
 
+        for a in annot_info["annotations"]:
+            a["label"] = a["label"].replace(" ", "_")
+
         if classes is None:
             any_class_match[sample_id] = annot_info
         else:
-            annot_labels = set(
-                {annot["label"] for annot in annot_info["annotations"]}
-            )
+            annot_labels = set([a["label"] for a in annot_info["annotations"]])
             if class_set.issubset(annot_labels):
                 all_class_match[sample_id] = annot_info
             elif class_set & annot_labels:
