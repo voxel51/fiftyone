@@ -8,11 +8,8 @@ dataset.
 |
 """
 import logging
-import multiprocessing
-import multiprocessing.dummy
 import os
 import random
-import time
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -182,8 +179,8 @@ def download_activitynet_split(
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
-    load_entire_split, classes, num_workers = _parse_args(
-        split, max_duration, max_samples, classes, version, num_workers
+    load_entire_split, classes = _parse_args(
+        split, max_duration, max_samples, classes, version
     )
 
     videos_dir, anno_path, error_path, raw_anno_path = _get_paths(
@@ -271,10 +268,7 @@ def download_activitynet_split(
     return num_samples, all_classes
 
 
-def _parse_args(
-    split, max_duration, max_samples, classes, version, num_workers
-):
-    num_workers = _parse_num_workers(num_workers)
+def _parse_args(split, max_duration, max_samples, classes, version):
     if split not in _SPLIT_MAP.keys():
         raise ValueError(
             "Unsupported split '%s'; supported values are %s"
@@ -298,7 +292,7 @@ def _parse_args(
         logger.warning("Test split is unlabeled; ignoring classes requirement")
         classes = None
 
-    return load_entire_split, classes, num_workers
+    return load_entire_split, classes
 
 
 def _get_paths(dataset_dir, version):
@@ -557,21 +551,6 @@ def _convert_label_format(activitynet_labels, target_map, taxonomy):
         "taxonomy": taxonomy,
     }
     return fo_annots
-
-
-def _parse_num_workers(num_workers):
-    if num_workers is None:
-        if os.name == "nt":
-            # Default to 1 worker for Windows
-            return 1
-        return multiprocessing.cpu_count()
-
-    if not isinstance(num_workers, int) or num_workers < 1:
-        raise ValueError(
-            "The `num_workers` argument must be a positive integer or `None` "
-            "found %s" % str(type(num_workers))
-        )
-    return num_workers
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {

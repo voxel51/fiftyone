@@ -1,6 +1,6 @@
 """
 Utilities for working with
-`YouTube-DL <https://github.com/ytdl-org/youtube-dl>`
+`youtube-dl <https://github.com/ytdl-org/youtube-dl>`
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -32,7 +32,7 @@ def download_from_youtube(
     verbose=False,
 ):
     """
-    Attempts to download a list of videos from YouTube.
+    Attempts to download a list of video urls from YouTube.
 
     Args:
         videos_dir: the output directory used to store the downloaded videos 
