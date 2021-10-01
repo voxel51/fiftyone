@@ -42,9 +42,9 @@ def annotate(
     classes=None,
     attributes=True,
     mask_targets=None,
-    allow_spatial_edits=True,
     allow_additions=True,
     allow_deletions=True,
+    allow_spatial_edits=True,
     media_field="filepath",
     backend=None,
     launch_editor=False,
@@ -130,13 +130,13 @@ def annotate(
             ``label_schema`` that do not define their attributes
         mask_targets (None): a dict mapping pixel values to semantic label
             strings. Only applicable when annotating semantic segmentations
-        allow_spatial_edits (True): whether to allow edits to the spatial
-            properties (bounding boxes, vertices, keypoints, etc) of labels.
-            Only applicable when editing existing label fields
         allow_additions (True): whether to allow new labels to be added. Only
             applicable when editing existing label fields
         allow_deletions (True): whether to allow labels to be deleted. Only
             applicable when editing existing label fields
+        allow_spatial_edits (True): whether to allow edits to the spatial
+            properties (bounding boxes, vertices, keypoints, etc) of labels.
+            Only applicable when editing existing label fields
         media_field ("filepath"): the field containing the paths to the
             media files to upload
         backend (None): the annotation backend to use. The supported values are
@@ -179,9 +179,9 @@ def annotate(
         classes,
         attributes,
         mask_targets,
-        allow_spatial_edits,
         allow_additions,
         allow_deletions,
+        allow_spatial_edits,
     )
     config.label_schema = label_schema
 
@@ -308,9 +308,9 @@ def _build_label_schema(
     classes,
     attributes,
     mask_targets,
-    allow_spatial_edits,
     allow_additions,
     allow_deletions,
+    allow_spatial_edits,
 ):
     if label_schema is None and label_field is None:
         raise ValueError("Either `label_schema` or `label_field` is required")
@@ -322,9 +322,9 @@ def _build_label_schema(
             classes,
             attributes,
             mask_targets,
-            allow_spatial_edits,
             allow_additions,
             allow_deletions,
+            allow_spatial_edits,
         )
     elif isinstance(label_schema, list):
         label_schema = {lf: {} for lf in label_schema}
@@ -396,14 +396,14 @@ def _build_label_schema(
         label_info["existing_field"] = _existing_field
 
         if _existing_field:
-            label_info["allow_spatial_edits"] = _label_info.get(
-                "allow_spatial_edits", allow_spatial_edits
-            )
             label_info["allow_additions"] = _label_info.get(
                 "allow_additions", allow_additions
             )
             label_info["allow_deletions"] = _label_info.get(
                 "allow_deletions", allow_deletions
+            )
+            label_info["allow_spatial_edits"] = _label_info.get(
+                "allow_spatial_edits", allow_spatial_edits
             )
 
         if (
@@ -474,9 +474,9 @@ def _init_label_schema(
     classes,
     attributes,
     mask_targets,
-    allow_spatial_edits,
     allow_additions,
     allow_deletions,
+    allow_spatial_edits,
 ):
     d = {}
 
@@ -492,9 +492,9 @@ def _init_label_schema(
     if mask_targets is not None:
         d["mask_targets"] = mask_targets
 
-    d["allow_spatial_edits"] = allow_spatial_edits
     d["allow_additions"] = allow_additions
     d["allow_deletions"] = allow_deletions
+    d["allow_spatial_edits"] = allow_spatial_edits
 
     return {label_field: d}
 
@@ -1141,9 +1141,9 @@ def _merge_labels(
 ):
     attributes = label_info.get("attributes", {})
     only_keyframes = label_info.get("only_keyframes", False)
-    allow_spatial_edits = label_info.get("allow_spatial_edits", True)
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
+    allow_spatial_edits = label_info.get("allow_spatial_edits", True)
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
     if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
