@@ -90,18 +90,122 @@ export const getMimeType = (sample: any) => {
   );
 };
 
-export const formatDateTime = (() => {
-  const formatters = {};
+export const formatDateTime = (timeStamp: number, timeZone: string): string => {
+  const twoDigit = "2-digit";
+  const MS = 1000;
+  const S = 60 * MS;
+  const M = 60 * S;
+  const H = 24 * M;
 
-  return (timeStamp: number, timeZone: string): string => {
-    if (!(timeZone in formatters)) {
-      formatters[timeZone] = new Intl.DateTimeFormat("en-GB", {
-        dateStyle: "short",
-        timeStyle: "short",
-        timeZone,
-      });
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone,
+    year: twoDigit,
+    day: twoDigit,
+    month: twoDigit,
+    hour: twoDigit,
+    minute: twoDigit,
+    second: twoDigit,
+    // @ts-ignore
+    fractionalSecondDigits: 3,
+  };
+
+  if (!(timeStamp % MS)) {
+    // @ts-ignore
+    delete options.fractionalSecondDigits;
+  }
+
+  if (!(timeStamp % S)) {
+    delete options.second;
+  }
+
+  if (!(timeStamp % M)) {
+    delete options.minute;
+  }
+
+  if (!(timeStamp % H)) {
+    delete options.hour;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", options).format(timeStamp);
+};
+
+export const getDateTimeRangeFormattersWithPrecision = (() => {
+  const twoDigit = "2-digit";
+  const locale = "en-GB";
+
+  const MS = 1000;
+  const S = 60 * MS;
+  const M = 60 * S;
+  const H = 24 * M;
+  const MM = 30 * H;
+
+  return (
+    timeZone: string,
+    d1: number,
+    d2: number
+  ): [Intl.DateTimeFormat, Intl.DateTimeFormat] => {
+    const delta = Math.abs(d1 - d2);
+    let common: Intl.DateTimeFormatOptions = { timeZone };
+    let diff: Intl.DateTimeFormatOptions = { timeZone };
+
+    if (delta < MS) {
+      common = {
+        year: twoDigit,
+        day: twoDigit,
+        month: twoDigit,
+        hour: twoDigit,
+        minute: twoDigit,
+      };
+      diff = {
+        second: twoDigit,
+        // @ts-ignore
+        fractionalSecondDigits: 3,
+      };
+    } else if (delta < S) {
+      common = {
+        year: twoDigit,
+        day: twoDigit,
+        month: twoDigit,
+        hour: twoDigit,
+      };
+      diff = {
+        minute: twoDigit,
+        second: twoDigit,
+        // @ts-ignore
+        fractionalSecondDigits: 3,
+      };
+    } else if (delta < M) {
+      common = {
+        year: twoDigit,
+        day: twoDigit,
+        month: twoDigit,
+      };
+      diff = {
+        hour: twoDigit,
+        minute: twoDigit,
+      };
+    } else if (delta < H) {
+      common = {
+        year: twoDigit,
+        month: twoDigit,
+      };
+      diff = {
+        day: twoDigit,
+        hour: twoDigit,
+      };
+    } else if (delta < MM) {
+      common = {
+        year: twoDigit,
+      };
+      diff = {
+        month: twoDigit,
+        day: twoDigit,
+      };
     }
 
-    return formatters[timeZone].format(new Date(timeStamp));
+    return [
+      new Intl.DateTimeFormat(locale, common),
+      new Intl.DateTimeFormat(locale, diff),
+    ];
   };
 })();

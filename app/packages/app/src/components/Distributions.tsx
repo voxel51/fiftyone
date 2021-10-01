@@ -7,7 +7,11 @@ import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
-import { formatDateTime, isFloat, prettify } from "../utils/generic";
+import {
+  getDateTimeRangeFormattersWithPrecision,
+  isFloat,
+  prettify,
+} from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
 import { AGGS } from "../utils/labels";
@@ -127,18 +131,28 @@ const Distribution = ({ distribution }) => {
             const key = point?.payload[0]?.payload?.key;
             const count = point?.payload[0]?.payload?.count;
             if (typeof count !== "number") return null;
+
             let title = `Value: ${key}`;
+
             if (map[key]) {
-              title = `Range: [${map[key]
-                .map((e) =>
-                  type === "IntField"
-                    ? e
-                    : isDateTime
-                    ? formatDateTime(e, timeZone)
-                    : e.toFixed(3)
-                )
-                .join(", ")})`;
+              if (isDateTime) {
+                const [start, end] = map[key];
+                const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
+                  timeZone,
+                  map[key][0],
+                  map[key][1]
+                );
+                title = `Range: ${cFmt.format(start)} ${dFmt.formatRange(
+                  start,
+                  end
+                )}`;
+              } else {
+                title = `Range: [${map[key]
+                  .map((e) => (type === "IntField" ? e : e.toFixed(3)))
+                  .join(", ")})`;
+              }
             }
+
             return <PlotTooltip title={title} count={count} />;
           }}
           contentStyle={{

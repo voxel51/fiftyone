@@ -14,7 +14,7 @@ import { Button } from "../FieldsSidebar";
 import { DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
-import { formatDateTime } from "../../utils/generic";
+import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -26,7 +26,7 @@ const SliderContainer = styled.div`
 const SliderStyled = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.brand};
-    margin: 0 1rem 0 0.8rem;
+    margin: 0 1.5rem 0 1.3rem;
     height: 3px;
   }
 
@@ -71,6 +71,7 @@ const SliderStyled = styled(SliderUnstyled)`
   .valueLabel > span > span {
     color: transparent;
     white-space: nowrap;
+    text-align: center;
   }
 
   .valueLabel > span > span {
@@ -80,38 +81,22 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 `;
 
-const getFormatter = (fieldType, timeZone) => (v) =>
-  fieldType === DATE_TIME_FIELD
-    ? formatDateTime(v, timeZone)
-    : numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
+const getFormatter = (fieldType, timeZone, bounds) => (v) => {
+  if (fieldType === DATE_TIME_FIELD) {
+    const fmt = getDateTimeRangeFormattersWithPrecision(
+      timeZone,
+      bounds[0],
+      bounds[1]
+    )[1];
+    return fmt.format(v);
+  }
+
+  return numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
+};
 
 const getStep = (bounds: [number, number], fieldType?: string): number => {
   const delta = bounds[1] - bounds[0];
-  const max = 1200;
-
-  if (fieldType === DATE_TIME_FIELD) {
-    if (delta <= max) {
-      return 100;
-    }
-
-    if (delta <= max * 60) {
-      return 60;
-    }
-
-    if (delta <= max * 3600) {
-      return 3600;
-    }
-
-    if (delta < max * 3600 * 24) {
-      return 3600 * 24;
-    }
-
-    if (delta < max * 3600 * 24 * 28) {
-      return 3600 * 24 * 28;
-    }
-
-    return 3600 * 24 * 28 * 12;
-  }
+  const max = 100;
 
   let step = delta / max;
   if (!fieldType || fieldType === INT_FIELD) {
@@ -165,37 +150,46 @@ const BaseSlider = React.memo(
     }
 
     const step = getStep(bounds, fieldType);
-    const formatter = getFormatter(fieldType, timeZone);
+    const formatter = getFormatter(fieldType, timeZone, bounds);
 
     return (
-      <SliderContainer style={style}>
-        {showBounds && formatter(bounds[0])}
-        <SliderStyled
-          onMouseDown={() => setClicking(true)}
-          onMouseUp={() => setClicking(false)}
-          value={value}
-          onChange={onChange}
-          onChangeCommitted={(e, v) => {
-            onCommit(e, v);
-            setClicking(false);
-          }}
-          classes={{
-            thumb: "thumb",
-            track: "track",
-            rail: "rail",
-            active: "active",
-            valueLabel: "valueLabel",
-          }}
-          valueLabelFormat={formatter}
-          aria-labelledby="slider"
-          valueLabelDisplay={clicking || persistValue ? "on" : "off"}
-          max={bounds[1]}
-          min={bounds[0]}
-          step={step}
-          theme={{ ...theme, brand: color }}
-        />
-        {showBounds && formatter(bounds[1])}
-      </SliderContainer>
+      <>
+        {fieldType === DATE_TIME_FIELD
+          ? getDateTimeRangeFormattersWithPrecision(
+              timeZone,
+              bounds[0],
+              bounds[1]
+            )[0].format(bounds[0])
+          : null}
+        <SliderContainer style={style}>
+          {showBounds && formatter(bounds[0])}
+          <SliderStyled
+            onMouseDown={() => setClicking(true)}
+            onMouseUp={() => setClicking(false)}
+            value={value}
+            onChange={onChange}
+            onChangeCommitted={(e, v) => {
+              onCommit(e, v);
+              setClicking(false);
+            }}
+            classes={{
+              thumb: "thumb",
+              track: "track",
+              rail: "rail",
+              active: "active",
+              valueLabel: "valueLabel",
+            }}
+            valueLabelFormat={formatter}
+            aria-labelledby="slider"
+            valueLabelDisplay={clicking || persistValue ? "on" : "off"}
+            max={bounds[1]}
+            min={bounds[0]}
+            step={step}
+            theme={{ ...theme, brand: color }}
+          />
+          {showBounds && formatter(bounds[1])}
+        </SliderContainer>
+      </>
     );
   }
 );
