@@ -845,6 +845,7 @@ def _format_attributes(backend, attributes):
         values = attr.get("values", None)
         default = attr.get("default", None)
         mutable = attr.get("mutable", None)
+        read_only = attr.get("read_only", None)
 
         if attr_type is None:
             raise ValueError(
@@ -887,6 +888,10 @@ def _format_attributes(backend, attributes):
         # Parse `mutable` property
         if mutable is not None:
             _attr["mutable"] = mutable
+
+        # Parse `read_only` property
+        if read_only is not None:
+            _attr["read_only"] = read_only
 
         _attributes[name] = _attr
 
@@ -1147,6 +1152,14 @@ def _merge_labels(
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
+
+    # Omit read-only attributes
+    if isinstance(attributes, dict):
+        attributes = {
+            k: v
+            for k, v in attributes.items()
+            if not v.get("read_only", False)
+        }
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
     if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
