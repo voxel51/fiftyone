@@ -496,18 +496,41 @@ export const getMimeType = (sample: any) => {
   );
 };
 
-export const formatDateTime = (() => {
-  const formatters = {};
+export const formatDateTime = (timeStamp: number, timeZone: string): string => {
+  const twoDigit = "2-digit";
+  const MS = 1000;
+  const S = 60 * MS;
+  const M = 60 * S;
+  const H = 24 * M;
 
-  return (timeStamp: number, timeZone: string): string => {
-    if (!(timeZone in formatters)) {
-      formatters[timeZone] = new Intl.DateTimeFormat("en-GB", {
-        dateStyle: "short",
-        timeStyle: "short",
-        timeZone,
-      });
-    }
-
-    return formatters[timeZone].format(new Date(timeStamp));
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone,
+    year: twoDigit,
+    day: twoDigit,
+    month: twoDigit,
+    hour: twoDigit,
+    minute: twoDigit,
+    second: twoDigit,
+    // @ts-ignore
+    fractionalSecondDigits: 3,
   };
-})();
+
+  if (!(timeStamp % MS)) {
+    // @ts-ignore
+    delete options.fractionalSecondDigits;
+  }
+
+  if (!(timeStamp % S)) {
+    delete options.second;
+  }
+
+  if (!(timeStamp % M)) {
+    delete options.minute;
+  }
+
+  if (!(timeStamp % H)) {
+    delete options.hour;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", options).format(timeStamp);
+};

@@ -167,9 +167,9 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         day: twoDigit,
         month: twoDigit,
         hour: twoDigit,
+        minute: twoDigit,
       };
       diff = {
-        minute: twoDigit,
         second: twoDigit,
         // @ts-ignore
         fractionalSecondDigits: 3,

@@ -15,6 +15,8 @@ import { DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
+import { textAlign } from "html2canvas/dist/types/css/property-descriptors/text-align";
+import { useTheme } from "../../utils/hooks";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -134,7 +136,7 @@ const BaseSlider = React.memo(
     value,
     style,
   }: BaseSliderProps) => {
-    const theme = useContext(ThemeContext);
+    const theme = useTheme();
     const bounds = useRecoilValue(boundsAtom);
 
     const timeZone =
@@ -154,13 +156,26 @@ const BaseSlider = React.memo(
 
     return (
       <>
-        {fieldType === DATE_TIME_FIELD
-          ? getDateTimeRangeFormattersWithPrecision(
-              timeZone,
-              bounds[0],
-              bounds[1]
-            )[0].format(bounds[0])
-          : null}
+        {fieldType === DATE_TIME_FIELD ? (
+          <>
+            {
+              <div
+                style={{
+                  width: "100%",
+                  textAlign: "center",
+                  padding: "0.25rem",
+                  color: theme.font,
+                }}
+              >
+                {getDateTimeRangeFormattersWithPrecision(
+                  timeZone,
+                  bounds[0],
+                  bounds[1]
+                )[0].format(bounds[0])}
+              </div>
+            }
+          </>
+        ) : null}
         <SliderContainer style={style}>
           {showBounds && formatter(bounds[0])}
           <SliderStyled

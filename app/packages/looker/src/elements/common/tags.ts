@@ -3,11 +3,15 @@
  */
 
 import {
-  DATE_TIME,
+  BOOLEAN_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
   FRAME_SUPPORT_FIELD,
+  INT_FIELD,
   LABEL_LISTS,
   LABEL_TAGS_CLASSES,
   MOMENT_CLASSIFICATIONS,
+  STRING_FIELD,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
 import { formatDateTime } from "../../util";
@@ -121,24 +125,26 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
               : prettify(label),
           })),
         ];
-      } else {
+      } else if (isRendered(fieldSchema[path])) {
         let valuePath = path;
         if (!sample[path] && fieldsMap && fieldsMap[path]) {
           valuePath = fieldsMap[path];
         }
 
-        const value = sample[valuePath];
+        let value = sample[valuePath];
         const entry = fieldSchema[path];
-        const isSupport =
-          entry &&
-          (entry.ftype === FRAME_SUPPORT_FIELD ||
-            entry.subfield === FRAME_SUPPORT_FIELD);
+        const isDateTime = isType(entry, DATE_TIME_FIELD);
+        const isSupport = isType(entry, FRAME_SUPPORT_FIELD);
 
         if ([undefined, null].includes(value)) {
           return elements;
         }
 
         const appendElement = (value) => {
+          if (isDateTime && value) {
+            value = formatDateTime(value, timeZone);
+          }
+
           if (isSupport && Array.isArray(value)) {
             value = `[${value.map(prettify).join(", ")}]`;
           }
@@ -154,21 +160,24 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ];
         };
 
-        if (isScalar(value) || (entry && entry.ftype === FRAME_SUPPORT_FIELD)) {
-          appendElement(value);
-        } else if (Array.isArray(value)) {
-          const filtered =
-            filter[path] && !isSupport
-              ? value.filter((v) => filter[path](v))
-              : value;
-          const shown = [...filtered].sort().slice(0, 3);
-          shown.forEach((v) => appendElement(v));
-
-          const more = filtered.length - shown.length;
-          more > 0 && appendElement(`+${more} more`);
-        } else if (value._cls === DATE_TIME) {
-          appendElement(formatDateTime(value.datetime, timeZone));
+        if (!Array.isArray(value)) {
+          value = [value];
         }
+
+        if (isDateTime) {
+          value = value.map((d) => d.datetime);
+        }
+
+        const filtered =
+          filter[path] && !isSupport && !isDateTime
+            ? value.filter((v) => filter[path](v))
+            : value;
+
+        const shown = [...filtered].sort().slice(0, 3);
+        shown.forEach((v) => appendElement(v));
+
+        const more = filtered.length - shown.length;
+        more > 0 && appendElement(`+${more} more`);
       }
       return elements;
     }, []);
@@ -216,5 +225,18 @@ const prettify = (v: boolean | string | null | undefined | number): string => {
   return null;
 };
 
-const isScalar = (value) =>
-  ["boolean", "number", "string"].includes(typeof value);
+const RENDERED_TYPES = new Set([
+  BOOLEAN_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+]);
+
+const isRendered = (field) =>
+  field &&
+  (RENDERED_TYPES.has(field.ftype) || RENDERED_TYPES.has(field.subfield));
+
+const isType = (field, type) =>
+  field && (type === field.ftype || type === field.subfield);
