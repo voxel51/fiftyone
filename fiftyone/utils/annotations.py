@@ -1118,7 +1118,7 @@ def _merge_scalars(samples, anno_dict, results, label_field, label_info):
                         image[field] = None
                 else:
                     # Edit value
-                    image[field] = value
+                    image[field] = new_value
 
         sample.save()
 
