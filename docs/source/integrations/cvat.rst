@@ -1180,6 +1180,7 @@ attribute be populated without allowing edits to the vehicle's `type`:
         },
         "make": {
             "type": "text",
+            "mutable": False,
         },
     }
 
