@@ -44,6 +44,7 @@ def annotate(
     mask_targets=None,
     allow_additions=True,
     allow_deletions=True,
+    allow_label_edits=True,
     allow_spatial_edits=True,
     media_field="filepath",
     backend=None,
@@ -134,6 +135,9 @@ def annotate(
             applicable when editing existing label fields
         allow_deletions (True): whether to allow labels to be deleted. Only
             applicable when editing existing label fields
+        allow_label_edits (True): whether to allow the ``label`` attribute of
+            existing labels to be modified. Only applicable when editing
+            existing label fields
         allow_spatial_edits (True): whether to allow edits to the spatial
             properties (bounding boxes, vertices, keypoints, etc) of labels.
             Only applicable when editing existing label fields
@@ -181,6 +185,7 @@ def annotate(
         mask_targets,
         allow_additions,
         allow_deletions,
+        allow_label_edits,
         allow_spatial_edits,
     )
     config.label_schema = label_schema
@@ -310,6 +315,7 @@ def _build_label_schema(
     mask_targets,
     allow_additions,
     allow_deletions,
+    allow_label_edits,
     allow_spatial_edits,
 ):
     if label_schema is None and label_field is None:
@@ -324,6 +330,7 @@ def _build_label_schema(
             mask_targets,
             allow_additions,
             allow_deletions,
+            allow_label_edits,
             allow_spatial_edits,
         )
     elif isinstance(label_schema, list):
@@ -402,6 +409,9 @@ def _build_label_schema(
             label_info["allow_deletions"] = _label_info.get(
                 "allow_deletions", allow_deletions
             )
+            label_info["allow_label_edits"] = _label_info.get(
+                "allow_label_edits", allow_label_edits
+            )
             label_info["allow_spatial_edits"] = _label_info.get(
                 "allow_spatial_edits", allow_spatial_edits
             )
@@ -476,6 +486,7 @@ def _init_label_schema(
     mask_targets,
     allow_additions,
     allow_deletions,
+    allow_label_edits,
     allow_spatial_edits,
 ):
     d = {}
@@ -494,6 +505,7 @@ def _init_label_schema(
 
     d["allow_additions"] = allow_additions
     d["allow_deletions"] = allow_deletions
+    d["allow_label_edits"] = allow_label_edits
     d["allow_spatial_edits"] = allow_spatial_edits
 
     return {label_field: d}
@@ -1151,6 +1163,7 @@ def _merge_labels(
     only_keyframes = label_info.get("only_keyframes", False)
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
+    allow_label_edits = label_info.get("allow_label_edits", True)
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
 
     # Omit read-only attributes
@@ -1267,6 +1280,7 @@ def _merge_labels(
                             label,
                             anno_label,
                             attributes=attributes,
+                            allow_label_edits=allow_label_edits,
                             allow_spatial_edits=allow_spatial_edits,
                             only_keyframes=only_keyframes,
                         )
@@ -1329,11 +1343,13 @@ def _merge_label(
     label,
     anno_label,
     attributes=None,
+    allow_label_edits=True,
     allow_spatial_edits=True,
     only_keyframes=False,
 ):
     for field in _DEFAULT_LABEL_FIELDS_MAP.get(type(label), []):
-        label[field] = anno_label[field]
+        if allow_label_edits or field != "label":
+            label[field] = anno_label[field]
 
     if allow_spatial_edits:
         for field in _SPATIAL_LABEL_FIELDS_MAP.get(type(label), []):
