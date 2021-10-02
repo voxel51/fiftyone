@@ -447,10 +447,10 @@ more details:
         with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
         attributes populated
     -   ``"polylines"``: polylines stored in |Polylines| fields with their
-        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `False`
     -   ``"polygons"``: polygons stored in |Polylines| fields with their
-        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `True`
     -   ``"keypoints"``: keypoints stored in |Keypoints| fields
     -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
@@ -536,6 +536,45 @@ label field:
                     "type": "text",
                 }
             }
+        },
+    }
+
+    dataset.annotate(anno_key, label_schema=label_schema)
+
+You can also define class-specific attributes by setting elements of the
+`classes` list to dicts that specify groups of `classes` and their
+corresponding `attributes`. For example, in the configuration below, `attr1`
+only applies to `class1` and `class2` while `attr2` applies to all classes:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    label_schema = {
+        "new_field": {
+            "type": "detections",
+            "classes": [
+                {
+                    "classes": ["class1", "class2"],
+                    "attributes": {
+                        "attr1": {
+                            "type": "select",
+                            "values": ["val1", "val2"],
+                            "default": "val1",
+                        }
+                     }
+                },
+                "class3",
+                "class4",
+            ],
+            "attributes": {
+                "attr2": {
+                    "type": "radio",
+                    "values": [True, False],
+                    "default": False,
+                }
+            },
         },
     }
 
@@ -664,10 +703,8 @@ take additional values:
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 
-.. note::
-
-    Only scalar-valued label attributes are supported. Other attribute types
-    like lists, dictionaries, and arrays will be omitted.
+Note that only scalar-valued label attributes are supported. Other attribute
+types like lists, dictionaries, and arrays will be omitted.
 
 .. _annotation-video-label-attributes:
 

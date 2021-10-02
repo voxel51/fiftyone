@@ -2558,7 +2558,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def filter_labels(self, field, filter, only_matches=True):
+    def filter_labels(
+        self, field, filter, only_matches=True, trajectories=False
+    ):
         """Filters the :class:`fiftyone.core.labels.Label` field of each
         sample in the collection.
 
@@ -2826,12 +2828,21 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
             only_matches (True): whether to only include samples with at least
                 one label after filtering (True) or include all samples (False)
+            trajectories (False): whether to match entire object trajectories
+                for which the object matches the given filter on at least one
+                frame. Only applicable to video datasets and frame-level label
+                fields whose objects have their ``index`` attributes populated
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.FilterLabels(field, filter, only_matches=only_matches)
+            fos.FilterLabels(
+                field,
+                filter,
+                only_matches=only_matches,
+                trajectories=trajectories,
+            )
         )
 
     @deprecated(reason="Use filter_labels() instead")
@@ -5492,9 +5503,8 @@ class SampleCollection(object):
 
         Args:
             output_dir: the directory to write the annotated media
-            label_fields (None): a list of :class:`fiftyone.core.labels.Label`
-                fields to render. By default, all
-                :class:`fiftyone.core.labels.Label` fields are drawn
+            label_fields (None): a list of label fields to render. By default,
+                all :class:`fiftyone.core.labels.Label` fields are drawn
             overwrite (False): whether to delete ``output_dir`` if it exists
                 before rendering
             config (None): an optional
@@ -5514,16 +5524,13 @@ class SampleCollection(object):
                     output_dir,
                 )
 
-        if self.media_type == fom.VIDEO:
-            if label_fields is None:
-                label_fields = _get_frame_label_fields(self)
-
-                return foua.draw_labeled_videos(
-                    self, output_dir, label_fields=label_fields, config=config
-                )
-
         if label_fields is None:
-            label_fields = _get_image_label_fields(self)
+            label_fields = self._get_label_fields()
+
+        if self.media_type == fom.VIDEO:
+            return foua.draw_labeled_videos(
+                self, output_dir, label_fields=label_fields, config=config
+            )
 
         return foua.draw_labeled_images(
             self, output_dir, label_fields=label_fields, config=config
@@ -5833,11 +5840,11 @@ class SampleCollection(object):
                     attributes populated
                 -   ``"polylines"``: polylines stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``False``
                 -   ``"polygons"``: polygons stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``True``
                 -   ``"keypoints"``: keypoints stored in
                     :class:`fiftyone.core.labels.Keypoints` fields
@@ -7063,20 +7070,6 @@ def _get_matching_fields(sample_collection, patt, frames=False):
         schema = sample_collection.get_field_schema()
 
     return fnmatch.filter(list(schema.keys()), patt)
-
-
-def _get_image_label_fields(sample_collection):
-    label_fields = sample_collection.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
-    )
-    return list(label_fields.keys())
-
-
-def _get_frame_label_fields(sample_collection):
-    label_fields = sample_collection.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
-    )
-    return list(label_fields.keys())
 
 
 def _get_default_label_fields_for_exporter(

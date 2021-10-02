@@ -77,6 +77,7 @@ interface BaseOptions {
   selected: boolean;
   fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
+  mimetype: string;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -239,6 +240,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
+  mimetype: "",
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

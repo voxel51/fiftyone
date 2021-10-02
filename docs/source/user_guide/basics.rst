@@ -294,13 +294,13 @@ FiftyOne provides a |Label| subclass for many common tasks:
   optional instance masks)
 - :ref:`Polylines <polylines>`: a list of polylines or polygons in an image
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
+- :ref:`Temporal detection <temporal-detection>`: events with a temporal frame
+  support in a video
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
 - :ref:`Heatmap <heatmaps>`: an intensity heatmap for an image
-- :ref:`GeoLocation <geolocation>`: a single geolocation point, line, or
-  polygon
-- :ref:`GeoLocations <geolocation>`: a container of multiple geolocation
-  points, lines, and polygons
+- :ref:`GeoLocation <geolocation>`: geolocation point(s), line(s), or
+  polygon(s)
 
 Using FiftyOne's |Label| types enables you to visualize your labels in the
 :ref:`the App <fiftyone-app>`.

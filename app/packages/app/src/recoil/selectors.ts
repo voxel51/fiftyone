@@ -9,6 +9,7 @@ import {
   makeLabelNameGroups,
   VALID_LIST_TYPES,
   LIST_FIELD,
+  UNSUPPORTED_IMAGE,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -335,10 +336,15 @@ export const fieldSchema = selectorFamily({
   },
 });
 
-const labelFilter = (f) => {
+const getLabelFilter = (video: boolean, dimension: string) => (f) => {
+  if (!f.embedded_doc_type) {
+    return false;
+  }
+
+  const type = f.embedded_doc_type.split(".").slice(-1)[0];
   return (
-    f.embedded_doc_type &&
-    VALID_LABEL_TYPES.includes(f.embedded_doc_type.split(".").slice(-1)[0])
+    ((dimension !== "frame" && video) || !UNSUPPORTED_IMAGE.includes(type)) &&
+    VALID_LABEL_TYPES.includes(type)
   );
 };
 
@@ -466,9 +472,10 @@ const labels = selectorFamily<
   key: "labels",
   get: (dimension: string) => ({ get }) => {
     const fieldsValue = get(selectedFields(dimension));
+    const video = get(isVideoDataset) && get(isRootView);
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
-      .filter(labelFilter)
+      .filter(getLabelFilter(video, dimension))
       .sort((a, b) => (a.name < b.name ? -1 : 1));
   },
 });
