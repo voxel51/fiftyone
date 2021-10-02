@@ -1685,7 +1685,7 @@ is rendered as a distinct color.
 .. note::
 
     The mask value `0` is a reserved "background" class that is rendered as
-    invislble in the App.
+    invisible in the App.
 
 .. note::
 
@@ -1755,7 +1755,7 @@ are rendered using the colorscale of your
 .. note::
 
     The intensity value `0` is a reserved "background" class that is always
-    rendered as invislble in the App.
+    rendered as invisible in the App.
 
 .. _temporal-detection:
 
