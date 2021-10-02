@@ -31,16 +31,16 @@ export const KEYPOINTS = "Keypoints";
 export const POLYLINE = "Polyline";
 export const POLYLINES = "Polylines";
 export const SEGMENTATION = "Segmentation";
-export const VIDEO_CLASSIFICATION = "VideoClassification";
-export const VIDEO_CLASSIFICATIONS = "VideoClassifications";
+export const TEMPORAL_DETECTION = "TemporalDetection";
+export const TEMPORAL_DETECTIONS = "TemporalDetections";
 
 export const MOMENT_CLASSIFICATIONS = [CLASSIFICATION, CLASSIFICATIONS];
 
 export const LABEL_TAGS_CLASSES = [
   CLASSIFICATION,
   CLASSIFICATIONS,
-  VIDEO_CLASSIFICATION,
-  VIDEO_CLASSIFICATIONS,
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
 ];
 
 export const LABEL_LISTS = {
@@ -48,7 +48,7 @@ export const LABEL_LISTS = {
   [DETECTIONS]: "detections",
   [KEYPOINTS]: "Keypoints",
   [POLYLINES]: "polylines",
-  [VIDEO_CLASSIFICATIONS]: "classifications",
+  [TEMPORAL_DETECTIONS]: "detections",
 };
 
 export const LABELS = {
@@ -63,8 +63,8 @@ export const LABELS = {
   [POLYLINE]: POLYLINE,
   [POLYLINES]: POLYLINES,
   [SEGMENTATION]: SEGMENTATION,
-  [VIDEO_CLASSIFICATION]: VIDEO_CLASSIFICATION,
-  [VIDEO_CLASSIFICATIONS]: VIDEO_CLASSIFICATIONS,
+  [TEMPORAL_DETECTION]: TEMPORAL_DETECTION,
+  [TEMPORAL_DETECTIONS]: TEMPORAL_DETECTIONS,
 };
 
 export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
