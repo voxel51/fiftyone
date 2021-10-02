@@ -1699,8 +1699,8 @@ is rendered as a distinct color.
 Temporal detection
 ------------------
 
-The |TemporalDetection| class represents a temporal detection occuring during a
-specified range of frames in a video.
+The |TemporalDetection| class represents an event occuring during a specified
+range of frames in a video.
 
 The :attr:`label <fiftyone.core.labels.TemporalDetection.label>` attribute
 stores the detection label, and the
