@@ -103,21 +103,21 @@ few videos from the
 
     dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2).clone()
 
-    # Add some temporal video classifications
+    # Add some temporal detections
     sample1 = dataset.first()
-    sample1["events"] = fo.VideoClassifications(
-        classifications=[
-            fo.VideoClassification(label="first", support=[31, 60]),
-            fo.VideoClassification(label="second", support=[90, 120]),
+    sample1["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="first", support=[31, 60]),
+            fo.TemporalDetection(label="second", support=[90, 120]),
         ]
     )
     sample1.save()
 
     sample2 = dataset.last()
-    sample2["events"] = fo.VideoClassifications(
-        classifications=[
-            fo.VideoClassification(label="first", support=[16, 45]),
-            fo.VideoClassification(label="second", support=[75, 104]),
+    sample2["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="first", support=[16, 45]),
+            fo.TemporalDetection(label="second", support=[75, 104]),
         ]
     )
     sample2.save()

@@ -87,10 +87,10 @@ from .core.labels import (
     Keypoint,
     Keypoints,
     Segmentation,
+    TemporalDetection,
+    TemporalDetections,
     GeoLocation,
     GeoLocations,
-    VideoClassification,
-    VideoClassifications,
 )
 from .core.metadata import (
     Metadata,

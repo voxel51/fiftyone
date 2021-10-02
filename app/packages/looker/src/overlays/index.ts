@@ -6,7 +6,7 @@ import { BaseState } from "../state";
 import { Overlay } from "./base";
 import {
   ClassificationsOverlay,
-  VideoClassificationsOverlay,
+  TemporalDetectionOverlay,
 } from "./classifications";
 import DetectionOverlay, { getDetectionPoints } from "./detection";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
@@ -69,7 +69,7 @@ export const loadOverlays = <State extends BaseState>(
 
   if (classifications.length > 0) {
     const overlay = video
-      ? new VideoClassificationsOverlay(classifications)
+      ? new TemporalDetectionOverlay(classifications)
       : new ClassificationsOverlay(classifications);
     overlays.push(overlay);
   }

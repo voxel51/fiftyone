@@ -1171,10 +1171,10 @@ class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
         super().__init__(classes=classes)
 
 
-class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
-    """Parser for samples in FiftyOne video classification datasets.
+class FiftyOneTemporalDetectionSampleParser(LabeledVideoSampleParser):
+    """Parser for samples in FiftyOne temporal detection datasets.
 
-    See :ref:`this page <FiftyOneImageClassificationDataset-import>` for format
+    See :ref:`this page <FiftyOneTemporalDetectionDataset-import>` for format
     details.
 
     Args:
@@ -1199,7 +1199,7 @@ class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
 
     @property
     def label_cls(self):
-        return fol.VideoClassifications
+        return fol.TemporalDetections
 
     @property
     def frame_labels_cls(self):
@@ -1221,7 +1221,7 @@ class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
         if labels is None:
             return None
 
-        classifications = []
+        detections = []
         for label_dict in labels:
             label = label_dict["label"]
 
@@ -1233,7 +1233,7 @@ class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
             confidence = label_dict.get("confidence", None)
 
             if "support" in label_dict:
-                classification = fol.VideoClassification(
+                detection = fol.TemporalDetection(
                     label=label,
                     support=label_dict["support"],
                     confidence=confidence,
@@ -1245,7 +1245,7 @@ class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
                     metadata = fom.VideoMetadata.build_for(video_path)
                     self._current_metadata = metadata
 
-                classification = fol.VideoClassification.from_timestamps(
+                detection = fol.TemporalDetection.from_timestamps(
                     label_dict["timestamps"],
                     metadata=metadata,
                     label=label,
@@ -1253,13 +1253,13 @@ class FiftyOneVideoClassificationSampleParser(LabeledVideoSampleParser):
                 )
             else:
                 raise ValueError(
-                    "All video classification label dicts must have either "
+                    "All temporal detection label dicts must have either "
                     "`support` or `timestamps` populated"
                 )
 
-            classifications.append(classification)
+            detections.append(detection)
 
-        return fol.VideoClassifications(classifications=classifications)
+        return fol.TemporalDetections(detections=detections)
 
     def get_frame_labels(self):
         return None

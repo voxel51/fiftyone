@@ -5,8 +5,8 @@ export const VALID_OBJECT_TYPES = [
   "Keypoints",
   "Polyline",
   "Polylines",
-  "VideoClassification",
-  "VideoClassifications",
+  "TemporalDetection",
+  "TemporalDetections",
 ];
 
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
@@ -16,7 +16,7 @@ export const VALID_LIST_TYPES = [
   "Detections",
   "Keypoints",
   "Polylines",
-  "VideoClassifications",
+  "TemporalDetections",
 ];
 
 export const PATCHES_FIELDS = ["Detections", "Polylines"];
@@ -64,8 +64,8 @@ export const FILTERABLE_TYPES = [
   "Keypoint",
   "Polylines",
   "Polyline",
-  "VideoClassification",
-  "VideoClassifications",
+  "TemporalDetection",
+  "TemporalDetections",
 ];
 
 export const CONFIDENCE_LABELS = [
@@ -77,8 +77,8 @@ export const CONFIDENCE_LABELS = [
   "Keypoints",
   "Polyline",
   "Polylines",
-  "VideoClassification",
-  "VideoClassifications",
+  "TemporalDetection",
+  "TemporalDetections",
 ];
 
 export const SUPPORT_LABELS = ["VideoClassification", "VideoClassifications"];
@@ -88,20 +88,17 @@ export const LABEL_LISTS = [
   "Detections",
   "Keypoints",
   "Polylines",
-  "VideoClassifications",
+  "TemporalDetections",
 ];
 
-export const UNSUPPORTED_IMAGE = [
-  "VideoClassification",
-  "VideoClassifications",
-];
+export const UNSUPPORTED_IMAGE = ["TemporalDetection", "TemporalDetections"];
 
 export const LABEL_LIST = {
   Classifications: "classifications",
   Detections: "detections",
   Keypoints: "keypoints",
   Polylines: "polylines",
-  VideoClassifications: "classifications",
+  TemporalDetections: "detections",
 };
 
 export const AGGS = {
