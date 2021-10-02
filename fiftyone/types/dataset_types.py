@@ -180,7 +180,15 @@ class VideoClassificationDataset(LabeledVideoDataset):
 
 class ImageDetectionDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
-    of associated object detections.
+    of associated detections.
+    """
+
+    pass
+
+
+class VideoDetectionDataset(LabeledVideoDataset):
+    """Base type for datasets that represent a collection of videos and a set
+    of associated video detections.
     """
 
     pass
@@ -189,14 +197,6 @@ class ImageDetectionDataset(LabeledImageDataset):
 class ImageSegmentationDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
     of associated semantic segmentations.
-    """
-
-    pass
-
-
-class VideoDetectionDataset(LabeledVideoDataset):
-    """Base type for datasets that represent a collection of videos and a set
-    of associated video object detections.
     """
 
     pass
@@ -275,27 +275,6 @@ class FiftyOneImageClassificationDataset(ImageClassificationDataset):
         import fiftyone.utils.data as foud
 
         return foud.FiftyOneImageClassificationDatasetExporter
-
-
-class FiftyOneVideoClassificationDataset(ImageClassificationDataset):
-    """A labeled dataset consisting of videos and their associated
-    temporal classification labels stored in a simple JSON format.
-
-    See :ref:`this page <FiftyOneVideoClassificationDataset-import>` for
-    importing datasets of this type, and see
-    :ref:`this page <FiftyOneVideoClassificationDataset-export>` for exporting
-    datasets of this type.
-    """
-
-    def get_dataset_importer_cls(self):
-        import fiftyone.utils.data as foud
-
-        return foud.FiftyOneVideoClassificationDatasetImporter
-
-    def get_dataset_exporter_cls(self):
-        import fiftyone.utils.data as foud
-
-        return foud.FiftyOneVideoClassificationDatasetExporter
 
 
 class ImageClassificationDirectoryTree(ImageClassificationDataset):
@@ -380,6 +359,27 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
         import fiftyone.utils.data as foud
 
         return foud.FiftyOneImageDetectionDatasetExporter
+
+
+class FiftyOneTemporalDetectionDataset(VideoDetectionDataset):
+    """A labeled dataset consisting of videos and their associated temporal
+    detections stored in a simple JSON format.
+
+    See :ref:`this page <FiftyOneTemporalDetectionDataset-import>` for
+    importing datasets of this type, and see
+    :ref:`this page <FiftyOneTemporalDetectionDataset-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneTemporalDetectionDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneTemporalDetectionDatasetExporter
 
 
 class COCODetectionDataset(ImageDetectionDataset):
