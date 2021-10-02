@@ -652,7 +652,7 @@ confidence is at least 0.5:
                     }
                 },
                 "default_deployment_config_dict": {
-                    "type": "fiftyone.core.eta_utils.ETAModel",
+                    "type": "fiftyone.utils.eta.ETAModel",
                     "config": {
                         "type": "eta.detectors.YOLODetector",
                         "config": {

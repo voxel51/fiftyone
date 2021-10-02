@@ -22,12 +22,12 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.utils.eta as foue
 import fiftyone.utils.patches as foup
 
 from .parsers import (
@@ -2704,7 +2704,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         out_image_filename = os.path.basename(out_image_path)
         out_labels_filename = uuid + ".json"
 
-        _image_labels = foe.to_image_labels(labels)
+        _image_labels = foue.to_image_labels(labels)
 
         if etau.is_str(image_or_path):
             image_labels_path = os.path.join(
@@ -2777,7 +2777,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
 
     @property
     def label_cls(self):
-        return None
+        return (fol.Classifications, fol.TemporalDetections)
 
     @property
     def frame_labels_cls(self):
@@ -2806,12 +2806,12 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
-    def export_sample(self, video_path, _, frames, metadata=None):
+    def export_sample(self, video_path, label, frames, metadata=None):
         out_video_path, uuid = self._media_exporter.export(video_path)
 
         out_labels_filename = uuid + ".json"
 
-        _video_labels = foe.to_video_labels(frames)
+        _video_labels = foue.to_video_labels(label=label, frames=frames)
 
         video_labels_path = os.path.join(self._labels_dir, out_labels_filename)
         _video_labels.write_json(
