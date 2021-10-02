@@ -975,7 +975,7 @@ def _expand_with_prefix(
             labels[prefix + attr.name] = from_attribute(attr)
 
     #
-    # Video classifications (video labels only)
+    # Temporal detections (video labels only)
     #
 
     if isinstance(video_or_frame_labels, etav.VideoLabels):
@@ -1071,7 +1071,7 @@ def _expand_with_labels_dict(
             labels[labels_dict[attr.name]] = from_attribute(attr)
 
     #
-    # Video classifications (video labels only)
+    # Temporal detections (video labels only)
     #
 
     if isinstance(video_or_frame_labels, etav.VideoLabels):
