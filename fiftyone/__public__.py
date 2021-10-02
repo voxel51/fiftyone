@@ -51,6 +51,7 @@ from .core.fields import (
     EmbeddedDocumentListField,
     Field,
     FrameNumberField,
+    FrameSupportField,
     FloatField,
     GeoPointField,
     GeoLineStringField,
@@ -86,6 +87,8 @@ from .core.labels import (
     Keypoint,
     Keypoints,
     Segmentation,
+    TemporalDetection,
+    TemporalDetections,
     GeoLocation,
     GeoLocations,
 )
