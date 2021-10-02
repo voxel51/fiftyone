@@ -3603,6 +3603,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for frame in range(prev_frame + 1, len(frame_id_map)):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
+                anno["keyframe"] = False
 
                 prev_type = self._parse_annotation(
                     anno,
