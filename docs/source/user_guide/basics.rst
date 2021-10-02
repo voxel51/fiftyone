@@ -296,8 +296,8 @@ FiftyOne provides a |Label| subclass for many common tasks:
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
-- :ref:`Video classification <video-classification>`: classification label(s)
-  with temporal frame support in a video
+- :ref:`Temporal detection <temporal-detection>`: events with a temporal frame
+  support in a video
 - :ref:`GeoLocation <geolocation>`: geolocation point(s), line(s), or
   polygon(s)
 

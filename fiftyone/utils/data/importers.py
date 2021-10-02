@@ -37,7 +37,7 @@ import fiftyone.types as fot
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
-    FiftyOneVideoClassificationSampleParser,
+    FiftyOneTemporalDetectionSampleParser,
     FiftyOneImageDetectionSampleParser,
     FiftyOneImageLabelsSampleParser,
     FiftyOneVideoLabelsSampleParser,
@@ -1960,175 +1960,6 @@ class FiftyOneImageClassificationDatasetImporter(
         return len(labels.get("labels", {}))
 
 
-class FiftyOneVideoClassificationDatasetImporter(
-    LabeledVideoDatasetImporter, ImportPathsMixin
-):
-    """Importer for temporal video classification datasets stored on disk in
-    FiftyOne's default format.
-
-    See :ref:`this page <FiftyOneVideoClassificationDataset-import>` for format
-    details.
-
-    Args:
-        dataset_dir (None): the dataset directory
-        data_path (None): an optional parameter that enables explicit control
-            over the location of the media. Can be any of the following:
-
-            -   a folder name like ``"data"`` or ``"data"/`` specifying a
-                subfolder of ``dataset_dir`` where the media files reside
-            -   an absolute directory path where the media files reside. In
-                this case, the ``dataset_dir`` has no effect on the location of
-                the data
-            -   a filename like ``"data.json"`` specifying the filename of the
-                JSON data manifest file in ``dataset_dir``
-            -   an absolute filepath specifying the location of the JSON data
-                manifest. In this case, ``dataset_dir`` has no effect on the
-                location of the data
-
-            If None, this parameter will default to whichever of ``data/`` or
-            ``data.json`` exists in the dataset directory
-        labels_path (None): an optional parameter that enables explicit control
-            over the location of the labels. Can be any of the following:
-
-            -   a filename like ``"labels.json"`` specifying the location of
-                the labels in ``dataset_dir``
-            -   an absolute filepath to the labels. In this case,
-                ``dataset_dir`` has no effect on the location of the labels
-
-            If None, the parameter will default to ``labels.json``
-        compute_metadata (False): whether to produce
-            :class:`fiftyone.core.metadata.VideoMetadata` instances for each
-            video when importing
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. By default,
-            all samples are imported
-    """
-
-    def __init__(
-        self,
-        dataset_dir=None,
-        data_path=None,
-        labels_path=None,
-        compute_metadata=False,
-        shuffle=False,
-        seed=None,
-        max_samples=None,
-    ):
-        data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
-        )
-
-        labels_path = self._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels.json",
-        )
-
-        super().__init__(
-            dataset_dir=dataset_dir,
-            shuffle=shuffle,
-            seed=seed,
-            max_samples=max_samples,
-        )
-
-        self.data_path = data_path
-        self.labels_path = labels_path
-        self.compute_metadata = compute_metadata
-
-        self._classes = None
-        self._sample_parser = None
-        self._video_paths_map = None
-        self._labels_map = None
-        self._uuids = None
-        self._iter_uuids = None
-        self._num_samples = None
-        self._has_labels = False
-
-    def __iter__(self):
-        self._iter_uuids = iter(self._uuids)
-        return self
-
-    def __len__(self):
-        return self._num_samples
-
-    def __next__(self):
-        uuid = next(self._iter_uuids)
-
-        video_path = self._video_paths_map[uuid]
-        labels = self._labels_map[uuid]
-
-        if self._has_labels:
-            self._sample_parser.with_sample((video_path, labels))
-            label = self._sample_parser.get_label()
-        else:
-            label = None
-
-        if self.compute_metadata:
-            video_metadata = self._sample_parser.get_video_metadata()
-        else:
-            video_metadata = None
-
-        return video_path, video_metadata, label, None
-
-    @property
-    def has_dataset_info(self):
-        return self._classes is not None
-
-    @property
-    def has_video_metadata(self):
-        return self.compute_metadata
-
-    @property
-    def label_cls(self):
-        return fol.VideoClassifications
-
-    @property
-    def frame_labels_cls(self):
-        return None
-
-    def setup(self):
-        self._sample_parser = FiftyOneVideoClassificationSampleParser(
-            compute_metadata=self.compute_metadata
-        )
-
-        self._video_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True, recursive=True
-        )
-
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
-            labels = etas.load_json(self.labels_path)
-        else:
-            labels = {}
-
-        self._classes = labels.get("classes", None)
-        self._sample_parser.classes = self._classes
-        self._labels_map = labels.get("labels", {})
-        self._has_labels = any(self._labels_map.values())
-
-        uuids = sorted(self._labels_map.keys())
-        self._uuids = self._preprocess_list(uuids)
-        self._num_samples = len(self._uuids)
-
-    def get_dataset_info(self):
-        return {"classes": self._classes}
-
-    @staticmethod
-    def _get_classes(dataset_dir):
-        # Used only by dataset zoo
-        labels_path = os.path.join(dataset_dir, "labels.json")
-        labels = etas.read_json(labels_path)
-        return labels.get("classes", None)
-
-    @staticmethod
-    def _get_num_samples(dataset_dir):
-        # Used only by dataset zoo
-        labels_path = os.path.join(dataset_dir, "labels.json")
-        labels = etas.read_json(labels_path)
-        return len(labels.get("labels", {}))
-
-
 class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     """Importer for an image classification directory tree stored on disk.
 
@@ -2493,6 +2324,175 @@ class FiftyOneImageDetectionDatasetImporter(
         self._sample_parser = FiftyOneImageDetectionSampleParser()
 
         self._image_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True, recursive=True
+        )
+
+        if self.labels_path is not None and os.path.isfile(self.labels_path):
+            labels = etas.load_json(self.labels_path)
+        else:
+            labels = {}
+
+        self._classes = labels.get("classes", None)
+        self._sample_parser.classes = self._classes
+        self._labels_map = labels.get("labels", {})
+        self._has_labels = any(self._labels_map.values())
+
+        uuids = sorted(self._labels_map.keys())
+        self._uuids = self._preprocess_list(uuids)
+        self._num_samples = len(self._uuids)
+
+    def get_dataset_info(self):
+        return {"classes": self._classes}
+
+    @staticmethod
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        labels = etas.read_json(labels_path)
+        return labels.get("classes", None)
+
+    @staticmethod
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        labels = etas.read_json(labels_path)
+        return len(labels.get("labels", {}))
+
+
+class FiftyOneTemporalDetectionDatasetImporter(
+    LabeledVideoDatasetImporter, ImportPathsMixin
+):
+    """Importer for temporal video detection datasets stored on disk in
+    FiftyOne's default format.
+
+    See :ref:`this page <FiftyOneTemporalDetectionDataset-import>` for format
+    details.
+
+    Args:
+        dataset_dir (None): the dataset directory
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like ``"data"`` or ``"data"/`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like ``"labels.json"`` specifying the location of
+                the labels in ``dataset_dir``
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to ``labels.json``
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.VideoMetadata` instances for each
+            video when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
+        compute_metadata=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.data_path = data_path
+        self.labels_path = labels_path
+        self.compute_metadata = compute_metadata
+
+        self._classes = None
+        self._sample_parser = None
+        self._video_paths_map = None
+        self._labels_map = None
+        self._uuids = None
+        self._iter_uuids = None
+        self._num_samples = None
+        self._has_labels = False
+
+    def __iter__(self):
+        self._iter_uuids = iter(self._uuids)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        uuid = next(self._iter_uuids)
+
+        video_path = self._video_paths_map[uuid]
+        labels = self._labels_map[uuid]
+
+        if self._has_labels:
+            self._sample_parser.with_sample((video_path, labels))
+            label = self._sample_parser.get_label()
+        else:
+            label = None
+
+        if self.compute_metadata:
+            video_metadata = self._sample_parser.get_video_metadata()
+        else:
+            video_metadata = None
+
+        return video_path, video_metadata, label, None
+
+    @property
+    def has_dataset_info(self):
+        return self._classes is not None
+
+    @property
+    def has_video_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.TemporalDetections
+
+    @property
+    def frame_labels_cls(self):
+        return None
+
+    def setup(self):
+        self._sample_parser = FiftyOneTemporalDetectionSampleParser(
+            compute_metadata=self.compute_metadata
+        )
+
+        self._video_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 

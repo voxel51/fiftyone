@@ -6,7 +6,7 @@ import {
   DASH_COLOR,
   MOMENT_CLASSIFICATIONS,
   TEXT_COLOR,
-  VIDEO_CLASSIFICATION,
+  TEMPORAL_DETECTION,
 } from "../constants";
 import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
 import {
@@ -290,23 +290,23 @@ export class ClassificationsOverlay<
   }
 }
 
-export interface VideoClassificationLabel extends Classification {
+export interface TemporalDetectionLabel extends Classification {
   support: [number, number];
-  _cls: "VideoClassification";
+  _cls: "TemporalDetection";
 }
 
-export class VideoClassificationsOverlay extends ClassificationsOverlay<
+export class TemporalDetectionOverlay extends ClassificationsOverlay<
   VideoState,
-  VideoClassificationLabel | ClassificationLabel
+  TemporalDetectionLabel | ClassificationLabel
 > {
   getFiltered(state: Readonly<VideoState>) {
     return this.labels.map<
-      [string, (VideoClassificationLabel | ClassificationLabel)[]]
+      [string, (TemporalDetectionLabel | ClassificationLabel)[]]
     >(([field, labels]) => [
       field,
       labels.filter((label) => {
         const shown = isShown(state, field, label) && label.label;
-        if (label._cls === VIDEO_CLASSIFICATION) {
+        if (label._cls === TEMPORAL_DETECTION) {
           return (
             shown &&
             label.support[0] <= state.frameNumber &&

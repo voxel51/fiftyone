@@ -44,10 +44,10 @@
 .. |Keypoint| replace:: :class:`Keypoint <fiftyone.core.labels.Keypoint>`
 .. |Keypoints| replace:: :class:`Keypoints <fiftyone.core.labels.Keypoints>`
 .. |Segmentation| replace:: :class:`Segmentation <fiftyone.core.labels.Segmentation>`
+.. |TemporalDetection| replace:: :class:`TemporalDetection <fiftyone.core.labels.TemporalDetection>`
+.. |TemporalDetections| replace:: :class:`TemporalDetections <fiftyone.core.labels.TemporalDetections>`
 .. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
 .. |GeoLocations| replace:: :class:`GeoLocations <fiftyone.core.labels.GeoLocations>`
-.. |VideoClassification| replace:: :class:`VideoClassification <fiftyone.core.labels.VideoClassification>`
-.. |VideoClassifications| replace:: :class:`VideoClassifications <fiftyone.core.labels.VideoClassifications>`
 
 .. |Attribute| replace:: :class:`Attribute <fiftyone.core.labels.Attribute>`
 .. |BooleanAttribute| replace:: :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`
