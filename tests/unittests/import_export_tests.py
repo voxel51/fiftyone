@@ -1605,9 +1605,9 @@ class VideoExportCoersionTests(VideoDatasetTests):
     def test_clip_exports(self):
         sample1 = fo.Sample(
             filepath=self._new_video(),
-            predictions=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(
+            predictions=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(
                         label="cat", support=[1, 3], confidence=0.9
                     )
                 ]
@@ -1652,12 +1652,12 @@ class VideoExportCoersionTests(VideoDatasetTests):
 
         sample2 = fo.Sample(
             filepath=self._new_video(),
-            predictions=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(
+            predictions=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(
                         label="cat", support=[1, 4], confidence=0.95,
                     ),
-                    fo.VideoClassification(
+                    fo.TemporalDetection(
                         label="dog", support=[2, 5], confidence=0.95,
                     ),
                 ]
@@ -1684,11 +1684,11 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         self.assertEqual(
-            len(dataset2), dataset.count("predictions.classifications")
+            len(dataset2), dataset.count("predictions.detections")
         )
 
         #
-        # Export video classification clips in a VideoClassifications field
+        # Export temporal detection clips in a TemporalDetections field
         #
 
         export_dir = self._new_dir()
@@ -1705,7 +1705,7 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         self.assertEqual(
-            len(dataset2), dataset.count("predictions.classifications")
+            len(dataset2), dataset.count("predictions.detections")
         )
 
         #
@@ -1726,7 +1726,7 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         self.assertEqual(
-            len(dataset2), dataset.count("predictions.classifications")
+            len(dataset2), dataset.count("predictions.detections")
         )
 
         #

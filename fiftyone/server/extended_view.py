@@ -218,10 +218,10 @@ def _is_support(field):
         return True
 
     if isinstance(field, fof.EmbeddedDocumentField):
-        if field.document_type in {
-            fol.VideoClassification,
-            fol.VideoClassifications,
-        }:
+        if field.document_type in (
+            fol.TemporalDetection,
+            fol.TemporalDetections,
+        ):
             return True
 
     return False

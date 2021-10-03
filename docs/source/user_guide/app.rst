@@ -711,10 +711,10 @@ opposed to their labels) will not affect the sample tags of the underlying
 Viewing video clips
 ___________________
 
-Whenever you load a video dataset in the App that contains
-|VideoClassification| labels or frame-level label lists such as |Detections|,
-you can use the patches menu to create a view into your data that contains one
-sample per clip defined by a specified label field of your dataset.
+Whenever you load a video dataset in the App that contains |TemporalDetection|
+labels or frame-level label lists such as |Detections|, you can use the patches
+menu to create a view into your data that contains one sample per clip defined
+by a specified label field of your dataset.
 
 To switch to clips view, simply click the patches icon above the sample grid
 in the App, toggle to the ``Labels`` submenu, and then choose the field whose
@@ -722,11 +722,11 @@ clips you want to view. After you make a selection, a new |ToClips| view stage
 will be appended to the view bar and your view will be updated to show the
 clips.
 
-Creating a clips view for a |VideoClassification| or |VideoClassifications|
-field will create one sample per video classification defined by its
-`[first, last]` frame support, while creating a clips view for a frame-level
-label list field such as |Detections| will contain one sample per contiguous
-range of frames that contains at least one label in the specified field. See
+Creating a clips view for a |TemporalDetection| or |TemporalDetections| field
+will create one sample per temporal detection defined by its `[first, last]`
+frame support, while creating a clips view for a frame-level label list field
+such as |Detections| will contain one sample per contiguous range of frames
+that contains at least one label in the specified field. See
 :ref:`this section <clip-views>` for more information about defining clip
 views.
 

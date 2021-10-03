@@ -73,11 +73,9 @@ class ClipsView(fov.DatasetView):
         if _stages is None:
             _stages = []
 
-        classification_field = self._get_video_classification_field(
+        self._classification_field = self._get_temporal_detection_field(
             source_collection, clips_stage
         )
-
-        self._classification_field = classification_field
         self._source_collection = source_collection
         self._clips_stage = clips_stage
         self._clips_dataset = clips_dataset
@@ -92,12 +90,12 @@ class ClipsView(fov.DatasetView):
         )
 
     @staticmethod
-    def _get_video_classification_field(source_collection, clips_stage):
+    def _get_temporal_detection_field(source_collection, clips_stage):
         try:
             fova.validate_collection_label_fields(
                 source_collection,
                 clips_stage.field_or_expr,
-                (fol.VideoClassification, fol.VideoClassifications),
+                (fol.TemporalDetection, fol.TemporalDetections),
             )
             return clips_stage.field_or_expr
         except:
@@ -225,14 +223,14 @@ class ClipsView(fov.DatasetView):
         if not self._classification_field:
             return
 
-        # Sync classification + support to underlying VideoClassification
+        # Sync label + support to underlying TemporalDetection
 
         field = self._classification_field
 
         classification = sample[field]
         if classification is not None:
             doc = classification.to_dict()
-            doc["_cls"] = "VideoClassification"
+            doc["_cls"] = "TemporalDetection"
             doc["support"] = sample.support
         else:
             doc = None
@@ -248,7 +246,7 @@ class ClipsView(fov.DatasetView):
         if fields is not None and field not in fields:
             return
 
-        # Sync classification + support to underlying VideoClassification
+        # Sync label + support to underlying TemporalDetection
 
         if ids is not None:
             sync_view = self._clips_dataset.select(ids)
@@ -263,7 +261,7 @@ class ClipsView(fov.DatasetView):
         ):
             if doc:
                 doc["support"] = support
-                doc["_cls"] = "VideoClassification"
+                doc["_cls"] = "TemporalDetection"
                 update_ids.append(sample_id)
                 update_docs.append(doc)
             else:
@@ -308,7 +306,7 @@ def make_clips_dataset(
     In addition, sample-level fields will be added for certain clipping
     strategies:
 
-    -   When ``field_or_expr`` is a video classification(s) field, the field
+    -   When ``field_or_expr`` is a temporal detection(s) field, the field
         will be converted to a :class:`fiftyone.core.labels.Classification`
         field
     -   When ``trajectories`` is True, a sample-level label field will be added
@@ -324,8 +322,8 @@ def make_clips_dataset(
             :class:`fiftyone.core.collections.SampleCollection`
         field_or_expr: can be any of the following:
 
-            -   a :class:`fiftyone.core.labels.VideoClassification`,
-                :class:`fiftyone.core.labels.VideoClassifications`,
+            -   a :class:`fiftyone.core.labels.TemporalDetection`,
+                :class:`fiftyone.core.labels.TemporalDetections`,
                 :class:`fiftyone.core.fields.FrameSupportField`, or list of
                 :class:`fiftyone.core.fields.FrameSupportField` field
             -   a frame-level label list field of any of the following types:
@@ -373,7 +371,7 @@ def make_clips_dataset(
             if _is_frame_support_field(sample_collection, field_or_expr):
                 clips_type = "support"
             else:
-                clips_type = "classifications"
+                clips_type = "detections"
     elif isinstance(field_or_expr, (foe.ViewExpression, dict)):
         clips_type = "expression"
     else:
@@ -387,7 +385,7 @@ def make_clips_dataset(
     dataset.create_index("sample_id")
     dataset.add_sample_field("support", fof.FrameSupportField)
 
-    if clips_type == "classifications":
+    if clips_type == "detections":
         dataset.add_sample_field(
             field_or_expr,
             fof.EmbeddedDocumentField,
@@ -423,8 +421,8 @@ def make_clips_dataset(
             field_or_expr,
             other_fields=other_fields,
         )
-    elif clips_type == "classifications":
-        _write_classification_clips(
+    elif clips_type == "detections":
+        _write_temporal_detection_clips(
             dataset,
             sample_collection,
             field_or_expr,
@@ -508,13 +506,13 @@ def _write_support_clips(dataset, src_collection, field, other_fields=None):
     src_dataset._aggregate(pipeline=pipeline)
 
 
-def _write_classification_clips(
+def _write_temporal_detection_clips(
     dataset, src_collection, field, other_fields=None
 ):
     src_dataset = src_collection._dataset
     label_type = src_collection._get_label_field_type(field)
 
-    supported_types = (fol.VideoClassification, fol.VideoClassifications)
+    supported_types = (fol.TemporalDetection, fol.TemporalDetections)
     if label_type not in supported_types:
         raise ValueError(
             "Field '%s' must be a %s type; found %s"
@@ -541,7 +539,7 @@ def _write_classification_clips(
 
     pipeline.append({"$project": project})
 
-    if label_type is fol.VideoClassifications:
+    if label_type is fol.TemporalDetections:
         list_path = field + "." + label_type._LABEL_LIST_FIELD
         pipeline.extend(
             [{"$unwind": "$" + list_path}, {"$set": {field: "$" + list_path}}]

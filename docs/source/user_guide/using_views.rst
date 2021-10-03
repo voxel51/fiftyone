@@ -816,10 +816,9 @@ You can use
 create views into your video datasets that contain one sample per clip defined
 by a specific field or expression in a video collection.
 
-For example, if you have :ref:`video classification <video-classification>`
-labels on your dataset, then you can create a clips view that contains one
-sample per temporal segment by simply passing the name of the video
-classification field to
+For example, if you have :ref:`temporal detection <temporal-detection>` labels
+on your dataset, then you can create a clips view that contains one sample per
+temporal segment by simply passing the name of the temporal detection field to
 :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`:
 
 .. code-block:: python
@@ -831,10 +830,10 @@ classification field to
 
     sample1 = fo.Sample(
         filepath="video1.mp4",
-        events=fo.VideoClassifications(
-            classifications=[
-                fo.VideoClassification(label="meeting", support=[1, 3]),
-                fo.VideoClassification(label="party", support=[2, 4]),
+        events=fo.TemporalDetections(
+            detections=[
+                fo.TemporalDetection(label="meeting", support=[1, 3]),
+                fo.TemporalDetection(label="party", support=[2, 4]),
             ]
         ),
     )
@@ -842,10 +841,10 @@ classification field to
     sample2 = fo.Sample(
         filepath="video2.mp4",
         metadata=fo.VideoMetadata(total_frame_count=5),
-        events=fo.VideoClassifications(
-            classifications=[
-                fo.VideoClassification(label="party", support=[1, 3]),
-                fo.VideoClassification(label="meeting", support=[3, 5]),
+        events=fo.TemporalDetections(
+            detections=[
+                fo.TemporalDetection(label="party", support=[1, 3]),
+                fo.TemporalDetection(label="meeting", support=[3, 5]),
             ]
         ),
     )
@@ -857,7 +856,7 @@ classification field to
     print(view)
 
     # Verify that one sample per clip was created
-    print(dataset.count("events.classifications"))  # 4
+    print(dataset.count("events.detections"))  # 4
     print(len(view))  # 4
 
 .. code-block:: text
@@ -884,7 +883,7 @@ All clips views contain a top-level `support` field that contains the
 `[first, last]` frame range of the clip within `filepath`, which points to the
 source video.
 
-Note that the `events` field, which had type |VideoClassifications| in the
+Note that the `events` field, which had type |TemporalDetections| in the
 source dataset, now has type |Classification| in the clips view, since each
 classification has a one-to-one relationship with its clip.
 
@@ -898,11 +897,11 @@ classification has a one-to-one relationship with its clip.
 .. note::
 
     If you edit the `support` or |Classification| of a sample in a clips view
-    created from video classifications, the changes will be applied to the
-    corresponding |VideoClassification| in the source dataset.
+    created from temporal detections, the changes will be applied to the
+    corresponding |TemporalDetection| in the source dataset.
 
 Continuing from the example above, if you would like to see clips only for
-specific video classification labels, you can achieve this by first
+specific temporal detection labels, you can achieve this by first
 :ref:`filtering the labels <filtering-sample-contents>`:
 
 .. code-block:: python
@@ -1072,7 +1071,7 @@ source dataset, there are some differences compared to non-clip views:
 -   Any edits that you make to sample-level fields of clip views will not be
     reflected on the source dataset (except for edits to the `support` and
     |Classification| field populated when generating clip views based on
-    |VideoClassification| labels, as described above)
+    |TemporalDetection| labels, as described above)
 
 .. _frame-views:
 
