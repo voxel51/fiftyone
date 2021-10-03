@@ -993,13 +993,31 @@ def get_colormap(colorscale, n=256, hex_strs=False):
     """Generates a continuous colormap with the specified number of colors from
     the given plotly colorscale.
 
+    The provided ``colorscale`` can be any of the following::
+
+    -   The string name of any colorscale recognized by plotly. See
+        https://plotly.com/python/colorscales for possible options
+
+    -   A manually-defined colorscale like the following::
+
+        [
+            [0.000, "rgb(165,0,38)"],
+            [0.111, "rgb(215,48,39)"],
+            [0.222, "rgb(244,109,67)"],
+            [0.333, "rgb(253,174,97)"],
+            [0.444, "rgb(254,224,144)"],
+            [0.555, "rgb(224,243,248)"],
+            [0.666, "rgb(171,217,233)"],
+            [0.777, "rgb(116,173,209)"],
+            [0.888, "rgb(69,117,180)"],
+            [1.000, "rgb(49,54,149)"],
+        ]
+
     The colorscale will be sampled evenly at the required resolution in order
     to generate the colormap.
 
     Args:
-        colorscale: a plotly colorscale, e.g., the string name of a builtin
-            colorscale. See https://plotly.com/python/colorscales for possible
-            options
+        colorscale: a valid colorscale. See above for possible options
         n (256): the desired number of colors
         hex_strs (False): whether to return ``#RRGGBB`` hex strings rather than
             ``(R, G, B)`` tuples

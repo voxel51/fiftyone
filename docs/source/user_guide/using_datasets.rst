@@ -1680,7 +1680,7 @@ stretched as necessary to fit the image's extent when visualizing in the App.
     }>
 
 When you load datasets with |Segmentation| fields in the App, each pixel value
-is rendered as a distinct color.
+is rendered as a different color (if possible) from the App's color pool.
 
 .. note::
 
@@ -1748,14 +1748,105 @@ extent when visualizing in the App.
         }>,
     }>
 
-When you load datasets with |Heatmap| fields in the App, the intensity values
-are rendered using the colorscale of your
-:ref:`App config <configuring-fiftyone-app>`.
+When visualizing heatmaps :ref:`in the App <fiftyone-app>`, when the App is
+in color-by-field mode, heatmaps are rendered in their field's color with
+transparency inversely proportional to the magnitude of the heatmap's values.
+For example, for a heatmap whose
+:attr:`range <fiftyone.core.labels.Heatmap.range>` is ``[-10, 10]``, pixels
+with the value +9 will be rendered with 90% opacity, and pixels with the value
+-3 will be rendered with 30% opacity.
+
+When the App is in color-by-value mode, heatmaps are rendered using the
+colormap defined by the `colorscale` of your
+:ref:`App config <configuring-fiftyone-app>`, which can be:
+
+-   The string name of any colorscale
+    `recognized by Plotly <https://plotly.com/python/colorscales>`_
+
+-   A manually-defined colorscale like the following::
+
+    [
+        [0.000, "rgb(165,0,38)"],
+        [0.111, "rgb(215,48,39)"],
+        [0.222, "rgb(244,109,67)"],
+        [0.333, "rgb(253,174,97)"],
+        [0.444, "rgb(254,224,144)"],
+        [0.555, "rgb(224,243,248)"],
+        [0.666, "rgb(171,217,233)"],
+        [0.777, "rgb(116,173,209)"],
+        [0.888, "rgb(69,117,180)"],
+        [1.000, "rgb(49,54,149)"],
+    ]
+
+In color-by-value mode, you can also toggle the `colorscale_transparency` flag
+of your App config to specify whether transparency should be applied to your
+heatmap's values using the same strategy described above for color-by-field
+mode.
+
+The example code below demonstrates the possibilities that heatmaps provide by
+overlaying random gaussian kernels with positive or negative sign on an image
+dataset and configuring the App's colorscale in various ways on-the-fly:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    def random_kernel(metadata):
+        h = metadata.height // 2
+        w = metadata.width // 2
+        sign = np.sign(np.random.randn())
+        x, y = np.meshgrid(np.linspace(-1, 1, w), np.linspace(-1, 1, h))
+        x0, y0 = np.random.random(2) - 0.5
+        kernel = sign * np.exp(-np.sqrt((x - x0) ** 2 + (y - y0) ** 2))
+
+        return fo.Heatmap(map=kernel, range=[-1, 1])
+
+    dataset = foz.load_zoo_dataset("quickstart").select_fields().clone()
+    dataset.compute_metadata()
+
+    for sample in dataset:
+        sample["heatmap"] = random_kernel(sample.metadata)
+        sample.save()
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Select `Settings -> Color by value` in the App
+    # Heatmaps will now be rendered using your default colorscale (printed below)
+    print(session.config.colorscale)
+
+.. code-block:: python
+    :linenos:
+
+    # Switch to a different named colorscale
+    session.config.colorscale = "RdBu"
+    session.config.colorscale_transparency = False
+    session.refresh()
+
+.. code-block:: python
+    :linenos:
+
+    # Switch to a custom colorscale
+    session.config.colorscale = [
+        [0.00, "rgb(166,206,227)"],
+        [0.25, "rgb(31,120,180)"],
+        [0.45, "rgb(178,223,138)"],
+        [0.65, "rgb(51,160,44)"],
+        [0.85, "rgb(251,154,153)"],
+        [1.00, "rgb(227,26,28)"],
+    ]
+    session.refresh()
 
 .. note::
 
-    The intensity value `0` is a reserved "background" class that is always
-    rendered as invisible in the App.
+    Did you know? You customize your App config in various ways, from
+    environment varibables to directly editing a |Session| object's config.
+    See :ref:`this page <configuring-fiftyone-app>` for more details.
 
 .. _temporal-detection:
 
