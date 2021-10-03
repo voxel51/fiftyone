@@ -533,7 +533,7 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
         try:
             label_type = samples._get_label_field_type(label_field)
             found_clips = issubclass(
-                label_type, (fol.VideoClassification, fol.VideoClassifications)
+                label_type, (fol.TemporalDetection, fol.TemporalDetections)
             )
         except:
             pass
@@ -558,7 +558,7 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
         try:
             label_type = samples._get_label_field_type(label_field)
             found_clips = issubclass(
-                label_type, (fol.VideoClassification, fol.VideoClassifications)
+                label_type, (fol.TemporalDetection, fol.TemporalDetections)
             )
         except:
             pass

@@ -263,7 +263,7 @@ Video clips
 ~~~~~~~~~~~
 
 When exporting in either an unlabeled video or video classification format, if
-a |VideoClassification| or |VideoClassifications| field is provided to
+a |TemporalDetection| or |TemporalDetections| field is provided to
 :meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
 specified :ref:`video clips <app-video-clips>` will be exported.
 
@@ -275,35 +275,35 @@ specified :ref:`video clips <app-video-clips>` will be exported.
 
     dataset = foz.load_zoo_dataset("quickstart-video").limit(2).clone()
 
-    # Add some temporal video classifications to the dataset
+    # Add some temporal detections to the dataset
     sample1 = dataset.first()
-    sample1["events"] = fo.VideoClassifications(
-        classifications=[
-            fo.VideoClassification(label="first", support=[31, 60]),
-            fo.VideoClassification(label="second", support=[90, 120]),
+    sample1["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="first", support=[31, 60]),
+            fo.TemporalDetection(label="second", support=[90, 120]),
         ]
     )
     sample1.save()
 
     sample2 = dataset.last()
-    sample2["events"] = fo.VideoClassifications(
-        classifications=[
-            fo.VideoClassification(label="first", support=[16, 45]),
-            fo.VideoClassification(label="second", support=[75, 104]),
+    sample2["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="first", support=[16, 45]),
+            fo.TemporalDetection(label="second", support=[75, 104]),
         ]
     )
     sample2.save()
 
-    # A temporal video classification field is provided, so the clips are
-    # exported as a directory of videos
+    # A temporal detection field is provided, so the clips are exported as a
+    # directory of videos
     dataset.export(
         export_dir="/tmp/quickstart-video/clips",
         dataset_type=fo.types.VideoDirectory,
         label_field="events",
     )
 
-    # A temporal video classification field is provided, so the clips are
-    # exported as a video classification directory tree
+    # A temporal detection field is provided, so the clips are exported as a
+    # video classification directory tree
     dataset.export(
         export_dir="/tmp/quickstart-video/video-classifications",
         dataset_type=fo.types.VideoClassificationDirectoryTree,

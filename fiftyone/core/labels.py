@@ -1134,7 +1134,7 @@ _CONFIDENCE_LABELS = (
     Detection,
     Keypoint,
     Polyline,
-    VideoClassification,
+    TemporalDetection,
 )
 
 _LABEL_LABELS = (
@@ -1142,10 +1142,10 @@ _LABEL_LABELS = (
     Detection,
     Keypoint,
     Polyline,
-    VideoClassification,
+    TemporalDetection,
 )
 
-_SUPPORT_LABELS = (VideoClassification,)
+_SUPPORT_LABELS = (TemporalDetection,)
 
 _PATCHES_FIELDS = (
     Detection,

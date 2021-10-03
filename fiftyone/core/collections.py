@@ -4569,8 +4569,8 @@ class SampleCollection(object):
         Args:
             field_or_expr: can be any of the following:
 
-                -   a :class:`fiftyone.core.labels.VideoClassification`,
-                    :class:`fiftyone.core.labels.VideoClassifications`, or
+                -   a :class:`fiftyone.core.labels.TemporalDetection`,
+                    :class:`fiftyone.core.labels.TemporalDetections`, or
                     :class:`fiftyone.core.fields.FrameSupportField`, or list of
                     :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
@@ -7205,7 +7205,7 @@ def _get_field_with_type(
         if field is not None:
             return field
 
-    # Allow for extraction of video clips when exporting video classification
+    # Allow for extraction of video clips when exporting temporal detection
     # datasets
     if (
         media_type == fom.VIDEO
@@ -7213,7 +7213,7 @@ def _get_field_with_type(
         and label_cls is fol.Classification
     ):
         field = _get_matching_label_field(
-            label_schema, (fol.VideoClassification, fol.VideoClassifications)
+            label_schema, (fol.TemporalDetection, fol.TemporalDetections)
         )
         if field is not None:
             return field
