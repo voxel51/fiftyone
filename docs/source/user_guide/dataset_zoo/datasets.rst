@@ -252,7 +252,7 @@ ActivityNet-100 by passing them to
 
         #
         # Load 10 samples from the validation split that
-        # contain the actions "Bathing dog" and "Walking the dog"
+        # contain the actions "Archery" and "Cricket"
         #
         # Videos that contain all `classes` will be prioritized first, followed
         # by videos that contain at least one of the required `classes`. If
@@ -268,7 +268,7 @@ ActivityNet-100 by passing them to
         fiftyone zoo datasets load activitynet-100 \
             --split validation \
             --kwargs \
-                classes=Bathing_dog,Walking_the_dog \
+                classes=Archery,Cricket \
                 max_samples=10
 
         fiftyone app launch activitynet-100-validation-10
@@ -460,7 +460,7 @@ ActivityNet-200 by passing them to
 
         #
         # Load 10 samples from the validation split that
-        # contain the actions "Bathing dog" and "Walking the dog"
+        # contain the actions "Archery" and "Cricket"
         #
         # Videos that contain all `classes` will be prioritized first, followed
         # by videos that contain at least one of the required `classes`. If
@@ -473,13 +473,13 @@ ActivityNet-200 by passing them to
         # downloading any images
         #
 
-        fiftyone zoo datasets load activitynet-200 \
+        fiftyone zoo datasets load activitynet-100 \
             --split validation \
             --kwargs \
-                classes=Bathing_dog,Walking_the_dog \
+                classes=Archery,Cricket \
                 max_samples=10
 
-        fiftyone app launch activitynet-200-validation-10
+        fiftyone app launch activitynet-100-validation-10
 
 
 .. image:: /images/dataset_zoo/activitynet-200-validation.png
