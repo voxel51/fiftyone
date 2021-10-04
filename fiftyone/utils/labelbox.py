@@ -1117,22 +1117,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 class LabelboxAnnotationResults(foua.AnnotationResults):
     """Class that stores all relevant information needed to monitor the
     progress of an annotation run sent to Labelbox and download the results.
-
-    Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        config: a :class:`LabelboxBackendConfig`
-        id_map: a label ID dictionary for the given collection
-        project_id: the id string of the project created in this annotation run
-        is_video: boolean indicating whether the `samples` are a collection of
-            videos (True) or images (False)
-        backend (None): a :class:`LabelboxBackend`
     """
 
     def __init__(
         self, samples, config, id_map, project_id, is_video, backend=None
     ):
-        super().__init__(samples, config, backend=backend)
-        self.id_map = id_map
+        super().__init__(samples, config, id_map, backend=backend)
         self.project_id = project_id
         self.is_video = is_video
 
