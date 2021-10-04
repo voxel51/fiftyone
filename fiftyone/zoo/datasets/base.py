@@ -89,7 +89,8 @@ class ActivityNet100Dataset(FiftyOneDataset):
     def tags(self):
         return (
             "video",
-            "classification",
+            "temporal-detection",
+            "action-detection",
         )
 
     @property
@@ -174,7 +175,8 @@ class ActivityNet200Dataset(FiftyOneDataset):
     def tags(self):
         return (
             "video",
-            "classification",
+            "temporal-detection",
+            "action-detection",
         )
 
     @property
