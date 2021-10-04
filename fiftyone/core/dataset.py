@@ -4470,9 +4470,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.sample_collection_name = sample_collection_name
 
     # Run results get special treatment at the end
-    dataset_doc.annotation_runs = {}
-    dataset_doc.brain_methods = {}
-    dataset_doc.evaluations = {}
+    dataset_doc.annotation_runs.clear()
+    dataset_doc.brain_methods.clear()
+    dataset_doc.evaluations.clear()
 
     if view is not None:
         # Respect filtered sample fields, if any
