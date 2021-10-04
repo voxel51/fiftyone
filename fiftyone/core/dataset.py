@@ -5682,6 +5682,9 @@ def _always_select_field(sample_collection, field):
 
     view = sample_collection
 
+    if not any(isinstance(stage, fost.SelectFields) for stage in view._stages):
+        return view
+
     # Manually insert `field` into all `SelectFields` stages
     _view = view._base_view
     for stage in view._stages:
@@ -5690,9 +5693,9 @@ def _always_select_field(sample_collection, field):
                 stage.field_names + [field], _allow_missing=True
             )
 
-        view = view.add_stage(stage)
+        _view = _view.add_stage(stage)
 
-    return view
+    return _view
 
 
 def _finalize_frames(sample_collection, key_field, frame_key_field):
