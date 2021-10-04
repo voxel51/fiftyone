@@ -767,26 +767,26 @@ def from_keypoints(keypoints):
     return fol.Keypoints(keypoints=[from_keypoint(k) for k in keypoints])
 
 
-def to_video_event(video_classification, name=None):
+def to_video_event(temporal_detection, name=None):
     """Returns an ``eta.core.events.VideoEvent`` representation of the given
-    :class:`fiftyone.core.labels.VideoClassification`.
+    :class:`fiftyone.core.labels.TemporalDetection`.
 
     Args:
-        keypoint: a :class:`fiftyone.core.labels.VideoClassification`
+        temporal_detection: a :class:`fiftyone.core.labels.TemporalDetection`
         name (None): the name of the label field
 
     Returns:
         an ``eta.core.events.VideoEvent``
     """
-    support = etafu.FrameRanges.build_simple(*video_classification.support)
+    support = etafu.FrameRanges.build_simple(*temporal_detection.support)
     event = etae.VideoEvent(support=support)
 
     event.add_event_attribute(
         etad.CategoricalAttribute(
             name,
-            video_classification.label,
-            confidence=video_classification.confidence,
-            tags=video_classification.tags,
+            temporal_detection.label,
+            confidence=temporal_detection.confidence,
+            tags=temporal_detection.tags,
         )
     )
 
@@ -794,45 +794,45 @@ def to_video_event(video_classification, name=None):
 
 
 def from_video_event(video_event):
-    """Creates a :class:`fiftyone.core.labels.VideoClassification` from an
+    """Creates a :class:`fiftyone.core.labels.TemporalDetection` from an
     ``eta.core.events.VideoEvent``.
 
     Args:
         video_event: an ``eta.core.events.VideoEvent``
 
     Returns:
-        a :class:`fiftyone.core.labels.VideoClassification`
+        a :class:`fiftyone.core.labels.TemporalDetection`
     """
     if video_event.support:
         support = list(video_event.support.limits)
     else:
         support = None
 
-    video_classification = fol.VideoClassification(support=support)
+    detection = fol.TemporalDetection(support=support)
 
     try:
         attr = video_event.attrs[0]
-        video_classification.label = attr.label
-        video_classification.confidence = attr.confidence
-        video_classification.tags = attr.tags
+        detection.label = attr.label
+        detection.confidence = attr.confidence
+        detection.tags = attr.tags
     except:
         pass
 
-    return video_classification
+    return detection
 
 
 def from_video_events(video_events):
-    """Creates a :class:`fiftyone.core.labels.VideoClassifications` from an
+    """Creates a :class:`fiftyone.core.labels.TemporalDetections` from an
     ``eta.core.events.VideoEventContainer``.
 
     Args:
         video_events: an ``eta.core.events.VideoEventContainer``
 
     Returns:
-        a :class:`fiftyone.core.labels.VideoClassifications`
+        a :class:`fiftyone.core.labels.TemporalDetections`
     """
-    return fol.VideoClassifications(
-        classifications=[from_video_event(e) for e in video_events]
+    return fol.TemporalDetections(
+        detections=[from_video_event(e) for e in video_events]
     )
 
 
@@ -880,11 +880,11 @@ def _add_video_labels(video_labels, labels, warn_unsupported=True):
             for classification in label.classifications:
                 attr = to_attribute(classification, name=name)
                 video_labels.add_video_attribute(attr)
-        elif isinstance(label, fol.VideoClassification):
+        elif isinstance(label, fol.TemporalDetection):
             video_labels.add_event(to_video_event(label, name=name))
-        elif isinstance(label, fol.VideoClassifications):
-            for classification in label.classifications:
-                event = to_video_event(classification, name=name)
+        elif isinstance(label, fol.TemporalDetections):
+            for detection in label.detections:
+                event = to_video_event(detection, name=name)
                 video_labels.add_event(event)
         elif warn_unsupported and label is not None:
             msg = "Ignoring unsupported label type '%s'" % label.__class__
@@ -975,7 +975,7 @@ def _expand_with_prefix(
             labels[prefix + attr.name] = from_attribute(attr)
 
     #
-    # Video classifications (video labels only)
+    # Temporal detections (video labels only)
     #
 
     if isinstance(video_or_frame_labels, etav.VideoLabels):
@@ -1071,7 +1071,7 @@ def _expand_with_labels_dict(
             labels[labels_dict[attr.name]] = from_attribute(attr)
 
     #
-    # Video classifications (video labels only)
+    # Temporal detections (video labels only)
     #
 
     if isinstance(video_or_frame_labels, etav.VideoLabels):

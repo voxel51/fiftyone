@@ -1694,21 +1694,21 @@ is rendered as a distinct color.
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
 
-.. _video-classification:
+.. _temporal-detection:
 
-Video classification
---------------------
+Temporal detection
+------------------
 
-The |VideoClassification| class represents a classification label with a
-temporal frame support in a video.
+The |TemporalDetection| class represents an event occuring during a specified
+range of frames in a video.
 
-The :attr:`label <fiftyone.core.labels.VideoClassification.label>` attribute
-stores the classification label, and the
-:attr:`support <fiftyone.core.labels.VideoClassification.support>` attribute
-stores the `[first, last]` frame range of the classification in the video.
+The :attr:`label <fiftyone.core.labels.TemporalDetection.label>` attribute
+stores the detection label, and the
+:attr:`support <fiftyone.core.labels.TemporalDetection.support>` attribute
+stores the `[first, last]` frame range of the detection in the video.
 
 The optional
-:attr:`confidence <fiftyone.core.labels.VideoClassification.confidence>`
+:attr:`confidence <fiftyone.core.labels.TemporalDetection.confidence>`
 attribute can be used to store a model prediction score, and you can add
 :ref:`custom attributes <label-attributes>` as well, which can be visualized in
 the App.
@@ -1719,7 +1719,7 @@ the App.
     import fiftyone as fo
 
     sample = fo.Sample(filepath="/path/to/video.mp4")
-    sample["events"] = fo.VideoClassification(label="meeting", support=[10, 20])
+    sample["events"] = fo.TemporalDetection(label="meeting", support=[10, 20])
 
     print(sample)
 
@@ -1731,7 +1731,7 @@ the App.
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'events': <VideoClassification: {
+        'events': <TemporalDetection: {
             'id': '61321c8ea36cb17df655f44f',
             'tags': BaseList([]),
             'label': 'meeting',
@@ -1741,9 +1741,9 @@ the App.
         'frames': <Frames: 0>,
     }>
 
-If your video classification data is represented as timestamps in seconds, you
+If your temporal detection data is represented as timestamps in seconds, you
 can use the
-:meth:`from_timestamps() <fiftyone.core.labels.VideoClassification.from_timestamps>`
+:meth:`from_timestamps() <fiftyone.core.labels.TemporalDetection.from_timestamps>`
 factory method to perform the necessary conversion to frames automatically
 based on the sample's :ref:`video metadata <using-metadata>`:
 
@@ -1760,7 +1760,7 @@ based on the sample's :ref:`video metadata <using-metadata>`:
     sample = fo.Sample(filepath=filepath)
     sample.compute_metadata()
 
-    sample["events"] = fo.VideoClassification.from_timestamps(
+    sample["events"] = fo.TemporalDetection.from_timestamps(
         [1, 2], label="meeting", sample=sample
     )
 
@@ -1783,7 +1783,7 @@ based on the sample's :ref:`video metadata <using-metadata>`:
             'duration': 4.004,
             'encoding_str': 'avc1',
         }>,
-        'events': <VideoClassification: {
+        'events': <TemporalDetection: {
             'id': '61321e498d5f587970b29183',
             'tags': BaseList([]),
             'label': 'meeting',
@@ -1793,7 +1793,7 @@ based on the sample's :ref:`video metadata <using-metadata>`:
         'frames': <Frames: 0>,
     }>
 
-The |VideoClassifications| class holds a list of video classifications for a
+The |TemporalDetections| class holds a list of temporal detections for a
 sample:
 
 .. code-block:: python
@@ -1802,10 +1802,10 @@ sample:
     import fiftyone as fo
 
     sample = fo.Sample(filepath="/path/to/video.mp4")
-    sample["events"] = fo.VideoClassifications(
-        classifications=[
-            fo.VideoClassification(label="meeting", support=[10, 20]),
-            fo.VideoClassification(label="party", support=[30, 60]),
+    sample["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="meeting", support=[10, 20]),
+            fo.TemporalDetection(label="party", support=[30, 60]),
         ]
     )
 
@@ -1819,16 +1819,16 @@ sample:
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'events': <VideoClassifications: {
-            'classifications': BaseList([
-                <VideoClassification: {
+        'events': <TemporalDetections: {
+            'detections': BaseList([
+                <TemporalDetection: {
                     'id': '61321ed78d5f587970b29184',
                     'tags': BaseList([]),
                     'label': 'meeting',
                     'support': BaseList([10, 20]),
                     'confidence': None,
                 }>,
-                <VideoClassification: {
+                <TemporalDetection: {
                     'id': '61321ed78d5f587970b29185',
                     'tags': BaseList([]),
                     'label': 'party',
