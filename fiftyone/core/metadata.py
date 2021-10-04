@@ -153,7 +153,8 @@ def compute_sample_metadata(sample, skip_failures=False):
     sample.metadata = _compute_sample_metadata(
         sample.filepath, sample.media_type, skip_failures=skip_failures
     )
-    sample.save()
+    if sample._in_db:
+        sample.save()
 
 
 def compute_metadata(

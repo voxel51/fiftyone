@@ -3,7 +3,7 @@
  */
 
 import { CONTAINS, Overlay } from "./overlays/base";
-import ClassificationsOverlay from "./overlays/classifications";
+import { ClassificationsOverlay } from "./overlays/classifications";
 import { BaseState } from "./state";
 import { rotate } from "./util";
 

@@ -11,6 +11,7 @@ import eta.core.image as etai
 
 import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
+import fiftyone.utils.eta as foue
 
 
 class ImagePatchesExtractor(object):
@@ -151,7 +152,7 @@ def extract_patch(img, detection, force_square=False, alpha=None):
     Returns:
         the image patch
     """
-    dobj = detection.to_detected_object()
+    dobj = foue.to_detected_object(detection)
 
     bbox = dobj.bounding_box
     if alpha is not None:
