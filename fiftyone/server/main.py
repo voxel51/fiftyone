@@ -244,13 +244,13 @@ class PageHandler(tornado.web.RequestHandler):
             self.write({"results": [], "more": False})
             return
 
-        view = view.skip((page - 1) * page_length)
         if view.media_type == fom.VIDEO:
             view = view.set_field(
                 "frames", F("frames").filter((F("frame_number") == 1))
             )
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
+        view = view.skip((page - 1) * page_length)
 
         samples = await foo.aggregate(
             StateHandler.sample_collection(),
