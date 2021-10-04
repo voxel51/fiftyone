@@ -5727,6 +5727,7 @@ class SampleCollection(object):
         mask_targets=None,
         allow_additions=True,
         allow_deletions=True,
+        allow_label_edits=True,
         allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
@@ -5816,6 +5817,9 @@ class SampleCollection(object):
                 Only applicable when editing existing label fields
             allow_deletions (True): whether to allow labels to be deleted. Only
                 applicable when editing existing label fields
+            allow_label_edits (True): whether to allow the ``label`` attribute
+                of existing labels to be modified. Only applicable when editing
+                existing label fields
             allow_spatial_edits (True): whether to allow edits to the spatial
                 properties (bounding boxes, vertices, keypoints, etc) of
                 labels. Only applicable when editing existing label fields
@@ -5843,6 +5847,7 @@ class SampleCollection(object):
             mask_targets=mask_targets,
             allow_additions=allow_additions,
             allow_deletions=allow_deletions,
+            allow_label_edits=allow_label_edits,
             allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,

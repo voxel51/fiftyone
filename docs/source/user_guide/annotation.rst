@@ -482,6 +482,9 @@ more details:
     applicable when editing existing label fields
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
     applicable when editing existing label fields
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute of
+    existing labels to be modified. Only applicable when editing existing label
+    fields
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
     properties (bounding boxes, vertices, keypoints, etc) of labels. Only
     applicable when editing existing label fields
@@ -725,6 +728,8 @@ following flags to
 
 -   **allow_additions** (*True*): whether to allow new labels to be added
 -   **allow_deletions** (*True*): whether to allow labels to be deleted
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute to
+    be modified
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
     properties (bounding boxes, vertices, keypoints, etc) of labels
 
@@ -737,8 +742,8 @@ existing label field(s) you wish.
 For example, suppose you have an existing `ground_truth` field that contains
 objects of various types and you would like to add new `sex` and `age`
 attributes to all people in this field while also strictly enforcing that no
-objects can be added, deleted, or have their bounding boxes modified. You can
-configure an annotation run for this as follows:
+objects can be added, deleted, or have their labels or bounding boxes modified.
+You can configure an annotation run for this as follows:
 
 .. code:: python
     :linenos:
@@ -762,13 +767,47 @@ configure an annotation run for this as follows:
         attributes=attributes,
         allow_additions=False,
         allow_deletions=False,
+        allow_label_edits=False,
         allow_spatial_edits=False,
+    )
+
+You can also include a `read_only=True` parameter when uploading existing
+label attributes to specify that the attribute's value should be uploaded to
+the annotation backend for informational purposes, but any edits to the
+attribute's value should not be imported back into FiftyOne.
+
+For example, if you have vehicles with their `make` attribute populated and you
+want to populate a new `model` attribute based on this information without
+allowing changes to the vehicle's `make`, you can configure an annotation run
+for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "make": {
+            "type": "text",
+            "read_only": True,
+        },
+        "model": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["vehicle"],
+        attributes=attributes,
     )
 
 .. note::
 
     Some annotation backends may not support restrictions to additions,
-    deletions, and spatial edits in their editing interface.
+    deletions, spatial edits, and read-only attributes in their editing
+    interface.
 
     However, any restrictions that you specify via the above parameters will
     still be enforced when you call
