@@ -123,19 +123,30 @@ class LabelboxBackend(foua.AnnotationBackend):
         ]
 
     @property
+    def supported_scalar_types(self):
+        return [
+            fof.IntField,
+            fof.FloatField,
+            fof.StringField,
+            fof.BooleanField,
+        ]
+
+    @property
     def supported_attr_types(self):
         return ["text", "select", "radio", "checkbox"]
 
     @property
-    def default_attr_type(self):
-        return "text"
+    def supports_keyframes(self):
+        return False
 
-    @property
-    def default_categorical_attr_type(self):
-        return None
+    def recommend_attr_tool(self, name, value):
+        if isinstance(value, bool):
+            return {"type": "radio", "values": [True, False]}
+
+        return {"type": "text"}
 
     def requires_attr_values(self, attr_type):
-        return False
+        return attr_type != "text"
 
     def connect_to_api(self):
         return LabelboxAnnotationAPI(
@@ -672,6 +683,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     instructions=attr_name,
                     options=options,
                 )
+
             attributes.append(attr)
 
         return attributes
