@@ -478,6 +478,13 @@ more details:
         `values`, and `default` for each attribute
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
+-   **allow_additions** (*True*): whether to allow new labels to be added. Only
+    applicable when editing existing label fields
+-   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
+    applicable when editing existing label fields
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
+    applicable when editing existing label fields
 
 |br|
 In addition, each annotation backend can typically be configured in a variety
@@ -705,6 +712,68 @@ take additional values:
 
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
+
+.. _annotation-restricting-edits:
+
+Restricting additions, deletions, and edits
+-------------------------------------------
+
+When you create annotation runs that invovle editing existing label fields, you
+can optionally specify that certain changes are not alllowed by passing the
+following flags to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+-   **allow_additions** (*True*): whether to allow new labels to be added
+-   **allow_deletions** (*True*): whether to allow labels to be deleted
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels
+
+If you are using the `label_schema` parameter to provide a full annotation
+schema to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, you
+can also directly include the above flags in the configuration dicts for any
+existing label field(s) you wish.
+
+For example, suppose you have an existing `ground_truth` field that contains
+objects of various types and you would like to add new `sex` and `age`
+attributes to all people in this field while also strictly enforcing that no
+objects can be added, deleted, or have their bounding boxes modified. You can
+configure an annotation run for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "sex": {
+            "type": "select",
+            "values": ["male", "female"],
+        },
+        "age": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["person"],
+        attributes=attributes,
+        allow_additions=False,
+        allow_deletions=False,
+        allow_spatial_edits=False,
+    )
+
+.. note::
+
+    Some annotation backends may not support restrictions to additions,
+    deletions, and spatial edits in their editing interface.
+
+    However, any restrictions that you specify via the above parameters will
+    still be enforced when you call
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    to merge the annotations back into FiftyOne.
 
 .. _annotation-labeling-videos:
 

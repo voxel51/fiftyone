@@ -26,6 +26,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
@@ -2513,6 +2514,15 @@ class CVATBackend(foua.AnnotationBackend):
         ]
 
     @property
+    def supported_scalar_types(self):
+        return [
+            fof.IntField,
+            fof.FloatField,
+            fof.StringField,
+            fof.BooleanField,
+        ]
+
+    @property
     def supported_attr_types(self):
         return ["text", "select", "radio", "checkbox"]
 
@@ -3194,8 +3204,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
             if label_type == "scalar":
-                # True: scalars are annotated as tag attributes
-                # False: scalars are annotated as tag labels
                 assigned_scalar_attrs[label_field] = assign_scalar_attrs
 
             labels_task_map[label_field] = []
@@ -3223,7 +3231,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            is_shape=False,
                             assign_scalar_attrs=assign_scalar_attrs,
                         )
                     elif is_video and label_type != "segmentation":
@@ -3237,7 +3244,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            is_shape=True,
                             load_tracks=True,
                             only_keyframes=only_keyframes,
                         )
@@ -3251,7 +3257,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            is_shape=True,
                         )
 
                     id_map[label_field] = _id_map
@@ -3725,25 +3730,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if expected_label_type == "scalar":
                 label_type = "scalar"
                 if assigned_scalar_attrs:
-                    attrs = anno["attributes"]
-                    label = _parse_attribute(attrs[0]["value"])
-                    if (
-                        prev_type is not None
-                        and label is not None
-                        and not isinstance(label, prev_type)
-                    ):
-                        if prev_type == str:
+                    label = _parse_attribute(anno["attributes"][0]["value"])
+                    if label is not None:
+                        if prev_type is str:
                             label = str(label)
-                        else:
-                            logger.warning(
-                                "Skipping scalar '%s' that does not match "
-                                "previous scalars of type %s",
-                                label,
-                                str(prev_type),
-                            )
+
+                        if prev_type is None:
+                            prev_type = type(label)
+                        elif not isinstance(label, prev_type):
+                            msg = (
+                                "Ignoring scalar of type %s that does not "
+                                "match previously inferred scalar type %s"
+                            ) % (type(label), prev_type)
+                            warnings.warn(msg)
                             label = None
-                    else:
-                        prev_type = type(label)
                 else:
                     label = class_map[anno["label_id"]]
             else:
@@ -3866,7 +3866,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "mutable": True,
             }
 
-        assign_scalar_attrs = bool(classes)
+        # True: scalars are annotated as tag attributes
+        # False: scalars are annotated as tag labels
+        assign_scalar_attrs = not bool(classes)
 
         if not classes:
             classes = [label_field]
@@ -3933,7 +3935,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field,
         label_info,
         cvat_schema,
-        is_shape=False,
         assign_scalar_attrs=False,
         load_tracks=False,
         only_keyframes=False,
@@ -3962,12 +3963,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if is_video:
                 images = sample.frames.values()
-                if is_shape:
-                    frame_size = (metadata.frame_width, metadata.frame_height)
+                frame_size = (metadata.frame_width, metadata.frame_height)
             else:
                 images = [sample]
-                if is_shape:
-                    frame_size = (metadata.width, metadata.height)
+                frame_size = (metadata.width, metadata.height)
 
             for image in images:
                 frame_id += 1
@@ -4071,6 +4070,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         assign_scalar_attrs=False,
         label_field=None,
     ):
+        if label is None:
+            label = ""
+
         if assign_scalar_attrs:
             scalar_attr_name = next(iter(cvat_schema[label_field].keys()))
 
@@ -4090,7 +4092,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             }
         ]
 
-        return None, tags, {}, {}
+        return True, tags, {}, {}
 
     def _create_classification_tags(
         self,
@@ -5026,6 +5028,9 @@ def _ensure_list(value):
 
 
 def _parse_attribute(value):
+    if value in (None, "None", ""):
+        return None
+
     if value in {"True", "true"}:
         return True
 
@@ -5041,9 +5046,6 @@ def _parse_attribute(value):
         return float(value)
     except:
         pass
-
-    if value == "None":
-        return None
 
     return value
 

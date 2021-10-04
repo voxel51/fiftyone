@@ -415,6 +415,13 @@ details:
         `values`, and `default` for each attribute
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
+-   **allow_additions** (*True*): whether to allow new labels to be added. Only
+    applicable when editing existing label fields
+-   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
+    applicable when editing existing label fields
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
+    applicable when editing existing label fields
 
 |br|
 In addition, the following CVAT-specific parameters from
@@ -658,6 +665,68 @@ types like lists, dictionaries, and arrays will be omitted.
     modifications to existing labels, and changing or deleting these ID
     attributes in CVAT will result in labels being overwritten rather than
     merged when loading annotations back into FiftyOne.
+
+.. _cvat-restricting-edits:
+
+Restricting additions, deletions, and edits
+-------------------------------------------
+
+When you create annotation runs that invovle editing existing label fields, you
+can optionally specify that certain changes are not alllowed by passing the
+following flags to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+-   **allow_additions** (*True*): whether to allow new labels to be added
+-   **allow_deletions** (*True*): whether to allow labels to be deleted
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels
+
+If you are using the `label_schema` parameter to provide a full annotation
+schema to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, you
+can also directly include the above flags in the configuration dicts for any
+existing label field(s) you wish.
+
+For example, suppose you have an existing `ground_truth` field that contains
+objects of various types and you would like to add new `sex` and `age`
+attributes to all people in this field while also strictly enforcing that no
+objects can be added, deleted, or have their bounding boxes modified. You can
+configure an annotation run for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "sex": {
+            "type": "select",
+            "values": ["male", "female"],
+        },
+        "age": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["person"],
+        attributes=attributes,
+        allow_additions=False,
+        allow_deletions=False,
+        allow_spatial_edits=False,
+    )
+
+.. note::
+
+    The CVAT backend does not support restrictions to additions, deletions, and
+    spatial edits in its editing interface.
+
+    However, any restrictions that you specify via the above parameters will
+    still be enforced when you call
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    to merge the annotations back into FiftyOne.
 
 .. _cvat-labeling-videos:
 
@@ -982,6 +1051,66 @@ can be used to annotate new classes and/or attributes:
     been modified, added, or deleted, and thus editing these label IDs will
     result in labels being overwritten when
     loaded into FiftyOne rather than being merged.
+
+Restricting label edits
+-----------------------
+
+You can use the `allow_additions`, `allow_deletions`, and `allow_spatial_edits`
+parameters to configure whether certain types of edits are allowed in your
+annotation run. See :ref:`this section <cvat-restricting-edits>` for more
+information about the available options.
+
+For example, suppose you have an existing `ground_truth` field that contains
+objects of various types and you would like to add new `sex` and `age`
+attributes to all people in this field while also strictly enforcing that no
+objects can be added, deleted, or have their bounding boxes modified. You can
+configure an annotation run for this as follows:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Grab a sample that contains a person
+    view = (
+        dataset
+        .match_labels(filter=F("label") == "person", fields="ground_truth")
+        .limit(1)
+    )
+
+    anno_key = "cvat_edit_restrictions"
+
+    # The new attributes that we want to populate
+    attributes = {
+        "sex": {
+            "type": "select",
+            "values": ["male", "female"],
+        },
+        "age": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["person"],
+        attributes=attributes,
+        allow_additions=False,
+        allow_deletions=False,
+        allow_spatial_edits=False,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Populate attributes in CVAT
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 Annotating multiple fields
 --------------------------
