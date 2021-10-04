@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActivityNetDatasetImporter(
-    foud.FiftyOneVideoClassificationDatasetImporter
+    foud.FiftyOneTemporalDetectionDatasetImporter
 ):
     """Base class for importing datasets in ActivityNet format.
 
@@ -90,7 +90,7 @@ class ActivityNetDatasetImporter(
         return self._classes is not None or self._taxonomy is not None
 
     def setup(self):
-        self._sample_parser = foud.FiftyOneVideoClassificationSampleParser(
+        self._sample_parser = foud.FiftyOneTemporalDetectionSampleParser(
             compute_metadata=self.compute_metadata
         )
 
