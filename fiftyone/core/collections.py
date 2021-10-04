@@ -7330,7 +7330,11 @@ def _parse_field_name(
             break
 
         if isinstance(field_type, fof.ListField):
-            if omit_terminal_lists and path == field_name:
+            if (
+                omit_terminal_lists
+                and path == field_name
+                and path not in explicit_unwinds
+            ):
                 break
 
             if path in explicit_unwinds or auto_unwind:
