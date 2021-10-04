@@ -1840,7 +1840,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
-    def evaluate_video_classifications(
+    def evaluate_temporal_detections(
         self,
         pred_field,
         gt_field="ground_truth",
@@ -1852,15 +1852,15 @@ class SampleCollection(object):
         classwise=True,
         **kwargs,
     ):
-        """Evaluates the video classification predictions in the given collection with
+        """Evaluates the temporal detection predictions in the given collection with
         respect to the specified ground truth labels. These labels are often used
         for tasks like temporal action detection.
     
         Args:
             pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.VideoClassification` instances
+                :class:`fiftyone.core.labels.TemporalDetection` instances
             gt_field ("ground_truth"): the name of the field containing the ground
-                truth :class:`fiftyone.core.labels.VideoClassification` instances
+                truth :class:`fiftyone.core.labels.TemporalDetection` instances
             eval_key (None): an evaluation key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided, classes
                 are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -1875,12 +1875,12 @@ class SampleCollection(object):
             classwise (True): whether to only match segments with the same class
                 label (True) or allow matches between classes (False)
             **kwargs: optional keyword arguments for the constructor of the
-                :class:`VideoClassificationEvaluationConfig` being used
+                :class:`TemporalDetectionEvaluationConfig` being used
     
         Returns:
-            a :class:`VideoClassificationResults`
+            a :class:`TemporalDetectionResults`
         """
-        return foue.evaluate_video_classifications(
+        return foue.evaluate_temporal_detections(
             self,
             pred_field,
             gt_field=gt_field,
