@@ -712,11 +712,11 @@ class DICOMDataset(ImageLabelsDataset):
 
 class ActivityNetDataset(FiftyOneTemporalDetectionDataset):
     """A video dataset composed of temporal activity detections loaded as
-    :class:`fiftyone.core.labels.VideoClassification` labels stored in 
+    :class:`fiftyone.core.labels.TemporalDetection` labels stored in 
     `ActivityNet format <http://activity-net.org/download.html>`_.
 
     This format is the same as the  
-    :ref:`FiftyOneVideoClassificationDataset <FiftyOneVideoClassificationDataset-import>`
+    :ref:`FiftyOneTemporalDetectionDataset <FiftyOneTemporalDetectionDataset-import>`
     format except that the `labels.json` may also contain a `taxonomy` like the
     one provided by the raw ActivityNet annotations::
     
