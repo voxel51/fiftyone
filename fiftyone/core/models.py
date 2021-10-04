@@ -27,7 +27,7 @@ import fiftyone.core.validation as fov
 
 tud = fou.lazy_import("torch.utils.data")
 
-foe = fou.lazy_import("fiftyone.core.eta_utils")
+foue = fou.lazy_import("fiftyone.utils.eta")
 fouf = fou.lazy_import("fiftyone.utils.flash")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
@@ -1673,7 +1673,7 @@ def load_model(model_config_dict, model_path=None, **kwargs):
     """
     # Inject config args
     if kwargs:
-        if model_config_dict["type"] == etau.get_class_name(foe.ETAModel):
+        if model_config_dict["type"] == etau.get_class_name(foue.ETAModel):
             _merge_config(model_config_dict["config"]["config"], kwargs)
         else:
             _merge_config(model_config_dict["config"], kwargs)
@@ -1689,14 +1689,14 @@ def load_model(model_config_dict, model_path=None, **kwargs):
     #
     # (1) Their config implements ``eta.core.learning.HasPublishedModel``
     #
-    # (2) Their config is an ``fiftyone.core.eta_utils.ETAModelConfig`` whose
+    # (2) Their config is an ``fiftyone.utils.eta.ETAModelConfig`` whose
     #     embedded config implements ``eta.core.learning.HasPublishedModel``
     #
     if model_path:
         if isinstance(config.config, etal.HasPublishedModel):
             config.config.model_name = None
             config.config.model_path = model_path
-        elif isinstance(config.config, foe.ETAModelConfig) and isinstance(
+        elif isinstance(config.config, foue.ETAModelConfig) and isinstance(
             config.config.config, etal.HasPublishedModel
         ):
             config.config.config.model_name = None

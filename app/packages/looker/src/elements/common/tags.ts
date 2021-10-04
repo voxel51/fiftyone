@@ -3,11 +3,12 @@
  */
 
 import {
-  CLASSIFICATIONS,
   LABEL_LISTS,
   LABEL_TAGS_CLASSES,
+  MOMENT_CLASSIFICATIONS,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
+import { getMimeType } from "../../util";
 import { BaseElement } from "../base";
 
 import { lookerTags } from "./tags.module.css";
@@ -35,7 +36,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      options: { filter, activePaths, colorMap, colorByLabel, fieldsMap },
+      options: {
+        filter,
+        activePaths,
+        colorMap,
+        colorByLabel,
+        fieldsMap,
+        mimetype,
+      },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
@@ -79,21 +87,35 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       ) {
         const cls = sample[path]._cls;
 
-        const labels =
-          cls === CLASSIFICATIONS
-            ? sample[path][LABEL_LISTS[cls]]
-            : [sample[path]];
+        const isList = cls in LABEL_LISTS;
+        const labels = isList ? sample[path][LABEL_LISTS[cls]] : [sample[path]];
 
         elements = [
           ...elements,
-          ...labels
-            .filter((label) => filter[path](label))
-            .map((label) => label.label)
-            .map((label) => ({
-              color: colorMap(colorByLabel ? label : path),
-              title: `${path}: ${label}`,
-              value: label,
-            })),
+          ...Object.entries(
+            labels
+              .filter(
+                (label) =>
+                  label.label &&
+                  filter[path](label) &&
+                  (mimetype.includes("video") ||
+                    MOMENT_CLASSIFICATIONS.includes(label._cls))
+              )
+              .map((label) => label.label)
+              .reduce((acc, cur) => {
+                if (!acc[cur]) {
+                  acc[cur] = 0;
+                }
+                acc[cur] += 1;
+                return acc;
+              }, {})
+          ).map(([label, count]) => ({
+            color: colorMap(colorByLabel ? label : path),
+            title: `${path}: ${label}`,
+            value: isList
+              ? `${prettify(label)}: ${count.toLocaleString()}`
+              : prettify(label),
+          })),
         ];
       } else {
         let valuePath = path;
