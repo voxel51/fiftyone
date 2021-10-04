@@ -18,7 +18,7 @@ from .segmentation import (
     evaluate_segmentations,
     SegmentationResults,
 )
-from .video_classification import (
-    evaluate_video_classifications,
-    VideoClassificationResults,
+from .temporal_detection import (
+    evaluate_temporal_detections,
+    TemporalDetectionResults,
 )

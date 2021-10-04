@@ -1,5 +1,5 @@
 """
-Video classification evaluation.
+Temporal detection evaluation.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -21,7 +21,7 @@ from .base import BaseEvaluationResults
 logger = logging.getLogger(__name__)
 
 
-def evaluate_video_classifications(
+def evaluate_temporal_detections(
     samples,
     pred_field,
     gt_field="ground_truth",
@@ -33,16 +33,17 @@ def evaluate_video_classifications(
     classwise=True,
     **kwargs,
 ):
-    """Evaluates the video classification predictions in the given collection with
+    """Evaluates the :class:`fiftyone.core.labels.TemporalDetections` 
+    predictions in the given collection with
     respect to the specified ground truth labels. These labels are often used
     for tasks like temporal action detection.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.VideoClassification` instances
+            :class:`fiftyone.core.labels.TemporalDetection` instances
         gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.VideoClassification` instances
+            truth :class:`fiftyone.core.labels.TemporalDetection` instances
         eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, classes
             are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
@@ -57,17 +58,17 @@ def evaluate_video_classifications(
         classwise (True): whether to only match segments with the same class
             label (True) or allow matches between classes (False)
         **kwargs: optional keyword arguments for the constructor of the
-            :class:`VideoClassificationEvaluationConfig` being used
+            :class:`TemporalDetectionEvaluationConfig` being used
 
     Returns:
-        a :class:`VideoClassificationResults`
+        a :class:`TemporalDetectionResults`
     """
     fov.validate_video_collection(samples)
 
     fov.validate_collection_label_fields(
         samples,
         (pred_field, gt_field),
-        (fol.VideoClassifications),
+        (fol.TemporalDetections),
         same_type=True,
     )
 
@@ -104,7 +105,7 @@ def evaluate_video_classifications(
         dataset._add_sample_field_if_necessary(fn_field, fof.IntField)
 
     matches = []
-    logger.info("Evaluating video classifications...")
+    logger.info("Evaluating temporal detections...")
     # for sample in _samples.iter_samples(progress=True):
     for sample in _samples:
         sample_tp = 0
@@ -128,15 +129,15 @@ def evaluate_video_classifications(
     return results
 
 
-class VideoClassificationEvaluationConfig(foe.EvaluationMethodConfig):
-    """Base class for configuring :class:`VideoClassificationEvaluation`
+class TemporalDetectionEvaluationConfig(foe.EvaluationMethodConfig):
+    """Base class for configuring :class:`TemporalDetectionEvaluation`
     instances.
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.VideoClassification` instances
+            :class:`fiftyone.core.labels.TemporalDetection` instances
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.VideoClassification` instances
+            :class:`fiftyone.core.labels.TemporalDetection` instances
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match segments with the same class
             label (True) or allow matches between classes (False)
@@ -163,11 +164,11 @@ class VideoClassificationEvaluationConfig(foe.EvaluationMethodConfig):
         return False
 
 
-class VideoClassificationEvaluation(foe.EvaluationMethod):
-    """Base class for video classification evaluation methods.
+class TemporalDetectionEvaluation(foe.EvaluationMethod):
+    """Base class for temporal detection evaluation methods.
 
     Args:
-        config: a :class:`VideoClassificationEvaluationConfig`
+        config: a :class:`TemporalDetectionEvaluationConfig`
     """
 
     def __init__(self, config):
@@ -226,9 +227,9 @@ class VideoClassificationEvaluation(foe.EvaluationMethod):
                 given this label for results purposes
 
         Returns:
-            a :class:`VideoClassificationResults`
+            a :class:`TemporalDetectionResults`
         """
-        return VideoClassificationResults(
+        return TemporalDetectionResults(
             matches,
             eval_key=eval_key,
             gt_field=self.config.gt_field,
@@ -303,8 +304,8 @@ class VideoClassificationEvaluation(foe.EvaluationMethod):
         self._validate_fields_match(eval_key, "gt_field", existing_info)
 
 
-class VideoClassificationResults(BaseEvaluationResults):
-    """Class that stores the results of a video classification evaluation.
+class TemporalDetectionResults(BaseEvaluationResults):
+    """Class that stores the results of a temporal detection evaluation.
 
     Args:
         matches: a list of
