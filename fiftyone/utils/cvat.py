@@ -2516,6 +2516,10 @@ class CVATBackend(foua.AnnotationBackend):
     def supported_attr_types(self):
         return ["text", "select", "radio", "checkbox"]
 
+    @property
+    def supports_keyframes(self):
+        return True
+
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
             return {"type": "checkbox"}
@@ -3183,6 +3187,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         for label_field, label_info in label_schema.items():
             label_type = label_info["type"]
             is_existing_field = label_info["existing_field"]
+            only_keyframes = label_info.get("only_keyframes", False)
 
             cvat_schema, assign_scalar_attrs = self._build_cvat_schema(
                 label_field, label_info
@@ -3199,7 +3204,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
 
-                # Parse label data into format expected by CVAT
                 anno_tags = []
                 anno_shapes = []
                 anno_tracks = []
@@ -3210,6 +3214,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "classifications",
                         "scalar",
                     ):
+                        # Tag annotations
                         (
                             _id_map,
                             anno_tags,
@@ -3221,7 +3226,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             is_shape=False,
                             assign_scalar_attrs=assign_scalar_attrs,
                         )
-                    elif is_video:
+                    elif is_video and label_type != "segmentation":
+                        # Video track annotations
                         (
                             _id_map,
                             anno_shapes,
@@ -3233,8 +3239,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             cvat_schema,
                             is_shape=True,
                             load_tracks=True,
+                            only_keyframes=only_keyframes,
                         )
                     else:
+                        # Shape annotations
                         (
                             _id_map,
                             anno_shapes,
@@ -3427,7 +3435,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_field_results, shape_results
             )
 
-            for track_index, track in enumerate(tracks):
+            for track_index, track in enumerate(tracks, 1):
                 label_id = track["label_id"]
                 shapes = track["shapes"]
                 for shape in shapes:
@@ -3561,11 +3569,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         prev_outside = True
 
         if anno_type == "track":
-            if len(annos) > 1:
-                # If more than two shapes exist in the track, interpolate all
-                # frames between them
-                end_frame = annos[-1]["frame"]
-                annos = _get_interpolated_shapes(annos, end_frame)
+            annos = _get_interpolated_shapes(annos)
 
         for anno in annos:
             frame = anno["frame"]
@@ -3599,6 +3603,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for frame in range(prev_frame + 1, len(frame_id_map)):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
+                anno["keyframe"] = False
 
                 prev_type = self._parse_annotation(
                     anno,
@@ -3651,13 +3656,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if anno_type in ("shapes", "track"):
             shape_type = anno["type"]
+            keyframe = anno.get("keyframe", False)
+
             if expected_label_type == "scalar" and assigned_scalar_attrs:
                 # Shapes created with values, set class to value
                 anno_attrs = anno["attributes"]
-                class_val = False
                 if anno_attrs and "value" in anno_attrs[0]:
                     class_val = anno_attrs[0]["value"]
                     anno["attributes"] = []
+                else:
+                    class_val = False
 
             cvat_shape = CVATShape(
                 anno,
@@ -3667,6 +3675,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 index=track_index,
                 immutable_attrs=immutable_attrs,
             )
+
+            # Non-keyframe annotations were interpolated from keyframes but
+            # should not inherit their label IDs
+            if anno_type == "track" and not keyframe:
+                cvat_shape._id = None
 
             if shape_type == "rectangle":
                 label_type = "detections"
@@ -3701,9 +3714,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = "keypoints"
                 label = cvat_shape.to_keypoint()
 
+            if keyframe:
+                label["keyframe"] = True
+
             if expected_label_type == "scalar" and assigned_scalar_attrs:
                 if class_val and label is not None:
-                    # Shapes created with values, set class to value
                     label.label = class_val
 
         if anno_type == "tags":
@@ -3919,8 +3934,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_info,
         cvat_schema,
         is_shape=False,
-        load_tracks=False,
         assign_scalar_attrs=False,
+        load_tracks=False,
+        only_keyframes=False,
     ):
         label_type = label_info["type"]
         classes = label_info["classes"]
@@ -3962,6 +3978,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     continue
 
                 kwargs = {}
+
+                if label_type not in (
+                    "scalar",
+                    "classification",
+                    "classifications",
+                    "segmentation",
+                ):
+                    kwargs["load_tracks"] = load_tracks
+                    kwargs["only_keyframes"] = only_keyframes
 
                 if label_type == "scalar":
                     labels = label
@@ -4008,12 +4033,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id,
                     frame_size,
                     label_type=label_type,
-                    load_tracks=load_tracks,
                     **kwargs,
                 )
 
                 tags_or_shapes.extend(_tags_or_shapes)
-                tracks = self._update_tracks(tracks, _tracks)
+                self._merge_tracks(tracks, _tracks)
                 remapped_attrs.update(_remapped_attrs)
 
                 if ids is not None:
@@ -4032,7 +4056,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attr["name"] = remapped_attrs.get(name, name)
 
         if load_tracks:
-            tracks = self._terminate_tracks(tracks, frame_id)
+            tracks = self._finalize_tracks(tracks, frame_id)
             return id_map, tags_or_shapes, tracks
 
         return id_map, tags_or_shapes
@@ -4044,7 +4068,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id,
         frame_size,
         label_type=None,
-        load_tracks=False,
         assign_scalar_attrs=False,
         label_field=None,
     ):
@@ -4076,7 +4099,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id,
         frame_size,
         label_type=None,
-        load_tracks=False,
     ):
         ids = []
         tags = []
@@ -4119,6 +4141,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         label_id=None,
         load_tracks=False,
+        only_keyframes=False,
     ):
         ids = []
         shapes = []
@@ -4136,6 +4159,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if class_name is None:
                 continue
 
+            if (
+                load_tracks
+                and only_keyframes
+                and det.index is not None
+                and not det.get_attribute_value("keyframe", False)
+            ):
+                # Record the ID even though we don't upload non-keyframes
+                # because the downloaded annotations still supercede this label
+                ids.append(det.id)
+                continue
+
             curr_shapes = []
 
             if label_type in ("detection", "detections"):
@@ -4147,7 +4181,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ybr = float(round((y + h) * height))
                 bbox = [xtl, ytl, xbr, ybr]
 
-                ids.append(det.id)
                 curr_shapes.append(
                     {
                         "type": "rectangle",
@@ -4177,7 +4210,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         itertools.chain.from_iterable(abs_points)
                     )
 
-                    ids.append(det.id)
                     curr_shapes.append(
                         {
                             "type": "polygon",
@@ -4191,28 +4223,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             "attributes": deepcopy(attributes),
                         }
                     )
-            else:
+
+            if not curr_shapes:
                 continue
 
+            ids.append(det.id)
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and det.index is not None:
-                index = det.index
-                if class_name not in tracks:
-                    tracks[class_name] = {}
-
-                if index not in tracks[class_name]:
-                    tracks[class_name][index] = {}
-                    tracks[class_name][index]["label_id"] = class_name
-                    tracks[class_name][index]["shapes"] = []
-                    tracks[class_name][index]["frame"] = frame_id
-                    tracks[class_name][index]["group"] = 0
-                    tracks[class_name][index]["attributes"] = immutable_attrs
-
-                for shape in curr_shapes:
-                    shape["outside"] = False
-                    del shape["label_id"]
-                    tracks[class_name][index]["shapes"].append(shape)
+                self._add_shapes_to_tracks(
+                    tracks,
+                    curr_shapes,
+                    class_name,
+                    det.index,
+                    frame_id,
+                    immutable_attrs,
+                )
             else:
                 shapes.extend(curr_shapes)
 
@@ -4226,6 +4252,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_size,
         label_type=None,
         load_tracks=False,
+        only_keyframes=False,
     ):
         ids = []
         shapes = []
@@ -4243,10 +4270,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if class_name is None:
                 continue
 
+            if (
+                load_tracks
+                and only_keyframes
+                and kp.index is not None
+                and not kp.get_attribute_value("keyframe", False)
+            ):
+                # Record the ID even though we don't upload non-keyframes
+                # because the downloaded annotations still supercede this label
+                ids.append(kp.id)
+                continue
+
             abs_points = HasCVATPoints._to_abs_points(kp.points, frame_size)
             flattened_points = list(itertools.chain.from_iterable(abs_points))
 
-            ids.append(kp.id)
             shape = {
                 "type": "points",
                 "occluded": False,
@@ -4259,24 +4296,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "attributes": attributes,
             }
 
+            ids.append(kp.id)
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and kp.index is not None:
-                index = kp.index
-                if class_name not in tracks:
-                    tracks[class_name] = {}
-
-                if index not in tracks[class_name]:
-                    tracks[class_name][index] = {}
-                    tracks[class_name][index]["label_id"] = class_name
-                    tracks[class_name][index]["shapes"] = []
-                    tracks[class_name][index]["frame"] = frame_id
-                    tracks[class_name][index]["group"] = 0
-                    tracks[class_name][index]["attributes"] = immutable_attrs
-
-                shape["outside"] = False
-                del shape["label_id"]
-                tracks[class_name][index]["shapes"].append(shape)
+                self._add_shapes_to_tracks(
+                    tracks,
+                    [shape],
+                    class_name,
+                    kp.index,
+                    frame_id,
+                    immutable_attrs,
+                )
             else:
                 shapes.append(shape)
 
@@ -4290,6 +4321,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_size,
         label_type=None,
         load_tracks=False,
+        only_keyframes=False,
     ):
         ids = []
         shapes = []
@@ -4307,6 +4339,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if class_name is None:
                 continue
 
+            if (
+                load_tracks
+                and only_keyframes
+                and poly.index is not None
+                and not poly.get_attribute_value("keyframe", False)
+            ):
+                # Record the ID even though we don't upload non-keyframes
+                # because the downloaded annotations still supercede this label
+                ids.append(poly.id)
+                continue
+
             curr_shapes = []
 
             for points in poly.points:
@@ -4318,7 +4361,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     itertools.chain.from_iterable(abs_points)
                 )
 
-                ids.append(poly.id)
                 shape = {
                     "type": "polygon" if poly.filled else "polyline",
                     "occluded": False,
@@ -4332,25 +4374,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 }
                 curr_shapes.append(shape)
 
+            if not curr_shapes:
+                continue
+
+            ids.append(poly.id)
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and poly.index is not None:
-                index = poly.index
-                if class_name not in tracks:
-                    tracks[class_name] = {}
-
-                if index not in tracks[class_name]:
-                    tracks[class_name][index] = {}
-                    tracks[class_name][index]["label_id"] = class_name
-                    tracks[class_name][index]["shapes"] = []
-                    tracks[class_name][index]["frame"] = frame_id
-                    tracks[class_name][index]["group"] = 0
-                    tracks[class_name][index]["attributes"] = immutable_attrs
-
-                for shape in curr_shapes:
-                    shape["outside"] = False
-                    del shape["label_id"]
-                    tracks[class_name][index]["shapes"].append(shape)
+                self._add_shapes_to_tracks(
+                    tracks,
+                    curr_shapes,
+                    class_name,
+                    poly.index,
+                    frame_id,
+                    immutable_attrs,
+                )
             else:
                 shapes.extend(curr_shapes)
 
@@ -4363,7 +4401,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id,
         frame_size,
         label_type=None,
-        load_tracks=False,
         mask_targets=None,
     ):
         label_id = segmentation.id
@@ -4376,7 +4413,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             frame_size,
             label_type="instances",
             label_id=label_id,
-            load_tracks=load_tracks,
         )
 
         return label_id, shapes, tracks, remapped_attrs
@@ -4415,10 +4451,46 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return class_name, label_attrs, immutable_attrs, remapped_attrs
 
-    def _terminate_tracks(self, tracks, last_frame):
+    def _add_shapes_to_tracks(
+        self, tracks, shapes, class_name, index, frame_id, immutable_attrs
+    ):
+        if class_name not in tracks:
+            tracks[class_name] = {}
+
+        if index not in tracks[class_name]:
+            tracks[class_name][index] = {
+                "label_id": class_name,
+                "shapes": [],
+                "frame": frame_id,
+                "group": 0,
+                "attributes": immutable_attrs,
+            }
+
+        _shapes = tracks[class_name][index]["shapes"]
+
+        for shape in shapes:
+            shape["outside"] = False
+            del shape["label_id"]
+            _shapes.append(shape)
+
+    def _merge_tracks(self, tracks, new_tracks):
+        for class_name, class_tracks in new_tracks.items():
+            if class_name not in tracks:
+                tracks[class_name] = class_tracks
+                continue
+
+            for index, track in class_tracks.items():
+                if index not in tracks[class_name]:
+                    tracks[class_name][index] = track
+                else:
+                    _track = tracks[class_name][index]
+                    _track["shapes"].extend(track["shapes"])
+                    _track["frame"] = max(track["frame"], _track["frame"])
+
+    def _finalize_tracks(self, tracks, last_frame):
         formatted_tracks = []
-        for index_tracks in tracks.values():
-            for track in index_tracks.values():
+        for class_tracks in tracks.values():
+            for track in class_tracks.values():
                 last_shape = track["shapes"][-1]
                 if last_shape["frame"] < last_frame - 1:
                     new_shape = deepcopy(last_shape)
@@ -4429,22 +4501,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 formatted_tracks.append(track)
 
         return formatted_tracks
-
-    def _update_tracks(self, tracks, new_tracks):
-        for class_name, track_info in new_tracks.items():
-            if class_name not in tracks:
-                tracks[class_name] = track_info
-                continue
-
-            for index, track in track_info.items():
-                if index not in tracks[class_name]:
-                    tracks[class_name][index] = track
-                else:
-                    tracks[class_name][index]["shapes"].extend(track["shapes"])
-                    if tracks[class_name][index]["frame"] > track["frame"]:
-                        tracks[class_name][index]["frame"] = track["frame"]
-
-        return tracks
 
     def _build_frame_id_map(self, samples):
         is_video = samples.media_type == fom.VIDEO
@@ -4523,48 +4579,48 @@ class CVATLabel(object):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        attributes (None): an optional list of additional attributes
     """
 
-    def __init__(self, label_dict, class_map, attr_id_map):
-        label_id = label_dict["label_id"]
+    def __init__(self, label_dict, class_map, attr_id_map, attributes=None):
+        cvat_id = label_dict["label_id"]
+        attrs = label_dict["attributes"]
 
-        self.label_id = label_id
-        self.class_name = class_map[label_id]
+        if attributes is not None:
+            attrs.extend(attributes)
+
+        self._id = None
+        self.label = class_map[cvat_id]
         self.attributes = {}
         self.fo_attributes = {}
-        self.attr_id_map_rev = {v: k for k, v in attr_id_map[label_id].items()}
 
-        for attr in label_dict["attributes"]:
-            name = self.attr_id_map_rev[attr["spec_id"]]
-            val = _parse_attribute(attr["value"])
-            if val is not None and val != "":
-                self.attributes[name] = CVATAttribute(name=name, value=val)
+        # Parse attributes
+        attr_id_map_rev = {v: k for k, v in attr_id_map[cvat_id].items()}
+        for attr in attrs:
+            name = attr_id_map_rev[attr["spec_id"]]
+            value = _parse_attribute(attr["value"])
+            if value is not None and value != "":
+                if name.startswith("attribute:"):
+                    name = name[len("attribute:") :]
+                    fo_attr = CVATAttribute(name, value).to_attribute()
+                    self.fo_attributes[name] = fo_attr
+                else:
+                    self.attributes[name] = value
 
-        for attr_name, attribute in self.attributes.items():
-            if attr_name.startswith("attribute:"):
-                name = attr_name.replace("attribute:", "")
-                attribute.name = name
-                if attribute.value is not None:
-                    self.fo_attributes[name] = attribute.to_attribute()
-
-    def _set_attributes(self, label):
-        if "label_id" in self.attributes:
-            label_id = self.attributes["label_id"].value
-            is_uuid = False
+        # Parse label ID
+        label_id = self.attributes.pop("label_id", None)
+        if label_id is not None:
             try:
-                label_id = ObjectId(label_id)
-                is_uuid = True
+                self._id = ObjectId(label_id)
             except:
                 pass
 
-            if label_id is not None and is_uuid:
-                label._id = label_id
+    def _set_attributes(self, label):
+        if self._id is not None:
+            label._id = self._id
 
-        for attr_name, attribute in self.attributes.items():
-            if attr_name != "label_id" and not attr_name.startswith(
-                "attribute:"
-            ):
-                label[attr_name] = attribute.value
+        for name, value in self.attributes.items():
+            label[name] = value
 
         if self.fo_attributes:
             label.attributes = self.fo_attributes
@@ -4594,19 +4650,13 @@ class CVATShape(CVATLabel):
         index=None,
         immutable_attrs=None,
     ):
-        super().__init__(label_dict, class_map, attr_id_map)
-        self.width = metadata["width"]
-        self.height = metadata["height"]
+        super().__init__(
+            label_dict, class_map, attr_id_map, attributes=immutable_attrs
+        )
+
+        self.frame_size = (metadata["width"], metadata["height"])
         self.points = label_dict["points"]
         self.index = index
-
-        # Add immutable attributes to shape
-        if immutable_attrs is not None:
-            for attr in immutable_attrs:
-                name = self.attr_id_map_rev[attr["spec_id"]]
-                val = _parse_attribute(attr["value"])
-                if val is not None and val != "":
-                    self.attributes[name] = CVATAttribute(name=name, value=val)
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
@@ -4619,14 +4669,15 @@ class CVATShape(CVATLabel):
             a :class:`fiftyone.core.labels.Detection`
         """
         xtl, ytl, xbr, ybr = self.points
+        width, height = self.frame_size
         bbox = [
-            xtl / self.width,
-            ytl / self.height,
-            (xbr - xtl) / self.width,
-            (ybr - ytl) / self.height,
+            xtl / width,
+            ytl / height,
+            (xbr - xtl) / width,
+            (ybr - ytl) / height,
         ]
         label = fol.Detection(
-            label=self.class_name, bounding_box=bbox, index=self.index,
+            label=self.label, bounding_box=bbox, index=self.index
         )
         self._set_attributes(label)
         return label
@@ -4638,10 +4689,9 @@ class CVATShape(CVATLabel):
             a :class:`fiftyone.core.labels.Polyline`
         """
         points = self._to_pairs_of_points(self.points)
-        frame_size = (self.width, self.height)
-        rel_points = HasCVATPoints._to_rel_points(points, frame_size)
+        rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
         label = fol.Polyline(
-            label=self.class_name,
+            label=self.label,
             points=[rel_points],
             index=self.index,
             closed=closed,
@@ -4657,10 +4707,9 @@ class CVATShape(CVATLabel):
             a :class:`fiftyone.core.labels.Polylines`
         """
         points = self._to_pairs_of_points(self.points)
-        frame_size = (self.width, self.height)
-        rel_points = HasCVATPoints._to_rel_points(points, frame_size)
+        rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
         polyline = fol.Polyline(
-            label=self.class_name,
+            label=self.label,
             points=[rel_points],
             closed=closed,
             filled=filled,
@@ -4670,17 +4719,15 @@ class CVATShape(CVATLabel):
         return label
 
     def to_keypoint(self):
-        """Converts the `CVATLabel` to a
-        :class:`fiftyone.core.labels.Keypoint`
+        """Converts this shape to a :class:`fiftyone.core.labels.Keypoint`.
 
         Returns:
             a :class:`fiftyone.core.labels.Keypoint`
         """
         points = self._to_pairs_of_points(self.points)
-        frame_size = (self.width, self.height)
-        rel_points = HasCVATPoints._to_rel_points(points, frame_size)
+        rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
         label = fol.Keypoint(
-            label=self.class_name, points=rel_points, index=self.index,
+            label=self.label, points=rel_points, index=self.index
         )
         self._set_attributes(label)
         return label
@@ -4728,6 +4775,7 @@ class CVATTag(CVATLabel):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        attributes (None): an optional list of additional attributes
     """
 
     def to_classification(self):
@@ -4736,7 +4784,7 @@ class CVATTag(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Classification`
         """
-        label = fol.Classification(label=self.class_name)
+        label = fol.Classification(label=self.label)
         self._set_attributes(label)
         return label
 
@@ -5002,7 +5050,7 @@ def _parse_attribute(value):
 
 # Track interpolation code sourced from CVAT:
 # https://github.com/openvinotoolkit/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
-def _get_interpolated_shapes(track_shapes, end_frame):
+def _get_interpolated_shapes(track_shapes):
     def copy_shape(source, frame, points=None):
         copied = deepcopy(source)
         copied["keyframe"] = False
@@ -5295,8 +5343,16 @@ def _get_interpolated_shapes(track_shapes, end_frame):
 
         return shapes
 
+    if not track_shapes:
+        return []
+
+    if len(track_shapes) == 1:
+        track_shapes[0]["keyframe"] = True
+        return track_shapes
+
     shapes = []
     curr_frame = track_shapes[0]["frame"]
+    end_frame = track_shapes[-1]["frame"]
     prev_shape = {}
     for shape in track_shapes:
         if prev_shape:
@@ -5306,15 +5362,16 @@ def _get_interpolated_shapes(track_shapes, end_frame):
                     lambda el: el["spec_id"], shape["attributes"]
                 ):
                     shape["attributes"].append(deepcopy(attr))
+
             if not prev_shape["outside"]:
                 shapes.extend(interpolate(prev_shape, shape))
 
         shape["keyframe"] = True
         shapes.append(shape)
+
         curr_frame = shape["frame"]
         prev_shape = shape
 
-        # keep at least 1 shape
         if end_frame <= curr_frame:
             break
 
