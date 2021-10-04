@@ -3281,14 +3281,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             job_reviewers[job_reviewer_ind]
                         ]
 
-                    if task_assignee is not None:
-                        if isinstance(task_assignee, str):
-                            current_task_assignee = task_assignee
-                        else:
-                            task_assignee_ind = idx % len(task_assignee)
-                            current_task_assignee = task_assignee[
-                                task_assignee_ind
-                            ]
+                if task_assignee is not None:
+                    if isinstance(task_assignee, str):
+                        current_task_assignee = task_assignee
+                    else:
+                        task_assignee_ind = idx % len(task_assignee)
+                        current_task_assignee = task_assignee[
+                            task_assignee_ind
+                        ]
 
                 task_name = "FiftyOne_%s_%s" % (
                     samples_batch._root_dataset.name.replace(" ", "_"),
