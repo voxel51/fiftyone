@@ -4513,19 +4513,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 immutable_attrs.append(attr_dict)
 
+        is_occluded = False
         if occluded_widgets is not None and class_name in occluded_widgets:
             occluded_attr_name = occluded_widgets[class_name]
-            is_occluded = label.get_attribute_value(occluded_attr_name, False)
-            try:
-                is_occluded = bool(is_occluded)
-            except:
-                logger.warning(
-                    "Attempting to set the occluded widget using "
-                    "attribute %s but found a non-boolean value... skipping"
+            if occluded_attr_name is not None:
+                occ_attr_val = label.get_attribute_value(
+                    occluded_attr_name, False
                 )
-                is_occluded = False
-        else:
-            is_occluded = False
+                try:
+                    is_occluded = bool(occ_attr_val)
+                except:
+                    logger.warning(
+                        "Attempting to set the occluded widget using "
+                        "attribute %s but found a non-boolean value... skipping"
+                    )
 
         return (
             class_name,
