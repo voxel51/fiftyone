@@ -154,7 +154,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 "Open Images evaluation"
             )
 
-    def evaluate_image(self, sample_or_frame, eval_key=None):
+    def evaluate(self, sample_or_frame, eval_key=None):
         """Performs Open Images-style evaluation on the given image.
 
         Predicted objects are matched to ground truth objects in descending

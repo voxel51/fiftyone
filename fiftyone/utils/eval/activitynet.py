@@ -12,10 +12,10 @@ import numpy as np
 
 import fiftyone.core.plots as fop
 
-from .temporal_detection import (
-    TemporalDetectionEvaluation,
-    TemporalDetectionEvaluationConfig,
-    TemporalDetectionResults,
+from .detection import (
+    DetectionEvaluation,
+    DetectionEvaluationConfig,
+    DetectionResults,
 )
 from .utils import compute_segment_ious
 
@@ -23,14 +23,14 @@ from .utils import compute_segment_ious
 logger = logging.getLogger(__name__)
 
 
-class ActivityNetEvaluationConfig(TemporalDetectionEvaluationConfig):
+class ActivityNetEvaluationConfig(DetectionEvaluationConfig):
     """ActivityNet-style evaluation config.
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.TemporalDetection` instances
+            :class:`fiftyone.core.labels.Detection` instances
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.TemporalDetection` instances
+            :class:`fiftyone.core.labels.Detection` instances
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match segments with the same class
             label (True) or allow matches between classes (False)
@@ -65,7 +65,7 @@ class ActivityNetEvaluationConfig(TemporalDetectionEvaluationConfig):
         return "activitynet"
 
 
-class ActivityNetEvaluation(TemporalDetectionEvaluation):
+class ActivityNetEvaluation(DetectionEvaluation):
     """ActivityNet-style evaluation.
 
     Args:
@@ -87,7 +87,7 @@ class ActivityNetEvaluation(TemporalDetectionEvaluation):
                 "ActivityNet evaluation"
             )
 
-    def evaluate_video(self, sample, eval_key=None):
+    def evaluate(self, sample, eval_key=None):
         """Performs ActivityNet-style evaluation on the given video.
 
         Predicted segments are matched to ground truth segments in descending
@@ -129,7 +129,7 @@ class ActivityNetEvaluation(TemporalDetectionEvaluation):
         evaluation as in :meth:`evaluate_video` to generate precision and
         recall sweeps over the range of IoU thresholds in
         ``self.config.iou_threshs``. In this case, a
-        :class:`ActivityNetTemporalDetectionResults` instance is returned that can compute
+        :class:`ActivityNetDetectionResults` instance is returned that can compute
         mAP and PR curves.
 
         Args:
@@ -146,13 +146,13 @@ class ActivityNetEvaluation(TemporalDetectionEvaluation):
                 given this label for results purposes
 
         Returns:
-            a :class:`TemporalDetectionResults`
+            a :class:`DetectionResults`
         """
         gt_field = self.config.gt_field
         pred_field = self.config.pred_field
 
         if not self.config.compute_mAP:
-            return TemporalDetectionResults(
+            return DetectionResults(
                 matches,
                 eval_key=eval_key,
                 gt_field=gt_field,
@@ -266,7 +266,7 @@ class ActivityNetEvaluation(TemporalDetectionEvaluation):
                 precision[iou_threshs.index(t)][classes.index(c)] = q
                 classwise_AP[iou_threshs.index(t)][classes.index(c)] = ap
 
-        return ActivityNetTemporalDetectionResults(
+        return ActivityNetDetectionResults(
             matches,
             precision,
             recall,
@@ -281,7 +281,7 @@ class ActivityNetEvaluation(TemporalDetectionEvaluation):
         )
 
 
-class ActivityNetTemporalDetectionResults(TemporalDetectionResults):
+class ActivityNetDetectionResults(DetectionResults):
     """Class that stores the results of a ActivityNet detection evaluation.
 
     Args:
