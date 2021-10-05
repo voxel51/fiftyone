@@ -2524,7 +2524,13 @@ class CVATBackend(foua.AnnotationBackend):
 
     @property
     def supported_attr_types(self):
-        return ["text", "select", "radio", "checkbox"]
+        return [
+            "text",
+            "select",
+            "radio",
+            "checkbox",
+            "occluded_widget",
+        ]
 
     @property
     def supports_keyframes(self):
@@ -2584,6 +2590,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         frame_id_map,
         labels_task_map,
         assigned_scalar_attrs,
+        occluded_widgets,
         backend=None,
     ):
         super().__init__(samples, config, id_map, backend=backend)
@@ -2593,6 +2600,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
         self.assigned_scalar_attrs = assigned_scalar_attrs
+        self.occluded_widgets = occluded_widgets
 
     def load_credentials(self, url=None, username=None, password=None):
         """Load the CVAT credentials from the given keyword arguments or the
@@ -2756,6 +2764,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             frame_id_map,
             d["labels_task_map"],
             d["assigned_scalar_attrs"],
+            d["occluded_widgets"],
         )
 
 
@@ -3178,6 +3187,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = {}
         labels_task_map = {}
         assigned_scalar_attrs = {}
+        occluded_widgets = {}
 
         num_samples = len(samples)
         is_video = samples.media_type == fom.VIDEO
@@ -3199,9 +3209,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             is_existing_field = label_info["existing_field"]
             only_keyframes = label_info.get("only_keyframes", False)
 
-            cvat_schema, assign_scalar_attrs = self._build_cvat_schema(
-                label_field, label_info
-            )
+            (
+                cvat_schema,
+                assign_scalar_attrs,
+                field_occ_widgets,
+            ) = self._build_cvat_schema(label_field, label_info)
+            occluded_widgets[label_field] = field_occ_widgets
 
             if label_type == "scalar":
                 assigned_scalar_attrs[label_field] = assign_scalar_attrs
@@ -3246,6 +3259,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             cvat_schema,
                             load_tracks=True,
                             only_keyframes=only_keyframes,
+                            occluded_widgets=field_occ_widgets,
                         )
                     else:
                         # Shape annotations
@@ -3257,6 +3271,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
+                            occluded_widgets=field_occ_widgets,
                         )
 
                     id_map[label_field] = _id_map
@@ -3355,6 +3370,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             frame_id_map,
             labels_task_map,
             assigned_scalar_attrs,
+            occluded_widgets,
             backend=backend,
         )
 
@@ -3374,6 +3390,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
         assigned_scalar_attrs = results.assigned_scalar_attrs
+        occluded_widgets = results.occluded_widgets
 
         annotations = {}
 
@@ -3387,6 +3404,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_info = label_schema[label_field]
             label_type = label_info["type"]
             scalar_attrs = assigned_scalar_attrs.get(label_field, False)
+            field_occ_widgets = occluded_widgets.get(label_field, False)
             _id_map = id_map.get(label_field, {})
 
             # Download task data
@@ -3435,6 +3453,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attr_id_map,
                 frames,
                 assigned_scalar_attrs=scalar_attrs,
+                occluded_widgets=field_occ_widgets,
             )
             label_field_results = self._merge_results(
                 label_field_results, shape_results
@@ -3460,6 +3479,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     assigned_scalar_attrs=scalar_attrs,
                     track_index=track_index,
                     immutable_attrs=immutable_attrs,
+                    occluded_widgets=field_occ_widgets,
                 )
                 label_field_results = self._merge_results(
                     label_field_results, track_shape_results
@@ -3565,6 +3585,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         assigned_scalar_attrs=False,
         track_index=None,
         immutable_attrs=None,
+        occluded_widgets=None,
     ):
         results = {}
         prev_type = None
@@ -3600,6 +3621,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
                 immutable_attrs=immutable_attrs,
+                occluded_widgets=occluded_widgets,
             )
 
         # For non-outside tracked objects, the last track goes to the end of
@@ -3624,6 +3646,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     assigned_scalar_attrs=assigned_scalar_attrs,
                     track_index=track_index,
                     immutable_attrs=immutable_attrs,
+                    occluded_widgets=occluded_widgets,
                 )
 
         return results
@@ -3643,6 +3666,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         assigned_scalar_attrs=False,
         track_index=None,
         immutable_attrs=None,
+        occluded_widgets=None,
     ):
         frame = anno["frame"]
         if len(frames) > frame:
@@ -3679,6 +3703,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 metadata,
                 index=track_index,
                 immutable_attrs=immutable_attrs,
+                occluded_widgets=occluded_widgets,
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
@@ -3850,7 +3875,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type = label_info["type"]
         is_existing_field = label_info["existing_field"]
         classes = label_info["classes"]
-        attributes = self._to_cvat_attributes(label_info["attributes"])
+        attributes, occluded_widget_name = self._to_cvat_attributes(
+            label_info["attributes"]
+        )
 
         # Must track label IDs for existing label fields
         if is_existing_field and label_type != "scalar":
@@ -3881,6 +3908,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 }
 
         cvat_schema = {}
+        occluded_widgets = {}
 
         # Global attributes
         for _class in classes:
@@ -3891,6 +3919,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             for name in _classes:
                 cvat_schema[name] = deepcopy(attributes)
+                occluded_widgets[name] = occluded_widget_name
 
         # Class-specific attributes
         for _class in classes:
@@ -3898,7 +3927,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             _classes = _class["classes"]
-            _attrs = self._to_cvat_attributes(_class["attributes"])
+            _attrs, _occluded_widget_name = self._to_cvat_attributes(
+                _class["attributes"]
+            )
 
             if "label_id" in _attrs:
                 raise ValueError(
@@ -3908,16 +3939,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             for name in _classes:
                 cvat_schema[name].update(_attrs)
+                if _occluded_widget_name is not None:
+                    occluded_widgets[name] = _occluded_widget_name
 
-        return cvat_schema, assign_scalar_attrs
+        return cvat_schema, assign_scalar_attrs, occluded_widgets
 
     def _to_cvat_attributes(self, attributes):
         cvat_attrs = {}
+        occluded_widget_name = None
+        found_occluded_widget = False
         for attr_name, info in attributes.items():
             cvat_attr = {"name": attr_name, "mutable": True}
             for attr_key, val in info.items():
                 if attr_key == "type":
-                    cvat_attr["input_type"] = val
+                    if val == "occluded_widget":
+                        occluded_widget_name = attr_name
+                        found_occluded_widget = True
+                    else:
+                        cvat_attr["input_type"] = val
                 elif attr_key == "values":
                     cvat_attr["values"] = [str(v) for v in val]
                 elif attr_key == "default":
@@ -3925,9 +3964,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 elif attr_key == "mutable":
                     cvat_attr["mutable"] = bool(val)
 
-            cvat_attrs[attr_name] = cvat_attr
+            if not found_occluded_widget:
+                cvat_attrs[attr_name] = cvat_attr
 
-        return cvat_attrs
+            found_occluded_widget = False
+
+        return cvat_attrs, occluded_widget_name
 
     def _create_shapes_tags_tracks(
         self,
@@ -3938,6 +3980,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         assign_scalar_attrs=False,
         load_tracks=False,
         only_keyframes=False,
+        occluded_widgets=None,
     ):
         label_type = label_info["type"]
         classes = label_info["classes"]
@@ -3986,6 +4029,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ):
                     kwargs["load_tracks"] = load_tracks
                     kwargs["only_keyframes"] = only_keyframes
+                    kwargs["occluded_widgets"] = occluded_widgets
 
                 if label_type == "scalar":
                     labels = label
@@ -4112,6 +4156,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attributes,
                 _,
                 _remapped_attrs,
+                _,
             ) = self._create_attributes(cn, cvat_schema)
 
             if class_name is None:
@@ -4144,6 +4189,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_id=None,
         load_tracks=False,
         only_keyframes=False,
+        occluded_widgets=None,
     ):
         ids = []
         shapes = []
@@ -4156,7 +4202,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attributes,
                 immutable_attrs,
                 _remapped_attrs,
-            ) = self._create_attributes(det, cvat_schema, label_id=label_id)
+                is_occluded,
+            ) = self._create_attributes(
+                det,
+                cvat_schema,
+                label_id=label_id,
+                occluded_widgets=occluded_widgets,
+            )
 
             if class_name is None:
                 continue
@@ -4186,7 +4238,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 curr_shapes.append(
                     {
                         "type": "rectangle",
-                        "occluded": False,
+                        "occluded": is_occluded,
                         "z_order": 0,
                         "points": bbox,
                         "label_id": class_name,
@@ -4215,7 +4267,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     curr_shapes.append(
                         {
                             "type": "polygon",
-                            "occluded": False,
+                            "occluded": is_occluded,
                             "z_order": 0,
                             "points": flattened_points,
                             "label_id": class_name,
@@ -4255,6 +4307,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         load_tracks=False,
         only_keyframes=False,
+        occluded_widgets=None,
     ):
         ids = []
         shapes = []
@@ -4267,7 +4320,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attributes,
                 immutable_attrs,
                 _remapped_attrs,
-            ) = self._create_attributes(kp, cvat_schema)
+                is_occluded,
+            ) = self._create_attributes(
+                kp, cvat_schema, occluded_widgets=occluded_widgets
+            )
 
             if class_name is None:
                 continue
@@ -4288,7 +4344,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             shape = {
                 "type": "points",
-                "occluded": False,
+                "occluded": is_occluded,
                 "z_order": 0,
                 "points": flattened_points,
                 "label_id": class_name,
@@ -4324,6 +4380,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         load_tracks=False,
         only_keyframes=False,
+        occluded_widgets=None,
     ):
         ids = []
         shapes = []
@@ -4336,7 +4393,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attributes,
                 immutable_attrs,
                 _remapped_attrs,
-            ) = self._create_attributes(poly, cvat_schema)
+                is_occluded,
+            ) = self._create_attributes(
+                poly, cvat_schema, occluded_widgets=occluded_widgets
+            )
 
             if class_name is None:
                 continue
@@ -4365,7 +4425,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 shape = {
                     "type": "polygon" if poly.filled else "polyline",
-                    "occluded": False,
+                    "occluded": is_occluded,
                     "z_order": 0,
                     "points": flattened_points,
                     "label_id": class_name,
@@ -4419,9 +4479,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return label_id, shapes, tracks, remapped_attrs
 
-    def _create_attributes(self, label, cvat_schema, label_id=None):
+    def _create_attributes(
+        self, label, cvat_schema, label_id=None, occluded_widgets=None
+    ):
         if label.label not in cvat_schema:
-            return None, None, None, None
+            return None, None, None, None, None
 
         class_name = label.label
         attr_schema = cvat_schema[class_name]
@@ -4451,7 +4513,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 immutable_attrs.append(attr_dict)
 
-        return class_name, label_attrs, immutable_attrs, remapped_attrs
+        if occluded_widgets is not None and class_name in occluded_widgets:
+            occluded_attr_name = occluded_widgets[class_name]
+            is_occluded = label.get_attribute_value(occluded_attr_name, False)
+            try:
+                is_occluded = bool(is_occluded)
+            except:
+                logger.warning(
+                    "Attempting to set the occluded widget using "
+                    "attribute %s but found a non-boolean value... skipping"
+                )
+                is_occluded = False
+        else:
+            is_occluded = False
+
+        return (
+            class_name,
+            label_attrs,
+            immutable_attrs,
+            remapped_attrs,
+            is_occluded,
+        )
 
     def _add_shapes_to_tracks(
         self, tracks, shapes, class_name, index, frame_id, immutable_attrs
@@ -4641,6 +4723,8 @@ class CVATShape(CVATLabel):
         index (None): the tracking index of the shape
         immutable_attrs (None): immutable attributes inherited by this shape
             from its track
+        occluded_widgets (None): a dictonary of class names mapped to the
+            corresponding attribute linked to the CVAT occlusion widget
     """
 
     def __init__(
@@ -4651,7 +4735,9 @@ class CVATShape(CVATLabel):
         metadata,
         index=None,
         immutable_attrs=None,
+        occluded_widgets=None,
     ):
+        self.is_occluded = label_dict["occluded"]
         super().__init__(
             label_dict, class_map, attr_id_map, attributes=immutable_attrs
         )
@@ -4659,6 +4745,12 @@ class CVATShape(CVATLabel):
         self.frame_size = (metadata["width"], metadata["height"])
         self.points = label_dict["points"]
         self.index = index
+        self.occluded_widgets = occluded_widgets or {}
+
+    def _set_occluded_attribute(self, label):
+        occluded_attr = self.occluded_widgets.get(label.label, None)
+        if occluded_attr:
+            label[occluded_attr] = self.is_occluded
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
@@ -4682,6 +4774,7 @@ class CVATShape(CVATLabel):
             label=self.label, bounding_box=bbox, index=self.index
         )
         self._set_attributes(label)
+        self._set_occluded_attribute(label)
         return label
 
     def to_polyline(self, closed=False, filled=False):
@@ -4700,6 +4793,7 @@ class CVATShape(CVATLabel):
             filled=filled,
         )
         self._set_attributes(label)
+        self._set_occluded_attribute(label)
         return label
 
     def to_polylines(self, closed=False, filled=False):
@@ -4718,6 +4812,7 @@ class CVATShape(CVATLabel):
         )
         label = fol.Polylines(polylines=[polyline])
         self._set_attributes(label)
+        self._set_occluded_attribute(label)
         return label
 
     def to_keypoint(self):
@@ -4732,6 +4827,7 @@ class CVATShape(CVATLabel):
             label=self.label, points=rel_points, index=self.index
         )
         self._set_attributes(label)
+        self._set_occluded_attribute(label)
         return label
 
     @classmethod
