@@ -352,14 +352,15 @@ class ServerService(Service):
         super().__init__()
 
     def start(self):
-        server_version = None
+        address = self._address or "127.0.0.1"
+        port = self._port
+
         try:
-            address = self._address or "127.0.0.1"
             server_version = requests.get(
-                "http://%s:%i/fiftyone" % (address, self._port), timeout=2
+                "http://%s:%i/fiftyone" % (address, port), timeout=2
             ).json()["version"]
-        except Exception:
-            pass
+        except:
+            server_version = None
 
         if server_version is None:
             # There is likely not a fiftyone server running (remote or local),
@@ -367,16 +368,14 @@ class ServerService(Service):
             # running that didn't respond to /fiftyone, the local server will
             # fail to start but the app will still connect successfully.
             super().start()
-            self._wait_for_child_port(port=self._port)
+            self._wait_for_child_port(port=port)
         else:
             logger.info(
-                "Connected to FiftyOne on port %i at %s",
-                self._port,
-                self.address or "127.0.0.1",
-            )
-            logger.info(
-                "If you are not connecting to a remote session, you may need\n"
-                "to start a new session and specify a port.\n"
+                "Connected to FiftyOne on port %i at %s.\nIf you are not "
+                "connecting to a remote session, you may need to start a new "
+                "session and specify a port",
+                port,
+                address,
             )
             if server_version != foc.VERSION:
                 logger.warning(
@@ -401,12 +400,10 @@ class ServerService(Service):
 
     @property
     def port(self):
-        """Getter for the port"""
         return self._port
 
     @property
     def address(self):
-        """Getter for the address"""
         return self._address
 
     @property
