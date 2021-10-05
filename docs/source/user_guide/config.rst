@@ -65,7 +65,7 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | be either an IP address or hostname. If it's a hostname, the App will listen to all    |
 |                               |                                     |                               | IP addresses associated with the name. The default is `None`, which means the App will |
 |                               |                                     |                               | listen on all available interfaces. See :ref:`this page <restricting-app-address>` for |
-|                               |                                     |                               |  more information.                                                                     |
+|                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `desktop_app`                 | `FIFTYONE_DESKTOP_APP`              | `False`                       | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
 |                               |                                     |                               | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |

@@ -141,7 +141,7 @@ to the above command.
 .. _restricting-app-address:
 
 Restricting the App address
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, the App will listen to any connection to its port. However, you can
 provide the optional `address` parameter to
@@ -160,12 +160,11 @@ described in the previous section.
 
     dataset = fo.load_dataset(...)
 
-    # Restrict access to http://localhost:5151 connections via port forwarding
+    # Restrict to http://localhost:5151 connections made via port forwarding
     session = fo.launch_app(dataset, remote=True, address="localhost")
 
 If desired, you can permanently configure an App address by setting the
 `default_app_address` of your :ref:`FiftyOne config <configuring-fiftyone>`.
-
 You can achieve this by adding the following entry to your
 `~/.fiftyone/config.json` file:
 
@@ -180,9 +179,6 @@ or by setting the following environment variable:
 .. code-block:: shell
 
     export FIFTYONE_DEFAULT_APP_ADDRESS=localhost
-
-Remote data
-___________
 
 .. _notebooks:
 
