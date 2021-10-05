@@ -2435,7 +2435,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             result in reduced video quality in CVAT due to size limitations on
             ZIP files that can be uploaded to CVAT
         chunk_size (None): the number of frames to upload per ZIP chunk
-        task_assignee (None): the username to which the task(s) were assigned
+        task_assignee (None): the username(s) to which the task(s) were
+            assigned. This argument can be a list of usernames when annotating
+            videos as each video is uploaded to a separate task 
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
@@ -3263,6 +3265,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 current_job_assignees = job_assignees
                 current_job_reviewers = job_reviewers
+                current_task_assignee = task_assignee
                 if is_video:
                     # Videos are uploaded in multiple tasks with 1 job per task
                     # Assign the correct users for the current task
@@ -3278,6 +3281,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             job_reviewers[job_reviewer_ind]
                         ]
 
+                if task_assignee is not None:
+                    if isinstance(task_assignee, str):
+                        current_task_assignee = task_assignee
+                    else:
+                        task_assignee_ind = idx % len(task_assignee)
+                        current_task_assignee = task_assignee[
+                            task_assignee_ind
+                        ]
+
                 task_name = "FiftyOne_%s_%s" % (
                     samples_batch._root_dataset.name.replace(" ", "_"),
                     label_field.replace(" ", "_"),
@@ -3289,7 +3301,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     schema=cvat_schema,
                     segment_size=segment_size,
                     image_quality=image_quality,
-                    task_assignee=task_assignee,
+                    task_assignee=current_task_assignee,
                 )
                 task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
