@@ -478,6 +478,16 @@ more details:
         `values`, and `default` for each attribute
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
+-   **allow_additions** (*True*): whether to allow new labels to be added. Only
+    applicable when editing existing label fields
+-   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
+    applicable when editing existing label fields
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute of
+    existing labels to be modified. Only applicable when editing existing label
+    fields
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
+    applicable when editing existing label fields
 
 |br|
 In addition, each annotation backend can typically be configured in a variety
@@ -706,14 +716,115 @@ take additional values:
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
 
-.. _annotation-video-label-attributes:
+.. _annotation-restricting-edits:
 
-Video label attributes
-----------------------
+Restricting additions, deletions, and edits
+-------------------------------------------
 
-When annotating spatiotemporal objects in videos, each object attribute
-specification can include a `mutable` property that controls whether the
-attribute's value can change between frames for each object:
+When you create annotation runs that invovle editing existing label fields, you
+can optionally specify that certain changes are not alllowed by passing the
+following flags to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+-   **allow_additions** (*True*): whether to allow new labels to be added
+-   **allow_deletions** (*True*): whether to allow labels to be deleted
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute to
+    be modified
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels
+
+If you are using the `label_schema` parameter to provide a full annotation
+schema to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, you
+can also directly include the above flags in the configuration dicts for any
+existing label field(s) you wish.
+
+For example, suppose you have an existing `ground_truth` field that contains
+objects of various types and you would like to add new `sex` and `age`
+attributes to all people in this field while also strictly enforcing that no
+objects can be added, deleted, or have their labels or bounding boxes modified.
+You can configure an annotation run for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "sex": {
+            "type": "select",
+            "values": ["male", "female"],
+        },
+        "age": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["person"],
+        attributes=attributes,
+        allow_additions=False,
+        allow_deletions=False,
+        allow_label_edits=False,
+        allow_spatial_edits=False,
+    )
+
+You can also include a `read_only=True` parameter when uploading existing
+label attributes to specify that the attribute's value should be uploaded to
+the annotation backend for informational purposes, but any edits to the
+attribute's value should not be imported back into FiftyOne.
+
+For example, if you have vehicles with their `make` attribute populated and you
+want to populate a new `model` attribute based on this information without
+allowing changes to the vehicle's `make`, you can configure an annotation run
+for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "make": {
+            "type": "text",
+            "read_only": True,
+        },
+        "model": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+.. note::
+
+    Some annotation backends may not support restrictions to additions,
+    deletions, spatial edits, and read-only attributes in their editing
+    interface.
+
+    However, any restrictions that you specify via the above parameters will
+    still be enforced when you call
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    to merge the annotations back into FiftyOne.
+
+.. _annotation-labeling-videos:
+
+Labeling videos
+---------------
+
+When annotating spatiotemporal objects in videos, you have a few additional
+options at your fingertips.
+
+First, each object attribute specification can include a `mutable` property
+that controls whether the attribute's value can change between frames for each
+object:
 
 .. code:: python
     :linenos:
@@ -748,6 +859,18 @@ The meaning of the `mutable` attribute is defined as follows:
     for every frame in which the object track appears
 -   `False`: the attribute is static and is the same for every frame in which
     the object track appears
+
+In addition, if you are using an annotation backend
+:ref:`like CVAT <cvat-annotating-videos>` that supports keyframes, then when
+you :ref:`download annotation runs <loading-annotations>` that include track
+annotations, the downloaded label corresponding to each keyframe of an object
+track will have its `keyframe=True` attribute set to denote that it was a
+keyframe.
+
+Similarly, when you create an annotation run on a video dataset that involves
+*editing* existing video tracks, if at least one existing label has a
+`keyframe=True` attribute set, then the available keyframe information will be
+uploaded to the annotation backend.
 
 .. _loading-annotations:
 

@@ -255,9 +255,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         samples = await foo.aggregate(
             StateHandler.sample_collection(),
-            view.skip((page - 1) * page_length)._pipeline(
-                attach_frames=True, detach_frames=False
-            ),
+            view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(page_length + 1)
         convert(samples)
 
