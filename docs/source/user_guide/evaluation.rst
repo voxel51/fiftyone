@@ -1419,13 +1419,13 @@ ground truth segments of different classes.
             sample.save()
 
     # Download subset of ActivityNet 200
-    classes = ["Bathing dog", "Walking the dog"]
+    classes = ["Bathing dog", "Grooming dog", "Grooming horse", "Walking the dog"]
 
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
         classes=classes,
-        max_samples=10,
+        max_samples=20,
     )
     print(dataset)
 
