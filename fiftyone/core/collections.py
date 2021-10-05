@@ -5432,9 +5432,8 @@ class SampleCollection(object):
 
         Args:
             output_dir: the directory to write the annotated media
-            label_fields (None): a list of :class:`fiftyone.core.labels.Label`
-                fields to render. By default, all
-                :class:`fiftyone.core.labels.Label` fields are drawn
+            label_fields (None): a list of label fields to render. By default,
+                all :class:`fiftyone.core.labels.Label` fields are drawn
             overwrite (False): whether to delete ``output_dir`` if it exists
                 before rendering
             config (None): an optional
@@ -5454,16 +5453,13 @@ class SampleCollection(object):
                     output_dir,
                 )
 
-        if self.media_type == fom.VIDEO:
-            if label_fields is None:
-                label_fields = _get_frame_label_fields(self)
-
-                return foua.draw_labeled_videos(
-                    self, output_dir, label_fields=label_fields, config=config
-                )
-
         if label_fields is None:
-            label_fields = _get_image_label_fields(self)
+            label_fields = self._get_label_fields()
+
+        if self.media_type == fom.VIDEO:
+            return foua.draw_labeled_videos(
+                self, output_dir, label_fields=label_fields, config=config
+            )
 
         return foua.draw_labeled_images(
             self, output_dir, label_fields=label_fields, config=config
@@ -5730,6 +5726,10 @@ class SampleCollection(object):
         classes=None,
         attributes=True,
         mask_targets=None,
+        allow_additions=True,
+        allow_deletions=True,
+        allow_label_edits=True,
+        allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
         launch_editor=False,
@@ -5814,6 +5814,16 @@ class SampleCollection(object):
                 ``label_schema`` that do not define their attributes
             mask_targets (None): a dict mapping pixel values to semantic label
                 strings. Only applicable when annotating semantic segmentations
+            allow_additions (True): whether to allow new labels to be added.
+                Only applicable when editing existing label fields
+            allow_deletions (True): whether to allow labels to be deleted. Only
+                applicable when editing existing label fields
+            allow_label_edits (True): whether to allow the ``label`` attribute
+                of existing labels to be modified. Only applicable when editing
+                existing label fields
+            allow_spatial_edits (True): whether to allow edits to the spatial
+                properties (bounding boxes, vertices, keypoints, etc) of
+                labels. Only applicable when editing existing label fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -5836,6 +5846,10 @@ class SampleCollection(object):
             classes=classes,
             attributes=attributes,
             mask_targets=mask_targets,
+            allow_additions=allow_additions,
+            allow_deletions=allow_deletions,
+            allow_label_edits=allow_label_edits,
+            allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,
             launch_editor=launch_editor,
@@ -7002,20 +7016,6 @@ def _get_matching_fields(sample_collection, patt, frames=False):
         schema = sample_collection.get_field_schema()
 
     return fnmatch.filter(list(schema.keys()), patt)
-
-
-def _get_image_label_fields(sample_collection):
-    label_fields = sample_collection.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
-    )
-    return list(label_fields.keys())
-
-
-def _get_frame_label_fields(sample_collection):
-    label_fields = sample_collection.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
-    )
-    return list(label_fields.keys())
 
 
 def _get_default_label_fields_for_exporter(

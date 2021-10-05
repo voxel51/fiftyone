@@ -1694,6 +1694,157 @@ is rendered as a distinct color.
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
 
+.. _temporal-detection:
+
+Temporal detection
+------------------
+
+The |TemporalDetection| class represents an event occuring during a specified
+range of frames in a video.
+
+The :attr:`label <fiftyone.core.labels.TemporalDetection.label>` attribute
+stores the detection label, and the
+:attr:`support <fiftyone.core.labels.TemporalDetection.support>` attribute
+stores the `[first, last]` frame range of the detection in the video.
+
+The optional
+:attr:`confidence <fiftyone.core.labels.TemporalDetection.confidence>`
+attribute can be used to store a model prediction score, and you can add
+:ref:`custom attributes <label-attributes>` as well, which can be visualized in
+the App.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+    sample["events"] = fo.TemporalDetection(label="meeting", support=[10, 20])
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'video',
+        'filepath': '/path/to/video.mp4',
+        'tags': [],
+        'metadata': None,
+        'events': <TemporalDetection: {
+            'id': '61321c8ea36cb17df655f44f',
+            'tags': BaseList([]),
+            'label': 'meeting',
+            'support': BaseList([10, 20]),
+            'confidence': None,
+        }>,
+        'frames': <Frames: 0>,
+    }>
+
+If your temporal detection data is represented as timestamps in seconds, you
+can use the
+:meth:`from_timestamps() <fiftyone.core.labels.TemporalDetection.from_timestamps>`
+factory method to perform the necessary conversion to frames automatically
+based on the sample's :ref:`video metadata <using-metadata>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # Download a video to work with
+    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=1)
+    filepath = dataset.first().filepath
+
+    sample = fo.Sample(filepath=filepath)
+    sample.compute_metadata()
+
+    sample["events"] = fo.TemporalDetection.from_timestamps(
+        [1, 2], label="meeting", sample=sample
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'video',
+        'filepath': '~/fiftyone/quickstart-video/data/Ulcb3AjxM5g_053-1.mp4',
+        'tags': [],
+        'metadata': <VideoMetadata: {
+            'size_bytes': 1758809,
+            'mime_type': 'video/mp4',
+            'frame_width': 1920,
+            'frame_height': 1080,
+            'frame_rate': 29.97002997002997,
+            'total_frame_count': 120,
+            'duration': 4.004,
+            'encoding_str': 'avc1',
+        }>,
+        'events': <TemporalDetection: {
+            'id': '61321e498d5f587970b29183',
+            'tags': BaseList([]),
+            'label': 'meeting',
+            'support': BaseList([31, 60]),
+            'confidence': None,
+        }>,
+        'frames': <Frames: 0>,
+    }>
+
+The |TemporalDetections| class holds a list of temporal detections for a
+sample:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+    sample["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="meeting", support=[10, 20]),
+            fo.TemporalDetection(label="party", support=[30, 60]),
+        ]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'video',
+        'filepath': '/path/to/video.mp4',
+        'tags': [],
+        'metadata': None,
+        'events': <TemporalDetections: {
+            'detections': BaseList([
+                <TemporalDetection: {
+                    'id': '61321ed78d5f587970b29184',
+                    'tags': BaseList([]),
+                    'label': 'meeting',
+                    'support': BaseList([10, 20]),
+                    'confidence': None,
+                }>,
+                <TemporalDetection: {
+                    'id': '61321ed78d5f587970b29185',
+                    'tags': BaseList([]),
+                    'label': 'party',
+                    'support': BaseList([30, 60]),
+                    'confidence': None,
+                }>,
+            ]),
+        }>,
+        'frames': <Frames: 0>,
+    }>
+
+.. note::
+
+    Did you know? You can :ref:`store class lists <storing-classes>` for your
+    models on your datasets.
+
 .. _geolocation:
 
 Geolocation
