@@ -5813,6 +5813,10 @@ class SampleCollection(object):
         classes=None,
         attributes=True,
         mask_targets=None,
+        allow_additions=True,
+        allow_deletions=True,
+        allow_label_edits=True,
+        allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
         launch_editor=False,
@@ -5897,6 +5901,16 @@ class SampleCollection(object):
                 ``label_schema`` that do not define their attributes
             mask_targets (None): a dict mapping pixel values to semantic label
                 strings. Only applicable when annotating semantic segmentations
+            allow_additions (True): whether to allow new labels to be added.
+                Only applicable when editing existing label fields
+            allow_deletions (True): whether to allow labels to be deleted. Only
+                applicable when editing existing label fields
+            allow_label_edits (True): whether to allow the ``label`` attribute
+                of existing labels to be modified. Only applicable when editing
+                existing label fields
+            allow_spatial_edits (True): whether to allow edits to the spatial
+                properties (bounding boxes, vertices, keypoints, etc) of
+                labels. Only applicable when editing existing label fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -5919,6 +5933,10 @@ class SampleCollection(object):
             classes=classes,
             attributes=attributes,
             mask_targets=mask_targets,
+            allow_additions=allow_additions,
+            allow_deletions=allow_deletions,
+            allow_label_edits=allow_label_edits,
+            allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,
             launch_editor=launch_editor,
