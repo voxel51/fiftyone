@@ -7332,12 +7332,17 @@ def _parse_field_name(
             if omit_terminal_lists and path == field_name:
                 break
 
+            list_count = 1
+            while isinstance(field_type.field, fof.ListField):
+                list_count += 1
+                field_type = field_type.field
+
             if auto_unwind:
                 if path not in unwind_list_fields:
-                    unwind_list_fields.append(path)
+                    unwind_list_fields.extend([path] * list_count)
             elif path not in unwind_list_fields:
                 if path not in other_list_fields:
-                    other_list_fields.append(path)
+                    other_list_fields.extend([path] * list_count)
 
     if is_frame_field:
         if auto_unwind:
