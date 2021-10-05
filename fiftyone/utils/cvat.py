@@ -4738,7 +4738,6 @@ class CVATShape(CVATLabel):
         immutable_attrs=None,
         occluded_widgets=None,
     ):
-        self.is_occluded = label_dict["occluded"]
         super().__init__(
             label_dict, class_map, attr_id_map, attributes=immutable_attrs
         )
@@ -4746,12 +4745,13 @@ class CVATShape(CVATLabel):
         self.frame_size = (metadata["width"], metadata["height"])
         self.points = label_dict["points"]
         self.index = index
-        self.occluded_widgets = occluded_widgets or {}
 
-    def _set_occluded_attribute(self, label):
-        occluded_attr = self.occluded_widgets.get(label.label, None)
+        # Parse occluded attr
+        is_occluded = label_dict["occluded"]
+        self.occluded_widgets = occluded_widgets or {}
+        occluded_attr = self.occluded_widgets.get(self.label, None)
         if occluded_attr:
-            label[occluded_attr] = self.is_occluded
+            self.attributes[occluded_attr] = is_occluded
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
@@ -4775,7 +4775,6 @@ class CVATShape(CVATLabel):
             label=self.label, bounding_box=bbox, index=self.index
         )
         self._set_attributes(label)
-        self._set_occluded_attribute(label)
         return label
 
     def to_polyline(self, closed=False, filled=False):
@@ -4794,7 +4793,6 @@ class CVATShape(CVATLabel):
             filled=filled,
         )
         self._set_attributes(label)
-        self._set_occluded_attribute(label)
         return label
 
     def to_polylines(self, closed=False, filled=False):
@@ -4813,7 +4811,6 @@ class CVATShape(CVATLabel):
         )
         label = fol.Polylines(polylines=[polyline])
         self._set_attributes(label)
-        self._set_occluded_attribute(label)
         return label
 
     def to_keypoint(self):
@@ -4828,7 +4825,6 @@ class CVATShape(CVATLabel):
             label=self.label, points=rel_points, index=self.index
         )
         self._set_attributes(label)
-        self._set_occluded_attribute(label)
         return label
 
     @classmethod
