@@ -426,7 +426,7 @@ class Session(foc.HasClient):
 
     @property
     def server_address(self):
-        """The server address for the session."""
+        """The server address for the session, or None if not specified."""
         return self._address
 
     @property

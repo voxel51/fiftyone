@@ -79,16 +79,6 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
     pass
 
 
-class FrameNumberField(IntField):
-    """A video frame number field."""
-
-    def validate(self, value):
-        try:
-            fofu.validate_frame_number(value)
-        except fofu.FrameError as e:
-            self.error(str(e))
-
-
 class FloatField(mongoengine.fields.FloatField, Field):
     """A floating point number field."""
 
@@ -474,6 +464,40 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
     def validate(self, value):
         if not isinstance(value, (np.ndarray, Binary)):
             self.error("Only numpy arrays may be used in an array field")
+
+
+class FrameNumberField(IntField):
+    """A video frame number field."""
+
+    def validate(self, value):
+        try:
+            fofu.validate_frame_number(value)
+        except fofu.FrameError as e:
+            self.error(str(e))
+
+
+class FrameSupportField(ListField):
+    """A ``[first, last]`` frame support in a video."""
+
+    def __init__(self, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = IntField()
+
+        super().__init__(**kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        if (
+            not isinstance(value, (list, tuple))
+            or len(value) != 2
+            or not (1 <= value[0] <= value[1])
+        ):
+            self.error(
+                "Frame support fields must contain `[first, last]` frame "
+                "numbers"
+            )
 
 
 class ClassesField(ListField):

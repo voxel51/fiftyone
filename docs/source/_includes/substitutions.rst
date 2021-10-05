@@ -43,6 +43,8 @@
 .. |Keypoint| replace:: :class:`Keypoint <fiftyone.core.labels.Keypoint>`
 .. |Keypoints| replace:: :class:`Keypoints <fiftyone.core.labels.Keypoints>`
 .. |Segmentation| replace:: :class:`Segmentation <fiftyone.core.labels.Segmentation>`
+.. |TemporalDetection| replace:: :class:`TemporalDetection <fiftyone.core.labels.TemporalDetection>`
+.. |TemporalDetections| replace:: :class:`TemporalDetections <fiftyone.core.labels.TemporalDetections>`
 .. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
 .. |GeoLocations| replace:: :class:`GeoLocations <fiftyone.core.labels.GeoLocations>`
 

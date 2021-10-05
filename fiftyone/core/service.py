@@ -142,12 +142,12 @@ class Service(object):
         """
         pass
 
-    def _wait_for_child_port(self, port=None, timeout=10):
+    def _wait_for_child_port(self, port=None, timeout=60):
         """Waits for any child process of this service to bind to a TCP port.
 
         Args:
-            port: if specified, wait for a child to bind to this port
-            timeout: the number of seconds to wait before failing
+            port (None): if specified, wait for a child to bind to this port
+            timeout (60): the number of seconds to wait before failing
 
         Returns:
             the port the child has bound to (equal to the ``port`` argument
@@ -159,7 +159,7 @@ class Service(object):
 
         @retry(
             wait_fixed=250,
-            stop_max_delay=timeout * 2000,
+            stop_max_delay=1000 * timeout,
             retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
@@ -352,14 +352,15 @@ class ServerService(Service):
         super().__init__()
 
     def start(self):
-        server_version = None
+        address = self._address or "127.0.0.1"
+        port = self._port
+
         try:
-            address = self._address or "127.0.0.1"
             server_version = requests.get(
-                "http://%s:%i/fiftyone" % (address, self._port), timeout=2
+                "http://%s:%i/fiftyone" % (address, port), timeout=2
             ).json()["version"]
-        except Exception:
-            pass
+        except:
+            server_version = None
 
         if server_version is None:
             # There is likely not a fiftyone server running (remote or local),
@@ -367,16 +368,14 @@ class ServerService(Service):
             # running that didn't respond to /fiftyone, the local server will
             # fail to start but the app will still connect successfully.
             super().start()
-            self._wait_for_child_port(self._port)
+            self._wait_for_child_port(port=port)
         else:
             logger.info(
-                "Connected to FiftyOne on port %i at %s",
-                self._port,
-                self.address or "127.0.0.1",
-            )
-            logger.info(
-                "If you are not connecting to a remote session, you may need\n"
-                "to start a new session and specify a port.\n"
+                "Connected to FiftyOne on port %i at %s.\nIf you are not "
+                "connecting to a remote session, you may need to start a new "
+                "session and specify a port",
+                port,
+                address,
             )
             if server_version != foc.VERSION:
                 logger.warning(
@@ -401,12 +400,10 @@ class ServerService(Service):
 
     @property
     def port(self):
-        """Getter for the port"""
         return self._port
 
     @property
     def address(self):
-        """Getter for the address"""
         return self._address
 
     @property
