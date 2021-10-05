@@ -7,7 +7,6 @@ Aggregations.
 """
 from collections import OrderedDict
 from copy import deepcopy
-import itertools
 
 import numpy as np
 
@@ -1603,34 +1602,78 @@ def _parse_field_and_expr(
     elif unwind_list_fields:
         pipeline.append({"$project": {path: True}})
 
-    remaining_lists = other_list_fields.copy()
+    (
+        _reduce_pipeline,
+        _path,
+        _unwind_list_fields,
+        _other_list_fields,
+    ) = _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields)
+
+    if _reduce_pipeline:
+        pipeline.extend(_reduce_pipeline)
+        path = _path
+        unwind_list_fields = _unwind_list_fields
+        other_list_fields = _other_list_fields
+
     for list_field in unwind_list_fields:
-        prev_list = _pop_preceding_list(remaining_lists, list_field)
-        if prev_list is not None:
+        pipeline.append({"$unwind": "$" + list_field})
+
+    return path, pipeline, other_list_fields, id_to_str
+
+
+def _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields):
+    pipeline = []
+
+    list_fields = sorted(
+        [(f, True) for f in unwind_list_fields]
+        + [(f, False) for f in other_list_fields],
+        key=lambda kv: kv[0],
+    )
+    num_list_fields = len(list_fields)
+
+    for idx in range(1, num_list_fields):
+        list_field, unwind = list_fields[idx]
+
+        # If we're unwinding a list field that is preceeded by another list
+        # field that is *not* unwound, we must use `reduce()` to achieve it
+        if unwind and not list_fields[idx - 1][1]:
+            prev_list = list_fields[idx - 1][0]
             leaf = list_field[len(prev_list) + 1 :]
-            path = prev_list + path[len(list_field) :]
             reduce_expr = F(prev_list).reduce(
                 (F(leaf) != None).if_else(VALUE.extend(F(leaf)), VALUE),
                 init_val=[],
             )
             pipeline.append({"$set": {prev_list: reduce_expr.to_mongo()}})
-        else:
-            pipeline.append({"$unwind": "$" + list_field})
+            path, list_fields = _replace_list(
+                path, list_fields, list_field, prev_list
+            )
 
-    return path, pipeline, other_list_fields, id_to_str
+    if pipeline:
+        unwind_list_fields = []
+        other_list_fields = []
+        for field, unwind in list_fields:
+            if field is not None:
+                if unwind:
+                    unwind_list_fields.append(field)
+                else:
+                    other_list_fields.append(field)
+
+    return pipeline, path, unwind_list_fields, other_list_fields
 
 
-def _pop_preceding_list(other_list_fields, list_field):
-    prev_list = None
-    for field in reversed(other_list_fields):
-        if list_field.startswith(field + "."):
-            prev_list = field
-            break
+def _replace_list(path, list_fields, old, new):
+    new_path = new + path[len(old) :]
 
-    if prev_list is not None:
-        other_list_fields.remove(prev_list)
+    new_list_fields = []
+    for field, unwind in list_fields:
+        if field == old:
+            field = None
+        elif field.startswith(old):
+            field = new + field[len(old) :]
 
-    return prev_list
+        new_list_fields.append((field, unwind))
+
+    return new_path, new_list_fields
 
 
 def _extract_prefix_from_expr(expr):
