@@ -6671,7 +6671,7 @@ class SampleCollection(object):
         allow_missing=False,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, omit_terminal_lists, allow_missing
+            self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
         )
 
     def _has_field(self, field_name):

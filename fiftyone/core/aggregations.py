@@ -14,6 +14,7 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -1372,12 +1373,6 @@ class Values(Aggregation):
         _big_result=True,
         _raw=False,
     ):
-        if unwind < 0:
-            keep_top_level = True
-            unwind = False
-        else:
-            keep_top_level = False
-
         super().__init__(field_or_expr, expr=expr)
 
         self._missing_value = missing_value
@@ -1388,7 +1383,6 @@ class Values(Aggregation):
         self._raw = _raw
         self._parse_fcn = None
         self._num_list_fields = None
-        self._keep_top_level = keep_top_level
 
     @property
     def _has_big_result(self):
@@ -1430,10 +1424,6 @@ class Values(Aggregation):
             level = 1 + self._num_list_fields
             values = _transform_values(values, self._parse_fcn, level=level)
 
-        if self._keep_top_level:
-            level = self._num_list_fields
-            values = [_unwind_values(v, level - 1) for v in values]
-
         return values
 
     def to_mongo(self, sample_collection, big_field="values"):
@@ -1441,8 +1431,7 @@ class Values(Aggregation):
             sample_collection,
             self._field_name,
             expr=self._expr,
-            auto_unwind=self._unwind,
-            omit_terminal_lists=not self._unwind,
+            unwind=self._unwind,
             allow_missing=self._allow_missing,
         )
 
@@ -1495,17 +1484,6 @@ def _transform_values(values, fcn, level=1):
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
-def _unwind_values(values, level):
-    if not values:
-        return values
-
-    while level > 0:
-        values = list(itertools.chain.from_iterable(v for v in values if v))
-        level -= 1
-
-    return values
-
-
 def _make_extract_values_pipeline(
     path, list_fields, id_to_str, missing_value, big_result, big_field
 ):
@@ -1550,13 +1528,13 @@ def _extract_list_values(subfield, expr):
 
 
 def _parse_field_and_expr(
-    sample_collection,
-    field_name,
-    expr=None,
-    auto_unwind=True,
-    omit_terminal_lists=False,
-    allow_missing=False,
+    sample_collection, field_name, expr=None, unwind=True, allow_missing=False,
 ):
+    # unwind can be {True, False, -1}
+    auto_unwind = unwind != False
+    keep_top_level = unwind < 0
+    omit_terminal_lists = unwind == False
+
     if field_name is None and expr is None:
         raise ValueError(
             "You must provide a field or an expression in order to define an "
@@ -1600,7 +1578,18 @@ def _parse_field_and_expr(
     if expr is not None:
         id_to_str = False  # we have no way of knowing what type expr outputs
 
-    if auto_unwind:
+    if keep_top_level:
+        if is_frame_field:
+            path = "frames." + path
+            unwind_list_fields = ["frames." + f for f in unwind_list_fields]
+            other_list_fields = ["frames." + f for f in other_list_fields]
+            other_list_fields.insert(0, "frames")
+        elif unwind_list_fields:
+            first_field = unwind_list_fields.pop(0)
+            other_list_fields = sorted([first_field] + other_list_fields)
+
+        pipeline.append({"$project": {path: True}})
+    elif auto_unwind:
         if is_frame_field:
             pipeline.extend(
                 [
@@ -1614,26 +1603,34 @@ def _parse_field_and_expr(
     elif unwind_list_fields:
         pipeline.append({"$project": {path: True}})
 
-    #
-    # @todo remove this restriction?
-    #
-    # `$unwind` cannot be used here. We would need to use a `set_field()` like
-    # approach to manually unwind the nested array field
-    #
-    if unwind_list_fields and other_list_fields:
-        for ufield in unwind_list_fields:
-            for ofield in other_list_fields:
-                if ufield.startswith(ofield + "."):
-                    raise ValueError(
-                        "Cannot unwind nested array field '%s' without also "
-                        "unwinding higher-level array field '%s'"
-                        % (ufield, ofield)
-                    )
-
+    remaining_lists = other_list_fields.copy()
     for list_field in unwind_list_fields:
-        pipeline.append({"$unwind": "$" + list_field})
+        prev_list = _pop_preceding_list(remaining_lists, list_field)
+        if prev_list is not None:
+            leaf = list_field[len(prev_list) + 1 :]
+            path = prev_list + path[len(list_field) :]
+            reduce_expr = F(prev_list).reduce(
+                (F(leaf) != None).if_else(VALUE.extend(F(leaf)), VALUE),
+                init_val=[],
+            )
+            pipeline.append({"$set": {prev_list: reduce_expr.to_mongo()}})
+        else:
+            pipeline.append({"$unwind": "$" + list_field})
 
     return path, pipeline, other_list_fields, id_to_str
+
+
+def _pop_preceding_list(other_list_fields, list_field):
+    prev_list = None
+    for field in reversed(other_list_fields):
+        if list_field.startswith(field + "."):
+            prev_list = field
+            break
+
+    if prev_list is not None:
+        other_list_fields.remove(prev_list)
+
+    return prev_list
 
 
 def _extract_prefix_from_expr(expr):
