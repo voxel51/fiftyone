@@ -637,7 +637,7 @@ attribute that you wish to label:
 You can always omit this parameter if you do not require attributes beyond the
 default `label`.
 
-For CVAT, the following `type` values are supported:
+For CVAT, the following standard `type` values are supported:
 
 -   `text`: a free-form text box. In this case, `default` is optional and
     `values` is unused
@@ -647,6 +647,9 @@ For CVAT, the following `type` values are supported:
     `default` is optional
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
+-   `occluded_widget`: this is a special type that can be applied to a single
+    boolean attribute per class that links the value of that attribute to the
+    occlusion widget in the CVAT UI
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -1461,6 +1464,66 @@ For example, let's upload some blurred images to CVAT for annotation:
 .. image:: /images/integrations/cvat_alt_media.png
    :alt: cvat-alt-media
    :align: center
+
+
+Linking the occluded property widget
+------------------------------------
+
+The CVAT UI provides a series of widgets on individual labels that control
+properties like occluded, hidden, locked, pinned, etc. The occluded property is
+special in that it is not merely a GUI feature, it is also exposed in the
+backing annotation API. 
+
+This allows you to link a boolean attribute of your labels in FiftyOne with
+this occlusion widget. Annotators can then set value of this attribute purely
+through clicking the widget.
+
+Things to note about the occlusion widget:
+
+* It only supports boolean fields
+* It can only be linked to one attribute per class
+* It is set in the `label_schema` by specifying the `type` of the attribute as
+  `occluded_widget`
+* It can be used to edit an existing boolean attribute or to create a new one
+
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_occluded_widget"
+
+    # Create a new attribute on existing labels that is
+    # annotated with the occlusion widget 
+    label_schema = {
+        "ground_truth": {
+            "attributes": {
+                "occluded": {
+                    "type": "occluded_widget",
+                }
+            }
+        }
+    }
+
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate the occluded attribute in the CVAT task that was created
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+    session = fo.launch_app(view=view)
+
+.. image:: /images/integrations/cvat_occ_widget.png
+   :alt: cvat-occ-widget
+   :align: center
+
 
 .. _cvat-annotating-videos:
 
