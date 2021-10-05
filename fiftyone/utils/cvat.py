@@ -1151,13 +1151,13 @@ class CVATImageAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        occluded = _parse_attribute(d.get("@occluded", None))
+        occluded = _parse_value(d.get("@occluded", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
-                value = _parse_attribute(attr["#text"])
+                value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
@@ -1781,15 +1781,15 @@ class CVATVideoAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        outside = _parse_attribute(d.get("@outside", None))
-        occluded = _parse_attribute(d.get("@occluded", None))
-        keyframe = _parse_attribute(d.get("@keyframe", None))
+        outside = _parse_value(d.get("@outside", None))
+        occluded = _parse_value(d.get("@occluded", None))
+        keyframe = _parse_value(d.get("@keyframe", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
-                value = _parse_attribute(attr["#text"])
+                value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
         return outside, occluded, keyframe, attributes
@@ -3742,7 +3742,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if expected_label_type == "scalar":
                 label_type = "scalar"
                 if assigned_scalar_attrs:
-                    label = _parse_attribute(anno["attributes"][0]["value"])
+                    label = _parse_value(anno["attributes"][0]["value"])
                     if label is not None:
                         if prev_type is str:
                             label = str(label)
@@ -3931,9 +3931,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if attr_key == "type":
                     cvat_attr["input_type"] = val
                 elif attr_key == "values":
-                    cvat_attr["values"] = [str(v) for v in val]
+                    cvat_attr["values"] = [_stringify_value(v) for v in val]
                 elif attr_key == "default":
-                    cvat_attr["default_value"] = str(val)
+                    cvat_attr["default_value"] = _stringify_value(val)
                 elif attr_key == "mutable":
                     cvat_attr["mutable"] = bool(val)
 
@@ -4089,9 +4089,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             scalar_attr_name = next(iter(cvat_schema[label_field].keys()))
 
             class_name = label_field
-            attributes = [{"spec_id": scalar_attr_name, "value": str(label)}]
+            attributes = [
+                {
+                    "spec_id": scalar_attr_name,
+                    "value": _stringify_value(label),
+                }
+            ]
         else:
-            class_name = str(label)
+            class_name = _stringify_value(label)
             attributes = []
 
         tags = [
@@ -4456,7 +4461,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 remapped_attrs[name] = new_name
                 name = new_name
 
-            attr_dict = {"spec_id": name, "value": str(value)}
+            attr_dict = {"spec_id": name, "value": _stringify_value(value)}
 
             if attr["mutable"]:
                 label_attrs.append(attr_dict)
@@ -4612,8 +4617,8 @@ class CVATLabel(object):
         attr_id_map_rev = {v: k for k, v in attr_id_map[cvat_id].items()}
         for attr in attrs:
             name = attr_id_map_rev[attr["spec_id"]]
-            value = _parse_attribute(attr["value"])
-            if value is not None and value != "":
+            value = _parse_value(attr["value"])
+            if value is not None:
                 if name.startswith("attribute:"):
                     name = name[len("attribute:") :]
                     fo_attr = CVATAttribute(name, value).to_attribute()
@@ -5039,7 +5044,20 @@ def _ensure_list(value):
     return [value]
 
 
-def _parse_attribute(value):
+def _stringify_value(value):
+    if value is None:
+        return ""
+
+    if value is True:
+        return "true"
+
+    if value is False:
+        return "false"
+
+    return str(value)
+
+
+def _parse_value(value):
     if value in (None, "None", ""):
         return None
 
