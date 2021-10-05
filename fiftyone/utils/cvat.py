@@ -2529,7 +2529,7 @@ class CVATBackend(foua.AnnotationBackend):
             "select",
             "radio",
             "checkbox",
-            "occluded_widget",
+            "occluded",
         ]
 
     @property
@@ -2537,6 +2537,10 @@ class CVATBackend(foua.AnnotationBackend):
         return True
 
     def recommend_attr_tool(self, name, value):
+        if name == "occluded":
+            if value is None or isinstance(value, bool):
+                return {"type": "occluded"}
+
         if isinstance(value, bool):
             return {"type": "checkbox"}
 
@@ -3952,7 +3956,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             cvat_attr = {"name": attr_name, "mutable": True}
             for attr_key, val in info.items():
                 if attr_key == "type":
-                    if val == "occluded_widget":
+                    if val == "occluded":
                         occluded_widget_name = attr_name
                         found_occluded_widget = True
                     else:
