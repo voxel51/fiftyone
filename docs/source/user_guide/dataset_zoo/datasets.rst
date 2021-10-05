@@ -161,7 +161,7 @@ ActivityNet-100 by passing them to
     relevant when a ``source_dir`` is provided
 
 -   **num_workers** (*None*): the number of processes to use when downloading
-    individual images. By default, ``multiprocessing.cpu_count()`` is
+    individual videos. By default, ``multiprocessing.cpu_count()`` is
     used
 
 -   **shuffle** (*False*): whether to randomly shuffle the order in which samples
@@ -221,7 +221,7 @@ ActivityNet-100 by passing them to
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any images
+        # downloading any videos 
         #
     
         dataset = foz.load_zoo_dataset(
@@ -262,7 +262,7 @@ ActivityNet-100 by passing them to
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any images
+        # downloading any videos 
         #
 
         fiftyone zoo datasets load activitynet-100 \
@@ -369,7 +369,7 @@ ActivityNet-200 by passing them to
     relevant when a ``source_dir`` is provided
 
 -   **num_workers** (*None*): the number of processes to use when downloading
-    individual images. By default, ``multiprocessing.cpu_count()`` is
+    individual videos. By default, ``multiprocessing.cpu_count()`` is
     used
 
 -   **shuffle** (*False*): whether to randomly shuffle the order in which samples
@@ -429,7 +429,7 @@ ActivityNet-200 by passing them to
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any images
+        # downloading any videos
         #
     
         dataset = foz.load_zoo_dataset(
@@ -470,7 +470,7 @@ ActivityNet-200 by passing them to
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any images
+        # downloading any videos
         #
 
         fiftyone zoo datasets load activitynet-100 \

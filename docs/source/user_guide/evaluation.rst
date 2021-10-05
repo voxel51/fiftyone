@@ -1205,6 +1205,8 @@ When running ActivityNet-style evaluation using
 -   By default, only segments with the same ``label`` will be matched. Classwise
     matching can be disabled via the ``classwise`` parameter
 
+-   As with COCO, an range of IoU values are used to compute mAP
+
 When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth segments:
 
@@ -1332,7 +1334,6 @@ for your segments by passing the ``compute_mAP=True`` flag to
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
 
     import random
 
@@ -1400,7 +1401,6 @@ ground truth segments of different classes.
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
 
     import random
 
