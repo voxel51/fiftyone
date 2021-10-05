@@ -7159,13 +7159,14 @@ def _parse_field_name(
     omit_terminal_lists,
     allow_missing,
 ):
-    unwind_list_fields = set()
-    other_list_fields = set()
+    unwind_list_fields = []
+    other_list_fields = []
 
     # Parse explicit array references
+    # Note: `field[][]` is valid syntax for list-of-list fields
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
-        unwind_list_fields.add("".join(chunks[: (idx + 1)]))
+        unwind_list_fields.append("".join(chunks[: (idx + 1)]))
 
     # Array references [] have been stripped
     field_name = "".join(chunks)
@@ -7184,7 +7185,7 @@ def _parse_field_name(
             return "frames", True, [], [], False
 
         prefix = sample_collection._FRAMES_PREFIX
-        unwind_list_fields = {f[len(prefix) :] for f in unwind_list_fields}
+        unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -7223,25 +7224,33 @@ def _parse_field_name(
             if omit_terminal_lists and path == field_name:
                 break
 
+            list_count = 1
+            while isinstance(field_type.field, fof.ListField):
+                list_count += 1
+                field_type = field_type.field
+
             if auto_unwind:
-                unwind_list_fields.add(path)
+                if path not in unwind_list_fields:
+                    unwind_list_fields.extend([path] * list_count)
             elif path not in unwind_list_fields:
-                other_list_fields.add(path)
+                if path not in other_list_fields:
+                    other_list_fields.extend([path] * list_count)
 
     if is_frame_field:
         if auto_unwind:
-            unwind_list_fields.discard("")
+            unwind_list_fields = [f for f in unwind_list_fields if f != ""]
         else:
             prefix = sample_collection._FRAMES_PREFIX
             field_name = prefix + field_name
-            unwind_list_fields = {
+            unwind_list_fields = [
                 prefix + f if f else "frames" for f in unwind_list_fields
-            }
-            other_list_fields = {
+            ]
+            other_list_fields = [
                 prefix + f if f else "frames" for f in other_list_fields
-            }
+            ]
             if "frames" not in unwind_list_fields:
-                other_list_fields.add("frames")
+                if "frames" not in other_list_fields:
+                    other_list_fields.append("frames")
 
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
