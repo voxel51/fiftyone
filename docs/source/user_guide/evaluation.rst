@@ -1373,9 +1373,9 @@ for your segments by passing the ``compute_mAP=True`` flag to
     )
 
     print(results.mAP())
-    # 0.3957
+    # 0.367
 
-    plot = results.plot_pr_curves(classes=["person", "kite", "car"])
+    plot = results.plot_pr_curves(classes=classes)
     plot.show()
 
 
@@ -1450,9 +1450,6 @@ ground truth segments of different classes.
     Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
     attached to your |Session| object and dynamically explored using FiftyOne's
     :ref:`interactive plotting features <interactive-plots>`!
-
-
-
 
 
 .. _evaluating-segmentations:
