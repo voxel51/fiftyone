@@ -2594,8 +2594,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
         job_ids,
         frame_id_map,
         labels_task_map,
-        assigned_scalar_attrs,
-        occluded_attrs,
         backend=None,
     ):
         super().__init__(samples, config, id_map, backend=backend)
@@ -2604,8 +2602,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
-        self.assigned_scalar_attrs = assigned_scalar_attrs
-        self.occluded_attrs = occluded_attrs
 
     def load_credentials(self, url=None, username=None, password=None):
         """Load the CVAT credentials from the given keyword arguments or the
@@ -2768,8 +2764,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
             job_ids,
             frame_id_map,
             d["labels_task_map"],
-            d.get("assigned_scalar_attrs", {}),
-            d.get("occluded_attrs", {}),
         )
 
 
@@ -3191,8 +3185,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_ids = {}
         frame_id_map = {}
         labels_task_map = {}
-        assigned_scalar_attrs = {}
-        occluded_attrs = {}
 
         num_samples = len(samples)
         is_video = samples.media_type == fom.VIDEO
@@ -3217,13 +3209,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             (
                 cvat_schema,
                 assign_scalar_attrs,
-                occ_attrs,
+                occluded_attrs,
             ) = self._build_cvat_schema(label_field, label_info)
-
-            if label_type == "scalar":
-                assigned_scalar_attrs[label_field] = assign_scalar_attrs
-
-            occluded_attrs[label_field] = occ_attrs
 
             labels_task_map[label_field] = []
 
@@ -3265,7 +3252,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             cvat_schema,
                             load_tracks=True,
                             only_keyframes=only_keyframes,
-                            occluded_attrs=occ_attrs,
+                            occluded_attrs=occluded_attrs,
                         )
                     else:
                         # Shape annotations
@@ -3277,7 +3264,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            occluded_attrs=occ_attrs,
+                            occluded_attrs=occluded_attrs,
                         )
 
                     id_map[label_field] = _id_map
@@ -3385,8 +3372,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             job_ids,
             frame_id_map,
             labels_task_map,
-            assigned_scalar_attrs,
-            occluded_attrs,
             backend=backend,
         )
 
@@ -3405,15 +3390,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
-        assigned_scalar_attrs = results.assigned_scalar_attrs
-        occluded_attrs = results.occluded_attrs
 
-        annotations = {}
+        assigned_scalar_attrs = {}
+        occluded_attrs = {}
+        for label_field, label_info in label_schema.items():
+            _, scalar_attrs, occ_attrs = self._build_cvat_schema(
+                label_field, label_info
+            )
+
+            assigned_scalar_attrs[label_field] = scalar_attrs
+            occluded_attrs[label_field] = occ_attrs
 
         labels_task_map_rev = {}
         for lf, tasks in labels_task_map.items():
             for task in tasks:
                 labels_task_map_rev[task] = lf
+
+        annotations = {}
 
         for task_id in task_ids:
             label_field = labels_task_map_rev[task_id]
@@ -3909,9 +3902,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "mutable": True,
             }
 
-        # True: scalars are annotated as tag attributes
-        # False: scalars are annotated as tag labels
-        assign_scalar_attrs = not bool(classes)
+        if label_type == "scalar":
+            # True: scalars are annotated as tag attributes
+            # False: scalars are annotated as tag labels
+            assign_scalar_attrs = not bool(classes)
+        else:
+            assign_scalar_attrs = None
 
         if not classes:
             classes = [label_field]
