@@ -2437,7 +2437,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         chunk_size (None): the number of frames to upload per ZIP chunk
         task_assignee (None): the username(s) to which the task(s) were
             assigned. This argument can be a list of usernames when annotating
-            videos as each video is uploaded to a separate task 
+            videos as each video is uploaded to a separate task
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
@@ -2539,11 +2539,10 @@ class CVATBackend(foua.AnnotationBackend):
         return True
 
     def recommend_attr_tool(self, name, value):
-        if name == "occluded":
-            if value is None or isinstance(value, bool):
+        if isinstance(value, bool):
+            if name == "occluded":
                 return {"type": "occluded"}
 
-        if isinstance(value, bool):
             return {"type": "checkbox"}
 
         return {"type": "text"}
@@ -2769,8 +2768,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
             job_ids,
             frame_id_map,
             d["labels_task_map"],
-            d["assigned_scalar_attrs"],
-            d["occluded_attrs"],
+            d.get("assigned_scalar_attrs", {}),
+            d.get("occluded_attrs", {}),
         )
 
 
@@ -3220,10 +3219,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 assign_scalar_attrs,
                 field_occ_attrs,
             ) = self._build_cvat_schema(label_field, label_info)
-            occluded_attrs[label_field] = field_occ_attrs
 
             if label_type == "scalar":
                 assigned_scalar_attrs[label_field] = assign_scalar_attrs
+
+            occluded_attrs[label_field] = field_occ_attrs
 
             labels_task_map[label_field] = []
 
@@ -3935,7 +3935,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             for name in _classes:
                 cvat_schema[name] = deepcopy(attributes)
-                occluded_attrs[name] = occluded_attr_name
+                if occluded_attr_name is not None:
+                    occluded_attrs[name] = occluded_attr_name
 
         # Class-specific attributes
         for _class in classes:
@@ -3963,14 +3964,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _to_cvat_attributes(self, attributes):
         cvat_attrs = {}
         occluded_attr_name = None
-        found_occluded_attr = False
         for attr_name, info in attributes.items():
             cvat_attr = {"name": attr_name, "mutable": True}
+            is_occluded = False
             for attr_key, val in info.items():
                 if attr_key == "type":
                     if val == "occluded":
                         occluded_attr_name = attr_name
-                        found_occluded_attr = True
+                        is_occluded = True
                     else:
                         cvat_attr["input_type"] = val
                 elif attr_key == "values":
@@ -3980,10 +3981,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 elif attr_key == "mutable":
                     cvat_attr["mutable"] = bool(val)
 
-            if not found_occluded_attr:
+            if not is_occluded:
                 cvat_attrs[attr_name] = cvat_attr
-
-            found_occluded_attr = False
 
         return cvat_attrs, occluded_attr_name
 
@@ -4530,19 +4529,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs.append(attr_dict)
 
         is_occluded = False
-        if occluded_attrs is not None and class_name in occluded_attrs:
-            occluded_attr_name = occluded_attrs[class_name]
-            if occluded_attr_name is not None:
-                occ_attr_val = label.get_attribute_value(
-                    occluded_attr_name, False
-                )
-                try:
-                    is_occluded = bool(occ_attr_val)
-                except:
-                    logger.warning(
-                        "Attempting to set the occluded widget using "
-                        "attribute %s but found a non-boolean value... skipping"
-                    )
+        if occluded_attrs is not None:
+            attr_name = occluded_attrs.get(class_name, None)
+            if attr_name is not None:
+                is_occluded = bool(label.get_attribute_value(attr_name, False))
 
         return (
             class_name,
@@ -4740,8 +4730,8 @@ class CVATShape(CVATLabel):
         index (None): the tracking index of the shape
         immutable_attrs (None): immutable attributes inherited by this shape
             from its track
-        occluded_attrs (None): a dictonary of class names mapped to the
-            corresponding attribute linked to the CVAT occlusion widget
+        occluded_attrs (None): a dictonary mapping class names to the
+            corresponding attribute linked to the CVAT occlusion widget, if any
     """
 
     def __init__(
@@ -4762,12 +4752,11 @@ class CVATShape(CVATLabel):
         self.points = label_dict["points"]
         self.index = index
 
-        # Parse occluded attr
-        is_occluded = label_dict["occluded"]
-        self.occluded_attrs = occluded_attrs or {}
-        occluded_attr = self.occluded_attrs.get(self.label, None)
-        if occluded_attr:
-            self.attributes[occluded_attr] = is_occluded
+        # Parse occluded attribute, if necessary
+        if occluded_attrs is not None:
+            occluded_attr_name = occluded_attrs.get(self.label, None)
+            if occluded_attr_name:
+                self.attributes[occluded_attr_name] = label_dict["occluded"]
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))

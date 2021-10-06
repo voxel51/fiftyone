@@ -1481,7 +1481,7 @@ specifying the attribute's type as `occluded` in your label schema.
 In addition, if you are editing existing labels using the `attributes=True`
 syntax (the default) to infer the label schema for an existing field, if a
 boolean attribute with the name `"occluded"` is found, it will automatically be
-linked to the occlusion widget
+linked to the occlusion widget.
 
 .. note::
 
