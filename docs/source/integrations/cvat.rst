@@ -639,7 +639,7 @@ attribute that you wish to label:
 You can always omit this parameter if you do not require attributes beyond the
 default `label`.
 
-For CVAT, the following standard `type` values are supported:
+For CVAT, the following `type` values are supported:
 
 -   `text`: a free-form text box. In this case, `default` is optional and
     `values` is unused
@@ -649,9 +649,8 @@ For CVAT, the following standard `type` values are supported:
     `default` is optional
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
--   `occluded`: this is a special type that can be applied to a single
-    boolean attribute per class that links the value of that attribute to the
-    occlusion widget in the CVAT UI
+-   `occluded`: CVAT's builtin occlusion toggle icon. This widget type can only
+    be specified for at most one attribute, which must be a boolean
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -1469,29 +1468,26 @@ For example, let's upload some blurred images to CVAT for annotation:
    :alt: cvat-alt-media
    :align: center
 
+Using CVAT's occlusion widget
+-----------------------------
 
-Linking the occluded property widget
-------------------------------------
+The CVAT UI provides a variety of builtin widgets on each label you create that
+control properties like occluded, hidden, locked, and pinned.
 
-The CVAT UI provides a series of widgets on individual labels that control
-properties like occluded, hidden, locked, pinned, etc. The occluded property is
-special in that it is not merely a GUI feature, it is also exposed in the
-backing annotation API. 
+You can configure CVAT annotation runs so that the state of the occlusion
+widget is read/written to a FiftyOne label attribute of your choice by
+specifying the attribute's type as `occluded` in your label schema.
 
-This allows you to link a boolean attribute of your labels in FiftyOne with
-this occlusion widget. Annotators can then set value of this attribute purely
-through clicking the widget.
+In addition, if you are editing existing labels using the `attributes=True`
+syntax (the default) to infer the label schema for an existing field, if a
+boolean attribute with the name `"occluded"` is found, it will automatically be
+linked to the occlusion widget
 
-Things to note about the occlusion widget:
+.. note::
 
-* It only supports boolean fields
-* It can only be linked to one attribute per class
-* It is set in the `label_schema` by specifying the `type` of the attribute as
-  `occluded`
-* It can be used to edit an existing boolean attribute or to create a new one
-* A if a boolean attribute with the name `"occluded"` is found, it will
-  automatically be linked to the occlusion widget
-
+    You can only specify the `occluded` type for at most one attribute of each
+    label field/class in your label schema, and, if you are editing existing
+    labels, the attribute that you choose must contain boolean values.
 
 .. code:: python
     :linenos:
@@ -1504,11 +1500,8 @@ Things to note about the occlusion widget:
 
     anno_key = "cvat_occluded_widget"
 
-    # Create a new attribute on existing labels that is
-    # annotated with the occlusion widget 
-
-    # Note: Specifying the type in this example is not necessary since the
-    # attribute name is "occluded"
+    # Populate a new `occluded` attribute on the existing `ground_truth` labels
+    # using CVAT's occluded widget
     label_schema = {
         "ground_truth": {
             "attributes": {
@@ -1522,17 +1515,14 @@ Things to note about the occlusion widget:
     view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
     print(dataset.get_annotation_info(anno_key))
 
-    # Annotate the occluded attribute in the CVAT task that was created
+    # Mark occlusions in CVAT...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-    session = fo.launch_app(view=view)
-
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget
    :align: center
-
 
 .. _cvat-annotating-videos:
 
