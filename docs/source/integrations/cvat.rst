@@ -443,7 +443,9 @@ provided:
     in reduced video quality in CVAT due to size limitations on ZIP files that
     can be uploaded to CVAT
 -   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
--   **task_assignee** (*None*): a username to assign the generated tasks
+-   **task_assignee** (*None*): the username to assign the generated tasks.
+    This argument can be a list of usernames when annotating videos as each
+    video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
 
@@ -1306,7 +1308,9 @@ to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
 specify which users will be assigned to the created tasks:
 
 -   `segment_size`: the maximum number of images to include in a single job
--   `task_assignee`: a username to assign the generated tasks
+-   `task_assignee`: a username to assign the generated tasks. This argument
+    can be a list of usernames when annotating videos as each
+    video is uploaded to a separate task 
 -   `job_assignees`: a list of usernames to assign jobs
 -   `job_reviewers`: a list of usernames to assign job reviews
 
