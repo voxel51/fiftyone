@@ -1151,13 +1151,13 @@ class CVATImageAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        occluded = _parse_attribute(d.get("@occluded", None))
+        occluded = _parse_value(d.get("@occluded", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
-                value = _parse_attribute(attr["#text"])
+                value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
@@ -1781,15 +1781,15 @@ class CVATVideoAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        outside = _parse_attribute(d.get("@outside", None))
-        occluded = _parse_attribute(d.get("@occluded", None))
-        keyframe = _parse_attribute(d.get("@keyframe", None))
+        outside = _parse_value(d.get("@outside", None))
+        occluded = _parse_value(d.get("@occluded", None))
+        keyframe = _parse_value(d.get("@keyframe", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
-                value = _parse_attribute(attr["#text"])
+                value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
         return outside, occluded, keyframe, attributes
@@ -2435,7 +2435,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             result in reduced video quality in CVAT due to size limitations on
             ZIP files that can be uploaded to CVAT
         chunk_size (None): the number of frames to upload per ZIP chunk
-        task_assignee (None): the username to which the task(s) were assigned
+        task_assignee (None): the username(s) to which the task(s) were
+            assigned. This argument can be a list of usernames when annotating
+            videos as each video is uploaded to a separate task 
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
@@ -3263,6 +3265,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 current_job_assignees = job_assignees
                 current_job_reviewers = job_reviewers
+                current_task_assignee = task_assignee
                 if is_video:
                     # Videos are uploaded in multiple tasks with 1 job per task
                     # Assign the correct users for the current task
@@ -3278,6 +3281,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             job_reviewers[job_reviewer_ind]
                         ]
 
+                if task_assignee is not None:
+                    if isinstance(task_assignee, str):
+                        current_task_assignee = task_assignee
+                    else:
+                        task_assignee_ind = idx % len(task_assignee)
+                        current_task_assignee = task_assignee[
+                            task_assignee_ind
+                        ]
+
                 task_name = "FiftyOne_%s_%s" % (
                     samples_batch._root_dataset.name.replace(" ", "_"),
                     label_field.replace(" ", "_"),
@@ -3289,7 +3301,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     schema=cvat_schema,
                     segment_size=segment_size,
                     image_quality=image_quality,
-                    task_assignee=task_assignee,
+                    task_assignee=current_task_assignee,
                 )
                 task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
@@ -3730,7 +3742,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if expected_label_type == "scalar":
                 label_type = "scalar"
                 if assigned_scalar_attrs:
-                    label = _parse_attribute(anno["attributes"][0]["value"])
+                    label = _parse_value(anno["attributes"][0]["value"])
                     if label is not None:
                         if prev_type is str:
                             label = str(label)
@@ -3919,9 +3931,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if attr_key == "type":
                     cvat_attr["input_type"] = val
                 elif attr_key == "values":
-                    cvat_attr["values"] = [str(v) for v in val]
+                    cvat_attr["values"] = [_stringify_value(v) for v in val]
                 elif attr_key == "default":
-                    cvat_attr["default_value"] = str(val)
+                    cvat_attr["default_value"] = _stringify_value(val)
                 elif attr_key == "mutable":
                     cvat_attr["mutable"] = bool(val)
 
@@ -4077,9 +4089,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             scalar_attr_name = next(iter(cvat_schema[label_field].keys()))
 
             class_name = label_field
-            attributes = [{"spec_id": scalar_attr_name, "value": str(label)}]
+            attributes = [
+                {
+                    "spec_id": scalar_attr_name,
+                    "value": _stringify_value(label),
+                }
+            ]
         else:
-            class_name = str(label)
+            class_name = _stringify_value(label)
             attributes = []
 
         tags = [
@@ -4444,7 +4461,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 remapped_attrs[name] = new_name
                 name = new_name
 
-            attr_dict = {"spec_id": name, "value": str(value)}
+            attr_dict = {"spec_id": name, "value": _stringify_value(value)}
 
             if attr["mutable"]:
                 label_attrs.append(attr_dict)
@@ -4600,8 +4617,8 @@ class CVATLabel(object):
         attr_id_map_rev = {v: k for k, v in attr_id_map[cvat_id].items()}
         for attr in attrs:
             name = attr_id_map_rev[attr["spec_id"]]
-            value = _parse_attribute(attr["value"])
-            if value is not None and value != "":
+            value = _parse_value(attr["value"])
+            if value is not None:
                 if name.startswith("attribute:"):
                     name = name[len("attribute:") :]
                     fo_attr = CVATAttribute(name, value).to_attribute()
@@ -5027,7 +5044,20 @@ def _ensure_list(value):
     return [value]
 
 
-def _parse_attribute(value):
+def _stringify_value(value):
+    if value is None:
+        return ""
+
+    if value is True:
+        return "true"
+
+    if value is False:
+        return "false"
+
+    return str(value)
+
+
+def _parse_value(value):
     if value in (None, "None", ""):
         return None
 
