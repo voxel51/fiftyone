@@ -2441,10 +2441,10 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
-        project_name (None): the name of the project to create and in which to
-            store tasks with the same label schema. The primary use is to group
-            videos which are each uploaded to separate tasks. Be default, no project is
-            created
+        project_name (None): the name of the project(s) to create and in which to
+            store all tasks with the same label schema. The primary use of this
+            parameter is to group videos since they are each uploaded to separate
+            tasks. By default, no project is created
     """
 
     def __init__(

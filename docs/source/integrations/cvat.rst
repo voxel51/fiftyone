@@ -448,10 +448,10 @@ provided:
     video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
--   **project_name** (*None*): the name of the project to create and in which to
-    store tasks with the same label schema. The primary use is to group
-    videos which are each uploaded to separate tasks. Be default, no project is
-    created
+-   **project_name** (*None*): the name of the project(s) to create and in which to
+    store all tasks with the same label schema. The primary use of this parameter
+    is to group videos since they are each uploaded to separate tasks. By default,
+    no project is created
 
 
 .. _cvat-label-schema:
@@ -1372,13 +1372,13 @@ be annotated in a separate task which can make it difficult to manage
 annotating large video datasets. Creating a new project allows all of the new
 video tasks to be grouped together and easily annotated.
 
- One stipulation about CVAT projects is that all tasks share the same
+One stipulation about CVAT projects is that all tasks must share the same
 label schema. Thus, if multiple label fields with different schemas are being
 annotated, a new project is created for each.
 
 
-All created projects are deleted when annotations are loaded and
-`cleanup=True`.
+All projects that were created are deleted when annotations are loaded with the
+`cleanup=True` parameter.
 
 .. code:: python
     :linenos:
