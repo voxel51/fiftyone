@@ -647,7 +647,7 @@ For CVAT, the following standard `type` values are supported:
     `default` is optional
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
--   `occluded_widget`: this is a special type that can be applied to a single
+-   `occluded`: this is a special type that can be applied to a single
     boolean attribute per class that links the value of that attribute to the
     occlusion widget in the CVAT UI
 
@@ -1483,8 +1483,10 @@ Things to note about the occlusion widget:
 * It only supports boolean fields
 * It can only be linked to one attribute per class
 * It is set in the `label_schema` by specifying the `type` of the attribute as
-  `occluded_widget`
+  `occluded`
 * It can be used to edit an existing boolean attribute or to create a new one
+* A if a boolean attribute with the name `"occluded"` is found, it will
+  automatically be linked to the occlusion widget
 
 
 .. code:: python
@@ -1500,11 +1502,14 @@ Things to note about the occlusion widget:
 
     # Create a new attribute on existing labels that is
     # annotated with the occlusion widget 
+
+    # Note: Specifying the type in this example is not necessary since the
+    # attribute name is "occluded"
     label_schema = {
         "ground_truth": {
             "attributes": {
                 "occluded": {
-                    "type": "occluded_widget",
+                    "type": "occluded",
                 }
             }
         }
