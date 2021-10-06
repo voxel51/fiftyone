@@ -1419,9 +1419,12 @@ class Values(Aggregation):
         else:
             values = d["values"]
 
-        if not self._raw and self._parse_fcn is not None:
+        if self._raw:
+            return values
+
+        if self._parse_fcn is not None:
             level = 1 + self._num_list_fields
-            values = _transform_values(values, self._parse_fcn, level=level)
+            return _transform_values(values, self._parse_fcn, level=level)
 
         return values
 
