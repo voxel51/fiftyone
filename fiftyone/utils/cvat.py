@@ -3217,13 +3217,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             (
                 cvat_schema,
                 assign_scalar_attrs,
-                field_occ_attrs,
+                occ_attrs,
             ) = self._build_cvat_schema(label_field, label_info)
 
             if label_type == "scalar":
                 assigned_scalar_attrs[label_field] = assign_scalar_attrs
 
-            occluded_attrs[label_field] = field_occ_attrs
+            occluded_attrs[label_field] = occ_attrs
 
             labels_task_map[label_field] = []
 
@@ -3265,7 +3265,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             cvat_schema,
                             load_tracks=True,
                             only_keyframes=only_keyframes,
-                            occluded_attrs=field_occ_attrs,
+                            occluded_attrs=occ_attrs,
                         )
                     else:
                         # Shape annotations
@@ -3277,7 +3277,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            occluded_attrs=field_occ_attrs,
+                            occluded_attrs=occ_attrs,
                         )
 
                     id_map[label_field] = _id_map
@@ -3420,7 +3420,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_info = label_schema[label_field]
             label_type = label_info["type"]
             scalar_attrs = assigned_scalar_attrs.get(label_field, False)
-            field_occ_attrs = occluded_attrs.get(label_field, False)
+            occ_attrs = occluded_attrs.get(label_field, {})
             _id_map = id_map.get(label_field, {})
 
             # Download task data
@@ -3469,7 +3469,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attr_id_map,
                 frames,
                 assigned_scalar_attrs=scalar_attrs,
-                occluded_attrs=field_occ_attrs,
+                occluded_attrs=occ_attrs,
             )
             label_field_results = self._merge_results(
                 label_field_results, shape_results
@@ -3495,7 +3495,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     assigned_scalar_attrs=scalar_attrs,
                     track_index=track_index,
                     immutable_attrs=immutable_attrs,
-                    occluded_attrs=field_occ_attrs,
+                    occluded_attrs=occ_attrs,
                 )
                 label_field_results = self._merge_results(
                     label_field_results, track_shape_results
