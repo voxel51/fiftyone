@@ -104,12 +104,16 @@ export const port = isElectron()
   ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
   : parseInt(window.location.port);
 
+const address = isElectron()
+  ? process.env.FIFTYONE_SERVER_ADDRESS || "localhost"
+  : window.location.hostname;
+
 export const http = isElectron()
-  ? `http://localhost:${port}`
+  ? `http://${address}:${port}`
   : window.location.protocol + "//" + host;
 
 export const ws = isElectron()
-  ? `ws://localhost:${port}/state`
+  ? `ws://${address}:${port}/state`
   : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${host}/state`;
 
 export const appContext = isElectron()

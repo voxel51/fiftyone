@@ -11,7 +11,9 @@ import fiftyone.core.session as fos
 import fiftyone.zoo.datasets as fozd
 
 
-def quickstart(video=False, port=None, remote=False, desktop=None):
+def quickstart(
+    video=False, port=None, address=None, remote=False, desktop=None
+):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -21,6 +23,8 @@ def quickstart(video=False, port=None, remote=False, desktop=None):
         video (False): whether to launch a video dataset
         port (None): the port number to serve the App. If None,
             ``fiftyone.config.default_app_port`` is used
+        address (None): the address to serve the App. If None,
+            ``fiftyone.config.default_app_address`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as
@@ -35,26 +39,30 @@ def quickstart(video=False, port=None, remote=False, desktop=None):
             the App that was launched
     """
     if video:
-        return _video_quickstart(port, remote, desktop)
+        return _video_quickstart(port, address, remote, desktop)
 
-    return _quickstart(port, remote, desktop)
+    return _quickstart(port, address, remote, desktop)
 
 
-def _quickstart(port, remote, desktop):
+def _quickstart(port, address, remote, desktop):
     print(_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart")
-    return _launch_app(dataset, port, remote, desktop)
+    return _launch_app(dataset, port, address, remote, desktop)
 
 
-def _video_quickstart(port, remote, desktop):
+def _video_quickstart(port, address, remote, desktop):
     print(_VIDEO_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart-video")
-    return _launch_app(dataset, port, remote, desktop)
+    return _launch_app(dataset, port, address, remote, desktop)
 
 
-def _launch_app(dataset, port, remote, desktop):
+def _launch_app(dataset, port, address, remote, desktop):
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, desktop=desktop
+        dataset=dataset,
+        port=port,
+        address=address,
+        remote=remote,
+        desktop=desktop,
     )
 
     return dataset, session

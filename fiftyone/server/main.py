@@ -1468,7 +1468,10 @@ class Application(tornado.web.Application):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=fo.config.default_app_port)
+    parser.add_argument(
+        "--address", type=str, default=fo.config.default_app_address
+    )
     args = parser.parse_args()
     app = Application(debug=foc.DEV_INSTALL)
-    app.listen(args.port)
+    app.listen(args.port, address=args.address)
     tornado.ioloop.IOLoop.current().start()
