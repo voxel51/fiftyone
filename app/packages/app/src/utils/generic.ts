@@ -147,10 +147,10 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: twoDigit,
         day: twoDigit,
         month: twoDigit,
-        hour: twoDigit,
-        minute: twoDigit,
       };
       diff = {
+        hour: twoDigit,
+        minute: twoDigit,
         second: twoDigit,
         // @ts-ignore
         fractionalSecondDigits: 3,

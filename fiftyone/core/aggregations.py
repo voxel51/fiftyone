@@ -916,7 +916,7 @@ class HistogramValues(Aggregation):
     def _compute_bin_edges(self, sample_collection):
         bounds = sample_collection.bounds(self._field_name, expr=self._expr)
         if any(b is None for b in bounds):
-            bounds = (-1, -1)
+            bounds = [-1, -1]
 
         if isinstance(bounds[0], datetime):
             self._is_datetime = True

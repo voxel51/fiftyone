@@ -8,7 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 import math
 import os
 import traceback
@@ -1383,6 +1383,10 @@ async def _numeric_histograms(view, schema, prefix=""):
             bins = 1
             if range_[0] is None:
                 range_ = [0, 1]
+            elif isinstance(range_[1], datetime):
+                range_ = (range_[0], range_[1] + timedelta(milliseconds=1))
+            else:
+                range_ = (range_[0], range_[1] + 1e-6)
 
         if fos._meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]

@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import numeral from "numeral";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 import {
   RecoilState,
   RecoilValueReadOnly,
@@ -15,7 +15,6 @@ import { DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
-import { textAlign } from "html2canvas/dist/types/css/property-descriptors/text-align";
 import { useTheme } from "../../utils/hooks";
 
 const SliderContainer = styled.div`
@@ -99,7 +98,11 @@ const getFormatter = (fieldType, timeZone, bounds) => {
     hasTitle,
     formatter: (v) => {
       if (fieldType === DATE_TIME_FIELD) {
-        return dtFormatters[1].format(v).replace(", ", "\n");
+        const str = dtFormatters[1].format(v).replace(",", "\n");
+        if (dtFormatters[1].resolvedOptions().fractionalSecondDigits === 3) {
+          return str + "ms";
+        }
+        return str;
       }
 
       return numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
