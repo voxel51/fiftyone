@@ -3282,6 +3282,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 occluded_attrs,
             ) = self._build_cvat_schema(label_field, label_info)
 
+            id_map[label_field] = {}
             labels_task_map[label_field] = []
 
             project_id = None
@@ -3346,7 +3347,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             occluded_attrs=occluded_attrs,
                         )
 
-                    id_map[label_field] = _id_map
+                    id_map[label_field].update(_id_map)
 
                 current_job_assignees = job_assignees
                 current_job_reviewers = job_reviewers
