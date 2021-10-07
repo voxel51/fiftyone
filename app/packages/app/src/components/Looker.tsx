@@ -342,6 +342,7 @@ const lookerOptions = selector({
       zoom,
       colorMap: get(selectors.colorMap(true)),
       colorscale: get(atoms.stateDescription).colorscale,
+      colorTargets: get(selectors.colorTargets(true)),
       filter: get(labelFilters(true)),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],

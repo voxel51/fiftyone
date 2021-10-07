@@ -1,11 +1,16 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-
-import { getSegmentationColorArray } from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
-import { BaseState, Coordinates } from "../state";
-import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
+import { BaseState, Coordinates, RGB } from "../state";
+import {
+  BaseLabel,
+  CONTAINS,
+  LabelUpdate,
+  Overlay,
+  PointInfo,
+  SelectData,
+} from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
@@ -15,14 +20,21 @@ interface SegmentationLabel extends BaseLabel {
   };
 }
 
+interface SegmentationInfo extends BaseLabel {
+  mask?: {
+    shape: [number, number];
+  };
+}
+
 export default class SegmentationOverlay<State extends BaseState>
   implements Overlay<State> {
   readonly field: string;
-  private readonly label: SegmentationLabel;
+  private label: SegmentationLabel;
   private targets?: TypedArray;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
-  private cachedColoring: (key: string | number) => string = null;
+  private awaitingUUID: string;
+  private cachedColoring: RGB[];
   private cachedAlpha: number = null;
 
   constructor(field: string, label: SegmentationLabel) {
@@ -48,10 +60,9 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(0, 0, this.label.mask.shape[1], this.label.mask.shape[0]);
-    maskCtx.putImageData(this.imageData, 0, 0);
+    if (!this.targets) {
+      return;
+    }
 
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
@@ -69,7 +80,7 @@ export default class SegmentationOverlay<State extends BaseState>
     return Infinity;
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo<SegmentationLabel> {
+  getPointInfo(state: Readonly<State>): PointInfo<SegmentationInfo> {
     const target = this.getTarget(state);
     return {
       color: this.getColor(state, target),
@@ -110,7 +121,7 @@ export default class SegmentationOverlay<State extends BaseState>
 
   needsLabelUpdate(state: Readonly<State>) {
     if (this.cachedColoring === null) {
-      this.cachedColoring = state.options.colorMap;
+      this.cachedColoring = state.options.colorTargets;
     }
 
     const alpha = state.options.alpha;
@@ -121,9 +132,51 @@ export default class SegmentationOverlay<State extends BaseState>
 
     return (
       this.targets &&
-      (this.cachedColoring !== state.options.colorMap ||
+      (this.cachedColoring !== state.options.colorTargets ||
         this.cachedAlpha !== state.options.alpha)
     );
+  }
+
+  getLabelData(state: Readonly<State>, messageUUID: string) {
+    this.awaitingUUID = messageUUID;
+    this.cachedColoring = state.options.colorTargets;
+    this.cachedAlpha = state.options.alpha;
+
+    return [
+      {
+        label: this.label,
+        buffers: [this.label.mask.data.buffer, this.label.mask.image],
+        coloring: state.options.colorTargets,
+        alpha: state.options.alpha,
+      },
+    ];
+  }
+
+  updateLabelData(
+    [{ label }]: LabelUpdate<SegmentationLabel>[],
+    messageUUID: string
+  ) {
+    if (messageUUID !== this.awaitingUUID) {
+      return;
+    }
+    this.awaitingUUID = null;
+
+    this.label = label;
+    const [height, width] = this.label.mask.data.shape;
+    this.imageData = new ImageData(
+      new Uint8ClampedArray(this.label.mask.image),
+      width,
+      height
+    );
+    const maskCtx = this.canvas.getContext("2d");
+    maskCtx.imageSmoothingEnabled = false;
+    maskCtx.clearRect(
+      0,
+      0,
+      this.label.mask.data.shape[1],
+      this.label.mask.data.shape[0]
+    );
+    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   private getIndex(state: Readonly<State>): number {

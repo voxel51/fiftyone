@@ -15,6 +15,7 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
+import { getRGB, RGB } from "@fiftyone/looker";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -641,6 +642,14 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     const seed = get(atoms.colorSeed(modal));
 
     return generateColorMap(pool, seed);
+  },
+});
+
+export const colorTargets = selectorFamily<RGB[], boolean>({
+  key: "colorTargets",
+  get: (modal) => ({ get }) => {
+    const coloring = get(colorMap(modal));
+    return new Array(255).map((_, i) => getRGB(coloring(i)));
   },
 });
 

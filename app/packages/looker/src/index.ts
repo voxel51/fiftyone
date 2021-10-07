@@ -76,6 +76,10 @@ import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
 
+export { getRGB } from "./color";
+
+export { RGB } from "./state";
+
 const labelsWorker = createWorker();
 
 export abstract class Looker<State extends BaseState = BaseState> {

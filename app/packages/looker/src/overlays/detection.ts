@@ -125,7 +125,7 @@ export default class DetectionOverlay<
   }
 
   updateLabelData(
-    [{ label, coloring }]: LabelUpdate<DetectionLabel>[],
+    [{ label }]: LabelUpdate<DetectionLabel>[],
     messageUUID: string
   ) {
     if (messageUUID !== this.awaitingUUID) {

@@ -85,6 +85,7 @@ const flashlightLookerOptions = selector({
     return {
       colorByLabel: get(atoms.colorByLabel(false)),
       colorMap: get(selectors.colorMap(false)),
+      colorTargets: get(selectors.colorTargets(false)),
       filter: get(labelFilters(false)),
       activePaths: get(activeFields),
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),

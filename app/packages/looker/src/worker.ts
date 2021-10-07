@@ -2,14 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { get32BitColor } from "./color";
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
-import { deserialize } from "./numpy";
+import { ARRAY_TYPES, deserialize } from "./numpy";
 import { BaseLabel, LabelUpdate } from "./overlays/base";
-import { FrameChunk } from "./state";
-
-const colorMask = () => {};
-
-const colorMap = () => {};
+import { FrameChunk, RGB } from "./state";
 
 const DESERIALIZE = {
   Detection: (label, buffers) => {
@@ -260,8 +257,85 @@ interface UpdateLabels {
 
 type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
 
+const UPDATE_LABEL = {
+  Detection: (label, alpha, color) => {
+    const overlay = new Uint32Array(label.mask.image);
+    const targets = new ARRAY_TYPES[label.mask.data.arrayType](
+      label.mask.data.buffer
+    );
+    color = get32BitColor(color, alpha);
+
+    for (const i in overlay) {
+      if (targets[i]) {
+        overlay[i] = color;
+      }
+    }
+  },
+  Heatmap: (label, coloring, alpha) => {
+    const overlay = new Uint32Array(label.mask.image);
+    const targets = new ARRAY_TYPES[label.mask.data.arrayType](
+      label.mask.data.buffer
+    );
+    const [start, stop] = label.range;
+    const max = Math.max(Math.abs(start), Math.abs(stop));
+
+    const getColor = Array.isArray(coloring[0])
+      ? (value) => {
+          if (value === 0) {
+            return 0;
+          }
+
+          const index = Math.round(
+            (Math.max(value - start, 0) / (stop - start)) *
+              (coloring.length - 1)
+          );
+
+          return get32BitColor(coloring[index], alpha);
+        }
+      : (value) => {
+          if (value === 0) {
+            return 0;
+          }
+
+          value = Math.min(max, Math.abs(value)) / max;
+
+          return get32BitColor(coloring, (value / max) * alpha);
+        };
+
+    for (const i in overlay) {
+      if (targets[i] !== 0) {
+        overlay[i] = getColor(targets[i]);
+      }
+    }
+  },
+  Segmentation: (label, coloring: RGB[], alpha) => {
+    const overlay = new Uint32Array(label.mask.image);
+    const targets = new ARRAY_TYPES[label.mask.data.arrayType](
+      label.mask.data.buffer
+    );
+
+    const cache = {};
+
+    const getColor = (i) => {
+      if (i in cache) {
+        return cache[i];
+      }
+
+      cache[i] = get32BitColor(coloring[i], alpha);
+    };
+
+    for (const i in overlay) {
+      if (targets[i] !== 0) {
+        overlay[i] = getColor(targets[i]);
+      }
+    }
+  },
+};
+
 const updateLabels = ({ labels, uuid }: UpdateLabels) => {
-  labels.forEach();
+  labels.forEach(({ label, alpha, coloring }) =>
+    UPDATE_LABEL[label._cls](label, coloring, alpha)
+  );
 
   postMessage({
     method: "labelsUpdate",
