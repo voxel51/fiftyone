@@ -5,7 +5,14 @@
 import { get32BitColor, getRGBA, getRGBAColor } from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
-import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
+import {
+  BaseLabel,
+  CONTAINS,
+  LabelUpdate,
+  Overlay,
+  PointInfo,
+  SelectData,
+} from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface HeatMap {
@@ -28,12 +35,13 @@ interface HeatmapInfo extends BaseLabel {
 export default class HeatmapOverlay<State extends BaseState>
   implements Overlay<State, HeatmapInfo> {
   readonly field: string;
-  private readonly label: HeatmapLabel;
+  private label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
   private cached?: RGB[] | ((key: string | number) => string);
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
+  private awaitingUUID: string;
 
   constructor(field: string, label: HeatmapLabel) {
     this.field = field;
@@ -57,12 +65,6 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const imageMask = new Uint32Array(this.imageData.data.buffer);
-    const getColor = this.getColor(cache);
-    for (let i = 0; i < this.targets.length; i++) {
-      imageMask[i] = getColor(this.targets[i]);
-    }
-
     const maskCtx = this.canvas.getContext("2d");
     maskCtx.imageSmoothingEnabled = false;
     maskCtx.clearRect(
@@ -128,11 +130,64 @@ export default class HeatmapOverlay<State extends BaseState>
     return sizeBytes(this.label);
   }
 
-  needsLabelUpdate(state) {
-    const cache = !state.options.colorByLabel
+  needsLabelUpdate(state: Readonly<State>) {
+    const coloring = !state.options.colorByLabel
       ? state.options.colorMap
       : state.options.colorscale || state.options.colorMap;
+    const alpha = state.options.alpha;
+
     return this.targets && this.cached !== cache;
+  }
+
+  getLabelData(state: Readonly<State>, messageUUID: string) {
+    this.awaitingUUID = messageUUID;
+    this.cached = !state.options.colorByLabel
+      ? state.options.colorMap
+      : state.options.colorscale || state.options.colorMap;
+
+    const fieldColoring = get32BitColor(
+      state.options.colorMap(this.field),
+      state.options.alpha
+    );
+
+    const coloring = !state.options.colorByLabel
+      ? fieldColoring
+      : state.options.colorscale || fieldColoring;
+
+    return [
+      {
+        label: this.label,
+        buffers: [this.label.map.data.buffer, this.label.map.image],
+        coloring,
+      },
+    ];
+  }
+
+  updateLabelData(
+    [{ label }]: LabelUpdate<HeatmapLabel>[],
+    messageUUID: string
+  ) {
+    if (messageUUID !== this.awaitingUUID) {
+      return;
+    }
+    this.awaitingUUID = null;
+
+    this.label = label;
+    const [height, width] = this.label.map.data.shape;
+    this.imageData = new ImageData(
+      new Uint8ClampedArray(this.label.map.image),
+      width,
+      height
+    );
+    const maskCtx = this.canvas.getContext("2d");
+    maskCtx.imageSmoothingEnabled = false;
+    maskCtx.clearRect(
+      0,
+      0,
+      this.label.map.data.shape[1],
+      this.label.map.data.shape[0]
+    );
+    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   private getIndex(state: Readonly<State>): number {

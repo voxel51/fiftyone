@@ -292,6 +292,14 @@ export class ClassificationsOverlay<
     ctx.closePath();
     ctx.stroke();
   }
+
+  needsLabelUpdate() {
+    return false;
+  }
+  getLabelData() {
+    return [];
+  }
+  updateLabelData() {}
 }
 
 export interface TemporalDetectionLabel extends Classification {

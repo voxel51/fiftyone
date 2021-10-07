@@ -4,6 +4,7 @@
 
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { deserialize } from "./numpy";
+import { BaseLabel, LabelUpdate } from "./overlays/base";
 import { FrameChunk } from "./state";
 
 const colorMask = () => {};
@@ -85,7 +86,6 @@ interface ReaderMethod {
 }
 
 interface ProcessSample {
-  origin: string;
   uuid: string;
   sample: {
     [key: string]: object;
@@ -137,7 +137,6 @@ const createReader = ({
   chunkSize: number;
   frameCount: number;
   frameNumber: number;
-  origin: string;
   sampleId: string;
   url: string;
 }): FrameStream => {
@@ -216,6 +215,8 @@ interface RequestFrameChunk {
   uuid: string;
 }
 
+type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
+
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
     stream && stream.reader.read().then(getSendChunk(uuid));
@@ -228,7 +229,6 @@ interface SetStream {
   frameCount: number;
   uuid: string;
   url: string;
-  origin: string;
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -248,13 +248,31 @@ const setStream = ({
     frameNumber: frameNumber,
     sampleId,
     url,
-    origin,
   });
 
   stream.reader.read().then(getSendChunk(uuid));
 };
 
-type Method = SetStreamMethod | ProcessSampleMethod;
+interface UpdateLabels {
+  uuid: string;
+  labels: LabelUpdate<BaseLabel>[];
+}
+
+type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
+
+const updateLabels = ({ labels, uuid }: UpdateLabels) => {
+  postMessage({
+    method: "labelsUpdate",
+    labels,
+    uuid,
+  });
+};
+
+type Method =
+  | ProcessSampleMethod
+  | RequestFrameChunkMethod
+  | SetStreamMethod
+  | UpdateLabelsMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
   switch (method) {
@@ -266,6 +284,9 @@ onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
       return;
     case "setStream":
       setStream(args as SetStream);
+      return;
+    case "updateLabels":
+      updateLabels(args as UpdateLabels);
       return;
     default:
       throw new Error("unknown method");

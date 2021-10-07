@@ -6,7 +6,13 @@ import { DASH_COLOR, TEXT_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
-import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
+import {
+  CONTAINS,
+  CoordinateOverlay,
+  LabelUpdate,
+  PointInfo,
+  RegularLabel,
+} from "./base";
 import { t } from "./util";
 
 interface DetectionLabel extends RegularLabel {
@@ -29,7 +35,6 @@ export default class DetectionOverlay<
   constructor(field, label) {
     super(field, label);
     if (this.label.mask) {
-      getColor;
       const [height, width] = this.label.mask.data.shape;
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
@@ -103,13 +108,19 @@ export default class DetectionOverlay<
 
   getLabelData(state: Readonly<State>, messageUUID: string) {
     this.awaitingUUID = messageUUID;
-    return {
-      label: this.label,
-      buffers: [this.label.mask.data.buffer, this.label.mask.image],
-    };
+    this.bitColor = get32BitColor(this.getColor(state), state.options.alpha);
+    return [
+      {
+        label: this.label,
+        buffers: [this.label.mask.data.buffer, this.label.mask.image],
+      },
+    ];
   }
 
-  updateLabel(label: DetectionLabel, messageUUID: string) {
+  updateLabelData(
+    [{ label, coloring }]: LabelUpdate<DetectionLabel>[],
+    messageUUID: string
+  ) {
     if (messageUUID !== this.awaitingUUID) {
       return;
     }
@@ -188,7 +199,6 @@ export default class DetectionOverlay<
 
     if (state.options.showIndex && !isNaN(this.label.index)) {
       text.length && (text += " ");
-      bitColor;
       text += `${Number(this.label.index).toLocaleString()}`;
     }
 

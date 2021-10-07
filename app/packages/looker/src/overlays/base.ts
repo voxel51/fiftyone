@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, Coordinates } from "../state";
+import { BaseState, Coordinates, RGB } from "../state";
 import { sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -61,6 +61,12 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   return true;
 };
 
+export interface LabelUpdate<Label extends BaseLabel> {
+  coloring: RGB | RGB[];
+  buffers: ArrayBuffer[];
+  label: Label;
+}
+
 export interface Overlay<
   State extends BaseState,
   Label extends BaseLabel = BaseLabel
@@ -78,8 +84,8 @@ export interface Overlay<
   getLabelData(
     state: Readonly<State>,
     messageUUID: string
-  ): { label: Label; buffers: ArrayBuffer[] };
-  updateLabel(label: Label, messageUUID: string);
+  ): LabelUpdate<Label>[];
+  updateLabelData(labels: LabelUpdate<BaseLabel>[], messageUUID: string);
 }
 
 export abstract class CoordinateOverlay<
@@ -135,13 +141,8 @@ export abstract class CoordinateOverlay<
   }
 
   getLabelData(state: Readonly<State>, messageUUID: string) {
-    return {
-      label: this.label,
-      buffers: [],
-    };
+    return [];
   }
 
-  updateLabel(label: Label, messageUUID: string) {
-    this.label = label;
-  }
+  updateLabelData(labels: LabelUpdate<Label>[], messageUUID: string) {}
 }
