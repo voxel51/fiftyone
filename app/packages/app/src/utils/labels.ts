@@ -21,10 +21,7 @@ export const VALID_LIST_TYPES = [
 
 export const PATCHES_FIELDS = ["Detections", "Polylines"];
 
-export const CLIPS_SAMPLE_FIELDS = [
-  "VideoClassification",
-  "VideoClassifications",
-];
+export const CLIPS_SAMPLE_FIELDS = ["TemporalDetection", "TemporalDetections"];
 export const CLIPS_FRAME_FIELDS = [
   "Classifications",
   "Detections",
@@ -81,7 +78,7 @@ export const CONFIDENCE_LABELS = [
   "TemporalDetections",
 ];
 
-export const SUPPORT_LABELS = ["VideoClassification", "VideoClassifications"];
+export const SUPPORT_LABELS = ["TemporalDetection", "TemporalDetections"];
 
 export const LABEL_LISTS = [
   "Classifications",

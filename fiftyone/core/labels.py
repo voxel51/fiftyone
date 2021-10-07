@@ -1129,24 +1129,6 @@ _LABEL_LIST_FIELDS = (
 
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 
-_CONFIDENCE_LABELS = (
-    Classification,
-    Detection,
-    Keypoint,
-    Polyline,
-    TemporalDetection,
-)
-
-_LABEL_LABELS = (
-    Classification,
-    Detection,
-    Keypoint,
-    Polyline,
-    TemporalDetection,
-)
-
-_SUPPORT_LABELS = (TemporalDetection,)
-
 _PATCHES_FIELDS = (
     Detection,
     Detections,

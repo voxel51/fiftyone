@@ -343,7 +343,7 @@ def _has_confidence(field):
         if field.document_type in fol._LABEL_LIST_TO_SINGLE_MAP
         else field.document_type
     )
-    return ltype in fol._CONFIDENCE_LABELS
+    return hasattr(ltype, "confidence")
 
 
 def _has_label(field):
@@ -352,7 +352,7 @@ def _has_label(field):
         if field.document_type in fol._LABEL_LIST_TO_SINGLE_MAP
         else field.document_type
     )
-    return ltype in fol._LABEL_LABELS
+    return hasattr(ltype, "label")
 
 
 def _has_support(field):
@@ -361,4 +361,4 @@ def _has_support(field):
         if field.document_type in fol._LABEL_LIST_TO_SINGLE_MAP
         else field.document_type
     )
-    return ltype in fol._SUPPORT_LABELS
+    return hasattr(ltype, "support")

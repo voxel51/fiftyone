@@ -49,9 +49,7 @@ const ActionDiv = styled.div`
 const Patches = () => {
   const [open, setOpen] = useState(false);
   const loading = useRecoilValue(patching);
-  const isVideo =
-    useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(selectors.isRootView);
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const fields = useRecoilValue(patchesFields);
