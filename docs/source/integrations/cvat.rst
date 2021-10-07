@@ -448,6 +448,9 @@ provided:
     video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
+-   **project_name** (*None*): an optional project name in which to store the
+    annotation tasks. The project will be created if necessary. By default, no
+    project is created
 
 .. _cvat-label-schema:
 
@@ -649,6 +652,8 @@ For CVAT, the following `type` values are supported:
     `default` is optional
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
+-   `occluded`: CVAT's builtin occlusion toggle icon. This widget type can only
+    be specified for at most one attribute, which must be a boolean
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -1297,6 +1302,51 @@ these unexpected new labels in:
    :alt: cvat-polyline
    :align: center
 
+Creating projects
+-----------------
+
+You can use the optional `project_name` parameter to specify the name of a
+CVAT project to which to upload the task(s) for an annotation run.
+
+A typical use case for this parameter is video annotation, since in CVAT every
+video must be annotated in a separate task. Creating a project allows all of
+the tasks to be organized together in one place.
+
+As with tasks, you can delete the project(s) associated with an annotation run
+by passing the `cleanup=True` option to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
+
+.. note::
+
+    All tasks within a CVAT project must share the same label schema. Thus, if
+    you specify a `project_name` for an annotation run that includes multiple
+    label fields, a new project (with the same base name) is created for each
+    label field.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    view = dataset.take(3)
+
+    anno_key = "cvat_create_project"
+
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        project_name="fiftyone_project_example",
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate videos in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
 Assigning users
 ---------------
 
@@ -1464,6 +1514,62 @@ For example, let's upload some blurred images to CVAT for annotation:
 
 .. image:: /images/integrations/cvat_alt_media.png
    :alt: cvat-alt-media
+   :align: center
+
+Using CVAT's occlusion widget
+-----------------------------
+
+The CVAT UI provides a variety of builtin widgets on each label you create that
+control properties like occluded, hidden, locked, and pinned.
+
+You can configure CVAT annotation runs so that the state of the occlusion
+widget is read/written to a FiftyOne label attribute of your choice by
+specifying the attribute's type as `occluded` in your label schema.
+
+In addition, if you are editing existing labels using the `attributes=True`
+syntax (the default) to infer the label schema for an existing field, if a
+boolean attribute with the name `"occluded"` is found, it will automatically be
+linked to the occlusion widget.
+
+.. note::
+
+    You can only specify the `occluded` type for at most one attribute of each
+    label field/class in your label schema, and, if you are editing existing
+    labels, the attribute that you choose must contain boolean values.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_occluded_widget"
+
+    # Populate a new `occluded` attribute on the existing `ground_truth` labels
+    # using CVAT's occluded widget
+    label_schema = {
+        "ground_truth": {
+            "attributes": {
+                "occluded": {
+                    "type": "occluded",
+                }
+            }
+        }
+    }
+
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Mark occlusions in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. image:: /images/integrations/cvat_occ_widget.png
+   :alt: cvat-occ-widget
    :align: center
 
 .. _cvat-annotating-videos:

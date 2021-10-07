@@ -1438,10 +1438,14 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
 
     # Generate mapping from annotation track index to dataset track index
     for _id, sample_annos in anno_dict.items():
+        _seen_indexes = set()
         for frame_annos in sample_annos.values():
             for _label_id, label in frame_annos.items():
                 if _label_id in existing_map:
-                    index_map[(_id, label.index)] = existing_map[_label_id]
+                    _existing_index = existing_map[_label_id]
+                    if _existing_index not in _seen_indexes:
+                        index_map[(_id, label.index)] = _existing_index
+                        _seen_indexes.add(_existing_index)
 
     # Perform necessary transformations
     for _id, sample_annos in anno_dict.items():
