@@ -2442,8 +2442,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
         project_name (None): an optional project name in which to store the
-            annotation tasks. The project will be created if necessary. By
-            default, no project is created
+            annotation tasks. By default, no project is created
     """
 
     def __init__(
