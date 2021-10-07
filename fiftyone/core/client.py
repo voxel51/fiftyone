@@ -17,8 +17,6 @@ from bson import json_util
 from tornado.ioloop import IOLoop
 from tornado.websocket import websocket_connect
 
-from fiftyone.constants import SERVER_NAME
-
 
 logging.getLogger("tornado").setLevel(logging.ERROR)
 
@@ -38,12 +36,17 @@ class HasClient(object):
     _HC_ATTR_NAME = None
     _HC_ATTR_TYPE = None
 
-    def __init__(self, port):
+    def __init__(self, port, address):
         self._port = port
+        self._address = address or "localhost"
         self._data = None
         self._client = None
         self._initial_connection = True
-        self._url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
+        self._url = "ws://%s:%d/%s" % (
+            self._address,
+            self._port,
+            self._HC_NAMESPACE,
+        )
         self._listeners = {}
 
         async def connect():
@@ -63,8 +66,8 @@ class HasClient(object):
                 if message is None and _leader[self._url] == self:
                     print("\r\nSession disconnected, trying to reconnect\r\n")
                     fiftyone_url = "http://%s:%d/fiftyone" % (
-                        SERVER_NAME,
-                        port,
+                        self._address,
+                        self._port,
                     )
 
                     self._client = None

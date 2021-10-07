@@ -127,6 +127,14 @@ class QuickstartCommand(Command):
             help="the port number to use",
         )
         parser.add_argument(
+            "-A",
+            "--address",
+            metavar="ADDRESS",
+            default=None,
+            type=str,
+            help="the address (server name) to use",
+        )
+        parser.add_argument(
             "-r",
             "--remote",
             action="store_true",
@@ -159,6 +167,7 @@ class QuickstartCommand(Command):
         _, session = fouq.quickstart(
             video=args.video,
             port=args.port,
+            address=args.address,
             remote=args.remote,
             desktop=desktop,
         )
@@ -1049,6 +1058,14 @@ class AppLaunchCommand(Command):
             help="the port number to use",
         )
         parser.add_argument(
+            "-A",
+            "--address",
+            metavar="ADDRESS",
+            default=None,
+            type=str,
+            help="the address (server name) to use",
+        )
+        parser.add_argument(
             "-r",
             "--remote",
             action="store_true",
@@ -1086,6 +1103,7 @@ class AppLaunchCommand(Command):
         session = fos.launch_app(
             dataset=dataset,
             port=args.port,
+            address=args.address,
             remote=args.remote,
             desktop=desktop,
         )
@@ -1216,6 +1234,14 @@ class AppViewCommand(Command):
             help="the port number to use",
         )
         parser.add_argument(
+            "-A",
+            "--address",
+            metavar="ADDRESS",
+            default=None,
+            type=str,
+            help="the address (server name) to use",
+        )
+        parser.add_argument(
             "-r",
             "--remote",
             action="store_true",
@@ -1308,6 +1334,7 @@ class AppViewCommand(Command):
         session = fos.launch_app(
             dataset=dataset,
             port=args.port,
+            address=args.address,
             remote=args.remote,
             desktop=desktop,
         )
