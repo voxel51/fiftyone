@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { get32BitColor, getRGBA, getRGBAColor } from "../color";
+import { get32BitColor, getRGB, getRGBA, getRGBAColor } from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
 import {
@@ -33,12 +33,13 @@ interface HeatmapInfo extends BaseLabel {
 }
 
 export default class HeatmapOverlay<State extends BaseState>
-  implements Overlay<State, HeatmapInfo> {
+  implements Overlay<State> {
   readonly field: string;
   private label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
-  private cached?: RGB[] | ((key: string | number) => string);
+  private cachedColoring: RGB[] | ((key: string | number) => string);
+  private cachedAlpha: number;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
   private awaitingUUID: string;
@@ -94,7 +95,7 @@ export default class HeatmapOverlay<State extends BaseState>
   getPointInfo(state: Readonly<State>): PointInfo<HeatmapInfo> {
     const target = this.getTarget(state);
     return {
-      color: getRGBAColor(getRGBA(this.getColor(this.cached)(target))),
+      color: getRGBAColor(getRGBA(this.getColor(this.cachedColoring)(target))),
       label: {
         ...this.label,
         map: {
@@ -134,21 +135,34 @@ export default class HeatmapOverlay<State extends BaseState>
     const coloring = !state.options.colorByLabel
       ? state.options.colorMap
       : state.options.colorscale || state.options.colorMap;
+
+    if (this.cachedColoring === null) {
+      this.cachedColoring = coloring;
+    }
+
     const alpha = state.options.alpha;
 
-    return this.targets && this.cached !== cache;
+    if (this.cachedAlpha === null) {
+      this.cachedAlpha = alpha;
+    }
+
+    return (
+      (this.targets && this.cachedColoring !== coloring) ||
+      this.cachedAlpha !== alpha
+    );
   }
 
-  getLabelData(state: Readonly<State>, messageUUID: string) {
+  getLabelData(
+    state: Readonly<State>,
+    messageUUID: string
+  ): LabelUpdate<HeatmapLabel>[] {
     this.awaitingUUID = messageUUID;
-    this.cached = !state.options.colorByLabel
+    this.cachedColoring = !state.options.colorByLabel
       ? state.options.colorMap
       : state.options.colorscale || state.options.colorMap;
+    this.cachedAlpha = state.options.alpha;
 
-    const fieldColoring = get32BitColor(
-      state.options.colorMap(this.field),
-      state.options.alpha
-    );
+    const fieldColoring = getRGB(state.options.colorMap(this.field));
 
     const coloring = !state.options.colorByLabel
       ? fieldColoring
@@ -159,6 +173,7 @@ export default class HeatmapOverlay<State extends BaseState>
         label: this.label,
         buffers: [this.label.map.data.buffer, this.label.map.image],
         coloring,
+        alpha: state.options.alpha,
       },
     ];
   }

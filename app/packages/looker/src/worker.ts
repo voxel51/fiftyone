@@ -261,6 +261,8 @@ interface UpdateLabels {
 type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
 
 const updateLabels = ({ labels, uuid }: UpdateLabels) => {
+  labels.forEach();
+
   postMessage({
     method: "labelsUpdate",
     labels,

@@ -1,6 +1,6 @@
 import { Autorenew } from "@material-ui/icons";
 import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
@@ -10,7 +10,8 @@ import { PopoutSectionTitle, TabOption } from "../utils";
 
 import { Button } from "../FieldsSidebar";
 import Popout from "./Popout";
-import RangeSlider from "../Filters/RangeSlider";
+import { Slider } from "../Filters/RangeSlider";
+import { useTheme } from "../../utils/hooks";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -70,10 +71,15 @@ const ColorBy = ({ modal }) => {
 };
 
 const Opacity = ({ modal }) => {
+  const theme = useTheme();
   return (
     <>
       <PopoutSectionTitle>Label opacity</PopoutSectionTitle>
-      <RangeSlider valueAtom={atoms.alpha(modal)} />
+      <Slider
+        valueAtom={atoms.alpha(modal)}
+        boundsAtom={constSelector([0.01, 1])}
+        color={theme.brand}
+      />
     </>
   );
 };
@@ -138,6 +144,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
       <ColorBy modal={modal} />
+      <Opacity modal={modal} />
       <RefreshButton modal={modal} />
       <SortFilterResults modal={modal} />
       <Patches modal={modal} />

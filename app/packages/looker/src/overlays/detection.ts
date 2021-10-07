@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { get32BitColor } from "../color";
+import { get32BitColor, getRGB } from "../color";
 import { DASH_COLOR, TEXT_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
@@ -30,7 +30,7 @@ export default class DetectionOverlay<
   private labelBoundingBox: BoundingBox;
   private canvas: HTMLCanvasElement;
   private awaitingUUID: string;
-  private bitColor: number;
+  private bitColor: number = null;
 
   constructor(field, label) {
     super(field, label);
@@ -101,6 +101,11 @@ export default class DetectionOverlay<
   }
 
   needsLabelUpdate(state: Readonly<State>) {
+    if (this.bitColor === null) {
+      this.bitColor !==
+        get32BitColor(this.getColor(state), state.options.alpha);
+    }
+
     return (
       this.bitColor !== get32BitColor(this.getColor(state), state.options.alpha)
     );
@@ -112,6 +117,8 @@ export default class DetectionOverlay<
     return [
       {
         label: this.label,
+        coloring: getRGB(this.getColor(state)),
+        alpha: state.options.alpha,
         buffers: [this.label.mask.data.buffer, this.label.mask.image],
       },
     ];

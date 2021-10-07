@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, MASK_ALPHA, TOLERANCE } from "../constants";
+import { DASH_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -83,7 +83,7 @@ export default class PolylineOverlay<
     return Math.min(...distances);
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<PolylineLabel> {
     return {
       field: this.field,
       label: this.label,
@@ -114,7 +114,7 @@ export default class PolylineOverlay<
     }
     if (filled) {
       ctx.fillStyle = color;
-      ctx.globalAlpha = MASK_ALPHA;
+      ctx.globalAlpha = state.options.alpha;
       ctx.fill();
       ctx.globalAlpha = 1;
     }

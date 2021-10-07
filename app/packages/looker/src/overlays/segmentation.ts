@@ -20,23 +20,23 @@ export default class SegmentationOverlay<State extends BaseState>
   readonly field: string;
   private readonly label: SegmentationLabel;
   private targets?: TypedArray;
-  private colorMap?: (key: string | number) => string;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
+  private cachedColoring: (key: string | number) => string = null;
+  private cachedAlpha: number = null;
 
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
     this.label = label;
     if (this.label.mask) {
-      this.targets = new ARRAY_TYPES[this.label.mask.arrayType](
-        this.label.mask.buffer
+      this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
+        this.label.mask.data.buffer
       );
 
-      const [height, width] = this.label.mask.shape;
+      const [height, width] = this.label.mask.data.shape;
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;
-      this.imageData = new ImageData(width, height);
     }
   }
 
@@ -48,27 +48,11 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (this.targets && this.colorMap !== state.options.colorMap) {
-      this.colorMap = state.options.colorMap;
-      const colors = getSegmentationColorArray(this.colorMap);
-      const imageMask = new Uint32Array(this.imageData.data.buffer);
+    const maskCtx = this.canvas.getContext("2d");
+    maskCtx.imageSmoothingEnabled = false;
+    maskCtx.clearRect(0, 0, this.label.mask.shape[1], this.label.mask.shape[0]);
+    maskCtx.putImageData(this.imageData, 0, 0);
 
-      for (let i = 0; i < this.targets.length; i++) {
-        if (this.targets[i]) {
-          imageMask[i] = colors[this.targets[i]];
-        }
-      }
-
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.mask.shape[1],
-        this.label.mask.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
-    }
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
@@ -92,7 +76,7 @@ export default class SegmentationOverlay<State extends BaseState>
       label: {
         ...this.label,
         mask: {
-          shape: this.label.mask.shape ? this.label.mask.shape : null,
+          shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
         },
       },
       field: this.field,
@@ -124,12 +108,30 @@ export default class SegmentationOverlay<State extends BaseState>
     return sizeBytes(this.label);
   }
 
+  needsLabelUpdate(state: Readonly<State>) {
+    if (this.cachedColoring === null) {
+      this.cachedColoring = state.options.colorMap;
+    }
+
+    const alpha = state.options.alpha;
+
+    if (this.cachedAlpha === null) {
+      this.cachedAlpha = alpha;
+    }
+
+    return (
+      this.targets &&
+      (this.cachedColoring !== state.options.colorMap ||
+        this.cachedAlpha !== state.options.alpha)
+    );
+  }
+
   private getIndex(state: Readonly<State>): number {
     const [sx, sy] = this.getMaskCoordinates(state);
     if (sx < 0 || sy < 0) {
       return -1;
     }
-    return this.label.map.shape[1] * sy + sx;
+    return this.label.mask.data.shape[1] * sy + sx;
   }
 
   private getMaskCoordinates({
@@ -138,7 +140,7 @@ export default class SegmentationOverlay<State extends BaseState>
       dimensions: [mw, mh],
     },
   }: Readonly<State>): Coordinates {
-    const [h, w] = this.label.mask.shape;
+    const [h, w] = this.label.mask.data.shape;
     const sx = Math.floor(x * (w / mw));
     const sy = Math.floor(y * (h / mh));
     return [sx, sy];

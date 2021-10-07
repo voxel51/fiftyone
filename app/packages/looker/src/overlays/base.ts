@@ -63,14 +63,12 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
 
 export interface LabelUpdate<Label extends BaseLabel> {
   coloring: RGB | RGB[];
+  alpha: number;
   buffers: ArrayBuffer[];
   label: Label;
 }
 
-export interface Overlay<
-  State extends BaseState,
-  Label extends BaseLabel = BaseLabel
-> {
+export interface Overlay<State extends BaseState> {
   draw(ctx: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
@@ -84,14 +82,14 @@ export interface Overlay<
   getLabelData(
     state: Readonly<State>,
     messageUUID: string
-  ): LabelUpdate<Label>[];
+  ): LabelUpdate<BaseLabel>[];
   updateLabelData(labels: LabelUpdate<BaseLabel>[], messageUUID: string);
 }
 
 export abstract class CoordinateOverlay<
   State extends BaseState,
   Label extends RegularLabel
-> implements Overlay<State, Label> {
+> implements Overlay<State> {
   readonly field: string;
   protected label: Label;
 
@@ -136,13 +134,16 @@ export abstract class CoordinateOverlay<
     };
   }
 
-  needsLabelUpdate(state: Readonly<State>) {
+  needsLabelUpdate(state: Readonly<State>): boolean {
     return false;
   }
 
-  getLabelData(state: Readonly<State>, messageUUID: string) {
+  getLabelData(
+    state: Readonly<State>,
+    messageUUID: string
+  ): LabelUpdate<BaseLabel>[] {
     return [];
   }
 
-  updateLabelData(labels: LabelUpdate<Label>[], messageUUID: string) {}
+  updateLabelData(labels: LabelUpdate<Label>[], messageUUID: string): void {}
 }

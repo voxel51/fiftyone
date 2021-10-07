@@ -2,10 +2,25 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BIG_ENDIAN, MASK_ALPHA } from "./constants";
+import { BIG_ENDIAN } from "./constants";
 import { RGB, RGBA } from "./state";
 
 const bitColorCache: { [color: string]: number } = {};
+
+export const getRGB = (color: string): RGB => {
+  let r, g, b;
+
+  if (color.startsWith("#")) {
+    [r, g, b] = hexToRGB(color);
+  } else if (color.startsWith("rgb")) {
+    let sep = color.indexOf(",") > -1 ? "," : " ";
+    [r, g, b] = color.slice(4).split(")")[0].split(sep);
+  } else if (color.startsWith("hsl")) {
+    [r, g, b] = hslToRGB(color);
+  }
+
+  return [r, g, b];
+};
 
 export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
   alpha = Math.round(alpha * 255);
@@ -14,19 +29,10 @@ export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
     return bitColorCache[key];
   }
 
-  let r,
-    g,
-    b = 0;
+  let r, g, b;
 
   if (typeof color === "string") {
-    if (color.startsWith("#")) {
-      [r, g, b] = hexToRGB(color);
-    } else if (color.startsWith("rgb")) {
-      let sep = color.indexOf(",") > -1 ? "," : " ";
-      [r, g, b] = color.slice(4).split(")")[0].split(sep);
-    } else if (color.startsWith("hsl")) {
-      [r, g, b] = hslToRGB(color);
-    }
+    [r, g, b] = getRGB(color);
   } else {
     [r, g, b] = color;
   }
@@ -54,12 +60,13 @@ let rawMaskColors = new Uint32Array(256);
 let cachedColorMap = null;
 
 export const getSegmentationColorArray = (
-  colorMap: Function
+  colorMap: Function,
+  alpha: number
 ): Readonly<Uint32Array> => {
   if (cachedColorMap !== colorMap) {
     cachedColorMap = colorMap;
     for (let i = 0; i < 256; i++) {
-      rawMaskColors[i] = get32BitColor(colorMap(i), MASK_ALPHA);
+      rawMaskColors[i] = get32BitColor(colorMap(i), alpha);
     }
   }
 
@@ -71,12 +78,13 @@ let rawColorscale = new Uint32Array(256);
 let cachedColorscale = null;
 
 export const getColorscaleArray = (
-  colorscale: RGB[]
+  colorscale: RGB[],
+  alpha: number
 ): Readonly<Uint32Array> => {
   if (cachedColorscale !== colorscale) {
     cachedColorscale = colorscale;
     for (let i = 0; i < colorscale.length; i++) {
-      rawColorscale[i] = get32BitColor(colorscale[i], MASK_ALPHA);
+      rawColorscale[i] = get32BitColor(colorscale[i], alpha);
     }
   }
 

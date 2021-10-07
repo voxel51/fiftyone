@@ -139,7 +139,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
       )
       .map((o: CoordinateOverlay<State, RegularLabel>) => ({
         overlay: o,
-        ...o.getLabelData(state, messageUUID),
+        data: o.getLabelData(state, messageUUID),
       }));
 
     const {
@@ -152,8 +152,8 @@ export abstract class Looker<State extends BaseState = BaseState> {
       overlays: CoordinateOverlay<State, RegularLabel>[];
     } = data.reduce(
       ({ buffers, labels, overlays }, cur) => ({
-        buffers: [...buffers, cur.buffers],
-        labels: [...labels, cur.label],
+        buffers: [...buffers, ...cur.data.map(({ buffers }) => buffers)],
+        labels: [...labels, cur.data.map(({ label }) => label)],
         overlays: [...overlays, cur.overlay],
       }),
       { buffers: [], labels: [], overlays: [] }
@@ -161,7 +161,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
 
     const listener = ({ data: { labels, uuid } }) => {
       if (uuid === messageUUID) {
-        overlays.forEach((o, i) => o.updateLabel(labels[i], messageUUID));
+        overlays.forEach((o, i) => o.updateLabelData(labels[i], messageUUID));
         this.updater({ overlaysPrepared: true });
         labelsWorker.removeEventListener("message", listener);
       }
