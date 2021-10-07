@@ -2441,10 +2441,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
-        project_name (None): the name of the project(s) to create and in which to
-            store all tasks with the same label schema. The primary use of this
-            parameter is to group videos since they are each uploaded to separate
-            tasks. By default, no project is created
+        project_name (None): an optional project name in which to store the
+            annotation tasks. The project will be created if necessary. By
+            default, no project is created
     """
 
     def __init__(
@@ -2770,7 +2769,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
-            d["project_ids"],
+            d.get("project_ids", []),
             d["task_ids"],
             job_ids,
             frame_id_map,
@@ -2995,9 +2994,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         logger.warning("User '%s' not found in %s", username, search_url)
 
-    def create_project(
-        self, name, schema=None,
-    ):
+    def create_project(self, name, schema=None):
         """Creates a project on the CVAT server using the given label schema.
 
         Args:
@@ -3005,7 +3002,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             schema (None): the label schema to use for the created project 
 
         Returns:
-            -   **project_id**: the ID of the created project in CVAT
+            the ID of the created project in CVAT
         """
         if schema is None:
             schema = {}
@@ -3042,8 +3039,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             image_quality (75): an int in `[0, 100]` determining the image
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
-            project_id (None): the id of the project to which upload the task.
-                if this is given then `schema` is unused
+            project_id (None): the ID of a project to which upload the task
 
         Returns:
             a tuple of
@@ -3058,7 +3054,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             "name": name,
             "image_quality": image_quality,
         }
-        if project_id is None:
+
+        if project_id is not None:
+            task_json.update({"labels": [], "project_id": project_id})
+        else:
             if schema is None:
                 schema = {}
 
@@ -3068,9 +3067,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             ]
 
             task_json.update({"labels": labels})
-
-        else:
-            task_json.update({"labels": [], "project_id": project_id})
 
         if segment_size is not None:
             task_json["segment_size"] = segment_size
@@ -3252,11 +3248,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
         project_name = config.project_name
-        project_number = 0
 
         id_map = {}
-        task_ids = []
         project_ids = []
+        task_ids = []
         job_ids = {}
         frame_id_map = {}
         labels_task_map = {}
@@ -3291,13 +3286,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             project_id = None
             if project_name is not None:
-                curr_project_name = project_name
+                _project_name = project_name
                 if project_ids:
-                    curr_project_name += "_%d" % len(project_ids)
+                    _project_name += "_%d" % (len(project_ids) + 1)
 
-                project_id = self.create_project(
-                    curr_project_name, cvat_schema,
-                )
+                project_id = self.create_project(_project_name, cvat_schema)
                 project_ids.append(project_id)
 
             # Create a new task for every video sample
@@ -3388,22 +3381,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 )
 
                 # Create task
-                if project_id is not None:
-                    task_id, class_id_map, attr_id_map = self.create_task(
-                        task_name,
-                        segment_size=segment_size,
-                        image_quality=image_quality,
-                        task_assignee=current_task_assignee,
-                        project_id=project_id,
-                    )
-                else:
-                    task_id, class_id_map, attr_id_map = self.create_task(
-                        task_name,
-                        schema=cvat_schema,
-                        segment_size=segment_size,
-                        image_quality=image_quality,
-                        task_assignee=current_task_assignee,
-                    )
+                task_id, class_id_map, attr_id_map = self.create_task(
+                    task_name,
+                    schema=cvat_schema,
+                    segment_size=segment_size,
+                    image_quality=image_quality,
+                    task_assignee=current_task_assignee,
+                    project_id=project_id,
+                )
 
                 task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
