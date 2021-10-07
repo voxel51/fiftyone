@@ -142,10 +142,9 @@ const Distribution = ({ distribution }) => {
                   map[key][0],
                   map[key][1]
                 );
-                title = `Range: ${cFmt.format(start)} ${dFmt.formatRange(
-                  start,
-                  end
-                )}`;
+                title = `Range: ${
+                  cFmt ? cFmt.format(start) : ""
+                } ${dFmt.formatRange(start, end)}`;
               } else {
                 title = `Range: [${map[key]
                   .map((e) => (type === "IntField" ? e : e.toFixed(3)))
@@ -171,36 +170,6 @@ const Distribution = ({ distribution }) => {
   );
 };
 
-const omitDistributions = selectorFamily<string[], string>({
-  key: "omitDistributions",
-  get: (group) => ({ get }) => {
-    if (group.toLowerCase() == "other fields") {
-      const primitives = get(selectors.primitiveNames("sample"));
-      let stats = get(selectors.extendedDatasetStats);
-      if (!stats || stats.length === 0) {
-        stats = get(selectors.datasetStats);
-      }
-      if (!stats) {
-        return null;
-      }
-      const distinct = stats.reduce((acc, cur) => {
-        if (cur._CLS === AGGS.DISTINCT) {
-          acc[cur.name] = cur.result[0];
-        }
-        return acc;
-      }, {});
-      const omit = ["tags", "filepath", "sample_id"];
-      primitives.forEach((name) => {
-        if (distinct[name] && distinct[name] > 100) {
-          omit.push(name);
-        }
-      });
-      return [...new Set(omit)];
-    }
-    return [];
-  },
-});
-
 const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
@@ -216,14 +185,12 @@ const Distributions = ({ group }: { group: string }) => {
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
-  const omit = useRecoilValue(omitDistributions(group));
 
-  useSendMessage("distributions", { group: group.toLowerCase(), omit }, null, [
+  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
     JSON.stringify(view),
     JSON.stringify(filters),
     datasetName,
     refresh,
-    omit,
   ]);
 
   useMessageHandler("distributions", ({ results }) => {
@@ -240,7 +207,6 @@ const Distributions = ({ group }: { group: string }) => {
     datasetName,
     refresh,
     group,
-    omit,
   ]);
 
   if (loading) {

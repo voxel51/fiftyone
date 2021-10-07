@@ -72,7 +72,6 @@ const SliderStyled = styled(SliderUnstyled)`
 
   .valueLabel > span > span {
     color: transparent;
-    white-space: nowrap;
     text-align: center;
   }
 
@@ -100,7 +99,7 @@ const getFormatter = (fieldType, timeZone, bounds) => {
     hasTitle,
     formatter: (v) => {
       if (fieldType === DATE_TIME_FIELD) {
-        return dtFormatters[1].format(v);
+        return dtFormatters[1].format(v).replace(", ", "\n");
       }
 
       return numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");

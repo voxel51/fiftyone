@@ -103,6 +103,7 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
     day: twoDigit,
     month: twoDigit,
     hour: twoDigit,
+    hour12: false,
     minute: twoDigit,
     second: twoDigit,
     // @ts-ignore
@@ -114,30 +115,23 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
     delete options.fractionalSecondDigits;
   }
 
-  if (!(timeStamp % S)) {
-    delete options.second;
-  }
-
-  if (!(timeStamp % M)) {
-    delete options.minute;
-  }
-
   if (!(timeStamp % H)) {
+    delete options.second;
+    delete options.minute;
     delete options.hour;
   }
 
-  return new Intl.DateTimeFormat("en-GB", options).format(timeStamp);
+  return new Intl.DateTimeFormat("en-ZA", options).format(timeStamp);
 };
 
 export const getDateTimeRangeFormattersWithPrecision = (() => {
   const twoDigit = "2-digit";
-  const locale = "en-GB";
+  const locale = "en-ZA";
 
   const MS = 1000;
   const S = 60 * MS;
   const M = 60 * S;
   const H = 24 * M;
-  const MM = 30 * H;
 
   return (
     timeZone: string,
@@ -145,8 +139,8 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     d2: number
   ): [Intl.DateTimeFormat | null, Intl.DateTimeFormat] => {
     const delta = Math.abs(d1 - d2);
-    let common: Intl.DateTimeFormatOptions = { timeZone };
-    let diff: Intl.DateTimeFormatOptions = { timeZone };
+    let common: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
+    let diff: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
 
     if (delta < MS) {
       common = {
@@ -183,6 +177,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
       diff = {
         hour: twoDigit,
         minute: twoDigit,
+        second: twoDigit,
       };
     } else {
       common = null;
@@ -190,6 +185,9 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         year: twoDigit,
         month: twoDigit,
         day: twoDigit,
+        hour: twoDigit,
+        minute: twoDigit,
+        second: twoDigit,
       };
     }
 
