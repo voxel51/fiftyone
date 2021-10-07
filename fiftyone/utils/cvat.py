@@ -2441,6 +2441,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
+        project_name (None): an optional project name in which to store the
+            annotation tasks. The project will be created if necessary. By
+            default, no project is created
     """
 
     def __init__(
@@ -2459,6 +2462,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         task_assignee=None,
         job_assignees=None,
         job_reviewers=None,
+        project_name=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -2471,6 +2475,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.task_assignee = task_assignee
         self.job_assignees = job_assignees
         self.job_reviewers = job_reviewers
+        self.project_name = project_name
 
         # store privately so these aren't serialized
         self._username = username
@@ -2590,6 +2595,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         samples,
         config,
         id_map,
+        project_ids,
         task_ids,
         job_ids,
         frame_id_map,
@@ -2598,6 +2604,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
     ):
         super().__init__(samples, config, id_map, backend=backend)
 
+        self.project_ids = project_ids
         self.task_ids = task_ids
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
@@ -2658,8 +2665,10 @@ class CVATAnnotationResults(foua.AnnotationResults):
         """
         api = self.connect_to_api()
         api.delete_tasks(self.task_ids)
+        api.delete_projects(self.project_ids)
 
         # @todo save updated results to DB?
+        self.project_ids = []
         self.task_ids = []
         self.job_ids = {}
 
@@ -2760,6 +2769,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
+            d.get("project_ids", []),
             d["task_ids"],
             job_ids,
             frame_id_map,
@@ -2812,6 +2822,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     @property
     def users_url(self):
         return "%s/users" % self.base_api_url
+
+    @property
+    def projects_url(self):
+        return "%s/projects" % self.base_api_url
+
+    def project_url(self, project_id):
+        return "%s/%d" % (self.projects_url, project_id)
 
     @property
     def tasks_url(self):
@@ -2977,6 +2994,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         logger.warning("User '%s' not found in %s", username, search_url)
 
+    def create_project(self, name, schema=None):
+        """Creates a project on the CVAT server using the given label schema.
+
+        Args:
+            name: a name for the project
+            schema (None): the label schema to use for the created project 
+
+        Returns:
+            the ID of the created project in CVAT
+        """
+        if schema is None:
+            schema = {}
+
+        labels = [
+            {"name": name, "attributes": list(attributes.values())}
+            for name, attributes in schema.items()
+        ]
+
+        project_json = {
+            "name": name,
+            "labels": labels,
+        }
+
+        project_resp = self.post(self.projects_url, json=project_json).json()
+        return project_resp["id"]
+
     def create_task(
         self,
         name,
@@ -2984,6 +3027,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         segment_size=None,
         image_quality=75,
         task_assignee=None,
+        project_id=None,
     ):
         """Creates a task on the CVAT server using the given label schema.
 
@@ -2995,6 +3039,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             image_quality (75): an int in `[0, 100]` determining the image
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
+            project_id (None): the ID of a project to which upload the task
 
         Returns:
             a tuple of
@@ -3005,19 +3050,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             -   **attr_id_map**: a dictionary mapping the IDs assigned to
                 attributes by CVAT for every class
         """
-        if schema is None:
-            schema = {}
-
-        labels = [
-            {"name": name, "attributes": list(attributes.values())}
-            for name, attributes in schema.items()
-        ]
-
         task_json = {
             "name": name,
             "image_quality": image_quality,
-            "labels": labels,
         }
+
+        if project_id is not None:
+            task_json.update({"labels": [], "project_id": project_id})
+        else:
+            if schema is None:
+                schema = {}
+
+            labels = [
+                {"name": name, "attributes": list(attributes.values())}
+                for name, attributes in schema.items()
+            ]
+
+            task_json.update({"labels": labels})
 
         if segment_size is not None:
             task_json["segment_size"] = segment_size
@@ -3043,6 +3092,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 self.patch(self.task_url(task_id), json=task_patch)
 
         return task_id, class_id_map, attr_id_map
+
+    def delete_project(self, project_id):
+        """Deletes the given project from the CVAT server.
+
+        Args:
+            project_id: the project ID
+        """
+        self.delete(self.project_url(project_id))
+
+    def delete_projects(self, project_ids):
+        """Deletes the given projects from the CVAT server.
+
+        Args:
+            project_ids: an iterable of project IDs
+        """
+        logger.info("Deleting projects...")
+        with fou.ProgressBar() as pb:
+            for project_id in pb(list(project_ids)):
+                self.delete_project(project_id)
 
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
@@ -3179,8 +3247,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_assignee = config.task_assignee
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
+        project_name = config.project_name
 
         id_map = {}
+        project_ids = []
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3213,6 +3283,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             ) = self._build_cvat_schema(label_field, label_info)
 
             labels_task_map[label_field] = []
+
+            project_id = None
+            if project_name is not None:
+                _project_name = project_name
+                if project_ids:
+                    _project_name += "_%d" % (len(project_ids) + 1)
+
+                project_id = self.create_project(_project_name, cvat_schema)
+                project_ids.append(project_id)
 
             # Create a new task for every video sample
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
@@ -3308,7 +3387,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     segment_size=segment_size,
                     image_quality=image_quality,
                     task_assignee=current_task_assignee,
+                    project_id=project_id,
                 )
+
                 task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
 
@@ -3368,6 +3449,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             samples,
             config,
             id_map,
+            project_ids,
             task_ids,
             job_ids,
             frame_id_map,

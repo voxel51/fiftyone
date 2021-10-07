@@ -448,6 +448,9 @@ provided:
     video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
+-   **project_name** (*None*): an optional project name in which to store the
+    annotation tasks. The project will be created if necessary. By default, no
+    project is created
 
 .. _cvat-label-schema:
 
@@ -1298,6 +1301,51 @@ these unexpected new labels in:
 .. image:: /images/integrations/cvat_polyline.png
    :alt: cvat-polyline
    :align: center
+
+Creating projects
+-----------------
+
+You can use the optional `project_name` parameter to specify the name of a
+CVAT project to which to upload the task(s) for an annotation run.
+
+A typical use case for this parameter is video annotation, since in CVAT every
+video must be annotated in a separate task. Creating a project allows all of
+the tasks to be organized together in one place.
+
+As with tasks, you can delete the project(s) associated with an annotation run
+by passing the `cleanup=True` option to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
+
+.. note::
+
+    All tasks within a CVAT project must share the same label schema. Thus, if
+    you specify a `project_name` for an annotation run that includes multiple
+    label fields, a new project (with the same base name) is created for each
+    label field.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    view = dataset.take(3)
+
+    anno_key = "cvat_create_project"
+
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        project_name="fiftyone_project_example",
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate videos in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
 
 Assigning users
 ---------------
