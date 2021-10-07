@@ -448,11 +448,9 @@ provided:
     video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
--   **project_name** (*None*): the name of the project(s) to create and in which to
-    store all tasks with the same label schema. The primary use of this parameter
-    is to group videos since they are each uploaded to separate tasks. By default,
-    no project is created
-
+-   **project_name** (*None*): an optional project name in which to store the
+    annotation tasks. The project will be created if necessary. By default, no
+    project is created
 
 .. _cvat-label-schema:
 
@@ -1302,6 +1300,51 @@ these unexpected new labels in:
    :alt: cvat-polyline
    :align: center
 
+Creating projects
+-----------------
+
+You can use the optional `project_name` parameter to specify the name of a
+CVAT project to which to upload the task(s) for an annotation run.
+
+A typical use case for this parameter is video annotation, since in CVAT every
+video must be annotated in a separate task. Creating a project allows all of
+the tasks to be organized together in one place.
+
+As with tasks, you can delete the project(s) associated with an annotation run
+by passing the `cleanup=True` option to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
+
+.. note::
+
+    All tasks within a CVAT project must share the same label schema. Thus, if
+    you specify a `project_name` for an annotation run that includes multiple
+    label fields, a new project (with the same base name) is created for each
+    label field.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    view = dataset.take(3)
+
+    anno_key = "cvat_create_project"
+
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        project_name="fiftyone_project_example",
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate videos in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
 Assigning users
 ---------------
 
@@ -1358,51 +1401,6 @@ will be assigned using a round-robin strategy.
     # Cleanup
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
-    dataset.delete_annotation_run(anno_key)
-
-Creating projects
------------------
-
-When creating tasks, it can be useful to group them together into projects in
-CVAT. The `project_name` parameter can be used with the CVAT annotation backend
-to create new project(s) when tasks are created.
-
-This is most useful in the case of video annotation. In CVAT, every video must
-be annotated in a separate task which can make it difficult to manage
-annotating large video datasets. Creating a new project allows all of the new
-video tasks to be grouped together and easily annotated.
-
-One stipulation about CVAT projects is that all tasks must share the same
-label schema. Thus, if multiple label fields with different schemas are being
-annotated, a new project is created for each.
-
-
-All projects that were created are deleted when annotations are loaded with the
-`cleanup=True` parameter.
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart-video")
-    view = dataset.take(3)
-
-    anno_key = "cvat_create_project"
-    project_name = "fiftyone_project_example"
-
-    view.annotate(
-        anno_key,
-        label_field="frames.detections",
-        project_name=project_name,
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # View and annotate videos in one project in CVAT
-
-    dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
 Scalar labels
