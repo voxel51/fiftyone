@@ -71,9 +71,11 @@ export class ClassificationsOverlay<
     return CONTAINS.NONE;
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<Label> {
     const filtered = this.getFilteredAndFlat(state);
     const [w, h] = state.config.dimensions;
+
+    let result: PointInfo<Label>;
 
     for (const [field, label] of filtered) {
       const box = this.labelBoundingBoxes[label.id];
@@ -85,7 +87,7 @@ export class ClassificationsOverlay<
         const [px, py] = state.pixelCoordinates;
 
         if (px >= bx && py >= by && px <= bx + bw && py <= by + bh) {
-          return {
+          result = {
             field: field,
             label,
             type: "Classification",
@@ -94,6 +96,8 @@ export class ClassificationsOverlay<
         }
       }
     }
+
+    return result;
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {

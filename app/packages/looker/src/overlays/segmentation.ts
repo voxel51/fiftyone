@@ -9,7 +9,10 @@ import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
-  mask?: NumpyResult;
+  mask?: {
+    data: NumpyResult;
+    image: ArrayBuffer;
+  };
 }
 
 export default class SegmentationOverlay<State extends BaseState>
@@ -82,7 +85,7 @@ export default class SegmentationOverlay<State extends BaseState>
     return Infinity;
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<SegmentationLabel> {
     const target = this.getTarget(state);
     return {
       color: this.getColor(state, target),

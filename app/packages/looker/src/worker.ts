@@ -6,6 +6,10 @@ import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { deserialize } from "./numpy";
 import { FrameChunk } from "./state";
 
+const colorMask = () => {};
+
+const colorMap = () => {};
+
 const DESERIALIZE = {
   Detection: (label, buffers) => {
     if (typeof label.mask === "string") {
@@ -236,9 +240,7 @@ const setStream = ({
   uuid,
   url,
 }: SetStream) => {
-  if (stream) {
-    stream.cancel();
-  }
+  stream && stream.cancel();
   streamId = uuid;
   stream = createReader({
     chunkSize: CHUNK_SIZE,

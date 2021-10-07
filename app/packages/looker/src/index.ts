@@ -31,7 +31,12 @@ import {
 } from "./elements/common";
 import processOverlays from "./processOverlays";
 import { ClassificationsOverlay, FROM_FO, loadOverlays } from "./overlays";
-import { CONTAINS, Overlay } from "./overlays/base";
+import {
+  CONTAINS,
+  CoordinateOverlay,
+  Overlay,
+  RegularLabel,
+} from "./overlays/base";
 import {
   FrameState,
   ImageState,
@@ -81,6 +86,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
 
+  protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
   protected sample: Sample;
@@ -115,6 +121,60 @@ export abstract class Looker<State extends BaseState = BaseState> {
           windowBBox: box,
         });
     });
+  }
+
+  loadOverlays(sample: Sample): void {
+    this.sampleOverlays = loadOverlays(sample);
+  }
+
+  pluckOverlays(state: Readonly<State>): Overlay<State>[] {
+    return this.sampleOverlays;
+  }
+
+  protected updateOverlays(state: Readonly<State>) {
+    const messageUUID = uuid();
+    const data = this.sampleOverlays
+      .filter(
+        (o) => o instanceof CoordinateOverlay && o.needsLabelUpdate(state)
+      )
+      .map((o: CoordinateOverlay<State, RegularLabel>) => ({
+        overlay: o,
+        ...o.getLabelData(state, messageUUID),
+      }));
+
+    const {
+      buffers,
+      labels,
+      overlays,
+    }: {
+      buffers: ArrayBuffer[];
+      labels: RegularLabel[];
+      overlays: CoordinateOverlay<State, RegularLabel>[];
+    } = data.reduce(
+      ({ buffers, labels, overlays }, cur) => ({
+        buffers: [...buffers, cur.buffers],
+        labels: [...labels, cur.label],
+        overlays: [...overlays, cur.overlay],
+      }),
+      { buffers: [], labels: [], overlays: [] }
+    );
+
+    const listener = ({ data: { labels, uuid } }) => {
+      if (uuid === messageUUID) {
+        overlays.forEach((o, i) => o.updateLabel(labels[i], messageUUID));
+        this.updater({ overlaysPrepared: true });
+        labelsWorker.removeEventListener("message", listener);
+      }
+    };
+    labelsWorker.addEventListener("message", listener);
+    labelsWorker.postMessage(
+      {
+        method: "updateLabels",
+        labels,
+        uuid: messageUUID,
+      },
+      buffers
+    );
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -347,10 +407,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
     config: Readonly<State["config"]>
   ): LookerElement<State>;
 
-  protected abstract loadOverlays(sample: Sample): void;
-
-  protected abstract pluckOverlays(state: State): Overlay<State>[];
-
   protected abstract getDefaultOptions(): State["options"];
 
   protected abstract getInitialState(
@@ -486,17 +542,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
 }
 
 export class FrameLooker extends Looker<FrameState> {
-  private overlays: Overlay<FrameState>[];
-
-  constructor(
-    sample: Sample,
-    config: FrameState["config"],
-    options: Optional<FrameState["options"]> = {}
-  ) {
-    super(sample, config, options);
-    this.overlays = [];
-  }
-
   getElements(config) {
     return getFrameElements(config, this.updater, this.getDispatchEvent());
   }
@@ -539,14 +584,6 @@ export class FrameLooker extends Looker<FrameState> {
     );
   }
 
-  loadOverlays(sample: Sample) {
-    this.overlays = loadOverlays(sample);
-  }
-
-  pluckOverlays() {
-    return this.overlays;
-  }
-
   postProcess(): FrameState {
     if (!this.state.setZoom) {
       this.state.setZoom = this.hasResized();
@@ -578,17 +615,6 @@ export class FrameLooker extends Looker<FrameState> {
 }
 
 export class ImageLooker extends Looker<ImageState> {
-  private overlays: Overlay<ImageState>[];
-
-  constructor(
-    sample: Sample,
-    config: ImageState["config"],
-    options: Optional<ImageState["options"]> = {}
-  ) {
-    super(sample, config, options);
-    this.overlays = [];
-  }
-
   getElements(config) {
     return getImageElements(config, this.updater, this.getDispatchEvent());
   }
@@ -629,14 +655,6 @@ export class ImageLooker extends Looker<ImageState> {
       pan[0] === state.pan[0] &&
       pan[1] === state.pan[1]
     );
-  }
-
-  loadOverlays(sample: Sample) {
-    this.overlays = loadOverlays(sample);
-  }
-
-  pluckOverlays() {
-    return this.overlays;
   }
 
   postProcess(): ImageState {
@@ -824,17 +842,8 @@ const { aquireReader, addFrame } = (() => {
 let lookerWithReader: VideoLooker | null = null;
 
 export class VideoLooker extends Looker<VideoState> {
-  private sampleOverlays: Overlay<VideoState>[] = [];
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number, force?: boolean) => void;
-
-  constructor(
-    sample: VideoSample,
-    config: VideoState["config"],
-    options: Optional<VideoState["options"]> = {}
-  ) {
-    super(sample, config, options);
-  }
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -970,9 +979,9 @@ export class VideoLooker extends Looker<VideoState> {
       true
     );
 
-    const providedFrames = sample.frames.length
-      ? sample.frames
-      : [{ frame_number: 1 }];
+    const providedFrames = [
+      sample.frames.length ? sample.frames : { frame_number: 1 },
+    ];
     const providedFrameOverlays = providedFrames.map((frameSample) =>
       loadOverlays(
         Object.fromEntries(

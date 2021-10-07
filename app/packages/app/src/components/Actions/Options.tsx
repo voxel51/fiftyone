@@ -10,6 +10,7 @@ import { PopoutSectionTitle, TabOption } from "../utils";
 
 import { Button } from "../FieldsSidebar";
 import Popout from "./Popout";
+import RangeSlider from "../Filters/RangeSlider";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -64,6 +65,15 @@ const ColorBy = ({ modal }) => {
           },
         ]}
       />
+    </>
+  );
+};
+
+const Opacity = ({ modal }) => {
+  return (
+    <>
+      <PopoutSectionTitle>Label opacity</PopoutSectionTitle>
+      <RangeSlider valueAtom={atoms.alpha(modal)} />
     </>
   );
 };

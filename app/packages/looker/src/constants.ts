@@ -10,7 +10,6 @@ export const PAD = 4;
 export const TOLERANCE = 1.15;
 export const POINT_RADIUS = 4;
 export const BACKGROUND_ALPHA = 0.8;
-export const MASK_ALPHA = 0.4;
 export const RADIUS = 12;
 export const STROKE_WIDTH = 3;
 export const FONT_SIZE = 16;

@@ -18,18 +18,12 @@ export interface BaseLabel {
   frame_number?: number;
   tags: string[];
   index?: number;
-  mask?: {
-    shape: [number, number];
-  };
-  map?: {
-    shape: [number, number];
-  };
 }
 
-export interface PointInfo {
+export interface PointInfo<Label extends BaseLabel> {
   color: string;
   field: string;
-  label: BaseLabel;
+  label: Label;
   point?: Coordinates;
   target?: number;
   type: string;
@@ -67,7 +61,10 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   return true;
 };
 
-export interface Overlay<State extends BaseState> {
+export interface Overlay<
+  State extends BaseState,
+  Label extends BaseLabel = BaseLabel
+> {
   draw(ctx: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
@@ -77,14 +74,20 @@ export interface Overlay<State extends BaseState> {
   getSelectData(state: Readonly<State>): SelectData;
   getPoints(state: Readonly<State>): Coordinates[];
   getSizeBytes(): number;
+  needsLabelUpdate(state: Readonly<State>): boolean;
+  getLabelData(
+    state: Readonly<State>,
+    messageUUID: string
+  ): { label: Label; buffers: ArrayBuffer[] };
+  updateLabel(label: Label, messageUUID: string);
 }
 
 export abstract class CoordinateOverlay<
   State extends BaseState,
   Label extends RegularLabel
-> implements Overlay<State> {
+> implements Overlay<State, Label> {
   readonly field: string;
-  protected readonly label: Label;
+  protected label: Label;
 
   constructor(field: string, label: Label) {
     this.field = field;
@@ -110,7 +113,7 @@ export abstract class CoordinateOverlay<
 
   abstract getMouseDistance(state: Readonly<State>): number;
 
-  abstract getPointInfo(state: Readonly<State>): PointInfo;
+  abstract getPointInfo(state: Readonly<State>): PointInfo<Label>;
 
   abstract getPoints(state: Readonly<State>): Coordinates[];
 
@@ -125,5 +128,20 @@ export abstract class CoordinateOverlay<
       // @ts-ignore
       frameNumber: state.frameNumber,
     };
+  }
+
+  needsLabelUpdate(state: Readonly<State>) {
+    return false;
+  }
+
+  getLabelData(state: Readonly<State>, messageUUID: string) {
+    return {
+      label: this.label,
+      buffers: [],
+    };
+  }
+
+  updateLabel(label: Label, messageUUID: string) {
+    this.label = label;
   }
 }
