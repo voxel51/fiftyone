@@ -3208,6 +3208,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if label_type == "scalar":
                 assigned_scalar_attrs[label_field] = assign_scalar_attrs
 
+            id_map[label_field] = {}
             labels_task_map[label_field] = []
 
             # Create a new task for every video sample
@@ -3261,7 +3262,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             cvat_schema,
                         )
 
-                    id_map[label_field] = _id_map
+                    id_map[label_field].update(_id_map)
 
                 current_job_assignees = job_assignees
                 current_job_reviewers = job_reviewers
