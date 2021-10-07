@@ -143,6 +143,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_APP_PORT",
             default=5151,
         )
+        self.default_app_address = self.parse_string(
+            d,
+            "default_app_address",
+            env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
+            default=None,
+        )
         self.desktop_app = self.parse_bool(
             d, "desktop_app", env_var="FIFTYONE_DESKTOP_APP", default=False,
         )
