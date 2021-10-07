@@ -941,6 +941,7 @@ def load_annotations(
 
     for label_field, label_info in label_schema.items():
         label_type = label_info["type"]
+        global_attrs, class_attrs = _parse_attributes(label_info)
         allow_additions = label_info.get("allow_additions", True)
 
         expected_type = _RETURN_TYPES_MAP[label_type]
@@ -955,7 +956,11 @@ def load_annotations(
                 # Expected labels
                 if label_type == "scalar":
                     _merge_scalars(
-                        samples, annos, results, label_field, label_info,
+                        samples,
+                        annos,
+                        results,
+                        label_field,
+                        label_info=label_info,
                     )
                 else:
                     _merge_labels(
@@ -964,7 +969,9 @@ def load_annotations(
                         results,
                         label_field,
                         label_type,
-                        label_info,
+                        label_info=label_info,
+                        global_attrs=global_attrs,
+                        class_attrs=class_attrs,
                     )
             else:
                 # Unexpected labels
@@ -977,19 +984,10 @@ def load_annotations(
 
                 if new_field:
                     if anno_type == "scalar":
-                        _label_info = {}
-                        _merge_scalars(
-                            samples, annos, results, new_field, _label_info
-                        )
+                        _merge_scalars(samples, annos, results, new_field)
                     else:
-                        _label_info = {"attributes": None}  # all attributes
                         _merge_labels(
-                            samples,
-                            annos,
-                            results,
-                            new_field,
-                            anno_type,
-                            _label_info,
+                            samples, annos, results, new_field, anno_type
                         )
                 else:
                     logger.info(
@@ -1003,6 +1001,31 @@ def load_annotations(
 
     if cleanup:
         results.cleanup()
+
+
+def _parse_attributes(label_info):
+    classes = label_info.get("classes", [])
+    attributes = label_info.get("attributes", {})
+    class_attrs = defaultdict(list)
+
+    global_attrs = _get_writeable_attributes(attributes)
+
+    # Parse per-class attributes
+    for _class in classes:
+        if etau.is_str(_class):
+            continue
+
+        _classes = _class["classes"]
+        _attrs = _get_writeable_attributes(_class["attributes"])
+
+        for name in _classes:
+            class_attrs[name].extend(_attrs)
+
+    return global_attrs, dict(class_attrs)
+
+
+def _get_writeable_attributes(attributes):
+    return [k for k, v in attributes.items() if not v.get("read_only", False)]
 
 
 def _prompt_field(samples, label_type, label_field, label_schema):
@@ -1078,7 +1101,10 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     return new_field
 
 
-def _merge_scalars(samples, anno_dict, results, label_field, label_info):
+def _merge_scalars(samples, anno_dict, results, label_field, label_info=None):
+    if label_info is None:
+        label_info = {}
+
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
 
@@ -1160,22 +1186,23 @@ def _merge_scalars(samples, anno_dict, results, label_field, label_info):
 
 
 def _merge_labels(
-    samples, anno_dict, results, label_field, label_type, label_info
+    samples,
+    anno_dict,
+    results,
+    label_field,
+    label_type,
+    label_info=None,
+    global_attrs=None,
+    class_attrs=None,
 ):
-    attributes = label_info.get("attributes", {})
+    if label_info is None:
+        label_info = {}
+
     only_keyframes = label_info.get("only_keyframes", False)
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
     allow_label_edits = label_info.get("allow_label_edits", True)
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
-
-    # Omit read-only attributes
-    if isinstance(attributes, dict):
-        attributes = {
-            k: v
-            for k, v in attributes.items()
-            if not v.get("read_only", False)
-        }
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
     if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
@@ -1282,7 +1309,8 @@ def _merge_labels(
                         _merge_label(
                             label,
                             anno_label,
-                            attributes=attributes,
+                            global_attrs=global_attrs,
+                            class_attrs=class_attrs,
                             allow_label_edits=allow_label_edits,
                             allow_spatial_edits=allow_spatial_edits,
                             only_keyframes=only_keyframes,
@@ -1345,7 +1373,8 @@ def _ensure_label_field(samples, label_field, fo_label_type):
 def _merge_label(
     label,
     anno_label,
-    attributes=None,
+    global_attrs=None,
+    class_attrs=None,
     allow_label_edits=True,
     allow_spatial_edits=True,
     only_keyframes=False,
@@ -1361,12 +1390,16 @@ def _merge_label(
     if only_keyframes:
         label.keyframe = anno_label.get_attribute_value("keyframe", None)
 
-    if attributes is not None:
-        for name in attributes:
-            value = anno_label.get_attribute_value(name, None)
+    if global_attrs is None:
+        # All attributes
+        for name, value in anno_label.iter_attributes():
             label.set_attribute_value(name, value)
     else:
-        for name, value in anno_label.iter_attributes():
+        # Global attributes + class-specific attributes
+        _class = label.get_attribute_value("label", None)
+        attr_names = global_attrs + class_attrs.get(_class, [])
+        for name in attr_names:
+            value = anno_label.get_attribute_value(name, None)
             label.set_attribute_value(name, value)
 
 
@@ -1406,10 +1439,14 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
 
     # Generate mapping from annotation track index to dataset track index
     for _id, sample_annos in anno_dict.items():
+        _seen_indexes = set()
         for frame_annos in sample_annos.values():
             for _label_id, label in frame_annos.items():
                 if _label_id in existing_map:
-                    index_map[(_id, label.index)] = existing_map[_label_id]
+                    _existing_index = existing_map[_label_id]
+                    if _existing_index not in _seen_indexes:
+                        index_map[(_id, label.index)] = _existing_index
+                        _seen_indexes.add(_existing_index)
 
     # Perform necessary transformations
     for _id, sample_annos in anno_dict.items():

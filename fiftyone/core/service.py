@@ -345,19 +345,22 @@ class ServerService(Service):
     working_dir = foc.SERVER_DIR
     allow_headless = True
 
-    def __init__(self, port, do_not_track=False):
+    def __init__(self, port, address=None, do_not_track=False):
         self._port = port
+        self._address = address
         self._do_not_track = do_not_track
         super().__init__()
 
     def start(self):
-        server_version = None
+        address = self._address or "127.0.0.1"
+        port = self._port
+
         try:
             server_version = requests.get(
-                "http://127.0.0.1:%i/fiftyone" % self._port, timeout=2
+                "http://%s:%i/fiftyone" % (address, port), timeout=2
             ).json()["version"]
-        except Exception:
-            pass
+        except:
+            server_version = None
 
         if server_version is None:
             # There is likely not a fiftyone server running (remote or local),
@@ -365,12 +368,14 @@ class ServerService(Service):
             # running that didn't respond to /fiftyone, the local server will
             # fail to start but the app will still connect successfully.
             super().start()
-            self._wait_for_child_port(port=self._port)
+            self._wait_for_child_port(port=port)
         else:
-            logger.info("Connected to FiftyOne on local port %i", self._port)
             logger.info(
-                "If you are not connecting to a remote session, you may need\n"
-                "to start a new session and specify a port.\n"
+                "Connected to FiftyOne on port %i at %s.\nIf you are not "
+                "connecting to a remote session, you may need to start a new "
+                "session and specify a port",
+                port,
+                address,
             )
             if server_version != foc.VERSION:
                 logger.warning(
@@ -387,12 +392,19 @@ class ServerService(Service):
             "--port",
             str(self.port),
         ]
+
+        if self.address:
+            command += ["--address", self.address]
+
         return command
 
     @property
     def port(self):
-        """Getter for the current port"""
         return self._port
+
+    @property
+    def address(self):
+        return self._address
 
     @property
     def env(self):
@@ -406,9 +418,10 @@ class AppService(Service):
     service_name = "app"
     working_dir = foc.FIFTYONE_DESKTOP_APP_DIR
 
-    def __init__(self, server_port=None):
+    def __init__(self, server_port=None, server_address=None):
         # initialize before start() is called
         self.server_port = server_port
+        self.server_address = server_address
         super().__init__()
 
     @property
@@ -453,5 +466,8 @@ class AppService(Service):
                 # override port 1212 used by "yarn dev" for hot-reloading
                 # (specifying port 0 doesn't work here)
                 env["PORT"] = str(self.server_port + 1)
+
+        if self.server_address:
+            env["FIFTYONE_SERVER_ADDRESS"] = str(self.server_address)
 
         return env
