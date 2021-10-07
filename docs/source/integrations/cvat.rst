@@ -649,6 +649,8 @@ For CVAT, the following `type` values are supported:
     `default` is optional
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
+-   `occluded`: CVAT's builtin occlusion toggle icon. This widget type can only
+    be specified for at most one attribute, which must be a boolean
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -1464,6 +1466,62 @@ For example, let's upload some blurred images to CVAT for annotation:
 
 .. image:: /images/integrations/cvat_alt_media.png
    :alt: cvat-alt-media
+   :align: center
+
+Using CVAT's occlusion widget
+-----------------------------
+
+The CVAT UI provides a variety of builtin widgets on each label you create that
+control properties like occluded, hidden, locked, and pinned.
+
+You can configure CVAT annotation runs so that the state of the occlusion
+widget is read/written to a FiftyOne label attribute of your choice by
+specifying the attribute's type as `occluded` in your label schema.
+
+In addition, if you are editing existing labels using the `attributes=True`
+syntax (the default) to infer the label schema for an existing field, if a
+boolean attribute with the name `"occluded"` is found, it will automatically be
+linked to the occlusion widget.
+
+.. note::
+
+    You can only specify the `occluded` type for at most one attribute of each
+    label field/class in your label schema, and, if you are editing existing
+    labels, the attribute that you choose must contain boolean values.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_occluded_widget"
+
+    # Populate a new `occluded` attribute on the existing `ground_truth` labels
+    # using CVAT's occluded widget
+    label_schema = {
+        "ground_truth": {
+            "attributes": {
+                "occluded": {
+                    "type": "occluded",
+                }
+            }
+        }
+    }
+
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Mark occlusions in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. image:: /images/integrations/cvat_occ_widget.png
+   :alt: cvat-occ-widget
    :align: center
 
 .. _cvat-annotating-videos:
