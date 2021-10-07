@@ -161,6 +161,10 @@ using either the Python library or the CLI.
     can also be customized via the ``default_app_port`` parameter of your
     :ref:`FiftyOne config <configuring-fiftyone>`.
 
+    You can also provide the optional ``address`` parameter to restrict the
+    hostnames/IP addresses that can connect to your remote session. See
+    :ref:`this page <restricting-app-address>` for more information.
+
     Note that you can manipulate the `session` object on the remote machine as
     usual to programmatically interact with the App instance that you'll
     connect to locally next.
