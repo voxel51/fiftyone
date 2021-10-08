@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, TOLERANCE } from "../constants";
+import { applyAlpha } from "../color";
+import { BASE_ALPHA, DASH_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -39,7 +40,10 @@ export default class PolylineOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const color = this.getColor(state);
+    const color = applyAlpha(
+      this.getColor(state),
+      state.options.alpha / BASE_ALPHA
+    );
     const selected = this.isSelected(state);
 
     for (const path of this.label.points) {

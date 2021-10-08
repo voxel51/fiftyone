@@ -55,6 +55,10 @@ export const getRGBAColor = ([r, g, b, a]: RGBA) => {
   return `rgba(${r},${g},${b},${a / 255})`;
 };
 
+export const applyAlpha = (color: string, alpha: number): string => {
+  return getRGBAColor([...getRGB(color), alpha]);
+};
+
 let rawMaskColors = new Uint32Array(256);
 
 let cachedColorMap = null;

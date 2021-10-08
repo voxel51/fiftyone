@@ -252,7 +252,7 @@ const setStream = ({
 
 interface UpdateLabels {
   uuid: string;
-  labels: LabelUpdate<BaseLabel>[];
+  labels: LabelUpdate<BaseLabel>[][];
 }
 
 type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
@@ -317,6 +317,8 @@ const UPDATE_LABEL = {
     const cache = {};
 
     const getColor = (i) => {
+      i = Math.round(Math.abs(i)) % coloring.length;
+
       if (i in cache) {
         return cache[i];
       }
@@ -333,8 +335,10 @@ const UPDATE_LABEL = {
 };
 
 const updateLabels = ({ labels, uuid }: UpdateLabels) => {
-  labels.forEach(({ label, alpha, coloring }) =>
-    UPDATE_LABEL[label._cls](label, coloring, alpha)
+  labels.forEach((l) =>
+    l.forEach(({ label, alpha, coloring }) =>
+      UPDATE_LABEL[label._cls](label, coloring, alpha)
+    )
   );
 
   postMessage({

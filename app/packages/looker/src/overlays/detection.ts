@@ -1,8 +1,8 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { get32BitColor, getRGB } from "../color";
-import { DASH_COLOR, TEXT_COLOR } from "../constants";
+import { applyAlpha, get32BitColor, getRGB } from "../color";
+import { BASE_ALPHA, DASH_COLOR, TEXT_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
@@ -62,7 +62,7 @@ export default class DetectionOverlay<
     this.label.mask && this.drawMask(ctx, state);
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
-    this.strokeRect(ctx, state, this.getColor(state));
+    this.strokeRect(ctx, state, applyAlpha(this.getColor(state), BASE_ALPHA));
 
     if (this.isSelected(state)) {
       this.strokeRect(ctx, state, DASH_COLOR, state.dashLength);
@@ -158,7 +158,10 @@ export default class DetectionOverlay<
       return;
     }
 
-    const color = this.getColor(state);
+    const color = applyAlpha(
+      this.getColor(state),
+      state.options.alpha / BASE_ALPHA
+    );
     const [tlx, tly, _, __] = this.label.bounding_box;
     ctx.beginPath();
     ctx.fillStyle = color;

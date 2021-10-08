@@ -78,7 +78,7 @@ export { zoomAspectRatio } from "./zoom";
 
 export { getRGB } from "./color";
 
-export { RGB } from "./state";
+export type RGB = [number, number, number];
 
 const labelsWorker = createWorker();
 

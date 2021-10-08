@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, TOLERANCE } from "../constants";
+import { applyAlpha } from "../color";
+import { BASE_ALPHA, DASH_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distance } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -27,7 +28,10 @@ export default class KeypointOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const color = this.getColor(state);
+    const color = applyAlpha(
+      this.getColor(state),
+      state.options.alpha / BASE_ALPHA
+    );
     const selected = this.isSelected(state);
     ctx.lineWidth = 0;
 
@@ -57,7 +61,7 @@ export default class KeypointOverlay<
     return this.getDistanceAndPoint(state)[0];
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<KeypointLabel> {
     return {
       color: this.getColor(state),
       field: this.field,

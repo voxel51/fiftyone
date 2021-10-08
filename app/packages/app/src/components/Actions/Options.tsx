@@ -79,6 +79,10 @@ const Opacity = ({ modal }) => {
         valueAtom={atoms.alpha(modal)}
         boundsAtom={constSelector([0.01, 1])}
         color={theme.brand}
+        showBounds={false}
+        persistValue={false}
+        showValue={false}
+        style={{ padding: 0 }}
       />
     </>
   );
