@@ -1,7 +1,6 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { getRGB } from "../color";
 import { BASE_ALPHA, INFO_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
@@ -112,8 +111,8 @@ export default class DetectionOverlay<
     this.color = this.getColor(state);
     return [
       {
+        field: this.field,
         label: this.label,
-        coloring: getRGB(this.getColor(state)),
         buffers: [this.label.mask.data.buffer, this.label.mask.image],
       },
     ];

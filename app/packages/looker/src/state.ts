@@ -19,6 +19,13 @@ export interface Sample {
   _label_tags: string[];
 }
 
+export interface Coloring {
+  byLabel: boolean;
+  pool: string[];
+  scale: RGB[];
+  seed: number;
+}
+
 export interface LabelData {
   label_id: string;
   field: string;
@@ -53,16 +60,13 @@ export interface ControlMap<State extends BaseState> {
 
 interface BaseOptions {
   activePaths: string[];
-  colorByLabel: boolean;
   filter: {
     [fieldName: string]: (label: {
       label?: string;
       confidence?: number;
     }) => boolean;
   };
-  colorSeed: number;
-  colorTargets: RGB[];
-  colorscale: RGB[];
+  coloring: Coloring;
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;
@@ -223,7 +227,6 @@ export type StateUpdate<State extends BaseState> = (
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activePaths: [],
-  colorByLabel: false,
   selectedLabels: [],
   showConfidence: false,
   showIndex: false,
@@ -232,12 +235,12 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,
-  colorSeed: 0,
-  colorTargets: [
-    [0, 0, 0],
-    [255, 255, 255],
-  ],
-  colorscale: null,
+  coloring: {
+    byLabel: false,
+    pool: ["#000000"],
+    scale: null,
+    seed: 0,
+  },
   smoothMasks: true,
   hasNext: false,
   hasPrevious: false,

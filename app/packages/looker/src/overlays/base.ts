@@ -2,7 +2,8 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BaseState, Coordinates, RGB } from "../state";
+import { getColor } from "../color";
+import { BaseState, Coordinates } from "../state";
 import { sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -62,9 +63,9 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
 };
 
 export interface LabelUpdate<Label extends BaseLabel> {
-  coloring: RGB | RGB[];
   buffers: ArrayBuffer[];
   label: Label;
+  field: string;
 }
 
 export interface Overlay<State extends BaseState> {
@@ -108,8 +109,8 @@ export abstract class CoordinateOverlay<
   }
 
   getColor({ options }: Readonly<State>): string {
-    const key = options.colorByLabel ? this.label.label : this.field;
-    return options.colorMap(key);
+    const key = options.coloring.byLabel ? this.label.label : this.field;
+    return getColor(options.coloring.pool, options.coloring.seed, key);
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;

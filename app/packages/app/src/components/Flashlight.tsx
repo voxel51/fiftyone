@@ -83,9 +83,7 @@ const flashlightLookerOptions = selector({
   key: "flashlightLookerOptions",
   get: ({ get }) => {
     return {
-      colorByLabel: get(atoms.colorByLabel(false)),
-      colorMap: get(selectors.colorMap(false)),
-      colorTargets: get(selectors.colorTargets(false)),
+      coloring: get(selectors.coloring(false)),
       filter: get(labelFilters(false)),
       activePaths: get(activeFields),
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
@@ -93,7 +91,6 @@ const flashlightLookerOptions = selector({
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       fieldsMap: get(selectors.primitivesDbMap("sample")),
       frameFieldsMap: get(selectors.primitivesDbMap("frame")),
-      colorscale: get(atoms.stateDescription).colorscale,
       alpha: get(atoms.alpha(false)),
     };
   },

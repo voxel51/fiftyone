@@ -76,7 +76,7 @@ import { zoomToContent } from "./zoom";
 import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
-
+export { Coloring } from "./state";
 export { createColorGenerator, getRGB } from "./color";
 
 export type RGB = [number, number, number];
@@ -175,6 +175,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
     labelsWorker.postMessage(
       {
         method: "updateLabels",
+        coloring: state.options.coloring,
         labels,
         uuid: messageUUID,
       },

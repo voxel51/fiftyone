@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { BASE_ALPHA, INFO_COLOR, TOLERANCE } from "../constants";
+import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";

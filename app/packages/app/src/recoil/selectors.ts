@@ -14,7 +14,7 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
-import { createColorGenerator, getRGB, RGB } from "@fiftyone/looker";
+import { Coloring, createColorGenerator, getRGB, RGB } from "@fiftyone/looker";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -431,13 +431,6 @@ export const gridZoom = selector<number | null>({
   },
 });
 
-export const colorscale = selector<string>({
-  key: "colorscale",
-  get: ({ get }) => {
-    return get(appConfig).colorscale;
-  },
-});
-
 export const colorscaleTransparency = selector<boolean>({
   key: "colorscaleTransparency",
   get: ({ get }) => {
@@ -644,11 +637,15 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
   },
 });
 
-export const colorTargets = selectorFamily<RGB[], boolean>({
-  key: "colorTargets",
+export const coloring = selectorFamily<Coloring, boolean>({
+  key: "coloring",
   get: (modal) => ({ get }) => {
-    const coloring = get(colorMap(modal));
-    return new Array(255).map((_, i) => getRGB(coloring(i)));
+    return {
+      seed: get(atoms.colorSeed(modal)),
+      pool: get(atoms.colorPool),
+      scale: get(atoms.stateDescription).colorscale,
+      byLabel: get(atoms.colorByLabel(modal)),
+    };
   },
 });
 

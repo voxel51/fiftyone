@@ -1,9 +1,10 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
+import { getColor } from "../color";
 import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
-import { BaseState, Coordinates, RGB } from "../state";
+import { BaseState, Coordinates } from "../state";
 import {
   BaseLabel,
   CONTAINS,
@@ -35,7 +36,7 @@ export default class SegmentationOverlay<State extends BaseState>
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
   private awaitingUUID: string;
-  private cachedColoring: RGB[];
+  private cachedColoring: number;
 
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
@@ -72,7 +73,15 @@ export default class SegmentationOverlay<State extends BaseState>
     ctx.globalAlpha = tmp;
 
     if (this.isSelected(state)) {
-      strokeCanvasRect(ctx, state, state.options.colorMap(this.field));
+      strokeCanvasRect(
+        ctx,
+        state,
+        getColor(
+          state.options.coloring.pool,
+          state.options.coloring.seed,
+          this.field
+        )
+      );
     }
   }
 
@@ -86,7 +95,11 @@ export default class SegmentationOverlay<State extends BaseState>
   getPointInfo(state: Readonly<State>): PointInfo<SegmentationInfo> {
     const target = this.getTarget(state);
     return {
-      color: this.getColor(state, target),
+      color: getColor(
+        state.options.coloring.pool,
+        state.options.coloring.seed,
+        target
+      ),
       label: {
         ...this.label,
         mask: {
@@ -124,21 +137,21 @@ export default class SegmentationOverlay<State extends BaseState>
 
   needsLabelUpdate(state: Readonly<State>) {
     if (this.cachedColoring === null) {
-      this.cachedColoring = state.options.colorTargets;
+      this.cachedColoring = state.options.coloring.seed;
     }
 
-    return this.targets && this.cachedColoring !== state.options.colorTargets;
+    return this.targets && this.cachedColoring !== state.options.coloring.seed;
   }
 
   getLabelData(state: Readonly<State>, messageUUID: string) {
     this.awaitingUUID = messageUUID;
-    this.cachedColoring = state.options.colorTargets;
+    this.cachedColoring = state.options.coloring.seed;
 
     return [
       {
+        field: this.field,
         label: this.label,
         buffers: [this.label.mask.data.buffer, this.label.mask.image],
-        coloring: state.options.colorTargets,
       },
     ];
   }
@@ -188,10 +201,6 @@ export default class SegmentationOverlay<State extends BaseState>
     const sx = Math.floor(x * (w / mw));
     const sy = Math.floor(y * (h / mh));
     return [sx, sy];
-  }
-
-  private getColor(state: Readonly<State>, target: number): string {
-    return state.options.colorMap(target);
   }
 
   private getTarget(state: Readonly<State>): number {

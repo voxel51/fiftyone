@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { getColor } from "../color";
 import {
   MOMENT_CLASSIFICATIONS,
   TEMPORAL_DETECTION,
@@ -40,8 +41,12 @@ export class ClassificationsOverlay<
   }
 
   getColor(state: Readonly<State>, field: string, label: Label): string {
-    const key = state.options.colorByLabel ? label.label : field;
-    return state.options.colorMap(key);
+    const key = state.options.coloring.byLabel ? label.label : field;
+    return getColor(
+      state.options.coloring.pool,
+      state.options.coloring.seed,
+      key
+    );
   }
 
   isShown(state: Readonly<State>): boolean {

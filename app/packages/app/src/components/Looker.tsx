@@ -329,10 +329,8 @@ const lookerOptions = selector({
     const zoom = get(selectors.isPatchesView)
       ? get(atoms.cropToContent(true))
       : false;
-    const colorByLabel = get(atoms.colorByLabel(true));
 
     return {
-      colorByLabel,
       showConfidence,
       showIndex,
       showLabel,
@@ -340,16 +338,13 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      colorMap: get(selectors.colorMap(true)),
-      colorscale: get(atoms.stateDescription).colorscale,
-      colorTargets: get(selectors.colorTargets(true)),
       filter: get(labelFilters(true)),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
       fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
       frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
-      alpha: get(atoms.alpha(true)),
+      coloring: get(selectors.coloring(true)),
     };
   },
 });

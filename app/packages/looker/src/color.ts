@@ -127,7 +127,10 @@ const hslToRGB = (hsl): RGB => {
 export const createColorGenerator = (() => {
   let colorMaps = {};
 
-  return (colorPool: string[], seed: number): ((value) => string) => {
+  return (
+    pool: string[],
+    seed: number
+  ): ((value: string | number) => string) => {
     if (seed in colorMaps) {
       return colorMaps[seed];
     }
@@ -145,10 +148,18 @@ export const createColorGenerator = (() => {
         hash = ((hash << 5) - hash + val.charCodeAt(i)) & hash;
       }
 
-      map[val] = colorPool[hash % colorPool.length];
+      map[val] = pool[hash % pool.length];
       return map[val];
     };
 
     return colorMaps[seed];
   };
 })();
+
+export const getColor = (
+  pool: string[],
+  seed: number,
+  value: string | number
+) => {
+  return createColorGenerator(pool, seed)(value);
+};

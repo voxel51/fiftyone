@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { get32BitColor, getRGB, getRGBA, getRGBAColor } from "../color";
+import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
 import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
@@ -39,7 +39,7 @@ export default class HeatmapOverlay<State extends BaseState>
   private label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
-  private cachedColoring: RGB[] | ((key: string | number) => string);
+  private cachedColoring: RGB[] | number;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
   private awaitingUUID: string;
@@ -84,7 +84,15 @@ export default class HeatmapOverlay<State extends BaseState>
     ctx.globalAlpha = ctx.globalAlpha;
 
     if (this.isSelected(state)) {
-      strokeCanvasRect(ctx, state, state.options.colorMap(this.field));
+      strokeCanvasRect(
+        ctx,
+        state,
+        getColor(
+          state.options.coloring.pool,
+          state.options.coloring.seed,
+          this.field
+        )
+      );
     }
   }
 
@@ -98,7 +106,7 @@ export default class HeatmapOverlay<State extends BaseState>
   getPointInfo(state: Readonly<State>): PointInfo<HeatmapInfo> {
     const target = this.getTarget(state);
     return {
-      color: getRGBAColor(getRGBA(this.getColor(this.cachedColoring)(target))),
+      color: getRGBAColor(getRGBA(this.getColor(state, target))),
       label: {
         ...this.label,
         map: {
@@ -135,9 +143,9 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   needsLabelUpdate(state: Readonly<State>) {
-    const coloring = !state.options.colorByLabel
-      ? state.options.colorMap
-      : state.options.colorscale || state.options.colorMap;
+    const coloring = !state.options.coloring.byLabel
+      ? state.options.coloring.seed
+      : state.options.coloring.scale || state.options.coloring.seed;
 
     if (this.cachedColoring === null) {
       this.cachedColoring = coloring;
@@ -151,21 +159,15 @@ export default class HeatmapOverlay<State extends BaseState>
     messageUUID: string
   ): LabelUpdate<HeatmapLabel>[] {
     this.awaitingUUID = messageUUID;
-    this.cachedColoring = !state.options.colorByLabel
-      ? state.options.colorMap
-      : state.options.colorscale || state.options.colorMap;
-
-    const fieldColoring = getRGB(state.options.colorMap(this.field));
-
-    const coloring = !state.options.colorByLabel
-      ? fieldColoring
-      : state.options.colorscale || fieldColoring;
+    this.cachedColoring = !state.options.coloring.byLabel
+      ? state.options.coloring.seed
+      : state.options.coloring.scale || state.options.coloring.seed;
 
     return [
       {
+        field: this.field,
         label: this.label,
         buffers: [this.label.map.data.buffer, this.label.map.image],
-        coloring,
       },
     ];
   }
@@ -217,36 +219,32 @@ export default class HeatmapOverlay<State extends BaseState>
     return [sx, sy];
   }
 
-  private getColor(
-    picker: RGB[] | ((key: string | number) => string)
-  ): (value: number) => number {
+  private getColor(state: Readonly<State>, value: number): number {
     const [start, stop] = this.range;
 
-    if (Array.isArray(picker)) {
-      return (value) => {
-        if (value === 0) {
-          return 0;
-        }
-
-        const index = Math.round(
-          (Math.max(value - start, 0) / (stop - start)) * (picker.length - 1)
-        );
-
-        return get32BitColor(picker[index]);
-      };
+    if (value === 0) {
+      return 0;
     }
 
-    const color = picker(this.field);
+    if (state.options.coloring.byLabel) {
+      const index = Math.round(
+        (Math.max(value - start, 0) / (stop - start)) *
+          (state.options.coloring.scale.length - 1)
+      );
+
+      return get32BitColor(state.options.coloring.scale[index]);
+    }
+
+    const color = getColor(
+      state.options.coloring.pool,
+      state.options.coloring.seed,
+      this.field
+    );
     const max = Math.max(Math.abs(start), Math.abs(stop));
-    return (value) => {
-      if (value === 0) {
-        return 0;
-      }
 
-      value = Math.min(max, Math.abs(value)) / max;
+    value = Math.min(max, Math.abs(value)) / max;
 
-      return get32BitColor(color, value / max);
-    };
+    return get32BitColor(color, value / max);
   }
 
   private getTarget(state: Readonly<State>): number {

@@ -2,13 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { get32BitColor, createColorGenerator } from "./color";
+import { get32BitColor, getColor } from "./color";
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
 import { BaseLabel, LabelUpdate } from "./overlays/base";
-import { FrameChunk, RGB } from "./state";
-
-const colorGenerators = {};
+import { Coloring, FrameChunk } from "./state";
 
 const DESERIALIZE = {
   Detection: (label, buffers) => {
@@ -47,32 +45,21 @@ const mapId = (obj) => {
 
 const processLabels = (
   sample: { [key: string]: any },
-  colorByLabel: boolean,
-  colorPool: string[],
-  colorSeed: number
+  coloring: Coloring
 ): ArrayBuffer[] => {
   let buffers: ArrayBuffer[] = [];
-
-  if (!(colorSeed in colorGenerators)) {
-    colorGenerators[colorSeed] = createColorGenerator(colorPool, colorSeed);
-  }
-
-  const colorGenerator = colorGenerators[colorSeed];
 
   for (const field in sample) {
     const label = sample[field];
     if (!label) {
       continue;
     }
+
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
     }
 
-    UPDATE_LABEL[label._cls] &&
-      UPDATE_LABEL[label._cls](
-        label,
-        colorByLabel && label.label && fieldColoring[field]
-      );
+    UPDATE_LABEL[label._cls] && UPDATE_LABEL[label._cls](label, coloring);
 
     if (label._cls in LABELS) {
       if (label._cls in LABEL_LISTS) {
@@ -108,27 +95,19 @@ interface ProcessSample {
     [key: string]: object;
     frames: any[];
   };
-  colorByLabel: boolean;
-  colorSeed: number;
+  coloring: Coloring;
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({
-  sample,
-  uuid,
-  colorByLabel,
-  colorSeed,
-}: ProcessSample) => {
-  let buffers = processLabels(sample, colorByLabel, colorSeed);
+const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
+  let buffers = processLabels(sample, coloring);
 
   if (sample.frames && sample.frames.length) {
     buffers = [
       ...buffers,
       ...sample.frames
-        .map<ArrayBuffer[]>((frame) =>
-          processLabels(frame, colorByLabel, colorSeed)
-        )
+        .map<ArrayBuffer[]>((frame) => processLabels(frame, coloring))
         .flat(),
     ];
   }
@@ -154,22 +133,19 @@ interface FrameStream {
 }
 
 interface FrameChunkResponse extends FrameChunk {
-  colorByLabel: boolean;
-  colorSeed: number;
+  coloring: Coloring;
 }
 
 const createReader = ({
   chunkSize,
-  colorByLabel,
-  colorSeed,
+  coloring,
   frameCount,
   frameNumber,
   sampleId,
   url,
 }: {
   chunkSize: number;
-  colorByLabel: boolean;
-  colorSeed: number;
+  coloring: Coloring;
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -197,7 +173,7 @@ const createReader = ({
           )
             .then((response: Response) => response.json())
             .then(({ frames, range }: FrameChunk) => {
-              controller.enqueue({ frames, range, colorByLabel, colorSeed });
+              controller.enqueue({ frames, range, coloring });
               frameNumber = range[1] + 1;
               resolve();
             })
@@ -231,10 +207,7 @@ const getSendChunk = (uuid: string) => ({
     let buffers: ArrayBuffer[] = [];
 
     value.frames.forEach((frame) => {
-      buffers = [
-        ...buffers,
-        ...processLabels(frame, value.colorByLabel, value.colorSeed),
-      ];
+      buffers = [...buffers, ...processLabels(frame, value.coloring)];
     });
     postMessage(
       {
@@ -262,7 +235,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 };
 
 interface SetStream {
-  fieldColoring: FieldColoring;
+  coloring: Coloring;
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -273,7 +246,7 @@ interface SetStream {
 type SetStreamMethod = ReaderMethod & SetStream;
 
 const setStream = ({
-  fieldColoring,
+  coloring,
   frameCount,
   frameNumber,
   sampleId,
@@ -283,8 +256,8 @@ const setStream = ({
   stream && stream.cancel();
   streamId = uuid;
   stream = createReader({
+    coloring,
     chunkSize: CHUNK_SIZE,
-    fieldColoring,
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
@@ -297,17 +270,24 @@ const setStream = ({
 interface UpdateLabels {
   uuid: string;
   labels: LabelUpdate<BaseLabel>[][];
+  coloring: Coloring;
 }
 
 type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
 
 const UPDATE_LABEL = {
-  Detection: (label, color) => {
+  Detection: (field, label, coloring: Coloring) => {
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
     );
-    color = get32BitColor(color);
+    const color = get32BitColor(
+      getColor(
+        coloring.pool,
+        coloring.seed,
+        coloring.byLabel ? label.label : field
+      )
+    );
 
     for (const i in overlay) {
       if (targets[i]) {
@@ -315,7 +295,11 @@ const UPDATE_LABEL = {
       }
     }
   },
-  Heatmap: (label, coloring) => {
+  Detections: (field, labels, coloring) =>
+    labels.detections.forEach((label) =>
+      UPDATE_LABEL[label._cls](field, label, coloring)
+    ),
+  Heatmap: (field, label, coloring: Coloring) => {
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
@@ -323,7 +307,7 @@ const UPDATE_LABEL = {
     const [start, stop] = label.range;
     const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    const getColor = Array.isArray(coloring[0])
+    const getColor = Array.isArray(coloring.byLabel)
       ? (value) => {
           if (value === 0) {
             return 0;
@@ -331,7 +315,7 @@ const UPDATE_LABEL = {
 
           const index = Math.round(
             (Math.max(value - start, 0) / (stop - start)) *
-              (coloring.length - 1)
+              (coloring.scale.length - 1)
           );
 
           return get32BitColor(coloring[index]);
@@ -341,7 +325,10 @@ const UPDATE_LABEL = {
             return 0;
           }
 
-          return get32BitColor(coloring, Math.min(max, Math.abs(value)) / max);
+          return get32BitColor(
+            getColor(coloring.pool, coloring.seed, field),
+            Math.min(max, Math.abs(value)) / max
+          );
         };
 
     for (const i in overlay) {
@@ -350,7 +337,7 @@ const UPDATE_LABEL = {
       }
     }
   },
-  Segmentation: (label, coloring: RGB[]) => {
+  Segmentation: (field, label, coloring) => {
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
@@ -376,11 +363,9 @@ const UPDATE_LABEL = {
   },
 };
 
-const updateLabels = ({ labels, uuid }: UpdateLabels) => {
+const updateLabels = ({ labels, coloring, uuid }: UpdateLabels) => {
   labels.forEach((l) =>
-    l.forEach(({ label, coloring }) =>
-      UPDATE_LABEL[label._cls](label, coloring)
-    )
+    l.forEach(({ label }) => UPDATE_LABEL[label._cls](label, coloring))
   );
 
   postMessage({
