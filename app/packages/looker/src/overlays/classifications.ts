@@ -2,13 +2,10 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { applyAlpha } from "../color";
 import {
-  DASH_COLOR,
   MOMENT_CLASSIFICATIONS,
-  TEXT_COLOR,
   TEMPORAL_DETECTION,
-  BASE_ALPHA,
+  INFO_COLOR,
 } from "../constants";
 import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
 import {
@@ -218,12 +215,11 @@ export class ClassificationsOverlay<
     if (text.length === 0) {
       return { top };
     }
-    const color = applyAlpha(
-      this.getColor(state, field, label),
-      state.options.alpha / BASE_ALPHA
-    );
+    const color = this.getColor(state, field, label);
     const [cx, cy] = state.canvasBBox;
 
+    const tmp = ctx.globalAlpha;
+    ctx.globalAlpha = state.options.alpha;
     let [tlx, tly, w, h] = [
       state.textPad + cx,
       top + cy,
@@ -238,8 +234,9 @@ export class ClassificationsOverlay<
     ctx.lineTo(tlx, tly + h);
     ctx.closePath();
     ctx.fill();
+    ctx.globalAlpha = tmp;
 
-    ctx.fillStyle = TEXT_COLOR;
+    ctx.fillStyle = INFO_COLOR;
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
 
     this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
@@ -249,7 +246,7 @@ export class ClassificationsOverlay<
         ctx,
         state,
         [tlx, tly, w, h],
-        DASH_COLOR,
+        INFO_COLOR,
         state.dashLength
       );
     }

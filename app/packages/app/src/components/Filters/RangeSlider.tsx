@@ -166,10 +166,11 @@ type SliderProps = {
   persistValue?: boolean;
   showValue?: boolean;
   showBounds?: boolean;
+  onChange?: boolean;
   int?: boolean;
 };
 
-export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
+export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
   const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<SliderValue>(null);
   useEffect(() => {
@@ -180,7 +181,7 @@ export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
   return (
     <BaseSlider
       {...rest}
-      onChange={(_, v) => setLocalValue(v)}
+      onChange={(_, v) => (onChange ? setValue(v) : setLocalValue(v))}
       onCommit={(_, v) => setValue(v)}
       value={localValue}
     />

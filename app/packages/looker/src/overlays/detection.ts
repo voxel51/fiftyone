@@ -1,8 +1,8 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { applyAlpha, get32BitColor, getRGB } from "../color";
-import { BASE_ALPHA, DASH_COLOR, TEXT_COLOR } from "../constants";
+import { getRGB } from "../color";
+import { BASE_ALPHA, INFO_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
@@ -30,7 +30,7 @@ export default class DetectionOverlay<
   private labelBoundingBox: BoundingBox;
   private canvas: HTMLCanvasElement;
   private awaitingUUID: string;
-  private bitColor: number = null;
+  private color: string = null;
 
   constructor(field, label) {
     super(field, label);
@@ -60,12 +60,11 @@ export default class DetectionOverlay<
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     this.label.mask && this.drawMask(ctx, state);
-
     !state.config.thumbnail && this.drawLabelText(ctx, state);
-    this.strokeRect(ctx, state, applyAlpha(this.getColor(state), BASE_ALPHA));
+    this.strokeRect(ctx, state, this.getColor(state));
 
     if (this.isSelected(state)) {
-      this.strokeRect(ctx, state, DASH_COLOR, state.dashLength);
+      this.strokeRect(ctx, state, INFO_COLOR, state.dashLength);
     }
   }
 
@@ -101,24 +100,20 @@ export default class DetectionOverlay<
   }
 
   needsLabelUpdate(state: Readonly<State>) {
-    if (this.bitColor === null) {
-      this.bitColor !==
-        get32BitColor(this.getColor(state), state.options.alpha);
+    if (this.color === null) {
+      this.color = this.getColor(state);
     }
 
-    return (
-      this.bitColor !== get32BitColor(this.getColor(state), state.options.alpha)
-    );
+    return this.color !== this.getColor(state);
   }
 
   getLabelData(state: Readonly<State>, messageUUID: string) {
     this.awaitingUUID = messageUUID;
-    this.bitColor = get32BitColor(this.getColor(state), state.options.alpha);
+    this.color = this.getColor(state);
     return [
       {
         label: this.label,
         coloring: getRGB(this.getColor(state)),
-        alpha: state.options.alpha,
         buffers: [this.label.mask.data.buffer, this.label.mask.image],
       },
     ];
@@ -158,10 +153,8 @@ export default class DetectionOverlay<
       return;
     }
 
-    const color = applyAlpha(
-      this.getColor(state),
-      state.options.alpha / BASE_ALPHA
-    );
+    const color = this.getColor(state);
+
     const [tlx, tly, _, __] = this.label.bounding_box;
     ctx.beginPath();
     ctx.fillStyle = color;
@@ -178,7 +171,7 @@ export default class DetectionOverlay<
     ctx.lineTo(ox, btry);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = TEXT_COLOR;
+    ctx.fillStyle = INFO_COLOR;
     const pad = state.textPad + state.strokeWidth;
     ctx.fillText(labelText, ox + pad, oy - pad);
 
@@ -194,6 +187,8 @@ export default class DetectionOverlay<
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
+    const tmp = ctx.globalAlpha;
+    ctx.globalAlpha = tmp * BASE_ALPHA;
     ctx.drawImage(
       this.canvas,
       x,
@@ -201,6 +196,7 @@ export default class DetectionOverlay<
       w * state.canvasBBox[2],
       h * state.canvasBBox[3]
     );
+    ctx.globalAlpha = tmp;
   }
 
   private getLabelText(state: Readonly<State>): string {

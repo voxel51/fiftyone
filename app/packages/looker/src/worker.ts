@@ -263,7 +263,7 @@ const UPDATE_LABEL = {
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
     );
-    color = get32BitColor(color, alpha);
+    color = get32BitColor(color, 255);
 
     for (const i in overlay) {
       if (targets[i]) {
@@ -308,7 +308,7 @@ const UPDATE_LABEL = {
       }
     }
   },
-  Segmentation: (label, coloring: RGB[], alpha) => {
+  Segmentation: (label, coloring: RGB[]) => {
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
@@ -323,7 +323,7 @@ const UPDATE_LABEL = {
         return cache[i];
       }
 
-      cache[i] = get32BitColor(coloring[i], alpha);
+      cache[i] = get32BitColor(coloring[i]);
     };
 
     for (const i in overlay) {
@@ -336,8 +336,8 @@ const UPDATE_LABEL = {
 
 const updateLabels = ({ labels, uuid }: UpdateLabels) => {
   labels.forEach((l) =>
-    l.forEach(({ label, alpha, coloring }) =>
-      UPDATE_LABEL[label._cls](label, coloring, alpha)
+    l.forEach(({ label, coloring }) =>
+      UPDATE_LABEL[label._cls](label, coloring)
     )
   );
 

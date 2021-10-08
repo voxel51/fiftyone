@@ -94,6 +94,7 @@ const flashlightLookerOptions = selector({
       fieldsMap: get(selectors.primitivesDbMap("sample")),
       frameFieldsMap: get(selectors.primitivesDbMap("frame")),
       colorscale: get(atoms.stateDescription).colorscale,
+      alpha: get(atoms.alpha(false)),
     };
   },
 });

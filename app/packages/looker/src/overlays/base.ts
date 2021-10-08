@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { applyAlpha } from "../color";
 import { BaseState, Coordinates, RGB } from "../state";
 import { sizeBytes } from "./util";
 
@@ -63,7 +64,6 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
 
 export interface LabelUpdate<Label extends BaseLabel> {
   coloring: RGB | RGB[];
-  alpha: number;
   buffers: ArrayBuffer[];
   label: Label;
 }

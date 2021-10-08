@@ -349,6 +349,7 @@ const lookerOptions = selector({
       fullscreen: get(atoms.fullscreen),
       fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
       frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
+      alpha: get(atoms.alpha(true)),
     };
   },
 });

@@ -3,6 +3,7 @@
  */
 
 import { get32BitColor, getRGB, getRGBA, getRGBAColor } from "../color";
+import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
 import {
@@ -39,7 +40,6 @@ export default class HeatmapOverlay<State extends BaseState>
   private targets?: TypedArray;
   private readonly range: [number, number];
   private cachedColoring: RGB[] | ((key: string | number) => string);
-  private cachedAlpha: number;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
   private awaitingUUID: string;
@@ -78,7 +78,10 @@ export default class HeatmapOverlay<State extends BaseState>
 
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
+    const tmp = ctx.globalAlpha;
+    ctx.globalAlpha = tmp * BASE_ALPHA;
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+    ctx.globalAlpha = ctx.globalAlpha;
 
     if (this.isSelected(state)) {
       strokeCanvasRect(ctx, state, state.options.colorMap(this.field));
@@ -140,16 +143,7 @@ export default class HeatmapOverlay<State extends BaseState>
       this.cachedColoring = coloring;
     }
 
-    const alpha = state.options.alpha;
-
-    if (this.cachedAlpha === null) {
-      this.cachedAlpha = alpha;
-    }
-
-    return (
-      (this.targets && this.cachedColoring !== coloring) ||
-      this.cachedAlpha !== alpha
-    );
+    return this.targets && this.cachedColoring !== coloring;
   }
 
   getLabelData(
@@ -160,7 +154,6 @@ export default class HeatmapOverlay<State extends BaseState>
     this.cachedColoring = !state.options.colorByLabel
       ? state.options.colorMap
       : state.options.colorscale || state.options.colorMap;
-    this.cachedAlpha = state.options.alpha;
 
     const fieldColoring = getRGB(state.options.colorMap(this.field));
 
@@ -173,7 +166,6 @@ export default class HeatmapOverlay<State extends BaseState>
         label: this.label,
         buffers: [this.label.map.data.buffer, this.label.map.image],
         coloring,
-        alpha: state.options.alpha,
       },
     ];
   }

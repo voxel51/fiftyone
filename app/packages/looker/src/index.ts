@@ -18,6 +18,8 @@ import {
   JSON_COLORS,
   MASK_LABELS,
   HEATMAP,
+  BASE_ALPHA,
+  INFO_COLOR,
 } from "./constants";
 import {
   getFrameElements,
@@ -73,6 +75,7 @@ import {
 import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
+import { applyAlpha } from "./color";
 
 export { zoomAspectRatio } from "./zoom";
 
@@ -228,7 +231,11 @@ export abstract class Looker<State extends BaseState = BaseState> {
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
 
-      if (!this.state.windowBBox || this.state.destroyed) {
+      if (
+        !this.state.windowBBox ||
+        this.state.destroyed ||
+        !this.state.overlaysPrepared
+      ) {
         return;
       }
       this.pluckedOverlays = this.pluckOverlays(this.state);
@@ -243,10 +250,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
         Boolean(this.currentOverlays.length) &&
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
-
-      if (!this.state.overlaysPrepared) {
-        return;
-      }
 
       this.dispatchImpliedEvents(this.previousState, this.state);
 
@@ -295,10 +298,12 @@ export abstract class Looker<State extends BaseState = BaseState> {
         h
       );
 
+      ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(ctx, this.state);
       }
+      ctx.globalAlpha = 1;
     };
   }
 
@@ -506,6 +511,8 @@ export abstract class Looker<State extends BaseState = BaseState> {
     this.state.dashLength = DASH_LENGTH / this.state.scale;
     this.state.config.thumbnail && (this.state.strokeWidth /= 3);
     this.state.textPad = PAD / this.state.scale;
+    this.state.shapeAlpha = this.state.options.alpha / BASE_ALPHA;
+    this.state.infoColor = applyAlpha(INFO_COLOR, this.state.shapeAlpha);
 
     this.state.hasDefaultZoom = this.hasDefaultZoom(
       this.state,

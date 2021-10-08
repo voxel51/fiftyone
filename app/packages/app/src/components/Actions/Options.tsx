@@ -82,6 +82,7 @@ const Opacity = ({ modal }) => {
         showBounds={false}
         persistValue={false}
         showValue={false}
+        onChange={true}
         style={{ padding: 0 }}
       />
     </>
@@ -148,8 +149,8 @@ const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
       <ColorBy modal={modal} />
-      <Opacity modal={modal} />
       <RefreshButton modal={modal} />
+      <Opacity modal={modal} />
       <SortFilterResults modal={modal} />
       <Patches modal={modal} />
     </Popout>

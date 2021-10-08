@@ -2,8 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { applyAlpha } from "../color";
-import { BASE_ALPHA, DASH_COLOR, TOLERANCE } from "../constants";
+import { BASE_ALPHA, INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -40,10 +39,8 @@ export default class PolylineOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    const color = applyAlpha(
-      this.getColor(state),
-      state.options.alpha / BASE_ALPHA
-    );
+    const color = this.getColor(state);
+
     const selected = this.isSelected(state);
 
     for (const path of this.label.points) {
@@ -54,7 +51,7 @@ export default class PolylineOverlay<
       this.strokePath(ctx, state, path, color, this.label.filled);
 
       if (selected) {
-        this.strokePath(ctx, state, path, DASH_COLOR, false, state.dashLength);
+        this.strokePath(ctx, state, path, INFO_COLOR, false, state.dashLength);
       }
     }
   }
@@ -118,9 +115,10 @@ export default class PolylineOverlay<
     }
     if (filled) {
       ctx.fillStyle = color;
+      const tmp = ctx.globalAlpha;
       ctx.globalAlpha = state.options.alpha;
       ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = tmp;
     }
 
     if (this.label.closed) {

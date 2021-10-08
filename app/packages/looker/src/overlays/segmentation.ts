@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
+import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
 import {
@@ -35,7 +36,6 @@ export default class SegmentationOverlay<State extends BaseState>
   private imageData: ImageData;
   private awaitingUUID: string;
   private cachedColoring: RGB[];
-  private cachedAlpha: number = null;
 
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
@@ -66,7 +66,10 @@ export default class SegmentationOverlay<State extends BaseState>
 
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
+    const tmp = ctx.globalAlpha;
+    ctx.globalAlpha = tmp * BASE_ALPHA;
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+    ctx.globalAlpha = tmp;
 
     if (this.isSelected(state)) {
       strokeCanvasRect(ctx, state, state.options.colorMap(this.field));
@@ -124,30 +127,18 @@ export default class SegmentationOverlay<State extends BaseState>
       this.cachedColoring = state.options.colorTargets;
     }
 
-    const alpha = state.options.alpha;
-
-    if (this.cachedAlpha === null) {
-      this.cachedAlpha = alpha;
-    }
-
-    return (
-      this.targets &&
-      (this.cachedColoring !== state.options.colorTargets ||
-        this.cachedAlpha !== state.options.alpha)
-    );
+    return this.targets && this.cachedColoring !== state.options.colorTargets;
   }
 
   getLabelData(state: Readonly<State>, messageUUID: string) {
     this.awaitingUUID = messageUUID;
     this.cachedColoring = state.options.colorTargets;
-    this.cachedAlpha = state.options.alpha;
 
     return [
       {
         label: this.label,
         buffers: [this.label.mask.data.buffer, this.label.mask.image],
         coloring: state.options.colorTargets,
-        alpha: state.options.alpha,
       },
     ];
   }

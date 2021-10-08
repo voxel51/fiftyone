@@ -5,8 +5,7 @@
 export const BASE_ALPHA = 0.7;
 export const LINE_WIDTH = 3;
 export const DASH_LENGTH = 8;
-export const DASH_COLOR = "rgba(255, 255, 255, 0.7)";
-export const TEXT_COLOR = "#ffffff";
+export const INFO_COLOR = "#ffffff";
 export const PAD = 4;
 export const TOLERANCE = 1.15;
 export const POINT_RADIUS = 4;
