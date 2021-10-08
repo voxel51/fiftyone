@@ -8,7 +8,6 @@ import {
   MOMENT_CLASSIFICATIONS,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
-import { getMimeType } from "../../util";
 import { BaseElement } from "../base";
 
 import { lookerTags } from "./tags.module.css";
@@ -22,7 +21,7 @@ interface TagData {
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private colorByValue: boolean;
-  private colorMap: (key: string | number) => string;
+  private colorSeed: number;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -39,7 +38,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       options: {
         filter,
         activePaths,
-        colorMap,
+        colorSeed,
         colorByLabel,
         fieldsMap,
         mimetype,
@@ -50,7 +49,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     if (
       arraysAreEqual(activePaths, this.activePaths) &&
       this.colorByValue === colorByLabel &&
-      this.colorMap === colorMap
+      this.colorSeed === colorSeed
     ) {
       return this.element;
     }
@@ -158,7 +157,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     }, []);
 
     this.colorByValue = colorByLabel;
-    this.colorMap = colorMap;
+    this.colorMap = col;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
 

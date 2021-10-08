@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { applyAlpha } from "../color";
 import { BaseState, Coordinates, RGB } from "../state";
 import { sizeBytes } from "./util";
 

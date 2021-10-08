@@ -19,7 +19,6 @@ import {
   MASK_LABELS,
   HEATMAP,
   BASE_ALPHA,
-  INFO_COLOR,
 } from "./constants";
 import {
   getFrameElements,
@@ -75,11 +74,10 @@ import {
 import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
-import { applyAlpha } from "./color";
 
 export { zoomAspectRatio } from "./zoom";
 
-export { getRGB } from "./color";
+export { createColorGenerator, getRGB } from "./color";
 
 export type RGB = [number, number, number];
 
@@ -511,8 +509,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
     this.state.dashLength = DASH_LENGTH / this.state.scale;
     this.state.config.thumbnail && (this.state.strokeWidth /= 3);
     this.state.textPad = PAD / this.state.scale;
-    this.state.shapeAlpha = this.state.options.alpha / BASE_ALPHA;
-    this.state.infoColor = applyAlpha(INFO_COLOR, this.state.shapeAlpha);
 
     this.state.hasDefaultZoom = this.hasDefaultZoom(
       this.state,

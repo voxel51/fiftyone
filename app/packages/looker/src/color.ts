@@ -59,24 +59,6 @@ export const applyAlpha = (color: string, alpha: number): string => {
   return getRGBAColor([...getRGB(color), alpha]);
 };
 
-let rawMaskColors = new Uint32Array(256);
-
-let cachedColorMap = null;
-
-export const getSegmentationColorArray = (
-  colorMap: Function,
-  alpha: number
-): Readonly<Uint32Array> => {
-  if (cachedColorMap !== colorMap) {
-    cachedColorMap = colorMap;
-    for (let i = 0; i < 256; i++) {
-      rawMaskColors[i] = get32BitColor(colorMap(i), alpha);
-    }
-  }
-
-  return rawMaskColors;
-};
-
 let rawColorscale = new Uint32Array(256);
 
 let cachedColorscale = null;
@@ -141,3 +123,32 @@ const hslToRGB = (hsl): RGB => {
 
   return [r, g, b];
 };
+
+export const createColorGenerator = (() => {
+  let colorMaps = {};
+
+  return (colorPool: string[], seed: number): ((value) => string) => {
+    if (seed in colorMaps) {
+      return colorMaps[seed];
+    }
+
+    let map = {};
+    colorMaps[seed] = (val: string | number) => {
+      typeof val !== "string" && (val = String(val));
+
+      if (val in map) {
+        return map[val];
+      }
+      let hash = seed;
+
+      for (let i = 0; i < val.length; i++) {
+        hash = ((hash << 5) - hash + val.charCodeAt(i)) & hash;
+      }
+
+      map[val] = colorPool[hash % colorPool.length];
+      return map[val];
+    };
+
+    return colorMaps[seed];
+  };
+})();

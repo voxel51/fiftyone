@@ -115,7 +115,6 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
                 color={theme.brand}
                 showBounds={false}
                 persistValue={false}
-                int={true}
                 style={{ padding: 0 }}
               />
             </div>

@@ -1,7 +1,6 @@
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
-import { generateColorMap } from "../utils/colors";
 import {
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
@@ -15,7 +14,7 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
-import { getRGB, RGB } from "@fiftyone/looker";
+import { createColorGenerator, getRGB, RGB } from "@fiftyone/looker";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -641,7 +640,7 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
 
-    return generateColorMap(pool, seed);
+    return createColorGenerator(pool, seed);
   },
 });
 

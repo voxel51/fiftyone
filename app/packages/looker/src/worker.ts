@@ -2,11 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { get32BitColor } from "./color";
+import { get32BitColor, createColorGenerator } from "./color";
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
 import { BaseLabel, LabelUpdate } from "./overlays/base";
 import { FrameChunk, RGB } from "./state";
+
+const colorGenerators = {};
 
 const DESERIALIZE = {
   Detection: (label, buffers) => {
@@ -43,8 +45,20 @@ const mapId = (obj) => {
   return obj;
 };
 
-const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
+const processLabels = (
+  sample: { [key: string]: any },
+  colorByLabel: boolean,
+  colorPool: string[],
+  colorSeed: number
+): ArrayBuffer[] => {
   let buffers: ArrayBuffer[] = [];
+
+  if (!(colorSeed in colorGenerators)) {
+    colorGenerators[colorSeed] = createColorGenerator(colorPool, colorSeed);
+  }
+
+  const colorGenerator = colorGenerators[colorSeed];
+
   for (const field in sample) {
     const label = sample[field];
     if (!label) {
@@ -53,6 +67,12 @@ const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
     }
+
+    UPDATE_LABEL[label._cls] &&
+      UPDATE_LABEL[label._cls](
+        label,
+        colorByLabel && label.label && fieldColoring[field]
+      );
 
     if (label._cls in LABELS) {
       if (label._cls in LABEL_LISTS) {
@@ -88,18 +108,27 @@ interface ProcessSample {
     [key: string]: object;
     frames: any[];
   };
+  colorByLabel: boolean;
+  colorSeed: number;
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({ sample, uuid }: ProcessSample) => {
-  let buffers = processLabels(sample);
+const processSample = ({
+  sample,
+  uuid,
+  colorByLabel,
+  colorSeed,
+}: ProcessSample) => {
+  let buffers = processLabels(sample, colorByLabel, colorSeed);
 
   if (sample.frames && sample.frames.length) {
     buffers = [
       ...buffers,
       ...sample.frames
-        .map<ArrayBuffer[]>((frame) => processLabels(frame))
+        .map<ArrayBuffer[]>((frame) =>
+          processLabels(frame, colorByLabel, colorSeed)
+        )
         .flat(),
     ];
   }
@@ -120,18 +149,27 @@ interface FrameStream {
   chunkSize: number;
   frameNumber: number;
   sampleId: string;
-  reader: ReadableStreamDefaultReader<FrameChunk>;
+  reader: ReadableStreamDefaultReader<FrameChunkResponse>;
   cancel: () => void;
+}
+
+interface FrameChunkResponse extends FrameChunk {
+  colorByLabel: boolean;
+  colorSeed: number;
 }
 
 const createReader = ({
   chunkSize,
+  colorByLabel,
+  colorSeed,
   frameCount,
   frameNumber,
   sampleId,
   url,
 }: {
   chunkSize: number;
+  colorByLabel: boolean;
+  colorSeed: number;
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -139,7 +177,7 @@ const createReader = ({
 }): FrameStream => {
   let cancelled = false;
 
-  const privateStream = new ReadableStream<FrameChunk>(
+  const privateStream = new ReadableStream<FrameChunkResponse>(
     {
       pull: (controller: ReadableStreamDefaultController) => {
         if (frameNumber >= frameCount || cancelled) {
@@ -159,7 +197,7 @@ const createReader = ({
           )
             .then((response: Response) => response.json())
             .then(({ frames, range }: FrameChunk) => {
-              controller.enqueue({ frames, range });
+              controller.enqueue({ frames, range, colorByLabel, colorSeed });
               frameNumber = range[1] + 1;
               resolve();
             })
@@ -187,13 +225,16 @@ const getSendChunk = (uuid: string) => ({
   value,
 }: {
   done: boolean;
-  value?: FrameChunk;
+  value?: FrameChunkResponse;
 }) => {
   if (value) {
     let buffers: ArrayBuffer[] = [];
 
     value.frames.forEach((frame) => {
-      buffers = [...buffers, ...processLabels(frame)];
+      buffers = [
+        ...buffers,
+        ...processLabels(frame, value.colorByLabel, value.colorSeed),
+      ];
     });
     postMessage(
       {
@@ -221,9 +262,10 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 };
 
 interface SetStream {
-  sampleId: string;
-  frameNumber: number;
+  fieldColoring: FieldColoring;
   frameCount: number;
+  frameNumber: number;
+  sampleId: string;
   uuid: string;
   url: string;
 }
@@ -231,9 +273,10 @@ interface SetStream {
 type SetStreamMethod = ReaderMethod & SetStream;
 
 const setStream = ({
-  sampleId,
-  frameNumber,
+  fieldColoring,
   frameCount,
+  frameNumber,
+  sampleId,
   uuid,
   url,
 }: SetStream) => {
@@ -241,6 +284,7 @@ const setStream = ({
   streamId = uuid;
   stream = createReader({
     chunkSize: CHUNK_SIZE,
+    fieldColoring,
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
@@ -258,12 +302,12 @@ interface UpdateLabels {
 type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
 
 const UPDATE_LABEL = {
-  Detection: (label, alpha, color) => {
+  Detection: (label, color) => {
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
     );
-    color = get32BitColor(color, 255);
+    color = get32BitColor(color);
 
     for (const i in overlay) {
       if (targets[i]) {
@@ -271,7 +315,7 @@ const UPDATE_LABEL = {
       }
     }
   },
-  Heatmap: (label, coloring, alpha) => {
+  Heatmap: (label, coloring) => {
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
@@ -290,16 +334,14 @@ const UPDATE_LABEL = {
               (coloring.length - 1)
           );
 
-          return get32BitColor(coloring[index], alpha);
+          return get32BitColor(coloring[index]);
         }
       : (value) => {
           if (value === 0) {
             return 0;
           }
 
-          value = Math.min(max, Math.abs(value)) / max;
-
-          return get32BitColor(coloring, (value / max) * alpha);
+          return get32BitColor(coloring, Math.min(max, Math.abs(value)) / max);
         };
 
     for (const i in overlay) {

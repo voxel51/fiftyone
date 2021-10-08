@@ -60,7 +60,7 @@ interface BaseOptions {
       confidence?: number;
     }) => boolean;
   };
-  colorMap: (key: string | number | null | undefined) => string;
+  colorSeed: number;
   colorTargets: RGB[];
   colorscale: RGB[];
   selectedLabels: string[];
@@ -232,7 +232,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,
-  colorMap: null,
+  colorSeed: 0,
   colorTargets: [
     [0, 0, 0],
     [255, 255, 255],
