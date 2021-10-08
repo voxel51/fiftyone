@@ -11,28 +11,48 @@ import { Coloring, FrameChunk } from "./state";
 const DESERIALIZE = {
   Detection: (label, buffers) => {
     if (typeof label.mask === "string") {
-      label.mask = deserialize(label.mask);
-      buffers.push(label.mask.buffer);
+      const data = deserialize(label.mask);
+      const [height, width] = data.shape;
+
+      label.mask = {
+        data,
+        image: new ImageData(width, height).data.buffer,
+      };
+      buffers.push(data.buffer);
+      buffers.push(label.mask.image);
     }
   },
   Detections: (labels, buffers) => {
-    labels.detections.forEach((label) => {
-      if (typeof label.mask === "string") {
-        label.mask = deserialize(label.mask);
-        buffers.push(label.mask.buffer);
-      }
-    });
+    labels.detections.forEach((label) =>
+      DESERIALIZE[label._cls](label, buffers)
+    );
   },
   Heatmap: (label, buffers) => {
     if (typeof label.map === "string") {
-      label.map = deserialize(label.map);
-      buffers.push(label.map.buffer);
+      const data = deserialize(label.map);
+      const [height, width] = data.shape;
+
+      label.map = {
+        data,
+        image: new ImageData(width, height).data.buffer,
+      };
+
+      buffers.push(data.buffer);
+      buffers.push(label.map.image);
     }
   },
   Segmentation: (label, buffers) => {
     if (typeof label.mask === "string") {
-      label.mask = deserialize(label.mask);
-      buffers.push(label.mask.buffer);
+      const data = deserialize(label.mask);
+      const [height, width] = data.shape;
+
+      label.mask = {
+        data,
+        image: new ImageData(width, height).data.buffer,
+      };
+
+      buffers.push(data.buffer);
+      buffers.push(label.mask.image);
     }
   },
 };
@@ -59,7 +79,8 @@ const processLabels = (
       DESERIALIZE[label._cls](label, buffers);
     }
 
-    UPDATE_LABEL[label._cls] && UPDATE_LABEL[label._cls](label, coloring);
+    UPDATE_LABEL[label._cls] &&
+      UPDATE_LABEL[label._cls](field, label, coloring);
 
     if (label._cls in LABELS) {
       if (label._cls in LABEL_LISTS) {
@@ -277,6 +298,10 @@ type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
 
 const UPDATE_LABEL = {
   Detection: (field, label, coloring: Coloring) => {
+    if (!label.mask) {
+      return;
+    }
+
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
@@ -295,7 +320,7 @@ const UPDATE_LABEL = {
       }
     }
   },
-  Detections: (field, labels, coloring) =>
+  Detections: (field, labels, coloring: Coloring) =>
     labels.detections.forEach((label) =>
       UPDATE_LABEL[label._cls](field, label, coloring)
     ),
@@ -365,7 +390,9 @@ const UPDATE_LABEL = {
 
 const updateLabels = ({ labels, coloring, uuid }: UpdateLabels) => {
   labels.forEach((l) =>
-    l.forEach(({ label }) => UPDATE_LABEL[label._cls](label, coloring))
+    l.forEach(({ label, field }) =>
+      UPDATE_LABEL[label._cls](field, label, coloring)
+    )
   );
 
   postMessage({

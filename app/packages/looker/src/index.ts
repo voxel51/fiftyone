@@ -76,10 +76,17 @@ import { zoomToContent } from "./zoom";
 import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
-export { Coloring } from "./state";
 export { createColorGenerator, getRGB } from "./color";
 
 export type RGB = [number, number, number];
+export type RGBA = [number, number, number, number];
+
+export interface Coloring {
+  byLabel: boolean;
+  pool: string[];
+  scale: RGB[];
+  seed: number;
+}
 
 const labelsWorker = createWorker();
 
@@ -103,10 +110,10 @@ export abstract class Looker<State extends BaseState = BaseState> {
     config: State["config"],
     options: Optional<State["options"]> = {}
   ) {
-    this.loadSample(sample);
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
     if (!this.state.config.thumbnail) {
       this.state.showControls = true;
@@ -542,7 +549,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
     labelsWorker.addEventListener("message", listener);
     labelsWorker.postMessage({
       method: "processSample",
-      origin: window.location.origin,
+      coloring: this.state.options.coloring,
       sample,
       uuid: messageUUID,
     });
@@ -810,7 +817,6 @@ const { aquireReader, addFrame } = (() => {
       frameCount,
       frameNumber,
       uuid: subscription,
-      origin: window.location.origin,
       url: getURL(),
     });
     return subscription;

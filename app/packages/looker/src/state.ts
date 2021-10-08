@@ -7,6 +7,13 @@ import { Overlay } from "./overlays/base";
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
+export interface Coloring {
+  byLabel: boolean;
+  pool: string[];
+  scale: RGB[];
+  seed: number;
+}
+
 export interface Sample {
   metadata: {
     width: number;
@@ -17,13 +24,6 @@ export interface Sample {
   filepath: string;
   tags: string[];
   _label_tags: string[];
-}
-
-export interface Coloring {
-  byLabel: boolean;
-  pool: string[];
-  scale: RGB[];
-  seed: number;
 }
 
 export interface LabelData {
