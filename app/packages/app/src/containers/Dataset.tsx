@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { useRecoilCallback, useRecoilValue, useResetRecoilState } from "recoil";
+import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";

@@ -99,7 +99,7 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
 
   const options: Intl.DateTimeFormatOptions = {
     timeZone,
-    year: twoDigit,
+    year: "numeric",
     day: twoDigit,
     month: twoDigit,
     hour: twoDigit,
@@ -121,7 +121,11 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
     delete options.hour;
   }
 
-  return new Intl.DateTimeFormat("en-ZA", options).format(timeStamp);
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-")
+    .replace(", ", " ")
+    .replace(",", ".");
 };
 
 export const getDateTimeRangeFormattersWithPrecision = (() => {
@@ -144,7 +148,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
 
     if (delta < MS) {
       common = {
-        year: twoDigit,
+        year: "numeric",
         day: twoDigit,
         month: twoDigit,
       };
@@ -157,7 +161,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
       };
     } else if (delta < S) {
       common = {
-        year: twoDigit,
+        year: "numeric",
         day: twoDigit,
         month: twoDigit,
         hour: twoDigit,
@@ -170,7 +174,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
       };
     } else if (delta < M) {
       common = {
-        year: twoDigit,
+        year: "numeric",
         day: twoDigit,
         month: twoDigit,
       };
@@ -182,7 +186,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     } else {
       common = null;
       diff = {
-        year: twoDigit,
+        year: "numeric",
         month: twoDigit,
         day: twoDigit,
         hour: twoDigit,

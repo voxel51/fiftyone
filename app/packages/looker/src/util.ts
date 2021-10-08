@@ -505,20 +505,13 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
 
   const options: Intl.DateTimeFormatOptions = {
     timeZone,
-    year: twoDigit,
+    year: "numeric",
     day: twoDigit,
     month: twoDigit,
     hour: twoDigit,
     minute: twoDigit,
     second: twoDigit,
-    // @ts-ignore
-    fractionalSecondDigits: 3,
   };
-
-  if (!(timeStamp % MS)) {
-    // @ts-ignore
-    delete options.fractionalSecondDigits;
-  }
 
   if (!(timeStamp % S)) {
     delete options.second;
@@ -532,5 +525,7 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
     delete options.hour;
   }
 
-  return new Intl.DateTimeFormat("en-GB", options).format(timeStamp);
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-");
 };

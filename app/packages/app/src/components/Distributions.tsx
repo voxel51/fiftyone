@@ -14,7 +14,6 @@ import {
 } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
-import { AGGS } from "../utils/labels";
 import { filterStages } from "./Filters/atoms";
 import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
 import { isDateTimeField } from "./Filters/NumericFieldFilter.state";

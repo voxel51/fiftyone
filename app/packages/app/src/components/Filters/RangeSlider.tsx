@@ -58,6 +58,7 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 
   .valueLabel {
+    width: auto;
     margin-top: 0.5rem;
     font-weight: bold;
     font-family: "Palanquin", sans-serif;
@@ -70,11 +71,7 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 
   .valueLabel > span > span {
-    color: transparent;
     text-align: center;
-  }
-
-  .valueLabel > span > span {
     color: ${({ theme }) => theme.font};
     background: ${({ theme }) => theme.backgroundDark};
     border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
@@ -98,7 +95,10 @@ const getFormatter = (fieldType, timeZone, bounds) => {
     hasTitle,
     formatter: (v) => {
       if (fieldType === DATE_TIME_FIELD) {
-        const str = dtFormatters[1].format(v).replace(",", "\n");
+        const str = dtFormatters[1]
+          .format(v)
+          .replaceAll("/", "-")
+          .replace(",", "\n");
         if (dtFormatters[1].resolvedOptions().fractionalSecondDigits === 3) {
           return str + "ms";
         }
@@ -185,7 +185,9 @@ const BaseSlider = React.memo(
                   timeZone,
                   bounds[0],
                   bounds[1]
-                )[0].format(bounds[0])}
+                )[0]
+                  .format(bounds[0])
+                  .replaceAll("/", "-")}
               </div>
             }
           </>

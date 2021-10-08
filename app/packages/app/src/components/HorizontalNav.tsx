@@ -140,7 +140,9 @@ const HorizontalNav = ({ entries }: Props) => {
                 }
               }}
             >
-              {`${capitalize(elementNames.singular)} tags`}
+              {e === "Sample tags"
+                ? `${capitalize(elementNames.singular)} tags`
+                : e}
             </PlotButton>
           ))}
         </PlotsButtons>
