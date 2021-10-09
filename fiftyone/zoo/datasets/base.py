@@ -1533,6 +1533,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "fiw": FamiliesInTheWildDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kitti": KITTIDataset,
