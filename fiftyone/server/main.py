@@ -254,9 +254,7 @@ class PageHandler(tornado.web.RequestHandler):
 
         samples = await foo.aggregate(
             StateHandler.sample_collection(),
-            view.skip((page - 1) * page_length)._pipeline(
-                attach_frames=True, detach_frames=False
-            ),
+            view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(page_length + 1)
         convert(samples)
 
@@ -1466,7 +1464,10 @@ class Application(tornado.web.Application):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=fo.config.default_app_port)
+    parser.add_argument(
+        "--address", type=str, default=fo.config.default_app_address
+    )
     args = parser.parse_args()
     app = Application(debug=foc.DEV_INSTALL)
-    app.listen(args.port)
+    app.listen(args.port, address=args.address)
     tornado.ioloop.IOLoop.current().start()
