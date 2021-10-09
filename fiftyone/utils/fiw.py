@@ -1,6 +1,6 @@
 """
 Utilities for working with the
-`Labeled Faces in the Wild dataset <http://vis-www.cs.umass.edu/lfw>`_.
+`Families In the Wild dataset <https://web.northeastern.edu/smilelab/fiw/>`_.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,12 +8,12 @@ Utilities for working with the
 """
 import logging
 import os
+from pathlib import Path
+
+import pandas as pd
 
 import eta.core.utils as etau
 import eta.core.web as etaw
-
-import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 
@@ -29,82 +29,67 @@ def download_fiw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         cleanup (True): whether to cleanup the scratch directory after
             extraction
     """
+    pass
     if scratch_dir is None:
         scratch_dir = os.path.join(dataset_dir, "scratch")
 
     # Download dataset
-    images_dir = _download_videos(scratch_dir)
-    test_path, train_path = _download_splits(scratch_dir)
+    images_dir = _download_images(scratch_dir)
+    test_path, val_path, train_path = _download_splits(scratch_dir)
 
     # Reorganize files into splits
-    logger.info("Reorganizing images into splits...")
-
-    # Test split
-    logger.info("Creating test split...")
-    test_folders = _load_split_info(test_path)
-    with fou.ProgressBar() as pb:
-        for test_folder in pb(test_folders):
-            indir = os.path.join(images_dir, test_folder)
-            outdir = os.path.join(dataset_dir, "test", test_folder)
-            etau.move_dir(indir, outdir)
-
-    # Train split
-    logger.info("Creating train split...")
-    train_folders = _load_split_info(train_path)
-    with fou.ProgressBar() as pb:
-        for train_folder in pb(train_folders):
-            indir = os.path.join(images_dir, train_folder)
-            outdir = os.path.join(dataset_dir, "train", train_folder)
-            etau.move_dir(indir, outdir)
+    logger.info("Images and lists are ready!")
+    logger.info(
+        f"Images: {images_dir}\nTrain: {train_path}\nVal: {val_path}"
+        f"\nTest: {test_path}"
+    )
 
     if cleanup:
+        logger.info(f"Cleaning up {scratch_dir}")
         etau.delete_dir(scratch_dir)
 
 
-_VIDEOS_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/lfw.tgz"
-_TEST_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/peopleDevTest.txt"
-_TRAIN_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/peopleDevTrain.txt"
+_IMAGES_DOWNLOAD_LINK = "https://drive.google.com/file/d/1rkrDGOjS0e_pptzRHZl5bRGq0yy5xQxQ/view?usp=sharing"
+_MD5_DATA_DOWNLOAD_LINK = "https://drive.google.com/file/d/121lbbeaiY-qM2tK9sJXWNuvMczVuwi2p/view?usp=sharing"
+_LISTS_DOWNLOAD_LINK = "https://drive.google.com/file/d/1nt22yiCfdGF7aIguUb-SJmsM_1CvcYjg/view?usp=sharing"
+_MD5_LISTS_DOWNLOAD_LINK = "https://drive.google.com/file/d/1TfGLD61WTEVazzjDMg4413mUpTBQ5GJI/view?usp=sharing"
 
 
-def _download_videos(scratch_dir):
-    tar_path = os.path.join(scratch_dir, "lfw.tgz")
-    images_dir = os.path.join(scratch_dir, "lfw")
+def _download_images(scratch_dir):
+    zip_path = os.path.join(scratch_dir, "data.zip")
+    images_dir = os.path.join(scratch_dir, "fiw")
 
-    if not os.path.exists(tar_path):
-        logger.info("Downloading dataset to '%s'", tar_path)
-        etaw.download_file(_VIDEOS_DOWNLOAD_LINK, path=tar_path, verify=False)
+    if not os.path.exists(zip_path):
+        logger.info("Downloading dataset to '%s'", zip_path)
+        etaw.download_google_drive_file(_IMAGES_DOWNLOAD_LINK, path=zip_path)
     else:
-        logger.info("File '%s' already exists", tar_path)
+        logger.info("File '%s' already exists", zip_path)
 
     logger.info("Unpacking images...")
-    etau.extract_tar(tar_path, outdir=scratch_dir, delete_tar=False)
+    etau.extract_zip(zip_path, outdir=scratch_dir, delete_zip=False)
 
     return images_dir
 
 
 def _download_splits(scratch_dir):
-    test_path = os.path.join(scratch_dir, "peopleDevTest.txt")
-    train_path = os.path.join(scratch_dir, "peopleDevTrain.txt")
+    zip_path = Path(scratch_dir) / "lists.zip"
+    if not zip_path.exists():
+        logger.info(f"Downloading split info to '{zip_path}'")
+        etaw.download_google_drive_file(_LISTS_DOWNLOAD_LINK, path=zip_path)
 
-    if not os.path.exists(test_path):
-        logger.info("Downloading test split info to '%s'", test_path)
-        etaw.download_file(_TEST_DOWNLOAD_LINK, path=test_path, verify=False)
     else:
-        logger.info("File '%s' already exists", test_path)
+        logger.info(f"Directory '{zip_path}' already exists")
 
-    if not os.path.exists(train_path):
-        logger.info("Downloading train split info to '%s'", train_path)
-        etaw.download_file(_TRAIN_DOWNLOAD_LINK, path=train_path, verify=False)
-    else:
-        logger.info("File '%s' already exists", train_path)
+    logger.info("Unpacking images...")
+    etau.extract_zip(zip_path, outdir=scratch_dir, delete_zip=False)
 
-    return test_path, train_path
+    list_path = Path(str(zip_path).replace(".zip", ""))
+    test_path = list_path / "test.csv"
+    val_path = list_path / "val.csv"
+    train_path = list_path / "train.csv"
+
+    return test_path, val_path, train_path
 
 
 def _load_split_info(split_path):
-    with open(split_path, "r") as f:
-        return [
-            l.strip().split()[0]
-            for idx, l in enumerate(f.readlines())
-            if idx > 0  # first line contains count
-        ]
+    return pd.read_csv(split_path)
