@@ -17,6 +17,7 @@ import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.data as foud
+import fiftyone.utils.fiw as ffiw
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.kitti as fouk
 import fiftyone.utils.lfw as foul
@@ -794,6 +795,100 @@ class COCO2017Dataset(FiftyOneDataset):
         # they never need to be redownloaded
         root_dir = os.path.dirname(os.path.normpath(dataset_dir))
         return os.path.join(root_dir, "raw")
+
+
+class FamiliesInTheWildDataset(FiftyOneDataset):
+    """Families in the Wild is a public benchmark for recognizing families via
+    facial images.
+
+    The dataset contains over 26,642 images of 5,037 faces from collected from
+    978 families. Each family is indexed under an unique Family ID (FID), which
+    range from F0001-F1018 (i.e., some families were merged or removed since its
+    first release in 2016.
+
+    Faces were cropped from imagery using the five-point face detector MTCNN
+    from a variety of photo types (i.e., mostly family photos, along with
+    several profile pics of individuals (facial shots). The number of members
+    per family varies from 3-to-26, with the number of faces per subject ranging
+    from 1 to >10.
+
+    Labels exist at different levels of the datastructures (i.e., list of family
+    trees). Family-level labels contain a list of members, each assigned an
+    member ID (MID) unique to that respective family (e.g., F0011.MID2, refers
+    to member 2 of family 11). Besides, members have annotations specifying
+    gender and relationship to all other members in that respective family
+    (i.e., q relationship matrix were each row represents a member's
+    relationship to all other members, with the ith row and the jth column set
+    with an integer value (i.e., 0-not related, 1-child of, 2-sibling of,
+    3-grandchild of, 4-parent of, 5-spouse (or ex-spouse), 6-grandparent of,
+    7-great grandchild of, 8-great grandparent of). Hence, each matrix has a
+    zero diagonal (i.e., MID-K is unrelated to MID-K, or themselves), with the
+    upper and lower triangles being inverted (i.e., given MID-1 is "parent of"
+    MID-2, then MID-2 is the "child of" MID-1.
+
+    See https://github.com/visionjo/pykinship#db-contents-and-structure for
+    additional details and example annotations.
+
+    For more information on the data (e.g., statistics, task evaluations,
+    benchmarks, and more), see our recent journal:
+    Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling of
+    Visual Kinship: A Decade in the Making." IEEE Transactions on Pattern
+    Analysis and Machine Intelligence (PAMI), 2021.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fiw", split="test")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        151.00 MB
+
+    Source
+        https://web.northeastern.edu/smilelab/fiw
+    """
+
+    @property
+    def name(self):
+        return "fiw"
+
+    @property
+    def tags(self):
+        return ("image", "kinship", "verification","classification",
+                "search and retrieval", "facial-recognition")
+
+    @property
+    def supported_splits(self):
+        return "train", "val", "test"
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # FIW is distributed as a single download that contains all splits,
+        # so we remove the split from `dataset_dir` and download the whole
+        # dataset (if necessary)
+        #
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        if not os.path.exists(split_dir):
+            ffiw.download_fiw_dataset(
+                dataset_dir, scratch_dir=scratch_dir, cleanup=False
+            )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.ImageClassificationDirectoryTree()
+        importer = foud.ImageClassificationDirectoryTreeImporter
+        classes = sorted(
+            importer._get_classes(os.path.join(dataset_dir, "train"))
+            + importer._get_classes(os.path.join(dataset_dir, "val"))
+            + importer._get_classes(os.path.join(dataset_dir, "test"))
+        )
+        num_samples = importer._get_num_samples(split_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
 
 
 class HMDB51Dataset(FiftyOneDataset):

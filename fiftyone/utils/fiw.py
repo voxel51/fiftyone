@@ -18,8 +18,8 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
-def download_lfw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
-    """Downloads and extracts the Labeled Faces in the Wild dataset.
+def download_fiw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
+    """Downloads and extracts the Families in the Wild dataset.
 
     Any existing files are not re-downloaded.
 
