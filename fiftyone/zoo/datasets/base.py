@@ -11,11 +11,10 @@ import shutil
 
 import eta.core.utils as etau
 import eta.core.web as etaw
-
 import fiftyone.types as fot
 import fiftyone.utils.bdd as foub
-import fiftyone.utils.coco as fouc
 import fiftyone.utils.cityscapes as foucs
+import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
 import fiftyone.utils.fiw as ffiw
 import fiftyone.utils.hmdb51 as fouh
@@ -24,7 +23,6 @@ import fiftyone.utils.lfw as foul
 import fiftyone.utils.openimages as fouo
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
-
 
 logger = logging.getLogger(__name__)
 
@@ -857,8 +855,14 @@ class FamiliesInTheWildDataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "kinship", "verification","classification",
-                "search and retrieval", "facial-recognition")
+        return (
+            "image",
+            "kinship",
+            "verification",
+            "classification",
+            "search and retrieval",
+            "facial-recognition",
+        )
 
     @property
     def supported_splits(self):
