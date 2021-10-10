@@ -1453,6 +1453,10 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
             for _label_id in list(frame_annos.keys()):  # list b/c we'll edit
                 label = frame_annos[_label_id]
 
+                # Don't remap non-trajectories
+                if label.index is None:
+                    continue
+
                 # Map annotation track index to dataset track index
                 _index = index_map.get((_id, label.index), None)
                 if _index is None:
