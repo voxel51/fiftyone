@@ -174,7 +174,13 @@ class ActivityNetDatasetManager(object):
         must_extract = self._check_zip_requirement(zip_name)
 
         if must_extract:
-            self._extract_and_process_dir(zip_name, source_dir, copy_files)
+            zip_path = os.path.join(source_dir, zip_name)
+            etau.extract_archive(zip_path, delete_archive=True)
+            base_name = zip_name.replace(".zip", "").replace(".tar.gz", "")
+            if "missing_files" not in base_name:
+                base_name = "v1-2" if "v1-2" in base_name else "v1-3"
+
+            self._process_source_dir(base_name, source_dir, copy_files)
 
     def _check_zip_requirement(self, zip_name):
         if zip_name == "missing_files.zip":
@@ -190,9 +196,6 @@ class ActivityNetDatasetManager(object):
             if "val" in zip_name:
                 splits.append("validation")
 
-        return self._is_missing_videos(version, splits)
-
-    def _is_missing_videos(self, version, splits):
         missing_splits = []
         for split in splits:
             missing_splits.append(
@@ -201,31 +204,17 @@ class ActivityNetDatasetManager(object):
         return any(missing_splits)
 
     def _split_is_missing_videos(self, version, split):
-        existing_samples, _ = self._get_samples(version, split)
-        num_existing_samples = len(existing_samples)
-        num_required_samples = _NUM_TOTAL_SAMPLES[version][split]
-        if num_existing_samples != num_required_samples:
-            return True
-        return False
-
-    def _get_samples(self, version, split):
         if version == "100":
             info = self.a100_info
         else:
             info = self.a200_info
 
         existing_samples = info._splitwise_existing_sample_ids[split]
-        all_samples = info._splitwise_sample_ids[split]
-        return existing_samples, all_samples
-
-    def _extract_and_process_dir(self, zip_name, source_dir, copy_files):
-        zip_path = os.path.join(source_dir, zip_name)
-        etau.extract_archive(zip_path, delete_archive=True)
-        base_name = zip_name.replace(".zip", "").replace(".tar.gz", "")
-        if "missing_files" not in base_name:
-            base_name = "v1-2" if "v1-2" in base_name else "v1-3"
-
-        self._process_source_dir(base_name, source_dir, copy_files)
+        num_existing_samples = len(existing_samples)
+        num_required_samples = _NUM_TOTAL_SAMPLES[version][split]
+        if num_existing_samples != num_required_samples:
+            return True
+        return False
 
     def _process_source_dir(self, dir_name, source_dir, copy_files):
         dir_list = []
@@ -283,7 +272,11 @@ class ActivityNetDatasetManager(object):
                 dest_dir = general_dest_dir
 
             video_path = os.path.join(videos_dir, video)
-            self._process_source_video(video_path, dest_dir, copy_files)
+
+            if copy_files:
+                etau.copy_file(video_path, dest_dir)
+            else:
+                etau.move_file(video_path, dest_dir)
 
     def _get_video_destination(self, video_id, version=None, split=None):
         if version is None:
@@ -297,12 +290,6 @@ class ActivityNetDatasetManager(object):
             data_dir = self.a200_info.data_dir(split)
 
         return data_dir
-
-    def _process_source_video(self, video_path, dest_dir, copy_files):
-        if copy_files:
-            etau.copy_file(video_path, dest_dir)
-        else:
-            etau.move_file(video_path, dest_dir)
 
     @classmethod
     def from_dataset_dir(cls, dataset_dir, version):
