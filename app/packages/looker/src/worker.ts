@@ -443,13 +443,13 @@ const UPDATE_LABEL = {
     const cache = {};
 
     const getColor = (i) => {
-      i = Math.round(Math.abs(i)) % coloring.length;
+      i = Math.round(Math.abs(i)) % coloring.targets.length;
 
       if (i in cache) {
         return cache[i];
       }
 
-      cache[i] = get32BitColor(coloring[i]);
+      cache[i] = get32BitColor(coloring.targets[i]);
     };
 
     for (const i in overlay) {

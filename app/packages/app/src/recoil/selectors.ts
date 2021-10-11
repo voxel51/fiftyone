@@ -648,7 +648,9 @@ export const coloring = selectorFamily<Coloring, boolean>({
       pool,
       scale: get(atoms.stateDescription).colorscale,
       byLabel: get(atoms.colorByLabel(modal)),
-      targets: new Array(pool.length).map((_, i) => getColor(pool, seed, i)),
+      targets: new Array(pool.length)
+        .fill(0)
+        .map((_, i) => getColor(pool, seed, i)),
     };
   },
 });
