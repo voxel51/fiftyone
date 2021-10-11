@@ -238,7 +238,7 @@ const createReader = ({
   const privateStream = new ReadableStream<FrameChunkResponse>(
     {
       pull: (controller: ReadableStreamDefaultController) => {
-        if (frameNumber >= frameCount || cancelled) {
+        if (frameNumber > frameCount || cancelled) {
           controller.close();
           return Promise.resolve();
         }

@@ -60,7 +60,13 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    if (this.getTarget(state)) {
+    const {
+      pixelCoordinates: [x, y],
+      config: {
+        dimensions: [w, h],
+      },
+    } = state;
+    if (x >= 0 && x <= w && y >= 0 && y <= h && this.getTarget(state)) {
       return CONTAINS.CONTENT;
     }
     return CONTAINS.NONE;

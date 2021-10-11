@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { INFO_COLOR } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { BaseLabel } from "./base";
 
@@ -44,19 +45,30 @@ export const sizeBytes = (label: BaseLabel) => {
   return bytes;
 };
 
-export const strokeCanvasRect = (
+const strokeRect = (
   ctx: CanvasRenderingContext2D,
   state: Readonly<BaseState>,
   color: string
-): void => {
-  ctx.beginPath();
-  ctx.lineWidth = state.strokeWidth;
+) => {
   ctx.strokeStyle = color;
-  ctx.setLineDash([]);
+  ctx.beginPath();
   ctx.moveTo(...t(state, 0, 0));
   ctx.lineTo(...t(state, 1, 0));
   ctx.lineTo(...t(state, 1, 1));
   ctx.lineTo(...t(state, 0, 1));
   ctx.closePath();
   ctx.stroke();
+};
+
+export const strokeCanvasRect = (
+  ctx: CanvasRenderingContext2D,
+  state: Readonly<BaseState>,
+  color: string
+): void => {
+  ctx.lineWidth = state.strokeWidth;
+  ctx.setLineDash([]);
+  strokeRect(ctx, state, color);
+  ctx.setLineDash([state.dashLength]);
+  strokeRect(ctx, state, INFO_COLOR);
+  ctx.setLineDash([]);
 };

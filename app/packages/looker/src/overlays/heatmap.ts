@@ -1,21 +1,12 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { v4 as uuid } from "uuid";
-
 import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
 import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
-import { BaseState, Coordinates, RGB } from "../state";
+import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
-import {
-  BaseLabel,
-  CONTAINS,
-  LabelUpdate,
-  Overlay,
-  PointInfo,
-  SelectData,
-} from "./base";
+import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface HeatMap {
@@ -78,7 +69,13 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    if (this.getTarget(state)) {
+    const {
+      pixelCoordinates: [x, y],
+      config: {
+        dimensions: [w, h],
+      },
+    } = state;
+    if (x >= 0 && x <= w && y >= 0 && y <= h && this.getTarget(state)) {
       return CONTAINS.CONTENT;
     }
     return CONTAINS.NONE;
