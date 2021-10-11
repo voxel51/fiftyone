@@ -2663,8 +2663,13 @@ class CVATAnnotationResults(foua.AnnotationResults):
         CVAT server.
         """
         api = self.connect_to_api()
-        api.delete_tasks(self.task_ids)
+
+        if self.task_ids:
+            logger.info("Deleting tasks...")
+            api.delete_tasks(self.task_ids)
+
         if self.project_ids:
+            logger.info("Deleting projects...")
             api.delete_projects(self.project_ids)
 
         # @todo save updated results to DB?
@@ -3107,7 +3112,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             project_ids: an iterable of project IDs
         """
-        logger.info("Deleting projects...")
         with fou.ProgressBar() as pb:
             for project_id in pb(list(project_ids)):
                 self.delete_project(project_id)
@@ -3126,7 +3130,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_ids: an iterable of task IDs
         """
-        logger.info("Deleting tasks...")
         with fou.ProgressBar() as pb:
             for task_id in pb(list(task_ids)):
                 self.delete_task(task_id)
