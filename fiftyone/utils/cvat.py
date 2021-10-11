@@ -2442,8 +2442,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
         project_name (None): an optional project name in which to store the
-            annotation tasks. The project will be created if necessary. By
-            default, no project is created
+            annotation tasks. By default, no project is created
     """
 
     def __init__(
@@ -2664,8 +2663,14 @@ class CVATAnnotationResults(foua.AnnotationResults):
         CVAT server.
         """
         api = self.connect_to_api()
-        api.delete_tasks(self.task_ids)
-        api.delete_projects(self.project_ids)
+
+        if self.task_ids:
+            logger.info("Deleting tasks...")
+            api.delete_tasks(self.task_ids)
+
+        if self.project_ids:
+            logger.info("Deleting projects...")
+            api.delete_projects(self.project_ids)
 
         # @todo save updated results to DB?
         self.project_ids = []
@@ -3107,7 +3112,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             project_ids: an iterable of project IDs
         """
-        logger.info("Deleting projects...")
         with fou.ProgressBar() as pb:
             for project_id in pb(list(project_ids)):
                 self.delete_project(project_id)
@@ -3126,7 +3130,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_ids: an iterable of task IDs
         """
-        logger.info("Deleting tasks...")
         with fou.ProgressBar() as pb:
             for task_id in pb(list(task_ids)):
                 self.delete_task(task_id)
@@ -5553,7 +5556,9 @@ def _get_interpolated_shapes(track_shapes):
     prev_shape = {}
     for shape in track_shapes:
         if prev_shape:
-            assert shape["frame"] > curr_frame
+            if shape["frame"] <= curr_frame:
+                continue
+
             for attr in prev_shape["attributes"]:
                 if attr["spec_id"] not in map(
                     lambda el: el["spec_id"], shape["attributes"]
