@@ -3284,6 +3284,8 @@ class MatchFrames(ViewStage):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
+        omit_empty (True): whether to omit samples with no frame labels after
+            filtering
     """
 
     def __init__(self, filter, omit_empty=True):
