@@ -5555,6 +5555,7 @@ def _get_interpolated_shapes(track_shapes):
         if prev_shape:
             if shape["frame"] <= curr_frame:
                 continue
+
             for attr in prev_shape["attributes"]:
                 if attr["spec_id"] not in map(
                     lambda el: el["spec_id"], shape["attributes"]
