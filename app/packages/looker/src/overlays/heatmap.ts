@@ -7,6 +7,7 @@ import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
 import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates, RGB } from "../state";
+import { isFloatArray } from "../util";
 import {
   BaseLabel,
   CONTAINS,
@@ -50,6 +51,11 @@ export default class HeatmapOverlay<State extends BaseState>
       this.targets = new ARRAY_TYPES[this.label.map.data.arrayType](
         this.label.map.data.buffer
       );
+      this.range = this.label.range
+        ? label.range
+        : isFloatArray(this.targets)
+        ? [0, 1]
+        : [0, 255];
       const [height, width] = this.label.map.data.shape;
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;

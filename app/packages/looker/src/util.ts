@@ -510,3 +510,6 @@ export const getMimeType = (sample: any) => {
     "image/jpg"
   );
 };
+
+export const isFloatArray = (arr) =>
+  arr instanceof Float32Array || arr instanceof Float64Array;
