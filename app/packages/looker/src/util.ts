@@ -403,8 +403,16 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (): Worker => {
-  return new LookerWorker();
+export const createWorker = (listeners: {
+  [key: string]: (worker: Worker, data: any) => void;
+}): Worker => {
+  const worker = new LookerWorker();
+
+  Object.entries(listeners).forEach((method, callback) => {
+    worker.addEventListener("message", (message) => {});
+  });
+
+  return worker;
 };
 
 export const removeFromBuffers = (

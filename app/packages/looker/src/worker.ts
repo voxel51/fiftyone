@@ -8,6 +8,50 @@ import { ARRAY_TYPES, deserialize } from "./numpy";
 import { BaseLabel, LabelUpdate } from "./overlays/base";
 import { Coloring, FrameChunk } from "./state";
 
+const [requestColor, resolveColor] = (() => {
+  const cache = {};
+  const requests = {};
+  const promises = {};
+
+  return [
+    (key, seed) => {
+      if (!(seed in cache)) {
+        cache[seed] = {};
+      }
+
+      const colors = cache[seed];
+
+      if (!(key in colors)) {
+        if (!(seed in requests)) {
+          requests[seed] = {};
+          promises[seed] = {};
+        }
+
+        const seedRequests = requests[seed];
+        const seedPromises = promises[seed];
+
+        if (!(key in seedRequests)) {
+          seedPromises[key] = new Promise((resolve) => {
+            seedRequests[key] = resolve;
+            postMessage({
+              method: "requestColor",
+              key,
+              seed,
+            });
+          });
+        }
+
+        return seedPromises[key];
+      }
+
+      return Promise.resolve(colors[key]);
+    },
+    ({ key, seed, color }) => {
+      requests[seed][key](color);
+    },
+  ];
+})();
+
 const DESERIALIZE = {
   Detection: (label, buffers) => {
     if (typeof label.mask === "string") {
@@ -66,8 +110,9 @@ const mapId = (obj) => {
 const processLabels = (
   sample: { [key: string]: any },
   coloring: Coloring
-): ArrayBuffer[] => {
+): Promise<ArrayBuffer[]> => {
   let buffers: ArrayBuffer[] = [];
+  const promises = [];
 
   for (const field in sample) {
     const label = sample[field];
@@ -79,9 +124,6 @@ const processLabels = (
       DESERIALIZE[label._cls](label, buffers);
     }
 
-    UPDATE_LABEL[label._cls] &&
-      UPDATE_LABEL[label._cls](field, label, coloring);
-
     if (label._cls in LABELS) {
       if (label._cls in LABEL_LISTS) {
         const list = label[LABEL_LISTS[label._cls]];
@@ -92,9 +134,13 @@ const processLabels = (
         mapId(label);
       }
     }
+
+    if (UPDATE_LABEL[label._cls]) {
+      promises.push(UPDATE_LABEL[label._cls](field, label, coloring));
+    }
   }
 
-  return buffers;
+  return Promise.all(promises).then(() => buffers);
 };
 
 /** GLOBALS */
@@ -421,6 +467,9 @@ onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
       return;
     case "updateLabels":
       updateLabels(args as UpdateLabels);
+      return;
+    case "resolveColor":
+      resolveColor(args as ResolveColor);
       return;
     default:
       throw new Error("unknown method");

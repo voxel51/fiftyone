@@ -125,30 +125,61 @@ const hslToRGB = (hsl): RGB => {
 };
 
 export const createColorGenerator = (() => {
+  let poolCache: string[] = null;
+
+  const shuffle = (array: string[], seed: number) => {
+    let m = array.length,
+      t,
+      i;
+
+    while (m) {
+      i = Math.floor(random(seed) * m--);
+
+      t = array[m];
+      array[m] = array[i];
+      array[i] = t;
+      ++seed;
+    }
+
+    return array;
+  };
+
+  const random = (seed: number) => {
+    const x = Math.sin(seed + 1) * 10000;
+    return x - Math.floor(x);
+  };
+
   let colorMaps = {};
 
   return (
-    pool: string[],
+    colorPool: string[],
     seed: number
   ): ((value: string | number) => string) => {
+    if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
+      colorMaps = {};
+      poolCache = colorPool;
+    }
+
     if (seed in colorMaps) {
       return colorMaps[seed];
     }
 
-    let map = {};
-    colorMaps[seed] = (val: string | number) => {
-      typeof val !== "string" && (val = String(val));
+    colorPool = [...colorPool];
 
+    if (seed > 0) {
+      colorPool = shuffle(colorPool, seed);
+    }
+
+    let map = {};
+    let i = 0;
+
+    colorMaps[seed] = (val) => {
       if (val in map) {
         return map[val];
       }
-      let hash = seed;
 
-      for (let i = 0; i < val.length; i++) {
-        hash = ((hash << 5) - hash + val.charCodeAt(i)) & hash;
-      }
-
-      map[val] = pool[hash % pool.length];
+      map[val] = colorPool[i % colorPool.length];
+      i++;
       return map[val];
     };
 
