@@ -74,6 +74,7 @@ import {
 import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
+import { getColor } from "./color";
 
 export { zoomAspectRatio } from "./zoom";
 export { createColorGenerator, getRGB } from "./color";
@@ -88,7 +89,18 @@ export interface Coloring {
   seed: number;
 }
 
-const labelsWorker = createWorker();
+const labelsWorker = createWorker({
+  requestColor: [
+    (worker, { key, pool, seed }) => {
+      worker.postMessage({
+        method: "resolveColor",
+        key,
+        seed,
+        color: getColor(pool, seed, key),
+      });
+    },
+  ],
+});
 
 export abstract class Looker<State extends BaseState = BaseState> {
   private eventTarget: EventTarget;

@@ -2,19 +2,30 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { get32BitColor, getColor } from "./color";
+import { get32BitColor } from "./color";
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
 import { BaseLabel, LabelUpdate } from "./overlays/base";
 import { Coloring, FrameChunk } from "./state";
 
-const [requestColor, resolveColor] = (() => {
+interface ResolveColor {
+  key: string | number;
+  seed: number;
+  color: string;
+}
+
+type ResolveColorMethod = ReaderMethod & ResolveColor;
+
+const [requestColor, resolveColor] = ((): [
+  (pool: string[], seed: number, key: string | number) => Promise<string>,
+  (result: ResolveColor) => void
+] => {
   const cache = {};
   const requests = {};
   const promises = {};
 
   return [
-    (key, seed) => {
+    (pool, seed, key) => {
       if (!(seed in cache)) {
         cache[seed] = {};
       }
@@ -37,6 +48,7 @@ const [requestColor, resolveColor] = (() => {
               method: "requestColor",
               key,
               seed,
+              pool,
             });
           });
         }
@@ -168,27 +180,28 @@ interface ProcessSample {
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
-  let buffers = processLabels(sample, coloring);
+  mapId(sample);
+
+  let bufferPromises = [processLabels(sample, coloring)];
 
   if (sample.frames && sample.frames.length) {
-    buffers = [
-      ...buffers,
-      ...sample.frames
-        .map<ArrayBuffer[]>((frame) => processLabels(frame, coloring))
-        .flat(),
+    bufferPromises = [
+      ...bufferPromises,
+      ...sample.frames.map((frame) => processLabels(frame, coloring)).flat(),
     ];
   }
 
-  mapId(sample);
-  postMessage(
-    {
-      method: "processSample",
-      sample,
-      uuid,
-    },
-    // @ts-ignore
-    buffers
-  );
+  Promise.all(bufferPromises).then((buffers) => {
+    postMessage(
+      {
+        method: "processSample",
+        sample,
+        uuid,
+      },
+      // @ts-ignore
+      buffers.flat()
+    );
+  });
 };
 
 interface FrameStream {
@@ -271,21 +284,20 @@ const getSendChunk = (uuid: string) => ({
   value?: FrameChunkResponse;
 }) => {
   if (value) {
-    let buffers: ArrayBuffer[] = [];
-
-    value.frames.forEach((frame) => {
-      buffers = [...buffers, ...processLabels(frame, value.coloring)];
+    Promise.all(
+      value.frames.map((frame) => processLabels(frame, value.coloring))
+    ).then((buffers) => {
+      postMessage(
+        {
+          method: "frameChunk",
+          frames: value.frames,
+          range: value.range,
+          uuid,
+        },
+        // @ts-ignore
+        buffers.flat()
+      );
     });
-    postMessage(
-      {
-        method: "frameChunk",
-        frames: value.frames,
-        range: value.range,
-        uuid,
-      },
-      // @ts-ignore
-      buffers
-    );
   }
 };
 
@@ -342,41 +354,58 @@ interface UpdateLabels {
 
 type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
 
+const isFloatArray = (arr) =>
+  arr instanceof Float32Array || arr instanceof Float64Array;
+
 const UPDATE_LABEL = {
-  Detection: (field, label, coloring: Coloring) => {
+  Detection: async (field, label, coloring: Coloring) => {
     if (!label.mask) {
       return;
     }
 
+    const color = await requestColor(
+      coloring.pool,
+      coloring.seed,
+      coloring.byLabel ? label.label : field
+    );
+
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
     );
-    const color = get32BitColor(
-      getColor(
-        coloring.pool,
-        coloring.seed,
-        coloring.byLabel ? label.label : field
-      )
-    );
+    const bitColor = get32BitColor(color);
 
     for (const i in overlay) {
       if (targets[i]) {
-        overlay[i] = color;
+        overlay[i] = bitColor;
       }
     }
   },
-  Detections: (field, labels, coloring: Coloring) =>
-    labels.detections.forEach((label) =>
+  Detections: async (field, labels, coloring: Coloring) => {
+    const promises = labels.detections.map((label) =>
       UPDATE_LABEL[label._cls](field, label, coloring)
-    ),
-  Heatmap: (field, label, coloring: Coloring) => {
-    const overlay = new Uint32Array(label.mask.image);
-    const targets = new ARRAY_TYPES[label.mask.data.arrayType](
-      label.mask.data.buffer
     );
-    const [start, stop] = label.range;
+
+    await Promise.all(promises);
+  },
+  Heatmap: async (field, label, coloring: Coloring) => {
+    if (!label.map) {
+      return;
+    }
+
+    const overlay = new Uint32Array(label.map.image);
+    const targets = new ARRAY_TYPES[label.map.data.arrayType](
+      label.map.data.buffer
+    );
+    const [start, stop] = label.range
+      ? label.range
+      : isFloatArray(targets)
+      ? [0, 1]
+      : [0, 255];
+
     const max = Math.max(Math.abs(start), Math.abs(stop));
+
+    const color = await requestColor(coloring.pool, coloring.seed, field);
 
     const getColor = Array.isArray(coloring.byLabel)
       ? (value) => {
@@ -396,10 +425,7 @@ const UPDATE_LABEL = {
             return 0;
           }
 
-          return get32BitColor(
-            getColor(coloring.pool, coloring.seed, field),
-            Math.min(max, Math.abs(value)) / max
-          );
+          return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         };
 
     for (const i in overlay) {
@@ -408,7 +434,11 @@ const UPDATE_LABEL = {
       }
     }
   },
-  Segmentation: (field, label, coloring) => {
+  Segmentation: async (field, label, coloring) => {
+    if (!label.mask) {
+      return;
+    }
+
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
@@ -435,16 +465,24 @@ const UPDATE_LABEL = {
 };
 
 const updateLabels = ({ labels, coloring, uuid }: UpdateLabels) => {
-  labels.forEach((l) =>
-    l.forEach(({ label, field }) =>
-      UPDATE_LABEL[label._cls](field, label, coloring)
+  const promises = labels
+    .map((l) =>
+      l.map(({ label, field }) =>
+        UPDATE_LABEL[label._cls](field, label, coloring)
+      )
     )
-  );
+    .flat();
 
-  postMessage({
-    method: "labelsUpdate",
-    labels,
-    uuid,
+  Promise.all(promises).then((buffers: ArrayBuffer[][]) => {
+    postMessage(
+      {
+        method: "labelsUpdate",
+        labels,
+        uuid,
+      },
+      // @ts-ignore
+      buffers.flat()
+    );
   });
 };
 
@@ -452,7 +490,8 @@ type Method =
   | ProcessSampleMethod
   | RequestFrameChunkMethod
   | SetStreamMethod
-  | UpdateLabelsMethod;
+  | UpdateLabelsMethod
+  | ResolveColorMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
   switch (method) {

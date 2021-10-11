@@ -403,15 +403,22 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (listeners: {
-  [key: string]: (worker: Worker, data: any) => void;
+export const createWorker = (listeners?: {
+  [key: string]: ((worker: Worker, args: any) => void)[];
 }): Worker => {
   const worker = new LookerWorker();
 
-  Object.entries(listeners).forEach((method, callback) => {
-    worker.addEventListener("message", (message) => {});
-  });
+  if (!listeners) {
+    return worker;
+  }
 
+  worker.addEventListener("message", ({ data: { method, ...args } }) => {
+    if (!(method in listeners)) {
+      return;
+    }
+
+    listeners[method].forEach((callback) => callback(worker, args));
+  });
   return worker;
 };
 
