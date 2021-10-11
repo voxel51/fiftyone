@@ -5,13 +5,7 @@ import { BASE_ALPHA, INFO_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
-import {
-  CONTAINS,
-  CoordinateOverlay,
-  LabelUpdate,
-  PointInfo,
-  RegularLabel,
-} from "./base";
+import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 interface DetectionLabel extends RegularLabel {
@@ -28,8 +22,6 @@ export default class DetectionOverlay<
   private imageData: ImageData;
   private labelBoundingBox: BoundingBox;
   private canvas: HTMLCanvasElement;
-  private awaitingUUID: string;
-  private color: string = null;
 
   constructor(field, label) {
     super(field, label);
@@ -38,6 +30,20 @@ export default class DetectionOverlay<
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;
+      this.imageData = new ImageData(
+        new Uint8ClampedArray(this.label.mask.image),
+        width,
+        height
+      );
+      const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
+      maskCtx.clearRect(
+        0,
+        0,
+        this.label.mask.data.shape[1],
+        this.label.mask.data.shape[0]
+      );
+      maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
 
@@ -96,53 +102,6 @@ export default class DetectionOverlay<
 
   getPoints(): Coordinates[] {
     return getDetectionPoints([this.label]);
-  }
-
-  needsLabelUpdate(state: Readonly<State>) {
-    if (this.color === null) {
-      this.color = this.getColor(state);
-    }
-
-    return this.color !== this.getColor(state);
-  }
-
-  getLabelData(state: Readonly<State>, messageUUID: string) {
-    this.awaitingUUID = messageUUID;
-    this.color = this.getColor(state);
-    return [
-      {
-        field: this.field,
-        label: this.label,
-        buffers: [this.label.mask.data.buffer, this.label.mask.image],
-      },
-    ];
-  }
-
-  updateLabelData(
-    [{ label }]: LabelUpdate<DetectionLabel>[],
-    messageUUID: string
-  ) {
-    if (messageUUID !== this.awaitingUUID) {
-      return;
-    }
-    this.awaitingUUID = null;
-
-    this.label = label;
-    const [height, width] = this.label.mask.data.shape;
-    this.imageData = new ImageData(
-      new Uint8ClampedArray(this.label.mask.image),
-      width,
-      height
-    );
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(
-      0,
-      0,
-      this.label.mask.data.shape[1],
-      this.label.mask.data.shape[0]
-    );
-    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   private drawLabelText(ctx: CanvasRenderingContext2D, state: Readonly<State>) {

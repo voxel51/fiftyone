@@ -345,6 +345,7 @@ const lookerOptions = selector({
       fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
       frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
       coloring: get(selectors.coloring(true)),
+      alpha: get(atoms.alpha(true)),
     };
   },
 });

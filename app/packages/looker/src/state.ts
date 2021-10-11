@@ -12,6 +12,7 @@ export interface Coloring {
   pool: string[];
   scale: RGB[];
   seed: number;
+  targets: string[];
 }
 
 export interface Sample {

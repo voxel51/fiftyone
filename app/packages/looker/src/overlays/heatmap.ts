@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
+import { v4 as uuid } from "uuid";
 
 import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
 import { BASE_ALPHA } from "../constants";
@@ -39,10 +40,8 @@ export default class HeatmapOverlay<State extends BaseState>
   private label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
-  private cachedColoring: RGB[] | number;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
-  private awaitingUUID: string;
 
   constructor(field: string, label: HeatmapLabel) {
     this.field = field;
@@ -55,6 +54,20 @@ export default class HeatmapOverlay<State extends BaseState>
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;
+      this.imageData = new ImageData(
+        new Uint8ClampedArray(this.label.map.image),
+        width,
+        height
+      );
+      const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
+      maskCtx.clearRect(
+        0,
+        0,
+        this.label.map.data.shape[1],
+        this.label.map.data.shape[0]
+      );
+      maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
 
@@ -140,63 +153,6 @@ export default class HeatmapOverlay<State extends BaseState>
 
   getSizeBytes(): number {
     return sizeBytes(this.label);
-  }
-
-  needsLabelUpdate(state: Readonly<State>) {
-    const coloring = !state.options.coloring.byLabel
-      ? state.options.coloring.seed
-      : state.options.coloring.scale || state.options.coloring.seed;
-
-    if (this.cachedColoring === null) {
-      this.cachedColoring = coloring;
-    }
-
-    return this.targets && this.cachedColoring !== coloring;
-  }
-
-  getLabelData(
-    state: Readonly<State>,
-    messageUUID: string
-  ): LabelUpdate<HeatmapLabel>[] {
-    this.awaitingUUID = messageUUID;
-    this.cachedColoring = !state.options.coloring.byLabel
-      ? state.options.coloring.seed
-      : state.options.coloring.scale || state.options.coloring.seed;
-
-    return [
-      {
-        field: this.field,
-        label: this.label,
-        buffers: [this.label.map.data.buffer, this.label.map.image],
-      },
-    ];
-  }
-
-  updateLabelData(
-    [{ label }]: LabelUpdate<HeatmapLabel>[],
-    messageUUID: string
-  ) {
-    if (messageUUID !== this.awaitingUUID) {
-      return;
-    }
-    this.awaitingUUID = null;
-
-    this.label = label;
-    const [height, width] = this.label.map.data.shape;
-    this.imageData = new ImageData(
-      new Uint8ClampedArray(this.label.map.image),
-      width,
-      height
-    );
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(
-      0,
-      0,
-      this.label.map.data.shape[1],
-      this.label.map.data.shape[0]
-    );
-    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   private getIndex(state: Readonly<State>): number {

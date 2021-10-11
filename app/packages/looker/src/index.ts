@@ -32,12 +32,7 @@ import {
 } from "./elements/common";
 import processOverlays from "./processOverlays";
 import { ClassificationsOverlay, FROM_FO, loadOverlays } from "./overlays";
-import {
-  CONTAINS,
-  CoordinateOverlay,
-  Overlay,
-  RegularLabel,
-} from "./overlays/base";
+import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
   ImageState,
@@ -87,9 +82,10 @@ export interface Coloring {
   pool: string[];
   scale: RGB[];
   seed: number;
+  targets: string[];
 }
 
-const labelsWorker = createWorker({
+const coloringCallback = {
   requestColor: [
     (worker, { key, pool, seed }) => {
       worker.postMessage({
@@ -100,7 +96,9 @@ const labelsWorker = createWorker({
       });
     },
   ],
-});
+};
+
+const labelsWorker = createWorker(coloringCallback);
 
 export abstract class Looker<State extends BaseState = BaseState> {
   private eventTarget: EventTarget;
@@ -153,53 +151,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
 
   pluckOverlays(state: Readonly<State>): Overlay<State>[] {
     return this.sampleOverlays;
-  }
-
-  protected updateOverlays(state: Readonly<State>) {
-    const messageUUID = uuid();
-    const data = this.sampleOverlays
-      .filter(
-        (o) => o instanceof CoordinateOverlay && o.needsLabelUpdate(state)
-      )
-      .map((o: CoordinateOverlay<State, RegularLabel>) => ({
-        overlay: o,
-        data: o.getLabelData(state, messageUUID),
-      }));
-
-    const {
-      buffers,
-      labels,
-      overlays,
-    }: {
-      buffers: ArrayBuffer[];
-      labels: RegularLabel[];
-      overlays: CoordinateOverlay<State, RegularLabel>[];
-    } = data.reduce(
-      ({ buffers, labels, overlays }, cur) => ({
-        buffers: [...buffers, ...cur.data.map(({ buffers }) => buffers)],
-        labels: [...labels, cur.data.map(({ label }) => label)],
-        overlays: [...overlays, cur.overlay],
-      }),
-      { buffers: [], labels: [], overlays: [] }
-    );
-
-    const listener = ({ data: { labels, uuid } }) => {
-      if (uuid === messageUUID) {
-        overlays.forEach((o, i) => o.updateLabelData(labels[i], messageUUID));
-        this.updater({ overlaysPrepared: true });
-        labelsWorker.removeEventListener("message", listener);
-      }
-    };
-    labelsWorker.addEventListener("message", listener);
-    labelsWorker.postMessage(
-      {
-        method: "updateLabels",
-        coloring: state.options.coloring,
-        labels,
-        uuid: messageUUID,
-      },
-      buffers
-    );
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -378,7 +329,24 @@ export abstract class Looker<State extends BaseState = BaseState> {
       );
   }
 
-  abstract updateOptions(options: Optional<State["options"]>): void;
+  updateOptions(options: Optional<State["options"]>): void {
+    let reloadSample = false;
+    if (options.coloring && typeof options.coloring.seed === "number") {
+      reloadSample = options.coloring.seed !== this.state.options.coloring.seed;
+    }
+
+    if (
+      !reloadSample &&
+      options.coloring &&
+      options.coloring.byLabel !== this.state.options.coloring.byLabel
+    ) {
+      reloadSample = true;
+    }
+
+    if (reloadSample) {
+      this.loadSample(this.sample);
+    }
+  }
 
   updateSample(sample: Sample) {
     this.loadSample(sample);
@@ -633,6 +601,7 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   updateOptions(options: Optional<FrameState["options"]>) {
+    super.updateOptions(options);
     const state: Optional<FrameState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
@@ -706,6 +675,7 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   updateOptions(options: Optional<ImageState["options"]>) {
+    super.updateOptions(options);
     const state: Optional<ImageState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom =
@@ -732,6 +702,7 @@ interface AcquireReaderOptions {
   frameCount: number;
   update: StateUpdate<VideoState>;
   dispatchEvent: (eventType: string, detail: any) => void;
+  coloring: Coloring;
 }
 
 const { aquireReader, addFrame } = (() => {
@@ -756,7 +727,7 @@ const { aquireReader, addFrame } = (() => {
   let streamSize = 0;
   let nextRange: BufferRange = null;
 
-  const frameReader = createWorker();
+  const frameReader = createWorker(coloringCallback);
   let requestingFrames: boolean = false;
   let currentOptions: AcquireReaderOptions = null;
 
@@ -769,59 +740,59 @@ const { aquireReader, addFrame } = (() => {
     sampleId,
     update,
     dispatchEvent,
+    coloring,
   }: AcquireReaderOptions): string => {
     streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
-    frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
-      const {
-        data: {
-          uuid,
-          method,
-          frames,
-          range: [start, end],
-        },
-      } = message;
-      if (uuid === subscription && method === "frameChunk") {
-        addFrameBuffers([start, end]);
-        Array(end - start + 1)
-          .fill(0)
-          .forEach((_, i) => {
-            const frameNumber = start + i;
-            const frameSample = frames[i] || { frame_number: frameNumber };
-            const prefixedFrameSample = Object.fromEntries(
-              Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
-            ) as FrameSample;
-
-            const overlays = loadOverlays(prefixedFrameSample);
-            overlays.forEach((overlay) => {
-              streamSize += overlay.getSizeBytes();
-            });
-            const frame = { sample: frameSample, overlays };
-            frameCache.set(new WeakRef(removeFrame), frame);
-            addFrame(frameNumber, frame);
-          });
-
-        const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
-
-        if (requestMore && end < frameCount) {
-          nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
-          requestingFrames = true;
-          frameReader.postMessage({
-            method: "requestFrameChunk",
-            uuid: subscription,
-          });
-        } else {
-          requestingFrames = false;
-          nextRange = null;
-        }
-
-        update((state) => {
-          state.buffering && dispatchEvent("buffering", false);
-          return { buffering: false };
-        });
+    frameReader.onmessage = ({ data }: MessageEvent<FrameChunkResponse>) => {
+      if (data.uuid !== subscription || data.method !== "frameChunk") {
+        return;
       }
+      const {
+        frames,
+        range: [start, end],
+      } = data;
+
+      addFrameBuffers([start, end]);
+      Array(end - start + 1)
+        .fill(0)
+        .forEach((_, i) => {
+          const frameNumber = start + i;
+          const frameSample = frames[i] || { frame_number: frameNumber };
+          const prefixedFrameSample = Object.fromEntries(
+            Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
+          ) as FrameSample;
+
+          const overlays = loadOverlays(prefixedFrameSample);
+          overlays.forEach((overlay) => {
+            streamSize += overlay.getSizeBytes();
+          });
+          const frame = { sample: frameSample, overlays };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(frameNumber, frame);
+        });
+
+      const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
+
+      if (requestMore && end < frameCount) {
+        nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
+        requestingFrames = true;
+        frameReader.postMessage({
+          method: "requestFrameChunk",
+          uuid: subscription,
+        });
+      } else {
+        requestingFrames = false;
+        nextRange = null;
+      }
+
+      update((state) => {
+        state.buffering && dispatchEvent("buffering", false);
+        return { buffering: false };
+      });
     };
+
     requestingFrames = true;
     frameReader.postMessage({
       method: "setStream",
@@ -830,6 +801,7 @@ const { aquireReader, addFrame } = (() => {
       frameNumber,
       uuid: subscription,
       url: getURL(),
+      coloring,
     });
     return subscription;
   };
@@ -998,6 +970,7 @@ export class VideoLooker extends Looker<VideoState> {
   }
 
   loadOverlays(sample: VideoSample) {
+    this.frames.clear();
     this.sampleOverlays = loadOverlays(
       Object.fromEntries(
         Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
@@ -1005,9 +978,9 @@ export class VideoLooker extends Looker<VideoState> {
       true
     );
 
-    const providedFrames = [
-      sample.frames.length ? sample.frames : { frame_number: 1 },
-    ];
+    const providedFrames = sample.frames.length
+      ? sample.frames
+      : [{ frame_number: 1 }];
     const providedFrameOverlays = providedFrames.map((frameSample) =>
       loadOverlays(
         Object.fromEntries(
@@ -1069,6 +1042,7 @@ export class VideoLooker extends Looker<VideoState> {
         frameNumber: Math.max(state.frameNumber, 2),
         update: this.updater,
         dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
+        coloring: this.state.options.coloring,
       });
       lookerWithReader && lookerWithReader.pause();
       lookerWithReader = this;
@@ -1168,6 +1142,7 @@ export class VideoLooker extends Looker<VideoState> {
   }
 
   updateOptions(options: Optional<VideoState["options"]>) {
+    super.updateOptions(options);
     this.updater({ options });
   }
 

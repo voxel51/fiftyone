@@ -5,7 +5,6 @@
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
-import { BaseLabel, LabelUpdate } from "./overlays/base";
 import { Coloring, FrameChunk } from "./state";
 
 interface ResolveColor {
@@ -121,7 +120,8 @@ const mapId = (obj) => {
 
 const processLabels = (
   sample: { [key: string]: any },
-  coloring: Coloring
+  coloring: Coloring,
+  prefix: string = ""
 ): Promise<ArrayBuffer[]> => {
   let buffers: ArrayBuffer[] = [];
   const promises = [];
@@ -148,7 +148,7 @@ const processLabels = (
     }
 
     if (UPDATE_LABEL[label._cls]) {
-      promises.push(UPDATE_LABEL[label._cls](field, label, coloring));
+      promises.push(UPDATE_LABEL[label._cls](prefix + field, label, coloring));
     }
   }
 
@@ -187,7 +187,9 @@ const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
   if (sample.frames && sample.frames.length) {
     bufferPromises = [
       ...bufferPromises,
-      ...sample.frames.map((frame) => processLabels(frame, coloring)).flat(),
+      ...sample.frames
+        .map((frame) => processLabels(frame, coloring, "frames."))
+        .flat(),
     ];
   }
 
@@ -285,7 +287,9 @@ const getSendChunk = (uuid: string) => ({
 }) => {
   if (value) {
     Promise.all(
-      value.frames.map((frame) => processLabels(frame, value.coloring))
+      value.frames.map((frame) =>
+        processLabels(frame, value.coloring, "frames.")
+      )
     ).then((buffers) => {
       postMessage(
         {
@@ -346,14 +350,6 @@ const setStream = ({
   stream.reader.read().then(getSendChunk(uuid));
 };
 
-interface UpdateLabels {
-  uuid: string;
-  labels: LabelUpdate<BaseLabel>[][];
-  coloring: Coloring;
-}
-
-type UpdateLabelsMethod = ReaderMethod & UpdateLabels;
-
 const isFloatArray = (arr) =>
   arr instanceof Float32Array || arr instanceof Float64Array;
 
@@ -407,7 +403,7 @@ const UPDATE_LABEL = {
 
     const color = await requestColor(coloring.pool, coloring.seed, field);
 
-    const getColor = Array.isArray(coloring.byLabel)
+    const getColor = coloring.byLabel
       ? (value) => {
           if (value === 0) {
             return 0;
@@ -418,7 +414,7 @@ const UPDATE_LABEL = {
               (coloring.scale.length - 1)
           );
 
-          return get32BitColor(coloring[index]);
+          return get32BitColor(coloring.scale[index]);
         }
       : (value) => {
           if (value === 0) {
@@ -464,33 +460,10 @@ const UPDATE_LABEL = {
   },
 };
 
-const updateLabels = ({ labels, coloring, uuid }: UpdateLabels) => {
-  const promises = labels
-    .map((l) =>
-      l.map(({ label, field }) =>
-        UPDATE_LABEL[label._cls](field, label, coloring)
-      )
-    )
-    .flat();
-
-  Promise.all(promises).then((buffers: ArrayBuffer[][]) => {
-    postMessage(
-      {
-        method: "labelsUpdate",
-        labels,
-        uuid,
-      },
-      // @ts-ignore
-      buffers.flat()
-    );
-  });
-};
-
 type Method =
   | ProcessSampleMethod
   | RequestFrameChunkMethod
   | SetStreamMethod
-  | UpdateLabelsMethod
   | ResolveColorMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
@@ -503,9 +476,6 @@ onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
       return;
     case "setStream":
       setStream(args as SetStream);
-      return;
-    case "updateLabels":
-      updateLabels(args as UpdateLabels);
       return;
     case "resolveColor":
       resolveColor(args as ResolveColor);

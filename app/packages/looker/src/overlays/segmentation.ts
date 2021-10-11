@@ -5,14 +5,7 @@ import { getColor } from "../color";
 import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
-import {
-  BaseLabel,
-  CONTAINS,
-  LabelUpdate,
-  Overlay,
-  PointInfo,
-  SelectData,
-} from "./base";
+import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
@@ -35,8 +28,6 @@ export default class SegmentationOverlay<State extends BaseState>
   private targets?: TypedArray;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
-  private awaitingUUID: string;
-  private cachedColoring: number;
 
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
@@ -50,6 +41,21 @@ export default class SegmentationOverlay<State extends BaseState>
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;
+
+      this.imageData = new ImageData(
+        new Uint8ClampedArray(this.label.mask.image),
+        width,
+        height
+      );
+      const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
+      maskCtx.clearRect(
+        0,
+        0,
+        this.label.mask.data.shape[1],
+        this.label.mask.data.shape[0]
+      );
+      maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
 
@@ -133,54 +139,6 @@ export default class SegmentationOverlay<State extends BaseState>
 
   getSizeBytes(): number {
     return sizeBytes(this.label);
-  }
-
-  needsLabelUpdate(state: Readonly<State>) {
-    if (this.cachedColoring === null) {
-      this.cachedColoring = state.options.coloring.seed;
-    }
-
-    return this.targets && this.cachedColoring !== state.options.coloring.seed;
-  }
-
-  getLabelData(state: Readonly<State>, messageUUID: string) {
-    this.awaitingUUID = messageUUID;
-    this.cachedColoring = state.options.coloring.seed;
-
-    return [
-      {
-        field: this.field,
-        label: this.label,
-        buffers: [this.label.mask.data.buffer, this.label.mask.image],
-      },
-    ];
-  }
-
-  updateLabelData(
-    [{ label }]: LabelUpdate<SegmentationLabel>[],
-    messageUUID: string
-  ) {
-    if (messageUUID !== this.awaitingUUID) {
-      return;
-    }
-    this.awaitingUUID = null;
-
-    this.label = label;
-    const [height, width] = this.label.mask.data.shape;
-    this.imageData = new ImageData(
-      new Uint8ClampedArray(this.label.mask.image),
-      width,
-      height
-    );
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(
-      0,
-      0,
-      this.label.mask.data.shape[1],
-      this.label.mask.data.shape[0]
-    );
-    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   private getIndex(state: Readonly<State>): number {
