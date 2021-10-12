@@ -11,6 +11,7 @@ from bson import SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
+import pytz
 import six
 
 import eta.core.utils as etau
@@ -84,20 +85,20 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
 class DateField(mongoengine.fields.DateField, Field):
     """A date field."""
 
-    """
     def to_mongo(self, value):
         if value is None:
             return None
 
-        dt = datetime(value.year, value.month, value.day)
-        return super().to_mongo(dt)
+        return datetime(value.year, value.month, value.day)
 
     def to_python(self, value):
         if value is None:
             return None
 
-        return value.date()
-    """
+        # Explicitly converting to UTC is important here because PyMongo loads
+        # everything as `datetime`, which will respect `fo.config.timezone`,
+        # but dates *always* use UTC
+        return value.astimezone(pytz.utc).date()
 
     def validate(self, value):
         if not isinstance(value, date):
