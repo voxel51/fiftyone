@@ -106,11 +106,21 @@ export default class SegmentationOverlay<State extends BaseState>
 
   getPointInfo(state: Readonly<State>): PointInfo<SegmentationInfo> {
     const target = this.getTarget(state);
+    let maskTargets = state.options.coloring.maskTargets;
+    if (maskTargets) {
+      maskTargets[this.field];
+    }
+
+    if (!maskTargets) {
+      maskTargets = state.options.coloring.defaultMaskTargets;
+    }
+
     return {
       color: getColor(
         state.options.coloring.pool,
         state.options.coloring.seed,
-        target
+        this.field,
+        { target, maskTargets }
       ),
       label: {
         ...this.label,

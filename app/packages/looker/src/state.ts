@@ -35,6 +35,10 @@ export interface LabelData {
   index?: number;
 }
 
+export interface MaskTargets {
+  [key: number]: string;
+}
+
 export type BufferRange = [number, number];
 export type Buffers = BufferRange[];
 
@@ -85,6 +89,10 @@ interface BaseOptions {
   inSelectionMode: boolean;
   mimetype: string;
   alpha: number;
+  defaultMaskTargets: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
 }
 
 export type BoundingBox = [number, number, number, number];

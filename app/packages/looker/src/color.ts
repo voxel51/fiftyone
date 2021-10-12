@@ -3,7 +3,7 @@
  */
 
 import { BIG_ENDIAN } from "./constants";
-import { RGB, RGBA } from "./state";
+import { MaskTargets, RGB, RGBA } from "./state";
 
 const bitColorCache: { [color: string]: number } = {};
 
@@ -190,7 +190,18 @@ export const createColorGenerator = (() => {
 export const getColor = (
   pool: string[],
   seed: number,
-  value: string | number
+  fieldOrValue: string | number,
+  {
+    target,
+    maskTargets,
+  }: {
+    target?: number;
+    maskTargets?: MaskTargets;
+  } = {}
 ) => {
-  return createColorGenerator(pool, seed)(value);
+  if (target && maskTargets && Object.keys(maskTargets).length !== 1) {
+    fieldOrValue = target;
+  }
+
+  return createColorGenerator(pool, seed)(fieldOrValue);
 };
