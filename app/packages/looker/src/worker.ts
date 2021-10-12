@@ -5,7 +5,7 @@
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
-import { Coloring, FrameChunk } from "./state";
+import { Coloring, FrameChunk, MaskTargets } from "./state";
 
 interface ResolveColor {
   key: string | number;
@@ -439,8 +439,19 @@ const UPDATE_LABEL = {
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
     );
+    let maskTargets = coloring.maskTargets[field];
 
+    if (!maskTargets) {
+      maskTargets = coloring.defaultMaskTargets;
+    }
     const cache = {};
+
+    let color;
+    if (maskTargets && Object.keys(maskTargets).length === 1) {
+      color = get32BitColor(
+        await requestColor(coloring.pool, coloring.seed, field)
+      );
+    }
 
     const getColor = (i) => {
       i = Math.round(Math.abs(i)) % coloring.targets.length;
@@ -454,7 +465,7 @@ const UPDATE_LABEL = {
 
     for (const i in overlay) {
       if (targets[i] !== 0) {
-        overlay[i] = getColor(targets[i]);
+        overlay[i] = color ? color : getColor(targets[i]);
       }
     }
   },

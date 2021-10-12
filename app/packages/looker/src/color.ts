@@ -190,18 +190,7 @@ export const createColorGenerator = (() => {
 export const getColor = (
   pool: string[],
   seed: number,
-  fieldOrValue: string | number,
-  {
-    target,
-    maskTargets,
-  }: {
-    target?: number;
-    maskTargets?: MaskTargets;
-  } = {}
+  fieldOrValue: string | number
 ) => {
-  if (target && maskTargets && Object.keys(maskTargets).length !== 1) {
-    fieldOrValue = target;
-  }
-
   return createColorGenerator(pool, seed)(fieldOrValue);
 };

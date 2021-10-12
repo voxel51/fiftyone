@@ -641,6 +641,8 @@ export const coloring = selectorFamily<Coloring, boolean>({
       pool,
       scale: get(atoms.stateDescription).colorscale,
       byLabel: get(atoms.colorByLabel(modal)),
+      defaultMaskTargets: get(defaultTargets),
+      maskTargets: get(targets).fields,
       targets: new Array(pool.length)
         .fill(0)
         .map((_, i) => getColor(pool, seed, i)),

@@ -52,6 +52,7 @@ import {
   BufferRange,
   Dimensions,
   Sample,
+  MaskTargets,
 } from "./state";
 import {
   addToBuffers,
@@ -83,6 +84,10 @@ export interface Coloring {
   scale: RGB[];
   seed: number;
   targets: string[];
+  defaultMaskTargets?: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
 }
 
 const coloringCallback = {

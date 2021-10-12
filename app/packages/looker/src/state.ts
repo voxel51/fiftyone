@@ -12,6 +12,10 @@ export interface Coloring {
   pool: string[];
   scale: RGB[];
   seed: number;
+  defaultMaskTargets?: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
   targets: string[];
 }
 
@@ -89,10 +93,6 @@ interface BaseOptions {
   inSelectionMode: boolean;
   mimetype: string;
   alpha: number;
-  defaultMaskTargets: MaskTargets;
-  maskTargets: {
-    [field: string]: MaskTargets;
-  };
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -251,6 +251,8 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
     pool: ["#000000"],
     scale: null,
     seed: 0,
+    maskTargets: {},
+    defaultMaskTargets: null,
     targets: ["#000000"],
   },
   smoothMasks: true,
