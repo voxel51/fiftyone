@@ -86,7 +86,7 @@ export interface Coloring {
   targets: string[];
 }
 
-const coloringCallback = {
+const workerCallbacks = {
   requestColor: [
     (worker, { key, pool, seed }) => {
       worker.postMessage({
@@ -99,7 +99,7 @@ const coloringCallback = {
   ],
 };
 
-const labelsWorker = createWorker(coloringCallback);
+const labelsWorker = createWorker(workerCallbacks);
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -159,7 +159,7 @@ export abstract class Looker<
 
   protected dispatchEvent(eventType: string, detail: any): void {
     if (eventType === "error") {
-      this.updater({ error: true });
+      this.updater({ error: detail.error || true });
     }
 
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
@@ -755,8 +755,12 @@ const { aquireReader, addFrame } = (() => {
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
     frameReader && frameReader.terminate();
-    frameReader = createWorker(coloringCallback);
+    frameReader = createWorker(workerCallbacks);
     frameReader.onmessage = ({ data }: MessageEvent<FrameChunkResponse>) => {
+      if (data.error) {
+        dispatchEvent("error", { error: "Frames" });
+      }
+
       if (data.uuid !== subscription || data.method !== "frameChunk") {
         return;
       }

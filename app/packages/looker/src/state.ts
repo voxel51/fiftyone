@@ -194,7 +194,7 @@ export interface BaseState {
   setZoom: boolean;
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean;
+  error: boolean | number;
   destroyed: boolean;
   reloading: boolean;
 }
@@ -312,4 +312,5 @@ export interface FrameChunkResponse extends FrameChunk {
   method: string;
   frames: FrameSample[];
   range: [number, number];
+  error?: boolean;
 }
