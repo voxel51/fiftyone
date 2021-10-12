@@ -4576,7 +4576,7 @@ def _save_view(view, fields):
         foo.aggregate(dataset._sample_collection, pipeline)
 
         for field_name in view._get_missing_fields():
-            dataset._sample_doc_cls._delete_field_schema(field_name, False)
+            dataset._sample_doc_cls._delete_field_schema(field_name)
 
     #
     # Save frames
@@ -4600,7 +4600,7 @@ def _save_view(view, fields):
             foo.aggregate(dataset._sample_collection, pipeline)
 
             for field_name in view._get_missing_fields(frames=True):
-                dataset._frame_doc_cls._delete_field_schema(field_name, False)
+                dataset._frame_doc_cls._delete_field_schema(field_name)
 
     #
     # Reload in-memory documents
