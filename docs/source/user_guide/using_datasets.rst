@@ -1820,7 +1820,6 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 
     # Switch to a different named colorscale
     session.config.colorscale = "RdBu"
-    session.config.colorscale_transparency = False
     session.refresh()
 
 .. code-block:: python
