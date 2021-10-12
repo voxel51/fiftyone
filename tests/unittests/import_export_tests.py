@@ -22,6 +22,11 @@ import fiftyone as fo
 from decorators import drop_datasets
 
 
+skipwindows = pytest.mark.skipif(
+    os.name == "nt", reason="Windows hangs in workflows, fix me"
+)
+
+
 class ImageDatasetTests(unittest.TestCase):
     def setUp(self):
         temp_dir = etau.TempDir()
@@ -60,6 +65,7 @@ class ImageDatasetTests(unittest.TestCase):
 
 
 class DuplicateImageExportTests(ImageDatasetTests):
+    @skipwindows
     @drop_datasets
     def test_duplicate_images(self):
         sample = fo.Sample(
@@ -1309,11 +1315,6 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         self.assertEqual(
             dataset.count("coordinates"), dataset2.count("coordinates")
         )
-
-
-skipwindows = pytest.mark.skipif(
-    os.name == "nt", reason="Windows hangs in workflows, fix me"
-)
 
 
 class MultitaskImageDatasetTests(ImageDatasetTests):
