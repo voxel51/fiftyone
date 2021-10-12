@@ -403,7 +403,7 @@ const UPDATE_LABEL = {
 
     const color = await requestColor(coloring.pool, coloring.seed, field);
 
-    const getColor = coloring.byLabel
+    const getColor = !coloring.byLabel
       ? (value) => {
           if (value === 0) {
             return 0;

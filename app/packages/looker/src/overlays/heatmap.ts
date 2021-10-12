@@ -185,7 +185,7 @@ export default class HeatmapOverlay<State extends BaseState>
       return 0;
     }
 
-    if (state.options.coloring.byLabel) {
+    if (!state.options.coloring.byLabel) {
       const index = Math.round(
         (Math.max(value - start, 0) / (stop - start)) *
           (state.options.coloring.scale.length - 1)
