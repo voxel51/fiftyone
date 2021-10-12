@@ -3,6 +3,32 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.0:
+
+FiftyOne 0.14.0
+---------------
+*Released October 12, 2021*
+
+App
+
+- Added support for visualizing :class:`Heatmap <fiftyone.core.labels.Heatmap>`
+- Added a label opacity slider setting in both the sample grid and the
+  expanded sample view
+- Added support for visualizing :ref:`clips views <viewing-video-clips>`
+- Added support for rendering and filtering by
+  :class:`DateFields <fiftyone.core.fields.DateField>` and
+  :class:`DateTimeFields <fiftyone.core.fields.DateTimeField>`
+- Improved error handling in the grid and when streaming frames
+
+Core
+
+
+
+Docs
+
+- Added a :ref:`Clips views <viewing-video-clips>` section to the app user
+  guide
+
 .. _release-notes-v0.13.3:
 
 FiftyOne 0.13.3
