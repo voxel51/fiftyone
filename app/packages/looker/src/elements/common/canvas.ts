@@ -202,6 +202,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     loaded,
     config: { thumbnail },
     disabled,
+    reloading,
     panning,
     windowBBox: [_, __, width, height],
     mouseIsOnOverlay,
@@ -233,7 +234,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = this.cursor;
     }
 
-    const hide = !loaded || disabled;
+    const hide = !loaded || disabled || reloading;
     if (this.hide !== hide) {
       this.hide = hide;
       this.hide

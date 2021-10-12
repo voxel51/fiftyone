@@ -181,6 +181,7 @@ export interface BaseState {
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
   error: boolean;
   destroyed: boolean;
+  reloading: boolean;
 }
 
 export interface FrameState extends BaseState {

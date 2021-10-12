@@ -440,6 +440,7 @@ export abstract class Looker<
       SHORTCUTS: COMMON_SHORTCUTS,
       error: null,
       destroyed: false,
+      reloading: false,
     };
   }
 
@@ -513,7 +514,11 @@ export abstract class Looker<
       if (uuid === messageUUID) {
         this.sample = sample;
         this.loadOverlays(sample);
-        this.updater({ overlaysPrepared: true, disabled: false });
+        this.updater({
+          overlaysPrepared: true,
+          disabled: false,
+          reloading: false,
+        });
         labelsWorker.removeEventListener("message", listener);
       }
     };
@@ -599,7 +604,7 @@ export class FrameLooker extends Looker<FrameState> {
     }
 
     if (reload) {
-      this.updater(state);
+      this.updater({ ...state, reloading: this.state.disabled });
       this.updateSample(this.sample);
     } else {
       this.updater({ ...state, disabled: false });
@@ -680,7 +685,7 @@ export class ImageLooker extends Looker<ImageState> {
     }
 
     if (reload) {
-      this.updater(state);
+      this.updater({ ...state, reloading: this.state.disabled });
       this.updateSample(this.sample);
     } else {
       this.updater({ ...state, disabled: false });
@@ -1157,7 +1162,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     const reload = shouldReloadSample(this.state.options, options);
 
     if (reload) {
-      this.updater({ options });
+      this.updater({ options, reloading: this.state.disabled });
       this.updateSample(this.sample);
     } else {
       this.updater({ options, disabled: false });
