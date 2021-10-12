@@ -12,6 +12,7 @@ FiftyOne 0.14.0
 App
 
 - Added support for visualizing :class:`Heatmap <fiftyone.core.labels.Heatmap>`
+  labels with either a colorscale or transparency
 - Added a label opacity slider setting in both the sample grid and the
   expanded sample view
 - Added support for visualizing :ref:`clips views <viewing-video-clips>`
@@ -19,10 +20,16 @@ App
   :class:`DateFields <fiftyone.core.fields.DateField>` and
   :class:`DateTimeFields <fiftyone.core.fields.DateTimeField>`
 - Improved error handling in the grid and when streaming frames
+- Fixed a bug that caused incorrect label rendering for sparse frame labels
+  in the video visualizer
+- Added a `server_address` setting to the FiftyOne config for restricting
+  sessions to a hostname. See :ref:`here <restricting-app-address>` for more
+  details
 
 Core
 
-
+- Added the
+  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
 
 Docs
 
