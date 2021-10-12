@@ -26,10 +26,9 @@ youtube_dl = fou.lazy_import("youtube_dl")
 logger = logging.getLogger(__name__)
 
 
-def ActivityNetDownloadRunConfig(object):
+def ActivityNetDownloadConfig(object):
     def __init__(
         self,
-        dataset_dir,
         split,
         source_dir=None,
         classes=None,
@@ -39,63 +38,34 @@ def ActivityNetDownloadRunConfig(object):
         shuffle=None,
         seed=None,
         max_samples=None,
-        version=None,
     ):
-        self.info = self.build_activitynet_info(dataset_dir)
         self.split = split
         self.source_dir = source_dir
+        self.classes = classes
         self.max_duration = max_duration
         self.copy_files = copy_files
         self.num_workers = num_workers
         self.shuffle = shuffle
         self.seed = seed
         self.max_samples = max_samples
-        self.version = version
-
-        self.classes = self._parse_classes(classes)
 
         self.validate()
 
-    def build_activitynet_info(self, dataset_dir):
-        foz_dir, split, version = ActivityNetDatasetInfo.get_dir_info(
-            dataset_dir
-        )
-        if version == "100":
-            return ActivityNet100DatasetInfo(foz_dir)
-        else:
-            return ActivityNet200DatasetInfo(foz_dir)
-
     @property
     def load_entire_split(self):
+        if self.split == "test":
+            classes = None
+        else:
+            classes = self.classes
         return bool(
             self.max_duration is None
             and self.max_samples is None
-            and self.classes is None
+            and classes is None
         )
 
     def validate(self):
         self.validate_split()
-        self.validate_version()
         self.validate_max_duration()
-
-    def _parse_classes(self, classes):
-        if classes is not None:
-            if self.split == "test":
-                logger.warning(
-                    "Test split is unlabeled; ignoring classes requirement"
-                )
-                return None
-            else:
-                non_existant_classes = list(
-                    set(classes) - set(self.info.all_classes)
-                )
-                if non_existant_classes:
-                    raise ValueError(
-                        "The following classes specified but do not exist in the "
-                        "dataset; %s",
-                        tuple(non_existant_classes),
-                    )
-        return classes
 
     def validate_split(self):
         if self.split not in _SPLIT_MAP.keys():
@@ -104,25 +74,11 @@ def ActivityNetDownloadRunConfig(object):
                 % (self.split, tuple(_SPLIT_MAP.keys()))
             )
 
-    def validate_version(self):
-        if self.version != self.info.version:
-            raise ValueError(
-                "Provided dataset version `%s` does not match the dataset "
-                "directory version `%s`" % (self.version, self.info.version)
-            )
-
     def validate_max_duration(self):
         if self.max_duration is not None and self.max_duration <= 0:
             raise ValueError(
                 "`max_duration` must be a positive integer or float"
             )
-
-    def build(self):
-        return self.run_cls(self)
-
-    @property
-    def run_cls(self):
-        ActivityNetDownloadRun
 
 
 class ActivityNetDownloadRun(object):
@@ -291,6 +247,153 @@ class ActivityNetDatasetManager(object):
 
         return data_dir
 
+    def download_necessary_samples(self, config):
+        videos_dir = self.info.data_dir
+        prev_downloaded_ids = self.info.existing_sample_ids
+        max_samples = config.max_samples
+        seed = config.seed
+        shuffle = config.shuffle
+        num_workers = config.num_workers
+        classes = config.classes
+        max_duration = config.max_duration
+        split = config.split
+
+        any_class_samples, all_class_samples = self.info.get_matching_samples(
+            split, max_duration=max_duration, classes=classes,
+        )
+
+        all_class_ids = list(all_class_samples.keys())
+        set_all_ids = set(all_class_ids)
+        any_class_ids = list(any_class_samples.keys())
+        set_any_ids = set(any_class_ids)
+
+        requested_samples = {}
+        requested_num = max_samples
+        num_downloaded_samples = 0
+        set_downloaded_ids = set(prev_downloaded_ids)
+
+        if shuffle:
+            if seed is not None:
+                random.seed(seed)
+
+        # 1) Take the all class ids that are downloaded up to max_samples
+        dl_all_class_ids = list(set_all_ids.intersection(set_downloaded_ids))
+        if shuffle:
+            random.shuffle(dl_all_class_ids)
+
+        add_ids = dl_all_class_ids[:requested_num]
+        requested_samples.update({i: all_class_samples[i] for i in add_ids})
+
+        if requested_num:
+            requested_num -= len(add_ids)
+
+        # 2) Take the any class ids that are downloaded up to max_samples
+        if requested_num is None or requested_num:
+            dl_any_class_ids = list(
+                set_any_ids.intersection(set_downloaded_ids)
+            )
+            if shuffle:
+                random.shuffle(dl_any_class_ids)
+
+            add_ids = dl_any_class_ids[:requested_num]
+            requested_samples.update(
+                {i: any_class_samples[i] for i in add_ids}
+            )
+
+            if requested_num:
+                requested_num -= len(add_ids)
+
+        download_errors = {}
+
+        # 3) Download all class ids up to max_samples
+        if requested_num is None or requested_num:
+            not_dl_all_class_ids = list(set_all_ids - set(dl_all_class_ids))
+
+            if shuffle:
+                random.shuffle(not_dl_all_class_ids)
+
+            downloaded_ids, errors = self._attempt_to_download(
+                videos_dir,
+                not_dl_all_class_ids,
+                all_class_samples,
+                requested_num,
+                num_workers,
+            )
+            num_downloaded_samples += len(downloaded_ids)
+            requested_samples.update(
+                {i: all_class_samples[i] for i in downloaded_ids}
+            )
+
+            if requested_num:
+                requested_num -= len(downloaded_ids)
+
+            download_errors = self._merge_errors(download_errors, errors)
+
+        # 4) Download any class ids up to max_samples
+        if requested_num is None or requested_num:
+            not_dl_any_class_ids = list(set_any_ids - set(dl_any_class_ids))
+
+            if shuffle:
+                random.shuffle(not_dl_any_class_ids)
+
+            downloaded_ids, errors = self._attempt_to_download(
+                videos_dir,
+                not_dl_any_class_ids,
+                any_class_samples,
+                requested_num,
+                num_workers,
+            )
+            num_downloaded_samples += len(downloaded_ids)
+            requested_samples.update(
+                {i: any_class_samples[i] for i in downloaded_ids}
+            )
+
+            download_errors = self._merge_errors(download_errors, errors)
+
+        self._cleanup_partial_downloads(videos_dir)
+
+        return requested_samples, num_downloaded_samples, download_errors
+
+    def _cleanup_partial_downloads(self, videos_dir):
+        video_filenames = os.listdir(videos_dir)
+        for vfn in video_filenames:
+            video_id, ext = os.path.splitext(vfn)
+            if ext != ".mp4":
+                os.remove(os.path.join(videos_dir, vfn))
+
+    def _attempt_to_download(
+        self, videos_dir, ids, samples_info, num_samples, num_workers,
+    ):
+        download_ids = []
+        download_urls = []
+        url_id_map = {}
+        for sample_id in ids:
+            sample_info = samples_info[sample_id]
+            url = sample_info["url"]
+            url_id_map[url] = sample_id
+            download_urls.append(url)
+            download_ids.append(sample_id)
+
+        downloaded_urls, errors = fouy.download_from_youtube(
+            videos_dir=videos_dir,
+            urls=download_urls,
+            ids=download_ids,
+            max_videos=num_samples,
+            num_workers=num_workers,
+            ext=".mp4",
+        )
+        downloaded_ids = [url_id_map[url] for url in downloaded_urls]
+
+        return downloaded_ids, errors
+
+    def _merge_errors(self, download_errors, errors):
+        for e, videos in errors.items():
+            if e in download_errors:
+                download_errors[e].extend(videos)
+            else:
+                download_errors[e] = videos
+        return download_errors
+
     @classmethod
     def from_dataset_dir(cls, dataset_dir, version):
         foz_dir, _, _ = ActivityNetDatasetInfo.get_dir_info(dataset_dir)
@@ -449,6 +552,60 @@ class ActivityNetDatasetInfo(object):
         raise NotImplementedError(
             "Subclass must implement `get_sample_dataset_version()`"
         )
+
+    def get_matching_samples(self, split, max_duration=None, classes=None):
+        classes = self._parse_classes(classes, split)
+
+        # sample contains all specified classes
+        all_class_match = {}
+
+        # sample contains any specified calsses
+        any_class_match = {}
+
+        activitynet_split = _SPLIT_MAP[split]
+
+        if classes is not None:
+            class_set = set(classes)
+        for sample_id, annot_info in self.raw_annotations["database"].items():
+            is_correct_split = activitynet_split == annot_info["subset"]
+            if max_duration is None:
+                is_correct_dur = True
+            else:
+                is_correct_dur = max_duration >= annot_info["duration"]
+            if not is_correct_split or not is_correct_dur:
+                continue
+
+            if classes is None:
+                any_class_match[sample_id] = annot_info
+            else:
+                annot_labels = set(
+                    [a["label"] for a in annot_info["annotations"]]
+                )
+                if class_set.issubset(annot_labels):
+                    all_class_match[sample_id] = annot_info
+                elif class_set & annot_labels:
+                    any_class_match[sample_id] = annot_info
+
+        return any_class_match, all_class_match
+
+    def _parse_classes(self, classes, split):
+        if classes is not None:
+            if split == "test":
+                logger.warning(
+                    "Test split is unlabeled; ignoring classes requirement"
+                )
+                return None
+            else:
+                non_existant_classes = list(
+                    set(classes) - set(self.all_classes)
+                )
+                if non_existant_classes:
+                    raise ValueError(
+                        "The following classes specified but do not exist in the "
+                        "dataset; %s",
+                        tuple(non_existant_classes),
+                    )
+        return classes
 
 
 class ActivityNet100DatasetInfo(ActivityNetDatasetInfo):
