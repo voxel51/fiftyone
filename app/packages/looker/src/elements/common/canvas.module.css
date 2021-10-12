@@ -11,11 +11,10 @@
   height: 100%;
   overflow: visible;
   object-fit: contain;
-  opacity: 1;
 }
 
 .invisible {
-  opacity: 0;
+  display: none;
 }
 
 .lookerError .lookerCanvas {

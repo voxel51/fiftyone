@@ -84,7 +84,6 @@ export default class HeatmapOverlay<State extends BaseState>
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const maskCtx = this.canvas.getContext("2d");
     maskCtx.imageSmoothingEnabled = false;
-    console.log(this.label);
     maskCtx.clearRect(
       0,
       0,

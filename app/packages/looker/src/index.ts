@@ -211,11 +211,6 @@ export abstract class Looker<
         return;
       }
 
-      if (this.state.options.disabled) {
-        this.lookerElement.render(this.state, this.sample);
-        return;
-      }
-
       this.pluckedOverlays = this.pluckOverlays(this.state);
       this.state = this.postProcess();
 
@@ -231,8 +226,6 @@ export abstract class Looker<
 
       this.dispatchImpliedEvents(this.previousState, this.state);
 
-      this.lookerElement.render(this.state, this.sample);
-
       if (this.state.options.showJSON) {
         const pre = this.lookerElement.element.querySelectorAll("pre")[0];
         this.getSample().then((sample) => {
@@ -240,6 +233,7 @@ export abstract class Looker<
         });
       }
       const ctx = this.ctx;
+      this.lookerElement.render(this.state, this.sample);
 
       if (!this.state.loaded || this.state.destroyed || this.waiting) {
         return;
@@ -307,6 +301,7 @@ export abstract class Looker<
     }
 
     if (element === this.lookerElement.element.parentElement) {
+      this.state.disabled && this.updater({ disabled: false });
       return;
     }
 
@@ -384,6 +379,9 @@ export abstract class Looker<
       );
     this.updater({ destroyed: true });
   }
+  disable() {
+    this.updater({ disabled: true });
+  }
 
   protected abstract hasDefaultZoom(
     state: State,
@@ -407,6 +405,7 @@ export abstract class Looker<
 
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
     return {
+      disabled: false,
       cursorCoordinates: [0, 0],
       pixelCoordinates: [0, 0],
       relativeCoordinates: [0, 0],
@@ -441,7 +440,6 @@ export abstract class Looker<
       SHORTCUTS: COMMON_SHORTCUTS,
       error: null,
       destroyed: false,
-      reloading: false,
     };
   }
 
@@ -515,7 +513,7 @@ export abstract class Looker<
       if (uuid === messageUUID) {
         this.sample = sample;
         this.loadOverlays(sample);
-        this.updater({ overlaysPrepared: true, reloading: false });
+        this.updater({ overlaysPrepared: true, disabled: false });
         labelsWorker.removeEventListener("message", listener);
       }
     };
@@ -599,13 +597,12 @@ export class FrameLooker extends Looker<FrameState> {
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
     }
-    this.updater({
-      ...state,
-      reloading: this.state.options.disabled,
-    });
 
     if (reload) {
+      this.updater(state);
       this.updateSample(this.sample);
+    } else {
+      this.updater({ ...state, disabled: false });
     }
   }
 }
@@ -675,9 +672,6 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   updateOptions(options: Optional<ImageState["options"]>) {
-    if (options.disabled) {
-      console.log("HOOERE");
-    }
     const reload = shouldReloadSample(this.state.options, options);
     const state: Optional<ImageState> = { options };
     if (options.zoom !== undefined) {
@@ -685,13 +679,11 @@ export class ImageLooker extends Looker<ImageState> {
         this.state.options.zoom !== options.zoom || this.state.config.thumbnail;
     }
 
-    this.updater({
-      ...state,
-      reloading: this.state.options.disabled,
-    });
-
     if (reload) {
+      this.updater(state);
       this.updateSample(this.sample);
+    } else {
+      this.updater({ ...state, disabled: false });
     }
   }
 }
@@ -1163,13 +1155,12 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   updateOptions(options: Optional<VideoState["options"]>) {
     const reload = shouldReloadSample(this.state.options, options);
-    this.updater({
-      options,
-      reloading: this.state.options.disabled,
-    });
 
     if (reload) {
+      this.updater({ options });
       this.updateSample(this.sample);
+    } else {
+      this.updater({ options, disabled: false });
     }
   }
 
@@ -1299,12 +1290,9 @@ const shouldReloadSample = (
   next: Readonly<Optional<BaseState["options"]>>
 ): boolean => {
   let reloadSample = false;
-  if (next.coloring && typeof next.coloring.seed === "number") {
-    reloadSample = next.coloring.seed !== current.coloring.seed;
-  }
-
-  if (
-    !reloadSample &&
+  if (next.coloring && current.coloring.seed !== next.coloring.seed) {
+    reloadSample = true;
+  } else if (
     next.coloring &&
     next.coloring.byLabel !== current.coloring.byLabel
   ) {

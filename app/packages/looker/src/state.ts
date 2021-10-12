@@ -85,7 +85,6 @@ interface BaseOptions {
   inSelectionMode: boolean;
   mimetype: string;
   alpha: number;
-  disabled: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -145,6 +144,7 @@ export interface TooltipOverlay {
 }
 
 export interface BaseState {
+  disabled: boolean;
   cursorCoordinates: Coordinates;
   pixelCoordinates: Coordinates;
   disableControls: boolean;
@@ -181,7 +181,6 @@ export interface BaseState {
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
   error: boolean;
   destroyed: boolean;
-  reloading: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -255,7 +254,6 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   inSelectionMode: false,
   mimetype: "",
   alpha: 0.7,
-  disabled: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

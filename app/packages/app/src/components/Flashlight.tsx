@@ -418,9 +418,7 @@ export default React.memo(() => {
 
           if (lookers.has(sampleId)) {
             const looker = lookers.get(sampleId);
-            hide
-              ? looker.updateOptions({ disabled: true })
-              : looker.attach(element, dimensions);
+            hide ? looker.disable() : looker.attach(element, dimensions);
 
             return null;
           }
