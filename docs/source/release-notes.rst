@@ -29,7 +29,8 @@ App
 Core
 
 - Added the
-  :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+  :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+  method for creating clips views
 
 Docs
 
