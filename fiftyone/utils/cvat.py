@@ -1915,7 +1915,7 @@ class CVATVideoBox(CVATVideoAnno):
         Returns:
             a :class:`CVATVideoBox`
         """
-        frame = int(d["@frame"])
+        frame = int(d["@frame"]) + 1
 
         xtl = int(round(float(d["@xtl"])))
         ytl = int(round(float(d["@ytl"])))
@@ -2038,7 +2038,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPolygon`
         """
-        frame = int(d["@frame"])
+        frame = int(d["@frame"]) + 1
         points = cls._parse_cvat_points_str(d["@points"])
         outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
         return cls(
@@ -2154,7 +2154,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPolyline`
         """
-        frame = int(d["@frame"])
+        frame = int(d["@frame"]) + 1
         points = cls._parse_cvat_points_str(d["@points"])
         outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
         return cls(
@@ -2257,7 +2257,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPoints`
         """
-        frame = int(d["@frame"])
+        frame = int(d["@frame"]) + 1
         points = cls._parse_cvat_points_str(d["@points"])
         outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
         return cls(
