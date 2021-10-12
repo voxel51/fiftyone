@@ -4,6 +4,7 @@
 
 import {
   BOOLEAN_FIELD,
+  DATE_FIELD,
   DATE_TIME_FIELD,
   FLOAT_FIELD,
   FRAME_SUPPORT_FIELD,
@@ -133,8 +134,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
         let value = sample[valuePath];
         const entry = fieldSchema[path];
-        const isDateTime = isType(entry, DATE_TIME_FIELD);
-        const isSupport = isType(entry, FRAME_SUPPORT_FIELD);
+        const isDateTime = isOfTypes(entry, [DATE_FIELD, DATE_TIME_FIELD]);
+        const isSupport = isOfTypes(entry, [FRAME_SUPPORT_FIELD]);
 
         if ([undefined, null].includes(value)) {
           return elements;
@@ -227,6 +228,7 @@ const prettify = (v: boolean | string | null | undefined | number): string => {
 
 const RENDERED_TYPES = new Set([
   BOOLEAN_FIELD,
+  DATE_FIELD,
   DATE_TIME_FIELD,
   FLOAT_FIELD,
   FRAME_SUPPORT_FIELD,
@@ -238,5 +240,9 @@ const isRendered = (field) =>
   field &&
   (RENDERED_TYPES.has(field.ftype) || RENDERED_TYPES.has(field.subfield));
 
-const isType = (field, type) =>
-  field && (type === field.ftype || type === field.subfield);
+const isOfTypes = (
+  field: { ftype: string; subfield?: string },
+  types: string[]
+) =>
+  field &&
+  types.some((type) => type === field.ftype || type === field.subfield);

@@ -9,12 +9,12 @@ import * as selectors from "../../recoil/selectors";
 import { Range } from "./RangeSlider";
 import {
   AGGS,
-  DATE_TIME_FIELD,
   LIST_FIELD,
   FRAME_SUPPORT_FIELD,
   VALID_LIST_FIELDS,
   VALID_NUMERIC_TYPES,
   INT_FIELD,
+  isDateField,
 } from "../../utils/labels";
 import { filterStage } from "./atoms";
 
@@ -27,7 +27,7 @@ export const isDateTimeField = selectorFamily<boolean, string>({
       map = get(selectors.primitivesSubfieldMap("sample"));
     }
 
-    return map[name] === DATE_TIME_FIELD;
+    return isDateField(map[name]);
   },
 });
 

@@ -11,7 +11,7 @@ import { Slider as SliderUnstyled } from "@material-ui/core";
 
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../FieldsSidebar";
-import { DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
+import { INT_FIELD, isDateField } from "../../utils/labels";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
@@ -81,7 +81,7 @@ const SliderStyled = styled(SliderUnstyled)`
 const getFormatter = (fieldType, timeZone, bounds) => {
   let hasTitle = false;
   let dtFormatters;
-  if (fieldType === DATE_TIME_FIELD) {
+  if (isDateField(fieldType)) {
     dtFormatters = getDateTimeRangeFormattersWithPrecision(
       timeZone,
       bounds[0],
@@ -94,7 +94,7 @@ const getFormatter = (fieldType, timeZone, bounds) => {
   return {
     hasTitle,
     formatter: (v) => {
-      if (fieldType === DATE_TIME_FIELD) {
+      if (isDateField(fieldType)) {
         const str = dtFormatters[1]
           .format(v)
           .replaceAll("/", "-")
@@ -154,7 +154,7 @@ const BaseSlider = React.memo(
     const bounds = useRecoilValue(boundsAtom);
 
     const timeZone =
-      fieldType && fieldType === DATE_TIME_FIELD
+      fieldType && isDateField(fieldType)
         ? useRecoilValue(selectors.timeZone)
         : null;
     const [clicking, setClicking] = useState(false);
