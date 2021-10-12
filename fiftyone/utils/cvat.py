@@ -1610,22 +1610,22 @@ class CVATTrack(object):
         for frame_number, box in self.boxes.items():
             detection = box.to_detection(frame_size)
             detection.index = self.id
-            labels[frame_number] = detection
+            labels[frame_number + 1] = detection
 
         for frame_number, polygon in self.polygons.items():
             polyline = polygon.to_polyline(frame_size)
             polyline.index = self.id
-            labels[frame_number] = polyline
+            labels[frame_number + 1] = polyline
 
         for frame_number, polyline in self.polylines.items():
             polyline = polyline.to_polyline(frame_size)
             polyline.index = self.id
-            labels[frame_number] = polyline
+            labels[frame_number + 1] = polyline
 
         for frame_number, points in self.points.items():
             keypoint = points.to_keypoint(frame_size)
             keypoint.index = self.id
-            labels[frame_number] = keypoint
+            labels[frame_number + 1] = keypoint
 
         return labels
 
@@ -1653,20 +1653,24 @@ class CVATTrack(object):
             label = _label.label
 
             if isinstance(_label, fol.Detection):
-                boxes[frame_number] = CVATVideoBox.from_detection(
+                boxes[frame_number - 1] = CVATVideoBox.from_detection(
                     frame_number, _label, frame_size
                 )
             elif isinstance(_label, fol.Polyline):
                 if _label.filled:
-                    polygons[frame_number] = CVATVideoPolygon.from_polyline(
+                    polygons[
+                        frame_number - 1
+                    ] = CVATVideoPolygon.from_polyline(
                         frame_number, _label, frame_size
                     )
                 else:
-                    polylines[frame_number] = CVATVideoPolyline.from_polyline(
+                    polylines[
+                        frame_number - 1
+                    ] = CVATVideoPolyline.from_polyline(
                         frame_number, _label, frame_size
                     )
             elif isinstance(_label, fol.Keypoint):
-                points[frame_number] = CVATVideoPoints.from_keypoint(
+                points[frame_number - 1] = CVATVideoPoints.from_keypoint(
                     frame_number, _label, frame_size
                 )
             elif _label is not None:
@@ -1891,7 +1895,7 @@ class CVATVideoBox(CVATVideoAnno):
         )
 
         return cls(
-            frame_number,
+            frame_number - 1,
             label,
             xtl,
             ytl,
@@ -1915,7 +1919,7 @@ class CVATVideoBox(CVATVideoAnno):
         Returns:
             a :class:`CVATVideoBox`
         """
-        frame = int(d["@frame"]) + 1
+        frame = int(d["@frame"])
 
         xtl = int(round(float(d["@xtl"])))
         ytl = int(round(float(d["@ytl"])))
@@ -2017,7 +2021,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         )
 
         return cls(
-            frame_number,
+            frame_number - 1,
             label,
             points,
             outside=outside,
@@ -2038,7 +2042,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPolygon`
         """
-        frame = int(d["@frame"]) + 1
+        frame = int(d["@frame"])
         points = cls._parse_cvat_points_str(d["@points"])
         outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
         return cls(
@@ -2133,7 +2137,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         )
 
         return cls(
-            frame_number,
+            frame_number - 1,
             label,
             points,
             outside=outside,
@@ -2154,7 +2158,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPolyline`
         """
-        frame = int(d["@frame"]) + 1
+        frame = int(d["@frame"])
         points = cls._parse_cvat_points_str(d["@points"])
         outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
         return cls(
@@ -2236,7 +2240,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
             keypoint
         )
         return cls(
-            frame_number,
+            frame_number - 1,
             label,
             points,
             outside=outside,
@@ -2257,7 +2261,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPoints`
         """
-        frame = int(d["@frame"]) + 1
+        frame = int(d["@frame"])
         points = cls._parse_cvat_points_str(d["@points"])
         outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
         return cls(
