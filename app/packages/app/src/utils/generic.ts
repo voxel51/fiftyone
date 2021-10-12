@@ -146,7 +146,14 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     let common: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
     let diff: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
 
-    if (delta < MS) {
+    if (d1 % H === 0 && d2 % H === 0) {
+      common = null;
+      diff = {
+        year: "numeric",
+        month: twoDigit,
+        day: twoDigit,
+      };
+    } else if (delta < MS) {
       common = {
         year: "numeric",
         day: twoDigit,

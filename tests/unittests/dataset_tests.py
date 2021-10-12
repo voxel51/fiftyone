@@ -5,7 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import datetime
+from datetime import date, datetime
 import gc
 import os
 
@@ -787,11 +787,13 @@ class DatasetTests(unittest.TestCase):
             int_field=1,
             str_field="hi",
             float_field=1.0,
+            date_field=date.today(),
             datetime_field=datetime.utcnow(),
             list_bool_field=[False, True],
             list_float_field=[1.0, 2, 4.1],
             list_int_field=[1, 2, 3],
             list_str_field=["one", "two", "three"],
+            list_date_field=[date.today(), date.today()],
             list_datetime_field=[datetime.utcnow(), datetime.utcnow()],
             list_untyped_field=[1, {"two": "three"}, [4], "five"],
             dict_field={"hello": "world"},
@@ -807,6 +809,7 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(schema["int_field"], fo.IntField)
         self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["date_field"], fo.DateField)
         self.assertIsInstance(schema["datetime_field"], fo.DateTimeField)
 
         # Lists
@@ -821,6 +824,9 @@ class DatasetTests(unittest.TestCase):
 
         self.assertIsInstance(schema["list_str_field"], fo.ListField)
         self.assertIsInstance(schema["list_str_field"].field, fo.StringField)
+
+        self.assertIsInstance(schema["list_date_field"], fo.ListField)
+        self.assertIsInstance(schema["list_date_field"].field, fo.DateField)
 
         self.assertIsInstance(schema["list_datetime_field"], fo.ListField)
         self.assertIsInstance(

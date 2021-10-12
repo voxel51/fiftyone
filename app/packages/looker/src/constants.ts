@@ -36,6 +36,7 @@ export const TEMPORAL_DETECTION = "TemporalDetection";
 export const TEMPORAL_DETECTIONS = "TemporalDetections";
 
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
+export const DATE_FIELD = "fiftyone.core.fields.DateField";
 export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const INT_FIELD = "fiftyone.core.fields.IntField";

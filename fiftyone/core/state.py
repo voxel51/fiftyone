@@ -284,16 +284,16 @@ class DatasetStatistics(object):
                 if _has_support(field):
                     support_path = "%s.support" % path
                     aggregations.extend(
-                        [foa.Bounds(support_path), foa.Count(support_path),]
+                        [foa.Bounds(support_path), foa.Count(support_path)]
                     )
 
             elif _meets_type(
                 field,
                 (
+                    fof.DateField,
                     fof.DateTimeField,
                     fof.FloatField,
                     fof.IntField,
-                    fof.DateTimeField,
                 ),
             ):
                 aggregations.append(foa.Bounds(field_name))

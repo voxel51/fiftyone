@@ -1361,7 +1361,7 @@ def _numeric_bounds(paths):
 async def _numeric_histograms(view, schema, prefix=""):
     paths = []
     fields = []
-    numerics = (fof.IntField, fof.FloatField, fof.DateTimeField)
+    numerics = (fof.IntField, fof.FloatField, fof.DateField, fof.DateTimeField)
     for name, field in schema.items():
         if prefix != "" and name == "frame_number":
             continue

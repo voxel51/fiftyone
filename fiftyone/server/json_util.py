@@ -7,10 +7,9 @@ FiftyOne server json utilies.
 """
 from bson import ObjectId, json_util
 from collections import OrderedDict
-from datetime import datetime
+from datetime import date, datetime
 from json import JSONEncoder
 
-import fiftyone.core.expressions as foe
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
@@ -22,15 +21,24 @@ def _handle_bytes(o):
             o[k] = str(fou.deserialize_numpy_array(v).shape)
         elif isinstance(v, dict):
             o[k] = _handle_bytes(v)
+
     return o
 
 
 def _handle_numpy_array(raw, key=None):
     if key != "mask":
         return str(fou.deserialize_numpy_array(raw).shape)
+
     return fou.serialize_numpy_array(
         fou.deserialize_numpy_array(raw), ascii=True
     )
+
+
+def _handle_date(dt):
+    return {
+        "_cls": "DateTime",
+        "datetime": fou.datetime_to_timestamp(dt),
+    }
 
 
 def convert(d):
@@ -38,11 +46,8 @@ def convert(d):
         for k, v in d.items():
             if isinstance(v, bytes):
                 d[k] = _handle_numpy_array(v, k)
-            elif isinstance(v, datetime):
-                d[k] = {
-                    "_cls": "DateTime",
-                    "datetime": foe._datetime_to_timestamp(v),
-                }
+            elif isinstance(v, (date, datetime)):
+                d[k] = _handle_date(v)
             elif isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
@@ -52,11 +57,8 @@ def convert(d):
         for idx, i in enumerate(d):
             if isinstance(i, bytes):
                 d[idx] = _handle_numpy_array(i)
-            elif isinstance(i, datetime):
-                d[idx] = {
-                    "_cls": "DateTime",
-                    "datetime": foe._datetime_to_timestamp(i),
-                }
+            elif isinstance(i, (date, datetime)):
+                d[idx] = _handle_date(i)
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
             elif isinstance(i, (dict, OrderedDict, list)):

@@ -7,7 +7,7 @@ Aggregations.
 """
 from collections import OrderedDict
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import date, datetime
 
 import numpy as np
 
@@ -17,6 +17,7 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
 
 
 class Aggregation(object):
@@ -689,11 +690,12 @@ class Distinct(Aggregation):
 class HistogramValues(Aggregation):
     """Computes a histogram of the field values in a collection.
 
-    This aggregation is typically applied to *numeric* field types (or
-    lists of such types):
+    This aggregation is typically applied to *numeric* or *date* field types
+    (or lists of such types):
 
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.DateField`
     -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
@@ -781,21 +783,6 @@ class HistogramValues(Aggregation):
         self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
         super().__init__(field_or_expr, expr=expr)
-        self._is_datetime = False
-
-        if range is not None:
-            self._is_datetime = any(
-                map(lambda dt: isinstance(dt, datetime), range)
-            )
-            if self._is_datetime:
-                range = list(map(foe._datetime_to_timestamp, range))
-
-        if (
-            bins is not None
-            and not etau.is_numeric(bins)
-            and self._is_datetime
-        ):
-            bins = list(map(foe._datetime_to_timestamp, range))
 
         self._bins = bins
         self._range = range
@@ -803,7 +790,9 @@ class HistogramValues(Aggregation):
 
         self._num_bins = None
         self._edges = None
-        self._edges_last_used = None
+        self._last_edges = None
+        self._is_datetime = False
+
         self._parse_args()
 
     def default_result(self):
@@ -812,9 +801,9 @@ class HistogramValues(Aggregation):
         Returns:
             a tuple of
 
-            -   counts: ``[]``
-            -   edges: ``[]``
-            -   other: ``0``
+            -   **counts**: ``[]``
+            -   **edges**: ``[]``
+            -   **other**: ``0``
         """
         return [], [], 0
 
@@ -827,12 +816,12 @@ class HistogramValues(Aggregation):
         Returns:
             a tuple of
 
-            -   counts: a list of counts in each bin
-            -   edges: an increasing list of bin edges of length
+            -   **counts**: a list of counts in each bin
+            -   **edges**: an increasing list of bin edges of length
                 ``len(counts) + 1``. Note that each bin is treated as having an
                 inclusive lower boundary and exclusive upper boundary,
                 ``[lower, upper)``, including the rightmost bin
-            -   other: the number of items outside the bins
+            -   **other**: the number of items outside the bins
         """
         if self._auto:
             return self._parse_result_auto(d)
@@ -865,10 +854,10 @@ class HistogramValues(Aggregation):
             else:
                 edges = self._compute_bin_edges(sample_collection)
 
-            self._edges_last_used = edges
+            self._last_edges = edges
 
             if self._is_datetime:
-                edges = list(map(lambda dt: {"$toDate": int(dt)}, edges))
+                edges = [{"$toDate": e} for e in edges]
 
             pipeline.append(
                 {
@@ -886,6 +875,12 @@ class HistogramValues(Aggregation):
         return pipeline
 
     def _parse_args(self):
+        if self._range is not None:
+            self._range, self._is_datetime = _handle_dates(self._range)
+
+        if etau.is_container(self._bins):
+            self._bins, self._is_datetime = _handle_dates(self._bins)
+
         if self._bins is None:
             bins = 10
         else:
@@ -915,20 +910,17 @@ class HistogramValues(Aggregation):
 
     def _compute_bin_edges(self, sample_collection):
         bounds = sample_collection.bounds(self._field_name, expr=self._expr)
+
         if any(b is None for b in bounds):
             bounds = [-1, -1]
 
-        if isinstance(bounds[0], datetime):
-            self._is_datetime = True
-            bounds = list(map(foe._datetime_to_timestamp, bounds))
-            bounds[1] += 1
-        else:
-            bounds[1] += 1e-6
+        bounds, self._is_datetime = _handle_dates(bounds)
+        db = 1 if self._is_datetime else 1e-6
 
-        return list(np.linspace(bounds[0], bounds[1], self._num_bins + 1))
+        return list(np.linspace(bounds[0], bounds[1] + db, self._num_bins + 1))
 
     def _parse_result_edges(self, d):
-        _edges_array = np.array(self._edges_last_used)
+        _edges_array = np.array(self._last_edges)
         edges = list(_edges_array)
 
         counts = [0] * (len(edges) - 1)
@@ -938,11 +930,7 @@ class HistogramValues(Aggregation):
             if left == "other":
                 other = di["count"]
             else:
-                left = (
-                    foe._datetime_to_timestamp(left)
-                    if isinstance(left, datetime)
-                    else left
-                )
+                left, _ = _handle_dates(left)
                 idx = np.abs(_edges_array - left).argmin()
                 counts[idx] = di["count"]
 
@@ -1721,3 +1709,20 @@ def _remove_prefix(expr, prefix):
     elif isinstance(expr, dict):
         for e in expr.values():
             _remove_prefix(e, prefix)
+
+
+def _handle_dates(arg):
+    is_scalar = not etau.is_container(arg)
+
+    if is_scalar:
+        arg = [arg]
+
+    is_datetime = any(isinstance(x, (date, datetime)) for x in arg)
+
+    if is_datetime:
+        arg = [fou.datetime_to_timestamp(a) for a in arg]
+
+    if is_scalar:
+        arg = arg[0]
+
+    return arg, is_datetime

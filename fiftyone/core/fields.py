@@ -5,12 +5,13 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import datetime
+from datetime import date, datetime
 
 from bson import SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
+import pytz
 import six
 
 import eta.core.utils as etau
@@ -79,6 +80,29 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
     """A boolean field."""
 
     pass
+
+
+class DateField(mongoengine.fields.DateField, Field):
+    """A date field."""
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return datetime(value.year, value.month, value.day)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        # Explicitly converting to UTC is important here because PyMongo loads
+        # everything as `datetime`, which will respect `fo.config.timezone`,
+        # but dates *always* use UTC
+        return value.astimezone(pytz.utc).date()
+
+    def validate(self, value):
+        if not isinstance(value, date):
+            self.error("Date fields must have `date` values")
 
 
 class DateTimeField(mongoengine.fields.DateTimeField, Field):
@@ -569,6 +593,7 @@ class EmbeddedDocumentListField(
 _ARRAY_FIELDS = (VectorField, ArrayField)
 _PRIMITIVE_FIELDS = (
     BooleanField,
+    DateField,
     DateTimeField,
     FloatField,
     IntField,
