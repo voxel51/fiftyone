@@ -1778,11 +1778,6 @@ colormap defined by the `colorscale` of your
         [1.000, "rgb(49,54,149)"],
     ]
 
-In color-by-value mode, you can also toggle the `colorscale_transparency` flag
-of your App config to specify whether transparency should be applied to your
-heatmap's values using the same strategy described above for color-by-field
-mode.
-
 The example code below demonstrates the possibilities that heatmaps provide by
 overlaying random gaussian kernels with positive or negative sign on an image
 dataset and configuring the App's colorscale in various ways on-the-fly:

@@ -386,9 +386,6 @@ The FiftyOne App can be configured in the ways described below:
 | `colorscale`              | `FIFTYONE_APP_COLORSCALE`              | `"viridis"`                 | The colorscale to use when rendering heatmaps in the App. See                            |
 |                           |                                        |                             | :ref:`this section <heatmaps>` for more details.                                         |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `colorscale_transparency` | `FIFTYONE_APP_COLORSCALE_TRANSPARENCY` | `True`                      | Whether to apply transparency inversely proportional to heatmap's values. See            |
-|                           |                                        |                             | :ref:`this section <heatmaps>` for more details.                                         |
-+---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and )   |
 |                           |                                        |                             | (thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -447,7 +444,6 @@ You can print your App config at any time via the Python library and the CLI:
                 "#777799"
             ],
             "colorscale": "viridis",
-            "colorscale_transparency": true,
             "grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
@@ -485,7 +481,6 @@ You can print your App config at any time via the Python library and the CLI:
                 "#777799"
             ],
             "colorscale": "viridis",
-            "colorscale_transparency": true,
             "grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,

@@ -432,13 +432,6 @@ export const gridZoom = selector<number | null>({
   },
 });
 
-export const colorscaleTransparency = selector<boolean>({
-  key: "colorscaleTransparency",
-  get: ({ get }) => {
-    return get(appConfig).colorscale_transparency;
-  },
-});
-
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {

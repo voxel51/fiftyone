@@ -241,12 +241,6 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLORSCALE",
             default="viridis",
         )
-        self.colorscale_transparency = self.parse_bool(
-            d,
-            "colorscale_transparency",
-            env_var="FIFTYONE_APP_COLORSCALE_TRANSPARENCY",
-            default=True,
-        )
         self.grid_zoom = self.parse_int(
             d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
         )
