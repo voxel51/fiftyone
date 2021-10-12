@@ -95,14 +95,33 @@ const getFormatter = (fieldType, timeZone, bounds) => {
     hasTitle,
     formatter: (v) => {
       if (fieldType === DATE_TIME_FIELD) {
-        const str = dtFormatters[1]
-          .format(v)
-          .replaceAll("/", "-")
-          .replace(",", "\n");
-        if (dtFormatters[1].resolvedOptions().fractionalSecondDigits === 3) {
-          return str + "ms";
+        const str = dtFormatters[1].format(v).split(",");
+
+        if (str.length === 1) {
+          return str;
         }
-        return str;
+
+        let [day, time] = str;
+        if (dtFormatters[1].resolvedOptions().fractionalSecondDigits === 3) {
+          time += "ms";
+          return (
+            <>
+              <div>{day}</div>
+              <div>{time}</div>
+            </>
+          );
+        }
+
+        const [y, m, d] = day.split("/");
+
+        return (
+          <>
+            <div>
+              {y}&#8209;{m}&#8209;{d}
+            </div>
+            <div>{time}</div>
+          </>
+        );
       }
 
       return numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
