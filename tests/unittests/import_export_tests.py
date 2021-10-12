@@ -1602,6 +1602,7 @@ class VideoDatasetTests(unittest.TestCase):
 
 
 class VideoExportCoersionTests(VideoDatasetTests):
+    @skipwindows
     @drop_datasets
     def test_clip_exports(self):
         sample1 = fo.Sample(
