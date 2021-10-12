@@ -96,7 +96,7 @@ const Result = React.memo(
         <span style={coloring ? { color } : {}}>
           {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
         </span>
-        <span>{count.toLocaleString()}</span>
+        {typeof count === "number" && <span>{count.toLocaleString()}</span>}
       </ResultDiv>
     );
   }

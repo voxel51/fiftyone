@@ -1,7 +1,6 @@
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
-import { generateColorMap } from "../utils/colors";
 import {
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
@@ -15,6 +14,8 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
+import { Coloring, createColorGenerator, getRGB, RGB } from "@fiftyone/looker";
+import { getColor } from "@fiftyone/looker/src/color";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -429,10 +430,22 @@ const selectedFields = selectorFamily({
   },
 });
 
-export const defaultGridZoom = selector<number | null>({
-  key: "defaultGridZoom",
+export const gridZoom = selector<number | null>({
+  key: "gridZoom",
   get: ({ get }) => {
-    return get(appConfig).default_grid_zoom;
+    return get(appConfig).grid_zoom;
+  },
+  set: ({ get, set }, value) => {
+    const state = get(atoms.stateDescription);
+    const newState = {
+      ...state,
+      config: {
+        ...state.config,
+        grid_zoom: value,
+      },
+    };
+    set(atoms.stateDescription, newState);
+    socket.send(packageMessage("update", { state: newState }));
   },
 });
 
@@ -640,7 +653,24 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
 
-    return generateColorMap(pool, seed);
+    return createColorGenerator(pool, seed);
+  },
+});
+
+export const coloring = selectorFamily<Coloring, boolean>({
+  key: "coloring",
+  get: (modal) => ({ get }) => {
+    const pool = get(atoms.colorPool);
+    const seed = get(atoms.colorSeed(modal));
+    return {
+      seed,
+      pool,
+      scale: get(atoms.stateDescription).colorscale,
+      byLabel: get(atoms.colorByLabel(modal)),
+      targets: new Array(pool.length)
+        .fill(0)
+        .map((_, i) => getColor(pool, seed, i)),
+    };
   },
 });
 

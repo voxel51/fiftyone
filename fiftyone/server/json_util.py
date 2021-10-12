@@ -9,11 +9,12 @@ from bson import ObjectId, json_util
 from json import JSONEncoder
 from collections import OrderedDict
 
-import numpy as np
-
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
+
+
+_MASK_CLASSES = {"Detection", "Heatmap", "Segmentation"}
 
 
 def _handle_bytes(o):
@@ -25,9 +26,10 @@ def _handle_bytes(o):
     return o
 
 
-def _handle_numpy_array(raw, key=None):
-    if key != "mask":
+def _handle_numpy_array(raw, _cls=None):
+    if _cls not in _MASK_CLASSES:
         return str(fou.deserialize_numpy_array(raw).shape)
+
     return fou.serialize_numpy_array(
         fou.deserialize_numpy_array(raw), ascii=True
     )
@@ -41,7 +43,7 @@ def convert(d):
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
             elif isinstance(v, bytes):
-                d[k] = _handle_numpy_array(v, k)
+                d[k] = _handle_numpy_array(v, d.get("_cls", None))
     if isinstance(d, list):
         for idx, i in enumerate(d):
             if isinstance(i, (dict, OrderedDict, list)):

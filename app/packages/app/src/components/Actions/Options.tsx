@@ -1,13 +1,17 @@
-import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
 import { Autorenew } from "@material-ui/icons";
+import React from "react";
+import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
-import Popout from "./Popout";
-import { PopoutSectionTitle, TabOption } from "../utils";
 import * as atoms from "../../recoil/atoms";
-import { Button } from "../FieldsSidebar";
+import * as selectors from "../../recoil/selectors";
+
 import Checkbox from "../Common/Checkbox";
-import { isPatchesView } from "../../recoil/selectors";
+import { PopoutSectionTitle, TabOption } from "../utils";
+
+import { Button } from "../FieldsSidebar";
+import Popout from "./Popout";
+import { Slider } from "../Filters/RangeSlider";
+import { useTheme } from "../../utils/hooks";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -66,6 +70,25 @@ const ColorBy = ({ modal }) => {
   );
 };
 
+const Opacity = ({ modal }) => {
+  const theme = useTheme();
+  return (
+    <>
+      <PopoutSectionTitle>Label opacity</PopoutSectionTitle>
+      <Slider
+        valueAtom={atoms.alpha(modal)}
+        boundsAtom={constSelector([0.01, 1])}
+        color={theme.brand}
+        showBounds={false}
+        persistValue={false}
+        showValue={false}
+        onChange={true}
+        style={{ padding: 0 }}
+      />
+    </>
+  );
+};
+
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
     atoms.sortFilterResults(modal)
@@ -99,7 +122,7 @@ const SortFilterResults = ({ modal }) => {
 };
 
 const Patches = ({ modal }) => {
-  const isPatches = useRecoilValue(isPatchesView);
+  const isPatches = useRecoilValue(selectors.isPatchesView);
   const [crop, setCrop] = useRecoilState(atoms.cropToContent(modal));
 
   if (!isPatches) {
@@ -127,6 +150,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
     <Popout modal={modal} bounds={bounds}>
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
+      <Opacity modal={modal} />
       <SortFilterResults modal={modal} />
       <Patches modal={modal} />
     </Popout>
