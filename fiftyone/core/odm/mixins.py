@@ -6,7 +6,7 @@ Mixins and helpers for dataset backing documents.
 |
 """
 from collections import OrderedDict
-from datetime import datetime
+from datetime import date, datetime
 import json
 import logging
 import numbers
@@ -161,6 +161,9 @@ def get_implied_field_kwargs(value):
     if isinstance(value, datetime):
         return {"ftype": fof.DateTimeField}
 
+    if isinstance(value, date):
+        return {"ftype": fof.DateField}
+
     if isinstance(value, (list, tuple)):
         kwargs = {"ftype": fof.ListField}
 
@@ -204,6 +207,9 @@ def _get_list_value_type(value):
 
     if isinstance(value, datetime):
         return fof.DateTimeField
+
+    if isinstance(value, date):
+        return fof.DateField
 
     return None
 
@@ -1077,10 +1083,13 @@ class NoDatasetMixin(object):
                 k = "_id"
 
             if hasattr(v, "to_dict"):
-                # Embedded document
+                # EmbeddedDocumentField
                 d[k] = v.to_dict(extended=extended)
+            elif isinstance(v, date):
+                # DateField
+                d[k] = datetime(v.year, v.month, v.day)
             elif isinstance(v, np.ndarray):
-                # Must handle arrays separately, since they are non-primitives
+                # VectorField/ArrayField
                 v_binary = fou.serialize_numpy_array(v)
                 if extended:
                     # @todo improve this
@@ -1088,7 +1097,7 @@ class NoDatasetMixin(object):
                 else:
                     d[k] = v_binary
             else:
-                # JSON primitive
+                # Fields that are already JSON primitives
                 d[k] = v
 
         return d

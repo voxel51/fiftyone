@@ -6,13 +6,12 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 |
 """
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import re
 import warnings
 
 import bson
 import numpy as np
-import pytz
 
 import eta.core.utils as etau
 
@@ -4122,28 +4121,13 @@ def _do_to_mongo(val, prefix):
     if isinstance(val, list):
         return [_do_to_mongo(v, prefix) for v in val]
 
-    if isinstance(val, datetime):
-        return {"$toDate": _datetime_to_timestamp(val)}
+    if isinstance(val, (date, datetime)):
+        return {"$toDate": fou.datetime_to_timestamp(val)}
 
     if isinstance(val, timedelta):
-        return _timedelta_to_ms(val)
+        return fou.timedelta_to_ms(val)
 
     return val
-
-
-def _datetime_to_timestamp(dt):
-    """Converts a `datetime.datetime` to milliseconds since epoch."""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=pytz.utc)
-
-    return int(1000 * dt.timestamp())
-
-
-def _timedelta_to_ms(td):
-    """Converts a `datetime.timedelta` to milliseconds."""
-    return int(
-        86400000 * td.days + 1000 * td.seconds + td.microseconds // 1000
-    )
 
 
 def _do_freeze_prefix(val, prefix):

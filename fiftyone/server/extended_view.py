@@ -234,7 +234,7 @@ def _is_support(field):
 
 
 def _is_datetime(field):
-    return isinstance(field, fof.DateTimeField)
+    return isinstance(field, (fof.DateField, fof.DateTimeField))
 
 
 def _make_scalar_expression(f, args, field):

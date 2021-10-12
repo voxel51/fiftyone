@@ -5,7 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import datetime
+from datetime import date, datetime
 
 from bson import ObjectId
 import numpy as np
@@ -212,6 +212,7 @@ class VideoTests(unittest.TestCase):
             int_field=1,
             str_field="hi",
             float_field=1.0,
+            date_field=date.today(),
             datetime_field=datetime.utcnow(),
             list_field=[1, 2, 3],
             dict_field={"hello": "world"},
@@ -226,6 +227,7 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(schema["int_field"], fo.IntField)
         self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["date_field"], fo.DateField)
         self.assertIsInstance(schema["datetime_field"], fo.DateTimeField)
         self.assertIsInstance(schema["list_field"], fo.ListField)
         self.assertIsInstance(schema["dict_field"], fo.DictField)
