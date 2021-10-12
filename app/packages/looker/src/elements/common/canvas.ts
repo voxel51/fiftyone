@@ -201,6 +201,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   renderSelf({
     loaded,
     config: { thumbnail },
+    reloading,
+    options: { disabled },
     panning,
     windowBBox: [_, __, width, height],
     mouseIsOnOverlay,
@@ -232,9 +234,11 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = this.cursor;
     }
 
-    if (this.loaded !== loaded) {
-      this.element.classList.remove(invisible);
-      this.loaded = loaded;
+    if (this.loaded !== loaded && !disabled && !reloading) {
+      this.loaded = loaded && !disabled && !reloading;
+      this.loaded
+        ? this.element.classList.remove(invisible)
+        : this.element.classList.add(invisible);
     }
 
     return this.element;

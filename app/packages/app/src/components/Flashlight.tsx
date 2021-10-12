@@ -92,6 +92,7 @@ const flashlightLookerOptions = selector({
       fieldsMap: get(selectors.primitivesDbMap("sample")),
       frameFieldsMap: get(selectors.primitivesDbMap("frame")),
       alpha: get(atoms.alpha(false)),
+      disabled: false,
     };
   },
 });
@@ -412,11 +413,15 @@ export default React.memo(() => {
             nextRequestKey: more ? page + 1 : null,
           };
         },
-        render: (sampleId, element, dimensions, soft) => {
+        render: (sampleId, element, dimensions, soft, hide) => {
           const result = samples.get(sampleId);
 
           if (lookers.has(sampleId)) {
-            lookers.get(sampleId).attach(element, dimensions);
+            const looker = lookers.get(sampleId);
+            hide
+              ? looker.updateOptions({ disabled: true })
+              : looker.attach(element, dimensions);
+
             return null;
           }
 

@@ -85,6 +85,7 @@ interface BaseOptions {
   inSelectionMode: boolean;
   mimetype: string;
   alpha: number;
+  disabled: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -180,6 +181,7 @@ export interface BaseState {
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
   error: boolean;
   destroyed: boolean;
+  reloading: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -241,6 +243,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
     pool: ["#000000"],
     scale: null,
     seed: 0,
+    targets: ["#000000"],
   },
   smoothMasks: true,
   hasNext: false,
@@ -252,6 +255,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   inSelectionMode: false,
   mimetype: "",
   alpha: 0.7,
+  disabled: false,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

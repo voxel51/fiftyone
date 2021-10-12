@@ -98,8 +98,11 @@ export abstract class CoordinateOverlay<
   }
 
   getColor({ options }: Readonly<State>): string {
-    const key = options.coloring.byLabel ? this.label.label : this.field;
-    return getColor(options.coloring.pool, options.coloring.seed, key);
+    if (!this.color) {
+      const key = options.coloring.byLabel ? this.label.label : this.field;
+      this.color = getColor(options.coloring.pool, options.coloring.seed, key);
+    }
+    return this.color;
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;

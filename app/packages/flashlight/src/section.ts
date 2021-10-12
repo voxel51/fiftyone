@@ -113,6 +113,19 @@ export default class SectionElement implements Section {
   hide(): void {
     if (this.attached) {
       this.section.remove();
+      this.rows.forEach(
+        ([{ aspectRatio: rowAspectRatio, extraMargins }, items]) => {
+          !extraMargins && (extraMargins = 0);
+          const height =
+            (this.width - (items.length - 1 + extraMargins) * MARGIN) /
+            rowAspectRatio;
+          items.forEach(([item, { id, aspectRatio }]) => {
+            const width = height * aspectRatio;
+
+            this.render(id, item, [width, height], false, true);
+          });
+        }
+      );
       this.attached = false;
     }
   }
@@ -144,7 +157,7 @@ export default class SectionElement implements Section {
           items.forEach(([item, { id, aspectRatio }]) => {
             const width = height * aspectRatio;
 
-            this.render(id, item, [width, height], soft);
+            this.render(id, item, [width, height], soft, false);
           });
         }
       );

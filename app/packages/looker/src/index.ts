@@ -210,6 +210,12 @@ export abstract class Looker<
       ) {
         return;
       }
+
+      if (this.state.options.disabled) {
+        this.lookerElement.render(this.state, this.sample);
+        return;
+      }
+
       this.pluckedOverlays = this.pluckOverlays(this.state);
       this.state = this.postProcess();
 
@@ -435,6 +441,7 @@ export abstract class Looker<
       SHORTCUTS: COMMON_SHORTCUTS,
       error: null,
       destroyed: false,
+      reloading: false,
     };
   }
 
@@ -508,7 +515,7 @@ export abstract class Looker<
       if (uuid === messageUUID) {
         this.sample = sample;
         this.loadOverlays(sample);
-        this.updater({ overlaysPrepared: true });
+        this.updater({ overlaysPrepared: true, reloading: false });
         labelsWorker.removeEventListener("message", listener);
       }
     };
@@ -592,7 +599,10 @@ export class FrameLooker extends Looker<FrameState> {
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
     }
-    this.updater(state);
+    this.updater({
+      ...state,
+      reloading: this.state.options.disabled,
+    });
 
     if (reload) {
       this.updateSample(this.sample);
@@ -665,13 +675,20 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   updateOptions(options: Optional<ImageState["options"]>) {
+    if (options.disabled) {
+      console.log("HOOERE");
+    }
     const reload = shouldReloadSample(this.state.options, options);
     const state: Optional<ImageState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom =
         this.state.options.zoom !== options.zoom || this.state.config.thumbnail;
     }
-    this.updater(state);
+
+    this.updater({
+      ...state,
+      reloading: this.state.options.disabled,
+    });
 
     if (reload) {
       this.updateSample(this.sample);
@@ -1146,7 +1163,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
 
   updateOptions(options: Optional<VideoState["options"]>) {
     const reload = shouldReloadSample(this.state.options, options);
-    this.updater({ options });
+    this.updater({
+      options,
+      reloading: this.state.options.disabled,
+    });
 
     if (reload) {
       this.updateSample(this.sample);
