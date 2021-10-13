@@ -101,7 +101,6 @@ const HorizontalNav = ({ entries }: Props) => {
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
   const [maximized, setMaximized] = useState(false);
-  const isRoot = useRecoilValue(selectors.isRootView);
   const closedHeight = 64;
 
   const height = expanded ? openedHeight : closedHeight;
@@ -140,7 +139,9 @@ const HorizontalNav = ({ entries }: Props) => {
                 }
               }}
             >
-              {`${capitalize(elementNames.singular)} tags`}
+              {e === "Sample tags"
+                ? `${capitalize(elementNames.singular)} tags`
+                : e}
             </PlotButton>
           ))}
         </PlotsButtons>
