@@ -1654,24 +1654,24 @@ class CVATTrack(object):
 
             if isinstance(_label, fol.Detection):
                 boxes[frame_number - 1] = CVATVideoBox.from_detection(
-                    frame_number, _label, frame_size
+                    frame_number - 1, _label, frame_size
                 )
             elif isinstance(_label, fol.Polyline):
                 if _label.filled:
                     polygons[
                         frame_number - 1
                     ] = CVATVideoPolygon.from_polyline(
-                        frame_number, _label, frame_size
+                        frame_number - 1, _label, frame_size
                     )
                 else:
                     polylines[
                         frame_number - 1
                     ] = CVATVideoPolyline.from_polyline(
-                        frame_number, _label, frame_size
+                        frame_number - 1, _label, frame_size
                     )
             elif isinstance(_label, fol.Keypoint):
                 points[frame_number - 1] = CVATVideoPoints.from_keypoint(
-                    frame_number, _label, frame_size
+                    frame_number - 1, _label, frame_size
                 )
             elif _label is not None:
                 msg = "Ignoring unsupported label type '%s'" % _label.__class__
@@ -1895,7 +1895,7 @@ class CVATVideoBox(CVATVideoAnno):
         )
 
         return cls(
-            frame_number - 1,
+            frame_number,
             label,
             xtl,
             ytl,
@@ -2021,7 +2021,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         )
 
         return cls(
-            frame_number - 1,
+            frame_number,
             label,
             points,
             outside=outside,
@@ -2137,7 +2137,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         )
 
         return cls(
-            frame_number - 1,
+            frame_number,
             label,
             points,
             outside=outside,
@@ -2240,7 +2240,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
             keypoint
         )
         return cls(
-            frame_number - 1,
+            frame_number,
             label,
             points,
             outside=outside,
