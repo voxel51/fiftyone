@@ -154,11 +154,13 @@ class Bounds(Aggregation):
 
     ``None``-valued fields are ignored.
 
-    This aggregation is typically applied to *numeric* field types (or lists of
-    such types):
+    This aggregation is typically applied to *numeric* or *date* field types
+    (or lists of such types):
 
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -412,6 +414,8 @@ class CountValues(Aggregation):
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.StringField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -596,6 +600,8 @@ class Distinct(Aggregation):
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.StringField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -917,7 +923,7 @@ class HistogramValues(Aggregation):
         if self._range is not None:
             self._range, self._is_datetime = _handle_dates(self._range)
 
-        if etau.is_container(self._bins):
+        if self._bins is not None and etau.is_container(self._bins):
             self._bins, self._is_datetime = _handle_dates(self._bins)
 
         if self._bins is None:
@@ -1072,19 +1078,12 @@ class Mean(Aggregation):
             aggregating
     """
 
-    def __init__(self, field_or_expr, expr=None):
-        super().__init__(field_or_expr, expr=expr)
-        self._field_type = None
-
     def default_result(self):
         """Returns the default result for this aggregation.
 
         Returns:
             ``0``
         """
-        if self._field_type in (fof.DateField, fof.DateTimeField):
-            return None
-
         return 0
 
     def parse_result(self, d):
@@ -1096,20 +1095,12 @@ class Mean(Aggregation):
         Returns:
             the mean
         """
-        value = d["mean"]
-
-        if self._field_type is not None:
-            p = self._field_type.to_python
-            return p(value)
-
-        return value
+        return d["mean"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
-
-        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -1198,7 +1189,6 @@ class Std(Aggregation):
     def __init__(self, field_or_expr, expr=None, sample=False):
         super().__init__(field_or_expr, expr=expr)
         self._sample = sample
-        self._field_type = None
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1206,9 +1196,6 @@ class Std(Aggregation):
         Returns:
             ``0``
         """
-        if self._field_type in (fof.DateField, fof.DateTimeField):
-            return timedelta()
-
         return 0
 
     def parse_result(self, d):
@@ -1220,19 +1207,12 @@ class Std(Aggregation):
         Returns:
             the standard deviation
         """
-        value = d["std"]
-
-        if self._field_type in (fof.DateField, fof.DateTimeField):
-            return timedelta(milliseconds=value)
-
-        return value
+        return d["std"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
-
-        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
