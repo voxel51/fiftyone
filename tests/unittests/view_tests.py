@@ -6,7 +6,7 @@ FiftyOne view-related unit tests.
 |
 """
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import math
 
 import unittest
@@ -584,6 +584,43 @@ class ViewExpressionTests(unittest.TestCase):
             ),
             1,
         )
+
+    @drop_datasets
+    def test_dates(self):
+        dataset = fo.Dataset()
+
+        date1 = date(2021, 8, 24)
+        date2 = date(2021, 8, 25)
+        date3 = date(2021, 8, 26)
+
+        query_date = datetime(2021, 8, 25, 1, 0, 0)
+        query_delta = timedelta(hours=2)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", date=date1),
+                fo.Sample(filepath="image2.png", date=date2),
+                fo.Sample(filepath="image3.png", date=date3),
+            ]
+        )
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        dates = dataset.values("date")
+        self.assertListEqual(dates, [date1, date2, date3])
+
+        min_date, max_date = dataset.bounds("date")
+        self.assertEqual(min_date, date1)
+        self.assertEqual(max_date, date3)
+
+        view = dataset.match(F("date") > query_date)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date3)
+
+        view = dataset.match(abs(F("date") - query_date) < query_delta)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date2)
 
     @drop_datasets
     def test_datetimes(self):

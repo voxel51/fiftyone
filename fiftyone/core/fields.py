@@ -89,7 +89,7 @@ class DateField(mongoengine.fields.DateField, Field):
         if value is None:
             return None
 
-        return datetime(value.year, value.month, value.day)
+        return datetime(value.year, value.month, value.day, tzinfo=pytz.utc)
 
     def to_python(self, value):
         if value is None:
@@ -97,7 +97,7 @@ class DateField(mongoengine.fields.DateField, Field):
 
         # Explicitly converting to UTC is important here because PyMongo loads
         # everything as `datetime`, which will respect `fo.config.timezone`,
-        # but dates *always* use UTC
+        # but we always need UTC here for the conversion back to `date`
         return value.astimezone(pytz.utc).date()
 
     def validate(self, value):
@@ -593,7 +593,6 @@ class EmbeddedDocumentListField(
 _ARRAY_FIELDS = (VectorField, ArrayField)
 _PRIMITIVE_FIELDS = (
     BooleanField,
-    DateField,
     DateTimeField,
     FloatField,
     IntField,

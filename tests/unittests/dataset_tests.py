@@ -188,6 +188,35 @@ class DatasetTests(unittest.TestCase):
             pass
 
     @drop_datasets
+    def test_date_fields(self):
+        dataset = fo.Dataset()
+
+        date1 = date(1970, 1, 1)
+
+        sample = fo.Sample(filepath="image1.png", date=date1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+        # Ensure that DateFields are always `date` instances and are not
+        # affected by timezone changes
+
+        fo.config.timezone = "US/Eastern"
+        dataset.reload()
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+    @drop_datasets
     def test_datetime_fields(self):
         dataset = fo.Dataset()
 

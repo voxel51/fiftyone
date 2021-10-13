@@ -1085,7 +1085,7 @@ class NoDatasetMixin(object):
             if hasattr(v, "to_dict"):
                 # EmbeddedDocumentField
                 d[k] = v.to_dict(extended=extended)
-            elif isinstance(v, date):
+            elif type(v) is date:
                 # DateField
                 d[k] = datetime(v.year, v.month, v.day)
             elif isinstance(v, np.ndarray):
