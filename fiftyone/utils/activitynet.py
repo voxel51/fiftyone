@@ -542,8 +542,10 @@ class ActivityNetDatasetManager(object):
 
     def _load_requested_samples(self, ids, shuffle, requested_num):
         if requested_num is None or requested_num:
+            ids = sorted(ids)
             if shuffle:
                 random.shuffle(ids)
+                print(ids)
 
             if requested_num is not None:
                 requested_sample_ids = ids[:requested_num]
