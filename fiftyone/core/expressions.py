@@ -1685,6 +1685,49 @@ class ViewExpression(object):
         """
         return ViewExpression({"$toString": self})
 
+    def to_date(self):
+        """Converts the expression to a date value.
+
+        See
+        `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/toDate>`__
+        for conversion rules.
+
+        Examples::
+
+            from datetime import datetime
+            import pytz
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            now = datetime.utcnow().replace(tzinfo=pytz.utc)
+
+            sample = fo.Sample(
+                filepath="image.png",
+                date_ms=1000 * now.timestamp(),
+                date_str=now.isoformat(),
+            )
+
+            dataset = fo.Dataset()
+            dataset.add_sample(sample)
+
+            # Convert string/millisecond representations into datetimes
+            dataset.add_sample_field("date1", fo.DateTimeField)
+            dataset.add_sample_field("date2", fo.DateTimeField)
+            (
+                dataset
+                .set_field("date1", F("date_ms").to_date())
+                .set_field("date2", F("date_str").to_date())
+                .save()
+            )
+
+            print(dataset.first())
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$toDate": self})
+
     def apply(self, expr):
         """Applies the given expression to this expression.
 
@@ -3577,6 +3620,457 @@ class ViewExpression(object):
             split_expr,
         )
         return split_expr.let_in(maxsplit_expr)
+
+    # Date expression operators ###############################################
+
+    def millisecond(self):
+        """Returns the millisecond portion of this date expression (in UTC) as
+        an integer between 0 and 999.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 0, 1000),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 0, 2000),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 0, 3000),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 0, 4000),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the millisecond portion of the dates in the dataset
+            print(dataset.values(F("created_at").millisecond()))
+
+            # Samples with even milliseconds
+            view = dataset.match(F("created_at").millisecond() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$millisecond": self})
+
+    def second(self):
+        """Returns the second portion of this date expression (in UTC) as a
+        number between 0 and 59.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 2),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 3),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 0, 4),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the second portion of the dates in the dataset
+            print(dataset.values(F("created_at").second()))
+
+            # Samples with even seconds
+            view = dataset.match(F("created_at").second() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$second": self})
+
+    def minute(self):
+        """Returns the minute portion of this date expression (in UTC) as a
+        number between 0 and 59.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 2),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 3),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 0, 4),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the minute portion of the dates in the dataset
+            print(dataset.values(F("created_at").minute()))
+
+            # Samples with even minutes
+            view = dataset.match(F("created_at").minute() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$minute": self})
+
+    def hour(self):
+        """Returns the hour portion of this date expression (in UTC) as a
+        number between 0 and 23.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 2),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 3),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1, 4),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the hour portion of the dates in the dataset
+            print(dataset.values(F("created_at").hour()))
+
+            # Samples with even hours
+            view = dataset.match(F("created_at").hour() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$hour": self})
+
+    def day_of_week(self):
+        """Returns the day of the week of this date expression (in UTC) as a
+        number between 1 (Sunday) and 7 (Saturday).
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 4),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 5),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 6),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 7),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the days of the week for the dataset
+            print(dataset.values(F("created_at").day_of_week()))
+
+            # Samples with even days of the week
+            view = dataset.match(F("created_at").day_of_week() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$dayOfWeek": self})
+
+    def day_of_month(self):
+        """Returns the day of the month of this date expression (in UTC) as a
+        number between 1 and 31.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 2),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 3),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 4),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the days of the month for the dataset
+            print(dataset.values(F("created_at").day_of_month()))
+
+            # Samples with even days of the month
+            view = dataset.match(F("created_at").day_of_month() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$dayOfMonth": self})
+
+    def day_of_year(self):
+        """Returns the day of the year of this date expression (in UTC) as a
+        number between 1 and 366.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 2),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 3),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 4),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the days of the year for the dataset
+            print(dataset.values(F("created_at").day_of_year()))
+
+            # Samples with even days of the year
+            view = dataset.match(F("created_at").day_of_year() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$dayOfYear": self})
+
+    def week(self):
+        """Returns the week of the year of this date expression (in UTC) as a
+        number between 0 and 53.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 2, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 3, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 4, 1),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the weeks of the year for the dataset
+            print(dataset.values(F("created_at").week()))
+
+            # Samples with even months of the week
+            view = dataset.match(F("created_at").week() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$week": self})
+
+    def month(self):
+        """Returns the month of this date expression (in UTC) as a number
+        between 1 and 12.
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 2, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 3, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 4, 1),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the months of the year for the dataset
+            print(dataset.values(F("created_at").month()))
+
+            # Samples from even months of the year
+            view = dataset.match(F("created_at").month() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$month": self})
+
+    def year(self):
+        """Returns the year of this date expression (in UTC).
+
+        Examples::
+
+            from datetime import datetime
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            samples = [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1970, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1971, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1972, 1, 1),
+                ),
+                fo.Sample(
+                    filepath="image1.jpg",
+                    created_at=datetime(1973, 1, 1),
+                ),
+            ]
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            # Get the years for the dataset
+            print(dataset.values(F("created_at").year()))
+
+            # Samples from even years
+            view = dataset.match(F("created_at").year() % 2 == 0)
+            print(len(view))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$year": self})
 
     # Static expressions ######################################################
 
