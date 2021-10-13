@@ -16,7 +16,9 @@ import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
 
-youtube_dl = fou.lazy_import("youtube_dl")
+youtube_dl = fou.lazy_import(
+    "youtube_dl", callback=lambda: fou.ensure_import("youtube_dl")
+)
 
 
 logger = logging.getLogger(__name__)

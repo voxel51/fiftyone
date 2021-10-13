@@ -509,7 +509,7 @@ class ActivityNetDatasetManager(object):
 
         # 3) Download all class ids up to max_samples
         not_dl_all_class_ids = list(set_all_ids - set(dl_all_class_ids))
-        downloaded_samples, requested_num = self._download_requested_samples(
+        downloaded_samples = self._download_requested_samples(
             not_dl_all_class_ids,
             all_class_samples,
             shuffle,
@@ -518,11 +518,14 @@ class ActivityNetDatasetManager(object):
             split,
         )
         requested_sample_ids.extend(downloaded_samples)
-        num_downloaded_samples += len(downloaded_samples)
+        num_downloaded = len(downloaded_samples)
+        num_downloaded_samples += num_downloaded
+        if requested_num is not None:
+            requested_num -= num_downloaded
 
         # 4) Download any class ids up to max_samples
         not_dl_any_class_ids = list(set_any_ids - set(dl_any_class_ids))
-        downloaded_samples, requested_num = self._download_requested_samples(
+        downloaded_samples = self._download_requested_samples(
             not_dl_any_class_ids,
             any_class_samples,
             shuffle,
@@ -531,7 +534,10 @@ class ActivityNetDatasetManager(object):
             split,
         )
         requested_sample_ids.extend(downloaded_samples)
-        num_downloaded_samples += len(downloaded_samples)
+        num_downloaded = len(downloaded_samples)
+        num_downloaded_samples += num_downloaded
+        if requested_num is not None:
+            requested_num -= num_downloaded
 
         self.a100_info.cleanup_partial_downloads(split)
         self.a200_info.cleanup_partial_downloads(split)
@@ -541,19 +547,15 @@ class ActivityNetDatasetManager(object):
         return requested_sample_ids, num_downloaded_samples
 
     def _load_requested_samples(self, ids, shuffle, requested_num):
-        if requested_num is None or requested_num:
+        if (requested_num is None or requested_num) and ids:
             ids = sorted(ids)
             if shuffle:
                 random.shuffle(ids)
-                print(ids)
 
             if requested_num is not None:
                 requested_sample_ids = ids[:requested_num]
             else:
                 requested_sample_ids = ids
-
-            if requested_num:
-                requested_num -= len(requested_sample_ids)
 
             return requested_sample_ids
 
@@ -563,6 +565,7 @@ class ActivityNetDatasetManager(object):
         self, ids, class_samples, shuffle, requested_num, num_workers, split
     ):
         if (requested_num is None or requested_num) and ids:
+            ids = sorted(ids)
             if shuffle:
                 random.shuffle(ids)
 
@@ -570,12 +573,9 @@ class ActivityNetDatasetManager(object):
                 ids, class_samples, requested_num, num_workers, split,
             )
 
-            if requested_num:
-                requested_num -= len(downloaded_ids)
+            return downloaded_ids
 
-            return downloaded_ids, requested_num
-
-        return [], requested_num
+        return []
 
     def _separate_versions_and_attempt_to_download(
         self, ids, samples_info, num_samples, num_workers, split,
