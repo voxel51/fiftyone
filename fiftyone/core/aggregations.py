@@ -7,7 +7,7 @@ Aggregations.
 """
 from collections import OrderedDict
 from copy import deepcopy
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import numpy as np
 
@@ -221,6 +221,10 @@ class Bounds(Aggregation):
             aggregating
     """
 
+    def __init__(self, field_or_expr, expr=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._field_type = None
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
@@ -238,12 +242,20 @@ class Bounds(Aggregation):
         Returns:
             the ``(min, max)`` bounds
         """
-        return d["min"], d["max"]
+        bounds = d["min"], d["max"]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            return p(bounds[0]), p(bounds[1])
+
+        return bounds
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -379,7 +391,7 @@ class Count(Aggregation):
         if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
-        path, pipeline, _, _ = _parse_field_and_expr(
+        path, pipeline, _, _, _ = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
@@ -489,6 +501,7 @@ class CountValues(Aggregation):
         self._sort_by = _sort_by
         self._order = 1 if _asc else -1
         self._include = _include
+        self._field_type = None
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -496,10 +509,10 @@ class CountValues(Aggregation):
         Returns:
             ``{}``
         """
-        if self._first is None:
-            return {}
+        if self._first is not None:
+            return 0, []
 
-        return 0, []
+        return {}
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo`.
@@ -510,18 +523,29 @@ class CountValues(Aggregation):
         Returns:
             a dict mapping values to counts
         """
-        if self._first is None:
-            return {i["k"]: i["count"] for i in d["result"]}
+        if self._field_type is not None:
+            p = self._field_type.to_python
+        else:
+            p = lambda x: x
 
-        return (
-            d["count"],
-            [[i["k"], i["count"]] for i in d["result"] if i["k"] is not None],
-        )
+        if self._first is not None:
+            return (
+                d["count"],
+                [
+                    [p(i["k"]), i["count"]]
+                    for i in d["result"]
+                    if i["k"] is not None
+                ],
+            )
+
+        return {p(i["k"]): i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -647,6 +671,10 @@ class Distinct(Aggregation):
             aggregating
     """
 
+    def __init__(self, field_or_expr, expr=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._field_type = None
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
@@ -664,12 +692,20 @@ class Distinct(Aggregation):
         Returns:
             a sorted list of distinct values
         """
-        return d["values"]
+        values = d["values"]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            return [p(v) for v in values]
+
+        return values
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -788,10 +824,11 @@ class HistogramValues(Aggregation):
         self._range = range
         self._auto = auto
 
+        self._field_type = None
+        self._is_datetime = False
         self._num_bins = None
         self._edges = None
         self._last_edges = None
-        self._is_datetime = False
 
         self._parse_args()
 
@@ -829,9 +866,11 @@ class HistogramValues(Aggregation):
         return self._parse_result_edges(d)
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -920,10 +959,9 @@ class HistogramValues(Aggregation):
         return list(np.linspace(bounds[0], bounds[1] + db, self._num_bins + 1))
 
     def _parse_result_edges(self, d):
-        _edges_array = np.array(self._last_edges)
-        edges = list(_edges_array)
+        edges_array = np.array(self._last_edges)
 
-        counts = [0] * (len(edges) - 1)
+        counts = [0] * (len(edges_array) - 1)
         other = 0
         for di in d["bins"]:
             left = di["_id"]
@@ -931,8 +969,10 @@ class HistogramValues(Aggregation):
                 other = di["count"]
             else:
                 left, _ = _handle_dates(left)
-                idx = np.abs(_edges_array - left).argmin()
+                idx = np.abs(edges_array - left).argmin()
                 counts[idx] = di["count"]
+
+        edges = self._parse_edges(list(edges_array))
 
         return counts, edges, other
 
@@ -945,7 +985,19 @@ class HistogramValues(Aggregation):
 
         edges.append(di["_id"]["max"])
 
+        edges = self._parse_edges(edges)
+
         return counts, edges, 0
+
+    def _parse_edges(self, edges):
+        if self._is_datetime:
+            edges = [fou.timestamp_to_datetime(e) for e in edges]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            edges = [p(e) for e in edges]
+
+        return edges
 
 
 class Mean(Aggregation):
@@ -1020,12 +1072,19 @@ class Mean(Aggregation):
             aggregating
     """
 
+    def __init__(self, field_or_expr, expr=None):
+        super().__init__(field_or_expr, expr=expr)
+        self._field_type = None
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
         Returns:
             ``0``
         """
+        if self._field_type in (fof.DateField, fof.DateTimeField):
+            return None
+
         return 0
 
     def parse_result(self, d):
@@ -1037,12 +1096,20 @@ class Mean(Aggregation):
         Returns:
             the mean
         """
-        return d["mean"]
+        value = d["mean"]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            return p(value)
+
+        return value
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -1131,6 +1198,7 @@ class Std(Aggregation):
     def __init__(self, field_or_expr, expr=None, sample=False):
         super().__init__(field_or_expr, expr=expr)
         self._sample = sample
+        self._field_type = None
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1138,6 +1206,9 @@ class Std(Aggregation):
         Returns:
             ``0``
         """
+        if self._field_type in (fof.DateField, fof.DateTimeField):
+            return timedelta()
+
         return 0
 
     def parse_result(self, d):
@@ -1149,12 +1220,19 @@ class Std(Aggregation):
         Returns:
             the standard deviation
         """
-        return d["std"]
+        value = d["std"]
+
+        if self._field_type in (fof.DateField, fof.DateTimeField):
+            return timedelta(milliseconds=value)
+
+        return value
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -1259,7 +1337,7 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
 
@@ -1399,7 +1477,7 @@ class Values(Aggregation):
         self._big_result = _big_result
         self._big_field = None
         self._raw = _raw
-        self._parse_fcn = None
+        self._field_type = None
         self._num_list_fields = None
 
     @property
@@ -1441,14 +1519,21 @@ class Values(Aggregation):
         if self._raw:
             return values
 
-        if self._parse_fcn is not None:
+        if self._field_type is not None:
+            fcn = self._field_type.to_python
             level = 1 + self._num_list_fields
-            return _transform_values(values, self._parse_fcn, level=level)
+            return _transform_values(values, fcn, level=level)
 
         return values
 
     def to_mongo(self, sample_collection, big_field="values"):
-        path, pipeline, list_fields, id_to_str = _parse_field_and_expr(
+        (
+            path,
+            pipeline,
+            list_fields,
+            id_to_str,
+            field_type,
+        ) = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
@@ -1457,19 +1542,8 @@ class Values(Aggregation):
             allow_missing=self._allow_missing,
         )
 
-        parse_fcn = None
-        if self._expr is None and not id_to_str:
-            field_type = sample_collection._get_field_type(
-                self._field_name, ignore_primitives=True
-            )
-            if field_type is not None:
-                if self._unwind and isinstance(field_type, fof.ListField):
-                    field_type = field_type.field
-
-                parse_fcn = field_type.to_python
-
         self._big_field = big_field
-        self._parse_fcn = parse_fcn
+        self._field_type = field_type
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
@@ -1600,6 +1674,13 @@ def _parse_field_and_expr(
     if expr is not None:
         id_to_str = False  # we have no way of knowing what type expr outputs
 
+    if expr is None and not id_to_str:
+        field_type = _get_field_type(
+            sample_collection, field_name, unwind=auto_unwind
+        )
+    else:
+        field_type = None
+
     if auto_unwind:
         if is_frame_field:
             pipeline.extend(
@@ -1633,7 +1714,7 @@ def _parse_field_and_expr(
     for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
 
-    return path, pipeline, other_list_fields, id_to_str
+    return path, pipeline, other_list_fields, id_to_str, field_type
 
 
 def _extract_prefix_from_expr(expr):
@@ -1709,6 +1790,21 @@ def _remove_prefix(expr, prefix):
     elif isinstance(expr, dict):
         for e in expr.values():
             _remove_prefix(e, prefix)
+
+
+def _get_field_type(sample_collection, field_name, unwind=True):
+    # Remove array references
+    field_name = "".join(field_name.split("[]"))
+
+    field_type = sample_collection._get_field_type(
+        field_name, ignore_primitives=True
+    )
+
+    if unwind:
+        while isinstance(field_type, fof.ListField):
+            field_type = field_type.field
+
+    return field_type
 
 
 def _handle_dates(arg):

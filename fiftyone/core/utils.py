@@ -1257,6 +1257,24 @@ def datetime_to_timestamp(dt):
     return int(1000 * dt.timestamp())
 
 
+def timestamp_to_datetime(ts):
+    """Converts a timestamp (number of milliseconds since epoch) to a
+    `datetime.datetime`.
+
+    Args:
+        ts: a number of milliseconds since epoch
+
+    Returns:
+        a `datetime.datetime`
+    """
+    dt = datetime.fromtimestamp(ts)
+
+    if fo.config.timezone is None:
+        return dt
+
+    return dt.replace(tzinfo=pytz.utc).astimezone(fo.config.timezone)
+
+
 def timedelta_to_ms(td):
     """Converts a `datetime.timedelta` to milliseconds.
 
