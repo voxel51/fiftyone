@@ -55,6 +55,10 @@ def convert(d):
 
     if isinstance(d, list):
         for idx, i in enumerate(d):
+            if isinstance(i, tuple):
+                d[idx] = list(i)
+                i = d[idx]
+
             if isinstance(i, bytes):
                 d[idx] = _handle_numpy_array(i)
             elif isinstance(i, (date, datetime)):

@@ -768,6 +768,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         aggregations = fos.DatasetStatistics(view, filters).aggregations
 
         results = await view._async_aggregate(aggregations)
+        convert(results)
 
         data = []
         for agg, result in zip(aggregations, results):
@@ -1012,6 +1013,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             aggregations = fos.DatasetStatistics(view, filters).aggregations
             results = await view._async_aggregate(aggregations)
+            convert(results)
 
             for agg, result in zip(aggregations, results):
                 data.append(
