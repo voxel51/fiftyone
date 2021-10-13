@@ -965,9 +965,10 @@ class HistogramValues(Aggregation):
         return list(np.linspace(bounds[0], bounds[1] + db, self._num_bins + 1))
 
     def _parse_result_edges(self, d):
-        edges_array = np.array(self._last_edges)
+        edges = self._last_edges
+        edges_array = np.array(edges)
 
-        counts = [0] * (len(edges_array) - 1)
+        counts = [0] * (len(edges) - 1)
         other = 0
         for di in d["bins"]:
             left = di["_id"]
@@ -978,7 +979,7 @@ class HistogramValues(Aggregation):
                 idx = np.abs(edges_array - left).argmin()
                 counts[idx] = di["count"]
 
-        edges = self._parse_edges(list(edges_array))
+        edges = self._parse_edges(edges)
 
         return counts, edges, other
 
@@ -998,8 +999,9 @@ class HistogramValues(Aggregation):
     def _parse_edges(self, edges):
         if self._is_datetime:
             edges = [fou.timestamp_to_datetime(e) for e in edges]
-
-        if self._field_type is not None:
+        elif self._field_type is not None:
+            # Note that we don't do this for datetimes, since we need datetimes
+            # rather than dates to handle sub-day resolution
             p = self._field_type.to_python
             edges = [p(e) for e in edges]
 

@@ -5,6 +5,8 @@ FiftyOne aggregation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime, timedelta
+
 from bson import ObjectId
 import unittest
 
@@ -501,6 +503,82 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(len(_frame_label_oids), 4)
             for oid in _frame_label_oids:
                 self.assertIsInstance(oid, ObjectId)
+
+    @drop_datasets
+    def test_dates(self):
+        today = date.today()
+        now = datetime.utcnow()
+
+        samples = []
+        for idx in range(100):
+            sample = fo.Sample(filepath="image%d.jpg" % idx)
+
+            # Dates
+            sample["dates"] = today - timedelta(days=idx)
+
+            # Datetimes
+            sample["ms"] = now - timedelta(milliseconds=idx)
+            sample["seconds"] = now - timedelta(seconds=idx)
+            sample["minutes"] = now - timedelta(minutes=idx)
+            sample["hours"] = now - timedelta(hours=idx)
+            sample["days"] = now - timedelta(days=idx)
+            sample["weeks"] = now - timedelta(weeks=idx)
+
+            samples.append(sample)
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        bounds = dataset.bounds("dates")
+        self.assertIsInstance(bounds[0], date)
+        self.assertIsInstance(bounds[1], date)
+
+        count = dataset.count("dates")
+        self.assertEqual(count, 100)
+
+        values = dataset.values("dates")
+        for value in values:
+            self.assertIsInstance(value, date)
+
+        uniques = dataset.distinct("dates")
+        self.assertListEqual(uniques, list(reversed(values)))
+
+        counts_dict = dataset.count_values("dates")
+        for value, count in counts_dict.items():
+            self.assertIsInstance(value, date)
+            self.assertEqual(count, 1)
+
+        counts, edges, other = dataset.histogram_values("dates", bins=10)
+        self.assertListEqual(counts, [10] * 10)
+        self.assertEqual(other, 0)
+        for edge in edges:
+            self.assertIsInstance(edge, datetime)
+
+        for field in ["ms", "seconds", "minutes", "hours", "days", "weeks"]:
+            bounds = dataset.bounds(field)
+            self.assertIsInstance(bounds[0], datetime)
+            self.assertIsInstance(bounds[1], datetime)
+
+            count = dataset.count(field)
+            self.assertEqual(count, 100)
+
+            values = dataset.values(field)
+            for value in values:
+                self.assertIsInstance(value, datetime)
+
+            uniques = dataset.distinct(field)
+            self.assertListEqual(uniques, list(reversed(values)))
+
+            counts_dict = dataset.count_values(field)
+            for value, count in counts_dict.items():
+                self.assertIsInstance(value, datetime)
+                self.assertEqual(count, 1)
+
+            counts, edges, other = dataset.histogram_values(field, bins=10)
+            self.assertListEqual(counts, [10] * 10)
+            self.assertEqual(other, 0)
+            for edge in edges:
+                self.assertIsInstance(edge, datetime)
 
     @drop_datasets
     def test_order(self):
