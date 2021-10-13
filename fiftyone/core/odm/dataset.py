@@ -26,7 +26,12 @@ from .runs import RunDocument
 
 
 def create_field(
-    field_name, ftype, embedded_doc_type=None, subfield=None, db_field=None
+    field_name,
+    ftype,
+    embedded_doc_type=None,
+    subfield=None,
+    db_field=None,
+    fields=None,
 ):
     """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
     given specification.
@@ -52,6 +57,10 @@ def create_field(
             :class:`fiftyone.core.fields.DictField`
         db_field (None): the database field to store this field in. By default,
             ``field_name`` is used
+        fields (None): the subfields of the
+            :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            Only applicable when ``ftype`` is
+            :class:`fiftyone.core.fields.EmbeddedDocumentField`
 
     Returns:
         a :class:`fiftyone.core.fields.Field` instance
@@ -67,6 +76,12 @@ def create_field(
     # All user-defined fields are nullable
     kwargs = dict(null=True, db_field=db_field)
 
+    if fields is not None:
+        fields = {
+            name: create_field(**field_kwargs)
+            for name, field_kwargs in fields.items()
+        }
+
     if issubclass(ftype, EmbeddedDocumentField):
         if not issubclass(embedded_doc_type, BaseEmbeddedDocument):
             raise ValueError(
@@ -75,10 +90,20 @@ def create_field(
             )
 
         kwargs.update({"document_type": embedded_doc_type})
+
+        if fields is not None:
+            kwargs["fields"] = fields
+
     elif issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
             if inspect.isclass(subfield):
-                subfield = subfield()
+                if (
+                    issubclass(subfield, EmbeddedDocumentField)
+                    and fields is not None
+                ):
+                    subfield = subfield(fields=fields)
+                else:
+                    subfield = subfield()
 
             if not isinstance(subfield, Field):
                 raise ValueError(
@@ -102,6 +127,7 @@ class SampleFieldDocument(EmbeddedDocument):
     subfield = StringField(null=True)
     embedded_doc_type = StringField(null=True)
     db_field = StringField(null=True)
+    fields = DictField(EmbeddedDocumentField("SampleFieldDocument"))
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -120,12 +146,20 @@ class SampleFieldDocument(EmbeddedDocument):
         if subfield is not None:
             subfield = etau.get_class(subfield)()
 
+        fields = None
+        if self.fields is not None:
+            fields = {
+                name: field_doc.to_field()
+                for name, field_doc in self.fields.items()
+            }
+
         return create_field(
             self.name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             db_field=self.db_field,
+            fields=fields,
         )
 
     @classmethod
@@ -144,6 +178,7 @@ class SampleFieldDocument(EmbeddedDocument):
             subfield=cls._get_attr_repr(field, "field"),
             embedded_doc_type=cls._get_attr_repr(field, "document_type"),
             db_field=field.db_field,
+            fields=cls._get_field_documents(field),
         )
 
     def matches_field(self, field):
@@ -174,12 +209,34 @@ class SampleFieldDocument(EmbeddedDocument):
         if self.db_field != field.db_field:
             return False
 
+        if self.fields is not None:
+            fields = getattr(field, "fields", {})
+            if len(fields) != len(self.fields):
+                return False
+
+            return any(
+                [
+                    not self.fields[name].matches(fields[name])
+                    for name in fields
+                ]
+            )
+
         return True
 
     @staticmethod
     def _get_attr_repr(field, attr_name):
         attr = getattr(field, attr_name, None)
         return etau.get_class_name(attr) if attr else None
+
+    @staticmethod
+    def _get_field_documents(field):
+        if not isinstance(field, EmbeddedDocumentField):
+            return None
+
+        if not hasattr(field, "fields"):
+            return None
+
+        return field.fields
 
 
 class DatasetDocument(Document):

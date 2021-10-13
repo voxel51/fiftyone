@@ -473,24 +473,6 @@ class Document(BaseDocument, mongoengine.Document):
         return updated_existing
 
 
-class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
-    """Base class for dynamic documents that are stored in a MongoDB
-    collection.
-
-    Dynamic documents can have arbitrary fields added to them.
-
-    The ID of a document is automatically populated when it is added to the
-    database, and the ID of a document is ``None`` if it has not been added to
-    the database.
-
-    Attributes:
-        id: the ID of the document, or ``None`` if it has not been added to the
-            database
-    """
-
-    meta = {"abstract": True}
-
-
 class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
