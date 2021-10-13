@@ -431,25 +431,27 @@ class ActivityNetDatasetManager(object):
             else:
                 general_dest_dir = self.a200_info.data_dir(split)
 
-        with fou.ProgressBar() as pb:
-            for video in pb(os.listdir(videos_dir)):
-                video_id = os.path.splitext(video)[0]
-                if video_id in existing_videos:
-                    continue
+        videos = os.listdir(videos_dir)
+        if videos:
+            with fou.ProgressBar() as pb:
+                for video in pb(videos):
+                    video_id = os.path.splitext(video)[0]
+                    if video_id in existing_videos:
+                        continue
 
-                if not general_dest_dir:
-                    dest_dir = self._get_video_destination(
-                        video_id, version=version, split=split
-                    )
-                else:
-                    dest_dir = general_dest_dir
+                    if not general_dest_dir:
+                        dest_dir = self._get_video_destination(
+                            video_id, version=version, split=split
+                        )
+                    else:
+                        dest_dir = general_dest_dir
 
-                video_path = os.path.join(videos_dir, video)
+                    video_path = os.path.join(videos_dir, video)
 
-                if copy_files:
-                    etau.copy_file(video_path, dest_dir)
-                else:
-                    etau.move_file(video_path, dest_dir)
+                    if copy_files:
+                        etau.copy_file(video_path, dest_dir)
+                    else:
+                        etau.move_file(video_path, dest_dir)
 
     def _get_video_destination(self, video_id, version=None, split=None):
         if version is None:
