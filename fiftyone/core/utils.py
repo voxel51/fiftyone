@@ -1267,7 +1267,7 @@ def timestamp_to_datetime(ts):
     Returns:
         a `datetime.datetime`
     """
-    dt = datetime.fromtimestamp(ts)
+    dt = datetime.utcfromtimestamp(ts / 1000)
 
     if fo.config.timezone is None:
         return dt
