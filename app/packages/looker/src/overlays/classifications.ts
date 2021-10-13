@@ -300,7 +300,6 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
   TemporalDetectionLabel | ClassificationLabel
 > {
   getFiltered(state: Readonly<VideoState>) {
-    console.log(this.labels);
     return this.labels.map<
       [string, (TemporalDetectionLabel | ClassificationLabel)[]]
     >(([field, labels]) => [

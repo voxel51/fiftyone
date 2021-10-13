@@ -8,14 +8,77 @@ Video utilities.
 import itertools
 import os
 
+import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.numutils as etan
 import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.clips as foc
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+
+
+def extract_clip(
+    video_path,
+    output_path,
+    support=None,
+    timestamps=None,
+    metadata=None,
+    fast=False,
+):
+    """Extracts the specified clip from the video.
+
+    Provide either ``suppport`` or ``timestamps`` to this method.
+
+    When fast=False, the following ffmpeg command is used::
+
+        # Slower, more accurate option
+        ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
+
+    When fast is True, the following two-step ffmpeg process is used::
+
+        # Faster, less accurate option
+        ffmpeg -ss <start_time> -i <video_path> -t <duration> -c copy <tmp_path>
+        ffmpeg -i <tmp_path> <output_path>
+
+    Args:
+        video_path: the path to the video
+        output_path: the path to write the extracted clip
+        support (None): the ``[first, last]`` frame number range to clip
+        timestamps (None): the ``[start, stop]`` timestamps to clip, in seconds
+        metadata (None): the :class:`fiftyone.core.metadata.VideoMetadata`
+            for the video
+        fast (False): whether to use a faster-but-potentially-less-accurate
+            strategy to extract the clip
+    """
+    if timestamps is None and support is None:
+        raise ValueError("Either `support` or `timestamps` must be provided")
+
+    if timestamps is None:
+        if metadata is None:
+            metadata = fom.VideoMetadata.build_for(video_path)
+
+        total_frame_count = metadata.total_frame_count
+        duration = metadata.duration
+        first, last = support
+        timestamps = [
+            etaf.frame_number_to_timestamp(first, total_frame_count, duration),
+            etaf.frame_number_to_timestamp(last, total_frame_count, duration),
+        ]
+
+    start_time = timestamps[0]
+    duration = timestamps[1] - start_time
+
+    etav.extract_clip(
+        video_path,
+        output_path,
+        start_time=start_time,
+        duration=duration,
+        fast=fast,
+    )
 
 
 def reencode_videos(
@@ -385,8 +448,9 @@ def sample_video(
 
 
 def sample_frames_uniform(
-    total_frame_count,
     frame_rate,
+    total_frame_count=None,
+    support=None,
     fps=None,
     max_fps=None,
     always_sample_last=False,
@@ -395,8 +459,9 @@ def sample_frames_uniform(
     provided parameters.
 
     Args:
-        total_frame_count: the total number of frames in the video
         frame_rate: the video frame rate
+        total_frame_count (None): the total number of frames in the video
+        support (None): a ``[first, last]`` frame range from which to sample
         fps (None): a frame rate at which to sample frames
         max_fps (None): a maximum frame rate at which to sample frames
         always_sample_last (False): whether to always sample the last frame
@@ -404,11 +469,22 @@ def sample_frames_uniform(
     Returns:
         a list of frame numbers, or None if all frames should be sampled
     """
-    if total_frame_count <= 0:
-        return []
-
-    if frame_rate is None or total_frame_count is None:
+    if support is not None:
+        first, last = support
+    elif total_frame_count is None:
         return None
+    else:
+        first = 1
+        last = total_frame_count
+
+    if frame_rate is None:
+        if support is None:
+            return None
+
+        return list(range(first, last + 1))
+
+    if last < first:
+        return []
 
     ifps = frame_rate
 
@@ -421,21 +497,24 @@ def sample_frames_uniform(
         ofps = min(ofps, max_fps)
 
     if ofps >= ifps:
-        return None
+        if support is None:
+            return None
 
-    x = 1
-    last_fn = 1
+        return list(range(first, last + 1))
+
+    x = first
+    fn_last = first
     beta = ifps / ofps
     sample_frames = [x]
-    while x <= total_frame_count:
+    while x <= last:
         x += beta
         fn = int(round(x))
-        if last_fn < fn <= total_frame_count:
+        if fn_last < fn <= last:
             sample_frames.append(fn)
-            last_fn = fn
+            fn_last = fn
 
-    if always_sample_last and last_fn < total_frame_count:
-        sample_frames.append(total_frame_count)
+    if always_sample_last and fn_last < last:
+        sample_frames.append(last)
 
     return sample_frames
 
@@ -667,7 +746,9 @@ def _parse_parameters(
                 % (ofps, ifps, video_path)
             )
 
-        frames = sample_frames_uniform(iframe_count, ifps, fps=ofps)
+        frames = sample_frames_uniform(
+            ifps, total_frame_count=iframe_count, fps=ofps
+        )
     else:
         frames = None
 

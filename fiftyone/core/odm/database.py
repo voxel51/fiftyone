@@ -6,7 +6,6 @@ Database utilities.
 |
 """
 from copy import copy
-from itertools import repeat
 import logging
 from multiprocessing.pool import ThreadPool
 import os
@@ -338,6 +337,17 @@ def get_collection_stats(collection_name):
     stats["wiredTiger"] = None
     stats["indexDetails"] = None
     return stats
+
+
+def count_documents(coll, pipeline):
+    result = aggregate(coll, pipeline + [{"$count": "count"}])
+
+    try:
+        return list(result)[0]["count"]
+    except:
+        pass
+
+    return 0
 
 
 def export_document(doc, json_path):

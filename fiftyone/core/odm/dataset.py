@@ -190,6 +190,7 @@ class DatasetDocument(Document):
     media_type = StringField()
     name = StringField(unique=True, required=True)
     sample_collection_name = StringField(unique=True, required=True)
+    frame_collection_name = StringField()
     persistent = BooleanField(default=False)
     info = DictField()
     annotation_runs = DictField(

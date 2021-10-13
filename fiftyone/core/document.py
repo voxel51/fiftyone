@@ -97,13 +97,6 @@ class _Document(object):
         return self._doc.id
 
     @property
-    def ingest_time(self):
-        """The time the document was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        return self._doc.ingest_time
-
-    @property
     def in_dataset(self):
         """Whether the document has been added to a dataset."""
         return self.dataset is not None

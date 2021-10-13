@@ -83,8 +83,10 @@
 
 .lookerSeekBar {
   --progress: 0%;
+  --start: 0%;
+  --end: 100%;
   --buffer-progress: 0%;
-  grid-area: 1 / 1 / 1 / 17;
+  grid-area: 1 / 1 / 1 / 18;
   margin-top: -5px;
   width: 100%;
 }
@@ -115,12 +117,16 @@ input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
   width: 100%;
   background: linear-gradient(
     to right,
-    rgb(225, 100, 40) 0%,
+    hsla(210, 11%, 11%, 0.9) 0%,
+    hsla(210, 11%, 11%, 0.9) var(--start, 0%),
+    rgb(225, 100, 40) var(--start, 0%),
     rgb(225, 100, 40) var(--progress, 0%),
     rgb(138, 138, 138) var(--progress, 0%),
     rgb(138, 138, 138) var(--buffer-progress, 0%),
     rgb(238, 238, 238) var(--buffer-progress, 0%),
-    rgb(238, 238, 238) 100%
+    rgb(238, 238, 238) var(--end, 0%),
+    hsla(210, 11%, 11%, 0.9) var(--end, 100%),
+    hsla(210, 11%, 11%, 0.9) 100%
   );
 }
 
@@ -129,12 +135,16 @@ input[type="range"].lookerSeekBar::-moz-range-track {
   width: 100%;
   background: linear-gradient(
     to right,
-    rgb(225, 100, 40) 0%,
+    hsl(210, 11%, 11%) 0%,
+    hsl(210, 11%, 11%) var(--start, 0%),
+    rgb(225, 100, 40) var(--start, 0%),
     rgb(225, 100, 40) var(--progress, 0%),
     rgb(138, 138, 138) var(--progress, 0%),
     rgb(138, 138, 138) var(--buffer-progress, 0%),
     rgb(238, 238, 238) var(--buffer-progress, 0%),
-    rgb(238, 238, 238) 100%
+    rgb(238, 238, 238) var(--end, 0%),
+    hsl(210, 11%, 11%) var(--end, 100%),
+    hsl(210, 11%, 11%) 100%
   );
   overflow: hidden;
 }

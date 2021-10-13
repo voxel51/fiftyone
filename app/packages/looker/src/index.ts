@@ -69,6 +69,7 @@ import { zoomToContent } from "./zoom";
 import { getFrameNumber } from "./elements/util";
 
 export { zoomAspectRatio } from "./zoom";
+export { freeVideos } from "./elements/util";
 
 const labelsWorker = createWorker();
 
@@ -738,23 +739,30 @@ const { aquireReader, addFrame } = (() => {
       } = message;
       if (uuid === subscription && method === "frameChunk") {
         addFrameBuffers([start, end]);
-        Array(end - start + 1)
-          .fill(0)
-          .forEach((_, i) => {
-            const frameNumber = start + i;
-            const frameSample = frames[i] || { frame_number: frameNumber };
-            const prefixedFrameSample = Object.fromEntries(
-              Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
-            ) as FrameSample;
+        for (let i = start; i <= end; i++) {
+          const frame = {
+            sample: {
+              frame_number: i,
+            },
+            overlays: [],
+          };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(i, frame);
+        }
 
-            const overlays = loadOverlays(prefixedFrameSample);
-            overlays.forEach((overlay) => {
-              streamSize += overlay.getSizeBytes();
-            });
-            const frame = { sample: frameSample, overlays };
-            frameCache.set(new WeakRef(removeFrame), frame);
-            addFrame(frameNumber, frame);
+        for (const frameSample of frames) {
+          const prefixedFrameSample = Object.fromEntries(
+            Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
+          );
+
+          const overlays = loadOverlays(prefixedFrameSample);
+          overlays.forEach((overlay) => {
+            streamSize += overlay.getSizeBytes();
           });
+          const frame = { sample: frameSample, overlays };
+          frameCache.set(new WeakRef(removeFrame), frame);
+          addFrame(frameSample.frame_number, frame);
+        }
 
         const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
 
@@ -928,13 +936,14 @@ export class VideoLooker extends Looker<VideoState> {
     config: VideoState["config"],
     options: VideoState["options"]
   ): VideoState {
+    const firstFrame = config.support ? config.support[0] : 1;
+
     return {
       duration: null,
       seeking: false,
-      locked: false,
       fragment: null,
       playing: false,
-      frameNumber: 1,
+      frameNumber: firstFrame,
       buffering: false,
       ...this.getInitialBaseState(),
       config: { ...config },
@@ -942,11 +951,12 @@ export class VideoLooker extends Looker<VideoState> {
         ...this.getDefaultOptions(),
         ...options,
       },
-      buffers: [[1, 1]] as Buffers,
+      buffers: [[firstFrame, firstFrame]] as Buffers,
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
       waitingForVideo: false,
+      lockedToSupport: Boolean(config.support),
     };
   }
 
@@ -996,12 +1006,19 @@ export class VideoLooker extends Looker<VideoState> {
   }
 
   pluckOverlays(state: VideoState) {
-    const overlays = this.sampleOverlays;
-    let pluckedOverlays = this.pluckedOverlays;
+    const frameNumber = state.frameNumber;
+    let hideSampleOverlays = false;
+
+    if (state.config.support && !state.lockedToSupport) {
+      const [start, end] = state.config.support;
+      hideSampleOverlays = frameNumber < start || frameNumber > end;
+    }
+
+    let pluckedOverlays = hideSampleOverlays ? [] : this.sampleOverlays;
     if (this.hasFrame(state.frameNumber)) {
       const frame = this.frames.get(state.frameNumber)?.deref();
       if (frame !== undefined) {
-        pluckedOverlays = [...overlays, ...frame.overlays];
+        pluckedOverlays = [...pluckedOverlays, ...frame.overlays];
       }
     }
 
@@ -1030,7 +1047,7 @@ export class VideoLooker extends Looker<VideoState> {
         getCurrentFrame: () => this.frameNumber,
         sampleId: this.state.config.sampleId,
         frameCount,
-        frameNumber: Math.max(state.frameNumber, 2),
+        frameNumber: state.frameNumber,
         update: this.updater,
         dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       });
