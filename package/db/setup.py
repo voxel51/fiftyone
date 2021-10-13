@@ -23,7 +23,6 @@ except ImportError:
     from urllib2 import urlopen
 
 
-# arm64 is not available for ubuntu1604 and debian9
 MONGODB_DOWNLOAD_URLS = {
     "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.3.tgz",
     "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-5.0.3.tgz",
@@ -37,7 +36,7 @@ MONGODB_DOWNLOAD_URLS = {
         "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.3.tgz",
     },
     "ubuntu2004": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-5.0.3.tgz",
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.3.tgz",
     },
 }
 
