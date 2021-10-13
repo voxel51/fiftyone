@@ -222,8 +222,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _virtual=False,
-        _patches=False,
-        _frames=False,
+        **kwargs,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -233,7 +232,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if _create:
             doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                name, persistent=persistent, _patches=_patches, _frames=_frames
+                name, persistent=persistent, **kwargs
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
