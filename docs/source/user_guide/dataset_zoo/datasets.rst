@@ -36,6 +36,8 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Fashion MNIST <dataset-zoo-fashion-mnist>`                   | image, classification                                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Families In the Wild <dataset-zoo-fiw>`                      | image, kinship, classification, search-and-retrieval, facial-recognition  |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`HMDB51 <dataset-zoo-hmdb51>`                                 | video, action-recognition                                                 |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`ImageNet 2012 <dataset-zoo-imagenet-2012>`                   | image, classification, manual                                             |
@@ -62,6 +64,7 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`VOC-2012 <dataset-zoo-voc-2012>`                             | image, detection                                                          |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+
 
 .. _dataset-zoo-bdd100k:
 
@@ -989,6 +992,115 @@ There are 60,000 training images and 10,000 test images.
 
 .. image:: /images/dataset_zoo/fashion-mnist-test.png
    :alt: fashion-mnist-test
+   :align: center
+
+.. _dataset-zoo-fiw:
+
+Families in the Wild
+-------------------------
+
+Families in the Wild is a public benchmark for recognizing families via facial images. The dataset
+contains over 26,642 images of 5,037 faces collected from 978 families. A unique Family ID (FID) is
+assigned per family, ranging from F0001-F1018 (i.e., some families were merged or removed since its
+first release in 2016). The dataset is a continued work in progress. Any contributions are both
+welcome and appreciated!
+
+Faces were cropped from imagery using the five-point face detector MTCNN from various phototypes
+(i.e., mostly family photos, along with several profile pics of individuals (facial shots). The
+number of members per family varies from 3-to-26, with the number of faces per subject ranging from
+1 to >10.
+
+Labels exist at different levels of the data structures (i.e., a list of family trees). Family-level
+labels contain a list of members, each assigned a member ID (MID) unique to that respective family
+(e.g., F0011.MID2 refers to member 2 of family 11). Besides, members have annotations specifying
+gender and relationship to all other members in that respective family (i.e., a relationship matrix
+with the i-th rows representing the i-th family member's relationship to the j-th other members,
+where i, j -->{1, 2, ..., M), where M is the number of members in the respective family. Integer
+values represent relationship types in the matrix.  Given that MID-1 is "parent of" MID-2, then
+MID-2 is the "child of" MID-1. Also, each matrix has a zero diagonal (i.e., MID-K is unrelated to
+MID-K, or themselves), with the upper and lower triangles being inverted.
+
+=====  =====
+  ID    Type
+=====  =====
+    0  not related
+    1  child of
+    2  sibling of
+    3  grandchild of
+    4  parent of
+    5  co-parent
+    6  grandparent of
+    7  great grandchild of
+    8  great grandparent
+    9  TBD
+=====  =====
+
+Hence, each matrix has a zero diagonal (i.e., MID-K is unrelated to MID-K, or themselves), with
+the upper and lower triangles being inverted (i.e., given MID-1 is "parent of" MID-2, then MID-2 is
+the "child of" MID-1.
+
+For more information on the data (e.g., statistics, task evaluations, benchmarks, and more), see our
+recent journal:
+
+Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling of Visual Kinship: A Decade
+in the Making." IEEE Transactions on Pattern Analysis and Machine Intelligence (PAMI), 2021.
+
+For example:
+    .. code-block:: text
+
+                FID0001.csv
+
+                    MID     1     2     3     Name    Gender
+                     1      0     4     5     name1     F
+                     2      1     0     1     name2     F
+                     3      5     4     0     name3     M
+
+Here we have three family members, as listed under the MID column (far-left). Each MID reads across
+its row. We can see that MID1 is related to MID2 by 4->1 (Parent->Sibling), which of course can be
+viewed as the inverse, i.e., MID2->MID1 is 1->4. It can also be seen that MID1 and MID3 are Spouses
+of one another, i.e., 5->5. And so on.
+
+.. note::
+
+        The Spouse label showed, and likely will, be removed. It serves no value-- the problem of kinship
+        implies the ``father of``
+
+**Details**
+
+-   Dataset name: ``fiw``
+-   Dataset source: https://web.northeastern.edu/smilelab/fiw/
+-   Dataset size: 173.00 MB
+-   Tags: ``image, kinship, verification, classification, search-and-retrieval, facial-recognition``
+-   Supported splits: ``test, val, train``
+-   ZooDataset class:
+    :class:`FamiliesInTheWildDataset <fiftyone.zoo.datasets.base.FamiliesInTheWildDataset>`
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fiw", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load fiw --split test
+
+        fiftyone app launch fiw-test
+
+.. image:: /images/dataset_zoo/lfw-test.png
+   :alt: fiw-test
    :align: center
 
 .. _dataset-zoo-hmdb51:
