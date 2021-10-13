@@ -106,10 +106,11 @@ def download_activitynet_split(
         if num_existing != num_total:
             raise ValueError(
                 "Found %d samples out of %d for split `%s`. When loading a "
-                "full split of ActivityNet %s, it is required you "
+                "full split of ActivityNet %s, it is required that you "
                 "download videos directly from the dataset providers to "
-                "account for videos missing from YouTube."
-                "\n\nFill out this form to gain access: "
+                "account for the videos missing from YouTube."
+                "\n\nFill out this form to gain access and then use the "
+                "`source_dir` argument when loading the dataset: "
                 "https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform"
                 "\n\nAlternatively, provide `max_samples`, `max_duration`, or "
                 "`classes` to download a subset of the dataset from YouTube "
