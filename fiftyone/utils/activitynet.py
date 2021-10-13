@@ -330,6 +330,7 @@ class ActivityNetDatasetManager(object):
         return self.info.split_sample_ids[split]
 
     def process_source(self, source_dir, copy_files):
+        source_dir = os.path.expanduser(source_dir)
         for item in os.listdir(source_dir):
             if item in _SOURCE_ZIPS:
                 self._process_source_zip(item, source_dir, copy_files)
@@ -803,7 +804,7 @@ class ActivityNetDatasetInfo(object):
 
     def cleanup_partial_downloads(self, split):
         videos_dir = self.data_dir(split)
-        video_filenames = os.listdir(videos_dir)
+        video_filenames = etau.list_files(videos_dir)
         remaining_ids = []
         for vfn in video_filenames:
             video_id, ext = os.path.splitext(vfn)
