@@ -89,13 +89,14 @@ version of the dataset.
 -   ActivityNet-100 and -200 differ in the number of activity classes and videos
     per split
 -   Most videos can be downloaded from YouTube, missing videos can be accessed
-    from the `original dataset providers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+    from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
 -   The test set does not have annotations
 
 **Details**
 
 -   Dataset name: ``activitynet-100``
 -   Dataset source: http://activity-net.org/index.html
+-   Dataset size: 223 GB
 -   Tags: ``video, classification, action-recognition, temporal-detection``
 -   Supported splits: ``train, validation, test``
 -   ZooDataset class:
@@ -299,14 +300,16 @@ version of the dataset.
 
 -   ActivityNet-100 and -200 differ in the number of activity classes and videos
     per split
+-   ActivityNet-200 is a superset of ActivityNet-100 videos
 -   Most videos can be downloaded from YouTube, missing videos can be accessed
-    from the `original dataset providers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+    from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
 -   The test set does not have annotations
 
 **Details**
 
 -   Dataset name: ``activitynet-200``
 -   Dataset source: http://activity-net.org/index.html
+-   Dataset size: 500 GB
 -   Tags: ``video, classification, action-recognition, temporal-detection``
 -   Supported splits: ``train, validation, test``
 -   ZooDataset class:

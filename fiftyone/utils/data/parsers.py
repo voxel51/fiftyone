@@ -889,10 +889,10 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
             -   None, for unlabeled images
             -   a dict of the following form::
 
-                {
-                    "label": <label-or-target>,
-                    "confidence": <confidence>,
-                }
+                    {
+                        "label": <label-or-target>,
+                        "confidence": <confidence>,
+                    }
 
     Args:
         classes (None): an optional list of class label strings. If provided,

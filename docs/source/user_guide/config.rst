@@ -61,6 +61,12 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_app_port`            | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                        | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `None`                        | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
+|                               |                                     |                               | be either an IP address or hostname. If it's a hostname, the App will listen to all    |
+|                               |                                     |                               | IP addresses associated with the name. The default is `None`, which means the App will |
+|                               |                                     |                               | listen on all available interfaces. See :ref:`this page <restricting-app-address>` for |
+|                               |                                     |                               | more information.                                                                      |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `desktop_app`                 | `FIFTYONE_DESKTOP_APP`              | `False`                       | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
 |                               |                                     |                               | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
 |                               |                                     |                               | must be installed.                                                                     |
@@ -108,6 +114,7 @@ and the CLI:
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
             "default_app_port": 5151,
+            "default_app_address": null,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
@@ -144,6 +151,7 @@ and the CLI:
             "dataset_zoo_manifest_paths": null,
             "default_app_config_path": "~/.fiftyone/app_config.json",
             "default_app_port": 5151,
+            "default_app_address": null,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
