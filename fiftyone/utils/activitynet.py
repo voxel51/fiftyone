@@ -633,7 +633,7 @@ class ActivityNetDatasetManager(object):
             url = sample_info["url"]
             url_id_map[url] = sample_id
             download_urls.append(url)
-            download_ids.append(sample_id)
+            download_ids.append("v_" + sample_id)
 
         downloaded_urls, errors = fouy.download_from_youtube(
             videos_dir=videos_dir,
@@ -669,7 +669,8 @@ class ActivityNetDatasetManager(object):
                     {"label": target, "timestamps": timestamps}
                 )
 
-            labels[annot_id] = fo_annot_labels
+            sample_id = "v_" + annot_id
+            labels[sample_id] = fo_annot_labels
 
         fo_annots = {
             "classes": self.all_classes,
@@ -816,7 +817,8 @@ class ActivityNetDatasetInfo(object):
             if ext in [".part", ".ytdl"]:
                 os.remove(os.path.join(videos_dir, vfn))
             else:
-                remaining_ids.append(video_id)
+                vid = video_id[2:]
+                remaining_ids.append(vid)
 
         return remaining_ids
 
