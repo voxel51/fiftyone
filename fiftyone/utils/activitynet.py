@@ -333,8 +333,10 @@ class ActivityNetDatasetManager(object):
         source_dir = os.path.expanduser(source_dir)
         for item in os.listdir(source_dir):
             if item in _SOURCE_ZIPS:
+                logger.info("Processing source zip %s..." % item)
                 self._process_source_zip(item, source_dir, copy_files)
             elif item in _SOURCE_DIR_NAMES:
+                logger.info("Processing source dir %s..." % item)
                 self._process_source_dir(item, source_dir, copy_files)
 
         self.a200_info.update_existing_sample_ids()
