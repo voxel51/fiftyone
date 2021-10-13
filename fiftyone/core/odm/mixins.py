@@ -140,9 +140,16 @@ def get_implied_field_kwargs(value):
         a field specification dict
     """
     if isinstance(value, BaseEmbeddedDocument):
+        fields = getattr(value, "fields", None)
+        if fields is not None:
+            fields = {
+                k: get_implied_field_kwargs(v) for k, v in fields.items()
+            }
+
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
+            "fields": fields,
         }
 
     if isinstance(value, bool):
@@ -343,7 +350,13 @@ class DatasetMixin(object):
 
     @classmethod
     def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        fields=None,
+        **kwargs,
     ):
         """Adds a new field to the document.
 
@@ -359,13 +372,17 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            fields (None): the subfield definitions of the
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+                Only applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
         """
         cls._add_field_schema(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            **kwargs,
+            fields=fields ** kwargs,
         )
 
     @classmethod

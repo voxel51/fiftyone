@@ -39,7 +39,6 @@ from .dataset import (
 )
 from .document import (
     Document,
-    DynamicDocument,
     EmbeddedDocument,
     DynamicEmbeddedDocument,
     SerializableDocument,

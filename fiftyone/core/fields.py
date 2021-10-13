@@ -13,8 +13,8 @@ import six
 
 import eta.core.utils as etau
 
-import fiftyone.core.utils as fou
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.utils as fou
 
 
 def parse_field_str(field_str):
@@ -561,6 +561,30 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def validate(self, value):
+        if type(value) != self.document_type:
+            self.error("bad")
+
+        fields = getattr(self, "fields", {})
+        for field_name in value._fields_ordered:
+            field = None
+            field_value = value.get_field(field_name)
+            if field_value is None:
+                continue
+
+            if field_name in self.document_type._fields_ordered:
+                # pylint: disable=no-member
+                field = getattr(self.document_type, field_name)
+
+            if field_name in fields:
+                # pylint: disable=no-member
+                field = self.fields[field_name]
+
+            if field is None:
+                self.error("bad")
+
+            field.validate(field_value)
 
 
 class EmbeddedDocumentListField(
