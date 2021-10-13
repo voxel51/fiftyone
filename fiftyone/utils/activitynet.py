@@ -905,8 +905,8 @@ class ActivityNetDatasetInfo(object):
             non_existant_classes = list(set(classes) - set(self.all_classes))
             if non_existant_classes:
                 raise ValueError(
-                    "The following classes specified but do not exist in the "
-                    "dataset; %s",
+                    "The following classes were specified but do not exist in "
+                    "the dataset; ",
                     tuple(non_existant_classes),
                 )
 
