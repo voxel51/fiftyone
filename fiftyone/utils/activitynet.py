@@ -323,7 +323,7 @@ class ActivityNetDatasetManager(object):
         return self.info.all_classes
 
     def existing_split_sample_ids(self, split):
-        return self.info.existing_split_sample_ids[split]
+        return self.info.existing_split_sample_ids(split)
 
     def split_sample_ids(self, split):
         return self.info.split_sample_ids[split]
@@ -377,7 +377,7 @@ class ActivityNetDatasetManager(object):
         else:
             info = self.a200_info
 
-        existing_samples = info.existing_split_sample_ids[split]
+        existing_samples = info.existing_split_sample_ids(split)
         num_existing_samples = len(existing_samples)
         num_required_samples = _NUM_TOTAL_SAMPLES[version][split]
         if num_existing_samples != num_required_samples:
@@ -508,6 +508,7 @@ class ActivityNetDatasetManager(object):
             shuffle,
             requested_num,
             num_workers,
+            split,
         )
         requested_sample_ids.extend(downloaded_samples)
         num_downloaded_samples += len(downloaded_samples)
@@ -520,6 +521,7 @@ class ActivityNetDatasetManager(object):
             shuffle,
             requested_num,
             num_workers,
+            split,
         )
         requested_sample_ids.extend(downloaded_samples)
         num_downloaded_samples += len(downloaded_samples)
@@ -549,46 +551,47 @@ class ActivityNetDatasetManager(object):
         return [], requested_num
 
     def _download_requested_samples(
-        self, ids, class_samples, shuffle, requested_num, num_workers
+        self, ids, class_samples, shuffle, requested_num, num_workers, split
     ):
         if requested_num is None or requested_num:
             if shuffle:
                 random.shuffle(ids)
 
-            (
-                downloaded_ids,
-                errors,
-            ) = self._separate_versions_and_attempt_to_download(
-                ids, class_samples, requested_num, num_workers,
+            downloaded_ids = self._separate_versions_and_attempt_to_download(
+                ids, class_samples, requested_num, num_workers, split,
             )
 
             if requested_num:
                 requested_num -= len(downloaded_ids)
 
-            return downloaded_ids, requested_num, errors
+            return downloaded_ids, requested_num
 
-        return [], requested_num, {}
+        return [], requested_num
 
     def _separate_versions_and_attempt_to_download(
-        self, ids, samples_info, num_samples, num_workers,
+        self, ids, samples_info, num_samples, num_workers, split,
     ):
         all_a100_ids = self.a100_info.all_sample_ids
         a100_ids = [i for i in ids if i in all_a100_ids]
         a200_ids = list(set(ids) - set(a100_ids))
 
         downloaded_ids = []
+        logger.info("Downloading videos...")
         downloaded_ids, a100_errors = self._attempt_to_download(
-            self.a100_info.data_dir,
+            self.a100_info.data_dir(split),
             a100_ids,
             samples_info,
             num_samples,
             num_workers,
         )
         remaining_samples = num_samples - len(downloaded_ids)
-        self._merge_and_write_errors(a100_errors, self.a100_info.error_path)
+        self._merge_and_write_errors(
+            a100_errors, self.a100_info.error_path(split)
+        )
         if remaining_samples:
+            logger.info("Downloading ActivityNet200-specific videos...")
             a200_downloaded_ids, a200_errors = self._attempt_to_download(
-                self.a200_info.data_dir,
+                self.a200_info.data_dir(split),
                 a200_ids,
                 samples_info,
                 remaining_samples,
@@ -596,13 +599,13 @@ class ActivityNetDatasetManager(object):
             )
             downloaded_ids.extend(a200_downloaded_ids)
             self._merge_and_write_errors(
-                a200_errors, self.a200_info.error_path
+                a200_errors, self.a200_info.error_path(split)
             )
 
         return downloaded_ids
 
     def _attempt_to_download(
-        self, videos_dir, ids, samples_info, num_samples, num_workers,
+        self, videos_dir, ids, samples_info, num_samples, num_workers
     ):
         download_ids = []
         download_urls = []
@@ -656,7 +659,7 @@ class ActivityNetDatasetManager(object):
             "taxonomy": self.info.taxonomy,
         }
 
-        etas.write_json(fo_annots, self.info.labels_path)
+        etas.write_json(fo_annots, self.info.labels_path(split))
 
     def _merge_and_write_errors(self, download_errors, error_path):
         if os.path.isfile(error_path):
@@ -692,6 +695,7 @@ class ActivityNetDatasetManager(object):
 
     @classmethod
     def from_dataset_dir(cls, dataset_dir, version):
+        dataset_dir = os.path.abspath(dataset_dir)
         foz_dir, _, _ = ActivityNetDatasetInfo.get_dir_info(dataset_dir)
         return cls(foz_dir, version)
 
@@ -700,11 +704,12 @@ class ActivityNetDatasetInfo(object):
     """Contains information related to paths, labels, and sample ids"""
 
     def __init__(self, foz_dir):
-        self.foz_dir = foz_dir
+        self.foz_dir = os.path.abspath(foz_dir)
 
         self.raw_annotations = self._get_raw_annotations()
         self.taxonomy = self.raw_annotations["taxonomy"]
         self.all_classes = self.get_all_classes(self.taxonomy)
+        self.ensure_data_dirs()
 
         self._splitwise_sample_ids = self._parse_sample_ids()
         self.all_sample_ids = _flatten_list(
@@ -749,6 +754,10 @@ class ActivityNetDatasetInfo(object):
 
     def error_path(self, split):
         return os.path.join(self.split_dir(split), "download_errors.json")
+
+    def ensure_data_dirs(self):
+        for split in self.splits:
+            etau.ensure_dir(self.data_dir(split))
 
     def _parse_sample_ids(self):
         ids = {s: [] for s in self.splits}
@@ -911,9 +920,9 @@ class ActivityNet100DatasetInfo(ActivityNetDatasetInfo):
 class ActivityNet200DatasetInfo(ActivityNetDatasetInfo):
     """ActivityNet200 specific info management"""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.a100_info = ActivityNet100DatasetInfo(self.foz_dir)
+    def __init__(self, foz_dir):
+        self.a100_info = ActivityNet100DatasetInfo(foz_dir)
+        super().__init__(foz_dir)
 
     @property
     def version(self):
