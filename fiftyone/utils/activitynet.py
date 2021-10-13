@@ -330,10 +330,13 @@ class ActivityNetDatasetManager(object):
         return self.info.split_sample_ids[split]
 
     def process_source(self, source_dir, copy_files):
+        source_dir = os.path.expanduser(source_dir)
         for item in os.listdir(source_dir):
             if item in _SOURCE_ZIPS:
+                logger.info("Processing source zip %s..." % item)
                 self._process_source_zip(item, source_dir, copy_files)
             elif item in _SOURCE_DIR_NAMES:
+                logger.info("Processing source dir %s..." % item)
                 self._process_source_dir(item, source_dir, copy_files)
 
         self.a200_info.update_existing_sample_ids()
@@ -428,24 +431,27 @@ class ActivityNetDatasetManager(object):
             else:
                 general_dest_dir = self.a200_info.data_dir(split)
 
-        for video in os.listdir(videos_dir):
-            video_id = os.path.splitext(video)[0]
-            if video_id in existing_videos:
-                continue
+        videos = os.listdir(videos_dir)
+        if videos:
+            with fou.ProgressBar() as pb:
+                for video in pb(videos):
+                    video_id = os.path.splitext(video)[0]
+                    if video_id in existing_videos:
+                        continue
 
-            if not general_dest_dir:
-                dest_dir = self._get_video_destination(
-                    video_id, version=version, split=split
-                )
-            else:
-                dest_dir = general_dest_dir
+                    if not general_dest_dir:
+                        dest_dir = self._get_video_destination(
+                            video_id, version=version, split=split
+                        )
+                    else:
+                        dest_dir = general_dest_dir
 
-            video_path = os.path.join(videos_dir, video)
+                    video_path = os.path.join(videos_dir, video)
 
-            if copy_files:
-                etau.copy_file(video_path, dest_dir)
-            else:
-                etau.move_file(video_path, dest_dir)
+                    if copy_files:
+                        etau.copy_file(video_path, dest_dir)
+                    else:
+                        etau.move_file(video_path, dest_dir)
 
     def _get_video_destination(self, video_id, version=None, split=None):
         if version is None:
@@ -627,7 +633,7 @@ class ActivityNetDatasetManager(object):
             url = sample_info["url"]
             url_id_map[url] = sample_id
             download_urls.append(url)
-            download_ids.append(sample_id)
+            download_ids.append("v_" + sample_id)
 
         downloaded_urls, errors = fouy.download_from_youtube(
             videos_dir=videos_dir,
@@ -663,7 +669,8 @@ class ActivityNetDatasetManager(object):
                     {"label": target, "timestamps": timestamps}
                 )
 
-            labels[annot_id] = fo_annot_labels
+            sample_id = "v_" + annot_id
+            labels[sample_id] = fo_annot_labels
 
         fo_annots = {
             "classes": self.all_classes,
@@ -803,14 +810,15 @@ class ActivityNetDatasetInfo(object):
 
     def cleanup_partial_downloads(self, split):
         videos_dir = self.data_dir(split)
-        video_filenames = os.listdir(videos_dir)
+        video_filenames = etau.list_files(videos_dir)
         remaining_ids = []
         for vfn in video_filenames:
             video_id, ext = os.path.splitext(vfn)
             if ext in [".part", ".ytdl"]:
                 os.remove(os.path.join(videos_dir, vfn))
             else:
-                remaining_ids.append(video_id)
+                vid = video_id[2:]
+                remaining_ids.append(vid)
 
         return remaining_ids
 

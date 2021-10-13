@@ -41,6 +41,13 @@ and load an ActivityNet split into FiftyOne:
 
     session = fo.launch_app(dataset)
 
+.. note::
+
+    ActivityNet-200 is a superset of ActivityNet-100 so we have made sure
+    to only store one copy of every video on disk. Videos in the
+    ActivityNet-100 zoo directory are used directly by ActivityNet-200.
+
+
 Partial Downloads
 -----------------
 
@@ -75,6 +82,7 @@ first if possible before resorting to downloading additional data from YouTube.
     #
     # Load 10 samples from the validation split that
     # contain the actions "Bathing dog" and "Walking the dog"
+    # with a maximum duration of 20 seconds
     #
     # Videos that contain all `classes` will be prioritized first, followed
     # by videos that contain at least one of the required `classes`. If
@@ -89,6 +97,7 @@ first if possible before resorting to downloading additional data from YouTube.
         split="validation",
         classes=["Bathing dog", "Walking the dog"],
         max_samples=10,
+        max_duration=20,
     )
 
     session.dataset = dataset
@@ -163,30 +172,54 @@ After downloading the full dataset, it can be loaded into FiftyOne:
     session = fo.launch_app(dataset)
 
 
-Additionally, the `source_dir` parameter can be used for partial downloads as
-well to avoid downloading videos from YouTube. 
+The contents of the `source_dir` is expected to contain the data directly
+downloaded from the source. This includes either the zip files
+or the unzipped contents of these files in the following format:
 
-.. code-block:: python
-    :linenos:
+.. code-block:: text
+   
+    \source_dir
+        missing_files.zip
+        missing_files_v1-2_test.zip
+        missing_files_v1-3_test.zip
+        v1-2_test.tar.gz
+        v1-2_train.tar.gz
+        v1-2_val.tar.gz
+        v1-3_test.tar.gz
+        v1-3_train_val.tar.gz
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+        \v1-2
+            \train
+                v_<id>.<ext>
+                ...
+            \val
+                ...
+            \test
+                ...
 
-    source_dir = "/path/to/dir-with-activitynet-files"
+        \v1-3
+            \train_val
+                v_<id>.<ext>
+                ...
+            \test
+                ...
 
-    # Load the entire ActivityNet-200 dataset into FiftyOne 
-    dataset = foz.load_zoo_dataset(
-        "activitynet-200",
-        split="validation",
-        classes=["Bathing dog", "Walking the dog"],
-        max_samples=10,
-        source_dir=source_dir,
-    )
+        \missing_files
+            v_<id>.<ext>
 
-    session = fo.launch_app(dataset)
+        \missing_files_v1-2_test
+            v_<id>.<ext>
+
+        \missing_files_v_1-3_test
+            v_<id>.<ext>
+        
+Not all of the above zips or directories are required to be present. Any zip files will
+be unzipped by a call to 
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+
 
 Once :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
-is called with the `source_dir` parameter, all videos will attempt to be moved
+is called with the `source_dir` parameter, all contents will attempt to be moved
 or copied to the FiftyOne Dataset Zoo backing directory depending on the value
 of the `copy_files` parameter. All future calls to 
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
