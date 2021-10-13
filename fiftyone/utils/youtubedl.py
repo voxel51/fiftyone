@@ -17,7 +17,11 @@ import eta.core.utils as etau
 import fiftyone.core.utils as fou
 
 youtube_dl = fou.lazy_import(
-    "youtube_dl", callback=lambda: fou.ensure_import("youtube_dl")
+    "youtube_dl",
+    callback=lambda: fou.ensure_import(
+        "youtube_dl",
+        error_msg="youtube_dl not found, run `pip install youtube-dl`",
+    ),
 )
 
 
@@ -121,10 +125,8 @@ def _single_thread_download(tasks, max_videos):
     downloaded = []
     errors = defaultdict(list)
     with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
-        for url, output_dir, video_id in tasks:
-            is_success, url, error_type = _do_download(
-                (url, output_dir, video_id)
-            )
+        for task in tasks:
+            is_success, url, error_type = _do_download(task)
             if is_success:
                 downloaded.append(url)
                 pb.update()

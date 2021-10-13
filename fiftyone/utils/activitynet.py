@@ -585,18 +585,21 @@ class ActivityNetDatasetManager(object):
         a200_ids = list(set(ids) - set(a100_ids))
 
         downloaded_ids = []
-        logger.info("Downloading videos...")
-        downloaded_ids, a100_errors = self._attempt_to_download(
-            self.a100_info.data_dir(split),
-            a100_ids,
-            samples_info,
-            num_samples,
-            num_workers,
-        )
-        remaining_samples = num_samples - len(downloaded_ids)
-        self._merge_and_write_errors(
-            a100_errors, self.a100_info.error_path(split)
-        )
+        num_a100_ids = len(a100_ids)
+        remaining_samples = num_samples
+        if num_a100_ids:
+            logger.info("Downloading videos...")
+            downloaded_ids, a100_errors = self._attempt_to_download(
+                self.a100_info.data_dir(split),
+                a100_ids,
+                samples_info,
+                num_a100_ids,
+                num_workers,
+            )
+            remaining_samples -= len(downloaded_ids)
+            self._merge_and_write_errors(
+                a100_errors, self.a100_info.error_path(split)
+            )
         if remaining_samples:
             logger.info("Downloading ActivityNet200-specific videos...")
             a200_downloaded_ids, a200_errors = self._attempt_to_download(
