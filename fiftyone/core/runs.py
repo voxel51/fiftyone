@@ -318,15 +318,18 @@ class Run(Configurable):
                 raise e
 
             raise ValueError(
-                "Failed to load info for %s with key '%s'. The %s used "
-                "fiftyone==%s but you are currently using fiftyone==%s. We "
+                "Failed to load info for %s with key '%s'. The %s used a "
+                "version of FiftyOne with open source compatibility version "
+                "fiftyone==%s but you are currently running FiftyOne Teams "
+                "v%s with open source compatibility fiftyone==%s. We "
                 "recommend that you re-run the method with your current "
-                "FiftyOne version"
+                "FiftyOne Teams version"
                 % (
                     cls._run_str(),
                     key,
                     cls._run_str(),
                     run_doc.version or "????",
+                    foc.TEAMS_VERSION,
                     foc.VERSION,
                 )
             ) from e
