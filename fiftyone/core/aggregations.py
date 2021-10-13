@@ -14,6 +14,7 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -1438,7 +1439,8 @@ class Values(Aggregation):
         missing_value (None): a value to insert for missing or ``None``-valued
             fields
         unwind (False): whether to automatically unwind all recognized list
-            fields
+            fields (True) or unwind all list fields except the top-level sample
+            field (-1)
     """
 
     def __init__(
@@ -1519,8 +1521,7 @@ class Values(Aggregation):
             sample_collection,
             self._field_name,
             expr=self._expr,
-            auto_unwind=self._unwind,
-            omit_terminal_lists=not self._unwind,
+            unwind=self._unwind,
             allow_missing=self._allow_missing,
         )
 
@@ -1606,13 +1607,13 @@ def _extract_list_values(subfield, expr):
 
 
 def _parse_field_and_expr(
-    sample_collection,
-    field_name,
-    expr=None,
-    auto_unwind=True,
-    omit_terminal_lists=False,
-    allow_missing=False,
+    sample_collection, field_name, expr=None, unwind=True, allow_missing=False,
 ):
+    # unwind can be {True, False, -1}
+    auto_unwind = unwind != False
+    keep_top_level = unwind < 0
+    omit_terminal_lists = unwind == False
+
     if field_name is None and expr is None:
         raise ValueError(
             "You must provide a field or an expression in order to define an "
@@ -1663,7 +1664,18 @@ def _parse_field_and_expr(
     else:
         field_type = None
 
-    if auto_unwind:
+    if keep_top_level:
+        if is_frame_field:
+            path = "frames." + path
+            unwind_list_fields = ["frames." + f for f in unwind_list_fields]
+            other_list_fields = ["frames." + f for f in other_list_fields]
+            other_list_fields.insert(0, "frames")
+        elif unwind_list_fields:
+            first_field = unwind_list_fields.pop(0)
+            other_list_fields = sorted([first_field] + other_list_fields)
+
+        pipeline.append({"$project": {path: True}})
+    elif auto_unwind:
         if is_frame_field:
             pipeline.extend(
                 [
@@ -1677,26 +1689,78 @@ def _parse_field_and_expr(
     elif unwind_list_fields:
         pipeline.append({"$project": {path: True}})
 
-    #
-    # @todo remove this restriction?
-    #
-    # `$unwind` cannot be used here. We would need to use a `set_field()` like
-    # approach to manually unwind the nested array field
-    #
-    if unwind_list_fields and other_list_fields:
-        for ufield in unwind_list_fields:
-            for ofield in other_list_fields:
-                if ufield.startswith(ofield + "."):
-                    raise ValueError(
-                        "Cannot unwind nested array field '%s' without also "
-                        "unwinding higher-level array field '%s'"
-                        % (ufield, ofield)
-                    )
+    (
+        _reduce_pipeline,
+        _path,
+        _unwind_list_fields,
+        _other_list_fields,
+    ) = _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields)
+
+    if _reduce_pipeline:
+        pipeline.extend(_reduce_pipeline)
+        path = _path
+        unwind_list_fields = _unwind_list_fields
+        other_list_fields = _other_list_fields
 
     for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
 
     return path, pipeline, other_list_fields, id_to_str, field_type
+
+
+def _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields):
+    pipeline = []
+
+    list_fields = sorted(
+        [(f, True) for f in unwind_list_fields]
+        + [(f, False) for f in other_list_fields],
+        key=lambda kv: kv[0],
+    )
+    num_list_fields = len(list_fields)
+
+    for idx in range(1, num_list_fields):
+        list_field, unwind = list_fields[idx]
+
+        # If we're unwinding a list field that is preceeded by another list
+        # field that is *not* unwound, we must use `reduce()` to achieve it
+        if unwind and not list_fields[idx - 1][1]:
+            prev_list = list_fields[idx - 1][0]
+            leaf = list_field[len(prev_list) + 1 :]
+            reduce_expr = F(prev_list).reduce(
+                (F(leaf) != None).if_else(VALUE.extend(F(leaf)), VALUE),
+                init_val=[],
+            )
+            pipeline.append({"$set": {prev_list: reduce_expr.to_mongo()}})
+            path, list_fields = _replace_list(
+                path, list_fields, list_field, prev_list
+            )
+
+    if pipeline:
+        unwind_list_fields = []
+        other_list_fields = []
+        for field, unwind in list_fields:
+            if field is not None:
+                if unwind:
+                    unwind_list_fields.append(field)
+                else:
+                    other_list_fields.append(field)
+
+    return pipeline, path, unwind_list_fields, other_list_fields
+
+
+def _replace_list(path, list_fields, old, new):
+    new_path = new + path[len(old) :]
+
+    new_list_fields = []
+    for field, unwind in list_fields:
+        if field == old:
+            field = None
+        elif field.startswith(old):
+            field = new + field[len(old) :]
+
+        new_list_fields.append((field, unwind))
+
+    return new_path, new_list_fields
 
 
 def _extract_prefix_from_expr(expr):

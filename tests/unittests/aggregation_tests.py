@@ -347,6 +347,73 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_values_unwind(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="cat")]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="dog")]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="cat"),
+                    fo.Classification(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[2] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="rabbit")]
+            )
+        )
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="squirrel")]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        # [num_samples][num_frames][num_classifications]
+        values = dataset.values("frames.ground_truth.classifications.label")
+        expected = [
+            [["cat"], None, ["dog"]],
+            [["cat", "dog"], ["rabbit"], ["squirrel"]],
+        ]
+
+        self.assertListEqual(values, expected)
+
+        # [num_samples][num_frames x num_classifications]
+        values1 = dataset.values("frames.ground_truth.classifications[].label")
+        values2 = dataset.values(
+            "frames.ground_truth.classifications.label", unwind=-1
+        )
+        expected = [["cat", "dog"], ["cat", "dog", "rabbit", "squirrel"]]
+        self.assertListEqual(values1, expected)
+        self.assertListEqual(values2, expected)
+
+        # [num_samples x num_frames x num_classifications]
+        values1 = dataset.values(
+            "frames[].ground_truth.classifications[].label"
+        )
+        values2 = dataset.values(
+            "frames.ground_truth.classifications.label", unwind=True
+        )
+        expected = ["cat", "dog", "cat", "dog", "rabbit", "squirrel"]
+        self.assertListEqual(values1, expected)
+        self.assertListEqual(values2, expected)
+
+    @drop_datasets
     def test_object_ids(self):
         dataset = fo.Dataset()
         for i in range(5):

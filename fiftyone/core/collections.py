@@ -3546,6 +3546,8 @@ class SampleCollection(object):
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
+            omit_empty (True): whether to omit samples with no frame labels
+                after filtering
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4570,7 +4572,7 @@ class SampleCollection(object):
             field_or_expr: can be any of the following:
 
                 -   a :class:`fiftyone.core.labels.TemporalDetection`,
-                    :class:`fiftyone.core.labels.TemporalDetections`, or
+                    :class:`fiftyone.core.labels.TemporalDetections`,
                     :class:`fiftyone.core.fields.FrameSupportField`, or list of
                     :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
@@ -5488,7 +5490,8 @@ class SampleCollection(object):
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
             unwind (False): whether to automatically unwind all recognized list
-                fields
+                fields (True) or unwind all list fields except the top-level
+                sample field (-1)
 
         Returns:
             the list of values
@@ -6758,7 +6761,7 @@ class SampleCollection(object):
         allow_missing=False,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, omit_terminal_lists, allow_missing
+            self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
         )
 
     def _has_field(self, field_name):
