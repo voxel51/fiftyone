@@ -446,6 +446,9 @@ class ActivityNetDatasetManager(object):
                     else:
                         dest_dir = general_dest_dir
 
+                    if os.path.exists(os.path.join(dest_dir, video)):
+                        continue
+
                     video_path = os.path.join(videos_dir, video)
 
                     if copy_files:
