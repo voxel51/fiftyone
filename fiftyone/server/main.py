@@ -30,6 +30,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
+import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
@@ -42,6 +43,7 @@ import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
@@ -245,9 +247,12 @@ class PageHandler(tornado.web.RequestHandler):
             return
 
         if view.media_type == fom.VIDEO:
-            view = view.set_field(
-                "frames", F("frames").filter((F("frame_number") == 1))
-            )
+            if isinstance(view, focl.ClipsView):
+                expr = F("frame_number") == F("$support")[0]
+            else:
+                expr = F("frame_number") == 1
+
+            view = view.set_field("frames", F("frames").filter(expr))
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
@@ -1442,6 +1447,7 @@ class Application(tornado.web.Application):
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
+            (r"/colorscales", ColorscalesHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),

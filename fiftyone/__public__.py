@@ -86,6 +86,7 @@ from .core.labels import (
     Keypoint,
     Keypoints,
     Segmentation,
+    Heatmap,
     TemporalDetection,
     TemporalDetections,
     GeoLocation,
@@ -161,6 +162,7 @@ from .core.stages import (
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToClips,
     ToFrames,
 )
 from .core.session import (

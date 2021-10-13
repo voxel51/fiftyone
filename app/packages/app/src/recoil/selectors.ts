@@ -1,20 +1,21 @@
 import { selector, selectorFamily, SerializableParam } from "recoil";
 
 import * as atoms from "./atoms";
-import { generateColorMap } from "../utils/colors";
 import {
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   VALID_LIST_TYPES,
-  LIST_FIELD,
   UNSUPPORTED_IMAGE,
+  VALID_LIST_FIELDS,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
+import { Coloring, createColorGenerator, getRGB, RGB } from "@fiftyone/looker";
+import { getColor } from "@fiftyone/looker/src/color";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -106,18 +107,21 @@ export const isRootView = selector<boolean>({
   },
 });
 
+const CLIPS_VIEW = "fiftyone.core.clips.ClipsView";
 const FRAMES_VIEW = "fiftyone.core.video.FramesView";
 const EVALUATION_PATCHES_VIEW = "fiftyone.core.patches.EvaluationPatchesView";
 const PATCHES_VIEW = "fiftyone.core.patches.PatchesView";
 const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
 
 enum ELEMENT_NAMES {
+  CLIP = "clip",
   FRAME = "frame",
   PATCH = "patch",
   SAMPLE = "sample",
 }
 
 enum ELEMENT_NAMES_PLURAL {
+  CLIP = "clips",
   FRAME = "frames",
   PATCH = "patches",
   SAMPLE = "samples",
@@ -131,6 +135,8 @@ export const rootElementName = selector<string>({
       return ELEMENT_NAMES.PATCH;
     }
 
+    if (cls === CLIPS_VIEW) return ELEMENT_NAMES.CLIP;
+
     if (cls === FRAMES_VIEW) return ELEMENT_NAMES.FRAME;
 
     return ELEMENT_NAMES.SAMPLE;
@@ -143,6 +149,8 @@ export const rootElementNamePlural = selector<string>({
     const elementName = get(rootElementName);
 
     switch (elementName) {
+      case ELEMENT_NAMES.CLIP:
+        return ELEMENT_NAMES_PLURAL.CLIP;
       case ELEMENT_NAMES.FRAME:
         return ELEMENT_NAMES_PLURAL.FRAME;
       case ELEMENT_NAMES.PATCH:
@@ -160,6 +168,13 @@ export const elementNames = selector<{ plural: string; singular: string }>({
       plural: get(rootElementNamePlural),
       singular: get(rootElementName),
     };
+  },
+});
+
+export const isClipsView = selector<boolean>({
+  key: "isClipsView",
+  get: ({ get }) => {
+    return get(rootElementName) === ELEMENT_NAMES.CLIP;
   },
 });
 
@@ -357,7 +372,10 @@ const primitiveFilter = (f) => {
     return true;
   }
 
-  if (f.ftype === LIST_FIELD && VALID_SCALAR_TYPES.includes(f.subfield)) {
+  if (
+    VALID_LIST_FIELDS.includes(f.ftype) &&
+    VALID_SCALAR_TYPES.includes(f.subfield)
+  ) {
     return true;
   }
 
@@ -412,10 +430,22 @@ const selectedFields = selectorFamily({
   },
 });
 
-export const defaultGridZoom = selector<number | null>({
-  key: "defaultGridZoom",
+export const gridZoom = selector<number | null>({
+  key: "gridZoom",
   get: ({ get }) => {
-    return get(appConfig).default_grid_zoom;
+    return get(appConfig).grid_zoom;
+  },
+  set: ({ get, set }, value) => {
+    const state = get(atoms.stateDescription);
+    const newState = {
+      ...state,
+      config: {
+        ...state.config,
+        grid_zoom: value,
+      },
+    };
+    set(atoms.stateDescription, newState);
+    socket.send(packageMessage("update", { state: newState }));
   },
 });
 
@@ -530,6 +560,15 @@ export const primitiveSubfields = selectorFamily({
   },
 });
 
+export const primitivesSchema = selectorFamily({
+  key: "primitivesSchema",
+  get: (dimension: string) => ({ get }) => {
+    return Object.fromEntries(
+      get(primitives(dimension)).map((p) => [p.name, p])
+    );
+  },
+});
+
 export const labelTuples = selectorFamily({
   key: "labelTuples",
   get: (dimension: string) => ({ get }) => {
@@ -614,7 +653,24 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
 
-    return generateColorMap(pool, seed);
+    return createColorGenerator(pool, seed);
+  },
+});
+
+export const coloring = selectorFamily<Coloring, boolean>({
+  key: "coloring",
+  get: (modal) => ({ get }) => {
+    const pool = get(atoms.colorPool);
+    const seed = get(atoms.colorSeed(modal));
+    return {
+      seed,
+      pool,
+      scale: get(atoms.stateDescription).colorscale,
+      byLabel: get(atoms.colorByLabel(modal)),
+      targets: new Array(pool.length)
+        .fill(0)
+        .map((_, i) => getColor(pool, seed, i)),
+    };
   },
 });
 

@@ -5,6 +5,7 @@ Video frame views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from copy import deepcopy
 import logging
 import os
@@ -183,14 +184,13 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=fields)
 
     def reload(self):
-        """Reloads this view from the frames of the source collection in the
-        database.
+        """Reloads this view from the source collection in the database.
 
         Note that :class:`FrameView` instances are not singletons, so any
         in-memory frames extracted from this view will not be updated by
         calling this method.
         """
-        self._root_dataset.reload()
+        self._source_collection.reload()
 
         #
         # Regenerate the frames dataset
@@ -474,6 +474,8 @@ def make_frames_dataset(
     # later when syncing the source collection
     dataset.create_index([("sample_id", 1), ("frame_number", 1)], unique=True)
 
+    _make_pretty_summary(dataset)
+
     # Populate frames dataset
     ids_to_sample, frames_to_sample = _populate_frames(
         dataset,
@@ -491,7 +493,7 @@ def make_frames_dataset(
     if ids_to_sample:
         logger.info("Sampling video frames...")
         fouv.sample_videos(
-            sample_collection.select(ids_to_sample),
+            sample_collection.select(ids_to_sample, ordered=True),
             frames_patt=frames_patt,
             frames=frames_to_sample,
             size=size,
@@ -502,6 +504,13 @@ def make_frames_dataset(
         )
 
     return dataset
+
+
+def _make_pretty_summary(dataset):
+    set_fields = ["id", "sample_id", "filepath", "frame_number"]
+    all_fields = dataset._sample_doc_cls._fields_ordered
+    pretty_fields = set_fields + [f for f in all_fields if f not in set_fields]
+    dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
 def _populate_frames(
@@ -523,12 +532,13 @@ def _populate_frames(
     #
 
     docs = []
-    ids_to_sample = []
-    frames_to_sample = []
+    id_map = {}
+    sample_map = defaultdict(set)
+    frame_map = defaultdict(set)
 
+    is_clips = src_collection._dataset._is_clips
     samples = src_collection.select_fields()._aggregate(attach_frames=True)
     for sample in samples:
-        sample_id = sample["_id"]
         video_path = sample["filepath"]
         tags = sample.get("tags", [])
         metadata = sample.get("metadata", {})
@@ -537,6 +547,13 @@ def _populate_frames(
         frame_ids_map = {
             f["frame_number"]: f["_id"] for f in sample.get("frames", [])
         }
+
+        if is_clips:
+            sample_id = sample["_sample_id"]
+            support = sample["support"]
+        else:
+            sample_id = sample["_id"]
+            support = None
 
         if sample_frames:
             outdir = os.path.splitext(video_path)[0]
@@ -547,6 +564,7 @@ def _populate_frames(
         doc_frame_numbers, sample_frame_numbers = _parse_video_frames(
             video_path,
             images_patt,
+            support,
             total_frame_count,
             frame_rate,
             frame_ids_map,
@@ -560,10 +578,17 @@ def _populate_frames(
 
         # note: [] means no frames, None means all frames
         if sample_frame_numbers != []:
-            ids_to_sample.append(str(sample_id))
-            frames_to_sample.append(sample_frame_numbers)
+            id_map[video_path] = str(sample["_id"])
+            sample_map[video_path].update(sample_frame_numbers)
 
         for frame_number in doc_frame_numbers:
+            if is_clips:
+                fns = frame_map[video_path]
+                if frame_number in fns:
+                    continue  # frame has already been sampled
+
+                fns.add(frame_number)
+
             if sample_frames:
                 _filepath = images_patt % frame_number
             else:
@@ -584,6 +609,15 @@ def _populate_frames(
                 doc["_id"] = _id
 
             docs.append(doc)
+
+    # We first populate `sample_map` and then convert to `ids_to_sample` and
+    # `frames_to_sample` here to avoid resampling frames when working with clip
+    # views with multiple overlapping clips into the same video
+    ids_to_sample = []
+    frames_to_sample = []
+    for video_path, sample_frame_numbers in sample_map.items():
+        ids_to_sample.append(id_map[video_path])
+        frames_to_sample.append(sorted(sample_frame_numbers))
 
     if not docs:
         return ids_to_sample, frames_to_sample
@@ -620,6 +654,7 @@ def _populate_frames(
 def _parse_video_frames(
     video_path,
     images_patt,
+    support,
     total_frame_count,
     frame_rate,
     frame_ids_map,
@@ -636,8 +671,15 @@ def _parse_video_frames(
 
     if fps is not None or max_fps is not None:
         target_frame_numbers = fouv.sample_frames_uniform(
-            total_frame_count, frame_rate, fps=fps, max_fps=max_fps
+            frame_rate,
+            total_frame_count=total_frame_count,
+            support=support,
+            fps=fps,
+            max_fps=max_fps,
         )
+    elif support is not None:
+        first, last = support
+        target_frame_numbers = list(range(first, last + 1))
     else:
         target_frame_numbers = None  # all frames
 
@@ -646,7 +688,7 @@ def _parse_video_frames(
     #
 
     if target_frame_numbers is None:
-        if sparse and total_frame_count < 0:
+        if total_frame_count < 0:
             doc_frame_numbers = sorted(frame_ids_map.keys())
         else:
             doc_frame_numbers = list(range(1, total_frame_count + 1))
@@ -665,8 +707,10 @@ def _parse_video_frames(
     # Determine frames that need to be sampled
     #
 
+    all_frames = not sparse and support is None
+
     if force_sample:
-        if not sparse and target_frame_numbers is None:
+        if all_frames and target_frame_numbers is None:
             sample_frame_numbers = None  # all frames
         else:
             sample_frame_numbers = doc_frame_numbers
@@ -678,7 +722,7 @@ def _parse_video_frames(
             if not os.path.isfile(images_patt % fn)
         ]
 
-        if not sparse and len(sample_frame_numbers) == len(doc_frame_numbers):
+        if all_frames and len(sample_frame_numbers) == len(doc_frame_numbers):
             sample_frame_numbers = None  # all frames
 
     if verbose:

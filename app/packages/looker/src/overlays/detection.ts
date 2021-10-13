@@ -1,23 +1,18 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { get32BitColor, getAlphaColor } from "../color";
-import {
-  BACKGROUND_ALPHA,
-  DASH_COLOR,
-  MASK_ALPHA,
-  SELECTED_MASK_ALPHA,
-  TEXT_COLOR,
-} from "../constants";
-
-import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
+import { BASE_ALPHA, INFO_COLOR } from "../constants";
+import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 interface DetectionLabel extends RegularLabel {
-  mask?: NumpyResult;
+  mask?: {
+    data: NumpyResult;
+    image: ArrayBuffer;
+  };
   bounding_box: BoundingBox;
 }
 
@@ -26,21 +21,29 @@ export default class DetectionOverlay<
 > extends CoordinateOverlay<State, DetectionLabel> {
   private imageData: ImageData;
   private labelBoundingBox: BoundingBox;
-  private mask: TypedArray;
-  private bitColor: number;
   private canvas: HTMLCanvasElement;
 
   constructor(field, label) {
     super(field, label);
     if (this.label.mask) {
-      this.mask = new ARRAY_TYPES[this.label.mask.arrayType](
-        this.label.mask.buffer
-      );
-      const [height, width] = this.label.mask.shape;
+      const [height, width] = this.label.mask.data.shape;
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;
-      this.imageData = new ImageData(width, height);
+      this.imageData = new ImageData(
+        new Uint8ClampedArray(this.label.mask.image),
+        width,
+        height
+      );
+      const maskCtx = this.canvas.getContext("2d");
+      maskCtx.imageSmoothingEnabled = false;
+      maskCtx.clearRect(
+        0,
+        0,
+        this.label.mask.data.shape[1],
+        this.label.mask.data.shape[0]
+      );
+      maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
 
@@ -62,15 +65,11 @@ export default class DetectionOverlay<
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     this.label.mask && this.drawMask(ctx, state);
-
     !state.config.thumbnail && this.drawLabelText(ctx, state);
-
-    const selected = this.isSelected(state);
-
     this.strokeRect(ctx, state, this.getColor(state));
 
-    if (selected) {
-      this.strokeRect(ctx, state, DASH_COLOR, state.dashLength);
+    if (this.isSelected(state)) {
+      this.strokeRect(ctx, state, INFO_COLOR, state.dashLength);
     }
   }
 
@@ -92,7 +91,7 @@ export default class DetectionOverlay<
     return Math.min(...distances);
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<DetectionLabel> {
     return {
       color: this.getColor(state),
       field: this.field,
@@ -107,15 +106,16 @@ export default class DetectionOverlay<
 
   private drawLabelText(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
     const labelText = this.getLabelText(state);
-
     if (!labelText.length) {
       this.labelBoundingBox = null;
       return;
     }
+
     const color = this.getColor(state);
+
     const [tlx, tly, _, __] = this.label.bounding_box;
     ctx.beginPath();
-    ctx.fillStyle = getAlphaColor(color, BACKGROUND_ALPHA);
+    ctx.fillStyle = color;
     let [ox, oy] = t(state, tlx, tly);
     [ox, oy] = [ox - state.strokeWidth / 2, oy];
     ctx.moveTo(ox, oy);
@@ -129,7 +129,7 @@ export default class DetectionOverlay<
     ctx.lineTo(ox, btry);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = TEXT_COLOR;
+    ctx.fillStyle = INFO_COLOR;
     const pad = state.textPad + state.strokeWidth;
     ctx.fillText(labelText, ox + pad, oy - pad);
 
@@ -143,31 +143,10 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
-    const selected = this.isSelected(state);
-    const bitColor = get32BitColor(
-      this.getColor(state),
-      selected ? SELECTED_MASK_ALPHA : MASK_ALPHA
-    );
-    const imagePixels = new Uint32Array(this.imageData.data.buffer);
-    if (this.bitColor !== bitColor) {
-      this.bitColor = bitColor;
-      for (let i = 0; i < this.mask.length; i++) {
-        this.mask[i] && (imagePixels[i] = bitColor);
-      }
-      this.bitColor = bitColor;
-
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.mask.shape[1],
-        this.label.mask.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
-    }
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
-
+    const tmp = ctx.globalAlpha;
+    ctx.globalAlpha = tmp * BASE_ALPHA;
     ctx.drawImage(
       this.canvas,
       x,
@@ -175,6 +154,7 @@ export default class DetectionOverlay<
       w * state.canvasBBox[2],
       h * state.canvasBBox[3]
     );
+    ctx.globalAlpha = tmp;
   }
 
   private getLabelText(state: Readonly<State>): string {

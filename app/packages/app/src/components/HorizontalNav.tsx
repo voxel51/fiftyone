@@ -14,6 +14,7 @@ import { useWindowSize } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { Resizable } from "re-resizable";
+import { capitalize } from "@material-ui/core";
 
 export type Props = {
   entries: string[];
@@ -104,6 +105,7 @@ const HorizontalNav = ({ entries }: Props) => {
   const closedHeight = 64;
 
   const height = expanded ? openedHeight : closedHeight;
+  const elementNames = useRecoilValue(selectors.elementNames);
 
   return (
     <Container
@@ -138,7 +140,7 @@ const HorizontalNav = ({ entries }: Props) => {
                 }
               }}
             >
-              {isRoot ? e : e === "Sample tags" ? "Patch tags" : e}
+              {`${capitalize(elementNames.singular)} tags`}
             </PlotButton>
           ))}
         </PlotsButtons>

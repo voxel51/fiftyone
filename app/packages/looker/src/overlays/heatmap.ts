@@ -1,49 +1,58 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { getColor } from "../color";
+import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
 import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
+import { isFloatArray } from "../util";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
-interface SegmentationLabel extends BaseLabel {
-  mask?: {
-    data: NumpyResult;
-    image: ArrayBuffer;
-  };
+interface HeatMap {
+  data: NumpyResult;
+  image: ArrayBuffer;
 }
 
-interface SegmentationInfo extends BaseLabel {
-  mask?: {
+interface HeatmapLabel extends BaseLabel {
+  map?: HeatMap;
+  range?: [number, number];
+}
+
+interface HeatmapInfo extends BaseLabel {
+  map?: {
     shape: [number, number];
   };
+  range?: [number, number];
 }
 
-export default class SegmentationOverlay<State extends BaseState>
+export default class HeatmapOverlay<State extends BaseState>
   implements Overlay<State> {
   readonly field: string;
-  private label: SegmentationLabel;
+  private label: HeatmapLabel;
   private targets?: TypedArray;
+  private readonly range: [number, number];
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
 
-  constructor(field: string, label: SegmentationLabel) {
+  constructor(field: string, label: HeatmapLabel) {
     this.field = field;
     this.label = label;
-    if (this.label.mask) {
-      this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
-        this.label.mask.data.buffer
+    if (this.label.map) {
+      this.targets = new ARRAY_TYPES[this.label.map.data.arrayType](
+        this.label.map.data.buffer
       );
-
-      const [height, width] = this.label.mask.data.shape;
+      this.range = this.label.range
+        ? label.range
+        : isFloatArray(this.targets)
+        ? [0, 1]
+        : [0, 255];
+      const [height, width] = this.label.map.data.shape;
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;
-
       this.imageData = new ImageData(
-        new Uint8ClampedArray(this.label.mask.image),
+        new Uint8ClampedArray(this.label.map.image),
         width,
         height
       );
@@ -52,8 +61,8 @@ export default class SegmentationOverlay<State extends BaseState>
       maskCtx.clearRect(
         0,
         0,
-        this.label.mask.data.shape[1],
-        this.label.mask.data.shape[0]
+        this.label.map.data.shape[1],
+        this.label.map.data.shape[0]
       );
       maskCtx.putImageData(this.imageData, 0, 0);
     }
@@ -73,16 +82,22 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (!this.targets) {
-      return;
-    }
+    const maskCtx = this.canvas.getContext("2d");
+    maskCtx.imageSmoothingEnabled = false;
+    maskCtx.clearRect(
+      0,
+      0,
+      this.label.map.data.shape[1],
+      this.label.map.data.shape[0]
+    );
+    maskCtx.putImageData(this.imageData, 0, 0);
 
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     const tmp = ctx.globalAlpha;
     ctx.globalAlpha = tmp * BASE_ALPHA;
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
-    ctx.globalAlpha = tmp;
+    ctx.globalAlpha = ctx.globalAlpha;
 
     if (this.isSelected(state)) {
       strokeCanvasRect(
@@ -104,23 +119,19 @@ export default class SegmentationOverlay<State extends BaseState>
     return Infinity;
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo<SegmentationInfo> {
+  getPointInfo(state: Readonly<State>): PointInfo<HeatmapInfo> {
     const target = this.getTarget(state);
     return {
-      color: getColor(
-        state.options.coloring.pool,
-        state.options.coloring.seed,
-        target
-      ),
+      color: getRGBAColor(getRGBA(this.getColor(state, target))),
       label: {
         ...this.label,
-        mask: {
-          shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
+        map: {
+          shape: this.label.map ? this.label.map.data.shape : null,
         },
       },
       field: this.field,
       target,
-      type: "Segmentation",
+      type: "Heatmap",
     };
   }
 
@@ -140,7 +151,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   getPoints(): Coordinates[] {
-    return getSegmentationPoints([]);
+    return getHeatmapPoints([]);
   }
 
   getSizeBytes(): number {
@@ -148,23 +159,51 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   private getIndex(state: Readonly<State>): number {
-    const [sx, sy] = this.getMaskCoordinates(state);
+    const [sx, sy] = this.getMapCoordinates(state);
     if (sx < 0 || sy < 0) {
       return -1;
     }
-    return this.label.mask.data.shape[1] * sy + sx;
+    return this.label.map.data.shape[1] * sy + sx;
   }
 
-  private getMaskCoordinates({
+  private getMapCoordinates({
     pixelCoordinates: [x, y],
     config: {
       dimensions: [mw, mh],
     },
   }: Readonly<State>): Coordinates {
-    const [h, w] = this.label.mask.data.shape;
+    const [h, w] = this.label.map.data.shape;
     const sx = Math.floor(x * (w / mw));
     const sy = Math.floor(y * (h / mh));
     return [sx, sy];
+  }
+
+  private getColor(state: Readonly<State>, value: number): number {
+    const [start, stop] = this.range;
+
+    if (value === 0) {
+      return 0;
+    }
+
+    if (!state.options.coloring.byLabel) {
+      const index = Math.round(
+        (Math.max(value - start, 0) / (stop - start)) *
+          (state.options.coloring.scale.length - 1)
+      );
+
+      return get32BitColor(state.options.coloring.scale[index]);
+    }
+
+    const color = getColor(
+      state.options.coloring.pool,
+      state.options.coloring.seed,
+      this.field
+    );
+    const max = Math.max(Math.abs(start), Math.abs(stop));
+
+    value = Math.min(max, Math.abs(value)) / max;
+
+    return get32BitColor(color, value / max);
   }
 
   private getTarget(state: Readonly<State>): number {
@@ -177,9 +216,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 }
 
-export const getSegmentationPoints = (
-  labels: SegmentationLabel[]
-): Coordinates[] => {
+export const getHeatmapPoints = (labels: HeatmapLabel[]): Coordinates[] => {
   return [
     [0, 0],
     [0, 1],

@@ -19,6 +19,7 @@ import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
 
 import {
   FrameLooker,
+  freeVideos,
   ImageLooker,
   VideoLooker,
   zoomAspectRatio,
@@ -33,11 +34,6 @@ import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
-
-export const gridZoom = atom<number | null>({
-  key: "gridZoom",
-  default: selectors.defaultGridZoom,
-});
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
@@ -79,7 +75,7 @@ const flashlightOptions = selector<FlashlightOptions>({
   get: ({ get }) => {
     return {
       rowAspectRatioThreshold:
-        11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
+        11 - Math.max(get(selectors.gridZoom), get(gridZoomRange)[0]),
     };
   },
 });
@@ -88,8 +84,7 @@ const flashlightLookerOptions = selector({
   key: "flashlightLookerOptions",
   get: ({ get }) => {
     return {
-      colorByLabel: get(atoms.colorByLabel(false)),
-      colorMap: get(selectors.colorMap(false)),
+      coloring: get(selectors.coloring(false)),
       filter: get(labelFilters(false)),
       activePaths: get(activeFields),
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
@@ -97,6 +92,8 @@ const flashlightLookerOptions = selector({
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       fieldsMap: get(selectors.primitivesDbMap("sample")),
       frameFieldsMap: get(selectors.primitivesDbMap("frame")),
+      alpha: get(atoms.alpha(false)),
+      disabled: false,
     };
   },
 });
@@ -274,6 +271,8 @@ export default React.memo(() => {
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
+  const schema = useRecoilValue(selectors.fieldSchema("sample"));
+  const isClips = useRecoilValue(selectors.isClipsView);
   lookerGeneratorRef.current = ({
     sample,
     dimensions,
@@ -281,6 +280,7 @@ export default React.memo(() => {
     frameRate,
   }: atoms.SampleData) => {
     const constructor = getLookerType(getMimeType(sample));
+    const etc = isClips ? { support: sample.support } : {};
 
     return new constructor(
       sample,
@@ -291,6 +291,8 @@ export default React.memo(() => {
         sampleId: sample._id,
         frameRate,
         frameNumber: constructor === FrameLooker ? frameNumber : null,
+        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
+        ...etc,
       },
       { ...lookerOptions, selected: selected.has(sample._id) }
     );
@@ -305,6 +307,7 @@ export default React.memo(() => {
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
   };
+  const [error, setError] = useState<Error>(null);
   const flashlight = useRef<Flashlight<number>>();
   const cropToContent = useRecoilValue(atoms.cropToContent(false));
 
@@ -319,7 +322,7 @@ export default React.memo(() => {
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   useSampleUpdate();
   const gridZoomRef = useRef<number>();
-  const gridZoomValue = useRecoilValue(gridZoom);
+  const gridZoomValue = useRecoilValue(selectors.gridZoom);
   gridZoomRef.current = gridZoomValue;
 
   useEventHandler(
@@ -349,6 +352,7 @@ export default React.memo(() => {
 
     samples = new Map();
     lookers.reset();
+    freeVideos();
     sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();
@@ -360,6 +364,10 @@ export default React.memo(() => {
     refresh,
     cropToContent,
   ]);
+
+  if (error) {
+    throw error;
+  }
 
   useLayoutEffect(() => {
     if (!flashlight.current) {
@@ -388,55 +396,65 @@ export default React.memo(() => {
           lookers.has(id) && lookers.get(id).resize(dimensions);
         },
         get: async (page) => {
-          const { results, more } = await fetch(
-            `${url}page=${page}`
-          ).then((response) => response.json());
-          const itemData = results.map((result) => {
-            const data: atoms.SampleData = {
-              sample: result.sample,
-              dimensions: [result.width, result.height],
-              frameRate: result.frame_rate,
-              frameNumber: result.sample.frame_number,
-            };
-            samples.set(result.sample._id, data);
-            sampleIndices.set(nextIndex, result.sample._id);
-            nextIndex++;
+          try {
+            const { results, more } = await fetch(
+              `${url}page=${page}`
+            ).then((response) => response.json());
+            const itemData = results.map((result) => {
+              const data: atoms.SampleData = {
+                sample: result.sample,
+                dimensions: [result.width, result.height],
+                frameRate: result.frame_rate,
+                frameNumber: result.sample.frame_number,
+              };
+              samples.set(result.sample._id, data);
+              sampleIndices.set(nextIndex, result.sample._id);
+              nextIndex++;
 
-            return data;
-          });
+              return data;
+            });
 
-          const items = itemData.map((data) => {
+            const items = itemData.map((data) => {
+              return {
+                id: data.sample._id,
+                aspectRatio: aspectRatioGenerator.current(data),
+              };
+            });
+
             return {
-              id: data.sample._id,
-              aspectRatio: aspectRatioGenerator.current(data),
+              items,
+              nextRequestKey: more ? page + 1 : null,
             };
-          });
-
-          return {
-            items,
-            nextRequestKey: more ? page + 1 : null,
-          };
+          } catch (error) {
+            setError(error);
+          }
         },
-        render: (sampleId, element, dimensions, soft) => {
-          const result = samples.get(sampleId);
+        render: (sampleId, element, dimensions, soft, hide) => {
+          try {
+            const result = samples.get(sampleId);
 
-          if (lookers.has(sampleId)) {
-            lookers.get(sampleId).attach(element, dimensions);
+            if (lookers.has(sampleId)) {
+              const looker = lookers.get(sampleId);
+              hide ? looker.disable() : looker.attach(element, dimensions);
+
+              return null;
+            }
+
+            if (!soft) {
+              const looker = lookerGeneratorRef.current(result);
+              looker.addEventListener(
+                "selectthumbnail",
+                ({ detail }: { detail: string }) => onSelect(detail)
+              );
+
+              lookers.set(sampleId, looker);
+              looker.attach(element, dimensions);
+            }
+
             return null;
+          } catch (error) {
+            setError(error);
           }
-
-          if (!soft) {
-            const looker = lookerGeneratorRef.current(result);
-            looker.addEventListener(
-              "selectthumbnail",
-              ({ detail }: { detail: string }) => onSelect(detail)
-            );
-
-            lookers.set(sampleId, looker);
-            looker.attach(element, dimensions);
-          }
-
-          return null;
         },
       });
       flashlight.current.attach(id);
