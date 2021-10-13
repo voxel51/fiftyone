@@ -1649,29 +1649,25 @@ class CVATTrack(object):
         polylines = {}
         points = {}
         label = None
-        for frame_number, _label in labels.items():
+        for fn, _label in labels.items():
             label = _label.label
 
             if isinstance(_label, fol.Detection):
-                boxes[frame_number - 1] = CVATVideoBox.from_detection(
-                    frame_number - 1, _label, frame_size
+                boxes[fn - 1] = CVATVideoBox.from_detection(
+                    fn, _label, frame_size
                 )
             elif isinstance(_label, fol.Polyline):
                 if _label.filled:
-                    polygons[
-                        frame_number - 1
-                    ] = CVATVideoPolygon.from_polyline(
-                        frame_number - 1, _label, frame_size
+                    polygons[fn - 1] = CVATVideoPolygon.from_polyline(
+                        fn, _label, frame_size
                     )
                 else:
-                    polylines[
-                        frame_number - 1
-                    ] = CVATVideoPolyline.from_polyline(
-                        frame_number - 1, _label, frame_size
+                    polylines[fn - 1] = CVATVideoPolyline.from_polyline(
+                        fn, _label, frame_size
                     )
             elif isinstance(_label, fol.Keypoint):
-                points[frame_number - 1] = CVATVideoPoints.from_keypoint(
-                    frame_number - 1, _label, frame_size
+                points[fn - 1] = CVATVideoPoints.from_keypoint(
+                    fn, _label, frame_size
                 )
             elif _label is not None:
                 msg = "Ignoring unsupported label type '%s'" % _label.__class__
@@ -1743,7 +1739,7 @@ class CVATVideoAnno(object):
     Args:
         outside (None): whether the object is truncated by the frame edge
         occluded (None): whether the object is occluded
-        keyframe (None): whether the frame is a key frame
+        keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
@@ -1803,7 +1799,7 @@ class CVATVideoBox(CVATVideoAnno):
     """An object bounding box in CVAT video format.
 
     Args:
-        frame: the frame number
+        frame: the 0-based frame number
         label: the object label string
         xtl: the top-left x-coordinate of the box, in pixels
         ytl: the top-left y-coordinate of the box, in pixels
@@ -1811,7 +1807,7 @@ class CVATVideoBox(CVATVideoAnno):
         ybr: the bottom-right y-coordinate of the box, in pixels
         outside (None): whether the object is truncated by the frame edge
         occluded (None): whether the object is occluded
-        keyframe (None): whether the frame is a key frame
+        keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
@@ -1881,6 +1877,7 @@ class CVATVideoBox(CVATVideoAnno):
         Returns:
             a :class:`CVATVideoBox`
         """
+        frame = frame_number - 1
         label = detection.label
 
         width, height = frame_size
@@ -1895,7 +1892,7 @@ class CVATVideoBox(CVATVideoAnno):
         )
 
         return cls(
-            frame_number,
+            frame,
             label,
             xtl,
             ytl,
@@ -1946,13 +1943,13 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
     """A polygon in CVAT video format.
 
     Args:
-        frame: the frame number
+        frame: the 0-based frame number
         label: the polygon label string
         points: a list of ``(x, y)`` pixel coordinates defining the vertices of
             the polygon
         outside (None): whether the polygon is truncated by the frame edge
         occluded (None): whether the polygon is occluded
-        keyframe (None): whether the frame is a key frame
+        keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
@@ -2011,6 +2008,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPolygon`
         """
+        frame = frame_number - 1
         label = polyline.label
 
         points = _get_single_polyline_points(polyline)
@@ -2021,7 +2019,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         )
 
         return cls(
-            frame_number,
+            frame,
             label,
             points,
             outside=outside,
@@ -2060,13 +2058,13 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
     """A polyline in CVAT video format.
 
     Args:
-        frame: the frame number
+        frame: the 0-based frame number
         label: the polyline label string
         points: a list of ``(x, y)`` pixel coordinates defining the vertices of
             the polyline
         outside (None): whether the polyline is truncated by the frame edge
         occluded (None): whether the polyline is occluded
-        keyframe (None): whether the frame is a key frame
+        keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
@@ -2125,6 +2123,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPolyline`
         """
+        frame = frame_number - 1
         label = polyline.label
 
         points = _get_single_polyline_points(polyline)
@@ -2137,7 +2136,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         )
 
         return cls(
-            frame_number,
+            frame,
             label,
             points,
             outside=outside,
@@ -2176,12 +2175,12 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
     """A set of keypoints in CVAT video format.
 
     Args:
-        frame: the frame number
+        frame: the 0-based frame number
         label: the keypoints label string
         points: a list of ``(x, y)`` pixel coordinates defining the keypoints
         outside (None): whether the keypoints are truncated by the frame edge
         occluded (None): whether the keypoints are occluded
-        keyframe (None): whether the frame is a key frame
+        keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
@@ -2234,13 +2233,14 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         Returns:
             a :class:`CVATVideoPoints`
         """
+        frame = frame_number - 1
         label = keypoint.label
         points = cls._to_abs_points(keypoint.points, frame_size)
         outside, occluded, keyframe, attributes = cls._parse_attributes(
             keypoint
         )
         return cls(
-            frame_number,
+            frame,
             label,
             points,
             outside=outside,
