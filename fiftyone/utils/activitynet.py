@@ -488,17 +488,23 @@ class ActivityNetDatasetManager(object):
 
         # 1) Take the all class ids that are downloaded up to max_samples
         dl_all_class_ids = list(set_all_ids.intersection(set_downloaded_ids))
-        loaded_samples, requested_num = self._load_requested_samples(
+        loaded_samples = self._load_requested_samples(
             dl_all_class_ids, shuffle, requested_num,
         )
         requested_sample_ids.extend(loaded_samples)
+        num_loaded = len(loaded_samples)
+        if requested_num is not None:
+            requested_num -= num_loaded
 
         # 2) Take the any class ids that are downloaded up to max_samples
         dl_any_class_ids = list(set_any_ids.intersection(set_downloaded_ids))
-        loaded_samples, requested_num = self._load_requested_samples(
+        loaded_samples = self._load_requested_samples(
             dl_any_class_ids, shuffle, requested_num,
         )
         requested_sample_ids.extend(loaded_samples)
+        num_loaded = len(loaded_samples)
+        if requested_num is not None:
+            requested_num -= num_loaded
 
         # 3) Download all class ids up to max_samples
         not_dl_all_class_ids = list(set_all_ids - set(dl_all_class_ids))
@@ -546,14 +552,14 @@ class ActivityNetDatasetManager(object):
             if requested_num:
                 requested_num -= len(requested_sample_ids)
 
-            return requested_sample_ids, requested_num
+            return requested_sample_ids
 
-        return [], requested_num
+        return []
 
     def _download_requested_samples(
         self, ids, class_samples, shuffle, requested_num, num_workers, split
     ):
-        if requested_num is None or requested_num:
+        if (requested_num is None or requested_num) and ids:
             if shuffle:
                 random.shuffle(ids)
 
@@ -659,7 +665,9 @@ class ActivityNetDatasetManager(object):
             "taxonomy": self.info.taxonomy,
         }
 
-        etas.write_json(fo_annots, self.info.labels_path(split))
+        etas.write_json(
+            fo_annots, self.info.labels_path(split), pretty_print=True
+        )
 
     def _merge_and_write_errors(self, download_errors, error_path):
         if os.path.isfile(error_path):
@@ -683,7 +691,11 @@ class ActivityNetDatasetManager(object):
             to_uuid(p): os.path.join(a100_data_path, p)
             for p in etau.list_files(a100_data_path, recursive=True)
         }
-        etas.write_json(a100_data_map, self.a100_info.data_json_path(split))
+        etas.write_json(
+            a100_data_map,
+            self.a100_info.data_json_path(split),
+            pretty_print=True,
+        )
 
         a200_data_path = self.a200_info.data_dir(split)
         a200_data_map = {
@@ -691,7 +703,11 @@ class ActivityNetDatasetManager(object):
             for p in etau.list_files(a200_data_path, recursive=True)
         }
         a200_data_map.update(a100_data_map)
-        etas.write_json(a200_data_map, self.a200_info.data_json_path(split))
+        etas.write_json(
+            a200_data_map,
+            self.a200_info.data_json_path(split),
+            pretty_print=True,
+        )
 
     @classmethod
     def from_dataset_dir(cls, dataset_dir, version):
@@ -785,7 +801,7 @@ class ActivityNetDatasetInfo(object):
         remaining_ids = []
         for vfn in video_filenames:
             video_id, ext = os.path.splitext(vfn)
-            if ext == ".part":
+            if ext in [".part", ".ytdl"]:
                 os.remove(os.path.join(videos_dir, vfn))
             else:
                 remaining_ids.append(video_id)
@@ -939,7 +955,7 @@ class ActivityNet200DatasetInfo(ActivityNetDatasetInfo):
         self.a100_info.update_existing_sample_ids()
 
         for split in self.splits:
-            self._splitwise_sample_ids[split].extend(
+            self._splitwise_existing_sample_ids[split].extend(
                 self.a100_info.existing_split_sample_ids(split)
             )
 
