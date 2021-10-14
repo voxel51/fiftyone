@@ -435,7 +435,10 @@ class ActivityNetDatasetManager(object):
         if videos:
             with fou.ProgressBar() as pb:
                 for video in pb(videos):
-                    video_id = os.path.splitext(video)[0]
+                    video_fn = os.path.splitext(video)[0]
+
+                    # strip "v_" from video filename
+                    video_id = video_fn[2:]
                     if video_id in existing_videos:
                         continue
 
