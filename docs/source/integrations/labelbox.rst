@@ -430,11 +430,13 @@ In addition, the following Labelbox-specific parameters from
 :class:`LabelboxBackendConfig <fiftyone.utils.labelbox.LabelboxBackendConfig>`
 can also be provided:
 
--   **project_name** (*None*):  the name of the project that will be created,
-    defaults to `*"FiftyOne_<dataset-name>"*`
--   **invite_users** (*[]*): a list of `(email, role)` tuples specifying the
-    users to invite and their roles in the created project. Options for roles
-    are `["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]`
+-   **project_name** (*None*): the name of the Labelbox project that will be
+    created. The default is `"FiftyOne_<dataset_name>"`
+-   **members** (None): an optional list of `(email, role)` tuples specifying
+    the email addresses and roles of users to add to the project. If a user is
+    not a member of the project's organization, an email invitation will be
+    sent to them. The supported roles are
+    `["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]`
 
 .. note::
 
@@ -877,26 +879,30 @@ labeling task:
    :alt: labelbox-tag
    :align: center
 
-Editing annotations with a free Labelbox account
-------------------------------------------------
+Editing labels with a free Labelbox account
+-------------------------------------------
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
 
-If you have a paid Labelbox account with access to Labelbox's Model Assisted
-Labeling feature, see the next section for the recommended workflow for
-uploading existing labels on your FiftyOne datasets to Labelbox for in-place
-editing.
+If you have a paid Labelbox account with access to Labelbox's
+`Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
+feature, see the next section for the recommended workflow for uploading
+existing labels on your FiftyOne datasets to Labelbox for in-place editing.
 
-For free Labelbox users, a recommended workflow for editing existing
-annotations is to tag the annotations of interest in FiftyOne, then upload and
-reannotate the corresponding raw media in Labelbox, then delete the tagged
-annotations and merge the updated annotations back into FiftyOne when the
-reannotation work is complete in Labelbox.
+For free Labelbox users, one possible workflow for editing existing labels is
+the following:
 
-By providing an existing label field to the `label_field` parameter, the
-Labelbox editor is constructed to automatically allow you to add labels and
-attributes matching what exists in the field currently.
+-   :ref:`Tag the labels <app-tagging>` that need editing in FiftyOne
+-   Upload the samples containing the tagged labels to Labelbox and configure
+    an annotation run to populate a *new field* with the same schema as the
+    original field containing the tagged labels
+-   Perform the annotation work in Labelbox, and download the results
+-   Compare the existing and new label fields in the FiftyOne App to make sure
+    you're happy with the proposed edits
+-   Delete the tagged labels and merge the new labels into the original field
+
+The example snippet below demonstrates this workflow:
 
 .. code:: python
     :linenos:
@@ -909,98 +915,54 @@ attributes matching what exists in the field currently.
 
     session = fo.launch_app(view=view)
 
-    # Tag labels to be edited with the tag "edit"
+    # In the App, tag labels to be edited with the "edit" tag
 
-    editing_view = view.select_labels(tags="edit")
+    # Create a view that contains only the tagged labels and their samples
+    edit_view = view.select_labels(tags="edit")
 
-    anno_key = "labelbox_existing_field"
+    anno_key = "labelbox_edit_labels"
 
-    editing_view.annotate(
+    # @todo retrieve label schema for existing `ground_truth` field
+    label_schema = {}
+
+    # Create an annotation run to populate a new `ground_truth_edits` field
+    # with the label edits for the samples in `edit_view`
+    edit_view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth",
+        label_field="ground_truth_edits",
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Reannotate the relevant bounding boxes and their attributes in Labelbox
+    # In Labelbox, reannotate the relevant objects
 
     # Load the edited labels back into FiftyOne
     dataset.load_annotations(anno_key, cleanup=True)
-
-    # Delete the old labels
-    dataset.delete_labels(view=editing_view)
-
-    # Cleanup the run
     dataset.delete_annotation_run(anno_key)
+
+    # In the App, compare the original/edited labels
+    session.view = edited_view
+
+    # Finalize by deleting the tagged labels and merging in the new labels
+    dataset.delete_labels(view=edit_view)
+    dataset.merge_labels("ground_truth_edits", "ground_truth")
 
 .. image:: /images/integrations/labelbox_example.png
    :alt: labelbox-example
    :align: center
 
-|br|
-The above code snippet will infer the possible classes and label attributes
-from your FiftyOne dataset. However, if necessary, you can use the `classes`
-and `attributes` parameters to configure the annotation schema to include new
-classes and/or attributes:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    session = fo.launch_app(view=view)
-
-    # Tag labels to be edited with the tag "edit"
-
-    editing_view = view.select_labels(tags="edit")
-
-    anno_key = "labelbox_existing_field"
-
-    # The list of possible `label` values
-    classes = ["person", "dog", "cat", "helicopter"]
-
-    # Details for the existing `iscrowd` attribute are automatically inferred
-    # A new `attr2` attribute is also added
-    attributes = {
-        "iscrowd": {},
-        "attr2": {
-            "type": "select",
-            "values": ["val1", "val2"],
-        }
-    }
-
-    editing_view.annotate(
-        anno_key,
-        backend="labelbox",
-        label_field="ground_truth",
-        classes=classes,
-        attributes=attributes,
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # Reannotate the relevant bounding boxes and their attributes in Labelbox
-
-    # Load the edited labels back into FiftyOne
-    dataset.load_annotations(anno_key, cleanup=True)
-
-    # Delete the old labels
-    dataset.delete_labels(view=editing_view)
-
-    # Cleanup the run
-    dataset.delete_annotation_run(anno_key)
-
 .. image:: /images/integrations/labelbox_new_class.png
    :alt: labelbox-new-class
    :align: center
 
-Uploading annotations to Labelbox
----------------------------------
+Editing existing labels
+-----------------------
+
+.. warning::
+
+    Editing existing labels is not yet implemented for the Labelbox backend,
+    but it is coming soon!
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
@@ -1084,29 +1046,25 @@ fields at once:
    :alt: labelbox-multiple-fields
    :align: center
 
-Assigning users 
----------------
+Configuring Labelbox projects
+-----------------------------
 
-Every Labelbox account allows you to specify the organization that you are a
-part of. When projects are created, members of this organization can be
-assigned to different roles to projects or within the organization as a whole.
-
-When using the Labelbox backend, you can provide the optional `invite_users`
-parameter to
+When using the Labelbox backend, you can provide the optional `project_name`
+and `members` parameters to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
-specify the members of the project that will be created and their roles.
+configure the Labelbox project that is created.
 
-This parameter accepts a list of `(email, role)` tuples defining the invitees
-and their roles. The options for `role` are:
+The `members` parameter can contain a list of `(email, role)` tuples defining
+the email addresses and project-level roles of members to add to the Labelbox
+project. The supported roles are:
 
-- `"LABELER"`
-- `"REVIEWER"`
-- `"TEAM_MANAGER"`
-- `"ADMIN"`
+-   `"LABELER"`
+-   `"REVIEWER"`
+-   `"TEAM_MANAGER"`
+-   `"ADMIN"`
 
-If the invited users are part of your organization, they will automatically be
-assigned to the newly created project. Otherwise, they will receive an email
-invitation to join.
+If any email addresses do not correspond to users already in your organization,
+an email invitation will be sent to them.
 
 .. code:: python
     :linenos:
@@ -1119,15 +1077,13 @@ invitation to join.
 
     anno_key = "labelbox_assign_users"
 
-    invite_users = [
+    project_name = "your_project_name"
+    members = [
         ("user1@domain.com", "LABELER"),
         ("user2@domain.com", "REVIEWER"),
         ("user3@domain.com", "TEAM_MANAGER"),
     ]
 
-    # Set up the Labelbox editor to annotate
-    # existing "ground_truth" labels and
-    # a new "keypoints" field
     label_schema = {
         "ground_truth": {},
         "keypoints": {
@@ -1140,7 +1096,8 @@ invitation to join.
         anno_key,
         backend="labelbox",
         label_schema=label_schema,
-        invite_users=invite_users,
+        project_name=project_name,
+        members=members,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
@@ -1153,10 +1110,10 @@ invitation to join.
 Scalar labels
 -------------
 
-|Label| fields are the preferred way to store information for common tasks
-such as classification and detection in your FiftyOne datasets. However, you
-can also store Labelbox annotations in scalar fields of type `float`, `int`,
-`str`, or  `bool`.
+|Label| fields are the preferred way to store information for common tasks such
+as classification and detection in your FiftyOne datasets. However, you can
+also store Labelbox annotations in scalar fields of type `float`, `int`, `str`,
+or  `bool`.
 
 When storing annotations in scalar fields, the `label_field` parameter is still
 used to define the name of the field, but the `classes` argument is now
@@ -1209,9 +1166,9 @@ Uploading alternate media
 -------------------------
 
 In some cases, you may want to upload media files other than those stored in
-the `filepath` field of your dataset's samples for annotation. For example,
-you may have a dataset with personal information like faces or license plates
-that must be anonymized before uploading for annotation.
+the `filepath` field of your dataset's samples for annotation. For example, you
+may have a dataset with personal information like faces or license plates that
+must be anonymized before uploading for annotation.
 
 The recommended approach in this case is to store the alternative media files
 for each sample on disk and record these paths in a new field of your FiftyOne
@@ -1369,27 +1326,27 @@ annotation run:
 .. code-block:: text
 
     Project: FiftyOne_quickstart
-            ID: cktixtv70e8zm0yba501v0ltz
-            Created at: 2021-09-13 17:46:21+00:00
-            Updated at: 2021-09-13 17:46:24+00:00
-            Members:
-    
-                    User: user1 
-                        Role: Admin
-                        ID: ckl137jfiss1c07320dacd81l
-                        Nickname: user1
-                        Email: USER1_EMAIL@email.com
+    ID: cktixtv70e8zm0yba501v0ltz
+    Created at: 2021-09-13 17:46:21+00:00
+    Updated at: 2021-09-13 17:46:24+00:00
 
-                    User: user2
-                        Role: Labeler
-                        Name: FIRSTNAME LASTNAME
-                        ID: ckl137jfiss1c07320dacd82y
-                        Email: USER2_EMAIL@email.com
+    Members:
+        User: user1
+        Name: user1
+        Role: Admin
+        Email: USER1_EMAIL@email.com
+        ID: ckl137jfiss1c07320dacd81l
 
-            Reviews:
-                    Positive: 2
-                    Zero: 0
-                    Negative: 1
+        User: user2
+        Name: FIRSTNAME LASTNAME
+        Role: Labeler
+        Email: USER2_EMAIL@email.com
+        ID: ckl137jfiss1c07320dacd82y
+
+    Reviews:
+        Positive: 2
+        Zero: 0
+        Negative: 1
 
 Deleting projects
 -----------------
@@ -1426,13 +1383,11 @@ that were created.
     api.delete_project(results.project_id, delete_datasets=True)
 
     # OR
-    
-    api.delete_projects([results.project_id], delete_datasets=True)
 
     # List all projects or datasets associated with your Labelbox account
     project_ids = api.list_projects()
     dataset_ids = api.list_datasets()
 
-    # Delete all projects and datsets from your Labelbox account
-    api.delete_projects(project_ids_to_delete)
-    api.delete_datasets(dataset_ids_to_delete)
+    # Delete all projects and datasets from your Labelbox account
+    api.delete_projects(project_ids)
+    api.delete_datasets(dataset_ids)
