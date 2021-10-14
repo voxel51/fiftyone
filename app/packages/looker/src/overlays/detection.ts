@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { BASE_ALPHA, INFO_COLOR } from "../constants";
+import { INFO_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
@@ -146,7 +146,7 @@ export default class DetectionOverlay<
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
     const tmp = ctx.globalAlpha;
-    ctx.globalAlpha = tmp * BASE_ALPHA;
+    ctx.globalAlpha = state.options.alpha;
     ctx.drawImage(
       this.canvas,
       x,

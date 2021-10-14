@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { getColor } from "../color";
-import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
@@ -80,7 +79,7 @@ export default class SegmentationOverlay<State extends BaseState>
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     const tmp = ctx.globalAlpha;
-    ctx.globalAlpha = tmp * BASE_ALPHA;
+    ctx.globalAlpha = state.options.alpha;
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
     ctx.globalAlpha = tmp;
 
