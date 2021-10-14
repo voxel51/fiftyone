@@ -3,6 +3,16 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.13.4:
+
+FiftyOne 0.13.4
+---------------
+*Released October 14, 2021*
+
+App
+
+- Fixed a bug in the sample grid where samples are skipped
+
 .. _release-notes-v0.13.3:
 
 FiftyOne 0.13.3
