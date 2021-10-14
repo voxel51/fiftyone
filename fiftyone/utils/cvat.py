@@ -2447,6 +2447,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             assigned
         project_name (None): an optional project name in which to store the
             annotation tasks. By default, no project is created
+        task_per_field (False): whether to upload all label fields and classes
+            into one CVAT task (False) or to create a new CVAT task for every
+            label field being annotated (True)
     """
 
     def __init__(
@@ -2466,6 +2469,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_assignees=None,
         job_reviewers=None,
         project_name=None,
+        task_per_field=False,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -2479,6 +2483,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.job_assignees = job_assignees
         self.job_reviewers = job_reviewers
         self.project_name = project_name
+        self.task_per_field = task_per_field
 
         # store privately so these aren't serialized
         self._username = username
@@ -3255,6 +3260,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
         project_name = config.project_name
+        task_per_field = config.task_per_field
 
         id_map = {}
         project_ids = []
