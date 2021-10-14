@@ -100,10 +100,6 @@ const getFormatter = (fieldType, timeZone, bounds) => {
       if (date) {
         const str = dtFormatters[1].format(v).split(",");
 
-        if (str.length === 1) {
-          return str;
-        }
-
         let [day, time] = str;
 
         if (dtFormatters[1].resolvedOptions().fractionalSecondDigits === 3) {
@@ -123,7 +119,7 @@ const getFormatter = (fieldType, timeZone, bounds) => {
             <div>
               {y}&#8209;{m}&#8209;{d}
             </div>
-            <div>{time}</div>
+            {time && <div>{time}</div>}
           </>
         );
       }
@@ -174,7 +170,7 @@ const BaseSlider = React.memo(
     showBounds = true,
     value,
     style,
-    showValue,
+    showValue = true,
   }: BaseSliderProps) => {
     const theme = useTheme();
     const bounds = useRecoilValue(boundsAtom);

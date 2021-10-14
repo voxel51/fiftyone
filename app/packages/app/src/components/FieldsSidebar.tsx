@@ -31,7 +31,12 @@ import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import * as fieldAtoms from "./Filters/utils";
 import * as selectors from "../recoil/selectors";
-import { FILTERABLE_TYPES, FRAME_SUPPORT_FIELD } from "../utils/labels";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FILTERABLE_TYPES,
+  FRAME_SUPPORT_FIELD,
+} from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
 import { formatDateTime, prettify } from "../utils/generic";
@@ -561,6 +566,8 @@ const OthersCell = ({ modal }: OthersCellProps) => {
   ];
   const types = useRecoilValue(selectors.primitivesMap("sample"));
   const timeZone = useRecoilValue(selectors.timeZone);
+  const subTypes = useRecoilValue(selectors.primitiveSubfields("sample"));
+  const dates = [DATE_TIME_FIELD, DATE_FIELD];
 
   return (
     <Cell
@@ -580,9 +587,18 @@ const OthersCell = ({ modal }: OthersCellProps) => {
         .map((name) => {
           let value = modal ? count[dbFields[name]] : null;
 
-          if (value && value._cls === DATE_TIME) {
-            value = formatDateTime(value.datetime, timeZone);
+          if (
+            value &&
+            (dates.includes(types[name]) || dates.includes(subTypes[name]))
+          ) {
+            value = formatDateTime(
+              value.datetime,
+              types[name] === DATE_FIELD || subTypes[name] === DATE_TIME_FIELD
+                ? "UTC"
+                : timeZone
+            );
           }
+
           return {
             name,
             disabled: false,

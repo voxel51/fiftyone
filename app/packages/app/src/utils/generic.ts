@@ -130,7 +130,7 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
 
 export const getDateTimeRangeFormattersWithPrecision = (() => {
   const twoDigit = "2-digit";
-  const locale = "en-ZA";
+  let locale = "en-ZA";
 
   const MS = 1000;
   const S = 60 * MS;
@@ -144,7 +144,10 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
   ): [Intl.DateTimeFormat | null, Intl.DateTimeFormat] => {
     const delta = Math.abs(d1 - d2);
     let common: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
-    let diff: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
+    let diff: Intl.DateTimeFormatOptions = {
+      timeZone,
+      hour12: false,
+    };
 
     if (d1 % H === 0 && d2 % H === 0) {
       common = null;
@@ -153,6 +156,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         month: twoDigit,
         day: twoDigit,
       };
+      locale = "en-CA";
     } else if (delta < MS) {
       common = {
         year: "numeric",
@@ -166,6 +170,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         // @ts-ignore
         fractionalSecondDigits: 3,
       };
+      locale = "en-ZA";
     } else if (delta < S) {
       common = {
         year: "numeric",
@@ -179,6 +184,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         // @ts-ignore
         fractionalSecondDigits: 3,
       };
+      locale = "en-ZA";
     } else if (delta < M) {
       common = {
         year: "numeric",
@@ -190,6 +196,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         minute: twoDigit,
         second: twoDigit,
       };
+      locale = "en-ZA";
     } else {
       common = null;
       diff = {
@@ -200,6 +207,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         minute: twoDigit,
         second: twoDigit,
       };
+      locale = "en-ZA";
     }
 
     return [

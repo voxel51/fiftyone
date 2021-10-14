@@ -154,7 +154,7 @@ const Distribution = ({ distribution }) => {
                   end
                 );
                 title = `Range: ${
-                  cFmt ? cFmt.format(start) : ""
+                  cFmt ? cFmt.format(start).replaceAll("/", "-") : ""
                 } ${dFmt.formatRange(start, end).replaceAll("/", "-")}`;
               } else {
                 title = `Range: [${map[key]
