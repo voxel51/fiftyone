@@ -423,9 +423,12 @@ def _compute_accuracy(ytrue, ypred, labels=None, weights=None):
     if ytrue.size > 0:
         scores = ytrue == ypred
         if weights is not None:
-            scores = weights * scores
-
-        accuracy = np.mean(scores)
+            try:
+                accuracy = np.sum(weights * scores) / np.sum(weights)
+            except ZeroDivisionError:
+                accuracy = 0.0
+        else:
+            accuracy = np.mean(scores)
     else:
         accuracy = 0.0
 
