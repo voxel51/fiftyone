@@ -180,6 +180,15 @@ const DetectionInfo = ({ detail }) => {
   );
 };
 
+const HeatmapInfo = ({ detail }) => {
+  return (
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
+      <AttrInfo label={detail.label} />
+    </AttrBlock>
+  );
+};
+
 const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
@@ -227,9 +236,10 @@ const Border = ({ color, id }) => {
 const OVERLAY_INFO = {
   Classification: ClassificationInfo,
   Detection: DetectionInfo,
+  Heatmap: HeatmapInfo,
   Keypoint: KeypointInfo,
-  Segmentation: SegmentationInfo,
   Polyline: PolylineInfo,
+  Segmentation: SegmentationInfo,
 };
 
 const TagInfo = ({ tags }: { tags: string[] }) => {
@@ -319,10 +329,8 @@ const lookerOptions = selector({
     const zoom = get(selectors.isPatchesView)
       ? get(atoms.cropToContent(true))
       : false;
-    const colorByLabel = get(atoms.colorByLabel(true));
 
     return {
-      colorByLabel,
       showConfidence,
       showIndex,
       showLabel,
@@ -330,13 +338,14 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      colorMap: get(selectors.colorMap(true)),
       filter: get(labelFilters(true)),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
       fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
       frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
+      coloring: get(selectors.coloring(true)),
+      alpha: get(atoms.alpha(true)),
     };
   },
 });

@@ -438,7 +438,7 @@ place of :meth:`Model.predict() <fiftyone.core.models.Model.predict>`.
 
 By convention,
 :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` should
-return a NumPy array containing the embedding.
+return a numpy array containing the embedding.
 
 .. note:
 

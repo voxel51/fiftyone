@@ -1595,8 +1595,8 @@ def _parse_field_and_expr(
         if is_frame_field:
             pipeline.extend(
                 [
-                    {"$project": {"frames." + path: True}},
                     {"$unwind": "$frames"},
+                    {"$project": {"frames." + path: True}},
                     {"$replaceRoot": {"newRoot": "$frames"}},
                 ]
             )

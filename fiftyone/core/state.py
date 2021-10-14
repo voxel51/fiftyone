@@ -33,7 +33,8 @@ class StateDescription(etas.Serializable):
         datasets (None): the list of available datasets
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
-        filters (None): a dictionary of currently active App filters
+        filters (None): a dictionary of currently active field filters
+        settings (None): a dictionary of the current field settings, if any
         connected (False): whether the session is connected to an App
         active_handle (None): the UUID of the currently active App. Only
             applicable in notebook contexts
@@ -50,6 +51,7 @@ class StateDescription(etas.Serializable):
         dataset=None,
         view=None,
         filters=None,
+        settings=None,
         connected=False,
         active_handle=None,
         selected=None,
@@ -96,6 +98,9 @@ class StateDescription(etas.Serializable):
             d["dataset"] = _dataset
             d["view"] = _view
             d["view_cls"] = _view_cls
+
+            if self.config.colorscale:
+                d["colorscale"] = self.config.get_colormap()
 
             return d
 

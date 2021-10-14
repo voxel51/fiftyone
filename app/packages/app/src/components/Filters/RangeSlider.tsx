@@ -90,6 +90,7 @@ type BaseSliderProps = {
   onCommit: (e: Event, v: Range | number) => void;
   persistValue?: boolean;
   showBounds?: boolean;
+  showValue: boolean;
   int?: boolean;
   style?: React.CSSProperties;
 };
@@ -105,6 +106,7 @@ const BaseSlider = React.memo(
     showBounds = true,
     value,
     style,
+    showValue,
   }: BaseSliderProps) => {
     const theme = useContext(ThemeContext);
     const bounds = useRecoilValue(boundsAtom);
@@ -144,7 +146,9 @@ const BaseSlider = React.memo(
           }}
           valueLabelFormat={formatter}
           aria-labelledby="slider"
-          valueLabelDisplay={clicking || persistValue ? "on" : "off"}
+          valueLabelDisplay={
+            (clicking || persistValue) && showValue ? "on" : "off"
+          }
           max={bounds[1]}
           min={bounds[0]}
           step={step}
@@ -161,11 +165,13 @@ type SliderProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   persistValue?: boolean;
+  showValue?: boolean;
   showBounds?: boolean;
+  onChange?: boolean;
   int?: boolean;
 };
 
-export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
+export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
   const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<SliderValue>(null);
   useEffect(() => {
@@ -176,7 +182,7 @@ export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
   return (
     <BaseSlider
       {...rest}
-      onChange={(_, v) => setLocalValue(v)}
+      onChange={(_, v) => (onChange ? setValue(v) : setLocalValue(v))}
       onCommit={(_, v) => setValue(v)}
       value={localValue}
     />

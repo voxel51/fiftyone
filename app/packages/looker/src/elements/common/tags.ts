@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { getColor } from "../../color";
 import {
   FRAME_SUPPORT_FIELD,
   LABEL_LISTS,
@@ -22,7 +23,7 @@ interface TagData {
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private colorByValue: boolean;
-  private colorMap: (key: string | number) => string;
+  private colorSeed: number;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -36,22 +37,15 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      options: {
-        filter,
-        activePaths,
-        colorMap,
-        colorByLabel,
-        fieldsMap,
-        mimetype,
-      },
+      options: { filter, activePaths, coloring, fieldsMap, mimetype },
       config: { fieldSchema },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
     if (
       arraysAreEqual(activePaths, this.activePaths) &&
-      this.colorByValue === colorByLabel &&
-      this.colorMap === colorMap
+      this.colorByValue === coloring.byLabel &&
+      this.colorSeed === coloring.seed
     ) {
       return this.element;
     }
@@ -64,7 +58,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       ) {
         const tag = path.slice(5);
         elements.push({
-          color: colorMap(path),
+          color: getColor(coloring.pool, coloring.seed, path),
           title: tag,
           value: tag,
         });
@@ -76,7 +70,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           elements = [
             ...elements,
             {
-              color: colorMap(path),
+              color: getColor(coloring.pool, coloring.seed, path),
               title: value,
               value,
             },
@@ -111,7 +105,11 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
                 return acc;
               }, {})
           ).map(([label, count]) => ({
-            color: colorMap(colorByLabel ? label : path),
+            color: getColor(
+              coloring.pool,
+              coloring.seed,
+              coloring.byLabel ? label : path
+            ),
             title: `${path}: ${label}`,
             value: isList
               ? `${prettify(label)}: ${count.toLocaleString()}`
@@ -143,7 +141,11 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           elements = [
             ...elements,
             {
-              color: colorMap(colorByLabel ? value : path),
+              color: getColor(
+                coloring.pool,
+                coloring.seed,
+                coloring.byLabel ? value : path
+              ),
               title: value,
               value: pretty,
             },
@@ -167,8 +169,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       return elements;
     }, []);
 
-    this.colorByValue = colorByLabel;
-    this.colorMap = colorMap;
+    this.colorByValue = coloring.byLabel;
+    this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
 
