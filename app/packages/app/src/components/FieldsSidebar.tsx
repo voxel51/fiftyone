@@ -34,8 +34,9 @@ import * as selectors from "../recoil/selectors";
 import { FILTERABLE_TYPES, FRAME_SUPPORT_FIELD } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
-import { prettify } from "../utils/generic";
+import { formatDateTime, prettify } from "../utils/generic";
 import * as filterAtoms from "./Filters/atoms";
+import { DATE_TIME } from "@fiftyone/looker/src/constants";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -559,6 +560,7 @@ const OthersCell = ({ modal }: OthersCellProps) => {
     useRecoilValue(filterAtoms.scalarCounts(modal)),
   ];
   const types = useRecoilValue(selectors.primitivesMap("sample"));
+  const timeZone = useRecoilValue(selectors.timeZone);
 
   return (
     <Cell
@@ -576,7 +578,11 @@ const OthersCell = ({ modal }: OthersCellProps) => {
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {
-          const value = modal ? count[dbFields[name]] : null;
+          let value = modal ? count[dbFields[name]] : null;
+
+          if (value && value._cls === DATE_TIME) {
+            value = formatDateTime(value.datetime, timeZone);
+          }
           return {
             name,
             disabled: false,

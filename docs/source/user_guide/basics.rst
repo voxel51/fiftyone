@@ -146,6 +146,8 @@ Custom fields can contain any Python primitive data type:
 -   |IntField|: contains Python `int` instances
 -   |FloatField|: contains Python `float` instances
 -   |StringField|: contains Python `str` instances
+-   |DateField|: contains Python `date` instances
+-   |DateTimeField|: contains Python `datetime` instances
 -   |ListField|: contains Python `list` instances
 -   |DictField|: contains Python `dict` instances
 

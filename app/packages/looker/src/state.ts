@@ -12,6 +12,10 @@ export interface Coloring {
   pool: string[];
   scale: RGB[];
   seed: number;
+  defaultMaskTargets?: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
   targets: string[];
 }
 
@@ -33,6 +37,10 @@ export interface LabelData {
   frame_number?: number;
   sample_id: string;
   index?: number;
+}
+
+export interface MaskTargets {
+  [key: number]: string;
 }
 
 export type BufferRange = [number, number];
@@ -84,6 +92,7 @@ interface BaseOptions {
   selected: boolean;
   fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
+  timeZone: string;
   mimetype: string;
   alpha: number;
 }
@@ -258,6 +267,8 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
     pool: ["#000000"],
     scale: null,
     seed: 0,
+    maskTargets: {},
+    defaultMaskTargets: null,
     targets: ["#000000"],
   },
   smoothMasks: true,
@@ -268,6 +279,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
+  timeZone: "UTC",
   mimetype: "",
   alpha: 0.7,
 };

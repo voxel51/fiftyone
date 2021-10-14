@@ -5,6 +5,8 @@ FiftyOne aggregation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime, timedelta
+
 from bson import ObjectId
 import unittest
 
@@ -345,6 +347,73 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_values_unwind(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="cat")]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="dog")]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="cat"),
+                    fo.Classification(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[2] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="rabbit")]
+            )
+        )
+        sample2.frames[3] = fo.Frame(
+            ground_truth=fo.Classifications(
+                classifications=[fo.Classification(label="squirrel")]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        # [num_samples][num_frames][num_classifications]
+        values = dataset.values("frames.ground_truth.classifications.label")
+        expected = [
+            [["cat"], None, ["dog"]],
+            [["cat", "dog"], ["rabbit"], ["squirrel"]],
+        ]
+
+        self.assertListEqual(values, expected)
+
+        # [num_samples][num_frames x num_classifications]
+        values1 = dataset.values("frames.ground_truth.classifications[].label")
+        values2 = dataset.values(
+            "frames.ground_truth.classifications.label", unwind=-1
+        )
+        expected = [["cat", "dog"], ["cat", "dog", "rabbit", "squirrel"]]
+        self.assertListEqual(values1, expected)
+        self.assertListEqual(values2, expected)
+
+        # [num_samples x num_frames x num_classifications]
+        values1 = dataset.values(
+            "frames[].ground_truth.classifications[].label"
+        )
+        values2 = dataset.values(
+            "frames.ground_truth.classifications.label", unwind=True
+        )
+        expected = ["cat", "dog", "cat", "dog", "rabbit", "squirrel"]
+        self.assertListEqual(values1, expected)
+        self.assertListEqual(values2, expected)
+
+    @drop_datasets
     def test_object_ids(self):
         dataset = fo.Dataset()
         for i in range(5):
@@ -501,6 +570,82 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(len(_frame_label_oids), 4)
             for oid in _frame_label_oids:
                 self.assertIsInstance(oid, ObjectId)
+
+    @drop_datasets
+    def test_dates(self):
+        today = date.today()
+        now = datetime.utcnow()
+
+        samples = []
+        for idx in range(100):
+            sample = fo.Sample(filepath="image%d.jpg" % idx)
+
+            # Dates
+            sample["dates"] = today - timedelta(days=idx)
+
+            # Datetimes
+            sample["ms"] = now - timedelta(milliseconds=idx)
+            sample["seconds"] = now - timedelta(seconds=idx)
+            sample["minutes"] = now - timedelta(minutes=idx)
+            sample["hours"] = now - timedelta(hours=idx)
+            sample["days"] = now - timedelta(days=idx)
+            sample["weeks"] = now - timedelta(weeks=idx)
+
+            samples.append(sample)
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        bounds = dataset.bounds("dates")
+        self.assertIsInstance(bounds[0], date)
+        self.assertIsInstance(bounds[1], date)
+
+        count = dataset.count("dates")
+        self.assertEqual(count, 100)
+
+        values = dataset.values("dates")
+        for value in values:
+            self.assertIsInstance(value, date)
+
+        uniques = dataset.distinct("dates")
+        self.assertListEqual(uniques, list(reversed(values)))
+
+        counts_dict = dataset.count_values("dates")
+        for value, count in counts_dict.items():
+            self.assertIsInstance(value, date)
+            self.assertEqual(count, 1)
+
+        counts, edges, other = dataset.histogram_values("dates", bins=10)
+        self.assertListEqual(counts, [10] * 10)
+        self.assertEqual(other, 0)
+        for edge in edges:
+            self.assertIsInstance(edge, datetime)
+
+        for field in ["ms", "seconds", "minutes", "hours", "days", "weeks"]:
+            bounds = dataset.bounds(field)
+            self.assertIsInstance(bounds[0], datetime)
+            self.assertIsInstance(bounds[1], datetime)
+
+            count = dataset.count(field)
+            self.assertEqual(count, 100)
+
+            values = dataset.values(field)
+            for value in values:
+                self.assertIsInstance(value, datetime)
+
+            uniques = dataset.distinct(field)
+            self.assertListEqual(uniques, list(reversed(values)))
+
+            counts_dict = dataset.count_values(field)
+            for value, count in counts_dict.items():
+                self.assertIsInstance(value, datetime)
+                self.assertEqual(count, 1)
+
+            counts, edges, other = dataset.histogram_values(field, bins=10)
+            self.assertListEqual(counts, [10] * 10)
+            self.assertEqual(other, 0)
+            for edge in edges:
+                self.assertIsInstance(edge, datetime)
 
     @drop_datasets
     def test_order(self):

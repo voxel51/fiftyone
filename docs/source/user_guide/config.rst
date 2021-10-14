@@ -49,9 +49,6 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
-|                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -79,9 +76,16 @@ FiftyOne supports the configuration options described below:
 | `model_zoo_manifest_paths`    | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                        | A list of manifest JSON files specifying additional zoo models. See                    |
 |                               |                                     |                               | :ref:`adding models to the zoo <model-zoo-add>` for more information.                  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
+|                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
 |                               |                                     |                               | operations such reading/writing large datasets or activiating FiftyOne                 |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
+|                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
+|                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 
 Viewing your config
@@ -126,7 +130,8 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "requirement_error_level": 0,
-            "show_progress_bars": true
+            "show_progress_bars": true,
+            "timezone": null
         }
 
         torch
@@ -163,7 +168,8 @@ and the CLI:
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "requirement_error_level": 0,
-            "show_progress_bars": true
+            "show_progress_bars": true,
+            "timezone": null
         }
 
         torch
@@ -357,6 +363,57 @@ Then, in another shell, configure the database URI and launch FiftyOne:
 
     dataset = foz.load_zoo_dataset("quickstart")
     session = fo.launch_app(dataset)
+
+.. _configuring-timezone:
+
+Configuring a timezone
+----------------------
+
+By default, FiftyOne loads all datetimes in FiftyOne datasets as naive
+`datetime` objects expressed in UTC time.
+
+However, you can configure FiftyOne to express datetimes in a specific timezone
+by setting the `timezone` property of your FiftyOne config.
+
+The `timezone` property can be set to any timezone string supported by
+`pytz.timezone()`, or `"local"` to use your current local timezone.
+
+For example, you could set the `FIFTYONE_TIMEZONE` environment variable:
+
+.. code-block:: shell
+
+    # Local timezone
+    export FIFTYONE_TIMEZONE=local
+
+    # US Eastern timezone
+    export FIFTYONE_TIMEZONE=US/Eastern
+
+Or, you can even dynamically change the timezone while you work in Python:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import datetime
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="image.png", created_at=datetime.utcnow())
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    print(sample.created_at)
+    # 2021-08-24 20:24:09.723021
+
+    fo.config.timezone = "local"
+    dataset.reload()
+
+    print(sample.created_at)
+    # 2021-08-24 16:24:09.723000-04:00
+
+.. note::
+
+    The `timezone` setting does not affect the internal database representation
+    of datetimes, which are always stored as UTC timestamps.
 
 .. _configuring-fiftyone-app:
 

@@ -11,6 +11,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
+import fiftyone.core.utils as fou
 
 
 _BOOL_FILTER = "bool"
@@ -229,6 +230,10 @@ def _is_support(field):
     return False
 
 
+def _is_datetime(field):
+    return isinstance(field, (fof.DateField, fof.DateTimeField))
+
+
 def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
@@ -250,6 +255,10 @@ def _make_scalar_expression(f, args, field):
     elif cls == _NUMERIC_FILTER and _is_support(field):
         mn, mx = args["range"]
         expr = (f[0] >= mn) & (f[1] <= mx)
+    elif cls == _NUMERIC_FILTER and _is_datetime(field):
+        mn, mx = args["range"]
+        p = fou.timestamp_to_datetime
+        expr = (f >= p(mn)) & (f <= p(mx))
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)

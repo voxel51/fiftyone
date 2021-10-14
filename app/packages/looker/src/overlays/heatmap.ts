@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
-import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
@@ -95,9 +94,9 @@ export default class HeatmapOverlay<State extends BaseState>
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     const tmp = ctx.globalAlpha;
-    ctx.globalAlpha = tmp * BASE_ALPHA;
+    ctx.globalAlpha = state.options.alpha;
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
-    ctx.globalAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = tmp;
 
     if (this.isSelected(state)) {
       strokeCanvasRect(
@@ -185,7 +184,7 @@ export default class HeatmapOverlay<State extends BaseState>
       return 0;
     }
 
-    if (!state.options.coloring.byLabel) {
+    if (state.options.coloring.byLabel) {
       const index = Math.round(
         (Math.max(value - start, 0) / (stop - start)) *
           (state.options.coloring.scale.length - 1)

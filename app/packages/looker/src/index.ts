@@ -17,6 +17,7 @@ import {
   LABEL_LISTS,
   JSON_COLORS,
   MASK_LABELS,
+  DATE_TIME,
   HEATMAP,
   BASE_ALPHA,
 } from "./constants";
@@ -52,6 +53,7 @@ import {
   BufferRange,
   Dimensions,
   Sample,
+  MaskTargets,
 } from "./state";
 import {
   addToBuffers,
@@ -84,6 +86,10 @@ export interface Coloring {
   scale: RGB[];
   seed: number;
   targets: string[];
+  defaultMaskTargets?: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
 }
 
 const workerCallbacks = {
@@ -250,8 +256,8 @@ export abstract class Looker<
       ctx.clearRect(
         0,
         0,
-        Math.ceil(this.state.windowBBox[2] * dpr),
-        Math.ceil(this.state.windowBBox[3] * dpr)
+        this.state.windowBBox[2] * dpr,
+        this.state.windowBBox[3] * dpr
       );
 
       ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
@@ -764,6 +770,7 @@ const { aquireReader, addFrame } = (() => {
       if (data.uuid !== subscription || data.method !== "frameChunk") {
         return;
       }
+
       const {
         frames,
         range: [start, end],
@@ -1245,7 +1252,7 @@ const filterSample = <S extends Sample | FrameSample>(
   fieldsMap: { [key: string]: string },
   prefix = ""
 ): S => {
-  for (const field in sample) {
+  for (let field in sample) {
     if (fieldsMap.hasOwnProperty(field)) {
       sample[fieldsMap[field]] = sample[field];
       if (field !== fieldsMap[field]) {
@@ -1253,6 +1260,12 @@ const filterSample = <S extends Sample | FrameSample>(
       }
     } else if (field.startsWith("_")) {
       delete sample[field];
+    } else if (sample[field] && sample[field]._cls === DATE_TIME) {
+      sample[field] = new Date(sample[field].datetime);
+    } else if (Array.isArray(sample[field])) {
+      sample[field] = sample[field].map((v) =>
+        v && v._cls === DATE_TIME ? new Date(sample[field].datetime) : v
+      );
     } else if (
       sample[field] &&
       sample[field]._cls &&

@@ -1,4 +1,4 @@
-import { Autorenew } from "@material-ui/icons";
+import { Autorenew, OpacityRounded } from "@material-ui/icons";
 import React from "react";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
@@ -31,6 +31,7 @@ export const RefreshButton = ({ modal }) => {
             />
           </span>
         }
+        title={"Refresh colors"}
         onClick={() => setColorSeed(colorSeed + 1)}
         style={{
           margin: "0.25rem -0.5rem",
@@ -72,9 +73,22 @@ const ColorBy = ({ modal }) => {
 
 const Opacity = ({ modal }) => {
   const theme = useTheme();
+  const [alpha, setAlpha] = useRecoilState(atoms.alpha(modal));
   return (
     <>
-      <PopoutSectionTitle>Label opacity</PopoutSectionTitle>
+      <PopoutSectionTitle style={{ display: "flex", height: 33 }}>
+        <span>Label opacity</span>
+        {alpha !== atoms.DEFAULT_ALPHA && (
+          <span
+            onClick={() => setAlpha(atoms.DEFAULT_ALPHA)}
+            style={{ cursor: "pointer", margin: "0.25rem" }}
+            title={"Reset label opacity"}
+          >
+            <OpacityRounded />
+          </span>
+        )}
+      </PopoutSectionTitle>
+
       <Slider
         valueAtom={atoms.alpha(modal)}
         boundsAtom={constSelector([0.01, 1])}

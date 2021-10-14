@@ -6,8 +6,9 @@ FiftyOne server json utilies.
 |
 """
 from bson import ObjectId, json_util
-from json import JSONEncoder
 from collections import OrderedDict
+from datetime import date, datetime
+from json import JSONEncoder
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -23,6 +24,7 @@ def _handle_bytes(o):
             o[k] = str(fou.deserialize_numpy_array(v).shape)
         elif isinstance(v, dict):
             o[k] = _handle_bytes(v)
+
     return o
 
 
@@ -35,23 +37,39 @@ def _handle_numpy_array(raw, _cls=None):
     )
 
 
+def _handle_date(dt):
+    return {
+        "_cls": "DateTime",
+        "datetime": fou.datetime_to_timestamp(dt),
+    }
+
+
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
-            if isinstance(v, ObjectId):
+            if isinstance(v, bytes):
+                d[k] = _handle_numpy_array(v, d.get("_cls", None))
+            elif isinstance(v, (date, datetime)):
+                d[k] = _handle_date(v)
+            elif isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
-            elif isinstance(v, bytes):
-                d[k] = _handle_numpy_array(v, d.get("_cls", None))
+
     if isinstance(d, list):
         for idx, i in enumerate(d):
-            if isinstance(i, (dict, OrderedDict, list)):
-                convert(i)
+            if isinstance(i, tuple):
+                d[idx] = list(i)
+                i = d[idx]
+
+            if isinstance(i, bytes):
+                d[idx] = _handle_numpy_array(i)
+            elif isinstance(i, (date, datetime)):
+                d[idx] = _handle_date(i)
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
-            elif isinstance(i, bytes):
-                d[idx] = _handle_numpy_array(i)
+            elif isinstance(i, (dict, OrderedDict, list)):
+                convert(i)
 
 
 class FiftyOneJSONEncoder(JSONEncoder):

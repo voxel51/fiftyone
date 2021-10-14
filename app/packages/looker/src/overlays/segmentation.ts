@@ -2,7 +2,6 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 import { getColor } from "../color";
-import { BASE_ALPHA } from "../constants";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
@@ -80,7 +79,7 @@ export default class SegmentationOverlay<State extends BaseState>
     const [tlx, tly] = t(state, 0, 0);
     const [brx, bry] = t(state, 1, 1);
     const tmp = ctx.globalAlpha;
-    ctx.globalAlpha = tmp * BASE_ALPHA;
+    ctx.globalAlpha = state.options.alpha;
     ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
     ctx.globalAlpha = tmp;
 
@@ -106,12 +105,29 @@ export default class SegmentationOverlay<State extends BaseState>
 
   getPointInfo(state: Readonly<State>): PointInfo<SegmentationInfo> {
     const target = this.getTarget(state);
+    const coloring = state.options.coloring;
+    let maskTargets = coloring.maskTargets[this.field];
+    if (maskTargets) {
+      maskTargets[this.field];
+    }
+
+    if (!maskTargets) {
+      maskTargets = coloring.defaultMaskTargets;
+    }
+
+    const color =
+      maskTargets && Object.keys(maskTargets).length === 1
+        ? getColor(
+            state.options.coloring.pool,
+            state.options.coloring.seed,
+            this.field
+          )
+        : coloring.targets[
+            Math.round(Math.abs(target)) % coloring.targets.length
+          ];
+
     return {
-      color: getColor(
-        state.options.coloring.pool,
-        state.options.coloring.seed,
-        target
-      ),
+      color,
       label: {
         ...this.label,
         mask: {

@@ -3285,6 +3285,8 @@ class MatchFrames(ViewStage):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
+        omit_empty (True): whether to omit samples with no frame labels after
+            filtering
     """
 
     def __init__(self, filter, omit_empty=True):
@@ -5663,7 +5665,7 @@ class ToClips(ViewStage):
         field_or_expr: can be any of the following:
 
             -   a :class:`fiftyone.core.labels.TemporalDetection`,
-                :class:`fiftyone.core.labels.TemporalDetections`, or
+                :class:`fiftyone.core.labels.TemporalDetections`,
                 :class:`fiftyone.core.fields.FrameSupportField`, or list of
                 :class:`fiftyone.core.fields.FrameSupportField` field
             -   a frame-level label list field of any of the following types:
