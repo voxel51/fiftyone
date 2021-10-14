@@ -8,7 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import math
 import os
 import traceback
@@ -1385,6 +1385,8 @@ async def _numeric_histograms(view, schema, prefix=""):
                 range_ = [0, 1]
             elif isinstance(range_[1], datetime):
                 range_ = (range_[0], range_[1] + timedelta(milliseconds=1))
+            elif isinstance(range_[1], date):
+                range_ = (range_[0], range_[1] + timedelta(days=1))
             else:
                 range_ = (range_[0], range_[1] + 1e-6)
 
