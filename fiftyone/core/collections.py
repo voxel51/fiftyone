@@ -2486,7 +2486,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def filter_labels(self, field, filter, only_matches=True):
+    def filter_labels(
+        self, field, filter, only_matches=True, trajectories=False
+    ):
         """Filters the :class:`fiftyone.core.labels.Label` field of each
         sample in the collection.
 
@@ -2754,12 +2756,21 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
             only_matches (True): whether to only include samples with at least
                 one label after filtering (True) or include all samples (False)
+            trajectories (False): whether to match entire object trajectories
+                for which the object matches the given filter on at least one
+                frame. Only applicable to video datasets and frame-level label
+                fields whose objects have their ``index`` attributes populated
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.FilterLabels(field, filter, only_matches=only_matches)
+            fos.FilterLabels(
+                field,
+                filter,
+                only_matches=only_matches,
+                trajectories=trajectories,
+            )
         )
 
     @deprecated(reason="Use filter_labels() instead")
@@ -3535,6 +3546,8 @@ class SampleCollection(object):
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
+            omit_empty (True): whether to omit samples with no frame labels
+                after filtering
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5389,7 +5402,8 @@ class SampleCollection(object):
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
             unwind (False): whether to automatically unwind all recognized list
-                fields
+                fields (True) or unwind all list fields except the top-level
+                sample field (-1)
 
         Returns:
             the list of values
@@ -5420,9 +5434,8 @@ class SampleCollection(object):
 
         Args:
             output_dir: the directory to write the annotated media
-            label_fields (None): a list of :class:`fiftyone.core.labels.Label`
-                fields to render. By default, all
-                :class:`fiftyone.core.labels.Label` fields are drawn
+            label_fields (None): a list of label fields to render. By default,
+                all :class:`fiftyone.core.labels.Label` fields are drawn
             overwrite (False): whether to delete ``output_dir`` if it exists
                 before rendering
             config (None): an optional
@@ -5442,16 +5455,13 @@ class SampleCollection(object):
                     output_dir,
                 )
 
-        if self.media_type == fom.VIDEO:
-            if label_fields is None:
-                label_fields = _get_frame_label_fields(self)
-
-                return foua.draw_labeled_videos(
-                    self, output_dir, label_fields=label_fields, config=config
-                )
-
         if label_fields is None:
-            label_fields = _get_image_label_fields(self)
+            label_fields = self._get_label_fields()
+
+        if self.media_type == fom.VIDEO:
+            return foua.draw_labeled_videos(
+                self, output_dir, label_fields=label_fields, config=config
+            )
 
         return foua.draw_labeled_images(
             self, output_dir, label_fields=label_fields, config=config
@@ -5718,6 +5728,10 @@ class SampleCollection(object):
         classes=None,
         attributes=True,
         mask_targets=None,
+        allow_additions=True,
+        allow_deletions=True,
+        allow_label_edits=True,
+        allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
         launch_editor=False,
@@ -5761,11 +5775,11 @@ class SampleCollection(object):
                     attributes populated
                 -   ``"polylines"``: polylines stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``False``
                 -   ``"polygons"``: polygons stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``True``
                 -   ``"keypoints"``: keypoints stored in
                     :class:`fiftyone.core.labels.Keypoints` fields
@@ -5802,6 +5816,16 @@ class SampleCollection(object):
                 ``label_schema`` that do not define their attributes
             mask_targets (None): a dict mapping pixel values to semantic label
                 strings. Only applicable when annotating semantic segmentations
+            allow_additions (True): whether to allow new labels to be added.
+                Only applicable when editing existing label fields
+            allow_deletions (True): whether to allow labels to be deleted. Only
+                applicable when editing existing label fields
+            allow_label_edits (True): whether to allow the ``label`` attribute
+                of existing labels to be modified. Only applicable when editing
+                existing label fields
+            allow_spatial_edits (True): whether to allow edits to the spatial
+                properties (bounding boxes, vertices, keypoints, etc) of
+                labels. Only applicable when editing existing label fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -5824,6 +5848,10 @@ class SampleCollection(object):
             classes=classes,
             attributes=attributes,
             mask_targets=mask_targets,
+            allow_additions=allow_additions,
+            allow_deletions=allow_deletions,
+            allow_label_edits=allow_label_edits,
+            allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,
             launch_editor=launch_editor,
@@ -6645,7 +6673,7 @@ class SampleCollection(object):
         allow_missing=False,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, omit_terminal_lists, allow_missing
+            self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
         )
 
     def _has_field(self, field_name):
@@ -6992,20 +7020,6 @@ def _get_matching_fields(sample_collection, patt, frames=False):
     return fnmatch.filter(list(schema.keys()), patt)
 
 
-def _get_image_label_fields(sample_collection):
-    label_fields = sample_collection.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
-    )
-    return list(label_fields.keys())
-
-
-def _get_frame_label_fields(sample_collection):
-    label_fields = sample_collection.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
-    )
-    return list(label_fields.keys())
-
-
 def _get_default_label_fields_for_exporter(
     sample_collection, dataset_exporter, allow_coersion=True, required=True
 ):
@@ -7147,13 +7161,14 @@ def _parse_field_name(
     omit_terminal_lists,
     allow_missing,
 ):
-    unwind_list_fields = set()
-    other_list_fields = set()
+    unwind_list_fields = []
+    other_list_fields = []
 
     # Parse explicit array references
+    # Note: `field[][]` is valid syntax for list-of-list fields
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
-        unwind_list_fields.add("".join(chunks[: (idx + 1)]))
+        unwind_list_fields.append("".join(chunks[: (idx + 1)]))
 
     # Array references [] have been stripped
     field_name = "".join(chunks)
@@ -7172,7 +7187,7 @@ def _parse_field_name(
             return "frames", True, [], [], False
 
         prefix = sample_collection._FRAMES_PREFIX
-        unwind_list_fields = {f[len(prefix) :] for f in unwind_list_fields}
+        unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -7211,25 +7226,33 @@ def _parse_field_name(
             if omit_terminal_lists and path == field_name:
                 break
 
+            list_count = 1
+            while isinstance(field_type.field, fof.ListField):
+                list_count += 1
+                field_type = field_type.field
+
             if auto_unwind:
-                unwind_list_fields.add(path)
+                if path not in unwind_list_fields:
+                    unwind_list_fields.extend([path] * list_count)
             elif path not in unwind_list_fields:
-                other_list_fields.add(path)
+                if path not in other_list_fields:
+                    other_list_fields.extend([path] * list_count)
 
     if is_frame_field:
         if auto_unwind:
-            unwind_list_fields.discard("")
+            unwind_list_fields = [f for f in unwind_list_fields if f != ""]
         else:
             prefix = sample_collection._FRAMES_PREFIX
             field_name = prefix + field_name
-            unwind_list_fields = {
+            unwind_list_fields = [
                 prefix + f if f else "frames" for f in unwind_list_fields
-            }
-            other_list_fields = {
+            ]
+            other_list_fields = [
                 prefix + f if f else "frames" for f in other_list_fields
-            }
+            ]
             if "frames" not in unwind_list_fields:
-                other_list_fields.add("frames")
+                if "frames" not in other_list_fields:
+                    other_list_fields.append("frames")
 
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`

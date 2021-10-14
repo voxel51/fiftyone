@@ -1,10 +1,10 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-
+import mime from "mime";
 import { mergeWith } from "immutable";
 
-import { MIN_PIXELS, SCALE_FACTOR } from "./constants";
+import { MIN_PIXELS } from "./constants";
 import {
   BaseState,
   BoundingBox,
@@ -486,4 +486,12 @@ export const getURL = () => {
   return isElectron()
     ? `http://localhost:${port}`
     : window.location.protocol + "//" + host;
+};
+
+export const getMimeType = (sample: any) => {
+  return (
+    (sample.metadata && sample.metadata.mime_type) ||
+    mime.getType(sample.filepath) ||
+    "image/jpg"
+  );
 };

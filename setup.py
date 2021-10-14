@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.5.1"
+VERSION = "0.5.2"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.6,<0.7"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.7,<0.8"]}
 
 
 with open("README.md", "r") as fh:

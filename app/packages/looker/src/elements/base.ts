@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { Overlay } from "../overlays/base";
 import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
 
 type ElementEvent<State extends BaseState, E extends Event> = (args: {

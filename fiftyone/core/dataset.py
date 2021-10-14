@@ -4470,9 +4470,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.sample_collection_name = sample_collection_name
 
     # Run results get special treatment at the end
-    dataset_doc.annotation_runs = {}
-    dataset_doc.brain_methods = {}
-    dataset_doc.evaluations = {}
+    dataset_doc.annotation_runs.clear()
+    dataset_doc.brain_methods.clear()
+    dataset_doc.evaluations.clear()
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -4576,7 +4576,7 @@ def _save_view(view, fields):
         foo.aggregate(dataset._sample_collection, pipeline)
 
         for field_name in view._get_missing_fields():
-            dataset._sample_doc_cls._delete_field_schema(field_name, False)
+            dataset._sample_doc_cls._delete_field_schema(field_name)
 
     #
     # Save frames
@@ -4600,7 +4600,7 @@ def _save_view(view, fields):
             foo.aggregate(dataset._sample_collection, pipeline)
 
             for field_name in view._get_missing_fields(frames=True):
-                dataset._frame_doc_cls._delete_field_schema(field_name, False)
+                dataset._frame_doc_cls._delete_field_schema(field_name)
 
     #
     # Reload in-memory documents
@@ -4764,10 +4764,11 @@ def _clone_runs(dst_dataset, src_doc):
     # memory and then writing a new copy for the destination dataset
     #
 
-    dst_doc.annotation_runs = deepcopy(src_doc.annotation_runs)
-    for anno_key, run_doc in dst_doc.annotation_runs.items():
+    for anno_key, run_doc in src_doc.annotation_runs.items():
+        _run_doc = deepcopy(run_doc)
+        dst_doc.annotation_runs[anno_key] = _run_doc
         results = foan.AnnotationMethod.load_run_results(dst_dataset, anno_key)
-        run_doc.results = None
+        _run_doc.results = None
         foan.AnnotationMethod.save_run_results(dst_dataset, anno_key, results)
 
     #
@@ -4778,10 +4779,11 @@ def _clone_runs(dst_dataset, src_doc):
     # memory and then writing a new copy for the destination dataset
     #
 
-    dst_doc.brain_methods = deepcopy(src_doc.brain_methods)
-    for brain_key, run_doc in dst_doc.brain_methods.items():
+    for brain_key, run_doc in src_doc.brain_methods.items():
+        _run_doc = deepcopy(run_doc)
+        dst_doc.brain_methods[brain_key] = _run_doc
         results = fob.BrainMethod.load_run_results(dst_dataset, brain_key)
-        run_doc.results = None
+        _run_doc.results = None
         fob.BrainMethod.save_run_results(dst_dataset, brain_key, results)
 
     #
@@ -4792,10 +4794,11 @@ def _clone_runs(dst_dataset, src_doc):
     # memory and then writing a new copy for the destination dataset
     #
 
-    dst_doc.evaluations = deepcopy(src_doc.evaluations)
-    for eval_key, run_doc in dst_doc.evaluations.items():
+    for eval_key, run_doc in src_doc.evaluations.items():
+        _run_doc = deepcopy(run_doc)
+        dst_doc.evaluations[eval_key] = _run_doc
         results = foe.EvaluationMethod.load_run_results(dst_dataset, eval_key)
-        run_doc.results = None
+        _run_doc.results = None
         foe.EvaluationMethod.save_run_results(dst_dataset, eval_key, results)
 
     dst_doc.save()

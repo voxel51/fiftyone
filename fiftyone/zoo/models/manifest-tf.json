@@ -14,7 +14,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.segmenters.TFSemanticSegmenter",
                     "config": {
@@ -52,7 +52,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.segmenters.TFSemanticSegmenter",
                     "config": {
@@ -92,7 +92,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.EfficientDet",
                     "config": {
@@ -131,7 +131,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.EfficientDet",
                     "config": {
@@ -170,7 +170,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.EfficientDet",
                     "config": {
@@ -209,7 +209,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.EfficientDet",
                     "config": {
@@ -248,7 +248,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.EfficientDet",
                     "config": {
@@ -287,7 +287,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.EfficientDet",
                     "config": {
@@ -326,7 +326,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.EfficientDet",
                     "config": {
@@ -363,7 +363,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -399,7 +399,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -435,7 +435,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -471,7 +471,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -507,7 +507,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -543,7 +543,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -579,7 +579,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -615,7 +615,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -651,7 +651,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -687,7 +687,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.classifiers.TFSlimClassifier",
                     "config": {
@@ -731,7 +731,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.classifiers.TFSlimClassifier",
                     "config": {
@@ -775,7 +775,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsInstanceSegmenter",
                     "config": {
@@ -811,7 +811,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsInstanceSegmenter",
                     "config": {
@@ -847,7 +847,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsInstanceSegmenter",
                     "config": {
@@ -883,7 +883,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsInstanceSegmenter",
                     "config": {
@@ -918,7 +918,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.classifiers.TFSlimClassifier",
                     "config": {
@@ -962,7 +962,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.classifiers.TFSlimClassifier",
                     "config": {
@@ -1006,7 +1006,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.classifiers.TFSlimClassifier",
                     "config": {
@@ -1050,7 +1050,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -1086,7 +1086,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -1122,7 +1122,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -1158,7 +1158,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -1194,7 +1194,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
@@ -1230,7 +1230,7 @@
                 "type": "fiftyone.core.models.ModelManager"
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.classifiers.VGG16Classifier",
                     "config": {
@@ -1273,7 +1273,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.YOLODetector",
                     "config": {
@@ -1312,7 +1312,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.utils.eta.ETAModel",
                 "config": {
                     "type": "eta.detectors.TF2ModelsDetector",
                     "config": {
