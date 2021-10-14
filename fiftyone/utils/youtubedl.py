@@ -29,13 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def download_from_youtube(
-    videos_dir,
-    urls,
-    ids=None,
-    max_videos=None,
-    num_workers=None,
-    ext=None,
-    verbose=False,
+    videos_dir, urls, ids=None, max_videos=None, num_workers=None, ext=None,
 ):
     """
     Attempts to download a list of video urls from YouTube.
@@ -53,8 +47,6 @@ def download_from_youtube(
         ext (None): the extension to use to store the downloaded videos or a
             list of extensions corresponding to the given ``urls``. By default,
             the default extension of each video is used 
-        verbose (False): whether to log messages from YouTube DL during
-            downloads
 
     Returns:
         ids or names or successfully downloaded videos
@@ -62,7 +54,7 @@ def download_from_youtube(
             errors
     """
     num_workers = _parse_num_workers(num_workers)
-    tasks = _build_tasks_list(urls, videos_dir, ids, max_videos, ext, verbose)
+    tasks = _build_tasks_list(urls, videos_dir, ids, max_videos, ext)
 
     if num_workers == 1:
         downloaded, errors = _single_thread_download(tasks, max_videos)
@@ -90,7 +82,7 @@ def _parse_num_workers(num_workers):
     return num_workers
 
 
-def _build_tasks_list(urls, videos_dir, ids, max_videos, ext, verbose):
+def _build_tasks_list(urls, videos_dir, ids, max_videos, ext):
     etau.ensure_dir(videos_dir)
     num_videos = len(urls)
 
@@ -101,9 +93,8 @@ def _build_tasks_list(urls, videos_dir, ids, max_videos, ext, verbose):
     ext_list = _parse_list_arg(ext, num_videos)
 
     videos_dir_list = [videos_dir] * num_videos
-    verbose_list = [verbose] * num_videos
 
-    return zip(urls, videos_dir_list, ids_list, ext_list, verbose_list)
+    return zip(urls, videos_dir_list, ids_list, ext_list)
 
 
 def _parse_list_arg(arg, list_len):
@@ -156,25 +147,13 @@ def _multi_thread_download(tasks, max_videos, num_workers):
     return downloaded, errors
 
 
-def _build_ydl_opts(verbose, ext, video_id, videos_dir):
+def _build_ydl_opts(ext, video_id, videos_dir):
+    ytdl_logger = logging.getLogger("ytdl-ignore")
+    ytdl_logger.disabled = True
     ydl_opts = {
         "age_limit": 99,
+        "logger": ytdl_logger,
     }
-
-    if not verbose:
-        ydl_opts.update(
-            {
-                "logtostderr": True,
-                "quiet": True,
-                "logger": logger,
-                "ignorerrors": True,
-            }
-        )
-
-    else:
-        ydl_opts.update(
-            {"logger": logger,}
-        )
 
     if ext is not None:
         ext = ext.lstrip(".")
@@ -195,8 +174,8 @@ def _build_ydl_opts(verbose, ext, video_id, videos_dir):
 
 
 def _do_download(args):
-    url, videos_dir, video_id, ext, verbose = args
-    ydl_opts = _build_ydl_opts(verbose, ext, video_id, videos_dir)
+    url, videos_dir, video_id, ext = args
+    ydl_opts = _build_ydl_opts(ext, video_id, videos_dir)
 
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:

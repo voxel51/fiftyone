@@ -479,6 +479,8 @@ class ActivityNetDatasetManager(object):
         max_duration = config.max_duration
         split = config.split
 
+        self.info.cleanup_split(split)
+
         any_class_samples, all_class_samples = self.info.get_matching_samples(
             split, max_duration=max_duration, classes=classes,
         )
@@ -547,9 +549,6 @@ class ActivityNetDatasetManager(object):
         num_downloaded_samples += num_downloaded
         if requested_num is not None:
             requested_num -= num_downloaded
-
-        self.a100_info.cleanup_partial_downloads(split)
-        self.a200_info.cleanup_partial_downloads(split)
 
         self.a200_info.update_existing_sample_ids()
 
@@ -694,6 +693,7 @@ class ActivityNetDatasetManager(object):
         for e, videos in prev_errors.items():
             if e in download_errors:
                 download_errors[e].extend(videos)
+                download_errors[e] = sorted(set(download_errors[e]))
             else:
                 download_errors[e] = videos
 
@@ -706,6 +706,7 @@ class ActivityNetDatasetManager(object):
         a100_data_map = {
             to_uuid(p): os.path.join(a100_data_path, p)
             for p in etau.list_files(a100_data_path, recursive=True)
+            if not (p.endswith(".part") or p.endswith(".ytdl"))
         }
         etas.write_json(
             a100_data_map,
@@ -717,6 +718,7 @@ class ActivityNetDatasetManager(object):
         a200_data_map = {
             to_uuid(p): os.path.join(a200_data_path, p)
             for p in etau.list_files(a200_data_path, recursive=True)
+            if not (p.endswith(".part") or p.endswith(".ytdl"))
         }
         a200_data_map.update(a100_data_map)
         etas.write_json(
@@ -808,22 +810,31 @@ class ActivityNetDatasetInfo(object):
     def _get_existing_sample_ids(self):
         ids = {}
         for split in self.splits:
-            ids[split] = self.cleanup_partial_downloads(split)
+            ids[split] = self._get_video_files(split)
         return ids
 
-    def cleanup_partial_downloads(self, split):
+    def _get_video_files(self, split):
         videos_dir = self.data_dir(split)
         video_filenames = etau.list_files(videos_dir)
-        remaining_ids = []
+        video_ids = []
+        for vfn in video_filenames:
+            video_id, ext = os.path.splitext(vfn)
+            if ext not in [".part", ".ytdl"]:
+                vid = video_id[2:]
+                video_ids.append(vid)
+
+        return video_ids
+
+    def cleanup_split(self, split):
+        videos_dir = self.data_dir(split)
+        video_filenames = etau.list_files(videos_dir)
         for vfn in video_filenames:
             video_id, ext = os.path.splitext(vfn)
             if ext in [".part", ".ytdl"]:
-                os.remove(os.path.join(videos_dir, vfn))
-            else:
-                vid = video_id[2:]
-                remaining_ids.append(vid)
-
-        return remaining_ids
+                try:
+                    os.remove(os.path.join(videos_dir, vfn))
+                except FileNotFoundError:
+                    pass
 
     def _get_raw_annotations(self):
         if not os.path.isfile(self.raw_anno_path):
