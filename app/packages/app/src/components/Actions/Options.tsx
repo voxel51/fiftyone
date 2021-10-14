@@ -74,6 +74,7 @@ const ColorBy = ({ modal }) => {
 const Opacity = ({ modal }) => {
   const theme = useTheme();
   const [alpha, setAlpha] = useRecoilState(atoms.alpha(modal));
+
   return (
     <>
       <PopoutSectionTitle style={{ display: "flex", height: 33 }}>
@@ -91,13 +92,14 @@ const Opacity = ({ modal }) => {
 
       <Slider
         valueAtom={atoms.alpha(modal)}
-        boundsAtom={constSelector([0.01, 1])}
+        boundsAtom={constSelector([0, 1])}
         color={theme.brand}
         showBounds={false}
         persistValue={false}
         showValue={false}
         onChange={true}
         style={{ padding: 0 }}
+        int={false}
       />
     </>
   );

@@ -134,7 +134,7 @@ const getStep = (bounds: [number, number], fieldType?: string): number => {
   const max = 100;
 
   let step = delta / max;
-  if (!fieldType || fieldType === INT_FIELD) {
+  if (fieldType === INT_FIELD) {
     return Math.ceil(step);
   }
 
