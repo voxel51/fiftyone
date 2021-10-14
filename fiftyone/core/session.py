@@ -496,8 +496,7 @@ class Session(foc.HasClient):
 
     @property
     def dataset(self):
-        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
-        """
+        """The :class:`fiftyone.core.dataset.Dataset` connected to the session."""
         return self.state.dataset
 
     @dataset.setter
@@ -1033,7 +1032,11 @@ class Session(foc.HasClient):
 
 def _display(session, handle, uuid, port, address, height, update=False):
     """Displays a running FiftyOne instance."""
-    funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
+    funcs = {
+        focx._COLAB: _display_colab,
+        focx._IPYTHON: _display_ipython,
+        focx._DATABRICKS: _display_databricks,
+    }
     fn = funcs[focx._get_context()]
     fn(session, handle, uuid, port, address, height, update=update)
 
@@ -1104,6 +1107,41 @@ def _display_colab(session, handle, uuid, port, address, height, update=False):
             )
 
     output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
+
+
+def _display_databricks(
+    session, handle, uuid, port, address, height, update=False
+):
+    """Display a FiftyOne instance in a Databricks output frame.
+
+    The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
+    """
+
+    def get_proxy_url(port):
+        driver_local = (
+            dbutils.sc._jvm.com.databricks.backend.daemon.driver.DriverLocal
+        )
+        command_context_tags = (
+            driver_local.commandContext().get().toStringMap().apply("tags")
+        )
+        org_id = command_context_tags.apply("orgId")
+        cluster_id = command_context_tags.apply("clusterId")
+
+        return f"/driver-proxy/o/{org_id}/{cluster_id}/{port}/?notebook=true&handleId={uuid}"
+
+    frame_id = f"fiftyone-frame-{uuid}"
+    proxy_url = get_proxy_url(port)
+    html_string = f"""
+    <div style="margin-bottom: 16px">
+        <a href="{proxy_url}">
+            Open in a new tab
+        </a>
+        <span style="margin-left: 1em; color: #a3a3a3">Note: FiftyOne is only available when this notebook remains attached to the cluster.</span>
+    </div>
+    <iframe id="{frame_id}" width="100%" height="{height}" frameborder="0" src="{proxy_url}"></iframe>
+    """
+    # displayHTML is already imported by Databricks
+    displayHTML(html_string)
 
 
 def _import_desktop():
