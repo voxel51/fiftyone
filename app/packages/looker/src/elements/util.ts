@@ -197,10 +197,18 @@ export function withEvents<
   return WithElement;
 }
 
-const makeAcquirer = (maxVideos: number) => {
-  const VIDEOS: HTMLVideoElement[] = [];
-  const QUEUE = [];
-  const FREE = [];
+const makeAcquirer = (
+  maxVideos: number
+): [() => Promise<[HTMLVideoElement, () => void]>, () => void] => {
+  let VIDEOS: HTMLVideoElement[] = [];
+  let QUEUE = [];
+  let FREE = [];
+
+  const clearVideo = (video: HTMLVideoElement) => {
+    video.muted = true;
+    video.preload = "metadata";
+    video.loop = false;
+  };
 
   const release = (video: HTMLVideoElement) => {
     return () => {
@@ -208,10 +216,7 @@ const makeAcquirer = (maxVideos: number) => {
         throw new Error("Release playing video");
       }
 
-      video.pause();
-      video.muted = true;
-      video.preload = "metadata";
-      video.loop = false;
+      clearVideo(video);
       if (QUEUE.length) {
         const resolve = QUEUE.shift();
         resolve([video, release(video)]);
@@ -221,28 +226,43 @@ const makeAcquirer = (maxVideos: number) => {
     };
   };
 
-  return (): Promise<[HTMLVideoElement, () => void]> => {
-    if (FREE.length) {
-      const video = FREE.shift();
-      return Promise.resolve([video, release(video)]);
-    }
+  return [
+    (): Promise<[HTMLVideoElement, () => void]> => {
+      if (FREE.length) {
+        const video = FREE.shift();
+        return Promise.resolve([video, release(video)]);
+      }
 
-    if (VIDEOS.length < maxVideos) {
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.muted = true;
-      video.loop = false;
+      if (VIDEOS.length < maxVideos) {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true;
+        video.loop = false;
 
-      VIDEOS.push(video);
-      return Promise.resolve([video, release(video)]);
-    }
+        VIDEOS.push(video);
+        return Promise.resolve([video, release(video)]);
+      }
 
-    return new Promise<[HTMLVideoElement, () => void]>((resolve) => {
-      QUEUE.push(resolve);
-    });
-  };
+      return new Promise<[HTMLVideoElement, () => void]>((resolve) => {
+        QUEUE.push(resolve);
+      });
+    },
+    () => {
+      QUEUE.forEach(clearVideo);
+      FREE = [];
+      QUEUE = [];
+      VIDEOS = [];
+    },
+  ];
 };
 
-export const acquirePlayer = makeAcquirer(1);
+const [acquirePlayer, freePlayer] = makeAcquirer(1);
 
-export const acquireThumbnailer = makeAcquirer(6);
+const [acquireThumbnailer, freeThumbnailers] = makeAcquirer(6);
+
+export { acquirePlayer, acquireThumbnailer };
+
+export const freeVideos = () => {
+  freePlayer();
+  freeThumbnailers();
+};

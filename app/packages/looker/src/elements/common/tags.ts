@@ -3,12 +3,12 @@
  */
 
 import {
+  FRAME_SUPPORT_FIELD,
   LABEL_LISTS,
   LABEL_TAGS_CLASSES,
   MOMENT_CLASSIFICATIONS,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
-import { getMimeType } from "../../util";
 import { BaseElement } from "../base";
 
 import { lookerTags } from "./tags.module.css";
@@ -44,6 +44,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         fieldsMap,
         mimetype,
       },
+      config: { fieldSchema },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
@@ -124,12 +125,20 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         }
 
         const value = sample[valuePath];
+        const entry = fieldSchema[path];
+        const isSupport =
+          entry &&
+          (entry.ftype === FRAME_SUPPORT_FIELD ||
+            entry.subfield === FRAME_SUPPORT_FIELD);
 
         if ([undefined, null].includes(value)) {
           return elements;
         }
 
         const appendElement = (value) => {
+          if (isSupport && Array.isArray(value)) {
+            value = `[${value.map(prettify).join(", ")}]`;
+          }
           const pretty = prettify(value);
           elements = [
             ...elements,
@@ -141,12 +150,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ];
         };
 
-        if (isScalar(value)) {
+        if (isScalar(value) || (entry && entry.ftype === FRAME_SUPPORT_FIELD)) {
           appendElement(value);
         } else if (Array.isArray(value)) {
-          const filtered = filter[path]
-            ? value.filter((v) => filter[path](v))
-            : value;
+          const filtered =
+            filter[path] && !isSupport
+              ? value.filter((v) => filter[path](v))
+              : value;
           const shown = [...filtered].sort().slice(0, 3);
           shown.forEach((v) => appendElement(v));
 

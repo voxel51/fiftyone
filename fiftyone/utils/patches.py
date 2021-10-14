@@ -11,6 +11,7 @@ import eta.core.image as etai
 
 import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 
 
@@ -69,6 +70,7 @@ class ImagePatchesExtractor(object):
             )
 
             if patches is not None:
+                fov.validate_image_sample(sample)
                 img = _load_image(sample.filepath, force_rgb=self.force_rgb)
                 for detection in patches.detections:
                     patch = extract_patch(

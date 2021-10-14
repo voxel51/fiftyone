@@ -9,6 +9,7 @@ from collections import defaultdict, OrderedDict
 from copy import deepcopy
 import getpass
 import logging
+import os
 import warnings
 
 from bson import ObjectId
@@ -22,13 +23,13 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.core.aggregations as foag
 import fiftyone.core.annotation as foa
+import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
-import fiftyone.core.video as fov
+import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 
 
@@ -157,11 +158,15 @@ def annotate(
         an :class:`AnnnotationResults`
     """
     # @todo support this?
-    if isinstance(samples, fov.FramesView):
+    if samples._dataset._is_frames:
         raise ValueError("Annotating frames views is not supported")
 
+    # @todo support this?
+    if samples._dataset._is_clips:
+        raise ValueError("Annotating clips views is not supported")
+
     # Convert to equivalent regular view containing the same labels
-    if isinstance(samples, (fop.PatchesView, fop.EvaluationPatchesView)):
+    if samples._dataset._is_patches:
         ids = _get_patches_view_label_ids(samples)
         samples = samples._root_dataset.select_labels(
             ids=ids, fields=samples._label_fields,
@@ -1991,7 +1996,9 @@ def draw_labeled_image(sample, outpath, label_fields=None, config=None):
     if config is None:
         config = DrawConfig.default()
 
+    fov.validate_image_sample(sample)
     img = etai.read(sample.filepath)
+
     image_labels = _to_image_labels(sample, label_fields=label_fields)
 
     anno_img = etaa.annotate_image(img, image_labels, annotation_config=config)
@@ -2025,13 +2032,21 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
     output_ext = fo.config.default_video_ext
 
-    outpaths = []
+    is_clips = samples._dataset._is_clips
     num_videos = len(samples)
+
+    outpaths = []
     for idx, sample in enumerate(samples, 1):
-        logger.info("Drawing labels for video %d/%d", idx, num_videos)
-        outpath = filename_maker.get_output_path(
-            sample.filepath, output_ext=output_ext
-        )
+        if is_clips:
+            logger.info("Drawing labels for clip %d/%d", idx, num_videos)
+            base, ext = os.path.splitext(sample.filepath)
+            first, last = sample.support
+            inpath = "%s-clip-%d-%d%s" % (base, first, last, ext)
+        else:
+            logger.info("Drawing labels for video %d/%d", idx, num_videos)
+            inpath = sample.filepath
+
+        outpath = filename_maker.get_output_path(inpath, output_ext=output_ext)
         draw_labeled_video(
             sample, outpath, label_fields=label_fields, config=config
         )
@@ -2058,8 +2073,17 @@ def draw_labeled_video(sample, outpath, label_fields=None, config=None):
     video_path = sample.filepath
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
+    if isinstance(sample, foc.ClipView):
+        support = sample.support
+    else:
+        support = None
+
     etaa.annotate_video(
-        video_path, video_labels, outpath, annotation_config=config
+        video_path,
+        video_labels,
+        outpath,
+        support=support,
+        annotation_config=config,
     )
 
 

@@ -603,7 +603,14 @@ detection dataset:
         sample_id:    fiftyone.core.fields.ObjectIdField
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
-        1. ToPatches(field='ground_truth')
+        1. ToPatches(field='ground_truth', config=None)
+
+.. note::
+
+    You can pass the optional `other_fields` pararmeter to
+    :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+    to specify additional read-only sample-level fields that each patch should
+    include from their parent samples.
 
 Or, you could :ref:`chain view stages <chaining-views>` to create a view that
 contains patches for a filtered set of predictions:
@@ -655,8 +662,9 @@ non-patch views:
 
 -   Tagging or untagging patches (as opposed to their labels) will not affect
     the tags of the underlying |Sample|
--   Any new fields that you add to an object patches view will not be added to
-    the source dataset
+-   Any edits that you make to sample-level fields of object patches views
+    other than the field that defines the patches themselves will not be
+    reflected on the source dataset
 
 .. note::
 
@@ -722,18 +730,23 @@ respectively.
         iou:          fiftyone.core.fields.FloatField
         crowd:        fiftyone.core.fields.BooleanField
     View stages:
-        1. ToEvaluationPatches(eval_key='eval')
+        1. ToEvaluationPatches(eval_key='eval', config=None)
+
+.. note::
+
+    You can pass the optional `other_fields` pararmeter to
+    :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+    to specify additional read-only sample-level fields that each patch should
+    include from their parent samples.
+
+Refer to the :ref:`evaluation guide <evaluating-detections>` guide for more
+information about running evaluations and using evaluation patches views to
+analyze object detection models.
 
 .. note::
 
     Did you know? You can convert to evaluation patches view directly
     :ref:`from the App <app-evaluation-patches>`!
-
-.. note::
-
-    Refer to the :ref:`evaluation guide <evaluating-detections>` guide for more
-    information about running evaluations and using evaluation patches views
-    to analyze object detection models.
 
 Evaluation patches views are just like any other
 :ref:`dataset view <using-views>` in the sense that:
@@ -761,8 +774,9 @@ non-patch views:
 
 -   Tagging or untagging patches themselves (as opposed to their labels) will
     not affect the tags of the underlying |Sample|
--   Any new fields that you add to an evaluation patches view will not be added
-    to the source dataset
+-   Any edits that you make to sample-level fields of evaluation patches views
+    other than the ground truth/predicted label fields will not be reflected
+    on the source dataset
 
 .. _video-views:
 
@@ -791,6 +805,273 @@ prepending ``"frames."`` to the relevent parameters:
 
 In addition, FiftyOne provides a variety of dedicated view stages for
 performing manipulations that are unique to video data.
+
+.. _clip-views:
+
+Clip views
+----------
+
+You can use
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
+create views into your video datasets that contain one sample per clip defined
+by a specific field or expression in a video collection.
+
+For example, if you have :ref:`temporal detection <temporal-detection>` labels
+on your dataset, then you can create a clips view that contains one sample per
+temporal segment by simply passing the name of the temporal detection field to
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    sample1 = fo.Sample(
+        filepath="video1.mp4",
+        events=fo.TemporalDetections(
+            detections=[
+                fo.TemporalDetection(label="meeting", support=[1, 3]),
+                fo.TemporalDetection(label="party", support=[2, 4]),
+            ]
+        ),
+    )
+
+    sample2 = fo.Sample(
+        filepath="video2.mp4",
+        metadata=fo.VideoMetadata(total_frame_count=5),
+        events=fo.TemporalDetections(
+            detections=[
+                fo.TemporalDetection(label="party", support=[1, 3]),
+                fo.TemporalDetection(label="meeting", support=[3, 5]),
+            ]
+        ),
+    )
+
+    dataset.add_samples([sample1, sample2])
+
+    # Create a clips view with one clip per event
+    view = dataset.to_clips("events")
+    print(view)
+
+    # Verify that one sample per clip was created
+    print(dataset.count("events.detections"))  # 4
+    print(len(view))  # 4
+
+.. code-block:: text
+
+    Dataset:    2021.09.03.09.44.57
+    Media type: video
+    Num clips:  4
+    Tags:       []
+    Clip fields:
+        id:        fiftyone.core.fields.ObjectIdField
+        sample_id: fiftyone.core.fields.ObjectIdField
+        filepath:  fiftyone.core.fields.StringField
+        support:   fiftyone.core.fields.FrameSupportField
+        tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        events:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+    View stages:
+        1. ToClips(field_or_expr='events', config=None)
+
+All clips views contain a top-level `support` field that contains the
+`[first, last]` frame range of the clip within `filepath`, which points to the
+source video.
+
+Note that the `events` field, which had type |TemporalDetections| in the
+source dataset, now has type |Classification| in the clips view, since each
+classification has a one-to-one relationship with its clip.
+
+.. note::
+
+    You can pass the optional `other_fields` pararmeter to
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
+    specify additional read-only sample-level fields that each clip should
+    include from their parent samples.
+
+.. note::
+
+    If you edit the `support` or |Classification| of a sample in a clips view
+    created from temporal detections, the changes will be applied to the
+    corresponding |TemporalDetection| in the source dataset.
+
+Continuing from the example above, if you would like to see clips only for
+specific temporal detection labels, you can achieve this by first
+:ref:`filtering the labels <filtering-sample-contents>`:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Create a clips view with one clip per meeting
+    view = (
+        dataset
+        .filter_labels("events", F("label") == "meeting")
+        .to_clips("events")
+    )
+
+    print(view.values("events.label"))
+    # ['meeting', 'meeting']
+
+Clips views can also be created based on frame-level labels, which provides a
+powerful query language that you can use to find segments of a video dataset
+that contain specific frame content of interest.
+
+In the simplest case, you can provide the name of a frame-level list field
+(e.g., |Classifications| or |Detections|) to
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`, which
+will create one clip per contiguous range of frames that contain at least one
+label in the specified field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    # Create a view that contains one clip per contiguous range of frames that
+    # contains at least one detection
+    view = dataset.to_clips("frames.detections")
+    print(view)
+
+The above view turns out to not be very interesting, since every frame in the
+`quickstart-video` dataset contains at least one object. So, instead, lets
+first :ref:`filter the objects <filtering-sample-contents>` so that we can
+construct a clips view that contains one clip per contiguous range of frames
+that contains at least one person:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Create a view that contains one clip per contiguous range of frames that
+    # contains at least one person
+    view = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "person")
+        .to_clips("frames.detections")
+    )
+    print(view)
+
+.. code-block:: text
+
+    Dataset:    quickstart-video
+    Media type: video
+    Num clips:  8
+    Tags:       []
+    Clip fields:
+        id:        fiftyone.core.fields.ObjectIdField
+        sample_id: fiftyone.core.fields.ObjectIdField
+        filepath:  fiftyone.core.fields.StringField
+        support:   fiftyone.core.fields.FrameSupportField
+        tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+    Frame fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        frame_number: fiftyone.core.fields.FrameNumberField
+        detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+    View stages:
+        1. FilterLabels(field='frames.detections', filter={'$eq': ['$$this.label', 'person']}, only_matches=True)
+        2. ToClips(field_or_expr='frames.detections', config=None)
+
+When you iterate over the frames of a sample in a clip view, you will only get
+the frames within the `[first, last]` support of each clip:
+
+.. code-block:: python
+    :linenos:
+
+    sample = view.last()
+
+    print(sample.support)
+    # [116, 120]
+
+    frame_numbers = []
+    for frame_number, frame in sample.frames.items():
+        frame_numbers.append(frame_number)
+
+    print(frame_numbers)
+    # [116, 117, 118, 119, 120]
+
+.. note::
+
+    Clips views created via
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+    always contain all frame-level labels from the underlying dataset for
+    their respective frame supports, even if frame-level filtering was applied
+    in previous view stages. In other words, filtering prior to the
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+    stage only affects the frame supports.
+
+    You can, however, apply frame-level filtering to clips by appending
+    filtering operations after the
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+    stage in your view, just like any other view.
+
+More generally, you can provide an arbitrary |ViewExpression| to
+:meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` that
+defines a boolean expression to apply to each frame. In this case, the clips
+view will contain one clip per contiguous range of frames for which the
+expression evaluates to true:
+
+.. code-block:: python
+    :linenos:
+
+    # Create a view that contains one clip per contiguous range of frames that
+    # contains at least 10 vehicles
+    view = (
+        dataset
+        .filter_labels("frames.detections", F("label") == "vehicle")
+        .to_clips(F("detections.detections").length() >= 10)
+    )
+    print(view)
+
+See :ref:`this section <querying-frames>` for more information about
+constructing frame expressions.
+
+.. note::
+
+    You can pass optional `tol` and `min_len` pararmeters to
+    :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
+    configure a missing frame tolerance and minimum length for clips generated
+    from frame-level fields or expressions.
+
+Clip views are just like any other :ref:`dataset view <using-views>` in the
+sense that:
+
+-   You can append view stages via the :ref:`App view bar <app-create-view>` or
+    :ref:`views API <using-views>`
+-   Any modifications to label tags that you make via the App's
+    :ref:`tagging menu <app-tagging>` or via API methods like
+    :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+    and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
+    will be reflected on the source dataset
+-   Any modifications to the frame-level labels in a clips view that you make
+    by iterating over the contents of the view or calling
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    will be reflected on the source dataset
+-   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>` on a clips view
+    (typically one that contains additional view stages that filter or modify
+    its contents) will sync any frame-level edits or deletions with the source
+    dataset
+
+However, because clip views represent only a subset of a |Sample| from the
+source dataset, there are some differences compared to non-clip views:
+
+-   Tagging or untagging clips (as opposed to their labels) will not affect
+    the tags of the underlying |Sample|
+-   Any edits that you make to sample-level fields of clip views will not be
+    reflected on the source dataset (except for edits to the `support` and
+    |Classification| field populated when generating clip views based on
+    |TemporalDetection| labels, as described above)
 
 .. _frame-views:
 
@@ -920,8 +1201,8 @@ Frame views are just like any other image collection view in the sense that:
     video  dataset
 
 The only way in which frames views differ from regular image collections is
-that changes to the ``tags`` or ``metadata`` fields of frame samples will not be
-propagated to the frames of the underlying video dataset.
+that changes to the ``tags`` or ``metadata`` fields of frame samples will not
+be propagated to the frames of the underlying video dataset.
 
 .. _frame-patches-views:
 
@@ -973,7 +1254,7 @@ sample per object patch in the frames of the dataset!
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
         1. ToFrames(config=None)
-        2. ToPatches(field='detections')
+        2. ToPatches(field='detections', config=None)
 
 .. _querying-frames:
 

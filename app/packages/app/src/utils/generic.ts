@@ -41,7 +41,7 @@ export const summarizeLongStr = (
 };
 
 export const prettify = (
-  v: boolean | string | null | undefined | number,
+  v: boolean | string | null | undefined | number | number[],
   summarize: boolean = true,
   maxStrLen: number = 27
 ): string => {
@@ -55,6 +55,9 @@ export const prettify = (
     return "False";
   } else if ([undefined, null].includes(v)) {
     return "None";
+  } else if (Array.isArray(v)) {
+    v = `[${v.join(", ")}]`;
+    return summarize ? summarizeLongStr(v, maxStrLen) : v;
   }
   return null;
 };

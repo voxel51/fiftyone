@@ -203,37 +203,6 @@ class SerializableDocument(object):
         return cls.from_dict(d, extended=False)
 
 
-class SampleDocument(SerializableDocument):
-    """Interface for sample backing documents."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @property
-    def media_type(self):
-        """The media type of the sample."""
-        raise NotImplementedError("Subclass must implement `media_type`")
-
-    @property
-    def collection_name(self):
-        """The name of the MongoDB collection to which this sample belongs, or
-        ``None`` if it has not been added to a dataset.
-        """
-        return None
-
-    @property
-    def in_db(self):
-        """Whether the sample has been added to the database."""
-        return False
-
-    @property
-    def ingest_time(self):
-        """The time the sample was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        return None
-
-
 class MongoEngineBaseDocument(SerializableDocument):
     """Mixin for all :class:`mongoengine:mongoengine.base.BaseDocument`
     subclasses that implements the :class:`SerializableDocument` interface.
@@ -352,14 +321,6 @@ class BaseDocument(MongoEngineBaseDocument):
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return ("id",) + tuple(f for f in self._fields_ordered if f != "id")
-
-    @property
-    def ingest_time(self):
-        """The time the document was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        # pylint: disable=no-member
-        return self.id.generation_time if self.in_db else None
 
     @property
     def in_db(self):
