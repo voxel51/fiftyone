@@ -107,6 +107,8 @@ export const AGGS = {
 };
 
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
+export const DATE_FIELD = "fiftyone.core.fields.DateField";
+export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
@@ -119,6 +121,8 @@ export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
 export const VALID_SCALAR_TYPES = [
   BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
@@ -128,6 +132,8 @@ export const VALID_SCALAR_TYPES = [
 ];
 
 export const VALID_NUMERIC_TYPES = [
+  DATE_FIELD,
+  DATE_TIME_FIELD,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,

@@ -449,6 +449,13 @@ export const gridZoom = selector<number | null>({
   },
 });
 
+export const timeZone = selector<string>({
+  key: "timeZone",
+  get: ({ get }) => {
+    return get(appConfig).timezone || "UTC";
+  },
+});
+
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {
@@ -812,6 +819,18 @@ export const fieldType = selectorFamily<string, string>({
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;
+  },
+});
+
+export const subfieldType = selectorFamily<string, string>({
+  key: "subfieldType",
+  get: (path) => ({ get }) => {
+    const frame = path.startsWith("frames.") && get(isVideoDataset);
+
+    const entry = get(fields(frame ? "frame" : "sample"));
+    return frame
+      ? entry[path.slice("frames.".length)].subfield
+      : entry[path].subfield;
   },
 });
 

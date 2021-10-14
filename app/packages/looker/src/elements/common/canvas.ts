@@ -200,6 +200,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
   renderSelf({
     loaded,
+    error,
     config: { thumbnail },
     disabled,
     reloading,
@@ -210,12 +211,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   }: Readonly<State>) {
     if (this.width !== width) {
       const dpr = getDPR();
-      this.element.width = Math.ceil(width * dpr);
+      this.element.width = width * dpr;
       this.width = width;
     }
     if (this.height !== height) {
       const dpr = getDPR();
-      this.element.height = Math.ceil(height * dpr);
+      this.element.height = height * dpr;
       this.height = height;
     }
 
@@ -234,7 +235,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = this.cursor;
     }
 
-    const hide = !loaded || disabled || reloading;
+    const hide = !loaded || disabled || reloading || error;
     if (this.hide !== hide) {
       this.hide = hide;
       this.hide

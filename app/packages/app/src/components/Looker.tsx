@@ -344,6 +344,7 @@ const lookerOptions = selector({
       fullscreen: get(atoms.fullscreen),
       fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
       frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
+      timeZone: get(selectors.timeZone),
       coloring: get(selectors.coloring(true)),
       alpha: get(atoms.alpha(true)),
     };

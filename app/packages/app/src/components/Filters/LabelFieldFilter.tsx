@@ -5,7 +5,11 @@ import styled from "styled-components";
 
 import { NamedRangeSlider } from "./RangeSlider";
 import CategoricalFilter from "./CategoricalFilter";
-import { CONFIDENCE_LABELS, SUPPORT_LABELS } from "../../utils/labels";
+import {
+  CONFIDENCE_LABELS,
+  FLOAT_FIELD,
+  SUPPORT_LABELS,
+} from "../../utils/labels";
 import { useExpand } from "./hooks";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
@@ -115,6 +119,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 path: cPath,
                 defaultRange: [0, 1],
               })}
+              fieldType={FLOAT_FIELD}
             />
           )}
           {SUPPORT_LABELS.includes(entry.labelType) && (

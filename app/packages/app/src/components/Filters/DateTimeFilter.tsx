@@ -4,16 +4,18 @@ import { useRecoilValue } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
+import { FRAME_NUMBER_FIELD, INT_FIELD } from "../../utils/labels";
 import { useExpand } from "./hooks";
 import { boundsAtom, rangeAtom, noneAtom } from "./NumericFieldFilter.state";
 import { countsAtom, noneCount } from "./atoms";
 import CategoricalFilter from "./CategoricalFilter";
-import { LIST_FIELD } from "../../utils/labels";
+
+const INT_FIELDS = [INT_FIELD, FRAME_NUMBER_FIELD];
 
 const NumericFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
   const type = useRecoilValue(selectors.fieldType(entry.path));
-  const subType = useRecoilValue(selectors.subfieldType(entry.path));
+  const subfield = useRecoilValue(selectors.primitivesSubfieldMap("sample"));
 
   return (
     <animated.div style={props}>
@@ -25,6 +27,7 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
           path={entry.path}
           modal={modal}
           disableItems={entry.disableList}
+          fieldType={type}
           ref={ref}
         />
       ) : (
@@ -34,7 +37,7 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
           noneCountAtom={noneCount({ modal, path: entry.path })}
           valueAtom={rangeAtom({ modal, path: entry.path })}
           noneAtom={noneAtom({ modal, path: entry.path })}
-          fieldType={type === LIST_FIELD ? subType : type}
+          fieldType={type}
           ref={ref}
         />
       )}

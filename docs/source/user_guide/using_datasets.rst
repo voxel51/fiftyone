@@ -658,7 +658,7 @@ updated to reflect the new field:
         integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
-`list`, `dict`, or more complex data structures
+`date`, `datetime`, `list`, `dict`, or more complex data structures
 :ref:`like label types <using-labels>`:
 
 .. code-block:: python
@@ -958,6 +958,81 @@ some workflows when it is available.
                 }>,
                 'frames': <Frames: 0>,
             }>
+
+.. _dates-and-datetimes:
+
+Dates and datetimes
+___________________
+
+You can store date information in FiftyOne datasets by populating fields with
+`date` or `datetime` values:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import date, datetime
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath="image1.png",
+                created_at=datetime(2021, 8, 24, 21, 18, 7),
+                created_date=date(2021, 8, 24),
+            ),
+            fo.Sample(
+                filepath="image2.png",
+                created_at=datetime.utcnow(),
+                created_date=date.today(),
+            ),
+        ]
+    )
+
+    print(dataset)
+    print(dataset.head())
+
+.. note::
+
+    Did you know? You can :ref:`create dataset views <date-views>` with
+    date-based queries!
+
+Internally, FiftyOne stores all dates as UTC timestamps, but you can provide
+any valid `datetime` object when setting a |DateTimeField| of a sample,
+including timezone-aware datetimes, which are internally converted to UTC
+format for safekeeping.
+
+.. code-block:: python
+    :linenos:
+
+    # A datetime in your local timezone
+    now = datetime.utcnow().astimezone()
+
+    sample = fo.Sample(filepath="image.png", created_at=now)
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    # Samples are singletons, so we reload so `sample` will contain values as
+    # loaded from the database
+    dataset.reload()
+
+    sample.created_at.tzinfo  # None
+
+By default, when you access a datetime field of a sample in a dataset, it is
+retrieved as a naive `datetime` instance expressed in UTC format.
+
+However, if you prefer, you can
+:ref:`configure FiftyOne <configuring-timezone>` to load datetime fields as
+timezone-aware `datetime` instances in a timezone of your choice.
+
+.. warning::
+
+    FiftyOne assumes that all `datetime` instances with no explicit timezone
+    are stored in UTC format.
+
+    Therefore, never use `datetime.datetime.now()` when populating a datetime
+    field of a FiftyOne dataset! Instead, use `datetime.datetime.utcnow()`.
 
 .. _using-labels:
 

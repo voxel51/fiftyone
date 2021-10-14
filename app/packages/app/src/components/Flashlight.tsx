@@ -92,6 +92,7 @@ const flashlightLookerOptions = selector({
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       fieldsMap: get(selectors.primitivesDbMap("sample")),
       frameFieldsMap: get(selectors.primitivesDbMap("frame")),
+      timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
     };
@@ -307,6 +308,7 @@ export default React.memo(() => {
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
   };
+  const [error, setError] = useState<Error>(null);
   const flashlight = useRef<Flashlight<number>>();
   const cropToContent = useRecoilValue(atoms.cropToContent(false));
 
@@ -364,6 +366,10 @@ export default React.memo(() => {
     cropToContent,
   ]);
 
+  if (error) {
+    throw error;
+  }
+
   useLayoutEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({
@@ -391,57 +397,65 @@ export default React.memo(() => {
           lookers.has(id) && lookers.get(id).resize(dimensions);
         },
         get: async (page) => {
-          const { results, more } = await fetch(
-            `${url}page=${page}`
-          ).then((response) => response.json());
-          const itemData = results.map((result) => {
-            const data: atoms.SampleData = {
-              sample: result.sample,
-              dimensions: [result.width, result.height],
-              frameRate: result.frame_rate,
-              frameNumber: result.sample.frame_number,
-            };
-            samples.set(result.sample._id, data);
-            sampleIndices.set(nextIndex, result.sample._id);
-            nextIndex++;
+          try {
+            const { results, more } = await fetch(
+              `${url}page=${page}`
+            ).then((response) => response.json());
+            const itemData = results.map((result) => {
+              const data: atoms.SampleData = {
+                sample: result.sample,
+                dimensions: [result.width, result.height],
+                frameRate: result.frame_rate,
+                frameNumber: result.sample.frame_number,
+              };
+              samples.set(result.sample._id, data);
+              sampleIndices.set(nextIndex, result.sample._id);
+              nextIndex++;
 
-            return data;
-          });
+              return data;
+            });
 
-          const items = itemData.map((data) => {
+            const items = itemData.map((data) => {
+              return {
+                id: data.sample._id,
+                aspectRatio: aspectRatioGenerator.current(data),
+              };
+            });
+
             return {
-              id: data.sample._id,
-              aspectRatio: aspectRatioGenerator.current(data),
+              items,
+              nextRequestKey: more ? page + 1 : null,
             };
-          });
-
-          return {
-            items,
-            nextRequestKey: more ? page + 1 : null,
-          };
+          } catch (error) {
+            setError(error);
+          }
         },
         render: (sampleId, element, dimensions, soft, hide) => {
-          const result = samples.get(sampleId);
+          try {
+            const result = samples.get(sampleId);
 
-          if (lookers.has(sampleId)) {
-            const looker = lookers.get(sampleId);
-            hide ? looker.disable() : looker.attach(element, dimensions);
+            if (lookers.has(sampleId)) {
+              const looker = lookers.get(sampleId);
+              hide ? looker.disable() : looker.attach(element, dimensions);
+
+              return null;
+            }
+
+            if (!soft) {
+              const looker = lookerGeneratorRef.current(result);
+              looker.addEventListener(
+                "selectthumbnail",
+                ({ detail }: { detail: string }) => onSelect(detail)
+              );
+
+              lookers.set(sampleId, looker);
+              looker.attach(element, dimensions);
+            }
 
             return null;
+          } catch (error) {
+            setError(error);
           }
-
-          if (!soft) {
-            const looker = lookerGeneratorRef.current(result);
-            looker.addEventListener(
-              "selectthumbnail",
-              ({ detail }: { detail: string }) => onSelect(detail)
-            );
-
-            lookers.set(sampleId, looker);
-            looker.attach(element, dimensions);
-          }
-
-          return null;
         },
       });
       flashlight.current.attach(id);

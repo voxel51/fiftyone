@@ -13,6 +13,7 @@ import { http } from "../../shared/connection";
 import { useOutsideClick } from "../../utils/hooks";
 
 const ViewBarContainer = styled.div`
+  display: block;
   position: relative;
   width: 100%;
   background-color: ${({ theme }) => theme.background};
@@ -114,71 +115,73 @@ const ViewBar = React.memo(() => {
   );
 
   return (
-    <ViewBarContainer>
-      <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
-      <ViewBarDiv
-        onClick={() =>
-          state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
-        }
-        ref={barRef}
-      >
-        {state.matches("running")
-          ? stages.map((stage, i) => {
-              return (
-                <React.Fragment key={stage.id}>
-                  {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
-                    <AddViewStage
-                      key={`insert-button-${stage.id}`}
-                      send={send}
-                      index={i}
-                      active={
-                        activeStage === i - 0.5 &&
-                        state.matches("running.focus.focused")
-                      }
+    <div style={{ padding: "0 1rem" }}>
+      <ViewBarContainer>
+        <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
+        <ViewBarDiv
+          onClick={() =>
+            state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
+          }
+          ref={barRef}
+        >
+          {state.matches("running")
+            ? stages.map((stage, i) => {
+                return (
+                  <React.Fragment key={stage.id}>
+                    {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
+                      <AddViewStage
+                        key={`insert-button-${stage.id}`}
+                        send={send}
+                        index={i}
+                        active={
+                          activeStage === i - 0.5 &&
+                          state.matches("running.focus.focused")
+                        }
+                      />
+                    ) : null}
+                    <ViewStage
+                      key={stage.id}
+                      stageRef={stage.ref}
+                      barRef={barRef}
                     />
-                  ) : null}
-                  <ViewStage
-                    key={stage.id}
-                    stageRef={stage.ref}
-                    barRef={barRef}
-                  />
-                </React.Fragment>
-              );
-            })
-          : null}
-        {state.matches("running") && stages[stages.length - 1].submitted ? (
-          <AddViewStage
-            key={`insert-button-tail`}
-            send={send}
-            index={stages.length}
-            active={
-              activeStage === stages.length - 0.5 &&
-              state.matches("running.focus.focused")
-            }
-          />
-        ) : null}
-        <div
-          style={{
-            display: "block",
-            minWidth: 64,
-            maxWidth: 64,
-            height: "100%",
-          }}
-        ></div>
-      </ViewBarDiv>
+                  </React.Fragment>
+                );
+              })
+            : null}
+          {state.matches("running") && stages[stages.length - 1].submitted ? (
+            <AddViewStage
+              key={`insert-button-tail`}
+              send={send}
+              index={stages.length}
+              active={
+                activeStage === stages.length - 0.5 &&
+                state.matches("running.focus.focused")
+              }
+            />
+          ) : null}
+          <div
+            style={{
+              display: "block",
+              minWidth: 64,
+              maxWidth: 64,
+              height: "100%",
+            }}
+          ></div>
+        </ViewBarDiv>
 
-      <IconsContainer>
-        <Close
-          onClick={() => send("CLEAR")}
-          style={{
-            cursor: "pointer",
-          }}
-        />
-        <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar">
-          <Help />
-        </ExternalLink>
-      </IconsContainer>
-    </ViewBarContainer>
+        <IconsContainer>
+          <Close
+            onClick={() => send("CLEAR")}
+            style={{
+              cursor: "pointer",
+            }}
+          />
+          <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar">
+            <Help />
+          </ExternalLink>
+        </IconsContainer>
+      </ViewBarContainer>
+    </div>
   );
 });
 

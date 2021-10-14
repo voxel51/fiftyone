@@ -16,6 +16,7 @@ export const MIN_PIXELS = 16;
 export const SCALE_FACTOR = 1.09;
 export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 20;
+export const DATE_TIME = "DateTime";
 
 export const CLASSIFICATION = "Classification";
 export const CLASSIFICATIONS = "Classifications";
@@ -32,7 +33,13 @@ export const SEGMENTATION = "Segmentation";
 export const TEMPORAL_DETECTION = "TemporalDetection";
 export const TEMPORAL_DETECTIONS = "TemporalDetections";
 
+export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
+export const DATE_FIELD = "fiftyone.core.fields.DateField";
+export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
+export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
+export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
+export const STRING_FIELD = "fiftyone.core.fields.StringField";
 
 export const MOMENT_CLASSIFICATIONS = [CLASSIFICATION, CLASSIFICATIONS];
 

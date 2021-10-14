@@ -17,6 +17,7 @@ import {
   LABEL_LISTS,
   JSON_COLORS,
   MASK_LABELS,
+  DATE_TIME,
   HEATMAP,
   BASE_ALPHA,
 } from "./constants";
@@ -73,8 +74,8 @@ import { getFrameNumber } from "./elements/util";
 import { getColor } from "./color";
 
 export { zoomAspectRatio } from "./zoom";
-export { createColorGenerator, getRGB } from "./color";
 export { freeVideos } from "./elements/util";
+export { createColorGenerator, getRGB } from "./color";
 
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
@@ -91,7 +92,7 @@ export interface Coloring {
   };
 }
 
-const coloringCallback = {
+const workerCallbacks = {
   requestColor: [
     (worker, { key, pool, seed }) => {
       worker.postMessage({
@@ -104,7 +105,7 @@ const coloringCallback = {
   ],
 };
 
-const labelsWorker = createWorker(coloringCallback);
+const labelsWorker = createWorker(workerCallbacks);
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -164,7 +165,7 @@ export abstract class Looker<
 
   protected dispatchEvent(eventType: string, detail: any): void {
     if (eventType === "error") {
-      this.updater({ error: true });
+      this.updater({ error: detail.error || true });
     }
 
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
@@ -255,8 +256,8 @@ export abstract class Looker<
       ctx.clearRect(
         0,
         0,
-        Math.ceil(this.state.windowBBox[2] * dpr),
-        Math.ceil(this.state.windowBBox[3] * dpr)
+        this.state.windowBBox[2] * dpr,
+        this.state.windowBBox[3] * dpr
       );
 
       ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
@@ -760,8 +761,12 @@ const { aquireReader, addFrame } = (() => {
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
     frameReader && frameReader.terminate();
-    frameReader = createWorker(coloringCallback);
+    frameReader = createWorker(workerCallbacks);
     frameReader.onmessage = ({ data }: MessageEvent<FrameChunkResponse>) => {
+      if (data.error) {
+        dispatchEvent("error", { error: "Frames" });
+      }
+
       if (data.uuid !== subscription || data.method !== "frameChunk") {
         return;
       }
@@ -770,7 +775,6 @@ const { aquireReader, addFrame } = (() => {
         frames,
         range: [start, end],
       } = data;
-
       addFrameBuffers([start, end]);
       for (let i = start; i <= end; i++) {
         const frame = {
@@ -1100,7 +1104,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         this.state.duration,
         this.state.config.frameRate
       ),
-      frameNumber: Math.max(this.state.frameNumber, 2),
+      frameNumber: this.state.frameNumber,
       update: this.updater,
       dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       coloring: this.state.options.coloring,
@@ -1248,7 +1252,7 @@ const filterSample = <S extends Sample | FrameSample>(
   fieldsMap: { [key: string]: string },
   prefix = ""
 ): S => {
-  for (const field in sample) {
+  for (let field in sample) {
     if (fieldsMap.hasOwnProperty(field)) {
       sample[fieldsMap[field]] = sample[field];
       if (field !== fieldsMap[field]) {
@@ -1256,6 +1260,12 @@ const filterSample = <S extends Sample | FrameSample>(
       }
     } else if (field.startsWith("_")) {
       delete sample[field];
+    } else if (sample[field] && sample[field]._cls === DATE_TIME) {
+      sample[field] = new Date(sample[field].datetime);
+    } else if (Array.isArray(sample[field])) {
+      sample[field] = sample[field].map((v) =>
+        v && v._cls === DATE_TIME ? new Date(sample[field].datetime) : v
+      );
     } else if (
       sample[field] &&
       sample[field]._cls &&
