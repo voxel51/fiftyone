@@ -8,6 +8,7 @@ import { scrollbarStyles } from "./utils";
 import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
 import {
+  formatDateTime,
   getDateTimeRangeFormattersWithPrecision,
   isFloat,
   prettify,
@@ -36,30 +37,34 @@ const PlotTooltip = ({ title, count }) => {
   );
 };
 
-class CustomizedAxisTick extends PureComponent {
-  render() {
-    const { x, y, payload, fill } = this.props;
-    const v = payload.value;
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text
-          x={0}
-          y={0}
-          dy={16}
-          textAnchor="end"
-          fill={fill}
-          transform="rotate(-80)"
-        >
-          {isFloat(v)
-            ? v.toFixed(3)
-            : v.length > 24
-            ? v.slice(0, 21) + "..."
-            : v}
-        </text>
-      </g>
-    );
-  }
-}
+const getAxisTick = (isDateTime, timeZone) => {
+  return class CustomizedAxisTick extends PureComponent {
+    render() {
+      const { x, y, payload, fill } = this.props;
+      const v = payload.value;
+      return (
+        <g transform={`translate(${x},${y})`}>
+          <text
+            x={0}
+            y={0}
+            dy={16}
+            textAnchor="end"
+            fill={fill}
+            transform="rotate(-80)"
+          >
+            {isDateTime
+              ? formatDateTime(v, timeZone)
+              : isFloat(v)
+              ? v.toFixed(3)
+              : v.length > 24
+              ? v.slice(0, 21) + "..."
+              : v}
+          </text>
+        </g>
+      );
+    }
+  };
+};
 
 const Title = styled.div`
   font-weight: bold;
@@ -74,6 +79,8 @@ const Distribution = ({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
+  const isDateTime = useRecoilValue(isDateTimeField(name));
+  const timeZone = useRecoilValue(selectors.timeZone);
   const ticksSetting =
     ticks === 0
       ? { interval: ticks }
@@ -83,7 +90,7 @@ const Distribution = ({ distribution }) => {
 
   const strData = data.map(({ key, ...rest }) => ({
     ...rest,
-    key: prettify(key, false),
+    key: isDateTime ? key : prettify(key, false),
   }));
 
   const hasMore = data.length >= LIST_LIMIT;
@@ -95,9 +102,7 @@ const Distribution = ({ distribution }) => {
     }),
     {}
   );
-
-  const isDateTime = useRecoilValue(isDateTimeField(name));
-  const timeZone = useRecoilValue(selectors.timeZone);
+  const CustomizedAxisTick = getAxisTick(isDateTime, timeZone);
 
   return (
     <Container ref={ref}>
