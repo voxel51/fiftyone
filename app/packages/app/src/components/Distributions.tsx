@@ -17,7 +17,10 @@ import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
 import { filterStages } from "./Filters/atoms";
 import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
-import { isDateTimeField } from "./Filters/NumericFieldFilter.state";
+import {
+  isDateField,
+  isDateTimeField,
+} from "./Filters/NumericFieldFilter.state";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -80,6 +83,7 @@ const Distribution = ({ distribution }) => {
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
   const isDateTime = useRecoilValue(isDateTimeField(name));
+  const isDate = useRecoilValue(isDateField(name));
   const timeZone = useRecoilValue(selectors.timeZone);
   const ticksSetting =
     ticks === 0
@@ -90,7 +94,7 @@ const Distribution = ({ distribution }) => {
 
   const strData = data.map(({ key, ...rest }) => ({
     ...rest,
-    key: isDateTime ? key : prettify(key, false),
+    key: isDateTime || isDate ? key : prettify(key, false),
   }));
 
   const hasMore = data.length >= LIST_LIMIT;
@@ -102,7 +106,10 @@ const Distribution = ({ distribution }) => {
     }),
     {}
   );
-  const CustomizedAxisTick = getAxisTick(isDateTime, timeZone);
+  const CustomizedAxisTick = getAxisTick(
+    isDateTime || isDate,
+    isDate ? "UTC" : timeZone
+  );
 
   return (
     <Container ref={ref}>
@@ -148,7 +155,7 @@ const Distribution = ({ distribution }) => {
                 );
                 title = `Range: ${
                   cFmt ? cFmt.format(start) : ""
-                } ${dFmt.formatRange(start, end)}`;
+                } ${dFmt.formatRange(start, end).replaceAll("/", "-")}`;
               } else {
                 title = `Range: [${map[key]
                   .map((e) => (type === "IntField" ? e : e.toFixed(3)))

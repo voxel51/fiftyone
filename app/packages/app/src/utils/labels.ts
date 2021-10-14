@@ -139,9 +139,6 @@ export const VALID_NUMERIC_TYPES = [
   INT_FIELD,
 ];
 
-export const isDateField = (field) =>
-  [DATE_FIELD, DATE_TIME_FIELD].includes(field);
-
 export const RESERVED_FIELDS = [
   "_id",
   "_rand",

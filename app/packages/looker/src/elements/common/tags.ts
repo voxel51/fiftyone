@@ -15,7 +15,7 @@ import {
   STRING_FIELD,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
-import { formatDateTime } from "../../util";
+import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
 
 import { lookerTags } from "./tags.module.css";
@@ -134,7 +134,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
         let value = sample[valuePath];
         const entry = fieldSchema[path];
-        const isDateTime = isOfTypes(entry, [DATE_FIELD, DATE_TIME_FIELD]);
+        const isDate = isOfTypes(entry, [DATE_FIELD]);
+        const isDateTime = isOfTypes(entry, [DATE_TIME_FIELD]);
         const isSupport = isOfTypes(entry, [FRAME_SUPPORT_FIELD]);
 
         if ([undefined, null].includes(value)) {
@@ -144,9 +145,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const appendElement = (value) => {
           if (isDateTime && value) {
             value = formatDateTime(value, timeZone);
-          }
-
-          if (isSupport && Array.isArray(value)) {
+          } else if (isDate && value) {
+            value = formatDate(value);
+          } else if (isSupport && Array.isArray(value)) {
             value = `[${value.map(prettify).join(", ")}]`;
           }
 
@@ -165,7 +166,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           value = [value];
         }
 
-        if (isDateTime) {
+        if (isDateTime || isDate) {
           value = value.map((d) => d.datetime);
         }
 

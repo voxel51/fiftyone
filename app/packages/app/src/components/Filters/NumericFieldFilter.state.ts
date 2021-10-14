@@ -14,7 +14,8 @@ import {
   VALID_LIST_FIELDS,
   VALID_NUMERIC_TYPES,
   INT_FIELD,
-  isDateField,
+  DATE_TIME_FIELD,
+  DATE_FIELD,
 } from "../../utils/labels";
 import { filterStage } from "./atoms";
 
@@ -27,7 +28,20 @@ export const isDateTimeField = selectorFamily<boolean, string>({
       map = get(selectors.primitivesSubfieldMap("sample"));
     }
 
-    return isDateField(map[name]);
+    return DATE_TIME_FIELD === map[name];
+  },
+});
+
+export const isDateField = selectorFamily<boolean, string>({
+  key: "isDateField",
+  get: (name) => ({ get }) => {
+    let map = get(selectors.primitivesMap("sample"));
+
+    if (map[name] === LIST_FIELD) {
+      map = get(selectors.primitivesSubfieldMap("sample"));
+    }
+
+    return DATE_FIELD === map[name];
   },
 });
 
@@ -135,7 +149,8 @@ export const boundsAtom = selectorFamily<
 >({
   key: "numericFieldBounds",
   get: ({ path, defaultRange }) => ({ get }) => {
-    const isDateTime = get(isDateTimeField(path));
+    const isDateOrDateTime =
+      get(isDateTimeField(path)) || get(isDateField(path));
 
     let bounds = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
@@ -143,7 +158,7 @@ export const boundsAtom = selectorFamily<
           return acc;
         }
 
-        if (isDateTime) {
+        if (isDateOrDateTime) {
           return cur.result.map((v) => (v ? v.datetime : v));
         }
 

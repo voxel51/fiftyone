@@ -529,3 +529,18 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
     .format(timeStamp)
     .replaceAll("/", "-");
 };
+
+export const formatDate = (timeStamp: number): string => {
+  const twoDigit = "2-digit";
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "UTC",
+    year: "numeric",
+    day: twoDigit,
+    month: twoDigit,
+  };
+
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-");
+};

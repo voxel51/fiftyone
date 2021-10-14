@@ -11,11 +11,12 @@ import { Slider as SliderUnstyled } from "@material-ui/core";
 
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../FieldsSidebar";
-import { INT_FIELD, isDateField } from "../../utils/labels";
+import { DATE_FIELD, DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "../../utils/hooks";
+import { isDateTimeField } from "./NumericFieldFilter.state";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -81,7 +82,9 @@ const SliderStyled = styled(SliderUnstyled)`
 const getFormatter = (fieldType, timeZone, bounds) => {
   let hasTitle = false;
   let dtFormatters;
-  if (isDateField(fieldType)) {
+  const date = [DATE_TIME_FIELD, DATE_FIELD].includes(fieldType);
+
+  if (date) {
     dtFormatters = getDateTimeRangeFormattersWithPrecision(
       timeZone,
       bounds[0],
@@ -94,7 +97,7 @@ const getFormatter = (fieldType, timeZone, bounds) => {
   return {
     hasTitle,
     formatter: (v) => {
-      if (isDateField(fieldType)) {
+      if (date) {
         const str = dtFormatters[1].format(v).split(",");
 
         if (str.length === 1) {
@@ -174,7 +177,7 @@ const BaseSlider = React.memo(
     const bounds = useRecoilValue(boundsAtom);
 
     const timeZone =
-      fieldType && isDateField(fieldType)
+      fieldType && isDateTimeField(fieldType)
         ? useRecoilValue(selectors.timeZone)
         : null;
     const [clicking, setClicking] = useState(false);
@@ -186,7 +189,11 @@ const BaseSlider = React.memo(
     }
 
     const step = getStep(bounds, fieldType);
-    const { formatter, hasTitle } = getFormatter(fieldType, timeZone, bounds);
+    const { formatter, hasTitle } = getFormatter(
+      fieldType,
+      fieldType === DATE_FIELD ? "UTC" : timeZone,
+      bounds
+    );
 
     return (
       <>
