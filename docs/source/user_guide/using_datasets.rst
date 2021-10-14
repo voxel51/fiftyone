@@ -1750,11 +1750,10 @@ extent when visualizing in the App.
 
 When visualizing heatmaps :ref:`in the App <fiftyone-app>`, when the App is
 in color-by-field mode, heatmaps are rendered in their field's color with
-transparency inversely proportional to the magnitude of the heatmap's values.
-For example, for a heatmap whose
-:attr:`range <fiftyone.core.labels.Heatmap.range>` is ``[-10, 10]``, pixels
-with the value +9 will be rendered with 90% opacity, and pixels with the value
--3 will be rendered with 30% opacity.
+opacity proportional to the magnitude of the heatmap's values. For example, for
+a heatmap whose :attr:`range <fiftyone.core.labels.Heatmap.range>` is
+`[-10, 10]`, pixels with the value +9 will be rendered with 90% opacity, and
+pixels with the value -3 will be rendered with 30% opacity.
 
 When the App is in color-by-value mode, heatmaps are rendered using the
 colormap defined by the `colorscale` of your
