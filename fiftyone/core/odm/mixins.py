@@ -120,11 +120,16 @@ def get_field_kwargs(field):
     ftype = type(field)
     kwargs = {"ftype": ftype}
 
-    if issubclass(ftype, fof.EmbeddedDocumentField):
-        kwargs["embedded_doc_type"] = field.document_type
-
     if issubclass(ftype, (fof.ListField, fof.DictField)):
         kwargs["subfield"] = field.field
+        ftype = field.field
+
+    if issubclass(ftype, fof.EmbeddedDocumentField):
+        kwargs["embedded_doc_type"] = field.document_type
+        kwargs["fields"] = {
+            k: get_field_kwargs(v)
+            for k, v in getattr(field, "fields", {}).items()
+        }
 
     return kwargs
 
@@ -140,16 +145,10 @@ def get_implied_field_kwargs(value):
         a field specification dict
     """
     if isinstance(value, BaseEmbeddedDocument):
-        fields = getattr(value, "fields", None)
-        if fields is not None:
-            fields = {
-                k: get_implied_field_kwargs(v) for k, v in fields.items()
-            }
-
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
-            "fields": fields,
+            "fields": _get_embedded_document_fields(value),
         }
 
     if isinstance(value, bool):
@@ -176,6 +175,12 @@ def get_implied_field_kwargs(value):
             if value_type is not None:
                 kwargs["subfield"] = value_type
 
+            if issubclass(value_type, BaseEmbeddedDocument):
+                all_implied_fields = [
+                    get_implied_field_kwargs(v) for v in value
+                ]
+                kwargs["fields"] = _merge_implied_fields(all_implied_fields)
+
         return kwargs
 
     if isinstance(value, np.ndarray):
@@ -192,6 +197,45 @@ def get_implied_field_kwargs(value):
     )
 
 
+def _merge_implied_fields(implied_fields):
+    fields = {}
+    for kwargs in implied_fields:
+        for field, field_kwargs in kwargs.get("fields", {}).items():
+            if field not in fields:
+                fields[field] = field_kwargs
+                continue
+
+            ftype = fields[field]
+            if ftype != field_kwargs["ftype"]:
+                raise TypeError("Cannot merge")
+
+            if issubclass(ftype, fof.ListField):
+                subfield = fields["subfield"]
+                if subfield != field_kwargs["subfield"]:
+                    raise TypeError("Cannot merge")
+
+                if subfield == fof.EmbeddedDocumentField:
+                    ftype = subfield
+
+            if ftype == fof.EmbeddedDocumentField:
+                document_type = fields[field]["document_type"]
+                if document_type != field_kwargs["document_type"]:
+                    raise TypeError("Cannot merge")
+
+                fields[field]["fields"] = _merge_implied_fields(
+                    [fields[field]["fields"], field_kwargs]
+                )
+
+    return fields
+
+
+def _get_embedded_document_fields(value):
+    return {
+        field: get_implied_field_kwargs(value.get_field(field))
+        for field in value._field_ordered
+    }
+
+
 def _get_list_value_type(value):
     if isinstance(value, bool):
         return fof.BooleanField
@@ -204,6 +248,9 @@ def _get_list_value_type(value):
 
     if isinstance(value, six.string_types):
         return fof.StringField
+
+    if isinstance(value, BaseEmbeddedDocument):
+        return value.__class__
 
     return None
 
@@ -372,7 +419,7 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
-            fields (None): the subfield definitions of the
+            fields (None): the field definitions of the
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
                 Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
@@ -382,7 +429,8 @@ class DatasetMixin(object):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            fields=fields ** kwargs,
+            fields=fields,
+            **kwargs,
         )
 
     @classmethod

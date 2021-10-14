@@ -562,9 +562,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             etau.get_class_name(self.document_type),
         )
 
-    def validate(self, value):
-        if type(value) != self.document_type:
-            self.error("bad")
+    def validate(self, value, clean=True):
+        super().validate(value, clean)
 
         fields = getattr(self, "fields", {})
         for field_name in value._fields_ordered:
@@ -582,7 +581,10 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 field = self.fields[field_name]
 
             if field is None:
-                self.error("bad")
+                self.error(
+                    "Embedded document field does not have field '%s' declared"
+                    % field_name
+                )
 
             field.validate(field_value)
 
