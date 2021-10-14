@@ -146,10 +146,10 @@ const Distribution = ({ distribution }) => {
             let title = `Value: ${key}`;
 
             if (map[key]) {
-              if (isDateTime) {
+              if (isDateTime || isDate) {
                 const [{ $date: start }, { $date: end }] = map[key];
                 const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
-                  timeZone,
+                  isDate ? "UTC" : timeZone,
                   start,
                   end
                 );
