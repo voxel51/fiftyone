@@ -6,8 +6,6 @@ import { isBooleanField } from "./BooleanFieldFilter.state";
 import { isNumericField } from "./NumericFieldFilter.state";
 import { isStringField } from "./StringFieldFilter.state";
 
-import { Value } from "./types";
-
 export const unsupportedFields = selector<string[]>({
   key: "unsupportedFields",
   get: ({ get }) => {
@@ -148,7 +146,7 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
 const NONSTRING_VALUES: any[] = [false, true, null];
 const STRING_VALUES = ["False", "True", "None"];
 
-export const getValueString = (value: Value): [string, boolean] => {
+export const getValueString = (value): [string, boolean] => {
   if (NONSTRING_VALUES.includes(value)) {
     return [STRING_VALUES[NONSTRING_VALUES.indexOf(value)], true];
   }
@@ -159,6 +157,10 @@ export const getValueString = (value: Value): [string, boolean] => {
 
   if (typeof value === "string" && !value.length) {
     return [`""`, true];
+  }
+
+  if (Array.isArray(value)) {
+    return [`[${value.map((v) => getValueString(v)[0]).join(", ")}]`, false];
   }
 
   return [value as string, false];

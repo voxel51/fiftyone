@@ -19,8 +19,9 @@ import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-import fiftyone.core.stages as fost
 import fiftyone.core.utils as fou
+
+fost = fou.lazy_import("fiftyone.core.stages")
 
 
 class DatasetView(foc.SampleCollection):

@@ -251,14 +251,14 @@ def export_to_labelbox(
 
     # Get label fields to export
     label_fields = sample_collection._parse_label_field(
-        label_field, allow_coersion=False, force_dict=True, required=False,
+        label_field, allow_coercion=False, force_dict=True, required=False,
     )
 
     # Get frame label fields to export
     if is_video:
         frame_label_fields = sample_collection._parse_frame_labels_field(
             frame_labels_field,
-            allow_coersion=False,
+            allow_coercion=False,
             force_dict=True,
             required=False,
         )

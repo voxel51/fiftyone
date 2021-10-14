@@ -30,7 +30,7 @@ def get_default_frame_fields(include_private=False, use_db_fields=False):
         a tuple of field names
     """
     return foo.get_default_fields(
-        foo.DatasetFrameSampleDocument,
+        foo.DatasetFrameDocument,
         include_private=include_private,
         use_db_fields=use_db_fields,
     )
@@ -132,6 +132,9 @@ class Frames(object):
 
     @property
     def _sample_id(self):
+        if self._dataset._is_clips:
+            return self._sample._doc.sample_id
+
         return self._sample._id
 
     @property
@@ -465,9 +468,26 @@ class Frames(object):
             {"_sample_id": self._sample_id, "frame_number": frame_number}
         )
 
+    def _get_frames_match_stage(self):
+        if self._dataset._is_clips:
+            first, last = self._sample.support
+            return {
+                "$match": {
+                    "$expr": {
+                        "$and": [
+                            {"$eq": ["$_sample_id", self._sample_id]},
+                            {"$gte": ["$frame_number", first]},
+                            {"$lte": ["$frame_number", last]},
+                        ]
+                    }
+                }
+            }
+
+        return {"$match": {"_sample_id": self._sample_id}}
+
     def _get_frame_numbers_db(self):
         pipeline = [
-            {"$match": {"_sample_id": self._sample_id}},
+            self._get_frames_match_stage(),
             {
                 "$group": {
                     "_id": None,
@@ -558,7 +578,7 @@ class Frames(object):
 
     def _iter_frames_db(self):
         pipeline = [
-            {"$match": {"_sample_id": self._sample_id}},
+            self._get_frames_match_stage(),
             {"$sort": {"frame_number": 1}},
         ]
         return foo.aggregate(self._frame_collection, pipeline)
@@ -657,7 +677,7 @@ class Frames(object):
             ids_map = self._get_ids_map()
             for frame_number, d in new_dicts.items():
                 frame = replacements[frame_number]
-                if isinstance(frame._doc, foo.NoDatasetFrameSampleDocument):
+                if isinstance(frame._doc, foo.NoDatasetFrameDocument):
                     doc = self._dataset._frame_dict_to_doc(d)
                     frame._set_backing_doc(doc, dataset=self._dataset)
 
@@ -886,7 +906,7 @@ class Frame(Document, metaclass=FrameSingleton):
         **kwargs: frame fields and values
     """
 
-    _NO_DATASET_DOC_CLS = foo.NoDatasetFrameSampleDocument
+    _NO_DATASET_DOC_CLS = foo.NoDatasetFrameDocument
 
     @property
     def _sample_id(self):
@@ -937,7 +957,7 @@ class FrameView(DocumentView):
     accessing the frames in a :class:`fiftyone.core.view.DatasetView`.
 
     Args:
-        doc: a :class:`fiftyone.core.odm.frame.DatasetFrameSampleDocument`
+        doc: a :class:`fiftyone.core.odm.frame.DatasetFrameDocument`
         view: the :class:`fiftyone.core.view.DatasetView` that the frame
             belongs to
         selected_fields (None): a set of field names that this frame view is

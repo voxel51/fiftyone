@@ -4,13 +4,17 @@ import { useRecoilValue } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
-import { FRAME_NUMBER_FIELD, INT_FIELD } from "../../utils/labels";
+import {
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+} from "../../utils/labels";
 import { useExpand } from "./hooks";
 import { boundsAtom, rangeAtom, noneAtom } from "./NumericFieldFilter.state";
 import { countsAtom, noneCount } from "./atoms";
 import CategoricalFilter from "./CategoricalFilter";
 
-const INT_FIELDS = [INT_FIELD, FRAME_NUMBER_FIELD];
+const INT_FIELDS = [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD];
 
 const NumericFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);

@@ -13,6 +13,7 @@
 
 .. |ToPatches| replace:: :class:`ToPatches <fiftyone.core.stages.ToPatches>`
 .. |ToEvaluationPatches| replace:: :class:`ToEvaluationPatches <fiftyone.core.stages.ToEvaluationPatches>`
+.. |ToClips| replace:: :class:`ToClips <fiftyone.core.stages.ToClips>`
 .. |SortBySimilarity| replace:: :class:`SortBySimilarity <fiftyone.core.stages.SortBySimilarity>`
 
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`

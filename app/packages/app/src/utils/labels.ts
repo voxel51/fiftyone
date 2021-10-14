@@ -22,6 +22,14 @@ export const VALID_LIST_TYPES = [
 
 export const PATCHES_FIELDS = ["Detections", "Polylines"];
 
+export const CLIPS_SAMPLE_FIELDS = ["TemporalDetection", "TemporalDetections"];
+export const CLIPS_FRAME_FIELDS = [
+  "Classifications",
+  "Detections",
+  "Keypoints",
+  "Polylines",
+];
+
 export const VALID_LABEL_TYPES = [
   ...VALID_CLASS_TYPES,
   ...VALID_OBJECT_TYPES,
@@ -71,6 +79,8 @@ export const CONFIDENCE_LABELS = [
   "TemporalDetections",
 ];
 
+export const SUPPORT_LABELS = ["TemporalDetection", "TemporalDetections"];
+
 export const LABEL_LISTS = [
   "Classifications",
   "Detections",
@@ -99,21 +109,30 @@ export const AGGS = {
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
+export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
 export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
 
+export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
+
 export const VALID_SCALAR_TYPES = [
   BOOLEAN_FIELD,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   INT_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
 ];
 
-export const VALID_NUMERIC_TYPES = [FLOAT_FIELD, FRAME_NUMBER_FIELD, INT_FIELD];
+export const VALID_NUMERIC_TYPES = [
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+];
 
 export const RESERVED_FIELDS = [
   "_id",

@@ -57,6 +57,7 @@ export type Action<State extends BaseState> = (
 
 export interface Control<State extends BaseState = BaseState> {
   eventKeys?: string | string[];
+  filter?: (config: Readonly<State["config"]>) => boolean;
   title: string;
   shortcut: string;
   detail: string;
@@ -101,11 +102,24 @@ export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
 
+interface SchemaEntry {
+  name: string;
+  ftype: string;
+  subfield?: string;
+  embedded_doc_type?: string;
+  db_field: string;
+}
+
+interface Schema {
+  [name: string]: SchemaEntry;
+}
+
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
   dimensions: Dimensions;
   sampleId: string;
+  fieldSchema: Schema;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -117,6 +131,7 @@ export interface ImageConfig extends BaseConfig {}
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
+  support?: [number, number];
 }
 
 export interface FrameOptions extends BaseOptions {
@@ -210,7 +225,6 @@ export interface VideoState extends BaseState {
   options: VideoOptions;
   seeking: boolean;
   playing: boolean;
-  locked: boolean;
   frameNumber: number;
   duration: number | null;
   fragment: [number, number] | null;
@@ -220,6 +234,7 @@ export interface VideoState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
   waitingForVideo: boolean;
+  lockedToSupport: boolean;
 }
 
 export type Optional<T> = {

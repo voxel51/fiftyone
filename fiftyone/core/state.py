@@ -7,6 +7,8 @@ Defines the shared state between the FiftyOne App and backend.
 """
 import logging
 
+from mongoengine.base import document
+
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -246,29 +248,45 @@ class DatasetStatistics(object):
         for field_name, field in self.fields(view):
             if _is_label(field):
                 path = _expand_labels_path(field_name, field)
-                aggregations.append(foa.Count(path))
-                label_path = "%s.label" % path
-                confidence_path = "%s.confidence" % path
-                tags_path = "%s.tags" % path
-                include_labels = (
-                    None
-                    if filters is None or label_path not in filters
-                    else filters[label_path]["values"]
-                )
                 aggregations.extend(
-                    [
-                        foa.CountValues(
-                            label_path, _first=200, _include=include_labels
-                        ),
-                        foa.Count(label_path),
-                        foa.Bounds(confidence_path),
-                        foa.Count(confidence_path),
-                        foa.CountValues(tags_path),
-                    ]
+                    [foa.Count(path), foa.CountValues("%s.tags" % path)]
                 )
+                if _has_confidence(field):
+                    confidence_path = "%s.confidence" % path
+                    aggregations.extend(
+                        [
+                            foa.Bounds(confidence_path),
+                            foa.Count(confidence_path),
+                        ]
+                    )
+
+                if _has_label(field):
+                    label_path = "%s.label" % path
+                    include_labels = (
+                        None
+                        if filters is None or label_path not in filters
+                        else filters[label_path]["values"]
+                    )
+                    aggregations.extend(
+                        [
+                            foa.CountValues(
+                                label_path, _first=200, _include=include_labels
+                            ),
+                            foa.Count(label_path),
+                        ]
+                    )
+
+                if _has_support(field):
+                    support_path = "%s.support" % path
+                    aggregations.extend(
+                        [foa.Bounds(support_path), foa.Count(support_path),]
+                    )
             else:
                 aggregations.append(foa.Count(field_name))
-                if _meets_type(field, (fof.IntField, fof.FloatField)):
+                if _meets_type(
+                    field,
+                    (fof.IntField, fof.FloatField, fof.FrameSupportField),
+                ):
                     aggregations.append(foa.Bounds(field_name))
                 elif _meets_type(field, fof.BooleanField):
                     aggregations.append(foa.CountValues(field_name, _first=3))
@@ -308,5 +326,28 @@ def _is_label(field):
     )
 
 
-def _is_label_list(field):
-    return issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
+def _has_confidence(field):
+    ltype = (
+        fol._LABEL_LIST_TO_SINGLE_MAP[field.document_type]
+        if field.document_type in fol._LABEL_LIST_TO_SINGLE_MAP
+        else field.document_type
+    )
+    return hasattr(ltype, "confidence")
+
+
+def _has_label(field):
+    ltype = (
+        fol._LABEL_LIST_TO_SINGLE_MAP[field.document_type]
+        if field.document_type in fol._LABEL_LIST_TO_SINGLE_MAP
+        else field.document_type
+    )
+    return hasattr(ltype, "label")
+
+
+def _has_support(field):
+    ltype = (
+        fol._LABEL_LIST_TO_SINGLE_MAP[field.document_type]
+        if field.document_type in fol._LABEL_LIST_TO_SINGLE_MAP
+        else field.document_type
+    )
+    return hasattr(ltype, "support")
