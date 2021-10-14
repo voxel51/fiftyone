@@ -410,16 +410,18 @@ export const nextFrame: Control<VideoState> = {
         frameNumber,
         duration,
         playing,
-        config: { frameRate },
-        config: { thumbnail },
+        config: { frameRate, support, thumbnail },
+        lockedToSupport,
       }) => {
         if (playing || thumbnail) {
           return {};
         }
-        const total = getFrameNumber(duration, duration, frameRate);
+        const end = lockedToSupport
+          ? support[1]
+          : getFrameNumber(duration, duration, frameRate);
 
         return {
-          frameNumber: Math.min(total, frameNumber + 1),
+          frameNumber: Math.min(end, frameNumber + 1),
         };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
@@ -434,11 +436,21 @@ export const previousFrame: Control<VideoState> = {
   detail: "Seek to the previous frame",
   action: (update, dispatchEvent) => {
     update(
-      ({ frameNumber, playing, config: { thumbnail } }) => {
+      ({
+        frameNumber,
+        playing,
+        config: { support, thumbnail },
+        lockedToSupport,
+      }) => {
         if (playing || thumbnail) {
           return {};
         }
-        return { frameNumber: Math.max(1, frameNumber - 1) };
+        return {
+          frameNumber: Math.max(
+            lockedToSupport ? support[0] : 1,
+            frameNumber - 1
+          ),
+        };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
     );
@@ -451,17 +463,35 @@ export const playPause: Control<VideoState> = {
   eventKeys: " ",
   detail: "Play or pause the video",
   action: (update, dispatchEvent) => {
-    update(({ playing, config: { thumbnail } }) => {
-      if (thumbnail) {
-        return {};
-      }
+    update(
+      ({
+        frameNumber,
+        playing,
+        duration,
+        config: { frameRate, support, thumbnail },
+        lockedToSupport,
+      }) => {
+        if (thumbnail) {
+          return {};
+        }
+        const start = lockedToSupport ? support[0] : 1;
+        const end = lockedToSupport
+          ? support[1]
+          : getFrameNumber(duration, duration, frameRate);
 
-      dispatchEvent("options", { showJSON: false });
-      return {
-        playing: !playing,
-        options: { showJSON: false },
-      };
-    });
+        dispatchEvent("options", { showJSON: false });
+        return {
+          playing: !playing && start !== end,
+          frameNumber:
+            end === frameNumber
+              ? lockedToSupport
+                ? support[0]
+                : 1
+              : frameNumber,
+          options: { showJSON: false },
+        };
+      }
+    );
   },
 };
 
@@ -511,15 +541,36 @@ const seekTo: Control<VideoState> = {
   shortcut: "0-9",
   eventKeys: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
   action: (update, dispatchEvent, eventKey) => {
-    update(({ duration, config: { frameRate } }) => {
-      const total = getFrameNumber(duration, duration, frameRate);
+    update(({ duration, config: { frameRate, support }, lockedToSupport }) => {
+      const frameCount = getFrameNumber(duration, duration, frameRate);
+      const total = lockedToSupport ? support[1] - support[0] : frameCount;
+      const base = lockedToSupport ? support[0] : 1;
+
       dispatchEvent("options", { showJSON: false });
       return {
         frameNumber: Math.max(
           1,
-          Math.round((parseInt(eventKey, 10) / 10) * total)
+          Math.round((parseInt(eventKey, 10) / 10) * total) + base
         ),
         options: { showJSON: false },
+      };
+    });
+  },
+};
+
+export const supportLock: Control<VideoState> = {
+  title: "Support lock",
+  filter: (config) => Boolean(config.support),
+  detail: "Toggle the lock on the support frame(s)",
+  shortcut: "l",
+  action: (update) => {
+    update(({ lockedToSupport, config: { support }, frameNumber }) => {
+      return {
+        lockedToSupport: support ? !lockedToSupport : false,
+        frameNumber:
+          frameNumber < support[0] || frameNumber > support[1]
+            ? support[0]
+            : frameNumber,
       };
     });
   },
@@ -537,7 +588,9 @@ const videoEscape: Control<VideoState> = {
         showHelp,
         showOptions,
         frameNumber,
+        config: { support },
         options: { fullscreen: fullscreenSetting, showJSON, selectedLabels },
+        lockedToSupport,
       }) => {
         if (showHelp) {
           return { showHelp: false };
@@ -550,6 +603,13 @@ const videoEscape: Control<VideoState> = {
         if (showJSON) {
           dispatchEvent("options", { showJSON: false });
           return { options: { showJSON: false } };
+        }
+
+        if (!lockedToSupport && Boolean(support)) {
+          return {
+            frameNumber: support[0],
+            lockedToSupport: true,
+          };
         }
 
         if (frameNumber !== 1) {
@@ -590,6 +650,7 @@ export const VIDEO = {
   nextFrame,
   previousFrame,
   seekTo,
+  supportLock,
 };
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
@@ -695,7 +756,18 @@ export class HelpPanelElement<State extends BaseState> extends BaseElement<
 
 export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
   createHTMLElement(update) {
-    return this.createHelpPanel(update, VIDEO);
+    let config = null;
+    update(({ config: _config }) => {
+      config = _config;
+      return {};
+    });
+
+    return this.createHelpPanel(
+      update,
+      Object.fromEntries(
+        Object.entries(VIDEO).filter(([k, v]) => !v.filter || v.filter(config))
+      )
+    );
   }
 }
 

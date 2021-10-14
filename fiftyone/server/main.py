@@ -30,6 +30,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
+import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
@@ -245,9 +246,12 @@ class PageHandler(tornado.web.RequestHandler):
             return
 
         if view.media_type == fom.VIDEO:
-            view = view.set_field(
-                "frames", F("frames").filter((F("frame_number") == 1))
-            )
+            if isinstance(view, focl.ClipsView):
+                expr = F("frame_number") == F("$support")[0]
+            else:
+                expr = F("frame_number") == 1
+
+            view = view.set_field("frames", F("frames").filter(expr))
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)

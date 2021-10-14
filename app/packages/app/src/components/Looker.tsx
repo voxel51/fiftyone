@@ -388,7 +388,9 @@ const Looker = ({
     atoms.modal
   );
   const fullscreen = useRecoilValue(atoms.fullscreen);
+  const isClips = useRecoilValue(selectors.isClipsView);
   const mimetype = getMimeType(sample);
+  const schema = useRecoilValue(selectors.fieldSchema("sample"));
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
   const activePaths = useRecoilValue(labelAtoms.activeModalFields);
@@ -398,6 +400,7 @@ const Looker = ({
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
+    const etc = isClips ? { support: sample.support } : {};
 
     return new constructor(
       sample,
@@ -408,6 +411,8 @@ const Looker = ({
         frameNumber,
         sampleId: sample._id,
         thumbnail: false,
+        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
+        ...etc,
       },
       {
         activePaths,

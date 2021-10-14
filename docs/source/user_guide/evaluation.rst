@@ -686,7 +686,7 @@ results of an evaluation on the
         iou:          fiftyone.core.fields.FloatField
         crowd:        fiftyone.core.fields.BooleanField
     View stages:
-        1. ToEvaluationPatches(eval_key='eval')
+        1. ToEvaluationPatches(eval_key='eval', config=None)
 
 .. note::
 
@@ -1821,4 +1821,4 @@ You can also view frame-level evaluation results as
         crowd:        fiftyone.core.fields.BooleanField
     View stages:
         1. ToFrames(config=None)
-        2. ToEvaluationPatches(eval_key='eval')
+        2. ToEvaluationPatches(eval_key='eval', config=None)

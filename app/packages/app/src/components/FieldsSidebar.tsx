@@ -31,7 +31,7 @@ import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import * as fieldAtoms from "./Filters/utils";
 import * as selectors from "../recoil/selectors";
-import { FILTERABLE_TYPES } from "../utils/labels";
+import { FILTERABLE_TYPES, FRAME_SUPPORT_FIELD } from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
 import { prettify } from "../utils/generic";
@@ -544,7 +544,7 @@ type OthersCellProps = {
   modal: boolean;
 };
 
-const OthersCell = ({ modal }: ScalarsCellProps) => {
+const OthersCell = ({ modal }: OthersCellProps) => {
   const scalars = useRecoilValue(selectors.primitiveNames("sample"));
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
@@ -558,6 +558,7 @@ const OthersCell = ({ modal }: ScalarsCellProps) => {
     filterAtoms.filteredScalarCounts(modal),
     useRecoilValue(filterAtoms.scalarCounts(modal)),
   ];
+  const types = useRecoilValue(selectors.primitivesMap("sample"));
 
   return (
     <Cell
@@ -584,14 +585,22 @@ const OthersCell = ({ modal }: ScalarsCellProps) => {
             selected: activeScalars.includes(name),
             color: colorByLabel ? theme.brand : colorMap(name),
             title:
-              modal && !Array.isArray(value) ? prettify(value, false) : name,
+              modal &&
+              (!Array.isArray(value) || types[name] === FRAME_SUPPORT_FIELD)
+                ? prettify(value, false)
+                : name,
             value:
-              modal && !Array.isArray(value) ? prettify(value, false) : null,
+              modal &&
+              (!Array.isArray(value) || types[name] === FRAME_SUPPORT_FIELD)
+                ? prettify(value, false)
+                : null,
             path: name,
             count:
               count === null
                 ? null
-                : modal && Array.isArray(value)
+                : modal &&
+                  Array.isArray(value) &&
+                  types[name] !== FRAME_SUPPORT_FIELD
                 ? value.length
                 : count[name],
             type: "values",

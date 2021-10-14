@@ -163,45 +163,6 @@ For your convenience, the
 will automatically coerce the data to match the requested export types in a
 variety of common cases listed below.
 
-Object patches
-~~~~~~~~~~~~~~
-
-When exporting in either an unlabeled image or image classification format, if
-a spatial label field (|Detection|, |Detections|, |Polyline|, or |Polylines|)
-is provided to
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
-object patches of the provided samples will be exported.
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-
-    # No label field is provided; only images are exported
-    dataset.export(
-        export_dir="/tmp/quickstart/images",
-        dataset_type=fo.types.ImageDirectory,
-    )
-
-    # A detections field is provided, so the object patches are exported as a
-    # directory of images
-    dataset.export(
-        export_dir="/tmp/quickstart/patches",
-        dataset_type=fo.types.ImageDirectory,
-        label_field="ground_truth",
-    )
-
-    # A detections field is provided, so the object patches are exported as an
-    # image classification directory tree
-    dataset.export(
-        export_dir="/tmp/quickstart/objects",
-        dataset_type=fo.types.ImageClassificationDirectoryTree,
-        label_field="ground_truth",
-    )
-
 Single labels to lists
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -256,6 +217,130 @@ to detections that span the entire images.
         export_dir="/tmp/quickstart/attributes",
         dataset_type=fo.types.COCODetectionDataset,
         label_field="attribute",
+    )
+
+Object patches
+~~~~~~~~~~~~~~
+
+When exporting in either an unlabeled image or image classification format, if
+a spatial label field (|Detection|, |Detections|, |Polyline|, or |Polylines|)
+is provided to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
+:ref:`object patches <app-object-patches>` of the provided samples will be
+exported.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # No label field is provided; only images are exported
+    dataset.export(
+        export_dir="/tmp/quickstart/images",
+        dataset_type=fo.types.ImageDirectory,
+    )
+
+    # A detections field is provided, so the object patches are exported as a
+    # directory of images
+    dataset.export(
+        export_dir="/tmp/quickstart/patches",
+        dataset_type=fo.types.ImageDirectory,
+        label_field="ground_truth",
+    )
+
+    # A detections field is provided, so the object patches are exported as an
+    # image classification directory tree
+    dataset.export(
+        export_dir="/tmp/quickstart/objects",
+        dataset_type=fo.types.ImageClassificationDirectoryTree,
+        label_field="ground_truth",
+    )
+
+Video clips
+~~~~~~~~~~~
+
+When exporting in either an unlabeled video or video classification format, if
+a |TemporalDetection| or |TemporalDetections| field is provided to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`, the
+specified :ref:`video clips <app-video-clips>` will be exported.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video").limit(2).clone()
+
+    # Add some temporal detections to the dataset
+    sample1 = dataset.first()
+    sample1["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="first", support=[31, 60]),
+            fo.TemporalDetection(label="second", support=[90, 120]),
+        ]
+    )
+    sample1.save()
+
+    sample2 = dataset.last()
+    sample2["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="first", support=[16, 45]),
+            fo.TemporalDetection(label="second", support=[75, 104]),
+        ]
+    )
+    sample2.save()
+
+    # A temporal detection field is provided, so the clips are exported as a
+    # directory of videos
+    dataset.export(
+        export_dir="/tmp/quickstart-video/clips",
+        dataset_type=fo.types.VideoDirectory,
+        label_field="events",
+    )
+
+    # A temporal detection field is provided, so the clips are exported as a
+    # video classification directory tree
+    dataset.export(
+        export_dir="/tmp/quickstart-video/video-classifications",
+        dataset_type=fo.types.VideoClassificationDirectoryTree,
+        label_field="events",
+    )
+
+You can also directly call
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` on
+:ref:`clip views <clip-views>` to export the specified video clips along with
+their appropriately typed labels.
+
+.. code-block:: python
+    :linenos:
+
+    # Continuing from above...
+
+    clips = dataset.to_clips("events")
+
+    # Export the clips as a directory of videos
+    clips.export(
+        export_dir="/tmp/quickstart-video/also-clips",
+        dataset_type=fo.types.VideoDirectory,
+    )
+
+    # A classification field is provided, so the clips are exported as a video
+    # classification directory tree
+    clips.export(
+        export_dir="/tmp/quickstart-video/clip-classifications",
+        dataset_type=fo.types.VideoClassificationDirectoryTree,
+        label_field="events",
+    )
+
+    # Export the clips along with their associated frame labels
+    clips.export(
+        export_dir="/tmp/quickstart-video/clip-frame-labels",
+        dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+        frame_labels_field="detections",
     )
 
 .. _supported-export-formats:
