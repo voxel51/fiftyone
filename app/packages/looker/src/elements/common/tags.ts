@@ -44,8 +44,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      options: { filter, activePaths, coloring, fieldsMap, mimetype, timeZone },
       config: { fieldSchema },
+      options: { filter, activePaths, coloring, fieldsMap, mimetype, timeZone },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {

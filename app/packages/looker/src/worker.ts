@@ -315,7 +315,11 @@ type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
 
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
-    stream && stream.reader.read().then(getSendChunk(uuid));
+    stream &&
+      stream.reader
+        .read()
+        .then(getSendChunk(uuid))
+        .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
   }
 };
 
@@ -349,7 +353,10 @@ const setStream = ({
     url,
   });
 
-  stream.reader.read().then(getSendChunk(uuid));
+  stream.reader
+    .read()
+    .then(getSendChunk(uuid))
+    .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
 };
 
 const isFloatArray = (arr) =>
