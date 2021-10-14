@@ -36,7 +36,93 @@ class FiftyOneDataset(fozd.ZooDataset):
 
 
 class ActivityNet100Dataset(FiftyOneDataset):
-    """
+    """ActivityNet is a large-scale video dataset for human activity understanding
+    supporting the tasks of global video classification, trimmed activity
+    classification, and temporal activity detection.
+    
+    This version contains videos and temporal activity detections for the 100 class
+    version of the dataset.
+    
+    Notes:
+    
+    -   ActivityNet-100 and -200 differ in the number of activity classes and videos
+        per split
+    -   Most videos can be downloaded from YouTube, missing videos can be accessed
+        from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+    -   The test set does not have annotations
+    
+    Full split stats:
+    
+    -   Train split: 4,819 videos (7,151 instances)
+    -   Test split: 2,480 videos (labels withheld)
+    -   Validation split: 2,383 videos (3,582 instances)
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the ``max_duration``,
+        ``classes``, and ``max_samples`` parameters
+    
+    Full dataset download:
+    
+    In order to manually download the entire source dataset, you must fill out 
+    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
+    which will give you access to the dataset through Google Drive
+    for 7 days.
+    
+    If you have downloaded the entire source dataset, then use the `source_dir`
+    parameter to avoid downloading videos from YouTube when calling
+    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
+    
+    Example usage::
+       
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "activitynet-100",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "Bathing dog" and "Walking the dog"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "activitynet-100",
+            split="validation",
+            classes=["Bathing dog", "Walking the dog"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+    Dataset size
+        223 GB
+
+    Source 
+        http://activity-net.org/index.html
+
     Args:
         source_dir (None): the directory containing the manually downloaded
             ActivityNet files used to avoid downloading videos from YouTube
@@ -122,7 +208,93 @@ class ActivityNet100Dataset(FiftyOneDataset):
 
 
 class ActivityNet200Dataset(FiftyOneDataset):
-    """
+    """ActivityNet is a large-scale video dataset for human activity understanding
+    supporting the tasks of global video classification, trimmed activity
+    classification, and temporal activity detection.
+    
+    This version contains videos and temporal activity detections for the 200 class
+    version of the dataset.
+    
+    Notes:
+    
+    -   ActivityNet-100 and -200 differ in the number of activity classes and videos
+        per split
+    -   Most videos can be downloaded from YouTube, missing videos can be accessed
+        from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+    -   The test set does not have annotations
+    
+    Full split stats:
+
+    -   Train split: 10,024 videos (15,410 instances)
+    -   Test split: 5,044 videos (labels withheld)
+    -   Validation split: 4,926 videos (7,654 instances)
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the ``max_duration``,
+        ``classes``, and ``max_samples`` parameters
+    
+    Full dataset download:
+    
+    In order to manually download the entire source dataset, you must fill out 
+    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
+    which will give you access to the dataset through Google Drive
+    for 7 days.
+    
+    If you have downloaded the entire source dataset, then use the `source_dir`
+    parameter to avoid downloading videos from YouTube when calling
+    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
+    
+    Example usage::
+       
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "activitynet-200",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "Bathing dog" and "Walking the dog"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "activitynet-200",
+            split="validation",
+            classes=["Bathing dog", "Walking the dog"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+    Dataset size
+        500 GB
+
+    Source 
+        http://activity-net.org/index.html
+
     Args:
         source_dir (None): the directory containing the manually downloaded
             ActivityNet files used to avoid downloading videos from YouTube
