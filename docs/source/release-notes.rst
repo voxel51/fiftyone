@@ -42,25 +42,25 @@ Core
   that allows for matching entire object trajectories for which a given filter
   matches the object in at least one frame of the video
 - Added set operations
-  :ref:`is_subset() <fiftyone.core.expressions.ViewExpression.is_subset>`,
-  :ref:`set_equals() <fiftyone.core.expressions.ViewExpression.set_equals>`,
-  :ref:`unqiue() <fiftyone.core.expressions.ViewExpression.unqiue>`,
-  :ref:`union() <fiftyone.core.expressions.ViewExpression.union>`,
-  :ref:`intersection() <fiftyone.core.expressions.ViewExpression.intersection>`,
-  :ref:`difference() <fiftyone.core.expressions.ViewExpression.difference>`, and
-  :ref:`contains(..., all=True) <fiftyone.core.expressions.ViewExpression.contains>`
+  :meth:`is_subset() <fiftyone.core.expressions.ViewExpression.is_subset>`,
+  :meth:`set_equals() <fiftyone.core.expressions.ViewExpression.set_equals>`,
+  :meth:`unqiue() <fiftyone.core.expressions.ViewExpression.unqiue>`,
+  :meth:`union() <fiftyone.core.expressions.ViewExpression.union>`,
+  :meth:`intersection() <fiftyone.core.expressions.ViewExpression.intersection>`,
+  :meth:`difference() <fiftyone.core.expressions.ViewExpression.difference>`, and
+  :meth:`contains(..., all=True) <fiftyone.core.expressions.ViewExpression.contains>`
   to the view expression API
 - Added date operations
-  :ref:`to_date() <fiftyone.core.expressions.ViewExpression.to_date>`,
-  :ref:`millisecond() <fiftyone.core.expressions.ViewExpression.millisecond>`,
-  :ref:`second() <fiftyone.core.expressions.ViewExpression.second>`,
-  :ref:`minute() <fiftyone.core.expressions.ViewExpression.minute>`,
-  :ref:`hour() <fiftyone.core.expressions.ViewExpression.hour>`,
-  :ref:`day_of_week() <fiftyone.core.expressions.ViewExpression.day_of_week>`,
-  :ref:`day_of_month() <fiftyone.core.expressions.ViewExpression.day_of_month>`,
-  :ref:`day_of_year() <fiftyone.core.expressions.ViewExpression.day_of_year>`,
-  :ref:`month() <fiftyone.core.expressions.ViewExpression.month>`, and
-  :ref:`year() <fiftyone.core.expressions.ViewExpression.year>`
+  :meth:`to_date() <fiftyone.core.expressions.ViewExpression.to_date>`,
+  :meth:`millisecond() <fiftyone.core.expressions.ViewExpression.millisecond>`,
+  :meth:`second() <fiftyone.core.expressions.ViewExpression.second>`,
+  :meth:`minute() <fiftyone.core.expressions.ViewExpression.minute>`,
+  :meth:`hour() <fiftyone.core.expressions.ViewExpression.hour>`,
+  :meth:`day_of_week() <fiftyone.core.expressions.ViewExpression.day_of_week>`,
+  :meth:`day_of_month() <fiftyone.core.expressions.ViewExpression.day_of_month>`,
+  :meth:`day_of_year() <fiftyone.core.expressions.ViewExpression.day_of_year>`,
+  :meth:`month() <fiftyone.core.expressions.ViewExpression.month>`, and
+  :meth:`year() <fiftyone.core.expressions.ViewExpression.year>`
   to the view expression API
 - Missing ground truth/predictions are now included by default when viewing
   :ref:`confusion matrices <confusion-matrix-plots>` for detection tasks
