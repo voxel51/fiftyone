@@ -434,31 +434,34 @@ property.
 
 The FiftyOne App can be configured in the ways described below:
 
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| Config field        | Environment variable              | Default value               | Description                                                                              |
-+=====================+===================================+=============================+==========================================================================================+
-| `color_pool`        | `FIFTYONE_APP_COLOR_POOL`         | See below                   | A list of browser supported color strings from which the App should draw from when       |
-|                     |                                   |                             | drawing labels (e.g., object bounding boxes).                                            |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `default_grid_zoom` | `FIFTYONE_APP_DEFAULT_GRID_ZOOM`  | `5`                         | The default zoom level of the App's sample grid. Larger values result in larger samples  |
-|                     |                                   |                             | (and thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.            |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `loop_videos`       | `FIFTYONE_APP_LOOP_VIDEOS`        | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `notebook_height`   | `FIFTYONE_APP_NOTEBOOK_HEIGHT`    | `800`                       | The height of App instances displayed in notebook cells.                                 |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_confidence`   | `FIFTYONE_APP_SHOW_CONFIDENCE`    | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_index`        | `FIFTYONE_APP_SHOW_INDEX`         | `True`                      | Whether to show indexes when rendering labels in the App's expanded sample view.         |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_label`        | `FIFTYONE_APP_SHOW_LABEL`         | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded    |
-|                     |                                   |                             | sample view.                                                                             |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `show_tooltip`      | `FIFTYONE_APP_SHOW_TOOLTIP`       | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
-| `use_frame_number`  | `FIFTYONE_APP_USE_FRAME_NUMBER`   | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
-|                     |                                   |                             | applicable to video samples.                                                             |
-+---------------------+-----------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| Config field              | Environment variable                   | Default value               | Description                                                                              |
++===========================+========================================+=============================+==========================================================================================+
+| `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
+|                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `colorscale`              | `FIFTYONE_APP_COLORSCALE`              | `"viridis"`                 | The colorscale to use when rendering heatmaps in the App. See                            |
+|                           |                                        |                             | :ref:`this section <heatmaps>` for more details.                                         |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and )   |
+|                           |                                        |                             | (thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                 |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_confidence`         | `FIFTYONE_APP_SHOW_CONFIDENCE`         | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_index`              | `FIFTYONE_APP_SHOW_INDEX`              | `True`                      | Whether to show indexes when rendering labels in the App's expanded sample view.         |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded    |
+|                           |                                        |                             | sample view.                                                                             |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
+|                           |                                        |                             | applicable to video samples.                                                             |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -497,7 +500,8 @@ You can print your App config at any time via the Python library and the CLI:
                 "#cc33cc",
                 "#777799"
             ],
-            "default_grid_zoom": 5,
+            "colorscale": "viridis",
+            "grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
             "show_attributes": true
@@ -533,7 +537,8 @@ You can print your App config at any time via the Python library and the CLI:
                 "#cc33cc",
                 "#777799"
             ],
-            "default_grid_zoom": 5,
+            "colorscale": "viridis",
+            "grid_zoom": 5,
             "notebook_height": 800,
             "show_confidence": true,
             "show_attributes": true

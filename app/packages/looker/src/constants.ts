@@ -2,16 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+export const BASE_ALPHA = 0.7;
 export const LINE_WIDTH = 3;
 export const DASH_LENGTH = 8;
-export const DASH_COLOR = "rgba(255, 255, 255, 0.7)";
-export const TEXT_COLOR = "#ffffff";
+export const INFO_COLOR = "#ffffff";
 export const PAD = 4;
 export const TOLERANCE = 1.15;
 export const POINT_RADIUS = 4;
-export const BACKGROUND_ALPHA = 0.8;
-export const MASK_ALPHA = 0.4;
-export const SELECTED_MASK_ALPHA = 0.7;
 export const RADIUS = 12;
 export const STROKE_WIDTH = 3;
 export const FONT_SIZE = 16;
@@ -27,6 +24,7 @@ export const DETECTION = "Detection";
 export const DETECTIONS = "Detections";
 export const GEOLOCATION = "GeoLocation";
 export const GEOLOCATIONS = "GeoLocations";
+export const HEATMAP = "Heatmap";
 export const KEYPOINT = "Keypoint";
 export const KEYPOINTS = "Keypoints";
 export const POLYLINE = "Polyline";
@@ -67,6 +65,7 @@ export const LABELS = {
   [DETECTIONS]: DETECTIONS,
   [GEOLOCATION]: GEOLOCATION,
   [GEOLOCATIONS]: GEOLOCATIONS,
+  [HEATMAP]: HEATMAP,
   [KEYPOINT]: KEYPOINT,
   [KEYPOINTS]: KEYPOINTS,
   [POLYLINE]: POLYLINE,
@@ -89,3 +88,11 @@ export const JSON_COLORS = {
   trueColor: "rgb(225, 100, 40)",
   falseColor: "rgb(225, 100, 40)",
 };
+
+export const BIG_ENDIAN = (() => {
+  let buf = new ArrayBuffer(4);
+  let u32data = new Uint32Array(buf);
+  let u8data = new Uint8Array(buf);
+  u32data[0] = 0xcafebabe;
+  return u8data[0] === 0xca;
+})();

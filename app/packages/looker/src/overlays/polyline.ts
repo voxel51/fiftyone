@@ -2,12 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import {
-  DASH_COLOR,
-  MASK_ALPHA,
-  SELECTED_MASK_ALPHA,
-  TOLERANCE,
-} from "../constants";
+import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -45,6 +40,7 @@ export default class PolylineOverlay<
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     const color = this.getColor(state);
+
     const selected = this.isSelected(state);
 
     for (const path of this.label.points) {
@@ -52,18 +48,10 @@ export default class PolylineOverlay<
         continue;
       }
 
-      this.strokePath(ctx, state, path, color, this.label.filled, selected);
+      this.strokePath(ctx, state, path, color, this.label.filled);
 
       if (selected) {
-        this.strokePath(
-          ctx,
-          state,
-          path,
-          DASH_COLOR,
-          false,
-          false,
-          state.dashLength
-        );
+        this.strokePath(ctx, state, path, INFO_COLOR, false, state.dashLength);
       }
     }
   }
@@ -96,7 +84,7 @@ export default class PolylineOverlay<
     return Math.min(...distances);
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<PolylineLabel> {
     return {
       field: this.field,
       label: this.label,
@@ -115,7 +103,6 @@ export default class PolylineOverlay<
     path: Coordinates[],
     color: string,
     filled: boolean,
-    selected: boolean,
     dash?: number
   ) {
     ctx.beginPath();
@@ -128,9 +115,10 @@ export default class PolylineOverlay<
     }
     if (filled) {
       ctx.fillStyle = color;
-      ctx.globalAlpha = selected ? SELECTED_MASK_ALPHA : MASK_ALPHA;
+      const tmp = ctx.globalAlpha;
+      ctx.globalAlpha = state.options.alpha;
       ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = tmp;
     }
 
     if (this.label.closed) {

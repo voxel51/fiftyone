@@ -4,6 +4,21 @@
 
 import { Overlay } from "./overlays/base";
 
+export type RGB = [number, number, number];
+export type RGBA = [number, number, number, number];
+
+export interface Coloring {
+  byLabel: boolean;
+  pool: string[];
+  scale: RGB[];
+  seed: number;
+  defaultMaskTargets?: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
+  targets: string[];
+}
+
 export interface Sample {
   metadata: {
     width: number;
@@ -22,6 +37,10 @@ export interface LabelData {
   frame_number?: number;
   sample_id: string;
   index?: number;
+}
+
+export interface MaskTargets {
+  [key: number]: string;
 }
 
 export type BufferRange = [number, number];
@@ -51,11 +70,13 @@ export interface ControlMap<State extends BaseState> {
 
 interface BaseOptions {
   activePaths: string[];
-  colorByLabel: boolean;
   filter: {
-    [key: string]: (label: { label?: string; confidence?: number }) => boolean;
+    [fieldName: string]: (label: {
+      label?: string;
+      confidence?: number;
+    }) => boolean;
   };
-  colorMap: (key: string | number | null | undefined) => string;
+  coloring: Coloring;
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;
@@ -73,6 +94,7 @@ interface BaseOptions {
   inSelectionMode: boolean;
   timeZone: string;
   mimetype: string;
+  alpha: number;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -146,6 +168,7 @@ export interface TooltipOverlay {
 }
 
 export interface BaseState {
+  disabled: boolean;
   cursorCoordinates: Coordinates;
   pixelCoordinates: Coordinates;
   disableControls: boolean;
@@ -182,6 +205,7 @@ export interface BaseState {
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
   error: boolean;
   destroyed: boolean;
+  reloading: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -230,7 +254,6 @@ export type StateUpdate<State extends BaseState> = (
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activePaths: [],
-  colorByLabel: false,
   selectedLabels: [],
   showConfidence: false,
   showIndex: false,
@@ -239,7 +262,15 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,
-  colorMap: null,
+  coloring: {
+    byLabel: false,
+    pool: ["#000000"],
+    scale: null,
+    seed: 0,
+    maskTargets: {},
+    defaultMaskTargets: null,
+    targets: ["#000000"],
+  },
   smoothMasks: true,
   hasNext: false,
   hasPrevious: false,
@@ -250,6 +281,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",
+  alpha: 0.7,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

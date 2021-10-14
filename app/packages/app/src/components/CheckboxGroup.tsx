@@ -245,9 +245,9 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
+  const isBoolean = useRecoilValue(isBooleanField(path));
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
-  const isBoolean = useRecoilValue(isBooleanField(path));
   const fieldFiltered =
     useRecoilValue(fieldIsFiltered({ path, modal })) &&
     canFilter &&

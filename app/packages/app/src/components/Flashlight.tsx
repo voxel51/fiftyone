@@ -35,11 +35,6 @@ import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
 
-export const gridZoom = atom<number | null>({
-  key: "gridZoom",
-  default: selectors.defaultGridZoom,
-});
-
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
   default: [0, 10],
@@ -80,7 +75,7 @@ const flashlightOptions = selector<FlashlightOptions>({
   get: ({ get }) => {
     return {
       rowAspectRatioThreshold:
-        11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
+        11 - Math.max(get(selectors.gridZoom), get(gridZoomRange)[0]),
     };
   },
 });
@@ -89,8 +84,7 @@ const flashlightLookerOptions = selector({
   key: "flashlightLookerOptions",
   get: ({ get }) => {
     return {
-      colorByLabel: get(atoms.colorByLabel(false)),
-      colorMap: get(selectors.colorMap(false)),
+      coloring: get(selectors.coloring(false)),
       filter: get(labelFilters(false)),
       activePaths: get(activeFields),
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
@@ -99,6 +93,8 @@ const flashlightLookerOptions = selector({
       fieldsMap: get(selectors.primitivesDbMap("sample")),
       frameFieldsMap: get(selectors.primitivesDbMap("frame")),
       timeZone: get(selectors.timeZone),
+      alpha: get(atoms.alpha(false)),
+      disabled: false,
     };
   },
 });
@@ -326,7 +322,7 @@ export default React.memo(() => {
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   useSampleUpdate();
   const gridZoomRef = useRef<number>();
-  const gridZoomValue = useRecoilValue(gridZoom);
+  const gridZoomValue = useRecoilValue(selectors.gridZoom);
   gridZoomRef.current = gridZoomValue;
 
   useEventHandler(
@@ -425,11 +421,13 @@ export default React.memo(() => {
             nextRequestKey: more ? page + 1 : null,
           };
         },
-        render: (sampleId, element, dimensions, soft) => {
+        render: (sampleId, element, dimensions, soft, hide) => {
           const result = samples.get(sampleId);
 
           if (lookers.has(sampleId)) {
-            lookers.get(sampleId).attach(element, dimensions);
+            const looker = lookers.get(sampleId);
+            hide ? looker.disable() : looker.attach(element, dimensions);
+
             return null;
           }
 

@@ -15,6 +15,9 @@ from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
 
 
+_MASK_CLASSES = {"Detection", "Heatmap", "Segmentation"}
+
+
 def _handle_bytes(o):
     for k, v in o.items():
         if isinstance(v, bytes):
@@ -25,8 +28,8 @@ def _handle_bytes(o):
     return o
 
 
-def _handle_numpy_array(raw, key=None):
-    if key != "mask":
+def _handle_numpy_array(raw, _cls=None):
+    if _cls not in _MASK_CLASSES:
         return str(fou.deserialize_numpy_array(raw).shape)
 
     return fou.serialize_numpy_array(
@@ -45,7 +48,7 @@ def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
             if isinstance(v, bytes):
-                d[k] = _handle_numpy_array(v, k)
+                d[k] = _handle_numpy_array(v, d.get("_cls", None))
             elif isinstance(v, (date, datetime)):
                 d[k] = _handle_date(v)
             elif isinstance(v, ObjectId):

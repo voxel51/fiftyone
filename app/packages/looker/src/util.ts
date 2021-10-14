@@ -403,8 +403,23 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (): Worker => {
-  return new LookerWorker();
+export const createWorker = (listeners?: {
+  [key: string]: ((worker: Worker, args: any) => void)[];
+}): Worker => {
+  const worker = new LookerWorker();
+
+  if (!listeners) {
+    return worker;
+  }
+
+  worker.addEventListener("message", ({ data: { method, ...args } }) => {
+    if (!(method in listeners)) {
+      return;
+    }
+
+    listeners[method].forEach((callback) => callback(worker, args));
+  });
+  return worker;
 };
 
 export const removeFromBuffers = (
@@ -544,3 +559,6 @@ export const formatDate = (timeStamp: number): string => {
     .format(timeStamp)
     .replaceAll("/", "-");
 };
+
+export const isFloatArray = (arr) =>
+  arr instanceof Float32Array || arr instanceof Float64Array;

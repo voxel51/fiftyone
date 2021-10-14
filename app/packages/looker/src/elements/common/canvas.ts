@@ -21,7 +21,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
-  private loaded: boolean = false;
+  private hide: boolean = true;
   private cursor: string;
 
   getEvents(): Events<State> {
@@ -201,6 +201,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   renderSelf({
     loaded,
     config: { thumbnail },
+    disabled,
+    reloading,
     panning,
     windowBBox: [_, __, width, height],
     mouseIsOnOverlay,
@@ -232,9 +234,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = this.cursor;
     }
 
-    if (this.loaded !== loaded) {
-      this.element.classList.remove(invisible);
-      this.loaded = loaded;
+    const hide = !loaded || disabled || reloading;
+    if (this.hide !== hide) {
+      this.hide = hide;
+      this.hide
+        ? this.element.classList.add(invisible)
+        : this.element.classList.remove(invisible);
     }
 
     return this.element;

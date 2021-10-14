@@ -164,7 +164,7 @@ to add an iterable of unlabeled images that can be parsed via a specified
 FiftyOne provides an
 :class:`ImageSampleParser <fiftyone.utils.data.parsers.ImageSampleParser>`
 that handles samples that contain either an image that can be converted to
-`NumPy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
+`numpy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
 image on disk.
 
 .. code-block:: python
@@ -475,7 +475,7 @@ and then written to the backing directory.
 FiftyOne provides an
 :class:`ImageSampleParser <fiftyone.utils.data.parsers.ImageSampleParser>`
 that handles samples that contain either an image that can be converted to
-`NumPy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
+`numpy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
 image on disk.
 
 .. code-block:: python

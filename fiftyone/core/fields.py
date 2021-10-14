@@ -168,6 +168,26 @@ class ListField(mongoengine.fields.ListField, Field):
         return etau.get_class_name(self)
 
 
+class HeatmapRangeField(ListField):
+    """A ``[min, max]`` range of the values in a
+    :class:`fiftyone.core.labels.Heatmap`.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=FloatField(), null=True, **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        if (
+            not isinstance(value, (list, tuple))
+            or len(value) != 2
+            or not value[0] <= value[1]
+        ):
+            self.error("Heatmap range fields must contain `[min, max]` ranges")
+
+
 class DictField(mongoengine.fields.DictField, Field):
     """A dictionary field that wraps a standard Python dictionary.
 
@@ -543,16 +563,22 @@ class ClassesField(ListField):
     def __init__(self, **kwargs):
         super().__init__(field=StringField(), **kwargs)
 
+    def __str__(self):
+        return etau.get_class_name(self)
+
 
 class TargetsField(IntDictField):
-    """An :class:`DictField` that stores mapping between integer keys and
-    string targets.
+    """A :class:`DictField` that stores mapping between integer keys and string
+    targets.
 
     If this field is not set, its default value is ``{}``.
     """
 
     def __init__(self, **kwargs):
         super().__init__(field=StringField(), **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
 
 
 class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):

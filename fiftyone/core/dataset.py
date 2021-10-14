@@ -492,7 +492,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         .. note::
 
             The pixel value `0` is a reserved "background" class that is
-            rendered as invislble in the App.
+            rendered as invisible in the App.
 
         Examples::
 
@@ -527,7 +527,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         .. note::
 
             The pixel value `0` is a reserved "background" class that is
-            rendered as invislble in the App.
+            rendered as invisible in the App.
 
         Examples::
 

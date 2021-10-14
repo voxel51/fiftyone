@@ -18,6 +18,8 @@ import {
   JSON_COLORS,
   MASK_LABELS,
   DATE_TIME,
+  HEATMAP,
+  BASE_ALPHA,
 } from "./constants";
 import {
   getFrameElements,
@@ -51,6 +53,7 @@ import {
   BufferRange,
   Dimensions,
   Sample,
+  MaskTargets,
 } from "./state";
 import {
   addToBuffers,
@@ -68,13 +71,46 @@ import {
 import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
+import { getColor } from "./color";
 
 export { zoomAspectRatio } from "./zoom";
+export { createColorGenerator, getRGB } from "./color";
 export { freeVideos } from "./elements/util";
 
-const labelsWorker = createWorker();
+export type RGB = [number, number, number];
+export type RGBA = [number, number, number, number];
 
-export abstract class Looker<State extends BaseState = BaseState> {
+export interface Coloring {
+  byLabel: boolean;
+  pool: string[];
+  scale: RGB[];
+  seed: number;
+  targets: string[];
+  defaultMaskTargets?: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
+}
+
+const coloringCallback = {
+  requestColor: [
+    (worker, { key, pool, seed }) => {
+      worker.postMessage({
+        method: "resolveColor",
+        key,
+        seed,
+        color: getColor(pool, seed, key),
+      });
+    },
+  ],
+};
+
+const labelsWorker = createWorker(coloringCallback);
+
+export abstract class Looker<
+  State extends BaseState = BaseState,
+  S extends Sample = Sample
+> {
   private eventTarget: EventTarget;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
@@ -82,21 +118,22 @@ export abstract class Looker<State extends BaseState = BaseState> {
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
 
+  protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
-  protected sample: Sample;
+  protected sample: S;
   protected state: State;
   protected readonly updater: StateUpdate<State>;
 
   constructor(
-    sample: Sample,
+    sample: S,
     config: State["config"],
     options: Optional<State["options"]> = {}
   ) {
-    this.loadSample(sample);
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+    this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
     if (!this.state.config.thumbnail) {
       this.state.showControls = true;
@@ -116,6 +153,14 @@ export abstract class Looker<State extends BaseState = BaseState> {
           windowBBox: box,
         });
     });
+  }
+
+  loadOverlays(sample: Sample): void {
+    this.sampleOverlays = loadOverlays(sample);
+  }
+
+  pluckOverlays(state: Readonly<State>): Overlay<State>[] {
+    return this.sampleOverlays;
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
@@ -165,9 +210,14 @@ export abstract class Looker<State extends BaseState = BaseState> {
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
 
-      if (!this.state.windowBBox || this.state.destroyed) {
+      if (
+        !this.state.windowBBox ||
+        this.state.destroyed ||
+        !this.state.overlaysPrepared
+      ) {
         return;
       }
+
       this.pluckedOverlays = this.pluckOverlays(this.state);
       this.state = this.postProcess();
 
@@ -181,13 +231,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
         this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
       postUpdate && postUpdate(this.state, this.currentOverlays);
 
-      if (!this.state.overlaysPrepared) {
-        return;
-      }
-
       this.dispatchImpliedEvents(this.previousState, this.state);
-
-      this.lookerElement.render(this.state, this.sample);
 
       if (this.state.options.showJSON) {
         const pre = this.lookerElement.element.querySelectorAll("pre")[0];
@@ -196,6 +240,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
         });
       }
       const ctx = this.ctx;
+      this.lookerElement.render(this.state, this.sample);
 
       if (!this.state.loaded || this.state.destroyed || this.waiting) {
         return;
@@ -232,10 +277,12 @@ export abstract class Looker<State extends BaseState = BaseState> {
         h
       );
 
+      ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
       const numOverlays = this.currentOverlays.length;
       for (let index = numOverlays - 1; index >= 0; index--) {
         this.currentOverlays[index].draw(ctx, this.state);
       }
+      ctx.globalAlpha = 1;
     };
   }
 
@@ -261,6 +308,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
     }
 
     if (element === this.lookerElement.element.parentElement) {
+      this.state.disabled && this.updater({ disabled: false });
       return;
     }
 
@@ -338,6 +386,9 @@ export abstract class Looker<State extends BaseState = BaseState> {
       );
     this.updater({ destroyed: true });
   }
+  disable() {
+    this.updater({ disabled: true });
+  }
 
   protected abstract hasDefaultZoom(
     state: State,
@@ -347,10 +398,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
   protected abstract getElements(
     config: Readonly<State["config"]>
   ): LookerElement<State>;
-
-  protected abstract loadOverlays(sample: Sample): void;
-
-  protected abstract pluckOverlays(state: State): Overlay<State>[];
 
   protected abstract getDefaultOptions(): State["options"];
 
@@ -365,6 +412,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
 
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
     return {
+      disabled: false,
       cursorCoordinates: [0, 0],
       pixelCoordinates: [0, 0],
       relativeCoordinates: [0, 0],
@@ -399,6 +447,7 @@ export abstract class Looker<State extends BaseState = BaseState> {
       SHORTCUTS: COMMON_SHORTCUTS,
       error: null,
       destroyed: false,
+      reloading: false,
     };
   }
 
@@ -472,14 +521,18 @@ export abstract class Looker<State extends BaseState = BaseState> {
       if (uuid === messageUUID) {
         this.sample = sample;
         this.loadOverlays(sample);
-        this.updater({ overlaysPrepared: true });
+        this.updater({
+          overlaysPrepared: true,
+          disabled: false,
+          reloading: false,
+        });
         labelsWorker.removeEventListener("message", listener);
       }
     };
     labelsWorker.addEventListener("message", listener);
     labelsWorker.postMessage({
       method: "processSample",
-      origin: window.location.origin,
+      coloring: this.state.options.coloring,
       sample,
       uuid: messageUUID,
     });
@@ -487,17 +540,6 @@ export abstract class Looker<State extends BaseState = BaseState> {
 }
 
 export class FrameLooker extends Looker<FrameState> {
-  private overlays: Overlay<FrameState>[];
-
-  constructor(
-    sample: Sample,
-    config: FrameState["config"],
-    options: Optional<FrameState["options"]> = {}
-  ) {
-    super(sample, config, options);
-    this.overlays = [];
-  }
-
   getElements(config) {
     return getFrameElements(config, this.updater, this.getDispatchEvent());
   }
@@ -540,14 +582,6 @@ export class FrameLooker extends Looker<FrameState> {
     );
   }
 
-  loadOverlays(sample: Sample) {
-    this.overlays = loadOverlays(sample);
-  }
-
-  pluckOverlays() {
-    return this.overlays;
-  }
-
   postProcess(): FrameState {
     if (!this.state.setZoom) {
       this.state.setZoom = this.hasResized();
@@ -570,26 +604,22 @@ export class FrameLooker extends Looker<FrameState> {
   }
 
   updateOptions(options: Optional<FrameState["options"]>) {
+    const reload = shouldReloadSample(this.state.options, options);
     const state: Optional<FrameState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
     }
-    this.updater(state);
+
+    if (reload) {
+      this.updater({ ...state, reloading: this.state.disabled });
+      this.updateSample(this.sample);
+    } else {
+      this.updater({ ...state, disabled: false });
+    }
   }
 }
 
 export class ImageLooker extends Looker<ImageState> {
-  private overlays: Overlay<ImageState>[];
-
-  constructor(
-    sample: Sample,
-    config: ImageState["config"],
-    options: Optional<ImageState["options"]> = {}
-  ) {
-    super(sample, config, options);
-    this.overlays = [];
-  }
-
   getElements(config) {
     return getImageElements(config, this.updater, this.getDispatchEvent());
   }
@@ -632,14 +662,6 @@ export class ImageLooker extends Looker<ImageState> {
     );
   }
 
-  loadOverlays(sample: Sample) {
-    this.overlays = loadOverlays(sample);
-  }
-
-  pluckOverlays() {
-    return this.overlays;
-  }
-
   postProcess(): ImageState {
     if (!this.state.setZoom) {
       this.state.setZoom = this.hasResized();
@@ -662,12 +684,19 @@ export class ImageLooker extends Looker<ImageState> {
   }
 
   updateOptions(options: Optional<ImageState["options"]>) {
+    const reload = shouldReloadSample(this.state.options, options);
     const state: Optional<ImageState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom =
         this.state.options.zoom !== options.zoom || this.state.config.thumbnail;
     }
-    this.updater(state);
+
+    if (reload) {
+      this.updater({ ...state, reloading: this.state.disabled });
+      this.updateSample(this.sample);
+    } else {
+      this.updater({ ...state, disabled: false });
+    }
   }
 }
 
@@ -688,6 +717,7 @@ interface AcquireReaderOptions {
   frameCount: number;
   update: StateUpdate<VideoState>;
   dispatchEvent: (eventType: string, detail: any) => void;
+  coloring: Coloring;
 }
 
 const { aquireReader, addFrame } = (() => {
@@ -708,11 +738,11 @@ const { aquireReader, addFrame } = (() => {
     });
 
   let frameCache = createCache();
+  let frameReader: Worker;
 
   let streamSize = 0;
   let nextRange: BufferRange = null;
 
-  const frameReader = createWorker();
   let requestingFrames: boolean = false;
   let currentOptions: AcquireReaderOptions = null;
 
@@ -725,66 +755,69 @@ const { aquireReader, addFrame } = (() => {
     sampleId,
     update,
     dispatchEvent,
+    coloring,
   }: AcquireReaderOptions): string => {
     streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
-    frameReader.onmessage = (message: MessageEvent<FrameChunkResponse>) => {
-      const {
-        data: {
-          uuid,
-          method,
-          frames,
-          range: [start, end],
-        },
-      } = message;
-      if (uuid === subscription && method === "frameChunk") {
-        addFrameBuffers([start, end]);
-        for (let i = start; i <= end; i++) {
-          const frame = {
-            sample: {
-              frame_number: i,
-            },
-            overlays: [],
-          };
-          frameCache.set(new WeakRef(removeFrame), frame);
-          addFrame(i, frame);
-        }
-
-        for (const frameSample of frames) {
-          const prefixedFrameSample = Object.fromEntries(
-            Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
-          );
-
-          const overlays = loadOverlays(prefixedFrameSample);
-          overlays.forEach((overlay) => {
-            streamSize += overlay.getSizeBytes();
-          });
-          const frame = { sample: frameSample, overlays };
-          frameCache.set(new WeakRef(removeFrame), frame);
-          addFrame(frameSample.frame_number, frame);
-        }
-
-        const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
-
-        if (requestMore && end < frameCount) {
-          nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
-          requestingFrames = true;
-          frameReader.postMessage({
-            method: "requestFrameChunk",
-            uuid: subscription,
-          });
-        } else {
-          requestingFrames = false;
-          nextRange = null;
-        }
-
-        update((state) => {
-          state.buffering && dispatchEvent("buffering", false);
-          return { buffering: false };
-        });
+    frameReader && frameReader.terminate();
+    frameReader = createWorker(coloringCallback);
+    frameReader.onmessage = ({ data }: MessageEvent<FrameChunkResponse>) => {
+      if (data.uuid !== subscription || data.method !== "frameChunk") {
+        return;
       }
+
+      const {
+        frames,
+        range: [start, end],
+      } = data;
+
+      addFrameBuffers([start, end]);
+      for (let i = start; i <= end; i++) {
+        const frame = {
+          sample: {
+            frame_number: i,
+          },
+          overlays: [],
+        };
+        frameCache.set(new WeakRef(removeFrame), frame);
+        addFrame(i, frame);
+      }
+
+      for (const frameSample of frames) {
+        const prefixedFrameSample = Object.fromEntries(
+          Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
+        );
+
+        const overlays = loadOverlays(prefixedFrameSample);
+        overlays.forEach((overlay) => {
+          streamSize += overlay.getSizeBytes();
+        });
+        const frame = { sample: frameSample, overlays };
+        frameCache.set(new WeakRef(removeFrame), frame);
+        addFrame(frameSample.frame_number, frame);
+      }
+
+      const requestMore = streamSize < MAX_FRAME_CACHE_SIZE_BYTES;
+
+      if (requestMore && end < frameCount) {
+        nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
+        requestingFrames = true;
+        frameReader.postMessage({
+          method: "requestFrameChunk",
+          uuid: subscription,
+        });
+      } else {
+        requestingFrames = false;
+        nextRange = null;
+      }
+
+      update((state) => {
+        state.buffering && dispatchEvent("buffering", false);
+        return { buffering: false };
+      });
     };
+
     requestingFrames = true;
     frameReader.postMessage({
       method: "setStream",
@@ -792,8 +825,8 @@ const { aquireReader, addFrame } = (() => {
       frameCount,
       frameNumber,
       uuid: subscription,
-      origin: window.location.origin,
       url: getURL(),
+      coloring,
     });
     return subscription;
   };
@@ -831,18 +864,9 @@ const { aquireReader, addFrame } = (() => {
 
 let lookerWithReader: VideoLooker | null = null;
 
-export class VideoLooker extends Looker<VideoState> {
-  private sampleOverlays: Overlay<VideoState>[] = [];
+export class VideoLooker extends Looker<VideoState, VideoSample> {
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number, force?: boolean) => void;
-
-  constructor(
-    sample: VideoSample,
-    config: VideoState["config"],
-    options: Optional<VideoState["options"]> = {}
-  ) {
-    super(sample, config, options);
-  }
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -1038,21 +1062,8 @@ export class VideoLooker extends Looker<VideoState> {
       lookerWithReader !== this &&
       frameCount !== null
     ) {
-      this.requestFrames = aquireReader({
-        addFrame: (frameNumber, frame) =>
-          this.frames.set(frameNumber, new WeakRef(frame)),
-        addFrameBuffers: (range) =>
-          (this.state.buffers = addToBuffers(range, this.state.buffers)),
-        removeFrame: (frameNumber) =>
-          removeFromBuffers(frameNumber, this.state.buffers),
-        getCurrentFrame: () => this.frameNumber,
-        sampleId: this.state.config.sampleId,
-        frameCount,
-        frameNumber: state.frameNumber,
-        update: this.updater,
-        dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
-      });
       lookerWithReader && lookerWithReader.pause();
+      this.setReader();
       lookerWithReader = this;
       this.state.buffers = [[1, 1]];
     } else if (lookerWithReader !== this && frameCount) {
@@ -1073,6 +1084,28 @@ export class VideoLooker extends Looker<VideoState> {
     }
 
     return pluckedOverlays;
+  }
+
+  private setReader() {
+    this.requestFrames = aquireReader({
+      addFrame: (frameNumber, frame) =>
+        this.frames.set(frameNumber, new WeakRef(frame)),
+      addFrameBuffers: (range) =>
+        (this.state.buffers = addToBuffers(range, this.state.buffers)),
+      removeFrame: (frameNumber) =>
+        removeFromBuffers(frameNumber, this.state.buffers),
+      getCurrentFrame: () => this.frameNumber,
+      sampleId: this.state.config.sampleId,
+      frameCount: getFrameNumber(
+        this.state.duration,
+        this.state.duration,
+        this.state.config.frameRate
+      ),
+      frameNumber: Math.max(this.state.frameNumber, 2),
+      update: this.updater,
+      dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
+      coloring: this.state.options.coloring,
+    });
   }
 
   getSample(): Promise<VideoSample> {
@@ -1150,14 +1183,21 @@ export class VideoLooker extends Looker<VideoState> {
   }
 
   updateOptions(options: Optional<VideoState["options"]>) {
-    this.updater({ options });
+    const reload = shouldReloadSample(this.state.options, options);
+
+    if (reload) {
+      this.updater({ options, reloading: this.state.disabled });
+      this.updateSample(this.sample);
+    } else {
+      this.updater({ options, disabled: false });
+    }
   }
 
   updateSample(sample: VideoSample) {
     this.state.buffers = [[1, 1]];
     this.frames.clear();
     super.updateSample(sample);
-    this.requestFrames(this.frameNumber, true);
+    this.setReader();
   }
 
   private hasFrame(frameNumber: number) {
@@ -1252,12 +1292,47 @@ const filterSample = <S extends Sample | FrameSample>(
         };
       } else if (!state.options.filter[prefix + field](sample[field])) {
         delete sample[field];
-      } else if (MASK_LABELS.has(sample[field]._cls) && sample[field].mask) {
-        sample[field].mask = {
-          shape: sample[field].mask.shape,
+      } else if (
+        MASK_LABELS.has(sample[field]._cls) &&
+        sample[field].mask &&
+        sample[field].mask.data
+      ) {
+        sample[field] = {
+          ...sample[field],
+          mask: {
+            shape: sample[field].mask.data.shape,
+          },
+        };
+      } else if (
+        sample[field]._cls === HEATMAP &&
+        sample[field].map &&
+        sample[field].map.data
+      ) {
+        sample[field] = {
+          ...sample[field],
+          map: {
+            shape: sample[field].map.data.shape,
+          },
         };
       }
     }
   }
   return sample;
+};
+
+const shouldReloadSample = (
+  current: Readonly<BaseState["options"]>,
+  next: Readonly<Optional<BaseState["options"]>>
+): boolean => {
+  let reloadSample = false;
+  if (next.coloring && current.coloring.seed !== next.coloring.seed) {
+    reloadSample = true;
+  } else if (
+    next.coloring &&
+    next.coloring.byLabel !== current.coloring.byLabel
+  ) {
+    reloadSample = true;
+  }
+
+  return reloadSample;
 };
