@@ -85,13 +85,10 @@ def _get_context():
     # but the shell returned by `IPython.get_ipython` does not return a kernel
     # via the `get_trait` method.
     try:
+        # Location: /databricks/python_shell/dbruntime
+        from dbruntime.dbutils import DBUtils  # noqa: F401
         import IPython
-
-        if dbutils is None:
-            raise NameError()
     except ImportError:
-        pass
-    except NameError:
         pass
     else:
         if IPython.get_ipython() is not None:
