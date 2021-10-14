@@ -113,8 +113,10 @@ const DESERIALIZE = {
 };
 
 const mapId = (obj) => {
-  obj.id = obj._id;
-  delete obj._id;
+  if (obj._id) {
+    obj.id = obj._id;
+    delete obj._id;
+  }
   return obj;
 };
 
