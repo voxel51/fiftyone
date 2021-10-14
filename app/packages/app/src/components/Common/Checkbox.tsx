@@ -6,9 +6,11 @@ import styled from "styled-components";
 import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
-import { summarizeLongStr } from "../../utils/generic";
+import { formatDateTime, summarizeLongStr } from "../../utils/generic";
 import { getValueString } from "../Filters/utils";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
+import * as selectors from "../../recoil/selectors";
+import { DATE_TIME } from "@fiftyone/looker/src/constants";
 
 interface CheckboxProps {
   color?: string;
@@ -68,11 +70,18 @@ const CheckboxName = ({
 }) => {
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const countStr = makeCountStr(subCount, count);
+  const timeZone = useRecoilValue(selectors.timeZone);
 
   return (
     <CheckboxNameDiv>
       <span style={color ? { color } : {}}>
-        {summarizeLongStr(text, 28 - countStr.length, "middle")}
+        {summarizeLongStr(
+          text && text._cls === DATE_TIME
+            ? formatDateTime(text.datetime, timeZone)
+            : text,
+          28 - countStr.length,
+          "middle"
+        )}
       </span>
       {count && <span>{countStr}</span>}
     </CheckboxNameDiv>

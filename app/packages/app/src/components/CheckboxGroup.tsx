@@ -30,6 +30,7 @@ import { sortFilterResults } from "../recoil/atoms";
 const Body = styled.div`
   vertical-align: middle;
   font-weight: bold;
+  overflow: visible;
 
   & > div {
     margin-top: 3px;
@@ -128,6 +129,7 @@ const Body = styled.div`
 
 const CheckboxContainer = animated(styled.div`
   position: relative;
+  overflow: visible;
 `);
 
 const CheckboxText = ({
@@ -243,9 +245,9 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
+  const isBoolean = useRecoilValue(isBooleanField(path));
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
-  const isBoolean = useRecoilValue(isBooleanField(path));
   const fieldFiltered =
     useRecoilValue(fieldIsFiltered({ path, modal })) &&
     canFilter &&

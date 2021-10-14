@@ -13,10 +13,15 @@ try:
 except ImportError:
     import importlib_metadata  # Python < 3.8
 
+import pytz
+
 import eta
 import eta.core.config as etac
 
 import fiftyone.constants as foc
+import fiftyone.core.utils as fou
+
+fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
 
 logger = logging.getLogger(__name__)
@@ -165,6 +170,9 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_REQUIREMENT_ERROR_LEVEL",
             default=0,
         )
+        self.timezone = self.parse_string(
+            d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
+        )
 
         self._set_defaults()
         self._validate()
@@ -212,6 +220,13 @@ class FiftyOneConfig(EnvConfig):
         if self.default_ml_backend is not None:
             self.default_ml_backend = self.default_ml_backend.lower()
 
+        if self.timezone and self.timezone.lower() not in {"local", "utc"}:
+            try:
+                pytz.timezone(self.timezone)
+            except:
+                logger.warning("Ignoring invalid timezone '%s'", self.timezone)
+                self.timezone = None
+
 
 class FiftyOneConfigError(etac.EnvConfigError):
     """Exception raised when a FiftyOne configuration issue is encountered."""
@@ -232,11 +247,14 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLOR_POOL",
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
-        self.default_grid_zoom = self.parse_int(
+        self.colorscale = self.parse_string(
             d,
-            "default_grid_zoom",
-            env_var="FIFTYONE_APP_GRID_ZOOM",
-            default=5,
+            "colorscale",
+            env_var="FIFTYONE_APP_COLORSCALE",
+            default="viridis",
+        )
+        self.grid_zoom = self.parse_int(
+            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
         )
         self.loop_videos = self.parse_bool(
             d,
@@ -277,11 +295,53 @@ class AppConfig(EnvConfig):
 
         self._validate()
 
+    def get_colormap(self, colorscale=None, n=256, hex_strs=False):
+        """Generates a continuous colormap with the specified number of colors
+        from the given colorscale.
+
+        The provided ``colorscale`` can be any of the following::
+
+        -   The string name of any colorscale recognized by plotly. See
+            https://plotly.com/python/colorscales for possible options
+
+        -   A manually-defined colorscale like the following::
+
+            [
+                [0.000, "rgb(165,0,38)"],
+                [0.111, "rgb(215,48,39)"],
+                [0.222, "rgb(244,109,67)"],
+                [0.333, "rgb(253,174,97)"],
+                [0.444, "rgb(254,224,144)"],
+                [0.555, "rgb(224,243,248)"],
+                [0.666, "rgb(171,217,233)"],
+                [0.777, "rgb(116,173,209)"],
+                [0.888, "rgb(69,117,180)"],
+                [1.000, "rgb(49,54,149)"],
+            ]
+
+        The colorscale will be sampled evenly at the required resolution in
+        order to generate the colormap.
+
+        Args:
+            colorscale (None): a valid colorscale. See above for possible
+                options. By default, :attr:`colorscale` is used
+            n (256): the desired number of colors
+            hex_strs (False): whether to return ``#RRGGBB`` hex strings rather
+                than ``(R, G, B)`` tuples
+
+        Returns:
+            a list of ``(R, G, B)`` tuples in `[0, 255]`, or, if ``hex_strs``
+            is True, a list of `#RRGGBB` strings
+        """
+        if colorscale is None:
+            colorscale = self.colorscale
+
+        return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
+
     def _validate(self):
-        if self.default_grid_zoom < 0 or self.default_grid_zoom > 10:
+        if self.grid_zoom < 0 or self.grid_zoom > 10:
             raise AppConfigError(
-                "`default_grid_zoom` must be in [0, 10]; found %d"
-                % self.default_grid_zoom
+                "`grid_zoom` must be in [0, 10]; found %d" % self.grid_zoom
             )
 
 

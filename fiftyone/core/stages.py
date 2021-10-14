@@ -5955,59 +5955,30 @@ def _get_rng(seed):
 
 
 def _parse_labels_field(sample_collection, field_path):
-    field, is_frame_field = _parse_field(sample_collection, field_path)
+    label_type = sample_collection._get_label_field_type(field_path)
+    is_frame_field = sample_collection._is_frame_field(field_path)
+    is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+    if is_list_field:
+        path = field_path + "." + label_type._LABEL_LIST_FIELD
+    else:
+        path = field_path
 
-    if isinstance(field, fof.EmbeddedDocumentField):
-        document_type = field.document_type
-        is_list_field = issubclass(document_type, fol._LABEL_LIST_FIELDS)
-        if is_list_field:
-            path = field_path + "." + document_type._LABEL_LIST_FIELD
-        elif issubclass(document_type, fol._SINGLE_LABEL_FIELDS):
-            path = field_path
-        else:
-            path = None
-
-        if path is not None:
-            return path, is_list_field, is_frame_field
-
-    raise ValueError(
-        "Field '%s' must be a Label type %s; found '%s'"
-        % (field_path, fol._LABEL_FIELDS, field)
-    )
+    return path, is_list_field, is_frame_field
 
 
 def _parse_labels_list_field(sample_collection, field_path):
-    field, is_frame_field = _parse_field(sample_collection, field_path)
+    label_type = sample_collection._get_label_field_type(field_path)
+    is_frame_field = sample_collection._is_frame_field(field_path)
 
-    if isinstance(field, fof.EmbeddedDocumentField):
-        document_type = field.document_type
-        if issubclass(document_type, fol._LABEL_LIST_FIELDS):
-            path = field_path + "." + document_type._LABEL_LIST_FIELD
-            return path, is_frame_field
+    if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        raise ValueError(
+            "Field '%s' must be a labels list type %s; found %s"
+            % (field_path, fol._LABEL_LIST_FIELDS, label_type)
+        )
 
-    raise ValueError(
-        "Field '%s' must be a labels list type %s; found '%s'"
-        % (field_path, fol._LABEL_LIST_FIELDS, field)
-    )
+    path = field_path + "." + label_type._LABEL_LIST_FIELD
 
-
-def _parse_field(sample_collection, field_path):
-    field_name, is_frame_field = sample_collection._handle_frame_field(
-        field_path
-    )
-
-    if is_frame_field:
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        schema = sample_collection.get_field_schema()
-
-    if field_name not in schema:
-        ftype = "Frame field" if is_frame_field else "Field"
-        raise ValueError("%s '%s' does not exist" % (ftype, field_name))
-
-    field = schema[field_name]
-
-    return field, is_frame_field
+    return path, is_frame_field
 
 
 def _parse_labels(labels):

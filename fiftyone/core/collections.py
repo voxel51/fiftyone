@@ -184,6 +184,42 @@ class SampleCollection(object):
     def default_classes(self, classes):
         raise NotImplementedError("Subclass must implement default_classes")
 
+    def has_classes(self, field):
+        """Determines whether this collection has a classes list for the given
+        field.
+
+        Classes may be defined either in :meth:`classes` or
+        :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.classes or bool(self.default_classes)
+
+    def get_classes(self, field):
+        """Gets the classes list for the given field, or None if no classes
+        are available.
+
+        Classes are first retrieved from :meth:`classes` if they exist,
+        otherwise from :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.classes:
+            return self.classes[field]
+
+        if self.default_classes:
+            return self.default_classes
+
+        return None
+
     @property
     def mask_targets(self):
         """The mask targets of the underlying dataset.
@@ -213,6 +249,42 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement default_mask_targets"
         )
+
+    def has_mask_targets(self, field):
+        """Determines whether this collection has mask targets for the given
+        field.
+
+        Mask targets may be defined either in :meth:`mask_targets` or
+        :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.mask_targets or bool(self.default_mask_targets)
+
+    def get_mask_targets(self, field):
+        """Gets the mask targets for the given field, or None if no mask
+        targets are available.
+
+        Mask targets are first retrieved from :meth:`mask_targets` if they
+        exist, otherwise from :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.mask_targets:
+            return self.mask_targets[field]
+
+        if self.default_mask_targets:
+            return self.default_mask_targets
+
+        return None
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -5887,8 +5959,9 @@ class SampleCollection(object):
                 classes specified. All new label fields must have a class list
                 provided via one of the supported methods. For existing label
                 fields, if classes are not provided by this argument nor
-                ``label_schema``, they are parsed from :meth:`classes` or
-                :meth:`default_classes`
+                ``label_schema``, they are retrieved from :meth:`get_classes`
+                if possible, or else the observed labels on your dataset are
+                used
             attributes (True): specifies the label attributes of each label
                 field to include (other than their ``label``, which is always
                 included) in the annotation export. Can be any of the

@@ -7,12 +7,20 @@ import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
 import { ContentDiv, ContentHeader } from "./utils";
-import { isFloat, prettify } from "../utils/generic";
+import {
+  formatDateTime,
+  getDateTimeRangeFormattersWithPrecision,
+  isFloat,
+  prettify,
+} from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
-import { AGGS } from "../utils/labels";
 import { filterStages } from "./Filters/atoms";
 import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
+import {
+  isDateField,
+  isDateTimeField,
+} from "./Filters/NumericFieldFilter.state";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -32,30 +40,34 @@ const PlotTooltip = ({ title, count }) => {
   );
 };
 
-class CustomizedAxisTick extends PureComponent {
-  render() {
-    const { x, y, payload, fill } = this.props;
-    const v = payload.value;
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text
-          x={0}
-          y={0}
-          dy={16}
-          textAnchor="end"
-          fill={fill}
-          transform="rotate(-80)"
-        >
-          {isFloat(v)
-            ? v.toFixed(3)
-            : v.length > 24
-            ? v.slice(0, 21) + "..."
-            : v}
-        </text>
-      </g>
-    );
-  }
-}
+const getAxisTick = (isDateTime, timeZone) => {
+  return class CustomizedAxisTick extends PureComponent {
+    render() {
+      const { x, y, payload, fill } = this.props;
+      const v = payload.value;
+      return (
+        <g transform={`translate(${x},${y})`}>
+          <text
+            x={0}
+            y={0}
+            dy={16}
+            textAnchor="end"
+            fill={fill}
+            transform="rotate(-80)"
+          >
+            {isDateTime
+              ? formatDateTime(v, timeZone)
+              : isFloat(v)
+              ? v.toFixed(3)
+              : v.length > 24
+              ? v.slice(0, 21) + "..."
+              : v}
+          </text>
+        </g>
+      );
+    }
+  };
+};
 
 const Title = styled.div`
   font-weight: bold;
@@ -70,6 +82,9 @@ const Distribution = ({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
+  const isDateTime = useRecoilValue(isDateTimeField(name));
+  const isDate = useRecoilValue(isDateField(name));
+  const timeZone = useRecoilValue(selectors.timeZone);
   const ticksSetting =
     ticks === 0
       ? { interval: ticks }
@@ -79,7 +94,7 @@ const Distribution = ({ distribution }) => {
 
   const strData = data.map(({ key, ...rest }) => ({
     ...rest,
-    key: prettify(key, false),
+    key: isDateTime || isDate ? key : prettify(key, false),
   }));
 
   const hasMore = data.length >= LIST_LIMIT;
@@ -90,6 +105,10 @@ const Distribution = ({ distribution }) => {
       [cur.key]: cur.edges,
     }),
     {}
+  );
+  const CustomizedAxisTick = getAxisTick(
+    isDateTime || isDate,
+    isDate ? "UTC" : timeZone
   );
 
   return (
@@ -123,12 +142,27 @@ const Distribution = ({ distribution }) => {
             const key = point?.payload[0]?.payload?.key;
             const count = point?.payload[0]?.payload?.count;
             if (typeof count !== "number") return null;
+
             let title = `Value: ${key}`;
+
             if (map[key]) {
-              title = `Range: [${map[key]
-                .map((e) => (type === "IntField" ? e : e.toFixed(3)))
-                .join(", ")})`;
+              if (isDateTime || isDate) {
+                const [{ $date: start }, { $date: end }] = map[key];
+                const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
+                  isDate ? "UTC" : timeZone,
+                  start,
+                  end
+                );
+                title = `Range: ${
+                  cFmt ? cFmt.format(start).replaceAll("/", "-") : ""
+                } ${dFmt.formatRange(start, end).replaceAll("/", "-")}`;
+              } else {
+                title = `Range: [${map[key]
+                  .map((e) => (type === "IntField" ? e : e.toFixed(3)))
+                  .join(", ")})`;
+              }
             }
+
             return <PlotTooltip title={title} count={count} />;
           }}
           contentStyle={{
@@ -147,36 +181,6 @@ const Distribution = ({ distribution }) => {
   );
 };
 
-const omitDistributions = selectorFamily<string[], string>({
-  key: "omitDistributions",
-  get: (group) => ({ get }) => {
-    if (group.toLowerCase() == "other fields") {
-      const primitives = get(selectors.primitiveNames("sample"));
-      let stats = get(selectors.extendedDatasetStats);
-      if (!stats || stats.length === 0) {
-        stats = get(selectors.datasetStats);
-      }
-      if (!stats) {
-        return null;
-      }
-      const distinct = stats.reduce((acc, cur) => {
-        if (cur._CLS === AGGS.DISTINCT) {
-          acc[cur.name] = cur.result[0];
-        }
-        return acc;
-      }, {});
-      const omit = ["tags", "filepath", "sample_id"];
-      primitives.forEach((name) => {
-        if (distinct[name] && distinct[name] > 100) {
-          omit.push(name);
-        }
-      });
-      return [...new Set(omit)];
-    }
-    return [];
-  },
-});
-
 const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
@@ -192,14 +196,12 @@ const Distributions = ({ group }: { group: string }) => {
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
-  const omit = useRecoilValue(omitDistributions(group));
 
-  useSendMessage("distributions", { group: group.toLowerCase(), omit }, null, [
+  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
     JSON.stringify(view),
     JSON.stringify(filters),
     datasetName,
     refresh,
-    omit,
   ]);
 
   useMessageHandler("distributions", ({ results }) => {
@@ -216,7 +218,6 @@ const Distributions = ({ group }: { group: string }) => {
     datasetName,
     refresh,
     group,
-    omit,
   ]);
 
   if (loading) {

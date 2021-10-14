@@ -117,8 +117,9 @@ def annotate(
             specified. All new label fields must have a class list provided via
             one of the supported methods. For existing label fields, if classes
             are not provided by this argument nor ``label_schema``, they are
-            parsed from :meth:`fiftyone.core.dataset.Dataset.classes` or
-            :meth:`fiftyone.core.dataset.Dataset.default_classes`
+            parsed from
+            :meth:`fiftyone.core.collections.SampleCollection.get_classes` if
+            possible, or else the observed labels on your dataset are used
         attributes (True): specifies the label attributes of each label
             field to include (other than their ``label``, which is always
             included) in the annotation export. Can be any of the
@@ -741,11 +742,9 @@ def _get_classes(
             % label_field
         )
 
-    if label_field in samples.classes:
-        return samples.classes[label_field]
-
-    if samples.default_classes:
-        return samples.default_classes
+    classes = samples.get_classes(label_field)
+    if classes:
+        return classes
 
     _, label_path = samples._get_label_field_path(label_field, "label")
     return samples._dataset.distinct(label_path)

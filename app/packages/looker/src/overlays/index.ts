@@ -9,6 +9,7 @@ import {
   TemporalDetectionOverlay,
 } from "./classifications";
 import DetectionOverlay, { getDetectionPoints } from "./detection";
+import HeatmapOverlay, { getHeatmapPoints } from "./heatmap";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
@@ -25,6 +26,7 @@ export { ClassificationsOverlay };
 export const FROM_FO = {
   Detection: fromLabel(DetectionOverlay),
   Detections: fromLabelList(DetectionOverlay, "detections"),
+  Heatmap: fromLabel(HeatmapOverlay),
   Keypoint: fromLabel(KeypointOverlay),
   Keypoints: fromLabelList(KeypointOverlay, "keypoints"),
   Polyline: fromLabel(PolylineOverlay),
@@ -35,6 +37,7 @@ export const FROM_FO = {
 export const POINTS_FROM_FO = {
   Detection: (label) => getDetectionPoints([label]),
   Detections: (label) => getDetectionPoints(label.detections),
+  Heatmap: (label) => getHeatmapPoints([label]),
   Keypoint: (label) => getKeypointPoints([label]),
   Keypoints: (label) => getKeypointPoints(label.keypoints),
   Polyline: (label) => getPolylinePoints([label]),
