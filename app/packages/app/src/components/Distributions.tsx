@@ -153,9 +153,14 @@ const Distribution = ({ distribution }) => {
                   start,
                   end
                 );
+                let range = dFmt.formatRange(start, end).replaceAll("/", "-");
+
+                if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
+                  range = range.replaceAll(",", ".");
+                }
                 title = `Range: ${
                   cFmt ? cFmt.format(start).replaceAll("/", "-") : ""
-                } ${dFmt.formatRange(start, end).replaceAll("/", "-")}`;
+                } ${range.replaceAll("/", "-")}`;
               } else {
                 title = `Range: [${map[key]
                   .map((e) => (type === "IntField" ? e : e.toFixed(3)))

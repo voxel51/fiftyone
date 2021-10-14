@@ -99,6 +99,19 @@ const getFormatter = (fieldType, timeZone, bounds) => {
     formatter: (v) => {
       if (date) {
         const str = dtFormatters[1].format(v).split(",");
+        if (str.length === 1) {
+          const day = str[0].split("-");
+          if (day.length === 3) {
+            const [y, m, d] = day;
+            return (
+              <div>
+                {y}&#8209;{m}&#8209;{d}
+              </div>
+            );
+          }
+
+          return str[0];
+        }
 
         let [day, time] = str;
 
