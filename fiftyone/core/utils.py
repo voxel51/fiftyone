@@ -1272,7 +1272,8 @@ def timestamp_to_datetime(ts):
     if fo.config.timezone is None:
         return dt
 
-    return dt.replace(tzinfo=pytz.utc).astimezone(fo.config.timezone)
+    timezone = pytz.timezone(fo.config.timezone)
+    return dt.replace(tzinfo=pytz.utc).astimezone(timezone)
 
 
 def timedelta_to_ms(td):

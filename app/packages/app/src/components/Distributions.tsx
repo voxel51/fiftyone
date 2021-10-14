@@ -135,11 +135,11 @@ const Distribution = ({ distribution }) => {
 
             if (map[key]) {
               if (isDateTime) {
-                const [start, end] = map[key];
+                const [{ $date: start }, { $date: end }] = map[key];
                 const [cFmt, dFmt] = getDateTimeRangeFormattersWithPrecision(
                   timeZone,
-                  map[key][0],
-                  map[key][1]
+                  start,
+                  end
                 );
                 title = `Range: ${
                   cFmt ? cFmt.format(start) : ""

@@ -42,6 +42,7 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
+import fiftyone.core.utils as fout
 import fiftyone.core.view as fov
 
 from fiftyone.server.extended_view import get_extended_view, get_view_field
@@ -1242,12 +1243,19 @@ def _filter_deactivated_clients(clients):
     return filtered
 
 
+def _create_histogram_key(field, start, end):
+    if isinstance(field, (fof.DateField, fof.DateTimeField)):
+        return fout.datetime_to_timestamp(start + ((end - start) / 2))
+
+    return round((start + end) / 2, 4)
+
+
 def _parse_histogram_values(result, field):
     counts, edges, other = result
     data = sorted(
         [
             {
-                "key": round((k + edges[idx + 1]) / 2, 4),
+                "key": _create_histogram_key(field, k, edges[idx + 1]),
                 "count": v,
                 "edges": (k, edges[idx + 1]),
             }
@@ -1383,12 +1391,13 @@ async def _numeric_histograms(view, schema, prefix=""):
             bins = 1
             if range_[0] is None:
                 range_ = [0, 1]
-            elif isinstance(range_[1], datetime):
-                range_ = (range_[0], range_[1] + timedelta(milliseconds=1))
-            elif isinstance(range_[1], date):
-                range_ = (range_[0], range_[1] + timedelta(days=1))
-            else:
-                range_ = (range_[0], range_[1] + 1e-6)
+
+        if isinstance(range_[1], datetime):
+            range_ = (range_[0], range_[1] + timedelta(milliseconds=1))
+        elif isinstance(range_[1], date):
+            range_ = (range_[0], range_[1] + timedelta(days=1))
+        else:
+            range_ = (range_[0], range_[1] + 1e-6)
 
         if fos._meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]

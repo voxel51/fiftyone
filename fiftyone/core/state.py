@@ -73,7 +73,6 @@ class StateDescription(etas.Serializable):
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
             d = super().serialize(reflective=reflective)
-            d["config"]["timezone"] = fo.config.timezone
 
             _dataset = None
             _view = None
@@ -97,6 +96,7 @@ class StateDescription(etas.Serializable):
             d["dataset"] = _dataset
             d["view"] = _view
             d["view_cls"] = _view_cls
+            d["config"]["timezone"] = fo.config.timezone
 
             return d
 
@@ -139,6 +139,10 @@ class StateDescription(etas.Serializable):
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
+
+        timezone = d.get("config", {}).get("timezone", None)
+        if timezone:
+            fo.config.timezone = timezone
 
         close = d.get("close", False)
         refresh = d.get("refresh", False)
