@@ -451,6 +451,9 @@ class Session(foc.HasClient):
             )
             return "%s?fiftyoneColab=true" % url
 
+        if self._context == focx._DATABRICKS:
+            return f"{_get_databricks_proxy_url(self.server_port)}?fiftyoneDatabricks=true"
+
         address = self.server_address or "localhost"
         return "http://%s:%d/" % (address, self.server_port)
 
@@ -1116,21 +1119,21 @@ def _display_databricks(
 
     The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
     """
+    display_html = None
+    try:
+        import IPython
 
-    def get_proxy_url(port):
-        driver_local = (
-            dbutils.sc._jvm.com.databricks.backend.daemon.driver.DriverLocal
-        )
-        command_context_tags = (
-            driver_local.commandContext().get().toStringMap().apply("tags")
-        )
-        org_id = command_context_tags.apply("orgId")
-        cluster_id = command_context_tags.apply("clusterId")
-
-        return f"/driver-proxy/o/{org_id}/{cluster_id}/{port}/?notebook=true&handleId={uuid}"
+        shell = IPython.get_ipython()
+        display_html = shell.user_ns["displayHTML"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
 
     frame_id = f"fiftyone-frame-{uuid}"
-    proxy_url = get_proxy_url(port)
+    proxy_url = (
+        f"{_get_databricks_proxy_url(port)}?notebook=true&handleId={uuid}"
+    )
     html_string = f"""
     <div style="margin-bottom: 16px">
         <a href="{proxy_url}">
@@ -1140,8 +1143,33 @@ def _display_databricks(
     </div>
     <iframe id="{frame_id}" width="100%" height="{height}" frameborder="0" src="{proxy_url}"></iframe>
     """
-    # displayHTML is already imported by Databricks
-    displayHTML(html_string)
+    display_html(html_string)
+
+
+def _get_databricks_proxy_url(port):
+    dbutils = None
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        dbutils = shell.user_ns["dbutils"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
+    driver_local = (
+        dbutils.sc._jvm.com.databricks.backend.daemon.driver.DriverLocal
+    )
+    command_context_tags = (
+        driver_local.commandContext().get().toStringMap().apply("tags")
+    )
+    browser_host_name = command_context_tags.apply("browserHostName")
+    # spark.databricks.clusterUsageTags.clusterOwnerOrgId
+    org_id = command_context_tags.apply("orgId")
+    # spark.databricks.clusterUsageTags.clusterId
+    cluster_id = command_context_tags.apply("clusterId")
+
+    return f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
 
 
 def _import_desktop():
