@@ -557,16 +557,15 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+.. _date-views:
 
-.. _datetime-views:
+Date-based views
+________________
 
-Datetime views
-______________
-
-If your dataset contains :ref:`datetime fields <using-datetimes>`, you can
+If your dataset contains :ref:`date fields <dates-and-datetimes>`, you can
 construct dataset views that query/filter based on this information by simply
-writing the appropriate |ViewExpression|, using  `datetime` and `timedelta`
-objects to define the required logic.
+writing the appropriate |ViewExpression|, using `date`, `datetime` and
+`timedelta` objects to define the required logic.
 
 For example, you can use the
 :meth:`match() <fiftyone.core.collections.SampleCollection.match>` stage to
@@ -612,9 +611,9 @@ filter a dataset by date as follows:
 .. note::
 
     As the example above demonstrates, |ViewExpression| instances may contain
-    `datetime` and `timedelta` objects. Internally, subtracting two dates
-    returns the number of milliseconds between them. Using `timedelta` allows
-    these units to be abstracted away from the user.
+    `date`, `datetime` and `timedelta` objects. Internally, subtracting two
+    dates returns the number of milliseconds between them. Using `timedelta`
+    allows these units to be abstracted away from the user.
 
 .. _object-patches-views:
 

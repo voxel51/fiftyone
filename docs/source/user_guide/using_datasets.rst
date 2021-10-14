@@ -658,7 +658,7 @@ updated to reflect the new field:
         integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
-`datetime`, `list`, `dict`, or more complex data structures
+`date`, `datetime`, `list`, `dict`, or more complex data structures
 :ref:`like label types <using-labels>`:
 
 .. code-block:: python
@@ -959,18 +959,18 @@ some workflows when it is available.
                 'frames': <Frames: 0>,
             }>
 
-.. _using-datetimes:
+.. _dates-and-datetimes:
 
-Datetime fields
-_______________
+Dates and datetimes
+___________________
 
 You can store date information in FiftyOne datasets by populating fields with
-`datetime` values:
+`date` or `datetime` values:
 
 .. code-block:: python
     :linenos:
 
-    from datetime import datetime
+    from datetime import date, datetime
     import fiftyone as fo
 
     dataset = fo.Dataset()
@@ -979,10 +979,12 @@ You can store date information in FiftyOne datasets by populating fields with
             fo.Sample(
                 filepath="image1.png",
                 created_at=datetime(2021, 8, 24, 21, 18, 7),
+                created_date=date(2021, 8, 24),
             ),
             fo.Sample(
                 filepath="image2.png",
                 created_at=datetime.utcnow(),
+                created_date=date.today(),
             ),
         ]
     )
@@ -992,11 +994,11 @@ You can store date information in FiftyOne datasets by populating fields with
 
 .. note::
 
-    Did you know? You can :ref:`create dataset views <datetime-views>` with
+    Did you know? You can :ref:`create dataset views <date-views>` with
     date-based queries!
 
-Internally, FiftyOne stores all datetimes as UTC timestamps, but you can
-provide any valid `datetime` object when setting a |DateTimeField| of a sample,
+Internally, FiftyOne stores all dates as UTC timestamps, but you can provide
+any valid `datetime` object when setting a |DateTimeField| of a sample,
 including timezone-aware datetimes, which are internally converted to UTC
 format for safekeeping.
 

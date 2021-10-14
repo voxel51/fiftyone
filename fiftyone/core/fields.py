@@ -591,6 +591,8 @@ class EmbeddedDocumentListField(
 
 
 _ARRAY_FIELDS = (VectorField, ArrayField)
+
+# Fields whose values can be used without parsing when loaded from MongoDB
 _PRIMITIVE_FIELDS = (
     BooleanField,
     DateTimeField,
