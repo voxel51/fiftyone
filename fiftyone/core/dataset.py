@@ -4377,10 +4377,10 @@ def _list_datasets(include_private=False):
 def _list_dataset_info():
     info = []
     for name in _list_datasets():
-        dataset = Dataset(name, _create=False, _virtual=True)
-        num_samples = dataset._sample_collection.estimated_document_count()
-        info.append(
-            {
+        try:
+            dataset = Dataset(name, _create=False, _virtual=True)
+            num_samples = dataset._sample_collection.estimated_document_count()
+            i = {
                 "name": dataset.name,
                 "created_at": dataset.created_at,
                 "last_loaded_at": dataset.last_loaded_at,
@@ -4389,7 +4389,20 @@ def _list_dataset_info():
                 "media_type": dataset.media_type,
                 "num_samples": num_samples,
             }
-        )
+        except:
+            # If the dataset can't be loaded, it likely requires migration, so
+            # we can't show any information about it
+            i = {
+                "name": name,
+                "created_at": None,
+                "last_loaded_at": None,
+                "version": None,
+                "persistent": None,
+                "media_type": None,
+                "num_samples": None,
+            }
+
+        info.append(i)
 
     return info
 

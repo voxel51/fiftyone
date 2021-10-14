@@ -453,16 +453,19 @@ def _print_all_dataset_info(sort_by, reverse):
     else:
         print("Ignoring invalid sort-by field '%s'" % sort_by)
 
-    records = []
-    for i in info:
-        i["persistent"] = "\u2713" if i["persistent"] else ""
-        records.append(tuple(_format_cell(i[key]) for key in headers))
+    records = [tuple(_format_cell(i[key]) for key in headers) for i in info]
 
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
 
 def _format_cell(cell):
+    if cell == True:
+        return "\u2713"
+
+    if cell == False:
+        return ""
+
     if cell is None:
         return "???"
 
