@@ -248,7 +248,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
-  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  timeZone: "UTC",
   mimetype: "",
 };
 

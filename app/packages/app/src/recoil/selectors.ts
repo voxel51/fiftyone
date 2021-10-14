@@ -439,10 +439,7 @@ export const defaultGridZoom = selector<number | null>({
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {
-    return (
-      get(appConfig).timezone ||
-      Intl.DateTimeFormat().resolvedOptions().timeZone
-    );
+    return get(appConfig).timezone || "UTC";
   },
 });
 
