@@ -250,7 +250,6 @@ class PageHandler(tornado.web.RequestHandler):
             )
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
-        view = view.skip((page - 1) * page_length)
 
         samples = await foo.aggregate(
             StateHandler.sample_collection(),
