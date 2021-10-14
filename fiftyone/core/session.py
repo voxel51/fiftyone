@@ -1157,17 +1157,16 @@ def _get_databricks_proxy_url(port):
         raise ValueError(
             "You must verify that the Databricks Runtime is installed properly."
         ) from e
-    driver_local = (
-        dbutils.sc._jvm.com.databricks.backend.daemon.driver.DriverLocal
+
+    import json
+
+    ctx = json.loads(
+        dbutils.entry_point.getDbutils().notebook().getContext().toJson()
     )
-    command_context_tags = (
-        driver_local.commandContext().get().toStringMap().apply("tags")
-    )
-    browser_host_name = command_context_tags.apply("browserHostName")
-    # spark.databricks.clusterUsageTags.clusterOwnerOrgId
-    org_id = command_context_tags.apply("orgId")
-    # spark.databricks.clusterUsageTags.clusterId
-    cluster_id = command_context_tags.apply("clusterId")
+    ctx_tags = ctx["tags"]
+    browser_host_name = ctx_tags["browserHostName"]
+    org_id = ctx_tags["orgId"]
+    cluster_id = ctx_tags["clusterId"]
 
     return f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
 
