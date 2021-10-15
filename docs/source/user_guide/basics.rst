@@ -146,6 +146,8 @@ Custom fields can contain any Python primitive data type:
 -   |IntField|: contains Python `int` instances
 -   |FloatField|: contains Python `float` instances
 -   |StringField|: contains Python `str` instances
+-   |DateField|: contains Python `date` instances
+-   |DateTimeField|: contains Python `datetime` instances
 -   |ListField|: contains Python `list` instances
 -   |DictField|: contains Python `dict` instances
 
@@ -296,6 +298,7 @@ FiftyOne provides a |Label| subclass for many common tasks:
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
+- :ref:`Heatmap <heatmaps>`: an intensity heatmap for an image
 - :ref:`Temporal detection <temporal-detection>`: events with a temporal frame
   support in a video
 - :ref:`GeoLocation <geolocation>`: geolocation point(s), line(s), or

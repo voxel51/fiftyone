@@ -26,6 +26,8 @@
 .. |IntField| replace:: :class:`IntField <fiftyone.core.fields.IntField>`
 .. |FloatField| replace:: :class:`FloatField <fiftyone.core.fields.FloatField>`
 .. |StringField| replace:: :class:`StringField <fiftyone.core.fields.StringField>`
+.. |DateField| replace:: :class:`DateField <fiftyone.core.fields.DateField>`
+.. |DateTimeField| replace:: :class:`DateTimeField <fiftyone.core.fields.DateTimeField>`
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 .. |VectorField| replace:: :class:`VectorField <fiftyone.core.fields.VectorField>`
@@ -44,6 +46,7 @@
 .. |Keypoint| replace:: :class:`Keypoint <fiftyone.core.labels.Keypoint>`
 .. |Keypoints| replace:: :class:`Keypoints <fiftyone.core.labels.Keypoints>`
 .. |Segmentation| replace:: :class:`Segmentation <fiftyone.core.labels.Segmentation>`
+.. |Heatmap| replace:: :class:`Heatmap <fiftyone.core.labels.Heatmap>`
 .. |TemporalDetection| replace:: :class:`TemporalDetection <fiftyone.core.labels.TemporalDetection>`
 .. |TemporalDetections| replace:: :class:`TemporalDetections <fiftyone.core.labels.TemporalDetections>`
 .. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
