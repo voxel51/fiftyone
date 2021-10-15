@@ -6,6 +6,7 @@ FiftyOne view-related unit tests.
 |
 """
 from copy import deepcopy
+from datetime import date, datetime, timedelta
 import math
 
 import unittest
@@ -444,7 +445,6 @@ class ViewExpressionTests(unittest.TestCase):
 
     @drop_datasets
     def test_array(self):
-        dataset_name = self.test_array.__name__
         dataset = fo.Dataset()
 
         dataset.add_samples(
@@ -496,7 +496,9 @@ class ViewExpressionTests(unittest.TestCase):
     @drop_datasets
     def test_str(self):
         special_chars = r"[]{}()*+-?.,\\^$|#"
+
         self.dataset = fo.Dataset()
+
         self.dataset.add_samples(
             [
                 fo.Sample(filepath="test1.jpg", test="test1.jpg"),
@@ -582,6 +584,80 @@ class ViewExpressionTests(unittest.TestCase):
             ),
             1,
         )
+
+    @drop_datasets
+    def test_dates(self):
+        dataset = fo.Dataset()
+
+        date1 = date(2021, 8, 24)
+        date2 = date(2021, 8, 25)
+        date3 = date(2021, 8, 26)
+
+        query_date = datetime(2021, 8, 25, 1, 0, 0)
+        query_delta = timedelta(hours=2)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", date=date1),
+                fo.Sample(filepath="image2.png", date=date2),
+                fo.Sample(filepath="image3.png", date=date3),
+            ]
+        )
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        dates = dataset.values("date")
+        self.assertListEqual(dates, [date1, date2, date3])
+
+        min_date, max_date = dataset.bounds("date")
+        self.assertEqual(min_date, date1)
+        self.assertEqual(max_date, date3)
+
+        view = dataset.match(F("date") > query_date)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date3)
+
+        view = dataset.match(abs(F("date") - query_date) < query_delta)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date2)
+
+    @drop_datasets
+    def test_datetimes(self):
+        dataset = fo.Dataset()
+
+        date1 = datetime(2021, 8, 24, 1, 0, 0)
+        date2 = datetime(2021, 8, 24, 2, 0, 0)
+        date3 = datetime(2021, 8, 24, 3, 0, 0)
+
+        query_date = datetime(2021, 8, 24, 2, 1, 0)
+        query_delta = timedelta(minutes=30)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", date=date1),
+                fo.Sample(filepath="image2.png", date=date2),
+                fo.Sample(filepath="image3.png", date=date3),
+            ]
+        )
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        dates = dataset.values("date")
+        self.assertListEqual(dates, [date1, date2, date3])
+
+        min_date, max_date = dataset.bounds("date")
+        self.assertEqual(min_date, date1)
+        self.assertEqual(max_date, date3)
+
+        view = dataset.match(F("date") > query_date)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date3)
+
+        view = dataset.match(abs(F("date") - query_date) < query_delta)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date2)
 
 
 class SliceTests(unittest.TestCase):
@@ -1021,6 +1097,140 @@ class ViewStageTests(unittest.TestCase):
             for det in sample.test_dets.detections:
                 self.assertGreater(det.confidence, 0.5)
                 self.assertEqual(det.label, "friend")
+
+    def test_filter_label_trajectories(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="sedan",
+                index=1,
+            )
+        )
+        sample1.frames[2] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="truck",
+                index=2,
+            )
+        )
+        sample1.frames[3] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="sedan",
+            )
+        )
+        sample1.frames[4] = fo.Frame()
+        sample1.frames[5] = fo.Frame(
+            detection=fo.Detection(
+                label="vehicle",
+                bounding_box=[0.2, 0.2, 0.2, 0.2],
+                type="truck",
+                index=1,
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.filter_labels(
+            "frames.detection", F("type") == "sedan", trajectories=True
+        )
+
+        self.assertEqual(len(view), 1)
+
+        num_detections = 0
+        for sample in view:
+            for frame in sample.frames.values():
+                num_detections += int(frame.detection is not None)
+
+        self.assertEqual(num_detections, 2)
+        self.assertListEqual(view.distinct("frames.detection.index"), [1])
+        self.assertDictEqual(
+            view.count_values("frames.detection.type"),
+            {"sedan": 1, None: 3, "truck": 1},
+        )
+
+    def test_filter_label_list_trajectories(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                        type="sedan",
+                        index=1,
+                    ),
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.4, 0.4, 0.2, 0.2],
+                        type="sedan",
+                        index=2,
+                    ),
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.6, 0.6, 0.2, 0.2],
+                        type="sedan",
+                    ),
+                ]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.2, 0.2, 0.2, 0.2],
+                        type="sedan",
+                        index=1,
+                    ),
+                    fo.Detection(
+                        label="vehicle",
+                        bounding_box=[0.4, 0.4, 0.2, 0.2],
+                        type="coupe",
+                        index=2,
+                    ),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        sample3 = fo.Sample(filepath="video3.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        view = dataset.filter_labels(
+            "frames.detections", F("type") == "sedan", trajectories=True
+        )
+
+        self.assertEqual(len(view), 1)
+
+        num_detections = 0
+        for sample in view:
+            for frame in sample.frames.values():
+                num_detections += len(frame.detections.detections)
+
+        self.assertEqual(num_detections, 4)
+        self.assertListEqual(
+            view.distinct("frames.detections.detections.index"), [1, 2],
+        )
+        self.assertDictEqual(
+            view.count_values("frames.detections.detections.type"),
+            {"coupe": 1, "sedan": 3},
+        )
 
     def test_limit(self):
         result = list(self.dataset.limit(1))

@@ -22,6 +22,11 @@ import fiftyone as fo
 from decorators import drop_datasets
 
 
+skipwindows = pytest.mark.skipif(
+    os.name == "nt", reason="Windows hangs in workflows, fix me"
+)
+
+
 class ImageDatasetTests(unittest.TestCase):
     def setUp(self):
         temp_dir = etau.TempDir()
@@ -60,6 +65,7 @@ class ImageDatasetTests(unittest.TestCase):
 
 
 class DuplicateImageExportTests(ImageDatasetTests):
+    @skipwindows
     @drop_datasets
     def test_duplicate_images(self):
         sample = fo.Sample(
@@ -1311,11 +1317,6 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         )
 
 
-skipwindows = pytest.mark.skipif(
-    os.name == "nt", reason="Windows hangs in workflows, fix me"
-)
-
-
 class MultitaskImageDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [
@@ -1601,13 +1602,14 @@ class VideoDatasetTests(unittest.TestCase):
 
 
 class VideoExportCoersionTests(VideoDatasetTests):
+    @skipwindows
     @drop_datasets
     def test_clip_exports(self):
         sample1 = fo.Sample(
             filepath=self._new_video(),
-            predictions=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(
+            predictions=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(
                         label="cat", support=[1, 3], confidence=0.9
                     )
                 ]
@@ -1652,12 +1654,12 @@ class VideoExportCoersionTests(VideoDatasetTests):
 
         sample2 = fo.Sample(
             filepath=self._new_video(),
-            predictions=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(
+            predictions=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(
                         label="cat", support=[1, 4], confidence=0.95,
                     ),
-                    fo.VideoClassification(
+                    fo.TemporalDetection(
                         label="dog", support=[2, 5], confidence=0.95,
                     ),
                 ]
@@ -1684,11 +1686,11 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         self.assertEqual(
-            len(dataset2), dataset.count("predictions.classifications")
+            len(dataset2), dataset.count("predictions.detections")
         )
 
         #
-        # Export video classification clips in a VideoClassifications field
+        # Export temporal detection clips in a TemporalDetections field
         #
 
         export_dir = self._new_dir()
@@ -1705,7 +1707,7 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         self.assertEqual(
-            len(dataset2), dataset.count("predictions.classifications")
+            len(dataset2), dataset.count("predictions.detections")
         )
 
         #
@@ -1726,7 +1728,7 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         self.assertEqual(
-            len(dataset2), dataset.count("predictions.classifications")
+            len(dataset2), dataset.count("predictions.detections")
         )
 
         #
@@ -1852,14 +1854,14 @@ class VideoClassificationDatasetTests(VideoDatasetTests):
         )
 
 
-class TemporalVideoClassificationDatasetTests(VideoDatasetTests):
+class TemporalDetectionDatasetTests(VideoDatasetTests):
     def _make_dataset(self):
         samples = [
             fo.Sample(
                 filepath=self._new_video(),
-                predictions=fo.VideoClassifications(
-                    classifications=[
-                        fo.VideoClassification(
+                predictions=fo.TemporalDetections(
+                    detections=[
+                        fo.TemporalDetection(
                             label="cat", support=[1, 3], confidence=0.9
                         )
                     ]
@@ -1867,12 +1869,12 @@ class TemporalVideoClassificationDatasetTests(VideoDatasetTests):
             ),
             fo.Sample(
                 filepath=self._new_video(),
-                predictions=fo.VideoClassifications(
-                    classifications=[
-                        fo.VideoClassification(
+                predictions=fo.TemporalDetections(
+                    detections=[
+                        fo.TemporalDetection(
                             label="cat", support=[1, 4], confidence=0.95,
                         ),
-                        fo.VideoClassification(
+                        fo.TemporalDetection(
                             label="dog", support=[2, 5], confidence=0.95,
                         ),
                     ]
@@ -1887,7 +1889,7 @@ class TemporalVideoClassificationDatasetTests(VideoDatasetTests):
         return dataset
 
     @drop_datasets
-    def test_fiftyone_video_classification_dataset(self):
+    def test_fiftyone_temporal_detection_dataset(self):
         dataset = self._make_dataset()
 
         # Standard format
@@ -1896,17 +1898,17 @@ class TemporalVideoClassificationDatasetTests(VideoDatasetTests):
 
         dataset.export(
             export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
             label_field="predictions",
         )
 
-        supports = dataset.values("predictions.classifications.support")
-        supports2 = dataset2.values("predictions.classifications.support")
+        supports = dataset.values("predictions.detections.support")
+        supports2 = dataset2.values("predictions.detections.support")
 
         self.assertEqual(len(dataset), len(dataset2))
 
@@ -1922,18 +1924,18 @@ class TemporalVideoClassificationDatasetTests(VideoDatasetTests):
 
         dataset.export(
             export_dir=export_dir,
-            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
             use_timestamps=True,
         )
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
-            dataset_type=fo.types.FiftyOneVideoClassificationDataset,
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
             label_field="predictions",
         )
 
-        supports = dataset.values("predictions.classifications.support")
-        supports2 = dataset2.values("predictions.classifications.support")
+        supports = dataset.values("predictions.detections.support")
+        supports2 = dataset2.values("predictions.detections.support")
 
         self.assertEqual(len(dataset), len(dataset2))
 

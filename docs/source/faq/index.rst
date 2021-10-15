@@ -92,6 +92,16 @@ is served from a remote machine.
 Refer to :ref:`this section <remote-notebooks>` of the environment guide for
 instructions to achieve this.
 
+.. _faq-remote-session-access:
+
+Can I restrict access to my remote App instance?
+------------------------------------------------
+
+By default, :ref:`remote App sessions <remote-session>` will listen to any
+connection to their ports. However, if desired, you can restrict access to an
+App session to a particular IP address or hostname by
+:ref:`following these instructions <restricting-app-address>`.
+
 .. _faq-plots-not-appearing:
 
 Why aren't plots appearing in my notebook?
@@ -134,8 +144,7 @@ Yes! The recommended best practice is to mount the cloud bucket to a cloud
 compute instance in your cloud environment and then use the
 :ref:`remote server workflow <remote-data>` to work with the data.
 
-Check out the :doc:`environments guide </environments/index>` for instructions
-for working in AWS, GCP, and Azure.
+Check out :ref:`this page <cloud-storage>` for more details.
 
 .. _faq-supported-os:
 

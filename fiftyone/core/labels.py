@@ -386,7 +386,7 @@ class Detection(_HasID, _HasAttributesDict, Label):
             [<top-left-x>, <top-left-y>, <width>, <height>]
 
         mask (None): an instance segmentation mask for the detection within
-            its bounding box, which should be a 2D binary or 0/1 integer NumPy
+            its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
@@ -846,11 +846,11 @@ class Keypoints(_HasLabelList, Label):
 
 
 class Segmentation(_HasID, Label):
-    """A semantic segmentation mask for an image.
+    """A semantic segmentation for an image.
 
     Args:
-        mask (None): a semantic segmentation mask, which should be a NumPy
-            array with integer values encoding the semantic labels
+        mask (None): a 2D numpy array with integer values encoding the semantic
+            labels
     """
 
     meta = {"allow_inheritance": True}
@@ -922,6 +922,119 @@ class Segmentation(_HasID, Label):
             self, mask_targets, mask_types, tolerance
         )
         return Polylines(polylines=polylines)
+
+
+class Heatmap(_HasID, Label):
+    """A heatmap for an image.
+
+    Args:
+        map (None): a 2D numpy array
+        range (None): an optional ``[min, max]`` range of the map's values. If
+            None is provided, ``[0, 1]`` will be assumed if ``map`` contains
+            floating point values, and ``[0, 255]`` will be assumed if ``map``
+            contains integer values
+    """
+
+    meta = {"allow_inheritance": True}
+
+    map = fof.ArrayField()
+    range = fof.HeatmapRangeField()
+
+
+class TemporalDetection(_HasID, Label):
+    """A temporal detection in a video whose support is defined by a start and
+    end frame.
+
+    Args:
+        label (None): the label string
+        support (None): the ``[first, last]`` frame numbers, inclusive
+        confidence (None): a confidence in ``[0, 1]`` for the detection
+    """
+
+    meta = {"allow_inheritance": True}
+
+    label = fof.StringField()
+    support = fof.FrameSupportField()
+    confidence = fof.FloatField()
+
+    @classmethod
+    def from_timestamps(cls, timestamps, sample=None, metadata=None, **kwargs):
+        """Creates a :class:`TemporalDetection` instance from ``[start, stop]``
+        timestamps for the specified video.
+
+        You must provide either ``sample`` or ``metadata`` to inform the
+        conversion.
+
+        Args:
+            timestamps: the ``[start, stop]`` timestamps, in seconds or
+                "HH:MM:SS.XXX" format
+            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
+                ``metadata`` field is populated
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance
+            **kwargs: additional arguments for :class:`TemporalDetection`
+
+        Returns:
+            a :class:`TemporalDetection`
+        """
+        start, end = timestamps
+        total_frame_count, duration = _parse_video_metadata(sample, metadata)
+        support = [
+            etaf.timestamp_to_frame_number(start, duration, total_frame_count),
+            etaf.timestamp_to_frame_number(end, duration, total_frame_count),
+        ]
+        return cls(support=support, **kwargs)
+
+    def to_timestamps(self, sample=None, metadata=None):
+        """Returns the ``[start, stop]`` timestamps, in seconds, for this
+        temporal detection in the given video.
+
+        You must provide either ``sample`` or ``metadata`` to inform the
+        conversion.
+
+        Args:
+            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
+                ``metadata`` field is populated
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance
+
+        Returns:
+            the ``[start, stop]`` timestamps of this detection, in seconds
+        """
+        first, last = self.support  # pylint: disable=unpacking-non-sequence
+        total_frame_count, duration = _parse_video_metadata(sample, metadata)
+        return [
+            etaf.frame_number_to_timestamp(first, total_frame_count, duration),
+            etaf.frame_number_to_timestamp(last, total_frame_count, duration),
+        ]
+
+
+def _parse_video_metadata(sample, metadata):
+    if sample is not None:
+        metadata = sample.metadata
+
+    if not isinstance(metadata, fom.VideoMetadata):
+        raise ValueError(
+            "You must provide either `metadata` or a `sample` whose "
+            "`metadata` field is populated containing `VideoMetadata`"
+        )
+
+    return metadata.total_frame_count, metadata.duration
+
+
+class TemporalDetections(_HasLabelList, Label):
+    """A list of temporal detections for a video.
+
+    Args:
+        detections (None): a list of :class:`TemporalDetection`
+            instances
+    """
+
+    _LABEL_LIST_FIELD = "detections"
+
+    meta = {"allow_inheritance": True}
+
+    detections = fof.ListField(fof.EmbeddedDocumentField(TemporalDetection))
 
 
 class GeoLocation(_HasID, Label):
@@ -1013,141 +1126,13 @@ class GeoLocations(_HasID, Label):
         return cls(points=points, lines=lines, polygons=polygons)
 
 
-class VideoClassification(_HasID, Label):
-    """A video classification with a temporal support specified by a start
-    and end frame.
-
-    Args:
-        label (None): the label string
-        support (None): the ``[first, last]`` frame numbers, inclusive
-        confidence (None): a confidence in ``[0, 1]`` for the classification
-    """
-
-    meta = {"allow_inheritance": True}
-
-    label = fof.StringField()
-    support = fof.FrameSupportField()
-    confidence = fof.FloatField()
-
-    @classmethod
-    def from_timestamps(cls, timestamps, sample=None, metadata=None, **kwargs):
-        """Creates a :class:`VideoClassification` instance from
-        ``[start, stop]`` timestamps for the specified video.
-
-        You must provide either ``sample`` or ``metadata`` to inform the
-        conversion.
-
-        Args:
-            timestamps: the ``[start, stop]`` timestamps, in seconds or
-                "HH:MM:SS.XXX" format
-            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
-                ``metadata`` field is populated
-            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
-                instance
-            **kwargs: additional arguments for :class:`VideoClassification`
-
-        Returns:
-            a :class:`VideoClassification`
-        """
-        start, end = timestamps
-        total_frame_count, duration = _parse_video_metadata(sample, metadata)
-        support = [
-            etaf.timestamp_to_frame_number(start, duration, total_frame_count),
-            etaf.timestamp_to_frame_number(end, duration, total_frame_count),
-        ]
-        return cls(support=support, **kwargs)
-
-    def to_timestamps(self, sample=None, metadata=None):
-        """Returns the ``[start, stop]`` timestamps, in seconds, for this video
-        classification in the given video.
-
-        You must provide either ``sample`` or ``metadata`` to inform the
-        conversion.
-
-        Args:
-            sample (None): a video :class:`fiftyone.core.sample.Sample` whose
-                ``metadata`` field is populated
-            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
-                instance
-
-        Returns:
-            the ``[start, stop]`` timestamps of this classification, in seconds
-        """
-        first, last = self.support  # pylint: disable=unpacking-non-sequence
-        total_frame_count, duration = _parse_video_metadata(sample, metadata)
-        return [
-            etaf.frame_number_to_timestamp(first, total_frame_count, duration),
-            etaf.frame_number_to_timestamp(last, total_frame_count, duration),
-        ]
-
-
-def _parse_video_metadata(sample, metadata):
-    if sample is not None:
-        metadata = sample.metadata
-
-    if not isinstance(metadata, fom.VideoMetadata):
-        raise ValueError(
-            "You must provide either `metadata` or a `sample` whose "
-            "`metadata` field is populated containing `VideoMetadata`"
-        )
-
-    return metadata.total_frame_count, metadata.duration
-
-
-class VideoClassifications(_HasLabelList, Label):
-    """A list of video classifications for a video.
-
-    Args:
-        classifications (None): a list of :class:`VideoClassification`
-            instances
-    """
-
-    _LABEL_LIST_FIELD = "classifications"
-
-    meta = {"allow_inheritance": True}
-
-    classifications = fof.ListField(
-        fof.EmbeddedDocumentField(VideoClassification)
-    )
-
-
-_SINGLE_LABEL_FIELDS = (
-    Classification,
-    Detection,
-    GeoLocation,
-    Keypoint,
-    Polyline,
-    Segmentation,
-    VideoClassification,
-)
-
 _LABEL_LIST_FIELDS = (
     Classifications,
     Detections,
     Keypoints,
     Polylines,
-    VideoClassifications,
+    TemporalDetections,
 )
-
-_LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
-
-_CONFIDENCE_LABELS = (
-    Classification,
-    Detection,
-    Keypoint,
-    Polyline,
-    VideoClassification,
-)
-
-_LABEL_LABELS = (
-    Classification,
-    Detection,
-    Keypoint,
-    Polyline,
-    VideoClassification,
-)
-
-_SUPPORT_LABELS = (VideoClassification,)
 
 _PATCHES_FIELDS = (
     Detection,
@@ -1161,7 +1146,7 @@ _SINGLE_LABEL_TO_LIST_MAP = {
     Detection: Detections,
     Keypoint: Keypoints,
     Polyline: Polylines,
-    VideoClassification: VideoClassifications,
+    TemporalDetection: TemporalDetections,
 }
 
 _LABEL_LIST_TO_SINGLE_MAP = {
@@ -1169,7 +1154,7 @@ _LABEL_LIST_TO_SINGLE_MAP = {
     Detections: Detection,
     Keypoints: Keypoint,
     Polylines: Polyline,
-    VideoClassifications: VideoClassification,
+    TemporalDetections: TemporalDetection,
 }
 
 

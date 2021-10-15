@@ -658,7 +658,7 @@ updated to reflect the new field:
         integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
-`list`, `dict`, or more complex data structures
+`date`, `datetime`, `list`, `dict`, or more complex data structures
 :ref:`like label types <using-labels>`:
 
 .. code-block:: python
@@ -958,6 +958,81 @@ some workflows when it is available.
                 }>,
                 'frames': <Frames: 0>,
             }>
+
+.. _dates-and-datetimes:
+
+Dates and datetimes
+___________________
+
+You can store date information in FiftyOne datasets by populating fields with
+`date` or `datetime` values:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import date, datetime
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath="image1.png",
+                created_at=datetime(2021, 8, 24, 21, 18, 7),
+                created_date=date(2021, 8, 24),
+            ),
+            fo.Sample(
+                filepath="image2.png",
+                created_at=datetime.utcnow(),
+                created_date=date.today(),
+            ),
+        ]
+    )
+
+    print(dataset)
+    print(dataset.head())
+
+.. note::
+
+    Did you know? You can :ref:`create dataset views <date-views>` with
+    date-based queries!
+
+Internally, FiftyOne stores all dates as UTC timestamps, but you can provide
+any valid `datetime` object when setting a |DateTimeField| of a sample,
+including timezone-aware datetimes, which are internally converted to UTC
+format for safekeeping.
+
+.. code-block:: python
+    :linenos:
+
+    # A datetime in your local timezone
+    now = datetime.utcnow().astimezone()
+
+    sample = fo.Sample(filepath="image.png", created_at=now)
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    # Samples are singletons, so we reload so `sample` will contain values as
+    # loaded from the database
+    dataset.reload()
+
+    sample.created_at.tzinfo  # None
+
+By default, when you access a datetime field of a sample in a dataset, it is
+retrieved as a naive `datetime` instance expressed in UTC format.
+
+However, if you prefer, you can
+:ref:`configure FiftyOne <configuring-timezone>` to load datetime fields as
+timezone-aware `datetime` instances in a timezone of your choice.
+
+.. warning::
+
+    FiftyOne assumes that all `datetime` instances with no explicit timezone
+    are stored in UTC format.
+
+    Therefore, never use `datetime.datetime.now()` when populating a datetime
+    field of a FiftyOne dataset! Instead, use `datetime.datetime.utcnow()`.
 
 .. _using-labels:
 
@@ -1298,7 +1373,7 @@ masks, which should be stored in the
 :attr:`mask <fiftyone.core.labels.Detection.mask>` attribute of each
 |Detection|.
 
-The mask must be a 2D NumPy array containing either booleans or 0/1 integers
+The mask must be a 2D numpy array containing either booleans or 0/1 integers
 encoding the extent of the instance mask within the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` of the
 object. The array can be of any size; it is stretched as necessary to fill the
@@ -1640,7 +1715,7 @@ The mask itself is stored in the
 :attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute of the
 |Segmentation| object.
 
-The mask should be a 2D NumPy array with integer values encoding the semantic
+The mask should be a 2D numpy array with integer values encoding the semantic
 labels for each pixel in the image. The array can be of any size; it is
 stretched as necessary to fit the image's extent when visualizing in the App.
 
@@ -1680,12 +1755,12 @@ stretched as necessary to fit the image's extent when visualizing in the App.
     }>
 
 When you load datasets with |Segmentation| fields in the App, each pixel value
-is rendered as a distinct color.
+is rendered as a different color (if possible) from the App's color pool.
 
 .. note::
 
-    The mask value ``0`` is a reserved "background" class that is rendered as
-    invislble in the App.
+    The mask value `0` is a reserved "background" class that is rendered as
+    invisible in the App.
 
 .. note::
 
@@ -1694,21 +1769,167 @@ is rendered as a distinct color.
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
 
-.. _video-classification:
+.. _heatmaps:
 
-Video classification
---------------------
+Heatmaps
+--------
 
-The |VideoClassification| class represents a classification label with a
-temporal frame support in a video.
+The |Heatmap| class represents a heatmap for an image. The map itself is stored
+in the :attr:`map <fiftyone.core.labels.Heatmap.map>` attribute of the
+|Heatmap| object.
 
-The :attr:`label <fiftyone.core.labels.VideoClassification.label>` attribute
-stores the classification label, and the
-:attr:`support <fiftyone.core.labels.VideoClassification.support>` attribute
-stores the `[first, last]` frame range of the classification in the video.
+Maps should be 2D numpy arrays. By default, the map values are assumed to be in
+`[0, 1]` for floating point arrays and `[0, 255]` for integer-valued arrays,
+but you can specify a custom `[min, max]` range for a map by setting its
+optional :attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
+
+The array can be of any size; it is stretched as necessary to fit the image's
+extent when visualizing in the App.
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    import fiftyone as fo
+
+    # Example heatmap
+    heatmap = np.random.randint(256, size=(128, 128), dtype=np.uint8)
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["heatmap"] = fo.Heatmap(map=heatmap)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'heatmap': <Heatmap: {
+            'id': '6129495c9e526ca632663cca',
+            'tags': BaseList([]),
+            'map': array([[  9,  65,  55, ...,  75, 203,  49],
+                          [151,  50,   3, ..., 136, 145, 144],
+                          [242, 110, 150, ...,  90, 214, 151],
+                          ...,
+                          [197, 195, 140, ..., 245, 128, 153],
+                          [145, 124,   9, ..., 205, 254,  68],
+                          [107, 123,  29, ..., 247,  74,   2]], dtype=uint8),
+        }>,
+    }>
+
+When visualizing heatmaps :ref:`in the App <fiftyone-app>`, when the App is
+in color-by-field mode, heatmaps are rendered in their field's color with
+opacity proportional to the magnitude of the heatmap's values. For example, for
+a heatmap whose :attr:`range <fiftyone.core.labels.Heatmap.range>` is
+`[-10, 10]`, pixels with the value +9 will be rendered with 90% opacity, and
+pixels with the value -3 will be rendered with 30% opacity.
+
+When the App is in color-by-value mode, heatmaps are rendered using the
+colormap defined by the `colorscale` of your
+:ref:`App config <configuring-fiftyone-app>`, which can be:
+
+-   The string name of any colorscale
+    `recognized by Plotly <https://plotly.com/python/colorscales>`_
+
+-   A manually-defined colorscale like the following::
+
+        [
+            [0.000, "rgb(165,0,38)"],
+            [0.111, "rgb(215,48,39)"],
+            [0.222, "rgb(244,109,67)"],
+            [0.333, "rgb(253,174,97)"],
+            [0.444, "rgb(254,224,144)"],
+            [0.555, "rgb(224,243,248)"],
+            [0.666, "rgb(171,217,233)"],
+            [0.777, "rgb(116,173,209)"],
+            [0.888, "rgb(69,117,180)"],
+            [1.000, "rgb(49,54,149)"],
+        ]
+
+The example code below demonstrates the possibilities that heatmaps provide by
+overlaying random gaussian kernels with positive or negative sign on an image
+dataset and configuring the App's colorscale in various ways on-the-fly:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    def random_kernel(metadata):
+        h = metadata.height // 2
+        w = metadata.width // 2
+        sign = np.sign(np.random.randn())
+        x, y = np.meshgrid(np.linspace(-1, 1, w), np.linspace(-1, 1, h))
+        x0, y0 = np.random.random(2) - 0.5
+        kernel = sign * np.exp(-np.sqrt((x - x0) ** 2 + (y - y0) ** 2))
+        return fo.Heatmap(map=kernel, range=[-1, 1])
+
+    dataset = foz.load_zoo_dataset("quickstart").select_fields().clone()
+    dataset.compute_metadata()
+
+    for sample in dataset:
+        sample["heatmap"] = random_kernel(sample.metadata)
+        sample.save()
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Select `Settings -> Color by value` in the App
+    # Heatmaps will now be rendered using your default colorscale (printed below)
+    print(session.config.colorscale)
+
+.. code-block:: python
+    :linenos:
+
+    # Switch to a different named colorscale
+    session.config.colorscale = "RdBu"
+    session.refresh()
+
+.. code-block:: python
+    :linenos:
+
+    # Switch to a custom colorscale
+    session.config.colorscale = [
+        [0.00, "rgb(166,206,227)"],
+        [0.25, "rgb(31,120,180)"],
+        [0.45, "rgb(178,223,138)"],
+        [0.65, "rgb(51,160,44)"],
+        [0.85, "rgb(251,154,153)"],
+        [1.00, "rgb(227,26,28)"],
+    ]
+    session.refresh()
+
+.. note::
+
+    Did you know? You customize your App config in various ways, from
+    environment varibables to directly editing a |Session| object's config.
+    See :ref:`this page <configuring-fiftyone-app>` for more details.
+
+.. _temporal-detection:
+
+Temporal detection
+------------------
+
+The |TemporalDetection| class represents an event occuring during a specified
+range of frames in a video.
+
+The :attr:`label <fiftyone.core.labels.TemporalDetection.label>` attribute
+stores the detection label, and the
+:attr:`support <fiftyone.core.labels.TemporalDetection.support>` attribute
+stores the `[first, last]` frame range of the detection in the video.
 
 The optional
-:attr:`confidence <fiftyone.core.labels.VideoClassification.confidence>`
+:attr:`confidence <fiftyone.core.labels.TemporalDetection.confidence>`
 attribute can be used to store a model prediction score, and you can add
 :ref:`custom attributes <label-attributes>` as well, which can be visualized in
 the App.
@@ -1719,7 +1940,7 @@ the App.
     import fiftyone as fo
 
     sample = fo.Sample(filepath="/path/to/video.mp4")
-    sample["events"] = fo.VideoClassification(label="meeting", support=[10, 20])
+    sample["events"] = fo.TemporalDetection(label="meeting", support=[10, 20])
 
     print(sample)
 
@@ -1731,7 +1952,7 @@ the App.
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'events': <VideoClassification: {
+        'events': <TemporalDetection: {
             'id': '61321c8ea36cb17df655f44f',
             'tags': BaseList([]),
             'label': 'meeting',
@@ -1741,9 +1962,9 @@ the App.
         'frames': <Frames: 0>,
     }>
 
-If your video classification data is represented as timestamps in seconds, you
+If your temporal detection data is represented as timestamps in seconds, you
 can use the
-:meth:`from_timestamps() <fiftyone.core.labels.VideoClassification.from_timestamps>`
+:meth:`from_timestamps() <fiftyone.core.labels.TemporalDetection.from_timestamps>`
 factory method to perform the necessary conversion to frames automatically
 based on the sample's :ref:`video metadata <using-metadata>`:
 
@@ -1760,7 +1981,7 @@ based on the sample's :ref:`video metadata <using-metadata>`:
     sample = fo.Sample(filepath=filepath)
     sample.compute_metadata()
 
-    sample["events"] = fo.VideoClassification.from_timestamps(
+    sample["events"] = fo.TemporalDetection.from_timestamps(
         [1, 2], label="meeting", sample=sample
     )
 
@@ -1783,7 +2004,7 @@ based on the sample's :ref:`video metadata <using-metadata>`:
             'duration': 4.004,
             'encoding_str': 'avc1',
         }>,
-        'events': <VideoClassification: {
+        'events': <TemporalDetection: {
             'id': '61321e498d5f587970b29183',
             'tags': BaseList([]),
             'label': 'meeting',
@@ -1793,7 +2014,7 @@ based on the sample's :ref:`video metadata <using-metadata>`:
         'frames': <Frames: 0>,
     }>
 
-The |VideoClassifications| class holds a list of video classifications for a
+The |TemporalDetections| class holds a list of temporal detections for a
 sample:
 
 .. code-block:: python
@@ -1802,10 +2023,10 @@ sample:
     import fiftyone as fo
 
     sample = fo.Sample(filepath="/path/to/video.mp4")
-    sample["events"] = fo.VideoClassifications(
-        classifications=[
-            fo.VideoClassification(label="meeting", support=[10, 20]),
-            fo.VideoClassification(label="party", support=[30, 60]),
+    sample["events"] = fo.TemporalDetections(
+        detections=[
+            fo.TemporalDetection(label="meeting", support=[10, 20]),
+            fo.TemporalDetection(label="party", support=[30, 60]),
         ]
     )
 
@@ -1819,16 +2040,16 @@ sample:
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'events': <VideoClassifications: {
-            'classifications': BaseList([
-                <VideoClassification: {
+        'events': <TemporalDetections: {
+            'detections': BaseList([
+                <TemporalDetection: {
                     'id': '61321ed78d5f587970b29184',
                     'tags': BaseList([]),
                     'label': 'meeting',
                     'support': BaseList([10, 20]),
                     'confidence': None,
                 }>,
-                <VideoClassification: {
+                <TemporalDetection: {
                     'id': '61321ed78d5f587970b29185',
                     'tags': BaseList([]),
                     'label': 'party',

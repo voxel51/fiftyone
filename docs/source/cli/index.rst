@@ -98,7 +98,7 @@ Launch a FiftyOne quickstart.
 
 .. code-block:: text
 
-    fiftyone quickstart [-h] [-v] [-p PORT] [-r] [-a] [-w WAIT]
+    fiftyone quickstart [-h] [-v] [-p PORT] [-A ADDRESS] [-r] [-a] [-w WAIT]
 
 **Arguments**
 
@@ -108,6 +108,8 @@ Launch a FiftyOne quickstart.
       -h, --help            show this help message and exit
       -v, --video           launch the quickstart with a video dataset
       -p PORT, --port PORT  the port number to use
+      -A ADDRESS, --address ADDRESS
+                            the address (server name) to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
@@ -319,23 +321,33 @@ Print information about FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets info [-h] NAME
+    fiftyone datasets info [-h] [-s FIELD] [-r] [NAME]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME        the name of the dataset
+      NAME                  the name of a dataset
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help            show this help message and exit
+      -s FIELD, --sort-by FIELD
+                            a field to sort the dataset rows by
+      -r, --reverse         whether to print the results in reverse order
 
 **Examples**
 
 .. code-block:: shell
 
-    # Print information about the given dataset
+    # Print basic information about all datasets
+    fiftyone datasets info
+    fiftyone datasets info --sort-by created_at
+    fiftyone datasets info --sort-by name --reverse
+
+.. code-block:: shell
+
+    # Print information about a specific dataset
     fiftyone datasets info <name>
 
 .. _cli-fiftyone-datasets-stats:
@@ -1031,7 +1043,7 @@ Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone app launch [-h] [-p PORT] [-r] [-a] [-w WAIT] [NAME]
+    fiftyone app launch [-h] [-p PORT] [-A ADDRESS] [-r] [-a] [-w WAIT] [NAME]
 
 **Arguments**
 
@@ -1043,6 +1055,8 @@ Launch the FiftyOne App.
     optional arguments:
       -h, --help            show this help message and exit
       -p PORT, --port PORT  the port number to use
+      -A ADDRESS, --address ADDRESS
+                            the address (server name) to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
@@ -1085,7 +1099,8 @@ View datasets in the FiftyOne App without persisting them to the database.
                       [-s SPLITS [SPLITS ...]] [--images-dir IMAGES_DIR]
                       [--images-patt IMAGES_PATT] [--videos-dir VIDEOS_DIR]
                       [--videos-patt VIDEOS_PATT] [-j JSON_PATH] [-p PORT]
-                      [-r] [-a] [-w WAIT] [-k KEY=VAL [KEY=VAL ...]]
+                      [-A ADDRESS] [-r] [-a] [-w WAIT]
+                      [-k KEY=VAL [KEY=VAL ...]]
 
 **Arguments**
 
@@ -1112,6 +1127,8 @@ View datasets in the FiftyOne App without persisting them to the database.
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
       -p PORT, --port PORT  the port number to use
+      -A ADDRESS, --address ADDRESS
+                            the address (server name) to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
@@ -1183,7 +1200,8 @@ Connect to a remote FiftyOne App in your web browser.
 
 .. code-block:: text
 
-    fiftyone app connect [-h] [-d DESTINATION] [-p PORT] [-l PORT] [-i KEY]
+    fiftyone app connect [-h] [-d DESTINATION] [-p PORT] [-A ADDRESS] [-l PORT]
+                         [-i KEY]
 
 **Arguments**
 

@@ -13,7 +13,9 @@ import * as atoms from "../recoil/atoms";
 const SidebarContainer = styled.div`
   display: block;
   height: 100%;
-  width 270px;
+  width 286px;
+  padding-left: 1rem;
+  overflow: visible;
 `;
 
 const SidebarColumn = styled.div`
@@ -29,12 +31,11 @@ const SidebarColumn = styled.div`
 
 const ContentColumn = styled.div`
   flex-grow: 1;
-  width: 1px; // flex-related?, unset width causes the sidebar to collapse
+  width: 1px;
 `;
 const Container = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-right: -1rem;
   flex-grow: 1;
   overflow: hidden;
 `;
@@ -58,7 +59,7 @@ const SamplesContainer = React.memo(() => {
             </SidebarColumn>
           </SidebarContainer>
         ) : null}
-        <ContentColumn>
+        <ContentColumn style={{ paddingLeft: showSidebar ? 0 : "1rem" }}>
           <Flashlight />
         </ContentColumn>
       </Container>

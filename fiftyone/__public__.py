@@ -46,6 +46,8 @@ from .core.fields import (
     ArrayField,
     BooleanField,
     ClassesField,
+    DateField,
+    DateTimeField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
@@ -86,10 +88,11 @@ from .core.labels import (
     Keypoint,
     Keypoints,
     Segmentation,
+    Heatmap,
+    TemporalDetection,
+    TemporalDetections,
     GeoLocation,
     GeoLocations,
-    VideoClassification,
-    VideoClassifications,
 )
 from .core.metadata import (
     Metadata,

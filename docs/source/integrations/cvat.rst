@@ -180,6 +180,20 @@ The easiest way to get started is to use the default server
 `cvat.org <https://cvat.org>`_, which simply requires creating an account and
 then providing your authentication credentials as shown below.
 
+.. note::
+
+    CVAT is the default annotation backend used by FiftyOne. However, if you
+    have changed your default backend, you can opt-in to using CVAT on a
+    one-off basis by passing the optional `backend` parameter to
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+    .. code:: python
+
+        view.annotate(anno_key, backend="cvat", ...)
+
+    Refer to :ref:`these instructions <annotation-setup>` to see how to
+    permanently change your default backend.
+
 Authentication
 --------------
 
@@ -370,10 +384,10 @@ details:
         with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
         attributes populated
     -   ``"polylines"``: polylines stored in |Polylines| fields with their
-        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `False`
     -   ``"polygons"``: polygons stored in |Polylines| fields with their
-        :attr:`mask <fiftyone.core.labels.Polyline.filled>` attributes set to
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `True`
     -   ``"keypoints"``: keypoints stored in |Keypoints| fields
     -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
@@ -387,9 +401,9 @@ details:
     `label_field` or all fields in `label_schema` without classes specified.
     All new label fields must have a class list provided via one of the
     supported methods. For existing label fields, if classes are not provided
-    by this argument nor `label_schema`, they are parsed from
-    :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
-    :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+    by this argument nor `label_schema`, they are retrieved from
+    :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
+    if possible, or else the observed labels on your dataset are used
 -   **attributes** (*True*): specifies the label attributes of each label field
     to include (other than their `label`, which is always included) in the
     annotation export. Can be any of the following:
@@ -401,6 +415,16 @@ details:
         `values`, and `default` for each attribute
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
+-   **allow_additions** (*True*): whether to allow new labels to be added. Only
+    applicable when editing existing label fields
+-   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
+    applicable when editing existing label fields
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute of
+    existing labels to be modified. Only applicable when editing existing label
+    fields
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
+    applicable when editing existing label fields
 
 |br|
 In addition, the following CVAT-specific parameters from
@@ -419,9 +443,13 @@ provided:
     in reduced video quality in CVAT due to size limitations on ZIP files that
     can be uploaded to CVAT
 -   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
--   **task_assignee** (*None*): a username to assign the generated tasks
+-   **task_assignee** (*None*): the username to assign the generated tasks.
+    This argument can be a list of usernames when annotating videos as each
+    video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
+-   **project_name** (*None*): an optional project name in which to store the
+    annotation tasks. By default, no project is created
 
 .. _cvat-label-schema:
 
@@ -476,6 +504,45 @@ label field:
 
     dataset.annotate(anno_key, label_schema=label_schema)
 
+You can also define class-specific attributes by setting elements of the
+`classes` list to dicts that specify groups of `classes` and their
+corresponding `attributes`. For example, in the configuration below, `attr1`
+only applies to `class1` and `class2` while `attr2` applies to all classes:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    label_schema = {
+        "new_field": {
+            "type": "detections",
+            "classes": [
+                {
+                    "classes": ["class1", "class2"],
+                    "attributes": {
+                        "attr1": {
+                            "type": "select",
+                            "values": ["val1", "val2"],
+                            "default": "val1",
+                        }
+                     }
+                },
+                "class3",
+                "class4",
+            ],
+            "attributes": {
+                "attr2": {
+                    "type": "radio",
+                    "values": [True, False],
+                    "default": False,
+                }
+            },
+        },
+    }
+
+    dataset.annotate(anno_key, label_schema=label_schema)
+
 Alternatively, if you are only editing or creating a single label field, you
 can use the `label_field`, `label_type`, `classes`, `attributes`, and
 `mask_targets` parameters to specify the components of the label schema
@@ -523,7 +590,7 @@ FiftyOne can infer the appropriate values to use:
     lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
     properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list.
+    observed labels on your dataset will be used to construct a classes list
 -   **mask_targets**: if omitted for a semantic segmentation field, the mask
     targets from the
     :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
@@ -584,6 +651,8 @@ For CVAT, the following `type` values are supported:
     `default` is optional
 -   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
     `values` is unused
+-   `occluded`: CVAT's builtin occlusion toggle icon. This widget type can only
+    be specified for at most one attribute, which must be a boolean
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -595,10 +664,8 @@ take additional values:
 -   a list of custom attributes to include in the export
 -   a full dictionary syntax described above
 
-.. note::
-
-    Only scalar-valued label attributes are supported. Other attribute types
-    like lists, dictionaries, and arrays will be omitted.
+Note that only scalar-valued label attributes are supported. Other attribute
+types like lists, dictionaries, and arrays will be omitted.
 
 .. note::
 
@@ -608,14 +675,114 @@ take additional values:
     attributes in CVAT will result in labels being overwritten rather than
     merged when loading annotations back into FiftyOne.
 
-.. _cvat-video-label-attributes:
+.. _cvat-restricting-edits:
 
-Video label attributes
-----------------------
+Restricting additions, deletions, and edits
+-------------------------------------------
 
-When annotating spatiotemporal objects in videos, each object attribute
-specification can include a `mutable` property that controls whether the
-attribute's value can change between frames for each object:
+When you create annotation runs that invovle editing existing label fields, you
+can optionally specify that certain changes are not alllowed by passing the
+following flags to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+-   **allow_additions** (*True*): whether to allow new labels to be added
+-   **allow_deletions** (*True*): whether to allow labels to be deleted
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute to
+    be modified
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels
+
+If you are using the `label_schema` parameter to provide a full annotation
+schema to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, you
+can also directly include the above flags in the configuration dicts for any
+existing label field(s) you wish.
+
+For example, suppose you have an existing `ground_truth` field that contains
+objects of various types and you would like to add new `sex` and `age`
+attributes to all people in this field while also strictly enforcing that no
+objects can be added, deleted, or have their labels or bounding boxes modified.
+You can configure an annotation run for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "sex": {
+            "type": "select",
+            "values": ["male", "female"],
+        },
+        "age": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["person"],
+        attributes=attributes,
+        allow_additions=False,
+        allow_deletions=False,
+        allow_label_edits=False,
+        allow_spatial_edits=False,
+    )
+
+You can also include a `read_only=True` parameter when uploading existing
+label attributes to specify that the attribute's value should be uploaded to
+the annotation backend for informational purposes, but any edits to the
+attribute's value should not be imported back into FiftyOne.
+
+For example, if you have vehicles with their `make` attribute populated and you
+want to populate a new `model` attribute based on this information without
+allowing changes to the vehicle's `make`, you can configure an annotation run
+for this as follows:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    attributes = {
+        "make": {
+            "type": "text",
+            "read_only": True,
+        },
+        "model": {
+            "type": "text",
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        label_field="ground_truth",
+        classes=["vehicle"],
+        attributes=attributes,
+    )
+
+.. note::
+
+    The CVAT backend does not support restrictions to additions, deletions,
+    spatial edits, and read-only attributes in its editing interface.
+
+    However, any restrictions that you specify via the above parameters will
+    still be enforced when you call
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    to merge the annotations back into FiftyOne.
+
+.. _cvat-labeling-videos:
+
+Labeling videos
+---------------
+
+When annotating spatiotemporal objects in videos, you have a few additional
+options at your fingertips.
+
+First, each object attribute specification can include a `mutable` property
+that controls whether the attribute's value can change between frames for each
+object:
 
 .. code:: python
     :linenos:
@@ -650,6 +817,22 @@ The meaning of the `mutable` attribute is defined as follows:
     for every frame in which the object track appears
 -   `False`: the attribute is static and is the same for every frame in which
     the object track appears
+
+In addition, note that when you
+:ref:`download annotation runs <cvat-loading-annotations>` that include track
+annotations, the downloaded label corresponding to each keyframe of an object
+track will have its `keyframe=True` attribute set to denote that it was a
+keyframe.
+
+Similarly, when you create an annotation run on a video dataset that involves
+editing existing video tracks, if at least one existing label has its
+`keyframe=True` attribute populated, then the available keyframe information
+will be uploaded to CVAT.
+
+.. note::
+
+    See :ref:`this section <cvat-annotating-videos>` for video annotation
+    examples!
 
 .. _cvat-loading-annotations:
 
@@ -759,8 +942,74 @@ FiftyOne dataset using the CVAT backend.
     All of the examples below assume you have configured your CVAT server and
     credentials as described in :ref:`this section <cvat-setup>`.
 
-Modifying an existing label field
----------------------------------
+Adding new label fields
+-----------------------
+
+In order to annotate a new label field, you can provide the `label_field`,
+`label_type`, and `classes` parameters to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+define the annotation schema for the field:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "cvat_new_field"
+
+    view.annotate(
+        anno_key,
+        label_field="new_classifications",
+        label_type="classifications",
+        classes=["dog", "cat", "person"],
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Create annotations in CVAT
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+Alternatively, you can use the `label_schema` argument to define the same
+labeling task:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "cvat_new_field"
+
+    label_schema = {
+        "new_classifications": {
+            "type": "classifications",
+            "classes": ["dog", "cat", "person"],
+        }
+    }
+
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Create annotations in CVAT
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. image:: /images/integrations/cvat_tag.png
+   :alt: cvat-tag
+   :align: center
+
+Editing existing labels
+-----------------------
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
@@ -847,41 +1096,76 @@ can be used to annotate new classes and/or attributes:
     result in labels being overwritten when
     loaded into FiftyOne rather than being merged.
 
-Adding new label fields
+Restricting label edits
 -----------------------
 
-In order to annotate a new label field, you can provide the `label_field`,
-`label_type`, and `classes` parameters to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
-define the annotation schema for the field:
+You can use the `allow_additions`, `allow_deletions`, `allow_label_edits`, and
+`allow_spatial_edits` parameters to configure whether certain types of edits
+are allowed in your annotation run. See
+:ref:`this section <cvat-restricting-edits>` for more information about the
+available options.
+
+For example, suppose you have an existing `ground_truth` field that contains
+objects of various types and you would like to add new `sex` and `age`
+attributes to all people in this field while also strictly enforcing that no
+objects can be added, deleted, or have their labels or bounding boxes modified.
+You can configure an annotation run for this as follows:
 
 .. code:: python
     :linenos:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
 
-    anno_key = "cvat_new_field"
+    # Grab a sample that contains a person
+    view = (
+        dataset
+        .match_labels(filter=F("label") == "person", fields="ground_truth")
+        .limit(1)
+    )
+
+    anno_key = "cvat_edit_restrictions"
+
+    # The new attributes that we want to populate
+    attributes = {
+        "sex": {
+            "type": "select",
+            "values": ["male", "female"],
+        },
+        "age": {
+            "type": "text",
+        },
+    }
 
     view.annotate(
         anno_key,
-        label_field="new_classifications",
-        label_type="classifications",
-        classes=["dog", "cat", "person"],
+        label_field="ground_truth",
+        classes=["person"],
+        attributes=attributes,
+        allow_additions=False,
+        allow_deletions=False,
+        allow_label_edits=False,
+        allow_spatial_edits=False,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Create annotations in CVAT
+    # Populate attributes in CVAT
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-Alternatively, you can use the `label_schema` argument to define the same
-labeling task:
+Similarly, you can include a `read_only=True` parameter when uploading existing
+label attributes to specify that the attribute's value should be uploaded to
+the annotation backend for informational purposes, but any edits to the
+attribute's value should not be imported back into FiftyOne.
+
+For example, the snippet below uploads the vehicle tracks in a video dataset
+along with their existing `type` attributes and requests that a new `make`
+attribute be populated without allowing edits to the vehicle's `type`:
 
 .. code:: python
     :linenos:
@@ -889,29 +1173,46 @@ labeling task:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset("quickstart")
+    dataset = foz.load_zoo_dataset("quickstart-video")
     view = dataset.take(1)
 
-    anno_key = "cvat_new_field"
+    anno_key = "cvat_read_only_attrs"
 
-    label_schema = {
-        "new_classifications": {
-            "type": "classifications",
-            "classes": ["dog", "cat", "person"],
-        }
+    # Upload existing `type` attribute as read-only and add new `make` attribute
+    attributes = {
+        "type": {
+            "type": "text",
+            "read_only": True,
+        },
+        "make": {
+            "type": "text",
+            "mutable": False,
+        },
     }
 
-    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        classes=["vehicle"],
+        attributes=attributes,
+        launch_editor=True,
+    )
     print(dataset.get_annotation_info(anno_key))
 
-    # Create annotations in CVAT
+    # Populate make attributes in CVAT
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. image:: /images/integrations/cvat_tag.png
-   :alt: cvat-tag
-   :align: center
+.. note::
+
+    The CVAT backend does not support restrictions to additions, deletions,
+    spatial edits, and read-only attributes in its editing interface.
+
+    However, any restrictions that you specify via the above parameters will
+    still be enforced when you call
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    to merge the annotations back into FiftyOne.
 
 Annotating multiple fields
 --------------------------
@@ -1000,6 +1301,51 @@ these unexpected new labels in:
    :alt: cvat-polyline
    :align: center
 
+Creating projects
+-----------------
+
+You can use the optional `project_name` parameter to specify the name of a
+CVAT project to which to upload the task(s) for an annotation run.
+
+A typical use case for this parameter is video annotation, since in CVAT every
+video must be annotated in a separate task. Creating a project allows all of
+the tasks to be organized together in one place.
+
+As with tasks, you can delete the project(s) associated with an annotation run
+by passing the `cleanup=True` option to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
+
+.. note::
+
+    All tasks within a CVAT project must share the same label schema. Thus, if
+    you specify a `project_name` for an annotation run that includes multiple
+    label fields, a new project (with the same base name) is created for each
+    label field.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    view = dataset.take(3)
+
+    anno_key = "cvat_create_project"
+
+    view.annotate(
+        anno_key,
+        label_field="frames.detections",
+        project_name="fiftyone_project_example",
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate videos in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
 Assigning users
 ---------------
 
@@ -1008,7 +1354,9 @@ to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
 specify which users will be assigned to the created tasks:
 
 -   `segment_size`: the maximum number of images to include in a single job
--   `task_assignee`: a username to assign the generated tasks
+-   `task_assignee`: a username to assign the generated tasks. This argument
+    can be a list of usernames when annotating videos as each
+    video is uploaded to a separate task 
 -   `job_assignees`: a list of usernames to assign jobs
 -   `job_reviewers`: a list of usernames to assign job reviews
 
@@ -1097,7 +1445,7 @@ enter the appropriate scalar in the `value` attribute of the tag.
     view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
     print(dataset.get_annotation_info(anno_key))
 
-    # Cleanup
+    # Cleanup (without downloading results)
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
@@ -1133,8 +1481,6 @@ For example, let's upload some blurred images to CVAT for annotation:
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
 
-    anno_key = "cvat_alt_media"
-
     alt_dir = "/tmp/blurred"
     if not os.path.exists(alt_dir):
         os.makedirs(alt_dir)
@@ -1149,6 +1495,8 @@ For example, let's upload some blurred images to CVAT for annotation:
 
         sample["alt_filepath"] = alt_filepath
         sample.save()
+
+    anno_key = "cvat_alt_media"
 
     view.annotate(
         anno_key,
@@ -1167,6 +1515,62 @@ For example, let's upload some blurred images to CVAT for annotation:
    :alt: cvat-alt-media
    :align: center
 
+Using CVAT's occlusion widget
+-----------------------------
+
+The CVAT UI provides a variety of builtin widgets on each label you create that
+control properties like occluded, hidden, locked, and pinned.
+
+You can configure CVAT annotation runs so that the state of the occlusion
+widget is read/written to a FiftyOne label attribute of your choice by
+specifying the attribute's type as `occluded` in your label schema.
+
+In addition, if you are editing existing labels using the `attributes=True`
+syntax (the default) to infer the label schema for an existing field, if a
+boolean attribute with the name `"occluded"` is found, it will automatically be
+linked to the occlusion widget.
+
+.. note::
+
+    You can only specify the `occluded` type for at most one attribute of each
+    label field/class in your label schema, and, if you are editing existing
+    labels, the attribute that you choose must contain boolean values.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_occluded_widget"
+
+    # Populate a new `occluded` attribute on the existing `ground_truth` labels
+    # using CVAT's occluded widget
+    label_schema = {
+        "ground_truth": {
+            "attributes": {
+                "occluded": {
+                    "type": "occluded",
+                }
+            }
+        }
+    }
+
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Mark occlusions in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. image:: /images/integrations/cvat_occ_widget.png
+   :alt: cvat-occ-widget
+   :align: center
+
 .. _cvat-annotating-videos:
 
 Annotating videos
@@ -1179,12 +1583,13 @@ method.
 
 All CVAT label types except `tags` provide an option to annotate **tracks** in
 videos, which captures the identity of a single object as it moves through the
-video. These tracks are stored in the `index` field of the |Label| instances
-when you import the annotations into FiftyOne.
+video. When you import video tracks into FiftyOne, the `index` attribute of
+each label will contain the integer number of its track, and any labels that
+are keyframes will have their `keyframe=True` attribute set.
 
 Note that CVAT does not provide a straightforward way to annotate sample-level
-classification labels. Instead, we recommend that you use frame-level fields
-to record classifications for your video datasets.
+classification labels for videos. Instead, we recommend that you use
+frame-level fields to record classifications for your video datasets.
 
 .. note::
 
@@ -1196,9 +1601,14 @@ Adding new frame labels
 -----------------------
 
 The example below demonstrates how to configure a video annotation task that
-populates a new frame-level field of a video dataset with detection tracks of
-vehicles with an immutable `type` attribute that denotes the type of each
+populates a new frame-level field of a video dataset with vehicle detection
+tracks with an immutable `type` attribute that denotes the type of each
 vehicle:
+
+.. note::
+
+    Prepend `"frames."` to reference frame-level fields when calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
 
 .. code:: python
     :linenos:
@@ -1243,20 +1653,27 @@ vehicle:
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
-.. note::
-
-    Prepend `"frames."` to reference frame-level fields when calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`.
-
 .. image:: /images/integrations/cvat_video.png
    :alt: cvat-video
    :align: center
 
-Editing existing frame labels
------------------------------
+Editing frame-level label tracks
+--------------------------------
 
-The example below demonstrates how to edit existing frame-level detections of a
-video dataset:
+You can also edit existing frame-level labels of video datasets in CVAT.
+
+.. note::
+
+    If at least one existing label has its `keyframe=True` attribute set, only
+    the keyframe labels will be uploaded to CVAT, which provides a better
+    editing experience when performing spatial or time-varying attribute edits.
+
+    If no keyframe information is available, every existing label must be
+    marked as a keyframe in CVAT.
+
+The example below edits the existing detections of a video dataset. Note that,
+since the dataset's labels do not have keyframe markings, we artifically tag
+every 10th frame as a keyframe to provide a better editing experience in CVAT:
 
 .. code:: python
     :linenos:
@@ -1264,8 +1681,20 @@ video dataset:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset("quickstart-video")
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+
     view = dataset.take(1)
+
+    # Mark some keyframes
+    sample = view.first()
+    num_frames = len(sample.frames)
+    keyframes = set(range(1, num_frames, 10)).union({1, num_frames})
+    for frame_number in keyframes:
+        frame = sample.frames[frame_number]
+        for det in frame.detections.detections:
+            det.keyframe = True
+
+    sample.save()
 
     anno_key = "cvat_video"
 

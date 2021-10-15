@@ -184,6 +184,42 @@ class SampleCollection(object):
     def default_classes(self, classes):
         raise NotImplementedError("Subclass must implement default_classes")
 
+    def has_classes(self, field):
+        """Determines whether this collection has a classes list for the given
+        field.
+
+        Classes may be defined either in :meth:`classes` or
+        :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.classes or bool(self.default_classes)
+
+    def get_classes(self, field):
+        """Gets the classes list for the given field, or None if no classes
+        are available.
+
+        Classes are first retrieved from :meth:`classes` if they exist,
+        otherwise from :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.classes:
+            return self.classes[field]
+
+        if self.default_classes:
+            return self.default_classes
+
+        return None
+
     @property
     def mask_targets(self):
         """The mask targets of the underlying dataset.
@@ -213,6 +249,42 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement default_mask_targets"
         )
+
+    def has_mask_targets(self, field):
+        """Determines whether this collection has mask targets for the given
+        field.
+
+        Mask targets may be defined either in :meth:`mask_targets` or
+        :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.mask_targets or bool(self.default_mask_targets)
+
+    def get_mask_targets(self, field):
+        """Gets the mask targets for the given field, or None if no mask
+        targets are available.
+
+        Mask targets are first retrieved from :meth:`mask_targets` if they
+        exist, otherwise from :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.mask_targets:
+            return self.mask_targets[field]
+
+        if self.default_mask_targets:
+            return self.default_mask_targets
+
+        return None
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -2486,7 +2558,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def filter_labels(self, field, filter, only_matches=True):
+    def filter_labels(
+        self, field, filter, only_matches=True, trajectories=False
+    ):
         """Filters the :class:`fiftyone.core.labels.Label` field of each
         sample in the collection.
 
@@ -2754,12 +2828,21 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
             only_matches (True): whether to only include samples with at least
                 one label after filtering (True) or include all samples (False)
+            trajectories (False): whether to match entire object trajectories
+                for which the object matches the given filter on at least one
+                frame. Only applicable to video datasets and frame-level label
+                fields whose objects have their ``index`` attributes populated
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.FilterLabels(field, filter, only_matches=only_matches)
+            fos.FilterLabels(
+                field,
+                filter,
+                only_matches=only_matches,
+                trajectories=trajectories,
+            )
         )
 
     @deprecated(reason="Use filter_labels() instead")
@@ -3535,6 +3618,8 @@ class SampleCollection(object):
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
+            omit_empty (True): whether to omit samples with no frame labels
+                after filtering
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4558,12 +4643,13 @@ class SampleCollection(object):
         Args:
             field_or_expr: can be any of the following:
 
-                -   a :class:`fiftyone.core.labels.VideoClassification`,
-                    :class:`fiftyone.core.labels.VideoClassifications`, or
+                -   a :class:`fiftyone.core.labels.TemporalDetection`,
+                    :class:`fiftyone.core.labels.TemporalDetections`,
                     :class:`fiftyone.core.fields.FrameSupportField`, or list of
                     :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
                     types:
+
                     -   :class:`fiftyone.core.labels.Classifications`
                     -   :class:`fiftyone.core.labels.Detections`
                     -   :class:`fiftyone.core.labels.Polylines`
@@ -5527,7 +5613,8 @@ class SampleCollection(object):
             missing_value (None): a value to insert for missing or
                 ``None``-valued fields
             unwind (False): whether to automatically unwind all recognized list
-                fields
+                fields (True) or unwind all list fields except the top-level
+                sample field (-1)
 
         Returns:
             the list of values
@@ -5852,6 +5939,10 @@ class SampleCollection(object):
         classes=None,
         attributes=True,
         mask_targets=None,
+        allow_additions=True,
+        allow_deletions=True,
+        allow_label_edits=True,
+        allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
         launch_editor=False,
@@ -5895,11 +5986,11 @@ class SampleCollection(object):
                     attributes populated
                 -   ``"polylines"``: polylines stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``False``
                 -   ``"polygons"``: polygons stored in
                     :class:`fiftyone.core.labels.Polylines` fields with their
-                    :attr:`mask <fiftyone.core.labels.Polyline.filled>`
+                    :attr:`filled <fiftyone.core.labels.Polyline.filled>`
                     attributes set to ``True``
                 -   ``"keypoints"``: keypoints stored in
                     :class:`fiftyone.core.labels.Keypoints` fields
@@ -5919,8 +6010,9 @@ class SampleCollection(object):
                 classes specified. All new label fields must have a class list
                 provided via one of the supported methods. For existing label
                 fields, if classes are not provided by this argument nor
-                ``label_schema``, they are parsed from :meth:`classes` or
-                :meth:`default_classes`
+                ``label_schema``, they are retrieved from :meth:`get_classes`
+                if possible, or else the observed labels on your dataset are
+                used
             attributes (True): specifies the label attributes of each label
                 field to include (other than their ``label``, which is always
                 included) in the annotation export. Can be any of the
@@ -5936,6 +6028,16 @@ class SampleCollection(object):
                 ``label_schema`` that do not define their attributes
             mask_targets (None): a dict mapping pixel values to semantic label
                 strings. Only applicable when annotating semantic segmentations
+            allow_additions (True): whether to allow new labels to be added.
+                Only applicable when editing existing label fields
+            allow_deletions (True): whether to allow labels to be deleted. Only
+                applicable when editing existing label fields
+            allow_label_edits (True): whether to allow the ``label`` attribute
+                of existing labels to be modified. Only applicable when editing
+                existing label fields
+            allow_spatial_edits (True): whether to allow edits to the spatial
+                properties (bounding boxes, vertices, keypoints, etc) of
+                labels. Only applicable when editing existing label fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -5958,6 +6060,10 @@ class SampleCollection(object):
             classes=classes,
             attributes=attributes,
             mask_targets=mask_targets,
+            allow_additions=allow_additions,
+            allow_deletions=allow_deletions,
+            allow_label_edits=allow_label_edits,
+            allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,
             launch_editor=launch_editor,
@@ -6779,7 +6885,7 @@ class SampleCollection(object):
         allow_missing=False,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, omit_terminal_lists, allow_missing
+            self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
         )
 
     def _has_field(self, field_name):
@@ -7244,7 +7350,7 @@ def _get_field_with_type(
         if field is not None:
             return field
 
-    # Allow for extraction of video clips when exporting video classification
+    # Allow for extraction of video clips when exporting temporal detection
     # datasets
     if (
         media_type == fom.VIDEO
@@ -7252,7 +7358,7 @@ def _get_field_with_type(
         and label_cls is fol.Classification
     ):
         field = _get_matching_label_field(
-            label_schema, (fol.VideoClassification, fol.VideoClassifications)
+            label_schema, (fol.TemporalDetection, fol.TemporalDetections)
         )
         if field is not None:
             return field
@@ -7306,13 +7412,14 @@ def _parse_field_name(
     omit_terminal_lists,
     allow_missing,
 ):
-    unwind_list_fields = set()
-    other_list_fields = set()
+    unwind_list_fields = []
+    other_list_fields = []
 
     # Parse explicit array references
+    # Note: `field[][]` is valid syntax for list-of-list fields
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
-        unwind_list_fields.add("".join(chunks[: (idx + 1)]))
+        unwind_list_fields.append("".join(chunks[: (idx + 1)]))
 
     # Array references [] have been stripped
     field_name = "".join(chunks)
@@ -7331,7 +7438,7 @@ def _parse_field_name(
             return "frames", True, [], [], False
 
         prefix = sample_collection._FRAMES_PREFIX
-        unwind_list_fields = {f[len(prefix) :] for f in unwind_list_fields}
+        unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -7370,25 +7477,33 @@ def _parse_field_name(
             if omit_terminal_lists and path == field_name:
                 break
 
+            list_count = 1
+            while isinstance(field_type.field, fof.ListField):
+                list_count += 1
+                field_type = field_type.field
+
             if auto_unwind:
-                unwind_list_fields.add(path)
+                if path not in unwind_list_fields:
+                    unwind_list_fields.extend([path] * list_count)
             elif path not in unwind_list_fields:
-                other_list_fields.add(path)
+                if path not in other_list_fields:
+                    other_list_fields.extend([path] * list_count)
 
     if is_frame_field:
         if auto_unwind:
-            unwind_list_fields.discard("")
+            unwind_list_fields = [f for f in unwind_list_fields if f != ""]
         else:
             prefix = sample_collection._FRAMES_PREFIX
             field_name = prefix + field_name
-            unwind_list_fields = {
+            unwind_list_fields = [
                 prefix + f if f else "frames" for f in unwind_list_fields
-            }
-            other_list_fields = {
+            ]
+            other_list_fields = [
                 prefix + f if f else "frames" for f in other_list_fields
-            }
+            ]
             if "frames" not in unwind_list_fields:
-                other_list_fields.add("frames")
+                if "frames" not in other_list_fields:
+                    other_list_fields.append("frames")
 
     # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`

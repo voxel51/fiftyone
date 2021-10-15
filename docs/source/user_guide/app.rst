@@ -161,6 +161,10 @@ using either the Python library or the CLI.
     can also be customized via the ``default_app_port`` parameter of your
     :ref:`FiftyOne config <configuring-fiftyone>`.
 
+    You can also provide the optional ``address`` parameter to restrict the
+    hostnames/IP addresses that can connect to your remote session. See
+    :ref:`this page <restricting-app-address>` for more information.
+
     Note that you can manipulate the `session` object on the remote machine as
     usual to programmatically interact with the App instance that you'll
     connect to locally next.
@@ -711,10 +715,10 @@ opposed to their labels) will not affect the sample tags of the underlying
 Viewing video clips
 ___________________
 
-Whenever you load a video dataset in the App that contains
-|VideoClassification| labels or frame-level label lists such as |Detections|,
-you can use the patches menu to create a view into your data that contains one
-sample per clip defined by a specified label field of your dataset.
+Whenever you load a video dataset in the App that contains |TemporalDetection|
+labels or frame-level label lists such as |Detections|, you can use the patches
+menu to create a view into your data that contains one sample per clip defined
+by a specified label field of your dataset.
 
 To switch to clips view, simply click the patches icon above the sample grid
 in the App, toggle to the ``Labels`` submenu, and then choose the field whose
@@ -722,13 +726,31 @@ clips you want to view. After you make a selection, a new |ToClips| view stage
 will be appended to the view bar and your view will be updated to show the
 clips.
 
-Creating a clips view for a |VideoClassification| or |VideoClassifications|
-field will create one sample per video classification defined by its
-`[first, last]` frame support, while creating a clips view for a frame-level
-label list field such as |Detections| will contain one sample per contiguous
-range of frames that contains at least one label in the specified field. See
-:ref:`this section <clip-views>` for more information about defining clip
-views.
+Creating a clips view for a |TemporalDetection| or |TemporalDetections| field
+will create one sample per temporal detection defined by its `[first, last]`
+frame support:
+
+.. image:: /images/app/app-clip-views1.gif
+    :alt: clip-views
+    :align: center
+
+|br|
+Creating a clips view for a frame-level label list field such as |Detections|
+will contain one sample per contiguous range of frames that contains at least
+one label in the specified field:
+
+.. image:: /images/app/app-clip-views2.gif
+    :alt: clip-views
+    :align: center
+
+.. note::
+
+    Switching to clips view will create clips for **only** the contents of
+    your current view, so you can use the view bar and the filters sidebar to
+    select only the content of interest prior to extracting clips.
+
+    See :ref:`this section <clip-views>` for more information about defining
+    clip views.
 
 When you hover over a clip in the grid view, the clip and its labels will play
 on loop. Similarly, when you open a clip in the
@@ -737,17 +759,6 @@ you play the video. If you would like to see other segments of the video from
 which a clip was extracted, simply drag the video scrubber outside the range of
 the clip.
 
-.. note::
-
-    Switching to clips view will create clips for **only** the contents of
-    your current view, so you can use the view bar and the filters sidebar to
-    select only the content of interest prior to extracting clips.
-
-.. image:: /images/app/app-clip-views.gif
-    :alt: clip-views
-    :align: center
-
-|br|
 You can interact with clip views in the App just like you would with any other
 view, including:
 

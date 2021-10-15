@@ -232,6 +232,7 @@ const Patcher = ({ bounds, close }: PatcherProps) => {
   const isVideo =
     useRecoilValue(selectors.isVideoDataset) &&
     useRecoilValue(selectors.isRootView);
+  const isClips = useRecoilValue(selectors.isClipsView);
   const [labels, setLabels] = useState(true);
 
   const labelProps = useSpring({
@@ -260,8 +261,8 @@ const Patcher = ({ bounds, close }: PatcherProps) => {
           </SwitchDiv>
         )}
       </SwitcherDiv>
-      {labels && isVideo && <LabelsClips close={close} />}
-      {labels && !isVideo && <LabelsPatches close={close} />}
+      {labels && (isVideo || isClips) && <LabelsClips close={close} />}
+      {labels && !isVideo && !isClips && <LabelsPatches close={close} />}
       {!labels && <EvaluationPatches close={close} />}
     </Popout>
   );

@@ -90,9 +90,9 @@ below).
     You can manipulate the `session` object on the remote machine as usual to
     programmatically interact with the App instance that you view locally.
 
-If you do not have `fiftyone` installed on your local machine, open a new
-terminal window on your local machine and execute the following command to
-setup port forwarding to connect to your remote session:
+To connect to your remote session, open a new terminal window on your local
+machine and execute the following command to setup port forwarding to connect
+to your remote session:
 
 .. code-block:: shell
 
@@ -137,6 +137,48 @@ to the above command.
     However, if you are using this key regularly,
     `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
     to your `~/.ssh/config` as the default `IdentityFile`.
+
+.. _restricting-app-address:
+
+Restricting the App address
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, the App will listen to any connection to its port. However, you can
+provide the optional `address` parameter to
+:meth:`launch_app() <fiftyone.core.session.launch_app>` to specify a particular
+IP address or hostname to which to restrict access to your session.
+
+For example, a common pattern is to set the App address to `"localhost"` so
+that the App can only be accessed via http://localhost:5151 on either the local
+machine itself or a machine that was able to setup ssh port forwarding as
+described in the previous section.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    # Restrict to http://localhost:5151 connections made via port forwarding
+    session = fo.launch_app(dataset, remote=True, address="localhost")
+
+If desired, you can permanently configure an App address by setting the
+`default_app_address` of your :ref:`FiftyOne config <configuring-fiftyone>`.
+You can achieve this by adding the following entry to your
+`~/.fiftyone/config.json` file:
+
+.. code-block:: json
+
+    {
+        "default_app_address": "localhost"
+    }
+
+or by setting the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DEFAULT_APP_ADDRESS=localhost
 
 .. _notebooks:
 
@@ -347,18 +389,26 @@ Note that you can also open the App
 Cloud storage
 _____________
 
-FiftyOne does not yet support accessing data directly in a cloud bucket.
-Instead, the best practice that we recommend is to mount the cloud bucket as a
-local drive on a cloud compute instance.
+You can work with data in cloud storage buckets in FiftyOne by mounting the
+buckets as local drives on a cloud compute instance.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
-:ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>` cloud
+:ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>`
 environments.
+
+.. note::
+
+    Want native cloud data support?
+
+    `Contact us <https://voxel51.com/#teams-form>`_ about becoming an early
+    adopter of FiftyOne Teams, an open source-compatible enterprise deployment
+    of FiftyOne with multiuser collaboration features, native cloud dataset
+    support, and much more!
 
 .. _aws:
 
-Amazon Web Services
-~~~~~~~~~~~~~~~~~~~
+AWS
+~~~
 
 If your data is stored in an AWS S3 bucket, we recommend mounting the bucket as
 a local drive on an EC2 instance and then accessing the data using the standard

@@ -557,6 +557,64 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+.. _date-views:
+
+Date-based views
+________________
+
+If your dataset contains :ref:`date fields <dates-and-datetimes>`, you can
+construct dataset views that query/filter based on this information by simply
+writing the appropriate |ViewExpression|, using `date`, `datetime` and
+`timedelta` objects to define the required logic.
+
+For example, you can use the
+:meth:`match() <fiftyone.core.collections.SampleCollection.match>` stage to
+filter a dataset by date as follows:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import datetime, timedelta
+
+    import fiftyone as fo
+    from fiftyone import ViewField as F
+
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath="image1.png",
+                capture_date=datetime(2021, 8, 24, 1, 0, 0),
+            ),
+            fo.Sample(
+                filepath="image2.png",
+                capture_date=datetime(2021, 8, 24, 2, 0, 0),
+            ),
+            fo.Sample(
+                filepath="image3.png",
+                capture_date=datetime(2021, 8, 24, 3, 0, 0),
+            ),
+        ]
+    )
+
+    query_date = datetime(2021, 8, 24, 2, 1, 0)
+    query_delta = timedelta(minutes=30)
+
+    # Samples with capture date after 2021-08-24 02:01:00
+    view = dataset.match(F("capture_date") > query_date)
+    print(view)
+
+    # Samples with capture date within 30 minutes of 2021-08-24 02:01:00
+    view = dataset.match(abs(F("capture_date") - query_date) < query_delta)
+    print(view)
+
+.. note::
+
+    As the example above demonstrates, |ViewExpression| instances may contain
+    `date`, `datetime` and `timedelta` objects. Internally, subtracting two
+    dates returns the number of milliseconds between them. Using `timedelta`
+    allows these units to be abstracted away from the user.
+
 .. _object-patches-views:
 
 Object patches
@@ -816,10 +874,9 @@ You can use
 create views into your video datasets that contain one sample per clip defined
 by a specific field or expression in a video collection.
 
-For example, if you have :ref:`video classification <video-classification>`
-labels on your dataset, then you can create a clips view that contains one
-sample per temporal segment by simply passing the name of the video
-classification field to
+For example, if you have :ref:`temporal detection <temporal-detection>` labels
+on your dataset, then you can create a clips view that contains one sample per
+temporal segment by simply passing the name of the temporal detection field to
 :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`:
 
 .. code-block:: python
@@ -831,10 +888,10 @@ classification field to
 
     sample1 = fo.Sample(
         filepath="video1.mp4",
-        events=fo.VideoClassifications(
-            classifications=[
-                fo.VideoClassification(label="meeting", support=[1, 3]),
-                fo.VideoClassification(label="party", support=[2, 4]),
+        events=fo.TemporalDetections(
+            detections=[
+                fo.TemporalDetection(label="meeting", support=[1, 3]),
+                fo.TemporalDetection(label="party", support=[2, 4]),
             ]
         ),
     )
@@ -842,10 +899,10 @@ classification field to
     sample2 = fo.Sample(
         filepath="video2.mp4",
         metadata=fo.VideoMetadata(total_frame_count=5),
-        events=fo.VideoClassifications(
-            classifications=[
-                fo.VideoClassification(label="party", support=[1, 3]),
-                fo.VideoClassification(label="meeting", support=[3, 5]),
+        events=fo.TemporalDetections(
+            detections=[
+                fo.TemporalDetection(label="party", support=[1, 3]),
+                fo.TemporalDetection(label="meeting", support=[3, 5]),
             ]
         ),
     )
@@ -857,7 +914,7 @@ classification field to
     print(view)
 
     # Verify that one sample per clip was created
-    print(dataset.count("events.classifications"))  # 4
+    print(dataset.count("events.detections"))  # 4
     print(len(view))  # 4
 
 .. code-block:: text
@@ -884,7 +941,7 @@ All clips views contain a top-level `support` field that contains the
 `[first, last]` frame range of the clip within `filepath`, which points to the
 source video.
 
-Note that the `events` field, which had type |VideoClassifications| in the
+Note that the `events` field, which had type |TemporalDetections| in the
 source dataset, now has type |Classification| in the clips view, since each
 classification has a one-to-one relationship with its clip.
 
@@ -898,11 +955,11 @@ classification has a one-to-one relationship with its clip.
 .. note::
 
     If you edit the `support` or |Classification| of a sample in a clips view
-    created from video classifications, the changes will be applied to the
-    corresponding |VideoClassification| in the source dataset.
+    created from temporal detections, the changes will be applied to the
+    corresponding |TemporalDetection| in the source dataset.
 
 Continuing from the example above, if you would like to see clips only for
-specific video classification labels, you can achieve this by first
+specific temporal detection labels, you can achieve this by first
 :ref:`filtering the labels <filtering-sample-contents>`:
 
 .. code-block:: python
@@ -1072,7 +1129,7 @@ source dataset, there are some differences compared to non-clip views:
 -   Any edits that you make to sample-level fields of clip views will not be
     reflected on the source dataset (except for edits to the `support` and
     |Classification| field populated when generating clip views based on
-    |VideoClassification| labels, as described above)
+    |TemporalDetection| labels, as described above)
 
 .. _frame-views:
 

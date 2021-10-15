@@ -5,6 +5,8 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime
+
 from bson import ObjectId
 import numpy as np
 import unittest
@@ -210,6 +212,8 @@ class VideoTests(unittest.TestCase):
             int_field=1,
             str_field="hi",
             float_field=1.0,
+            date_field=date.today(),
+            datetime_field=datetime.utcnow(),
             list_field=[1, 2, 3],
             dict_field={"hello": "world"},
             vector_field=np.arange(5),
@@ -223,6 +227,8 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(schema["int_field"], fo.IntField)
         self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["date_field"], fo.DateField)
+        self.assertIsInstance(schema["datetime_field"], fo.DateTimeField)
         self.assertIsInstance(schema["list_field"], fo.ListField)
         self.assertIsInstance(schema["dict_field"], fo.DictField)
         self.assertIsInstance(schema["vector_field"], fo.VectorField)
@@ -1131,10 +1137,10 @@ class VideoTests(unittest.TestCase):
             metadata=fo.VideoMetadata(total_frame_count=4),
             tags=["test"],
             weather="sunny",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
-                    fo.VideoClassification(label="party", support=[2, 4]),
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
                 ]
             ),
             support=[1, 2],
@@ -1148,10 +1154,10 @@ class VideoTests(unittest.TestCase):
             metadata=fo.VideoMetadata(total_frame_count=5),
             tags=["test"],
             weather="cloudy",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="party", support=[3, 5]),
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="party", support=[3, 5]),
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
                 ]
             ),
             support=[1, 4],
@@ -1301,19 +1307,19 @@ class VideoTests(unittest.TestCase):
             view.count_values("events.label"), {"party": 2, "meeting": 2}
         )
         self.assertDictEqual(
-            dataset.count_values("events.classifications.label"),
+            dataset.count_values("events.detections.label"),
             {"meeting": 2, "party": 2},
         )
 
         view2.save()
 
         self.assertEqual(len(view), 2)
-        self.assertEqual(dataset.count("events.classifications"), 2)
+        self.assertEqual(dataset.count("events.detections"), 2)
         self.assertDictEqual(
             view.count_values("events.label"), {"MEETING": 1, "PARTY": 1}
         )
         self.assertDictEqual(
-            dataset.count_values("events.classifications.label"),
+            dataset.count_values("events.detections.label"),
             {"MEETING": 1, "PARTY": 1},
         )
         self.assertIsNotNone(view.first().id)
@@ -1331,7 +1337,7 @@ class VideoTests(unittest.TestCase):
             view.count_values("events.label"), {"party": 1, "MEETING": 1}
         )
         self.assertDictEqual(
-            dataset.count_values("events.classifications.label"),
+            dataset.count_values("events.detections.label"),
             {"party": 1, "MEETING": 1},
         )
 
@@ -1664,10 +1670,10 @@ class VideoTests(unittest.TestCase):
             metadata=fo.VideoMetadata(total_frame_count=4),
             tags=["test"],
             weather="sunny",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
-                    fo.VideoClassification(label="party", support=[2, 4]),
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
                 ]
             ),
         )
@@ -1687,10 +1693,10 @@ class VideoTests(unittest.TestCase):
             metadata=fo.VideoMetadata(total_frame_count=5),
             tags=["test"],
             weather="cloudy",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="party", support=[3, 5]),
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="party", support=[3, 5]),
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
                 ]
             ),
         )
@@ -2147,10 +2153,10 @@ class VideoTests(unittest.TestCase):
             metadata=fo.VideoMetadata(total_frame_count=4),
             tags=["test"],
             weather="sunny",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
-                    fo.VideoClassification(label="party", support=[2, 4]),
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
                 ]
             ),
         )
@@ -2170,10 +2176,10 @@ class VideoTests(unittest.TestCase):
             metadata=fo.VideoMetadata(total_frame_count=5),
             tags=["test"],
             weather="cloudy",
-            events=fo.VideoClassifications(
-                classifications=[
-                    fo.VideoClassification(label="party", support=[3, 5]),
-                    fo.VideoClassification(label="meeting", support=[1, 3]),
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="party", support=[3, 5]),
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
                 ]
             ),
         )

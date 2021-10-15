@@ -49,9 +49,7 @@ const ActionDiv = styled.div`
 const Patches = () => {
   const [open, setOpen] = useState(false);
   const loading = useRecoilValue(patching);
-  const isVideo =
-    useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(selectors.isRootView);
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const fields = useRecoilValue(patchesFields);
@@ -336,7 +334,7 @@ const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
     <ActionsRowDiv style={style}>
       <Options modal={modal} />
       <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
-      {!modal && !isClips && <Patches />}
+      {!modal && <Patches />}
       {!isVideo && <Similarity modal={modal} />}
       {modal && <Hidden />}
       {!modal && <SaveFilters />}
