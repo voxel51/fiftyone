@@ -6,6 +6,7 @@ FiftyOne aggregation-related unit tests.
 |
 """
 from datetime import date, datetime, timedelta
+import math
 
 from bson import ObjectId
 import unittest
@@ -412,6 +413,35 @@ class DatasetTests(unittest.TestCase):
         expected = ["cat", "dog", "cat", "dog", "rabbit", "squirrel"]
         self.assertListEqual(values1, expected)
         self.assertListEqual(values2, expected)
+
+    @drop_datasets
+    def test_nan_inf(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", float=1.0),
+                fo.Sample(filepath="image2.png", float=-float("inf")),
+                fo.Sample(filepath="image3.png", float=float("inf")),
+                fo.Sample(filepath="image4.png", float=float("nan")),
+                fo.Sample(filepath="image5.png", float=None),
+                fo.Sample(filepath="image6.png"),
+            ]
+        )
+
+        bounds = dataset.bounds("float")
+        self.assertTrue(math.isnan(bounds[0]))
+        self.assertTrue(math.isinf(bounds[1]))
+
+        self.assertEqual(dataset.count("float"), 4)
+        self.assertEqual(len(dataset.distinct("float")), 4)
+        self.assertEqual(len(dataset.count_values("float")), 5)
+        self.assertEqual(len(dataset.values("float")), 6)
+        self.assertTrue(math.isnan(dataset.mean("float")))
+        self.assertTrue(math.isnan(dataset.sum("float")))
+        self.assertTrue(math.isnan(dataset.std("float")))
+
+        counts, edges, other = dataset.histogram_values("float")
+        self.assertEqual(other, 5)  # captures None, nan, inf
 
     @drop_datasets
     def test_object_ids(self):

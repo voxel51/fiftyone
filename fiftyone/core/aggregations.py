@@ -8,6 +8,7 @@ Aggregations.
 from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
+import math
 
 import numpy as np
 
@@ -956,6 +957,21 @@ class HistogramValues(Aggregation):
 
     def _compute_bin_edges(self, sample_collection):
         bounds = sample_collection.bounds(self._field_name, expr=self._expr)
+
+        # If the field contains nan, inf, recompute bounds excluding them
+        if any(math.isnan(b) | math.isinf(b) for b in bounds):
+            to_finite = (
+                F()
+                .is_in([float("nan"), float("inf"), -float("inf")])
+                .if_else(None, F())
+            )
+
+            if self._expr is not None:
+                expr = self._expr.apply(to_finite)
+            else:
+                expr = to_finite
+
+            bounds = sample_collection.bounds(self._field_name, expr=expr)
 
         if any(b is None for b in bounds):
             bounds = [-1, -1]
