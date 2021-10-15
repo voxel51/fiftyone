@@ -3,22 +3,20 @@ Backing document classes for :class:`fiftyone.core.sample.Sample` instances.
 
 Class hierarchy::
 
-    SampleDocument
-    ├── NoDatasetSampleDocument
+    SerializableDocument
+    ├── NoDatasetSampleDocument
     └── DatasetSampleDocument
-        ├── my_custom_dataset
-        ├── another_dataset
-        └── ...
+        ├── my_custom_dataset
+        ├── another_dataset
+        └── ...
 
 Design invariants:
 
--   A :class:`fiftyone.core.sample.Sample` always has a backing
-    ``sample._doc``, which is an instance of a subclass of
-    :class:`SampleDocument`
+-   A :class:`fiftyone.core.sample.Sample` always has a backing ``_doc`` that
+    is an instance of :class:`fiftyone.core.odm.document.SerializableDocument`
 
 -   A :class:`fiftyone.core.dataset.Dataset` always has a backing
-    ``dataset._sample_doc_cls`` which is a subclass of
-    :class:`DatasetSampleDocument``.
+    `_sample_doc_cls` that is a subclass of :class:`DatasetSampleDocument`
 
 **Implementation details**
 
@@ -32,7 +30,8 @@ attribute is an instance of :class:`NoDatasetSampleDocument`::
 
 When a new :class:`fiftyone.core.dataset.Dataset` is created, its
 ``_sample_doc_cls`` attribute holds a dynamically created subclass of
-:class:`DatasetSampleDocument` whose name is the name of the dataset::
+:class:`DatasetSampleDocument` whose name is the name of the dataset's sample
+collection::
 
     dataset = fo.Dataset(name="my_dataset")
     dataset._sample_doc_cls  # my_dataset(DatasetSampleDocument)
@@ -67,7 +66,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
 
-from .document import Document, SampleDocument
+from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
 
@@ -83,7 +82,7 @@ def _generate_rand(filepath=None):
     return _random.random() * 0.001 + 0.999
 
 
-class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
+class DatasetSampleDocument(DatasetMixin, Document):
     """Base class for sample documents backing samples in datasets.
 
     All ``fiftyone.core.dataset.Dataset._sample_doc_cls`` classes inherit from
@@ -91,6 +90,8 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     """
 
     meta = {"abstract": True}
+
+    _is_frames_doc = False
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     filepath = fof.StringField(required=True)
@@ -109,8 +110,10 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
         return fields[:1] + ("media_type",) + fields[1:]
 
 
-class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
+class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     """Backing document for samples that have not been added to a dataset."""
+
+    _is_frames_doc = False
 
     # pylint: disable=no-member
     default_fields = DatasetSampleDocument._fields

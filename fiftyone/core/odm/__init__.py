@@ -24,6 +24,7 @@ from .database import (
     list_collections,
     get_collection_stats,
     stream_collection,
+    count_documents,
     export_document,
     export_collection,
     import_document,
@@ -41,12 +42,11 @@ from .document import (
     DynamicDocument,
     EmbeddedDocument,
     DynamicEmbeddedDocument,
-    SampleDocument,
     SerializableDocument,
 )
 from .frame import (
-    DatasetFrameSampleDocument,
-    NoDatasetFrameSampleDocument,
+    DatasetFrameDocument,
+    NoDatasetFrameDocument,
 )
 from .mixins import (
     get_default_fields,

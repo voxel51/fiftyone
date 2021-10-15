@@ -66,13 +66,15 @@ def import_samples(
         dataset_importer: a :class:`DatasetImporter`
         label_field (None): controls the field(s) in which imported labels are
             stored. Only applicable if ``dataset_importer`` is a
-            :class:`LabeledImageDatasetImporter`. If the importer produces a
-            single :class:`fiftyone.core.labels.Label` instance per sample,
-            this argument specifies the name of the field to use; the default
-            is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            :class:`LabeledImageDatasetImporter` or
+            :class:`LabeledVideoDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per
+            sample/frame, this argument specifies the name of the field to use;
+            the default is ``"ground_truth"``. If the importer produces a
+            dictionary of labels per sample, this argument specifies a string
+            prefix to prepend to each label key; the default in this case is to
+            directly use the keys of the imported label dictionaries as field
+            names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -195,14 +197,16 @@ def merge_samples(
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         dataset_importer: a :class:`DatasetImporter`
         label_field (None): controls the field(s) in which imported labels are
-            stored. Only applicable if the dataset importer used is a
-            :class:`LabeledImageDatasetImporter`. If the importer produces a
-            single :class:`fiftyone.core.labels.Label` instance per sample,
-            this argument specifies the name of the field to use; the default
-            is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            stored. Only applicable if ``dataset_importer`` is a
+            :class:`LabeledImageDatasetImporter` or
+            :class:`LabeledVideoDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per
+            sample/frame, this argument specifies the name of the field to use;
+            the default is ``"ground_truth"``. If the importer produces a
+            dictionary of labels per sample, this argument specifies a string
+            prefix to prepend to each label key; the default in this case is to
+            directly use the keys of the imported label dictionaries as field
+            names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         key_field ("filepath"): the sample field to use to decide whether to
@@ -1467,22 +1471,27 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         if empty_import:
             #
-            # The `dataset` we're importing into is empty, so we mostly replace
-            # its backing document with `dataset_dict`
+            # The `dataset` we're importing into is empty, so we replace its
+            # backing document with `dataset_dict`, except for the
+            # metadata-related fields listed below, which we keep in `dataset`
             #
             # Note that we must work with dicts instead of `DatasetDocument`s
             # here because the import may need migration
             #
+            doc = dataset._doc
             dataset_dict.update(
                 dict(
-                    _id=dataset._doc.id,
-                    name=dataset._doc.name,
-                    sample_collection_name=dataset._doc.sample_collection_name,
-                    persistent=dataset._doc.persistent,
+                    _id=doc.id,
+                    name=doc.name,
+                    persistent=doc.persistent,
+                    created_at=doc.created_at,
+                    last_loaded_at=doc.last_loaded_at,
+                    sample_collection_name=doc.sample_collection_name,
+                    frame_collection_name=doc.frame_collection_name,
                 )
             )
 
-            # RunResults are imported separately
+            # Run results are imported separately
 
             for run_doc in dataset_dict.get("evaluations", {}).values():
                 run_doc["results"] = None
@@ -1553,7 +1562,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import RunResults
+        # Import Run results
         #
 
         if empty_import:

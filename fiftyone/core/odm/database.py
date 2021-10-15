@@ -6,21 +6,24 @@ Database utilities.
 |
 """
 from copy import copy
-from itertools import repeat
+from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
 import os
 
 import asyncio
 from bson import json_util
+from bson.codec_options import CodecOptions
 from mongoengine import connect
 import motor
 from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
+import pytz
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
@@ -215,7 +218,8 @@ def get_db_conn():
         a ``pymongo.database.Database``
     """
     _connect()
-    return _client[foc.DEFAULT_DATABASE]
+    db = _client[foc.DEFAULT_DATABASE]
+    return _apply_options(db)
 
 
 def get_async_db_conn():
@@ -225,7 +229,24 @@ def get_async_db_conn():
         a ``motor.motor_tornado.MotorDatabase``
     """
     _async_connect()
-    return _async_client[foc.DEFAULT_DATABASE]
+    db = _async_client[foc.DEFAULT_DATABASE]
+    return _apply_options(db)
+
+
+def _apply_options(db):
+    timezone = fo.config.timezone
+
+    if not timezone or timezone.lower() == "utc":
+        return db
+
+    if timezone.lower() == "local":
+        tzinfo = datetime.now().astimezone().tzinfo
+    else:
+        tzinfo = pytz.timezone(timezone)
+
+    return db.with_options(
+        codec_options=CodecOptions(tz_aware=True, tzinfo=tzinfo)
+    )
 
 
 def drop_database():
@@ -338,6 +359,17 @@ def get_collection_stats(collection_name):
     stats["wiredTiger"] = None
     stats["indexDetails"] = None
     return stats
+
+
+def count_documents(coll, pipeline):
+    result = aggregate(coll, pipeline + [{"$count": "count"}])
+
+    try:
+        return list(result)[0]["count"]
+    except:
+        pass
+
+    return 0
 
 
 def export_document(doc, json_path):

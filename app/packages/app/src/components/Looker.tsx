@@ -180,6 +180,15 @@ const DetectionInfo = ({ detail }) => {
   );
 };
 
+const HeatmapInfo = ({ detail }) => {
+  return (
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <ContentItem key={"pixel-value"} name={"pixel"} value={detail.target} />
+      <AttrInfo label={detail.label} />
+    </AttrBlock>
+  );
+};
+
 const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
@@ -227,9 +236,10 @@ const Border = ({ color, id }) => {
 const OVERLAY_INFO = {
   Classification: ClassificationInfo,
   Detection: DetectionInfo,
+  Heatmap: HeatmapInfo,
   Keypoint: KeypointInfo,
-  Segmentation: SegmentationInfo,
   Polyline: PolylineInfo,
+  Segmentation: SegmentationInfo,
 };
 
 const TagInfo = ({ tags }: { tags: string[] }) => {
@@ -319,10 +329,8 @@ const lookerOptions = selector({
     const zoom = get(selectors.isPatchesView)
       ? get(atoms.cropToContent(true))
       : false;
-    const colorByLabel = get(atoms.colorByLabel(true));
 
     return {
-      colorByLabel,
       showConfidence,
       showIndex,
       showLabel,
@@ -330,13 +338,15 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      colorMap: get(selectors.colorMap(true)),
       filter: get(labelFilters(true)),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
       fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
       frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
+      timeZone: get(selectors.timeZone),
+      coloring: get(selectors.coloring(true)),
+      alpha: get(atoms.alpha(true)),
     };
   },
 });
@@ -388,7 +398,9 @@ const Looker = ({
     atoms.modal
   );
   const fullscreen = useRecoilValue(atoms.fullscreen);
+  const isClips = useRecoilValue(selectors.isClipsView);
   const mimetype = getMimeType(sample);
+  const schema = useRecoilValue(selectors.fieldSchema("sample"));
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
   const activePaths = useRecoilValue(labelAtoms.activeModalFields);
@@ -398,6 +410,7 @@ const Looker = ({
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
+    const etc = isClips ? { support: sample.support } : {};
 
     return new constructor(
       sample,
@@ -408,6 +421,8 @@ const Looker = ({
         frameNumber,
         sampleId: sample._id,
         thumbnail: false,
+        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
+        ...etc,
       },
       {
         activePaths,
