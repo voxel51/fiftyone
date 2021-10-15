@@ -7,7 +7,7 @@ FiftyOne datasets.
 """
 from collections import defaultdict
 from copy import deepcopy
-import datetime
+from datetime import datetime
 import fnmatch
 import logging
 import numbers
@@ -50,12 +50,19 @@ foud = fou.lazy_import("fiftyone.utils.data")
 logger = logging.getLogger(__name__)
 
 
-def list_datasets():
-    """Returns the list of available FiftyOne datasets.
+def list_datasets(info=False):
+    """Lists the available FiftyOne datasets.
+
+    Args:
+        info (False): whether to return info dicts describing each dataset
+            rather than just their names
 
     Returns:
-        a list of :class:`Dataset` names
+        a list of dataset names or info dicts
     """
+    if info:
+        return _list_dataset_info()
+
     return _list_datasets()
 
 
@@ -68,12 +75,8 @@ def dataset_exists(name):
     Returns:
         True/False
     """
-    try:
-        # pylint: disable=no-member
-        foo.DatasetDocument.objects.get(name=name)
-        return True
-    except moe.DoesNotExist:
-        return False
+    conn = foo.get_db_conn()
+    return bool(list(conn.datasets.find({"name": name}, {"_id": 1}).limit(1)))
 
 
 def load_dataset(name):
@@ -102,7 +105,7 @@ def get_default_dataset_name():
     Returns:
         a dataset name
     """
-    now = datetime.datetime.now()
+    now = datetime.now()
     name = now.strftime("%Y.%m.%d.%H.%M.%S")
     if name in _list_datasets(include_private=True):
         name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
@@ -177,7 +180,7 @@ def delete_non_persistent_datasets(verbose=False):
     """
     for name in _list_datasets(include_private=True):
         try:
-            dataset = Dataset(name, _create=False, _migrate=False)
+            dataset = Dataset(name, _create=False, _virtual=True)
         except:
             # If the dataset can't be loaded, it likely requires migration,
             # which means it is persistent, so we don't worry about it here
@@ -218,7 +221,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         persistent=False,
         overwrite=False,
         _create=True,
-        _migrate=True,
+        _virtual=False,
         **kwargs,
     ):
         if name is None and _create:
@@ -233,7 +236,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                name, migrate=_migrate
+                name, virtual=_virtual
             )
 
         self._doc = doc
@@ -376,6 +379,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
     @property
+    def created_at(self):
+        """The datetime that the dataset was created."""
+        return self._doc.created_at
+
+    @property
+    def last_loaded_at(self):
+        """The datetime that the dataset was last loaded."""
+        return self._doc.last_loaded_at
+
+    @property
     def persistent(self):
         """Whether the dataset persists in the database after a session is
         terminated.
@@ -479,7 +492,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         .. note::
 
             The pixel value `0` is a reserved "background" class that is
-            rendered as invislble in the App.
+            rendered as invisible in the App.
 
         Examples::
 
@@ -514,7 +527,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         .. note::
 
             The pixel value `0` is a reserved "background" class that is
-            rendered as invislble in the App.
+            rendered as invisible in the App.
 
         Examples::
 
@@ -4323,7 +4336,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-            self.name, migrate=False
+            self.name, virtual=True
         )
 
         self._doc = doc
@@ -4347,18 +4360,51 @@ def _get_random_characters(n):
 
 
 def _list_datasets(include_private=False):
+    conn = foo.get_db_conn()
+
     if include_private:
-        # pylint: disable=no-member
-        return sorted(foo.DatasetDocument.objects.distinct("name"))
+        return sorted(conn.datasets.distinct("name"))
 
     # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches datasets
-    # pylint: disable=no-member
+    # e.g., patches or frames datasets
     return sorted(
-        foo.DatasetDocument.objects.filter(
-            sample_collection_name__startswith="samples."
+        conn.datasets.find(
+            {"sample_collection_name": {"$regex": "^samples\\."}}
         ).distinct("name")
     )
+
+
+def _list_dataset_info():
+    info = []
+    for name in _list_datasets():
+        try:
+            dataset = Dataset(name, _create=False, _virtual=True)
+            num_samples = dataset._sample_collection.estimated_document_count()
+            i = {
+                "name": dataset.name,
+                "created_at": dataset.created_at,
+                "last_loaded_at": dataset.last_loaded_at,
+                "version": dataset.version,
+                "persistent": dataset.persistent,
+                "media_type": dataset.media_type,
+                "num_samples": num_samples,
+            }
+        except:
+            # If the dataset can't be loaded, it likely requires migration, so
+            # we can't show any information about it
+            i = {
+                "name": name,
+                "created_at": None,
+                "last_loaded_at": None,
+                "version": None,
+                "persistent": None,
+                "media_type": None,
+                "num_samples": None,
+            }
+
+        info.append(i)
+
+    return info
 
 
 def _create_dataset(
@@ -4405,15 +4451,18 @@ def _create_dataset(
         frame_doc_cls = _create_frame_document_cls(frame_collection_name)
         frame_fields = []
 
+    now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
-        media_type=media_type,
         name=name,
+        version=focn.VERSION,
+        created_at=now,
+        last_loaded_at=now,
+        media_type=media_type,
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,
         sample_fields=sample_fields,
         frame_fields=frame_fields,
-        version=focn.VERSION,
     )
     dataset_doc.save()
 
@@ -4440,7 +4489,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
-    now = datetime.datetime.now()
+    now = datetime.now()
 
     if patches:
         prefix = "patches"
@@ -4514,8 +4563,8 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(name, migrate=True):
-    if migrate:
+def _load_dataset(name, virtual=False):
+    if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
     try:
@@ -4535,6 +4584,10 @@ def _load_dataset(name, migrate=True):
         sample_doc_cls._declare_field(sample_field)
 
     frame_collection_name = dataset_doc.frame_collection_name
+
+    if not virtual:
+        dataset_doc.last_loaded_at = datetime.utcnow()
+        dataset_doc.save()
 
     if sample_collection_name.startswith("clips."):
         # Clips datasets directly inherit frames from source dataset
@@ -4604,6 +4657,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     dataset_doc = dataset._doc.copy()
     dataset_doc.name = name
+    dataset_doc.created_at = datetime.utcnow()
+    dataset_doc.last_loaded_at = None
     dataset_doc.persistent = False
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name

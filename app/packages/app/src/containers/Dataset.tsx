@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { useRecoilCallback, useRecoilValue, useResetRecoilState } from "recoil";
+import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
@@ -27,7 +27,6 @@ const Container = styled.div`
 `;
 
 const Body = styled.div`
-  padding: 0 1rem;
   width: 100%;
   flex-grow: 1;
   display: flex;
