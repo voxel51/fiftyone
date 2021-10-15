@@ -4649,6 +4649,7 @@ class SampleCollection(object):
                     :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
                     types:
+
                     -   :class:`fiftyone.core.labels.Classifications`
                     -   :class:`fiftyone.core.labels.Detections`
                     -   :class:`fiftyone.core.labels.Polylines`
