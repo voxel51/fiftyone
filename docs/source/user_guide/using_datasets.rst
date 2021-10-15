@@ -1870,7 +1870,6 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
         x, y = np.meshgrid(np.linspace(-1, 1, w), np.linspace(-1, 1, h))
         x0, y0 = np.random.random(2) - 0.5
         kernel = sign * np.exp(-np.sqrt((x - x0) ** 2 + (y - y0) ** 2))
-
         return fo.Heatmap(map=kernel, range=[-1, 1])
 
     dataset = foz.load_zoo_dataset("quickstart").select_fields().clone()
