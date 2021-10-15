@@ -443,6 +443,19 @@ class DatasetTests(unittest.TestCase):
         counts, edges, other = dataset.histogram_values("float")
         self.assertEqual(other, 5)  # captures None, nan, inf
 
+        # Test `safe=True` option
+
+        bounds = dataset.bounds("float", safe=True)
+        self.assertAlmostEqual(bounds[0], 1.0)
+        self.assertAlmostEqual(bounds[1], 1.0)
+
+        self.assertEqual(dataset.count("float", safe=True), 1)
+        self.assertEqual(len(dataset.distinct("float", safe=True)), 1)
+        self.assertEqual(len(dataset.count_values("float", safe=True)), 2)
+        self.assertAlmostEqual(dataset.mean("float", safe=True), 1.0)
+        self.assertAlmostEqual(dataset.sum("float", safe=True), 1.0)
+        self.assertAlmostEqual(dataset.std("float", safe=True), 0.0)
+
     @drop_datasets
     def test_object_ids(self):
         dataset = fo.Dataset()
