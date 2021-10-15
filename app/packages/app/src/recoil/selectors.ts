@@ -48,7 +48,7 @@ export const fiftyone = selector({
     let response = null;
     do {
       try {
-        response = await (await fetch(`${http}/fiftyone`)).json();
+        response = await (await fetch(`${http}fiftyone`)).json();
       } catch {}
       if (response) break;
       await new Promise((r) => setTimeout(r, 2000));
@@ -65,7 +65,7 @@ export const showTeamsButton = selector({
     const storedTeams = window.localStorage.getItem("fiftyone-teams");
     if (storedTeams) {
       window.localStorage.removeItem("fiftyone-teams");
-      fetch(`${http}/teams?submitted=true`, { method: "post" });
+      fetch(`${http}teams?submitted=true`, { method: "post" });
     }
     if (
       teams.submitted ||

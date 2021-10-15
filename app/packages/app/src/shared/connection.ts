@@ -99,6 +99,9 @@ export const handleId = new URLSearchParams(window.location.search).get(
 export const sessionId = uuid();
 
 const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
+const path =
+  window.location.pathname +
+  (window.location.pathname.endsWith("/") ? "" : "/");
 
 export const port = isElectron()
   ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
@@ -109,12 +112,14 @@ const address = isElectron()
   : window.location.hostname;
 
 export const http = isElectron()
-  ? `http://${address}:${port}`
-  : window.location.protocol + "//" + host;
+  ? `http://${address}:${port}${path}`
+  : window.location.protocol + "//" + host + path;
 
 export const ws = isElectron()
-  ? `ws://${address}:${port}/state`
-  : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${host}/state`;
+  ? `ws://${address}:${port}${path}state`
+  : `${
+      window.location.protocol === "https:" ? "wss:" : "ws:"
+    }//${host}${path}state`;
 
 export const appContext = isElectron()
   ? "desktop"
@@ -125,5 +130,5 @@ export const appContext = isElectron()
   : "browser";
 
 export default isColab
-  ? new HTTPSSocket(`${http}/polling?sessionId=${sessionId}`)
+  ? new HTTPSSocket(`${http}polling?sessionId=${sessionId}`)
   : new ReconnectingWebSocket(ws);

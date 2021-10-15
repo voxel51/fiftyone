@@ -57,16 +57,7 @@ export let sampleIndices = new Map<number, string>();
 let nextIndex = 0;
 let lookers = createLookerCache();
 
-const url = (() => {
-  let origin = window.location.origin;
-  try {
-    // @ts-ignore
-    if (import.meta.env.DEV) {
-      origin = "http://localhost:5151";
-    }
-  } catch {}
-  return `${http}/page?`;
-})();
+const url = `${http}page?`;
 
 const Container = styled.div`
   width: 100%;

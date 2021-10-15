@@ -37,7 +37,7 @@ export const createStage = (
 });
 
 function getStageInfo(context) {
-  return fetch(`${context.http}/stages`).then((response) => response.json());
+  return fetch(`${context.http}stages`).then((response) => response.json());
 }
 
 function serializeStage(stage, stageMap, fieldNames) {
