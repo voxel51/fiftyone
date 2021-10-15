@@ -128,7 +128,8 @@ def get_field_kwargs(field):
     if issubclass(ftype, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
         kwargs["fields"] = {
-            k: get_field_kwargs(v) for k, v in getattr(field, "fields", {}).items()
+            k: get_field_kwargs(v)
+            for k, v in getattr(field, "fields", {}).items()
         }
 
     return kwargs
@@ -235,7 +236,8 @@ def _merge_implied_fields(implied_fields):
 def _get_embedded_document_fields(value):
     return {
         field: get_implied_field_kwargs(value.get_field(field))
-        for field in value._fields_ordered if value.get_field(field) is not None
+        for field in value._fields_ordered
+        if value.get_field(field) is not None
     }
 
 

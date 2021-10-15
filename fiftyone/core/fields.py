@@ -589,7 +589,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             field.validate(field_value)
 
 
-
 class EmbeddedDocumentListField(
     mongoengine.fields.EmbeddedDocumentListField, Field
 ):
