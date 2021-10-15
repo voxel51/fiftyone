@@ -455,10 +455,10 @@ class Session(foc.HasClient):
             url = eval_js(
                 "google.colab.kernel.proxyPort(%d)" % self.server_port
             )
-            return "%s?fiftyoneColab=true" % url
+            return "%s?polling=true&colab=true" % url
 
         if self._context == focx._DATABRICKS:
-            return f"{_get_databricks_proxy_url(self.server_port)}?fiftyoneDatabricks=true"
+            return f"{_get_databricks_proxy_url(self.server_port)}?polling=true&databricks=true"
 
         address = self.server_address or "localhost"
         return "http://%s:%d/" % (address, self.server_port)
@@ -773,6 +773,8 @@ class Session(foc.HasClient):
             type_ = "remote"
         elif self._context == focx._COLAB:
             type_ = "colab"
+        elif self._context == focx._DATABRICKS:
+            type_ = "databricks"
         elif self._desktop:
             type_ = "desktop"
         else:
@@ -1137,9 +1139,7 @@ def _display_databricks(
         ) from e
 
     frame_id = f"fiftyone-frame-{uuid}"
-    proxy_url = (
-        f"{_get_databricks_proxy_url(port)}?notebook=true&handleId={uuid}"
-    )
+    proxy_url = f"{_get_databricks_proxy_url(port)}?notebook=true&handleId={uuid}&polling=true&databricks=true"
     html_string = f"""
     <div style="margin-bottom: 16px">
         <a href="{proxy_url}">
