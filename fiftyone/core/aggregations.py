@@ -958,8 +958,13 @@ class HistogramValues(Aggregation):
     def _compute_bin_edges(self, sample_collection):
         bounds = sample_collection.bounds(self._field_name, expr=self._expr)
 
-        # If the field contains nan, inf, recompute bounds excluding them
-        if any(math.isnan(b) | math.isinf(b) for b in bounds):
+        # If the field contains nan or inf, recompute bounds excluding them
+        try:
+            has_bad_data = any(math.isnan(b) | math.isinf(b) for b in bounds)
+        except:
+            has_bad_data = False
+
+        if has_bad_data:
             to_finite = (
                 F()
                 .is_in([float("nan"), float("inf"), -float("inf")])
