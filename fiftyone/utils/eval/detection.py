@@ -566,10 +566,7 @@ def _is_temporal_detections(sample_collection, field_name):
     schema = sample_collection.get_field_schema()
 
     if field_name not in schema:
-        raise ValueError(
-            "%s has no sample field '%s'"
-            % (sample_collection.__class__.__name__, field_name)
-        )
+        return False
 
     field = schema[field_name]
 
