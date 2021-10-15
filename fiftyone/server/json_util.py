@@ -44,10 +44,16 @@ def _handle_date(dt):
     }
 
 
+def _is_invalid_number(value):
+    return value in {float("inf"), -float("inf"), float("nan")}
+
+
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
-            if isinstance(v, bytes):
+            if _is_invalid_number(v):
+                d[k] = str(v)
+            elif isinstance(v, bytes):
                 d[k] = _handle_numpy_array(v, d.get("_cls", None))
             elif isinstance(v, (date, datetime)):
                 d[k] = _handle_date(v)
@@ -62,7 +68,9 @@ def convert(d):
                 d[idx] = list(i)
                 i = d[idx]
 
-            if isinstance(i, bytes):
+            if _is_invalid_number(v):
+                d[idx] = str(v)
+            elif isinstance(i, bytes):
                 d[idx] = _handle_numpy_array(i)
             elif isinstance(i, (date, datetime)):
                 d[idx] = _handle_date(i)
