@@ -4669,17 +4669,54 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     _track["shapes"].extend(track["shapes"])
                     _track["frame"] = max(track["frame"], _track["frame"])
 
+    def _update_outside_shapes(self, track, last_frame):
+        # If there is a gap of more than 1 frame between shapes, set the
+        # previous shape to "outside"
+        prev_frame_shape_inds = []
+        prev_frame = None
+        new_shapes = []
+        for ind, shape in enumerate(track["shapes"]):
+            frame = shape["frame"]
+            if prev_frame is None:
+                prev_frame = frame
+
+            if frame != prev_frame:
+                if frame > prev_frame + 1:
+                    for prev_ind in prev_frame_shape_inds:
+                        last_shape = track["shapes"][prev_ind]
+                        new_shape = deepcopy(last_shape)
+                        new_shape["frame"] += 1
+                        new_shape["outside"] = True
+                        new_shapes.append(
+                            (max(prev_frame_shape_inds), new_shape)
+                        )
+
+                prev_frame_shape_inds = []
+                prev_frame = frame
+
+            prev_frame_shape_inds.append(ind)
+
+        # The shapes in the last frame in the track must be set to "outside"
+        last_shape = track["shapes"][-1]
+        if last_shape["frame"] < last_frame - 1:
+            new_shape = deepcopy(last_shape)
+            new_shape["frame"] += 1
+            new_shape["outside"] = True
+            new_shapes.append((len(track["shapes"]), new_shape))
+
+        # Insert new shapes into track
+        for ind, shape in new_shapes[::-1]:
+            track["shapes"].insert(ind, shape)
+
+        return track
+
     def _finalize_tracks(self, tracks, last_frame):
         formatted_tracks = []
         for class_tracks in tracks.values():
             for track in class_tracks.values():
-                last_shape = track["shapes"][-1]
-                if last_shape["frame"] < last_frame - 1:
-                    new_shape = deepcopy(last_shape)
-                    new_shape["frame"] += 1
-                    new_shape["outside"] = True
-                    track["shapes"].append(new_shape)
-
+                formatted_track = self._update_outside_shapes(
+                    track, last_frame
+                )
                 formatted_tracks.append(track)
 
         return formatted_tracks
