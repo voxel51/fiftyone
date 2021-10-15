@@ -1721,7 +1721,7 @@ def _parse_field_and_expr(
         id_to_str = False
         field_type = None
 
-    if id_to_str:
+    if id_to_str or type(field_type) in fof._PRIMITIVE_FIELDS:
         field_type = None
 
     if keep_top_level:
@@ -1769,8 +1769,12 @@ def _parse_field_and_expr(
 
 
 def _to_safe_expr(expr, field_type):
-    if field_type is not None and not isinstance(field_type, fof.FloatField):
-        return expr
+    if (
+        expr is None
+        and field_type is not None
+        and not isinstance(field_type, fof.FloatField)
+    ):
+        return None
 
     to_finite = (
         F()
@@ -1918,9 +1922,7 @@ def _get_field_type(sample_collection, field_name, unwind=True):
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
-    field_type = sample_collection._get_field_type(
-        field_name, ignore_primitives=True
-    )
+    field_type = sample_collection._get_field_type(field_name)
 
     if unwind:
         while isinstance(field_type, fof.ListField):
