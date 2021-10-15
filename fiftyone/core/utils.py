@@ -10,6 +10,7 @@ from base64 import b64encode, b64decode
 from collections import defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
+from datetime import date, datetime
 import hashlib
 import importlib
 import inspect
@@ -34,6 +35,7 @@ except:
     import pprint as _pprint
 
 import numpy as np
+import pytz
 import xmltodict
 
 import eta
@@ -936,6 +938,7 @@ class UniqueFilenameMaker(object):
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
 
+        self._filepath_map = {}
         self._filename_counts = defaultdict(int)
         self._default_filename_patt = (
             fo.config.default_sequence_idx + default_ext
@@ -960,9 +963,14 @@ class UniqueFilenameMaker(object):
         Returns:
             the output path
         """
+        found_input = bool(input_path)
+
+        if found_input and input_path in self._filepath_map:
+            return self._filepath_map[input_path]
+
         self._idx += 1
 
-        if not input_path:
+        if not found_input:
             input_path = self._default_filename_patt % self._idx
 
         filename = os.path.basename(input_path)
@@ -985,7 +993,12 @@ class UniqueFilenameMaker(object):
         if count > 1:
             filename = name + ("-%d" % count) + ext
 
-        return os.path.join(self.output_dir, filename)
+        output_path = os.path.join(self.output_dir, filename)
+
+        if found_input:
+            self._filepath_map[input_path] = output_path
+
+        return output_path
 
 
 def compute_filehash(filepath, method=None, chunk_size=None):
@@ -1222,4 +1235,56 @@ def is_arm_mac():
     plat = platform.platform()
     return platform.system() == "Darwin" and any(
         proc in plat for proc in {"aarch64", "arm64"}
+    )
+
+
+def datetime_to_timestamp(dt):
+    """Converts a `datetime.date` or `datetime.datetime` to milliseconds since
+    epoch.
+
+    Args:
+        dt: a `datetime.date` or `datetime.datetime`
+
+    Returns:
+        the number of milliseconds since epoch
+    """
+    if type(dt) is date:
+        dt = datetime(dt.year, dt.month, dt.day)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+
+    return int(1000 * dt.timestamp())
+
+
+def timestamp_to_datetime(ts):
+    """Converts a timestamp (number of milliseconds since epoch) to a
+    `datetime.datetime`.
+
+    Args:
+        ts: a number of milliseconds since epoch
+
+    Returns:
+        a `datetime.datetime`
+    """
+    dt = datetime.utcfromtimestamp(ts / 1000)
+
+    if fo.config.timezone is None:
+        return dt
+
+    timezone = pytz.timezone(fo.config.timezone)
+    return dt.replace(tzinfo=pytz.utc).astimezone(timezone)
+
+
+def timedelta_to_ms(td):
+    """Converts a `datetime.timedelta` to milliseconds.
+
+    Args:
+        td: a `datetime.timedelta`
+
+    Returns:
+        the number of milliseconds
+    """
+    return int(
+        86400000 * td.days + 1000 * td.seconds + td.microseconds // 1000
     )

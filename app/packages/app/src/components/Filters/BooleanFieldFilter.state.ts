@@ -1,5 +1,4 @@
 import {
-  atomFamily,
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
@@ -7,7 +6,7 @@ import {
 } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
-import { BOOLEAN_FIELD, LIST_FIELD } from "../../utils/labels";
+import { BOOLEAN_FIELD, VALID_LIST_FIELDS } from "../../utils/labels";
 import { Value } from "./types";
 import { filterStage, FilterParams } from "./atoms";
 
@@ -149,7 +148,7 @@ export const isBooleanField = selectorFamily<boolean, string>({
   get: (name) => ({ get }) => {
     let map = get(selectors.primitivesMap("sample"));
 
-    if (map[name] === LIST_FIELD) {
+    if (VALID_LIST_FIELDS.includes(map[name])) {
       map = get(selectors.primitivesSubfieldMap("sample"));
     }
 

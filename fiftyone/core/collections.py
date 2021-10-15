@@ -35,10 +35,10 @@ import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fosa
-import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
 fod = fou.lazy_import("fiftyone.core.dataset")
+fos = fou.lazy_import("fiftyone.core.stages")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -184,6 +184,42 @@ class SampleCollection(object):
     def default_classes(self, classes):
         raise NotImplementedError("Subclass must implement default_classes")
 
+    def has_classes(self, field):
+        """Determines whether this collection has a classes list for the given
+        field.
+
+        Classes may be defined either in :meth:`classes` or
+        :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.classes or bool(self.default_classes)
+
+    def get_classes(self, field):
+        """Gets the classes list for the given field, or None if no classes
+        are available.
+
+        Classes are first retrieved from :meth:`classes` if they exist,
+        otherwise from :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.classes:
+            return self.classes[field]
+
+        if self.default_classes:
+            return self.default_classes
+
+        return None
+
     @property
     def mask_targets(self):
         """The mask targets of the underlying dataset.
@@ -213,6 +249,42 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement default_mask_targets"
         )
+
+    def has_mask_targets(self, field):
+        """Determines whether this collection has mask targets for the given
+        field.
+
+        Mask targets may be defined either in :meth:`mask_targets` or
+        :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.mask_targets or bool(self.default_mask_targets)
+
+    def get_mask_targets(self, field):
+        """Gets the mask targets for the given field, or None if no mask
+        targets are available.
+
+        Mask targets are first retrieved from :meth:`mask_targets` if they
+        exist, otherwise from :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.mask_targets:
+            return self.mask_targets[field]
+
+        if self.default_mask_targets:
+            return self.default_mask_targets
+
+        return None
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -4409,7 +4481,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Take(size, seed=seed))
 
     @view_stage
-    def to_patches(self, field):
+    def to_patches(self, field, **kwargs):
         """Creates a view that contains one sample per object patch in the
         specified field of the collection.
 
@@ -4439,14 +4511,17 @@ class SampleCollection(object):
             field: the patches field, which must be of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.patches.make_patches_dataset` specifying
+                how to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
         """
-        return self._add_view_stage(fos.ToPatches(field))
+        return self._add_view_stage(fos.ToPatches(field, **kwargs))
 
     @view_stage
-    def to_evaluation_patches(self, eval_key):
+    def to_evaluation_patches(self, eval_key, **kwargs):
         """Creates a view based on the results of the evaluation with the
         given key that contains one sample for each true positive, false
         positive, and false negative example in the collection, respectively.
@@ -4502,11 +4577,97 @@ class SampleCollection(object):
                 ground truth/predicted fields that are of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
+                specifying how to perform the conversion
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
         """
-        return self._add_view_stage(fos.ToEvaluationPatches(eval_key))
+        return self._add_view_stage(
+            fos.ToEvaluationPatches(eval_key, **kwargs)
+        )
+
+    @view_stage
+    def to_clips(self, field_or_expr, **kwargs):
+        """Creates a view that contains one sample per clip defined by the
+        given field or expression in the video collection.
+
+        The returned view will contain:
+
+        -   A ``sample_id`` field that records the sample ID from which each
+            clip was taken
+        -   A ``support`` field that records the ``[first, last]`` frame
+            support of each clip
+        -   All frame-level information from the underlying dataset of the
+            input collection
+
+        Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
+        available configuration options for generating clips.
+
+        .. note::
+
+            The clip generation logic will respect any frame-level
+            modifications defined in the input collection, but the output clips
+            will always contain all frame-level labels.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            #
+            # Create a clips view that contains one clip for each contiguous
+            # segment that contains at least one road sign in every frame
+            #
+
+            clips = (
+                dataset
+                .filter_labels("frames.detections", F("label") == "road sign")
+                .to_clips("frames.detections")
+            )
+            print(clips)
+
+            #
+            # Create a clips view that contains one clip for each contiguous
+            # segment that contains at least two road signs in every frame
+            #
+
+            signs = F("detections.detections").filter(F("label") == "road sign")
+            clips = dataset.to_clips(signs.length() >= 2)
+            print(clips)
+
+        Args:
+            field_or_expr: can be any of the following:
+
+                -   a :class:`fiftyone.core.labels.TemporalDetection`,
+                    :class:`fiftyone.core.labels.TemporalDetections`,
+                    :class:`fiftyone.core.fields.FrameSupportField`, or list of
+                    :class:`fiftyone.core.fields.FrameSupportField` field
+                -   a frame-level label list field of any of the following
+                    types:
+
+                    -   :class:`fiftyone.core.labels.Classifications`
+                    -   :class:`fiftyone.core.labels.Detections`
+                    -   :class:`fiftyone.core.labels.Polylines`
+                    -   :class:`fiftyone.core.labels.Keypoints`
+                -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                    returns a boolean to apply to each frame of the input
+                    collection to determine if the frame should be clipped
+                -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
+                    defining the frame numbers of the clips to extract from
+                    each sample
+            **kwargs: optional keyword arguments for
+                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
+                to perform the conversion
+
+        Returns:
+            a :class:`fiftyone.core.clips.ClipsView`
+        """
+        return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
 
     @view_stage
     def to_frames(self, **kwargs):
@@ -5681,7 +5842,7 @@ class SampleCollection(object):
             label_field = self._parse_label_field(
                 label_field,
                 dataset_exporter=dataset_exporter,
-                allow_coersion=True,
+                allow_coercion=True,
                 required=True,
             )
             frame_labels_field = None
@@ -5690,13 +5851,13 @@ class SampleCollection(object):
             label_field = self._parse_label_field(
                 label_field,
                 dataset_exporter=dataset_exporter,
-                allow_coersion=True,
+                allow_coercion=True,
                 required=False,
             )
             frame_labels_field = self._parse_frame_labels_field(
                 frame_labels_field,
                 dataset_exporter=dataset_exporter,
-                allow_coersion=True,
+                allow_coercion=True,
                 required=False,
             )
 
@@ -5799,8 +5960,9 @@ class SampleCollection(object):
                 classes specified. All new label fields must have a class list
                 provided via one of the supported methods. For existing label
                 fields, if classes are not provided by this argument nor
-                ``label_schema``, they are parsed from :meth:`classes` or
-                :meth:`default_classes`
+                ``label_schema``, they are retrieved from :meth:`get_classes`
+                if possible, or else the observed labels on your dataset are
+                used
             attributes (True): specifies the label attributes of each label
                 field to include (other than their ``label``, which is always
                 included) in the annotation export. Can be any of the
@@ -6716,7 +6878,7 @@ class SampleCollection(object):
         self,
         label_field,
         dataset_exporter=None,
-        allow_coersion=False,
+        allow_coercion=False,
         force_dict=False,
         required=False,
     ):
@@ -6724,7 +6886,7 @@ class SampleCollection(object):
             self,
             label_field,
             dataset_exporter=dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             force_dict=force_dict,
             required=required,
         )
@@ -6733,7 +6895,7 @@ class SampleCollection(object):
         self,
         frame_labels_field,
         dataset_exporter=None,
-        allow_coersion=False,
+        allow_coercion=False,
         force_dict=False,
         required=False,
     ):
@@ -6741,7 +6903,7 @@ class SampleCollection(object):
             self,
             frame_labels_field,
             dataset_exporter=dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             force_dict=force_dict,
             required=required,
         )
@@ -6925,7 +7087,7 @@ def _parse_label_field(
     sample_collection,
     label_field,
     dataset_exporter=None,
-    allow_coersion=False,
+    allow_coercion=False,
     force_dict=False,
     required=False,
 ):
@@ -6942,7 +7104,7 @@ def _parse_label_field(
         label_field = _get_default_label_fields_for_exporter(
             sample_collection,
             dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             required=required,
         )
 
@@ -6965,7 +7127,7 @@ def _parse_frame_labels_field(
     sample_collection,
     frame_labels_field,
     dataset_exporter=None,
-    allow_coersion=False,
+    allow_coercion=False,
     force_dict=False,
     required=False,
 ):
@@ -6984,7 +7146,7 @@ def _parse_frame_labels_field(
         frame_labels_field = _get_default_frame_label_fields_for_exporter(
             sample_collection,
             dataset_exporter,
-            allow_coersion=allow_coersion,
+            allow_coercion=allow_coercion,
             required=required,
         )
 
@@ -7021,7 +7183,7 @@ def _get_matching_fields(sample_collection, patt, frames=False):
 
 
 def _get_default_label_fields_for_exporter(
-    sample_collection, dataset_exporter, allow_coersion=True, required=True
+    sample_collection, dataset_exporter, allow_coercion=True, required=True
 ):
     label_cls = dataset_exporter.label_cls
 
@@ -7034,12 +7196,17 @@ def _get_default_label_fields_for_exporter(
 
         return None
 
+    media_type = sample_collection.media_type
     label_schema = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     label_field_or_dict = _get_fields_with_types(
-        label_schema, label_cls, allow_coersion=allow_coersion
+        media_type,
+        label_schema,
+        label_cls,
+        frames=False,
+        allow_coercion=allow_coercion,
     )
 
     if label_field_or_dict is not None:
@@ -7052,7 +7219,7 @@ def _get_default_label_fields_for_exporter(
 
 
 def _get_default_frame_label_fields_for_exporter(
-    sample_collection, dataset_exporter, allow_coersion=True, required=True
+    sample_collection, dataset_exporter, allow_coercion=True, required=True
 ):
     frame_labels_cls = dataset_exporter.frame_labels_cls
 
@@ -7065,12 +7232,17 @@ def _get_default_frame_label_fields_for_exporter(
 
         return None
 
+    media_type = sample_collection.media_type
     frame_label_schema = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
     frame_labels_field_or_dict = _get_fields_with_types(
-        frame_label_schema, frame_labels_cls, allow_coersion=allow_coersion
+        media_type,
+        frame_label_schema,
+        frame_labels_cls,
+        frames=True,
+        allow_coercion=allow_coercion,
     )
 
     if frame_labels_field_or_dict is not None:
@@ -7084,16 +7256,26 @@ def _get_default_frame_label_fields_for_exporter(
     return None
 
 
-def _get_fields_with_types(label_schema, label_cls, allow_coersion=False):
+def _get_fields_with_types(
+    media_type, label_schema, label_cls, frames=False, allow_coercion=False
+):
     if not isinstance(label_cls, dict):
         return _get_field_with_type(
-            label_schema, label_cls, allow_coersion=allow_coersion
+            media_type,
+            label_schema,
+            label_cls,
+            frames=frames,
+            allow_coercion=allow_coercion,
         )
 
     labels_dict = {}
     for name, _label_cls in label_cls.items():
         field = _get_field_with_type(
-            label_schema, _label_cls, allow_coersion=allow_coersion
+            media_type,
+            label_schema,
+            _label_cls,
+            frames=frames,
+            allow_coercion=allow_coercion,
         )
         if field is not None:
             labels_dict[field] = name
@@ -7101,18 +7283,33 @@ def _get_fields_with_types(label_schema, label_cls, allow_coersion=False):
     return labels_dict if labels_dict else None
 
 
-def _get_field_with_type(label_schema, label_cls, allow_coersion=False):
+def _get_field_with_type(
+    media_type, label_schema, label_cls, frames=False, allow_coercion=False
+):
     field = _get_matching_label_field(label_schema, label_cls)
     if field is not None:
         return field
 
-    if not allow_coersion:
+    if not allow_coercion:
         return None
 
     # Allow for extraction of image patches when exporting image classification
     # datasets
-    if label_cls is fol.Classification:
+    if media_type == fom.IMAGE and label_cls is fol.Classification:
         field = _get_matching_label_field(label_schema, fol._PATCHES_FIELDS)
+        if field is not None:
+            return field
+
+    # Allow for extraction of video clips when exporting temporal detection
+    # datasets
+    if (
+        media_type == fom.VIDEO
+        and not frames
+        and label_cls is fol.Classification
+    ):
+        field = _get_matching_label_field(
+            label_schema, (fol.TemporalDetection, fol.TemporalDetections)
+        )
         if field is not None:
             return field
 
@@ -7120,7 +7317,11 @@ def _get_field_with_type(label_schema, label_cls, allow_coersion=False):
     _label_cls = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_cls, None)
     if _label_cls is not None:
         field = _get_fields_with_types(
-            label_schema, _label_cls, allow_coersion=False
+            media_type,
+            label_schema,
+            _label_cls,
+            frames=frames,
+            allow_coercion=False,
         )
         if field is not None:
             return field

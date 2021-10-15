@@ -4,6 +4,21 @@
 
 import { Overlay } from "./overlays/base";
 
+export type RGB = [number, number, number];
+export type RGBA = [number, number, number, number];
+
+export interface Coloring {
+  byLabel: boolean;
+  pool: string[];
+  scale: RGB[];
+  seed: number;
+  defaultMaskTargets?: MaskTargets;
+  maskTargets: {
+    [field: string]: MaskTargets;
+  };
+  targets: string[];
+}
+
 export interface Sample {
   metadata: {
     width: number;
@@ -24,6 +39,10 @@ export interface LabelData {
   index?: number;
 }
 
+export interface MaskTargets {
+  [key: number]: string;
+}
+
 export type BufferRange = [number, number];
 export type Buffers = BufferRange[];
 
@@ -38,6 +57,7 @@ export type Action<State extends BaseState> = (
 
 export interface Control<State extends BaseState = BaseState> {
   eventKeys?: string | string[];
+  filter?: (config: Readonly<State["config"]>) => boolean;
   title: string;
   shortcut: string;
   detail: string;
@@ -50,11 +70,13 @@ export interface ControlMap<State extends BaseState> {
 
 interface BaseOptions {
   activePaths: string[];
-  colorByLabel: boolean;
   filter: {
-    [key: string]: (label: { label?: string; confidence?: number }) => boolean;
+    [fieldName: string]: (label: {
+      label?: string;
+      confidence?: number;
+    }) => boolean;
   };
-  colorMap: (key: string | number | null | undefined) => string;
+  coloring: Coloring;
   selectedLabels: string[];
   showConfidence: boolean;
   showIndex: boolean;
@@ -70,7 +92,9 @@ interface BaseOptions {
   selected: boolean;
   fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
+  timeZone: string;
   mimetype: string;
+  alpha: number;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -79,11 +103,24 @@ export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
 
+interface SchemaEntry {
+  name: string;
+  ftype: string;
+  subfield?: string;
+  embedded_doc_type?: string;
+  db_field: string;
+}
+
+interface Schema {
+  [name: string]: SchemaEntry;
+}
+
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
   dimensions: Dimensions;
   sampleId: string;
+  fieldSchema: Schema;
 }
 
 export interface FrameConfig extends BaseConfig {
@@ -95,6 +132,7 @@ export interface ImageConfig extends BaseConfig {}
 
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
+  support?: [number, number];
 }
 
 export interface FrameOptions extends BaseOptions {
@@ -130,6 +168,7 @@ export interface TooltipOverlay {
 }
 
 export interface BaseState {
+  disabled: boolean;
   cursorCoordinates: Coordinates;
   pixelCoordinates: Coordinates;
   disableControls: boolean;
@@ -164,8 +203,9 @@ export interface BaseState {
   setZoom: boolean;
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean;
+  error: boolean | number;
   destroyed: boolean;
+  reloading: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -186,7 +226,6 @@ export interface VideoState extends BaseState {
   options: VideoOptions;
   seeking: boolean;
   playing: boolean;
-  locked: boolean;
   frameNumber: number;
   duration: number | null;
   fragment: [number, number] | null;
@@ -196,6 +235,7 @@ export interface VideoState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
   waitingForVideo: boolean;
+  lockedToSupport: boolean;
 }
 
 export type Optional<T> = {
@@ -214,7 +254,6 @@ export type StateUpdate<State extends BaseState> = (
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activePaths: [],
-  colorByLabel: false,
   selectedLabels: [],
   showConfidence: false,
   showIndex: false,
@@ -223,7 +262,15 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,
-  colorMap: null,
+  coloring: {
+    byLabel: false,
+    pool: ["#000000"],
+    scale: null,
+    seed: 0,
+    maskTargets: {},
+    defaultMaskTargets: null,
+    targets: ["#000000"],
+  },
   smoothMasks: true,
   hasNext: false,
   hasPrevious: false,
@@ -232,7 +279,9 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selected: false,
   fieldsMap: {},
   inSelectionMode: false,
+  timeZone: "UTC",
   mimetype: "",
+  alpha: 0.7,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
@@ -275,4 +324,5 @@ export interface FrameChunkResponse extends FrameChunk {
   method: string;
   frames: FrameSample[];
   range: [number, number];
+  error?: boolean;
 }

@@ -22,7 +22,7 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
-VERSION = "0.5.2"
+VERSION = "0.6.0"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.7,<0.8"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.8,<0.9"]}
 
 
 with open("README.md", "r") as fh:
@@ -84,6 +84,7 @@ setup(
         "pprintpp",
         "psutil",
         "pymongo>=3.11,<4",
+        "pytz",
         "PyYAML",
         "retrying",
         "scikit-learn",

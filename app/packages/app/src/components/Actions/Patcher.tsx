@@ -1,11 +1,5 @@
-import React, { useCallback, useState } from "react";
-import {
-  atom,
-  selector,
-  useRecoilCallback,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import React, { useState } from "react";
+import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "react-spring";
 
 import Popout from "./Popout";
@@ -13,11 +7,20 @@ import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { PATCHES_FIELDS } from "../../utils/labels";
+import {
+  CLIPS_FRAME_FIELDS,
+  CLIPS_SAMPLE_FIELDS,
+  FRAME_SUPPORT_FIELD,
+  PATCHES_FIELDS,
+} from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
-import { OBJECT_PATCHES, EVALUATION_PATCHES } from "../../utils/links";
+import {
+  OBJECT_PATCHES,
+  EVALUATION_PATCHES,
+  CLIPS_VIEWS,
+} from "../../utils/links";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -25,11 +28,35 @@ export const patching = atom<boolean>({
 });
 
 export const patchesFields = selector<string[]>({
-  key: "partchesFields",
+  key: "patchesFields",
   get: ({ get }) => {
     const paths = get(selectors.labelPaths);
     const types = get(selectors.labelTypesMap);
     return paths.filter((p) => PATCHES_FIELDS.includes(types[p]));
+  },
+});
+
+export const clipsFields = selector<string[]>({
+  key: "clipsFields",
+  get: ({ get }) => {
+    const paths = get(selectors.labelPaths);
+    const types = get(selectors.labelTypesMap);
+    const pschema = get(selectors.primitivesSchema("sample"));
+
+    return [
+      ...paths.filter((p) =>
+        p.startsWith("frames.")
+          ? CLIPS_FRAME_FIELDS.includes(types[p])
+          : CLIPS_SAMPLE_FIELDS.includes(types[p])
+      ),
+      ...Object.entries(pschema)
+        .filter(
+          ([_, s]) =>
+            s.ftype === FRAME_SUPPORT_FIELD ||
+            s.subfield === FRAME_SUPPORT_FIELD
+        )
+        .map(([p]) => p),
+    ].sort();
   },
 });
 
@@ -63,6 +90,29 @@ const useToPatches = () => {
   );
 };
 
+const useToClips = () => {
+  return useRecoilCallback(
+    ({ set }) => async (field) => {
+      set(patching, true);
+      socket.send(
+        packageMessage("save_filters", {
+          add_stages: [
+            {
+              _cls: "fiftyone.core.stages.ToClips",
+              kwargs: [
+                ["field_or_expr", field],
+                ["_state", null],
+              ],
+            },
+          ],
+          with_selected: true,
+        })
+      );
+    },
+    []
+  );
+};
+
 const useToEvaluationPatches = () => {
   return useRecoilCallback(
     ({ set }) => async (evaluation) => {
@@ -83,6 +133,35 @@ const useToEvaluationPatches = () => {
       );
     },
     []
+  );
+};
+
+const LabelsClips = ({ close }) => {
+  const fields = useRecoilValue(clipsFields);
+  const toClips = useToClips();
+
+  return (
+    <>
+      {fields.map((field) => {
+        return (
+          <ActionOption
+            key={field}
+            text={field}
+            title={`Switch to clips view for the "${field}" field`}
+            onClick={() => {
+              close();
+              toClips(field);
+            }}
+          />
+        );
+      })}
+      <ActionOption
+        key={0}
+        text={"About clips views"}
+        title={"About clips views"}
+        href={CLIPS_VIEWS}
+      />
+    </>
   );
 };
 
@@ -150,6 +229,10 @@ type PatcherProps = {
 
 const Patcher = ({ bounds, close }: PatcherProps) => {
   const theme = useTheme();
+  const isVideo =
+    useRecoilValue(selectors.isVideoDataset) &&
+    useRecoilValue(selectors.isRootView);
+  const isClips = useRecoilValue(selectors.isClipsView);
   const [labels, setLabels] = useState(true);
 
   const labelProps = useSpring({
@@ -169,14 +252,17 @@ const Patcher = ({ bounds, close }: PatcherProps) => {
         >
           Labels
         </SwitchDiv>
-        <SwitchDiv
-          style={evaluationProps}
-          onClick={() => labels && setLabels(false)}
-        >
-          Evaluations
-        </SwitchDiv>
+        {!isVideo && (
+          <SwitchDiv
+            style={evaluationProps}
+            onClick={() => labels && setLabels(false)}
+          >
+            Evaluations
+          </SwitchDiv>
+        )}
       </SwitcherDiv>
-      {labels && <LabelsPatches close={close} />}
+      {labels && (isVideo || isClips) && <LabelsClips close={close} />}
+      {labels && !isVideo && !isClips && <LabelsPatches close={close} />}
       {!labels && <EvaluationPatches close={close} />}
     </Popout>
   );

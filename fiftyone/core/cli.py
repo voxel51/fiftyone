@@ -7,6 +7,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
+from datetime import datetime
 import json
 import os
 import subprocess
@@ -392,20 +393,86 @@ class DatasetsInfoCommand(Command):
 
     Examples::
 
-        # Print information about the given dataset
+        # Print basic information about all datasets
+        fiftyone datasets info
+        fiftyone datasets info --sort-by created_at
+        fiftyone datasets info --sort-by name --reverse
+
+        # Print information about a specific dataset
         fiftyone datasets info <name>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name", nargs="?", metavar="NAME", help="the name of a dataset",
+        )
+        parser.add_argument(
+            "-s",
+            "--sort-by",
+            metavar="FIELD",
+            default="last_loaded_at",
+            help="a field to sort the dataset rows by",
+        )
+        parser.add_argument(
+            "-r",
+            "--reverse",
+            action="store_true",
+            help="whether to print the results in reverse order",
         )
 
     @staticmethod
     def execute(parser, args):
-        dataset = fod.load_dataset(args.name)
-        print(dataset)
+        if args.name:
+            _print_dataset_info(args.name)
+        else:
+            _print_all_dataset_info(args.sort_by, args.reverse)
+
+
+def _print_dataset_info(name):
+    dataset = fod.load_dataset(name)
+    print(dataset)
+
+
+def _print_all_dataset_info(sort_by, reverse):
+    info = fod.list_datasets(info=True)
+
+    headers = [
+        "name",
+        "created_at",
+        "last_loaded_at",
+        "version",
+        "persistent",
+        "media_type",
+        "num_samples",
+    ]
+
+    if sort_by in headers:
+        key = lambda d: (d[sort_by] is not None, d[sort_by])
+        info = sorted(info, key=key, reverse=not reverse)
+    else:
+        print("Ignoring invalid sort-by field '%s'" % sort_by)
+
+    records = [tuple(_format_cell(i[key]) for key in headers) for i in info]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+def _format_cell(cell):
+    if cell == True:
+        return "\u2713"
+
+    if cell == False:
+        return ""
+
+    if cell is None:
+        return "???"
+
+    if isinstance(cell, datetime):
+        return cell.replace(microsecond=0)
+
+    return cell
 
 
 class DatasetsStatsCommand(Command):
@@ -2376,17 +2443,17 @@ class MigrateCommand(Command):
         # Print information about the current revisions of all datasets
         fiftyone migrate --info
 
-        # Migrates the database and all datasets to the current package version
+        # Migrate the database and all datasets to the current package version
         fiftyone migrate --all
 
-        # Migrates to a specific revision
+        # Migrate to a specific revision
         fiftyone migrate --all --version <VERSION>
 
-        # Migrates a specific dataset
+        # Migrate a specific dataset
         fiftyone migrate ... --dataset-name <DATASET_NAME>
 
-        # Runs only the admin (database) migrations
-        fiftyone migrate ... --admin-only
+        # Update the database version without migrating any existing datasets
+        fiftyone migrate
     """
 
     @staticmethod
@@ -2417,11 +2484,6 @@ class MigrateCommand(Command):
             help="the name of a specific dataset to migrate",
         )
         parser.add_argument(
-            "--admin-only",
-            action="store_true",
-            help="whether to run only admin (database) migrations",
-        )
-        parser.add_argument(
             "--verbose",
             action="store_true",
             help="whether to log incremental migrations that are performed",
@@ -2431,10 +2493,6 @@ class MigrateCommand(Command):
     def execute(parser, args):
         if args.info:
             db_ver = fom.get_database_revision() or ""
-
-            if args.admin_only:
-                print(db_ver)
-                return
 
             if args.dataset_name is not None:
                 for name in args.dataset_name:
@@ -2454,21 +2512,15 @@ class MigrateCommand(Command):
             fom.migrate_all(destination=args.version, verbose=args.verbose)
             return
 
-        if args.admin_only:
-            fom.migrate_database_if_necessary(
-                destination=args.version, verbose=args.verbose
-            )
-            return
+        fom.migrate_database_if_necessary(
+            destination=args.version, verbose=args.verbose
+        )
 
         if args.dataset_name:
             for name in args.dataset_name:
                 fom.migrate_dataset_if_necessary(
                     name, destination=args.version, verbose=args.verbose
                 )
-
-            return
-
-        parser.print_help()
 
 
 def _print_migration_table(db_ver, dataset_vers):

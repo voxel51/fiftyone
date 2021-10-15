@@ -5,59 +5,47 @@ Validation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
 import eta.core.utils as etau
 
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 foc = fou.lazy_import("fiftyone.core.collections")
+fov = fou.lazy_import("fiftyone.core.video")
 
 
-def validate_image(sample):
-    """Validates that the sample's media is an image that exists on disk.
+def validate_image_sample(sample):
+    """Validates that the sample's media is an image.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
 
     Raises:
-        ValueError if the required conditions are not met
+        ValueError if the sample's media is not an image
     """
-    if not os.path.exists(sample.filepath):
-        raise ValueError(
-            "Sample '%s' source media '%s' does not exist on disk"
-            % (sample.id, sample.filepath)
-        )
-
     if sample.media_type != fom.IMAGE:
         raise ValueError(
-            "Sample '%s' source media '%s' is not a recognized image format"
-            % (sample.id, sample.filepath)
+            "Expected media type '%s' but found '%s' for filepath '%s'"
+            % (fom.IMAGE, sample.media_type, sample.filepath)
         )
 
+    if isinstance(sample, fov.FrameView):
+        _validate_image(sample.filepath)
 
-def validate_video(sample):
-    """Validates that the sample's media is a video that exists on disk.
+
+def validate_video_sample(sample):
+    """Validates that the sample's media is a video.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
 
     Raises:
-        ValueError if the required conditions are not met
+        ValueError if the sample's media is not a video
     """
-    if not os.path.exists(sample.filepath):
-        raise ValueError(
-            "Sample '%s' source media '%s' does not exist on disk"
-            % (sample.id, sample.filepath)
-        )
-
     if sample.media_type != fom.VIDEO:
         raise ValueError(
-            "Sample '%s' source media '%s' is not a recognized video format"
-            % (sample.id, sample.filepath)
+            "Expected media type '%s' but found '%s' for filepath '%s'"
+            % (fom.VIDEO, sample.media_type, sample.filepath)
         )
 
 
@@ -97,6 +85,14 @@ def validate_image_collection(sample_collection):
             "Expected collection to have media type %s; found %s"
             % (fom.IMAGE, sample_collection.media_type)
         )
+
+    if sample_collection._dataset._is_frames:
+        try:
+            filepath = sample_collection[:1].values("filepath")[0]
+        except:
+            return  # empty
+
+        _validate_image(filepath)
 
 
 def validate_video_collection(sample_collection):
@@ -164,6 +160,19 @@ def validate_collection_label_fields(
     if sample_fields:
         _validate_fields(
             sample_collection, sample_fields, allowed_label_types, same_type,
+        )
+
+
+def _validate_image(filepath):
+    actual_media_type = fom.get_media_type(filepath)
+    if actual_media_type != fom.IMAGE:
+        raise ValueError(
+            "The requested operation requires samples whose filepaths are "
+            "images, but we found a sample whose filepath '%s' has media type "
+            "'%s'.\n\nIf you are working with a frames view that was created "
+            "via `to_frames(..., sample_frames=False)`, then re-create the "
+            "view without `sample_frames=False` so that the necessary images "
+            "will be available." % (filepath, actual_media_type)
         )
 
 
