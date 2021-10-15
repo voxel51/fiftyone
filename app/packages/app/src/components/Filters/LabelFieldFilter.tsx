@@ -8,6 +8,7 @@ import CategoricalFilter from "./CategoricalFilter";
 import {
   CONFIDENCE_LABELS,
   FLOAT_FIELD,
+  FRAME_SUPPORT_FIELD,
   SUPPORT_LABELS,
 } from "../../utils/labels";
 import { useExpand } from "./hooks";
@@ -124,7 +125,6 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
           )}
           {SUPPORT_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
-              int={true}
               color={entry.color}
               name={"Support"}
               noneAtom={numericField.noneAtom({
@@ -139,6 +139,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 modal,
                 path: sPath,
               })}
+              fieldType={FRAME_SUPPORT_FIELD}
             />
           )}
         </div>

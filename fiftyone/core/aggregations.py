@@ -961,11 +961,11 @@ class HistogramValues(Aggregation):
         if self._bins is None:
             bins = 10
         else:
-            bins = self._bins
+            bins = int(self._bins)
 
         if self._auto:
             if etau.is_numeric(bins):
-                self._num_bins = bins
+                self._num_bins = int(bins)
             else:
                 self._num_bins = 10
 

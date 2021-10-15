@@ -8,11 +8,13 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LABEL_LISTS,
   LABEL_TAGS_CLASSES,
   MOMENT_CLASSIFICATIONS,
+  OBJECT_ID_FIELD,
   STRING_FIELD,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
@@ -163,8 +165,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ];
         };
 
-        if (!Array.isArray(value)) {
-          value = [value];
+        if (!Array.isArray(value) || isSupport) {
+          if (!isSupport || typeof value[0] === "number") {
+            value = [value];
+          }
         }
 
         if (isDateTime || isDate) {
@@ -172,7 +176,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         }
 
         const filtered =
-          filter[path] && !isSupport && !isDateTime
+          filter[path] && !isSupport && !isDateTime && !isDate
             ? value.filter((v) => filter[path](v))
             : value;
 
@@ -233,8 +237,10 @@ const RENDERED_TYPES = new Set([
   DATE_FIELD,
   DATE_TIME_FIELD,
   FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  OBJECT_ID_FIELD,
   STRING_FIELD,
 ]);
 
