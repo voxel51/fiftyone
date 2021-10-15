@@ -993,7 +993,7 @@ def get_colormap(colorscale, n=256, hex_strs=False):
     """Generates a continuous colormap with the specified number of colors from
     the given plotly colorscale.
 
-    The provided ``colorscale`` can be any of the following::
+    The provided ``colorscale`` can be any of the following:
 
     -   The string name of any colorscale recognized by plotly. See
         https://plotly.com/python/colorscales for possible options

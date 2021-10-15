@@ -44,11 +44,11 @@ Core
 - Added set operations
   :meth:`is_subset() <fiftyone.core.expressions.ViewExpression.is_subset>`,
   :meth:`set_equals() <fiftyone.core.expressions.ViewExpression.set_equals>`,
-  :meth:`unqiue() <fiftyone.core.expressions.ViewExpression.unqiue>`,
+  :meth:`unique() <fiftyone.core.expressions.ViewExpression.unique>`,
   :meth:`union() <fiftyone.core.expressions.ViewExpression.union>`,
   :meth:`intersection() <fiftyone.core.expressions.ViewExpression.intersection>`,
   :meth:`difference() <fiftyone.core.expressions.ViewExpression.difference>`, and
-  :meth:`contains(..., all=True) <fiftyone.core.expressions.ViewExpression.contains>`
+  :meth:`contains(all=True) <fiftyone.core.expressions.ViewExpression.contains>`
   to the view expression API
 - Added date operations
   :meth:`to_date() <fiftyone.core.expressions.ViewExpression.to_date>`,

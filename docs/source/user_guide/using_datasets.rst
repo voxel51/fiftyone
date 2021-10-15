@@ -1839,18 +1839,18 @@ colormap defined by the `colorscale` of your
 
 -   A manually-defined colorscale like the following::
 
-    [
-        [0.000, "rgb(165,0,38)"],
-        [0.111, "rgb(215,48,39)"],
-        [0.222, "rgb(244,109,67)"],
-        [0.333, "rgb(253,174,97)"],
-        [0.444, "rgb(254,224,144)"],
-        [0.555, "rgb(224,243,248)"],
-        [0.666, "rgb(171,217,233)"],
-        [0.777, "rgb(116,173,209)"],
-        [0.888, "rgb(69,117,180)"],
-        [1.000, "rgb(49,54,149)"],
-    ]
+        [
+            [0.000, "rgb(165,0,38)"],
+            [0.111, "rgb(215,48,39)"],
+            [0.222, "rgb(244,109,67)"],
+            [0.333, "rgb(253,174,97)"],
+            [0.444, "rgb(254,224,144)"],
+            [0.555, "rgb(224,243,248)"],
+            [0.666, "rgb(171,217,233)"],
+            [0.777, "rgb(116,173,209)"],
+            [0.888, "rgb(69,117,180)"],
+            [1.000, "rgb(49,54,149)"],
+        ]
 
 The example code below demonstrates the possibilities that heatmaps provide by
 overlaying random gaussian kernels with positive or negative sign on an image
