@@ -13,6 +13,7 @@ import logging
 import numpy as np
 
 import eta.core.image as etai
+import eta.core.frameutils as etaf
 import eta.core.learning as etal
 import eta.core.models as etam
 import eta.core.utils as etau
@@ -27,7 +28,7 @@ import fiftyone.core.validation as fov
 
 tud = fou.lazy_import("torch.utils.data")
 
-foe = fou.lazy_import("fiftyone.core.eta_utils")
+foue = fou.lazy_import("fiftyone.utils.eta")
 fouf = fou.lazy_import("fiftyone.utils.flash")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
@@ -131,6 +132,9 @@ def apply_model(
         logger.warning(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
+
+    if samples.media_type == fom.IMAGE:
+        fov.validate_image_collection(samples)
 
     with contextlib.ExitStack() as context:
         try:
@@ -365,13 +369,21 @@ def _apply_image_model_to_frames_single(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
+    is_clips = samples._dataset._is_clips
 
     errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
+
             try:
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
                     for img in video_reader:
                         labels = model.predict(img)
 
@@ -416,13 +428,21 @@ def _apply_image_model_to_frames_batch(
     samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
+    is_clips = samples._dataset._is_clips
 
     errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
+
             try:
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         labels_batch = model.predict_all(imgs)
 
@@ -469,23 +489,31 @@ def _apply_image_model_to_frames_batch(
 def _apply_video_model(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
+    is_clips = samples._dataset._is_clips
+
     errors = []
 
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            try:
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                    labels = model.predict(video_reader)
+    for sample in samples.iter_samples(progress=True):
+        if is_clips:
+            frames = etaf.FrameRange(*sample.support)
+        else:
+            frames = None
 
-                # Save labels
-                sample.add_labels(
-                    labels, label_field, confidence_thresh=confidence_thresh
-                )
-            except Exception as e:
-                if not skip_failures:
-                    raise e
+        try:
+            with etav.FFmpegVideoReader(
+                sample.filepath, frames=frames
+            ) as video_reader:
+                labels = model.predict(video_reader)
 
-                errors.append((sample.filepath, e))
+            # Save labels
+            sample.add_labels(
+                labels, label_field, confidence_thresh=confidence_thresh
+            )
+        except Exception as e:
+            if not skip_failures:
+                raise e
+
+            errors.append((sample.filepath, e))
 
     if errors:
         lines = [
@@ -508,12 +536,14 @@ def _apply_video_model(
 
 
 def _get_frame_counts(samples):
-    samples.compute_metadata()
+    if samples._dataset._is_clips:
+        expr = fo.ViewField("support")[1] - fo.ViewField("support")[0] + 1
+        frame_counts = samples.values(expr)
+    else:
+        samples.compute_metadata()
+        frame_counts = samples.values("metadata.total_frame_count")
 
-    frame_counts = np.cumsum(
-        [(fc or 0) for fc in samples.values("metadata.total_frame_count")]
-    )
-
+    frame_counts = np.cumsum([(fc or 0) for fc in frame_counts])
     total_frame_count = frame_counts[-1] if frame_counts.size > 0 else 0
 
     return frame_counts, total_frame_count
@@ -530,7 +560,7 @@ def _iter_batches(video_reader, batch_size):
             frame_numbers = []
             imgs = []
 
-    return frame_numbers, imgs
+    yield frame_numbers, imgs
 
 
 def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
@@ -716,6 +746,9 @@ def compute_embeddings(
         logger.warning(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
+
+    if samples.media_type == fom.IMAGE:
+        fov.validate_image_collection(samples)
 
     with contextlib.ExitStack() as context:
         if use_data_loader:
@@ -945,6 +978,7 @@ def _compute_frame_embeddings_single(
     samples, model, embeddings_field, skip_failures
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
+    is_clips = samples._dataset._is_clips
 
     embeddings_dict = {}
     errors = []
@@ -953,8 +987,15 @@ def _compute_frame_embeddings_single(
         for idx, sample in enumerate(samples):
             embeddings = []
 
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
+
             try:
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
                     for img in video_reader:
                         embedding = model.embed(img)[0]
 
@@ -1014,6 +1055,7 @@ def _compute_frame_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
+    is_clips = samples._dataset._is_clips
 
     embeddings_dict = {}
     errors = []
@@ -1022,12 +1064,17 @@ def _compute_frame_embeddings_batch(
         for idx, sample in enumerate(samples):
             embeddings = []
 
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
+
             try:
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
-                        embeddings_batch = list(
-                            model.embed_all(imgs)
-                        )  # list of 1D
+                        embeddings_batch = list(model.embed_all(imgs))
 
                         if embeddings_field is not None:
                             sample.add_labels(
@@ -1087,28 +1134,35 @@ def _compute_frame_embeddings_batch(
 
 
 def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
+    is_clips = samples._dataset._is_clips
+
     embeddings = []
     errors = []
 
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
+    for sample in samples.iter_samples(progress=True):
+        if is_clips:
+            frames = etaf.FrameRange(*sample.support)
+        else:
+            frames = None
+
+        try:
+            with etav.FFmpegVideoReader(
+                sample.filepath, frames=frames
+            ) as video_reader:
+                embedding = model.embed(video_reader)[0]
+
+        except Exception as e:
+            if not skip_failures:
+                raise e
+
+            errors.append((sample.filepath, e))
             embedding = None
 
-            try:
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                    embedding = model.embed(video_reader)[0]
-
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-
-                errors.append((sample.filepath, e))
-
-            if embeddings_field:
-                sample[embeddings_field] = embedding
-                sample.save()
-            else:
-                embeddings.append(embedding)
+        if embeddings_field:
+            sample[embeddings_field] = embedding
+            sample.save()
+        else:
+            embeddings.append(embedding)
 
     if errors:
         lines = [
@@ -1262,6 +1316,7 @@ def compute_patch_embeddings(
             _ALLOWED_PATCH_TYPES,
         )
     else:
+        fov.validate_image_collection(samples)
         fov.validate_collection_label_fields(
             samples, patches_field, _ALLOWED_PATCH_TYPES
         )
@@ -1515,16 +1570,24 @@ def _embed_frame_patches(
     skip_failures,
 ):
     frame_counts, total_frame_count = _get_frame_counts(samples)
+    is_clips = samples._dataset._is_clips
 
     embeddings_dict = {}
     errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
+
             frame_embeddings_dict = {}
 
             try:
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
                     for img in video_reader:
                         frame_number = video_reader.frame_number
                         frame = sample.frames[frame_number]
@@ -1673,7 +1736,7 @@ def load_model(model_config_dict, model_path=None, **kwargs):
     """
     # Inject config args
     if kwargs:
-        if model_config_dict["type"] == etau.get_class_name(foe.ETAModel):
+        if model_config_dict["type"] == etau.get_class_name(foue.ETAModel):
             _merge_config(model_config_dict["config"]["config"], kwargs)
         else:
             _merge_config(model_config_dict["config"], kwargs)
@@ -1689,14 +1752,14 @@ def load_model(model_config_dict, model_path=None, **kwargs):
     #
     # (1) Their config implements ``eta.core.learning.HasPublishedModel``
     #
-    # (2) Their config is an ``fiftyone.core.eta_utils.ETAModelConfig`` whose
+    # (2) Their config is an ``fiftyone.utils.eta.ETAModelConfig`` whose
     #     embedded config implements ``eta.core.learning.HasPublishedModel``
     #
     if model_path:
         if isinstance(config.config, etal.HasPublishedModel):
             config.config.model_name = None
             config.config.model_path = model_path
-        elif isinstance(config.config, foe.ETAModelConfig) and isinstance(
+        elif isinstance(config.config, foue.ETAModelConfig) and isinstance(
             config.config.config, etal.HasPublishedModel
         ):
             config.config.config.model_name = None

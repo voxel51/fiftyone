@@ -47,11 +47,14 @@ from .core.fields import (
     ArrayField,
     BooleanField,
     ClassesField,
+    DateField,
+    DateTimeField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
     Field,
     FrameNumberField,
+    FrameSupportField,
     FloatField,
     GeoPointField,
     GeoLineStringField,
@@ -72,7 +75,6 @@ from .core.fields import (
 from .core.frame import Frame
 from .core.labels import (
     Label,
-    ImageLabel,
     Attribute,
     BooleanAttribute,
     CategoricalAttribute,
@@ -87,6 +89,9 @@ from .core.labels import (
     Keypoint,
     Keypoints,
     Segmentation,
+    Heatmap,
+    TemporalDetection,
+    TemporalDetections,
     GeoLocation,
     GeoLocations,
 )
@@ -160,6 +165,7 @@ from .core.stages import (
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToClips,
     ToFrames,
 )
 from .core.session import (

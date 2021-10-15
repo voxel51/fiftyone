@@ -22,6 +22,7 @@ import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
+import fiftyone.utils.eta as foue
 
 fou.ensure_torch()
 import torch
@@ -1138,7 +1139,7 @@ class TorchImagePatchesDataset(Dataset):
 
         img_patches = []
         for detection in detections.detections:
-            dobj = detection.to_detected_object()
+            dobj = foue.to_detected_object(detection)
 
             bbox = dobj.bounding_box
             if self.alpha is not None:

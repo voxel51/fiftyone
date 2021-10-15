@@ -2,8 +2,13 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, TEXT_COLOR } from "../constants";
-import { BaseState, BoundingBox, Coordinates } from "../state";
+import { getColor } from "../color";
+import {
+  MOMENT_CLASSIFICATIONS,
+  TEMPORAL_DETECTION,
+  INFO_COLOR,
+} from "../constants";
+import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
 import {
   CONTAINS,
   isShown,
@@ -12,29 +17,36 @@ import {
   RegularLabel,
   SelectData,
 } from "./base";
-import { sizeBytes, t } from "./util";
+import { sizeBytes } from "./util";
 
-interface ClassificationLabel extends RegularLabel {}
+export interface Classification extends RegularLabel {}
 
-export type ClassificationLabels = [string, ClassificationLabel[]][];
+interface ClassificationLabel extends Classification {
+  _cls: "Classification";
+}
 
-export default class ClassificationsOverlay<State extends BaseState>
-  implements Overlay<State> {
-  private readonly labels: ClassificationLabels;
+export type Labels<T> = [string, T[]][];
+
+export class ClassificationsOverlay<
+  State extends BaseState,
+  Label extends Classification = ClassificationLabel
+> implements Overlay<State> {
   private labelBoundingBoxes: { [key: string]: BoundingBox };
 
-  constructor(labels: ClassificationLabels) {
+  protected readonly labels: Labels<Label>;
+
+  constructor(labels: Labels<Label>) {
     this.labels = labels;
     this.labelBoundingBoxes = {};
   }
 
-  getColor(
-    state: Readonly<State>,
-    field: string,
-    label: ClassificationLabel
-  ): string {
-    const key = state.options.colorByLabel ? label.label : field;
-    return state.options.colorMap(key);
+  getColor(state: Readonly<State>, field: string, label: Label): string {
+    const key = state.options.coloring.byLabel ? label.label : field;
+    return getColor(
+      state.options.coloring.pool,
+      state.options.coloring.seed,
+      key
+    );
   }
 
   isShown(state: Readonly<State>): boolean {
@@ -63,9 +75,11 @@ export default class ClassificationsOverlay<State extends BaseState>
     return CONTAINS.NONE;
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<Label> {
     const filtered = this.getFilteredAndFlat(state);
     const [w, h] = state.config.dimensions;
+
+    let result: PointInfo<Label>;
 
     for (const [field, label] of filtered) {
       const box = this.labelBoundingBoxes[label.id];
@@ -77,7 +91,7 @@ export default class ClassificationsOverlay<State extends BaseState>
         const [px, py] = state.pixelCoordinates;
 
         if (px >= bx && py >= by && px <= bx + bw && py <= by + bh) {
-          return {
+          result = {
             field: field,
             label,
             type: "Classification",
@@ -86,6 +100,8 @@ export default class ClassificationsOverlay<State extends BaseState>
         }
       }
     }
+
+    return result;
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
@@ -133,46 +149,46 @@ export default class ClassificationsOverlay<State extends BaseState>
     return bytes;
   }
 
-  private getFiltered(state: Readonly<State>): ClassificationLabels {
+  protected getFiltered(state: Readonly<State>): Labels<Label> {
     return this.labels.map(([field, labels]) => [
       field,
-      labels.filter((label) => isShown(state, field, label) && label.label),
+      labels.filter(
+        (label) =>
+          MOMENT_CLASSIFICATIONS.includes(label._cls) &&
+          isShown(state, field, label) &&
+          label.label
+      ),
     ]);
   }
 
   getFilteredAndFlat(
     state: Readonly<State>,
     sort: boolean = true
-  ): [string, ClassificationLabel][] {
-    let result: [string, ClassificationLabel][] = [];
+  ): [string, Label][] {
+    let result: [string, Label][] = [];
     this.getFiltered(state).forEach(([field, labels]) => {
       result = [
         ...result,
-        ...labels.map<[string, ClassificationLabel]>((label) => [field, label]),
+        ...labels.map<[string, Label]>((label) => [field, label]),
       ];
     });
 
     if (sort) {
       const store = Object.fromEntries(
-        state.options.activePaths.map<[string, ClassificationLabel[]]>((a) => [
-          a,
-          [],
-        ])
+        state.options.activePaths.map<[string, Label[]]>((a) => [a, []])
       );
       result.forEach(([field, label]) => {
         store[field].push(label);
       });
-      result = state.options.activePaths.reduce<
-        [string, ClassificationLabel][]
-      >((acc, field) => {
-        return [
-          ...acc,
-          ...store[field].map<[string, ClassificationLabel]>((label) => [
-            field,
-            label,
-          ]),
-        ];
-      }, []);
+      result = state.options.activePaths.reduce<[string, Label][]>(
+        (acc, field) => {
+          return [
+            ...acc,
+            ...store[field].map<[string, Label]>((label) => [field, label]),
+          ];
+        },
+        []
+      );
       result.sort((a, b) => {
         if (a[0] === b[0]) {
           if (a[1].label && b[1].label && a[1].label < b[1].label) {
@@ -188,7 +204,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     return result;
   }
 
-  isSelected(state: Readonly<State>, label: ClassificationLabel): boolean {
+  isSelected(state: Readonly<State>, label: Label): boolean {
     return state.options.selectedLabels.includes(label.id);
   }
 
@@ -198,7 +214,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     top: number,
     width: number,
     field: string,
-    label: ClassificationLabel
+    label: Label
   ): { top: number; box?: BoundingBox } {
     const text = this.getLabelText(state, label);
     if (text.length === 0) {
@@ -207,6 +223,8 @@ export default class ClassificationsOverlay<State extends BaseState>
     const color = this.getColor(state, field, label);
     const [cx, cy] = state.canvasBBox;
 
+    const tmp = ctx.globalAlpha;
+    ctx.globalAlpha = state.options.alpha;
     let [tlx, tly, w, h] = [
       state.textPad + cx,
       top + cy,
@@ -221,8 +239,9 @@ export default class ClassificationsOverlay<State extends BaseState>
     ctx.lineTo(tlx, tly + h);
     ctx.closePath();
     ctx.fill();
+    ctx.globalAlpha = tmp;
 
-    ctx.fillStyle = TEXT_COLOR;
+    ctx.fillStyle = INFO_COLOR;
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
 
     this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
@@ -232,7 +251,7 @@ export default class ClassificationsOverlay<State extends BaseState>
         ctx,
         state,
         [tlx, tly, w, h],
-        DASH_COLOR,
+        INFO_COLOR,
         state.dashLength
       );
     }
@@ -251,10 +270,7 @@ export default class ClassificationsOverlay<State extends BaseState>
     };
   }
 
-  private getLabelText(
-    state: Readonly<State>,
-    label: ClassificationLabel
-  ): string {
+  private getLabelText(state: Readonly<State>, label: Label): string {
     let text = label.label && state.options.showLabel ? `${label.label}` : "";
 
     if (state.options.showConfidence && !isNaN(label.confidence as number)) {
@@ -282,6 +298,44 @@ export default class ClassificationsOverlay<State extends BaseState>
     ctx.lineTo(tlx, tly + h);
     ctx.closePath();
     ctx.stroke();
+  }
+
+  needsLabelUpdate() {
+    return false;
+  }
+  getLabelData() {
+    return [];
+  }
+  updateLabelData() {}
+}
+
+export interface TemporalDetectionLabel extends Classification {
+  support: [number, number];
+  _cls: "TemporalDetection";
+}
+
+export class TemporalDetectionOverlay extends ClassificationsOverlay<
+  VideoState,
+  TemporalDetectionLabel | ClassificationLabel
+> {
+  getFiltered(state: Readonly<VideoState>) {
+    return this.labels.map<
+      [string, (TemporalDetectionLabel | ClassificationLabel)[]]
+    >(([field, labels]) => [
+      field,
+      labels.filter((label) => {
+        const shown = isShown(state, field, label) && label.label;
+        if (label._cls === TEMPORAL_DETECTION) {
+          return (
+            shown &&
+            label.support[0] <= state.frameNumber &&
+            label.support[1] >= state.frameNumber
+          );
+        }
+
+        return shown;
+      }),
+    ]);
   }
 }
 

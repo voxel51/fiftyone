@@ -29,6 +29,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.utils.eta as foue
 
 mask_utils = fou.lazy_import(
     "pycocotools.mask", callback=lambda: fou.ensure_import("pycocotools")
@@ -127,8 +128,7 @@ def add_coco_labels(
             containing the COCO IDs for the samples
         classes (None): the list of class label strings. If not provided, these
             must be available from
-            :meth:`classes <fiftyone.core.collections.SampleCollection.classes>` or
-            :meth:`default_classes <fiftyone.core.collections.SampleCollection.default_classes>`
+            :meth:`fiftyone.core.collections.SampleCollection.get_classes`
         extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
@@ -142,10 +142,7 @@ def add_coco_labels(
             polylines for instance masks. Typical values are 1-3 pixels
     """
     if classes is None:
-        if label_field in sample_collection.classes:
-            classes = sample_collection.classes[label_field]
-        elif sample_collection.default_classes:
-            classes = sample_collection.default_classes
+        classes = sample_collection.get_classes(label_field)
 
     if not classes:
         raise ValueError(
@@ -2060,7 +2057,7 @@ def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
     if detection.mask is None:
         return None
 
-    dobj = detection.to_detected_object()
+    dobj = foue.to_detected_object(detection)
 
     try:
         mask = etai.render_instance_image(

@@ -5,10 +5,13 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime
+
 from bson import SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
+import pytz
 import six
 
 import eta.core.utils as etau
@@ -79,14 +82,35 @@ class BooleanField(mongoengine.fields.BooleanField, Field):
     pass
 
 
-class FrameNumberField(IntField):
-    """A video frame number field."""
+class DateField(mongoengine.fields.DateField, Field):
+    """A date field."""
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return datetime(value.year, value.month, value.day, tzinfo=pytz.utc)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        # Explicitly converting to UTC is important here because PyMongo loads
+        # everything as `datetime`, which will respect `fo.config.timezone`,
+        # but we always need UTC here for the conversion back to `date`
+        return value.astimezone(pytz.utc).date()
 
     def validate(self, value):
-        try:
-            fofu.validate_frame_number(value)
-        except fofu.FrameError as e:
-            self.error(str(e))
+        if not isinstance(value, date):
+            self.error("Date fields must have `date` values")
+
+
+class DateTimeField(mongoengine.fields.DateTimeField, Field):
+    """A datetime field."""
+
+    def validate(self, value):
+        if not isinstance(value, datetime):
+            self.error("Datetime fields must have `datetime` values")
 
 
 class FloatField(mongoengine.fields.FloatField, Field):
@@ -142,6 +166,26 @@ class ListField(mongoengine.fields.ListField, Field):
             )
 
         return etau.get_class_name(self)
+
+
+class HeatmapRangeField(ListField):
+    """A ``[min, max]`` range of the values in a
+    :class:`fiftyone.core.labels.Heatmap`.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=FloatField(), null=True, **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        if (
+            not isinstance(value, (list, tuple))
+            or len(value) != 2
+            or not value[0] <= value[1]
+        ):
+            self.error("Heatmap range fields must contain `[min, max]` ranges")
 
 
 class DictField(mongoengine.fields.DictField, Field):
@@ -476,6 +520,40 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             self.error("Only numpy arrays may be used in an array field")
 
 
+class FrameNumberField(IntField):
+    """A video frame number field."""
+
+    def validate(self, value):
+        try:
+            fofu.validate_frame_number(value)
+        except fofu.FrameError as e:
+            self.error(str(e))
+
+
+class FrameSupportField(ListField):
+    """A ``[first, last]`` frame support in a video."""
+
+    def __init__(self, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = IntField()
+
+        super().__init__(**kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        if (
+            not isinstance(value, (list, tuple))
+            or len(value) != 2
+            or not (1 <= value[0] <= value[1])
+        ):
+            self.error(
+                "Frame support fields must contain `[first, last]` frame "
+                "numbers"
+            )
+
+
 class ClassesField(ListField):
     """A :class:`ListField` that stores class label strings.
 
@@ -485,16 +563,22 @@ class ClassesField(ListField):
     def __init__(self, **kwargs):
         super().__init__(field=StringField(), **kwargs)
 
+    def __str__(self):
+        return etau.get_class_name(self)
+
 
 class TargetsField(IntDictField):
-    """An :class:`DictField` that stores mapping between integer keys and
-    string targets.
+    """A :class:`DictField` that stores mapping between integer keys and string
+    targets.
 
     If this field is not set, its default value is ``{}``.
     """
 
     def __init__(self, **kwargs):
         super().__init__(field=StringField(), **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
 
 
 class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
@@ -533,10 +617,13 @@ class EmbeddedDocumentListField(
 
 
 _ARRAY_FIELDS = (VectorField, ArrayField)
+
+# Fields whose values can be used without parsing when loaded from MongoDB
 _PRIMITIVE_FIELDS = (
-    ObjectIdField,
-    IntField,
-    FloatField,
-    StringField,
     BooleanField,
+    DateTimeField,
+    FloatField,
+    IntField,
+    ObjectIdField,
+    StringField,
 )

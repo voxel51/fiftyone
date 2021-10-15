@@ -31,6 +31,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
+foc = fou.lazy_import("fiftyone.core.clips")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
 fov = fou.lazy_import("fiftyone.core.video")
@@ -1155,8 +1156,8 @@ class FilterField(ViewStage):
     def __init__(self, field, filter, only_matches=True, _new_field=None):
         self._field = field
         self._filter = filter
-        self._new_field = _new_field or field
         self._only_matches = only_matches
+        self._new_field = _new_field or field
         self._is_frame_field = None
         self._validate_params()
 
@@ -1343,7 +1344,7 @@ def _get_field_mongo_filter(filter_arg, prefix="$this"):
     return filter_arg
 
 
-class FilterLabels(FilterField):
+class FilterLabels(ViewStage):
     """Filters the :class:`fiftyone.core.labels.Label` field of each sample in
     a collection.
 
@@ -1617,20 +1618,53 @@ class FilterLabels(FilterField):
             that returns a boolean describing the filter to apply
         only_matches (True): whether to only include samples with at least
             one label after filtering (True) or include all samples (False)
+        trajectories (False): whether to match entire object trajectories for
+            which the object matches the given filter on at least one frame.
+            Only applicable to video datasets and frame-level label fields
+            whose objects have their ``index`` attributes populated
     """
 
     def __init__(
-        self, field, filter, only_matches=True, _new_field=None, _prefix=""
+        self,
+        field,
+        filter,
+        only_matches=True,
+        trajectories=False,
+        _new_field=None,
+        _prefix="",
     ):
         self._field = field
         self._filter = filter
-        self._new_field = _new_field or field
         self._only_matches = only_matches
+        self._trajectories = trajectories
+        self._new_field = _new_field or field
         self._prefix = _prefix
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
         self._validate_params()
+
+    @property
+    def field(self):
+        """The label field to filter."""
+        return self._field
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    @property
+    def only_matches(self):
+        """Whether to only include samples that match the filter."""
+        return self._only_matches
+
+    @property
+    def trajectories(self):
+        """Whether to match entire object trajectories for which the object
+        matches the given filter on at least one frame.
+        """
+        return self._trajectories
 
     def get_filtered_fields(self, sample_collection, frames=False):
         if self._is_labels_list_field and (frames == self._is_frame_field):
@@ -1653,29 +1687,62 @@ class FilterLabels(FilterField):
         )
         new_field = self._get_new_field(sample_collection)
 
+        pipeline = []
+
+        if self._trajectories:
+            (
+                set_pipeline,
+                label_filter,
+                unset_pipeline,
+            ) = _get_trajectories_filter(
+                sample_collection, self._field, self._filter
+            )
+
+            pipeline.extend(set_pipeline)
+        else:
+            label_filter = self._filter
+
         if is_frame_field:
             if self._is_labels_list_field:
-                _make_pipeline = _get_filter_frames_list_field_pipeline
+                _make_filter_pipeline = _get_filter_frames_list_field_pipeline
             else:
-                _make_pipeline = _get_filter_frames_field_pipeline
-
+                _make_filter_pipeline = _get_filter_frames_field_pipeline
         elif self._is_labels_list_field:
-            _make_pipeline = _get_filter_list_field_pipeline
+            _make_filter_pipeline = _get_filter_list_field_pipeline
         else:
-            _make_pipeline = _get_filter_field_pipeline
+            _make_filter_pipeline = _get_filter_field_pipeline
 
-        return _make_pipeline(
+        filter_pipeline = _make_filter_pipeline(
             labels_field,
             new_field,
-            self._filter,
+            label_filter,
             only_matches=self._only_matches,
             prefix=self._prefix,
         )
 
-    def _needs_frames(self, sample_collection):
-        return sample_collection._is_frame_field(self._labels_field)
+        pipeline.extend(filter_pipeline)
+
+        if self._trajectories:
+            pipeline.extend(unset_pipeline)
+
+        return pipeline
+
+    def _parse_labels_field(self, sample_collection):
+        field_name, is_list_field, is_frame_field = _parse_labels_field(
+            sample_collection, self._field
+        )
+        self._is_frame_field = is_frame_field
+        self._labels_field = field_name
+        self._is_labels_list_field = is_list_field
+        self._is_frame_field = is_frame_field
 
     def _get_mongo_filter(self):
+        if self._trajectories:
+            if self._is_labels_list_field:
+                return _get_list_trajectory_mongo_filter(self._filter)
+
+            return _get_trajectory_mongo_filter(self._filter)
+
         if self._is_labels_list_field:
             return _get_list_field_mongo_filter(self._filter)
 
@@ -1687,15 +1754,6 @@ class FilterLabels(FilterField):
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
-    def _parse_labels_field(self, sample_collection):
-        field_name, is_list_field, is_frame_field = _parse_labels_field(
-            sample_collection, self._field
-        )
-        self._is_frame_field = is_frame_field
-        self._labels_field = field_name
-        self._is_labels_list_field = is_list_field
-        self._is_frame_field = is_frame_field
-
     def _get_new_field(self, sample_collection):
         field, _ = sample_collection._handle_frame_field(self._labels_field)
         new_field, _ = sample_collection._handle_frame_field(self._new_field)
@@ -1704,6 +1762,43 @@ class FilterLabels(FilterField):
             return ".".join([new_field, field.split(".")[-1]])
 
         return new_field
+
+    def _needs_frames(self, sample_collection):
+        return sample_collection._is_frame_field(self._labels_field)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["filter", self._get_mongo_filter()],
+            ["only_matches", self._only_matches],
+            ["trajectories", self._trajectories],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "field|str"},
+            {"name": "filter", "type": "json", "placeholder": ""},
+            {
+                "name": "only_matches",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "only matches (default=True)",
+            },
+            {
+                "name": "trajectories",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "trajectories (default=False)",
+            },
+        ]
+
+    def _validate_params(self):
+        if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression defining a filter; found '%s'" % self._filter
+            )
 
     def validate(self, sample_collection):
         self._parse_labels_field(sample_collection)
@@ -1795,9 +1890,67 @@ def _get_frames_list_field_only_matches_expr(field):
     return F("frames").reduce(VALUE + F(field).length()) > 0
 
 
-def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
+def _get_trajectories_filter(sample_collection, field, filter_arg):
+    label_type = sample_collection._get_label_field_type(field)
+    path, is_frame_field = sample_collection._handle_frame_field(field)
+
+    if not is_frame_field:
+        raise ValueError(
+            "Filtering trajectories is only supported for frame fields"
+        )
+
+    if issubclass(label_type, (fol.Detections, fol.Polylines, fol.Keypoints)):
+        path += "." + label_type._LABEL_LIST_FIELD
+        cond = _get_list_trajectory_mongo_filter(filter_arg)
+        filter_expr = (F("index") != None) & foe.ViewExpression(cond)
+        reduce_expr = VALUE.extend(
+            (F(path) != None).if_else(
+                F(path).filter(filter_expr).map(F("index")), [],
+            )
+        )
+    elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
+        cond = _get_trajectory_mongo_filter(filter_arg)
+        filter_expr = (F("index") != None) & foe.ViewExpression(cond)
+        reduce_expr = (
+            F(path)
+            .apply(filter_expr)
+            .if_else(VALUE.append(F(path + ".index")), VALUE)
+        )
+    else:
+        raise ValueError(
+            "Cannot filter trajectories for field '%s' of type %s"
+            % (field, label_type)
+        )
+
+    # union() removes duplicates
+    indexes_expr = F("frames").reduce(reduce_expr, []).union()
+
+    set_pipeline = [{"$set": {"_indexes": indexes_expr.to_mongo()}}]
+    label_filter = (F("$_indexes") != None) & F("$_indexes").contains(
+        [F("index")]
+    )
+    unset_pipeline = [{"$unset": "_indexes"}]
+
+    return set_pipeline, label_filter, unset_pipeline
+
+
+def _get_trajectory_mongo_filter(filter_arg):
     if isinstance(filter_arg, foe.ViewExpression):
-        return filter_arg.to_mongo(prefix="$" + prefix)
+        return filter_arg.to_mongo(prefix="$$expr")
+
+    return filter_arg
+
+
+def _get_list_trajectory_mongo_filter(filter_arg):
+    if isinstance(filter_arg, foe.ViewExpression):
+        return filter_arg.to_mongo(prefix="$$this")
+
+    return filter_arg
+
+
+def _get_list_field_mongo_filter(filter_arg):
+    if isinstance(filter_arg, foe.ViewExpression):
+        return filter_arg.to_mongo(prefix="$$this")
 
     return filter_arg
 
@@ -3132,6 +3285,8 @@ class MatchFrames(ViewStage):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
+        omit_empty (True): whether to omit samples with no frame labels after
+            filtering
     """
 
     def __init__(self, filter, omit_empty=True):
@@ -5206,9 +5361,11 @@ class ToPatches(ViewStage):
     """Creates a view that contains one sample per object patch in the
     specified field of a collection.
 
-    Fields other than ``field`` and the default sample fields will not be
-    included in the returned view. A ``sample_id`` field will be added that
-    records the sample ID from which each patch was taken.
+    A ``sample_id`` field will be added that records the sample ID from which
+    each patch was taken.
+
+    By default, fields other than ``field`` and the default sample fields will
+    not be included in the returned view.
 
     Examples::
 
@@ -5233,10 +5390,23 @@ class ToPatches(ViewStage):
         field: the patches field, which must be of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.patches.make_patches_dataset` specifying how
+            to perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.patches.make_patches_dataset` specifying how
+            to perform the conversion
     """
 
-    def __init__(self, field, _state=None):
+    def __init__(self, field, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
         self._field = field
+        self._config = config
         self._state = _state
 
     @property
@@ -5248,11 +5418,17 @@ class ToPatches(ViewStage):
         """The patches field."""
         return self._field
 
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field": self._field,
+            "config": self._config,
         }
 
         last_state = deepcopy(self._state)
@@ -5262,8 +5438,9 @@ class ToPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
             patches_dataset = fop.make_patches_dataset(
-                sample_collection, self._field
+                sample_collection, self._field, **kwargs
             )
 
             state["name"] = patches_dataset.name
@@ -5276,6 +5453,7 @@ class ToPatches(ViewStage):
     def _kwargs(self):
         return [
             ["field", self._field],
+            ["config", self._config],
             ["_state", self._state],
         ]
 
@@ -5283,6 +5461,12 @@ class ToPatches(ViewStage):
     def _params(self):
         return [
             {"name": "field", "type": "field", "placeholder": "label field"},
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
@@ -5344,10 +5528,23 @@ class ToEvaluationPatches(ViewStage):
             ground truth/predicted fields that are of type
             :class:`fiftyone.core.labels.Detections` or
             :class:`fiftyone.core.labels.Polylines`
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
+            specifying how to perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
+            specifying how to perform the conversion
     """
 
-    def __init__(self, eval_key, _state=None):
+    def __init__(self, eval_key, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
         self._eval_key = eval_key
+        self._config = config
         self._state = _state
 
     @property
@@ -5359,11 +5556,17 @@ class ToEvaluationPatches(ViewStage):
         """The evaluation key to extract patches for."""
         return self._eval_key
 
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "eval_key": self._eval_key,
+            "config": self._config,
         }
 
         last_state = deepcopy(self._state)
@@ -5373,8 +5576,9 @@ class ToEvaluationPatches(ViewStage):
             name = None
 
         if state != last_state or not fod.dataset_exists(name):
-            eval_patches_dataset = fop.make_evaluation_dataset(
-                sample_collection, self._eval_key
+            kwargs = self._config or {}
+            eval_patches_dataset = fop.make_evaluation_patches_dataset(
+                sample_collection, self._eval_key, **kwargs
             )
 
             state["name"] = eval_patches_dataset.name
@@ -5389,6 +5593,7 @@ class ToEvaluationPatches(ViewStage):
     def _kwargs(self):
         return [
             ["eval_key", self._eval_key],
+            ["config", self._config],
             ["_state", self._state],
         ]
 
@@ -5396,6 +5601,172 @@ class ToEvaluationPatches(ViewStage):
     def _params(self):
         return [
             {"name": "eval_key", "type": "str", "placeholder": "eval key"},
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
+class ToClips(ViewStage):
+    """Creates a view that contains one sample per clip defined by the given
+    field or expression in a video collection.
+
+    The returned view will contain:
+
+    -   A ``sample_id`` field that records the sample ID from which each clip
+        was taken
+    -   A ``support`` field that records the ``[first, last]`` frame support of
+        each clip
+    -   All frame-level information from the underlying dataset of the input
+        collection
+
+    Refer to :meth:`fiftyone.core.clips.make_clips_dataset` to see the
+    available configuration options for generating clips.
+
+    .. note::
+
+        The clip generation logic will respect any frame-level modifications
+        defined in the input collection, but the output clips will always
+        contain all frame-level labels.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        #
+        # Create a clips view that contains one clip for each contiguous
+        # segment that contains at least one road sign in every frame
+        #
+
+        stage1 = fo.FilterLabels("frames.detections", F("label") == "road sign")
+        stage2 = fo.ToClips("frames.detections")
+        clips = dataset.add_stage(stage1).add_stage(stage2)
+        print(clips)
+
+        #
+        # Create a clips view that contains one clip for each contiguous
+        # segment that contains at least two road signs in every frame
+        #
+
+        signs = F("detections.detections").filter(F("label") == "road sign")
+        stage = fo.ToClips(signs.length() >= 2)
+        clips = dataset.add_stage(stage)
+        print(clips)
+
+    Args:
+        field_or_expr: can be any of the following:
+
+            -   a :class:`fiftyone.core.labels.TemporalDetection`,
+                :class:`fiftyone.core.labels.TemporalDetections`,
+                :class:`fiftyone.core.fields.FrameSupportField`, or list of
+                :class:`fiftyone.core.fields.FrameSupportField` field
+            -   a frame-level label list field of any of the following types:
+
+                -   :class:`fiftyone.core.labels.Classifications`
+                -   :class:`fiftyone.core.labels.Detections`
+                -   :class:`fiftyone.core.labels.Polylines`
+                -   :class:`fiftyone.core.labels.Keypoints`
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                returns a boolean to apply to each frame of the input
+                collection to determine if the frame should be clipped
+            -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
+                defining the frame numbers of the clips to extract from each
+                sample
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.clips.make_clips_dataset` specifying how to
+            perform the conversion
+    """
+
+    def __init__(self, field_or_expr, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
+        self._field_or_expr = field_or_expr
+        self._config = config
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def field_or_expr(self):
+        """The field or expression defining how to extract the clips."""
+        return self._field_or_expr
+
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "field_or_expr": self._get_mongo_field_or_expr(),
+            "config": self._config,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            kwargs = self._config or {}
+            clips_dataset = foc.make_clips_dataset(
+                sample_collection, self._field_or_expr, **kwargs
+            )
+
+            state["name"] = clips_dataset.name
+            self._state = state
+        else:
+            clips_dataset = fod.load_dataset(name)
+
+        return foc.ClipsView(sample_collection, self, clips_dataset)
+
+    def _get_mongo_field_or_expr(self):
+        if isinstance(self._field_or_expr, foe.ViewExpression):
+            return self._field_or_expr.to_mongo()
+
+        return self._field_or_expr
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["config", self._config],
+            ["_state", self._state],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "field_or_expr",
+                "type": "field|str|json",
+                "placeholder": "field or expression",
+            },
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
@@ -5510,7 +5881,7 @@ class ToFrames(ViewStage):
 
     def _kwargs(self):
         return [
-            ["config", self.config],
+            ["config", self._config],
             ["_state", self._state],
         ]
 
@@ -5528,7 +5899,7 @@ class ToFrames(ViewStage):
 
 
 def _get_sample_ids(samples_or_ids):
-    import fiftyone.core.collections as foc
+    from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(samples_or_ids):
         return [samples_or_ids]
@@ -5536,7 +5907,7 @@ def _get_sample_ids(samples_or_ids):
     if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
         return [samples_or_ids.id]
 
-    if isinstance(samples_or_ids, foc.SampleCollection):
+    if isinstance(samples_or_ids, SampleCollection):
         return samples_or_ids.values("id")
 
     if isinstance(samples_or_ids, np.ndarray):
@@ -5552,7 +5923,7 @@ def _get_sample_ids(samples_or_ids):
 
 
 def _get_frame_ids(frames_or_ids):
-    import fiftyone.core.collections as foc
+    from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(frames_or_ids):
         return [frames_or_ids]
@@ -5560,7 +5931,7 @@ def _get_frame_ids(frames_or_ids):
     if isinstance(frames_or_ids, (fofr.Frame, fofr.FrameView)):
         return [frames_or_ids.id]
 
-    if isinstance(frames_or_ids, foc.SampleCollection):
+    if isinstance(frames_or_ids, SampleCollection):
         return frames_or_ids.values("frames.id", unwind=True)
 
     if isinstance(frames_or_ids, np.ndarray):
@@ -5585,59 +5956,30 @@ def _get_rng(seed):
 
 
 def _parse_labels_field(sample_collection, field_path):
-    field, is_frame_field = _parse_field(sample_collection, field_path)
+    label_type = sample_collection._get_label_field_type(field_path)
+    is_frame_field = sample_collection._is_frame_field(field_path)
+    is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+    if is_list_field:
+        path = field_path + "." + label_type._LABEL_LIST_FIELD
+    else:
+        path = field_path
 
-    if isinstance(field, fof.EmbeddedDocumentField):
-        document_type = field.document_type
-        is_list_field = issubclass(document_type, fol._LABEL_LIST_FIELDS)
-        if is_list_field:
-            path = field_path + "." + document_type._LABEL_LIST_FIELD
-        elif issubclass(document_type, fol._SINGLE_LABEL_FIELDS):
-            path = field_path
-        else:
-            path = None
-
-        if path is not None:
-            return path, is_list_field, is_frame_field
-
-    raise ValueError(
-        "Field '%s' must be a Label type %s; found '%s'"
-        % (field_path, fol._LABEL_FIELDS, field)
-    )
+    return path, is_list_field, is_frame_field
 
 
 def _parse_labels_list_field(sample_collection, field_path):
-    field, is_frame_field = _parse_field(sample_collection, field_path)
+    label_type = sample_collection._get_label_field_type(field_path)
+    is_frame_field = sample_collection._is_frame_field(field_path)
 
-    if isinstance(field, fof.EmbeddedDocumentField):
-        document_type = field.document_type
-        if issubclass(document_type, fol._LABEL_LIST_FIELDS):
-            path = field_path + "." + document_type._LABEL_LIST_FIELD
-            return path, is_frame_field
+    if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        raise ValueError(
+            "Field '%s' must be a labels list type %s; found %s"
+            % (field_path, fol._LABEL_LIST_FIELDS, label_type)
+        )
 
-    raise ValueError(
-        "Field '%s' must be a labels list type %s; found '%s'"
-        % (field_path, fol._LABEL_LIST_FIELDS, field)
-    )
+    path = field_path + "." + label_type._LABEL_LIST_FIELD
 
-
-def _parse_field(sample_collection, field_path):
-    field_name, is_frame_field = sample_collection._handle_frame_field(
-        field_path
-    )
-
-    if is_frame_field:
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        schema = sample_collection.get_field_schema()
-
-    if field_name not in schema:
-        ftype = "Frame field" if is_frame_field else "Field"
-        raise ValueError("%s '%s' does not exist" % (ftype, field_name))
-
-    field = schema[field_name]
-
-    return field, is_frame_field
+    return path, is_frame_field
 
 
 def _parse_labels(labels):
@@ -5839,6 +6181,7 @@ _STAGES = [
     Take,
     ToPatches,
     ToEvaluationPatches,
+    ToClips,
     ToFrames,
 ]
 

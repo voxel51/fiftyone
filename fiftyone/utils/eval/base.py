@@ -53,7 +53,10 @@ class BaseEvaluationResults(foe.EvaluationResults):
         if missing is None:
             missing = "(none)"
 
-        ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
+        ytrue, ypred, classes, found_missing = _parse_labels(
+            ytrue, ypred, classes, missing
+        )
+
         self.ytrue = np.asarray(ytrue)
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
@@ -69,10 +72,15 @@ class BaseEvaluationResults(foe.EvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
+
         self._samples = samples
+        self._has_missing = found_missing
 
     def _get_labels(self, classes, include_missing=False):
         if classes is not None:
+            if include_missing and self.missing not in classes:
+                classes = list(classes) + [self.missing]
+
             return np.asarray(classes)
 
         if include_missing:
@@ -91,7 +99,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Returns:
             a dict
         """
-        labels = self._get_labels(classes, include_missing=False)
+        labels = self._get_labels(classes)
 
         if self.ytrue.size == 0 or labels.size == 0:
             d = {}
@@ -136,7 +144,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Returns:
             a dict
         """
-        labels = self._get_labels(classes, include_missing=False)
+        labels = self._get_labels(classes)
 
         accuracy = _compute_accuracy(
             self.ytrue, self.ypred, labels=labels, weights=self.weights
@@ -173,7 +181,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
                 report
             digits (2): the number of digits of precision to print
         """
-        labels = self._get_labels(classes, include_missing=False)
+        labels = self._get_labels(classes)
 
         if labels.size == 0:
             print("No classes to analyze")
@@ -218,7 +226,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         labels,
         include_other=False,
         other_label=None,
-        include_missing=False,
         tabulate_ids=False,
     ):
         labels = list(labels)
@@ -226,9 +233,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         if include_other:
             if other_label not in labels:
                 labels.append(other_label)
-
-        if include_missing and self.missing not in labels:
-            labels.append(self.missing)
 
         if include_other:
             labels_set = set(labels)
@@ -253,6 +257,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
     def plot_confusion_matrix(
         self,
         classes=None,
+        include_missing=None,
         include_other=True,
         other_label="(other)",
         backend="plotly",
@@ -271,15 +276,18 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Args:
             classes (None): an optional list of classes to include in the
                 confusion matrix
-            include_other (True): whether to include extra columns at the end
-                of the confusion matrix for **predictions** that are either
-                (i) missing, or (ii) are not missing but do not appear in
-                ``classes``. If ``self.missing`` already appears in ``classes``
-                or there are no missing predictions, no extra column is added
-                for (i). Likewise, no extra column is added for (ii) if there
-                are no predictions that fall in this case
-            other_label ("(other)"): the label to use for "other" predictions.
-                Only applicable when ``include_other`` is True
+            include_missing (None): whether to include a row/column for missing
+                ground truth/predictions in the confusion matrix. The supported
+                values are:
+
+                -   None (default): only include a row/column for missing
+                    labels if there are any
+                -   True: do include a row/column for missing labels
+                -   False: do not include a row/column for missing labels
+            include_other (True): whether to include an extra column for
+                **predictions** that are not missing but do not appear in
+                ``classes``. Only applicable if a ``classes`` list is provided
+            other_label ("(other)"): the label to use for "other" predictions
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
@@ -294,12 +302,14 @@ class BaseEvaluationResults(foe.EvaluationResults):
                 the plotly backend is used
             -   a matplotlib figure, otherwise
         """
-        _labels = self._get_labels(classes, include_missing=True)
+        if include_missing is None:
+            include_missing = self._has_missing
+
+        _labels = self._get_labels(classes, include_missing=include_missing)
         confusion_matrix, labels, ids = self._confusion_matrix(
             _labels,
             include_other=include_other,
             other_label=other_label,
-            include_missing=include_other,
             tabulate_ids=True,
         )
 
@@ -377,10 +387,11 @@ def _parse_labels(ytrue, ypred, classes, missing):
     ypred, found_missing_pred = _clean_labels(ypred, missing)
 
     found_missing = found_missing_true or found_missing_pred
+
     if found_missing and missing not in classes:
         classes.append(missing)
 
-    return ytrue, ypred, classes
+    return ytrue, ypred, classes, found_missing
 
 
 def _clean_labels(y, missing):
@@ -412,9 +423,12 @@ def _compute_accuracy(ytrue, ypred, labels=None, weights=None):
     if ytrue.size > 0:
         scores = ytrue == ypred
         if weights is not None:
-            scores = weights * scores
-
-        accuracy = np.mean(scores)
+            try:
+                accuracy = np.sum(weights * scores) / np.sum(weights)
+            except ZeroDivisionError:
+                accuracy = 0.0
+        else:
+            accuracy = np.mean(scores)
     else:
         accuracy = 0.0
 

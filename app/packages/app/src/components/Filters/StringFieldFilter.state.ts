@@ -6,8 +6,11 @@ import {
 } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
-import { LIST_FIELD, OBJECT_ID_FIELD, STRING_FIELD } from "../../utils/labels";
-import { Value } from "./types";
+import {
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+  VALID_LIST_FIELDS,
+} from "../../utils/labels";
 import { filterStage, FilterParams } from "./atoms";
 
 export const LIST_LIMIT = 200;
@@ -17,7 +20,7 @@ export const isStringField = selectorFamily<boolean, string>({
   get: (name) => ({ get }) => {
     let map = get(selectors.primitivesMap("sample"));
 
-    if (map[name] === LIST_FIELD) {
+    if (VALID_LIST_FIELDS.includes(map[name])) {
       map = get(selectors.primitivesSubfieldMap("sample"));
     }
 
@@ -69,7 +72,7 @@ const setFilter = (
   }
 };
 
-export const selectedValuesAtom = selectorFamily<Value[], FilterParams>({
+export const selectedValuesAtom = selectorFamily<string[], FilterParams>({
   key: "filterStringFieldValues",
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).values,
   set: ({ modal, path }) => ({ get, set }, value) =>

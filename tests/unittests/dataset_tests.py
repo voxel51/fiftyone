@@ -5,10 +5,12 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime
 import gc
 import os
 
 import numpy as np
+import pytz
 import unittest
 
 import eta.core.utils as etau
@@ -184,6 +186,70 @@ class DatasetTests(unittest.TestCase):
 
         for sample in dataset.iter_samples(progress=True):
             pass
+
+    @drop_datasets
+    def test_date_fields(self):
+        dataset = fo.Dataset()
+
+        date1 = date(1970, 1, 1)
+
+        sample = fo.Sample(filepath="image1.png", date=date1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+        # Ensure that DateFields are always `date` instances and are not
+        # affected by timezone changes
+
+        fo.config.timezone = "US/Eastern"
+        dataset.reload()
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        self.assertEqual(type(sample.date), date)
+        self.assertEqual(int((sample.date - date1).total_seconds()), 0)
+
+    @drop_datasets
+    def test_datetime_fields(self):
+        dataset = fo.Dataset()
+
+        # These are all the epoch
+        date1 = datetime(1970, 1, 1, 0, 0, 0)
+        utcdate1 = date1.replace(tzinfo=pytz.utc)
+        date2 = utcdate1.astimezone(pytz.timezone("US/Eastern"))
+        date3 = utcdate1.astimezone(pytz.timezone("US/Pacific"))
+
+        # FiftyOne treats naive datetimes as UTC implicitly
+        sample1 = fo.Sample(filepath="image1.png", date=date1)
+
+        # FiftyOne accepts timezone-aware datetimes too
+        sample2 = fo.Sample(filepath="image2.png", date=date2)
+        sample3 = fo.Sample(filepath="image3.png", date=date3)
+
+        dataset.add_samples([sample1, sample2, sample3])
+
+        fo.config.timezone = "US/Eastern"
+        dataset.reload()
+
+        self.assertEqual(sample1.date.tzinfo.zone, "US/Eastern")
+        self.assertEqual(int((sample1.date - utcdate1).total_seconds()), 0)
+        self.assertEqual(int((sample1.date - sample2.date).total_seconds()), 0)
+        self.assertEqual(int((sample1.date - sample3.date).total_seconds()), 0)
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        self.assertIsNone(sample1.date.tzinfo)
+        self.assertEqual(int((sample1.date - date1).total_seconds()), 0)
+        self.assertEqual(int((sample1.date - sample2.date).total_seconds()), 0)
+        self.assertEqual(int((sample1.date - sample3.date).total_seconds()), 0)
 
     @drop_datasets
     def test_merge_samples1(self):
@@ -750,10 +816,14 @@ class DatasetTests(unittest.TestCase):
             int_field=1,
             str_field="hi",
             float_field=1.0,
+            date_field=date.today(),
+            datetime_field=datetime.utcnow(),
             list_bool_field=[False, True],
             list_float_field=[1.0, 2, 4.1],
             list_int_field=[1, 2, 3],
             list_str_field=["one", "two", "three"],
+            list_date_field=[date.today(), date.today()],
+            list_datetime_field=[datetime.utcnow(), datetime.utcnow()],
             list_untyped_field=[1, {"two": "three"}, [4], "five"],
             dict_field={"hello": "world"},
             vector_field=np.arange(5),
@@ -768,6 +838,8 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(schema["int_field"], fo.IntField)
         self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["date_field"], fo.DateField)
+        self.assertIsInstance(schema["datetime_field"], fo.DateTimeField)
 
         # Lists
         self.assertIsInstance(schema["list_bool_field"], fo.ListField)
@@ -781,6 +853,14 @@ class DatasetTests(unittest.TestCase):
 
         self.assertIsInstance(schema["list_str_field"], fo.ListField)
         self.assertIsInstance(schema["list_str_field"].field, fo.StringField)
+
+        self.assertIsInstance(schema["list_date_field"], fo.ListField)
+        self.assertIsInstance(schema["list_date_field"].field, fo.DateField)
+
+        self.assertIsInstance(schema["list_datetime_field"], fo.ListField)
+        self.assertIsInstance(
+            schema["list_datetime_field"].field, fo.DateTimeField
+        )
 
         self.assertIsInstance(schema["list_untyped_field"], fo.ListField)
         self.assertEqual(schema["list_untyped_field"].field, None)

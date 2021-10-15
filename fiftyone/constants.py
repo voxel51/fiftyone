@@ -36,7 +36,7 @@ AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
-VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+VERSION_LONG = "FiftyOne v%s, %s" % (VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 DEV_INSTALL = os.path.isdir(
@@ -47,7 +47,7 @@ DEV_INSTALL = os.path.isdir(
 RC_INSTALL = "rc" in VERSION
 
 # App configuration
-DEFAULT_APP_COLOR_POOL = {
+DEFAULT_APP_COLOR_POOL = [
     "#ee0000",
     "#ee6600",
     "#993300",
@@ -61,7 +61,7 @@ DEFAULT_APP_COLOR_POOL = {
     "#6600ff",
     "#cc33cc",
     "#777799",
-}
+]
 
 # MongoDB setup
 try:
@@ -81,7 +81,6 @@ MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
-SERVER_NAME = "localhost"
 
 # App setup
 try:

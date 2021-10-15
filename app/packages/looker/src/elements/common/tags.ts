@@ -2,12 +2,23 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { getColor } from "../../color";
 import {
-  CLASSIFICATIONS,
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
   LABEL_LISTS,
   LABEL_TAGS_CLASSES,
+  MOMENT_CLASSIFICATIONS,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
+import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
 
 import { lookerTags } from "./tags.module.css";
@@ -21,7 +32,7 @@ interface TagData {
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private colorByValue: boolean;
-  private colorMap: (key: string | number) => string;
+  private colorSeed: number;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -35,14 +46,15 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      options: { filter, activePaths, colorMap, colorByLabel, fieldsMap },
+      config: { fieldSchema },
+      options: { filter, activePaths, coloring, fieldsMap, mimetype, timeZone },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
     if (
       arraysAreEqual(activePaths, this.activePaths) &&
-      this.colorByValue === colorByLabel &&
-      this.colorMap === colorMap
+      this.colorByValue === coloring.byLabel &&
+      this.colorSeed === coloring.seed
     ) {
       return this.element;
     }
@@ -55,7 +67,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       ) {
         const tag = path.slice(5);
         elements.push({
-          color: colorMap(path),
+          color: getColor(coloring.pool, coloring.seed, path),
           title: tag,
           value: tag,
         });
@@ -67,7 +79,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           elements = [
             ...elements,
             {
-              color: colorMap(path),
+              color: getColor(coloring.pool, coloring.seed, path),
               title: value,
               value,
             },
@@ -79,64 +91,106 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       ) {
         const cls = sample[path]._cls;
 
-        const labels =
-          cls === CLASSIFICATIONS
-            ? sample[path][LABEL_LISTS[cls]]
-            : [sample[path]];
+        const isList = cls in LABEL_LISTS;
+        const labels = isList ? sample[path][LABEL_LISTS[cls]] : [sample[path]];
 
         elements = [
           ...elements,
-          ...labels
-            .filter((label) => filter[path](label))
-            .map((label) => label.label)
-            .map((label) => ({
-              color: colorMap(colorByLabel ? label : path),
-              title: `${path}: ${label}`,
-              value: label,
-            })),
+          ...Object.entries(
+            labels
+              .filter(
+                (label) =>
+                  label.label &&
+                  filter[path](label) &&
+                  (mimetype.includes("video") ||
+                    MOMENT_CLASSIFICATIONS.includes(label._cls))
+              )
+              .map((label) => label.label)
+              .reduce((acc, cur) => {
+                if (!acc[cur]) {
+                  acc[cur] = 0;
+                }
+                acc[cur] += 1;
+                return acc;
+              }, {})
+          ).map(([label, count]) => ({
+            color: getColor(
+              coloring.pool,
+              coloring.seed,
+              coloring.byLabel ? label : path
+            ),
+            title: `${path}: ${label}`,
+            value: isList
+              ? `${prettify(label)}: ${count.toLocaleString()}`
+              : prettify(label),
+          })),
         ];
-      } else {
+      } else if (isRendered(fieldSchema[path])) {
         let valuePath = path;
         if (!sample[path] && fieldsMap && fieldsMap[path]) {
           valuePath = fieldsMap[path];
         }
 
-        const value = sample[valuePath];
+        let value = sample[valuePath];
+        const entry = fieldSchema[path];
+        const isDate = isOfTypes(entry, [DATE_FIELD]);
+        const isDateTime = isOfTypes(entry, [DATE_TIME_FIELD]);
+        const isSupport = isOfTypes(entry, [FRAME_SUPPORT_FIELD]);
 
         if ([undefined, null].includes(value)) {
           return elements;
         }
 
         const appendElement = (value) => {
+          if (isDateTime && value) {
+            value = formatDateTime(value, timeZone);
+          } else if (isDate && value) {
+            value = formatDate(value);
+          } else if (isSupport && Array.isArray(value)) {
+            value = `[${value.map(prettify).join(", ")}]`;
+          }
+
           const pretty = prettify(value);
           elements = [
             ...elements,
             {
-              color: colorMap(colorByLabel ? value : path),
+              color: getColor(
+                coloring.pool,
+                coloring.seed,
+                coloring.byLabel ? value : path
+              ),
               title: value,
               value: pretty,
             },
           ];
         };
 
-        if (isScalar(value)) {
-          appendElement(value);
-        } else if (Array.isArray(value)) {
-          const filtered = filter[path]
+        if (!Array.isArray(value) || isSupport) {
+          if (!isSupport || typeof value[0] === "number") {
+            value = [value];
+          }
+        }
+
+        if (isDateTime || isDate) {
+          value = value.map((d) => d.datetime);
+        }
+
+        const filtered =
+          filter[path] && !isSupport && !isDateTime && !isDate
             ? value.filter((v) => filter[path](v))
             : value;
-          const shown = [...filtered].sort().slice(0, 3);
-          shown.forEach((v) => appendElement(v));
 
-          const more = filtered.length - shown.length;
-          more > 0 && appendElement(`+${more} more`);
-        }
+        const shown = [...filtered].sort().slice(0, 3);
+        shown.forEach((v) => appendElement(v));
+
+        const more = filtered.length - shown.length;
+        more > 0 && appendElement(`+${more} more`);
       }
       return elements;
     }, []);
 
-    this.colorByValue = colorByLabel;
-    this.colorMap = colorMap;
+    this.colorByValue = coloring.byLabel;
+    this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
 
@@ -178,5 +232,25 @@ const prettify = (v: boolean | string | null | undefined | number): string => {
   return null;
 };
 
-const isScalar = (value) =>
-  ["boolean", "number", "string"].includes(typeof value);
+const RENDERED_TYPES = new Set([
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+]);
+
+const isRendered = (field) =>
+  field &&
+  (RENDERED_TYPES.has(field.ftype) || RENDERED_TYPES.has(field.subfield));
+
+const isOfTypes = (
+  field: { ftype: string; subfield?: string },
+  types: string[]
+) =>
+  field &&
+  types.some((type) => type === field.ftype || type === field.subfield);
