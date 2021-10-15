@@ -11,12 +11,18 @@ import { Slider as SliderUnstyled } from "@material-ui/core";
 
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../FieldsSidebar";
-import { DATE_FIELD, DATE_TIME_FIELD, INT_FIELD } from "../../utils/labels";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+} from "../../utils/labels";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "../../utils/hooks";
 import { isDateTimeField } from "./NumericFieldFilter.state";
+import { FRAME_SUPPORT_FIELD } from "@fiftyone/looker/src/constants";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -137,7 +143,11 @@ const getFormatter = (fieldType, timeZone, bounds) => {
         );
       }
 
-      return numeral(v).format(fieldType === INT_FIELD ? "0a" : "0.00a");
+      return numeral(v).format(
+        [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
+          ? "0a"
+          : "0.00a"
+      );
     },
   };
 };
@@ -147,7 +157,9 @@ const getStep = (bounds: [number, number], fieldType?: string): number => {
   const max = 100;
 
   let step = delta / max;
-  if (fieldType === INT_FIELD) {
+  if (
+    [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
+  ) {
     return Math.ceil(step);
   }
 
