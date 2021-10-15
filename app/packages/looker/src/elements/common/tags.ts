@@ -163,8 +163,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ];
         };
 
-        if (!Array.isArray(value)) {
-          value = [value];
+        if (!Array.isArray(value) || isSupport) {
+          if (!isSupport || typeof value[0] === "number") {
+            value = [value];
+          }
         }
 
         if (isDateTime || isDate) {
@@ -172,7 +174,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         }
 
         const filtered =
-          filter[path] && !isSupport && !isDateTime
+          filter[path] && !isSupport && !isDateTime && !isDate
             ? value.filter((v) => filter[path](v))
             : value;
 
