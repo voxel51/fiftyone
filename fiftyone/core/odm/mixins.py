@@ -9,6 +9,7 @@ from collections import OrderedDict
 import json
 import logging
 import numbers
+from bson.objectid import ObjectId
 import six
 
 from bson import json_util
@@ -127,8 +128,7 @@ def get_field_kwargs(field):
     if issubclass(ftype, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
         kwargs["fields"] = {
-            k: get_field_kwargs(v)
-            for k, v in getattr(field, "fields", {}).items()
+            k: get_field_kwargs(v) for k, v in getattr(field, "fields", {}).items()
         }
 
     return kwargs
@@ -192,6 +192,9 @@ def get_implied_field_kwargs(value):
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
 
+    if isinstance(value, ObjectId):
+        return {"ftype": fof.ObjectIdField}
+
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value
     )
@@ -223,7 +226,7 @@ def _merge_implied_fields(implied_fields):
                     raise TypeError("Cannot merge")
 
                 fields[field]["fields"] = _merge_implied_fields(
-                    [fields[field]["fields"], field_kwargs]
+                    [fields[field]["fields"], field_kwargs["fields"]]
                 )
 
     return fields
@@ -232,7 +235,7 @@ def _merge_implied_fields(implied_fields):
 def _get_embedded_document_fields(value):
     return {
         field: get_implied_field_kwargs(value.get_field(field))
-        for field in value._field_ordered
+        for field in value._fields_ordered if value.get_field(field) is not None
     }
 
 
@@ -248,6 +251,9 @@ def _get_list_value_type(value):
 
     if isinstance(value, six.string_types):
         return fof.StringField
+
+    if isinstance(value, ObjectId):
+        return fof.ObjectIdField
 
     if isinstance(value, BaseEmbeddedDocument):
         return value.__class__

@@ -78,7 +78,7 @@ def create_field(
 
     if fields is not None:
         fields = {
-            name: create_field(**field_kwargs)
+            name: create_field(name, **field_kwargs)
             for name, field_kwargs in fields.items()
         }
 
@@ -172,6 +172,7 @@ class SampleFieldDocument(EmbeddedDocument):
         Returns:
             a :class:`SampleFieldDocument`
         """
+        print(field)
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
