@@ -248,6 +248,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.write({"results": [], "more": False})
             return
 
+        view = get_extended_view(view, state.filters, count_labels_tags=True)
         if view.media_type == fom.VIDEO:
             if isinstance(view, focl.ClipsView):
                 expr = F("frame_number") == F("$support")[0]
@@ -256,7 +257,6 @@ class PageHandler(tornado.web.RequestHandler):
 
             view = view.set_field("frames", F("frames").filter(expr))
 
-        view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
 
         samples = await foo.aggregate(
