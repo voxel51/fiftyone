@@ -215,6 +215,51 @@ def _plot_confusion_matrix_interactive(
     return plot
 
 
+def plot_regression_results(
+    ytrue,
+    ypred,
+    samples=None,
+    eval_key=None,
+    gt_field=None,
+    pred_field=None,
+    ytrue_ids=None,
+    ypred_ids=None,
+    **kwargs,
+):
+    """Plots the given regression results.
+
+    If IDs are provided and you are working in a notebook environment with the
+    default plotly backend, this method returns an :class:`InteractiveScatter`
+    plot that you can attach to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected points in
+    the plot.
+
+    Args:
+        ytrue: an array of ground truth values
+        ypred: an array of predicted values
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were generated. Only used by the "plotly"
+            backend when IDs are provided
+        eval_key (None): the evaluation key of the evaluation
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
+        ytrue_ids (None): an array of ground truth regression IDs
+        ypred_ids (None): an array of predicted regression IDs
+        **kwargs: optional keyword arguments for
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
+
+    Returns:
+        one of the following:
+
+        -   a :class:`InteractiveScatter`, if IDs are provided
+        -   a :class:`PlotlyNotebookPlot`, if no IDs are provided but you are
+            working in a Jupyter notebook
+        -   a plotly figure
+    """
+    pass
+
+
 def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
     """Plots a precision-recall (PR) curve.
 

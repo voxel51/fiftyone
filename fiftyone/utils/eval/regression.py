@@ -19,6 +19,7 @@ import eta.core.utils as etau
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.plots as fop
 import fiftyone.core.validation as fov
 
 
@@ -387,6 +388,45 @@ class RegressionResults(foe.EvaluationResults):
         """
         metrics = self.metrics()
         _print_dict_as_table(metrics, digits)
+
+    def plot_results(self, backend="plotly", **kwargs):
+        """Plots the regression results.
+
+        If you are working in a notebook environment with the default plotly
+        backend, this method returns an interactive
+        :class:`fiftyone.core.plots.plotly.InteractiveScatter` that you can
+        attach to an App session via its
+        :attr:`fiftyone.core.session.Session.plots` attribute, which will
+        automatically sync the session's view with the currently selected
+        points in the plot.
+
+        Args:
+            backend ("plotly"): the plotting backend to use. Supported values
+                are ``("plotly", "matplotlib")``
+            **kwargs: keyword arguments for the backend plotting method:
+
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_scatterplot`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_scatterplot`
+
+        Returns:
+            one of the following:
+
+            -   a :class:`fiftyone.core.plots.plotly.InteractiveScatter`, if
+                the plotly backend is used
+            -   a matplotlib figure, otherwise
+        """
+        return fop.plot_regression_results(
+            self.ytrue,
+            self.ypred,
+            samples=self._samples,
+            eval_key=self.eval_key,
+            gt_field=self.gt_field,
+            pred_field=self.pred_field,
+            ytrue_ids=self.ytrue_ids,
+            ypred_ids=self.ypred_ids,
+            backend=backend,
+            **kwargs,
+        )
 
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):

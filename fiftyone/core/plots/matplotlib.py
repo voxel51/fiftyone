@@ -123,6 +123,22 @@ def plot_confusion_matrix(
     return fig
 
 
+def plot_regression_results(ytrue, ypred, ax=None, figsize=None):
+    """Plots the given regression results.
+
+    Args:
+        ytrue: an array of ground truth values
+        ypred: an array of predicted values
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+
+    Returns:
+        a matplotlib figure
+    """
+    pass
+
+
 def plot_pr_curve(
     precision, recall, label=None, ax=None, figsize=None, **kwargs
 ):

@@ -82,6 +82,76 @@ def plot_confusion_matrix(
     return _plot_confusion_matrix(confusion_matrix, labels, **kwargs)
 
 
+def plot_regression_results(
+    ytrue,
+    ypred,
+    samples=None,
+    eval_key=None,
+    gt_field=None,
+    pred_field=None,
+    ytrue_ids=None,
+    ypred_ids=None,
+    backend="plotly",
+    **kwargs,
+):
+    """Plots the given regression results.
+
+    If IDs are provided and you are working in a notebook environment with the
+    default plotly backend, this method returns an interactive
+    :class:`fiftyone.core.plots.plotly.InteractiveScatter` that you can attach
+    to an App session via its :attr:`fiftyone.core.session.Session.plots`
+    attribute, which will automatically sync the session's view with the
+    currently selected points in the plot.
+
+    Args:
+        ytrue: an array of ground truth values
+        ypred: an array of predicted values
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were generated. Only used by the "plotly"
+            backend when IDs are provided
+        eval_key (None): the evaluation key of the evaluation
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
+        ytrue_ids (None): an array of ground truth regression IDs
+        ypred_ids (None): an array of predicted regression IDs
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
+
+    Returns:
+        one of the following:
+
+        -   a :class:`fiftyone.core.plots.plotly.InteractiveScatter`, if
+            IDs are provided and the plotly backend is used
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
+            IDs are provided but you are working in a Jupyter notebook with
+            the plotly backend
+        -   a plotly or matplotlib figure, otherwise
+    """
+    backend = _parse_backend(backend)
+
+    if backend == "matplotlib":
+        from .matplotlib import plot_regression_results as _plot_results
+    else:
+        from .plotly import plot_regression_results as _plot_results
+
+        kwargs.update(
+            dict(
+                samples=samples,
+                eval_key=eval_key,
+                gt_field=gt_field,
+                pred_field=pred_field,
+                ytrue_ids=ytrue_ids,
+                ypred_ids=ypred_ids,
+            )
+        )
+
+    return _plot_results(ytrue, ypred, **kwargs)
+
+
 def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
     """Plots a precision-recall (PR) curve.
 

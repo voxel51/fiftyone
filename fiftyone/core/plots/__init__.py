@@ -8,6 +8,7 @@ Plotting framework.
 
 from .base import (
     plot_confusion_matrix,
+    plot_regression_results,
     plot_pr_curve,
     plot_pr_curves,
     plot_roc_curve,
