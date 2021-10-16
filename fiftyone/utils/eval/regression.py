@@ -7,10 +7,12 @@ Regression evaluation.
 """
 import logging
 import itertools
+import numbers
 import warnings
 
 import numpy as np
 import sklearn.metrics as skm
+from tabulate import tabulate
 
 import eta.core.utils as etau
 
@@ -155,12 +157,13 @@ class SimpleEvaluationConfig(RegressionEvaluationConfig):
             :class:`fiftyone.core.labels.Regression` instances
         gt_field: the name of the field containing the ground truth
             :class:`fiftyone.core.labels.Regression` instances
-        metric ("mse"): the error metric to use to populate sample/frame-level
-            error data. Supported values are ``("mse", "mae")`` or any function
-            that accepts two scalar arguments ``(ypred, ytrue)``
+        metric ("squared_error"): the error metric to use to populate
+            sample/frame-level error data. Supported values are
+            ``("squared_error", "absolute_error")`` or any function that
+            accepts two scalar arguments ``(ypred, ytrue)``
     """
 
-    def __init__(self, pred_field, gt_field, metric="mse", **kwargs):
+    def __init__(self, pred_field, gt_field, metric="squared_error", **kwargs):
         super().__init__(pred_field, gt_field, **kwargs)
         self._metric = metric
 
@@ -186,9 +189,9 @@ class SimpleEvaluation(RegressionEvaluation):
     def evaluate_samples(self, samples, eval_key=None, missing=None):
         metric = self.config._metric
 
-        if metric == "mse":
+        if metric == "squared_error":
             error_fcn = lambda yp, yt: (yp - yt) ** 2
-        elif metric == "mae":
+        elif metric == "absolute_error":
             error_fcn = lambda yp, yt: abs(yp - yt)
         elif callable(metric):
             error_fcn = metric
@@ -196,7 +199,7 @@ class SimpleEvaluation(RegressionEvaluation):
             raise ValueError(
                 "Unsupported metric '%s'. The supported values are %s or a "
                 "function that accepts two scalar arguments `(ypred, ytrue)`"
-                % (metric, ("mse", "mae"))
+                % (metric, ("squared_error", "absolute_error"))
             )
 
         pred_field = self.config.pred_field
@@ -204,10 +207,43 @@ class SimpleEvaluation(RegressionEvaluation):
         is_frame_field = samples._is_frame_field(gt_field)
 
         gt = gt_field + ".value"
+        gt_id = gt_field + ".id"
         pred = pred_field + ".value"
+        pred_id = pred_field = ".id"
         pred_conf = pred_field + ".confidence"
 
-        ytrue, ypred, confs = samples.values([gt, pred, pred_conf])
+        ytrue, ytrue_ids, ypred, ypred_ids, confs = samples.values(
+            [gt, gt_id, pred, pred_id, pred_conf]
+        )
+
+        if is_frame_field:
+            _ytrue = list(itertools.chain.from_iterable(ytrue))
+            _ytrue_ids = list(itertools.chain.from_iterable(ytrue_ids))
+            _ypred = list(itertools.chain.from_iterable(ypred))
+            _ypred_ids = list(itertools.chain.from_iterable(ypred_ids))
+            _confs = list(itertools.chain.from_iterable(confs))
+        else:
+            _ytrue = ytrue
+            _ytrue_ids = ytrue_ids
+            _ypred = ypred
+            _ypred_ids = ypred_ids
+            _confs = confs
+
+        results = RegressionResults(
+            _ytrue,
+            _ypred,
+            confs=_confs,
+            eval_key=eval_key,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            ytrue_ids=_ytrue_ids,
+            ypred_ids=_ypred_ids,
+            missing=missing,
+            samples=samples,
+        )
+
+        if eval_key is None:
+            return results
 
         def compute_error(yp, yt):
             if missing is not None:
@@ -223,39 +259,16 @@ class SimpleEvaluation(RegressionEvaluation):
                 warnings.warn(str(e))
                 return None
 
-        if is_frame_field:
-            frame_errors = []
-            for _ypred, _ytrue in zip(ypred, ytrue):
-                frame_errors.append(list(map(compute_error, _ypred, _ytrue)))
-
-            sample_errors = [_safe_mean(errors) for errors in frame_errors]
-
-            ytrue = list(itertools.chain.from_iterable(ytrue))
-            ypred = list(itertools.chain.from_iterable(ypred))
-            errors = list(itertools.chain.from_iterable(frame_errors))
-            confs = list(itertools.chain.from_iterable(confs))
-        else:
-            errors = list(map(compute_error, ypred, ytrue))
-
-        results = RegressionResults(
-            ytrue,
-            ypred,
-            errors,
-            confs=confs,
-            eval_key=eval_key,
-            gt_field=gt_field,
-            pred_field=pred_field,
-            missing=missing,
-            samples=samples,
-        )
-
-        if eval_key is None:
-            return results
-
         # note: fields are manually declared so they'll exist even when
         # `samples` is empty
         dataset = samples._dataset
         if is_frame_field:
+            frame_errors = [
+                list(map(compute_error, yp, yt))
+                for yp, yt in zip(ypred, ytrue)
+            ]
+            sample_errors = [_safe_mean(e) for e in frame_errors]
+
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level errors
@@ -266,6 +279,8 @@ class SimpleEvaluation(RegressionEvaluation):
             dataset._add_frame_field_if_necessary(eval_key, fof.FloatField)
             samples.set_values(eval_frame, frame_errors)
         else:
+            errors = list(map(compute_error, ypred, ytrue))
+
             # Per-sample errors
             dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_values(eval_key, errors)
@@ -279,12 +294,13 @@ class RegressionResults(foe.EvaluationResults):
     Args:
         ytrue: a list of ground truth values
         ypred: a list of predicted values
-        errors: a list of errors
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
         eval_key (None): the evaluation key of the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
+        ytrue_ids (None): a list of IDs for the ground truth values
+        ypred_ids (None): a list of IDs for the predicted values
         missing (None): a missing value. Any None-valued regressions are
             given this value for results purposes
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
@@ -295,29 +311,32 @@ class RegressionResults(foe.EvaluationResults):
         self,
         ytrue,
         ypred,
-        errors,
         confs=None,
         weights=None,
         eval_key=None,
         gt_field=None,
         pred_field=None,
+        ytrue_ids=None,
+        ypred_ids=None,
         missing=None,
         samples=None,
     ):
-        ytrue, ypred, found_missing = _parse_labels(ytrue, ypred, missing)
+        ytrue, ypred, confs, weights, ytrue_ids, ypred_ids = _parse_values(
+            ytrue, ypred, confs, weights, ytrue_ids, ypred_ids, missing=missing
+        )
 
-        self.ytrue = np.asarray(ytrue)
-        self.ypred = np.asarray(ypred)
-        self.errors = np.asarray(errors)
-        self.confs = np.asarray(confs) if confs is not None else None
-        self.weights = np.asarray(weights) if weights is not None else None
+        self.ytrue = ytrue
+        self.ypred = ypred
+        self.confs = confs
+        self.weights = weights
         self.eval_key = eval_key
         self.gt_field = gt_field
         self.pred_field = pred_field
+        self.ytrue_ids = ytrue_ids
+        self.ypred_ids = ypred_ids
         self.missing = missing
 
         self._samples = samples
-        self._has_missing = found_missing
 
     def metrics(self):
         """Computes various popular regression metrics for the results.
@@ -329,7 +348,9 @@ class RegressionResults(foe.EvaluationResults):
         -   Mean absolute error: :func:`sklearn:sklearn.metrics.mean_absolute_error`
         -   Median absolute error: :func:`sklearn:sklearn.metrics.median_absolute_error`
         -   R^2 score: :func:`sklearn:sklearn.metrics.r2_score`
+        -   Explained variance score: :func:`sklearn:sklearn.metrics.explained_variance_score`
         -   Max error: :func:`sklearn:sklearn.metrics.max_error`
+        -   Support: the number of examples
 
         Returns:
             a dict
@@ -338,41 +359,56 @@ class RegressionResults(foe.EvaluationResults):
         yp = self.ypred
         w = self.weights
 
-        mean_squared_error = skm.mean_squared_error(yt, yp, sample_weight=w)
-        root_mean_squared_error = np.sqrt(mean_squared_error)
+        mse = skm.mean_squared_error(yt, yp, sample_weight=w)
+        rmse = np.sqrt(mse)
         mean_absolute_error = skm.mean_absolute_error(yt, yp, sample_weight=w)
         median_absolute_error = skm.median_absolute_error(yt, yp)
         r2_score = skm.r2_score(yt, yp, sample_weight=w)
+        ev_score = skm.explained_variance_score(yt, yp, sample_weight=w)
         max_error = skm.max_error(yt, yp)
+        support = len(yt)
 
         return {
-            "mean_squared_error": mean_squared_error,
-            "root_mean_squared_error": root_mean_squared_error,
+            "mean_squared_error": mse,
+            "root_mean_squared_error": rmse,
             "mean_absolute_error": mean_absolute_error,
             "median_absolute_error": median_absolute_error,
             "r2_score": r2_score,
+            "explained_variance_score": ev_score,
             "max_error": max_error,
+            "support": support,
         }
+
+    def print_metrics(self, digits=2):
+        """Prints the regression metrics computed via :meth:`metrics`.
+
+        Args:
+            digits (2): the number of digits of precision to print
+        """
+        metrics = self.metrics()
+        _print_dict_as_table(metrics, digits)
 
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
-        errors = d["errors"]
         confs = d.get("confs", None)
         weights = d.get("weights", None)
         eval_key = d.get("eval_key", None)
         gt_field = d.get("gt_field", None)
         pred_field = d.get("pred_field", None)
+        ytrue_ids = d.get("ytrue_ids", None)
+        ypred_ids = d.get("ypred_ids", None)
         return cls(
             ytrue,
             ypred,
-            errors,
             confs=confs,
             weights=weights,
             eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             samples=samples,
             **kwargs,
         )
@@ -393,15 +429,23 @@ def _safe_mean(values):
     return np.mean(values) if values else None
 
 
-def _parse_labels(ytrue, ypred, missing):
+def _parse_values(ytrue, ypred, *args, missing=None):
     _ytrue = []
     _ypred = []
-
+    _valid = []
     missing_count = 0
-    for yt, yp in zip(ytrue, ypred):
-        if yt is None or yp is None:
-            missing_count += 1
 
+    for yt, yp in zip(ytrue, ypred):
+        v = yt is not None and yp is not None
+
+        if missing is None:
+            _valid.append(v)
+
+        if v:
+            _ytrue.append(yt)
+            _ypred.append(yp)
+        else:
+            missing_count += 1
             if missing is not None:
                 if yt is None:
                     yt = missing
@@ -411,11 +455,11 @@ def _parse_labels(ytrue, ypred, missing):
 
                 _ytrue.append(yt)
                 _ypred.append(yp)
-        else:
-            _ytrue.append(yt)
-            _ypred.append(yp)
 
     found_missing = missing_count > 0
+
+    _ytrue = np.array(_ytrue)
+    _ypred = np.array(_ypred)
 
     if found_missing and missing is None:
         logger.warning(
@@ -424,4 +468,24 @@ def _parse_labels(ytrue, ypred, missing):
             missing_count,
         )
 
-    return _ytrue, _ypred, found_missing
+        valid = np.array(_valid)
+        args = [np.asarray(a)[valid] if a is not None else a for a in args]
+    else:
+        args = [np.asarray(a) if a is not None else a for a in args]
+
+    return (_ytrue, _ypred, *args)
+
+
+def _print_dict_as_table(d, digits):
+    fmt = "%%.%df" % digits
+    records = []
+    for k, v in d.items():
+        k = k.replace("_", " ")
+        if isinstance(v, numbers.Integral):
+            v = str(v)
+        else:
+            v = fmt % v
+
+        records.append((k, v))
+
+    print(tabulate(records, tablefmt="plain", numalign="left"))
