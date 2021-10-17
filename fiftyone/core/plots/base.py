@@ -86,11 +86,11 @@ def plot_regression_results(
     ytrue,
     ypred,
     samples=None,
-    eval_key=None,
+    ids=None,
+    labels=None,
+    sizes=None,
     gt_field=None,
     pred_field=None,
-    ytrue_ids=None,
-    ypred_ids=None,
     backend="plotly",
     **kwargs,
 ):
@@ -109,11 +109,34 @@ def plot_regression_results(
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the results were generated. Only used by the "plotly"
             backend when IDs are provided
-        eval_key (None): the evaluation key of the evaluation
+        ids (None): an array of sample or frame IDs corresponding to the
+            regressions. If not provided but ``samples`` are provided, the
+            appropriate IDs will be extracted from the samples
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric or string values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
+
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
-        ytrue_ids (None): an array of ground truth regression IDs
-        ypred_ids (None): an array of predicted regression IDs
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
@@ -138,18 +161,17 @@ def plot_regression_results(
     else:
         from .plotly import plot_regression_results as _plot_results
 
-        kwargs.update(
-            dict(
-                samples=samples,
-                eval_key=eval_key,
-                gt_field=gt_field,
-                pred_field=pred_field,
-                ytrue_ids=ytrue_ids,
-                ypred_ids=ypred_ids,
-            )
-        )
-
-    return _plot_results(ytrue, ypred, **kwargs)
+    return _plot_results(
+        ytrue,
+        ypred,
+        samples=samples,
+        ids=ids,
+        labels=labels,
+        sizes=sizes,
+        gt_field=gt_field,
+        pred_field=pred_field,
+        **kwargs,
+    )
 
 
 def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
@@ -664,8 +686,8 @@ class InteractivePlot(ResponsivePlot):
     external parties by calling its :meth:`select_ids` method.
 
     Args:
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
+        link_type ("samples"): whether this plot is linked to ``"samples"``,
+            ``"frames"``, or ``"labels"``
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
             defining an initial view from which to derive selection views when
             points are selected in the plot. This view will also be shown when
@@ -692,7 +714,7 @@ class InteractivePlot(ResponsivePlot):
         selection_mode=None,
         init_patches_fcn=None,
     ):
-        supported_link_types = ("samples", "labels")
+        supported_link_types = ("samples", "frames", "labels")
         if link_type not in supported_link_types:
             raise ValueError(
                 "Unsupported link_type '%s'; supported values are %s"
@@ -740,7 +762,7 @@ class InteractivePlot(ResponsivePlot):
 
     @selection_mode.setter
     def selection_mode(self, mode):
-        if self.link_type == "samples":
+        if self.link_type != "labels":
             if mode is not None:
                 logger.warning(
                     "Ignoring `selection_mode` parameter, which is only "
