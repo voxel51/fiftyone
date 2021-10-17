@@ -534,8 +534,6 @@ notebook:
         sample["weather"] = random.choice(["sunny", "cloudy", "rainy"])
         sample.save()
 
-    print(dataset)
-
     # Evaluate the predictions in the `predictions` field with respect to the
     # values in the `ground_truth` field
     results = dataset.evaluate_regressions(

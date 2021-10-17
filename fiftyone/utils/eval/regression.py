@@ -8,7 +8,6 @@ Regression evaluation.
 import logging
 import itertools
 import numbers
-import warnings
 
 import numpy as np
 import sklearn.metrics as skm
@@ -289,7 +288,6 @@ class RegressionResults(foe.EvaluationResults):
         ytrue: a list of ground truth values
         ypred: a list of predicted values
         confs (None): an optional list of confidences for the predictions
-        weights (None): an optional list of sample weights
         eval_key (None): the evaluation key of the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
@@ -306,7 +304,6 @@ class RegressionResults(foe.EvaluationResults):
         ytrue,
         ypred,
         confs=None,
-        weights=None,
         eval_key=None,
         gt_field=None,
         pred_field=None,
@@ -314,14 +311,13 @@ class RegressionResults(foe.EvaluationResults):
         missing=None,
         samples=None,
     ):
-        ytrue, ypred, confs, weights, ids = _parse_values(
-            ytrue, ypred, confs, weights, ids, missing=missing
+        ytrue, ypred, confs, ids = _parse_values(
+            ytrue, ypred, confs, ids, missing=missing
         )
 
         self.ytrue = ytrue
         self.ypred = ypred
         self.confs = confs
-        self.weights = weights
         self.eval_key = eval_key
         self.gt_field = gt_field
         self.pred_field = pred_field
@@ -330,7 +326,7 @@ class RegressionResults(foe.EvaluationResults):
 
         self._samples = samples
 
-    def metrics(self):
+    def metrics(self, weights=None):
         """Computes various popular regression metrics for the results.
 
         The computed metrics are:
@@ -344,12 +340,15 @@ class RegressionResults(foe.EvaluationResults):
         -   Max error: :func:`sklearn:sklearn.metrics.max_error`
         -   Support: the number of examples
 
+        Args:
+            weights (None): an optional list of weights for each example
+
         Returns:
             a dict
         """
         yt = self.ytrue
         yp = self.ypred
-        w = self.weights
+        w = weights
 
         mse = skm.mean_squared_error(yt, yp, sample_weight=w)
         rmse = np.sqrt(mse)
@@ -371,13 +370,14 @@ class RegressionResults(foe.EvaluationResults):
             "support": support,
         }
 
-    def print_metrics(self, digits=2):
+    def print_metrics(self, weights=None, digits=2):
         """Prints the regression metrics computed via :meth:`metrics`.
 
         Args:
+            weights (None): an optional list of weights for each example
             digits (2): the number of digits of precision to print
         """
-        metrics = self.metrics()
+        metrics = self.metrics(weights=weights)
         _print_dict_as_table(metrics, digits)
 
     def plot_results(
@@ -443,7 +443,6 @@ class RegressionResults(foe.EvaluationResults):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)
-        weights = d.get("weights", None)
         eval_key = d.get("eval_key", None)
         gt_field = d.get("gt_field", None)
         pred_field = d.get("pred_field", None)
@@ -453,7 +452,6 @@ class RegressionResults(foe.EvaluationResults):
             ytrue,
             ypred,
             confs=confs,
-            weights=weights,
             eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
