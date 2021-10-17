@@ -228,7 +228,7 @@ method to evaluate the predictions of a regression model stored in a
 Invoking
 :meth:`evaluate_regressions() <fiftyone.core.collections.SampleCollection.evaluate_regressions>`
 returns a |RegressionResults| instance that provides a variety of methods for
-computing various evaluation metrics about your model.
+evaluating your model.
 
 In addition, when you specify an ``eval_key`` parameter, helpful fields will be
 populated on each sample that you can leverage via the
@@ -240,7 +240,7 @@ Simple evaluation (default)
 
 By default,
 :meth:`evaluate_regressions() <fiftyone.core.collections.SampleCollection.evaluate_regressions>`
-will evaluate each predictions by directly comparing its ``value`` to the
+will evaluate each prediction by directly comparing its ``value`` to the
 associated ground truth value.
 
 You can explicitly request that simple evaluation be used by setting the

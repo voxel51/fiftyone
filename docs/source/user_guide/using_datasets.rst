@@ -1084,7 +1084,7 @@ value itself is stored in the
 The optional
 :attr:`confidence <fiftyone.core.labels.Regression.confidence>` attribute can
 be used to store a score associated with the model prediction and can be
-visualized in the App or used by, e.g., when
+visualized in the App or used, for example, when
 :ref:`evaluating regressions <evaluating-regressions>`.
 
 .. code-block:: python
