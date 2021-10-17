@@ -405,7 +405,6 @@ class RegressionResults(foe.EvaluationResults):
                     :meth:`fiftyone.core.collections.SampleCollection.values`
                 -   a list or array-like of numeric or string values (or lists
                     of lists for frame-level regressions)
-
             sizes (None): data to use to scale the sizes of the points. Can be
                 any of the following:
 
@@ -416,7 +415,6 @@ class RegressionResults(foe.EvaluationResults):
                     :meth:`fiftyone.core.collections.SampleCollection.values`
                 -   a list or array-like of numeric values (or lists of lists
                     for frame-level regressions)
-
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
