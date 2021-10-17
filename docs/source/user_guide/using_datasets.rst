@@ -1071,6 +1071,58 @@ labels.
 FiftyOne provides a dedicated |Label| subclass for many common tasks. The
 subsections below describe them.
 
+.. _regression:
+
+Regression
+----------
+
+The |Regression| class represents a numeric regression value for an image. The
+value itself is stored in the
+:attr:`value <fiftyone.core.labels.Regression.value>` attribute of the
+|Regression| object. This may be a ground truth value or a model prediction.
+
+The optional
+:attr:`confidence <fiftyone.core.labels.Regression.confidence>` attribute can
+be used to store a score associated with the model prediction and can be
+visualized in the App or used by, e.g., when
+:ref:`evaluating regressions <evaluating-regressions>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["ground_truth"] = fo.Regression(value=51.0)
+    sample["prediction"] = fo.Classification(value=42.0, confidence=0.9)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Regression: {
+            'id': '616c4bef36297ec40a26d112',
+            'tags': BaseList([]),
+            'value': 51.0,
+            'confidence': None,
+        }>,
+        'prediction': <Classification: {
+            'id': '616c4bef36297ec40a26d113',
+            'tags': BaseList([]),
+            'label': None,
+            'confidence': 0.9,
+            'logits': None,
+            'value': 42.0,
+        }>,
+    }>
+
 .. _classification:
 
 Classification
