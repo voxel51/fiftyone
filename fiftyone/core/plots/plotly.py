@@ -40,6 +40,7 @@ _DEFAULT_LAYOUT = dict(
 
 _DEFAULT_LINE_COLOR = "#FF6D04"
 _DEFAULT_CONTINUOUS_COLORSCALE = "viridis"
+_MAX_LABEL_TRACES = 25
 
 
 def plot_confusion_matrix(
@@ -218,13 +219,14 @@ def _plot_confusion_matrix_interactive(
     return plot
 
 
-def plot_regression_results(
+def plot_regressions(
     ytrue,
     ypred,
     samples=None,
     ids=None,
     labels=None,
     sizes=None,
+    classes=None,
     gt_field=None,
     pred_field=None,
     figure=None,
@@ -262,7 +264,6 @@ def plot_regression_results(
             -   a list or array-like of numeric or string values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -274,6 +275,11 @@ def plot_regression_results(
             -   a list or array-like of numeric values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings. If provided, the
+            element order of this list also controls the z-order and legend
+            order of multitrace plots (first class is rendered first, and thus
+            on the bottom, and appears first in the legend)
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
@@ -303,33 +309,6 @@ def plot_regression_results(
             working in a Jupyter notebook
         -   a plotly figure, otherwise
     """
-    ytrue = np.asarray(ytrue)
-    ypred = np.asarray(ypred)
-
-    if best_fit_label is None:
-        r2_score = skm.r2_score(ytrue, ypred, sample_weight=None)
-        best_fit_label = "r^2: %0.3f" % r2_score
-
-    model = skl.LinearRegression()
-    model.fit(ytrue[:, np.newaxis], ypred)
-
-    xline = np.array([[ytrue.min()], [ytrue.max()]])
-    yline = model.predict(xline)
-
-    xlabel = gt_field if gt_field is not None else "Ground truth"
-    ylabel = pred_field if pred_field is not None else "Predictions"
-
-    if figure is None:
-        figure = go.Figure()
-
-    figure.add_shape(
-        type="line", x=xline, y=yline, line_color="black", name=best_fit_label
-    )
-
-    figure.update_layout(xaxis_title=xlabel, yaxis_title=ylabel)
-
-    points = np.stack([ytrue, ypred], axis=-1)
-
     if (
         samples is not None
         and gt_field is not None
@@ -338,6 +317,58 @@ def plot_regression_results(
         link_field = "frames"
     else:
         link_field = None
+
+    points = np.stack([ytrue, ypred], axis=-1)
+
+    labels_title, sizes_title, _ = _parse_titles(
+        labels, labels_title, sizes, sizes_title, None
+    )
+
+    (
+        points,
+        ids,
+        labels,
+        sizes,
+        _,
+        classes,
+        categorical,
+    ) = _parse_scatter_inputs(
+        points, samples, ids, link_field, labels, sizes, None, classes
+    )
+
+    ytrue = points[:, 0]
+    ypred = points[:, 1]
+
+    if best_fit_label is None:
+        r2_score = skm.r2_score(ytrue, ypred, sample_weight=None)
+        best_fit_label = "r^2: %0.3f" % r2_score
+
+    model = skl.LinearRegression()
+    model.fit(ytrue[:, np.newaxis], ypred)
+
+    xline = np.array([ytrue.min(), ytrue.max()])
+    yline = model.predict(xline[:, np.newaxis])
+
+    xlabel = gt_field if gt_field is not None else "Ground truth"
+    ylabel = pred_field if pred_field is not None else "Predictions"
+
+    if figure is None:
+        figure = go.Figure()
+
+    best_fit = go.Scatter(
+        x=xline, y=yline, mode="lines", line_color="black", name=best_fit_label
+    )
+
+    figure.add_trace(best_fit)
+    figure.update_layout(xaxis_title=xlabel, yaxis_title=ylabel)
+
+    if labels is not None and (
+        not categorical or len(classes) > _MAX_LABEL_TRACES
+    ):
+        # Move legend so it doesn't interfere with colorbar
+        figure.update_layout(
+            legend=dict(y=0.99, x=0.01, yanchor="top", xanchor="left")
+        )
 
     return scatterplot(
         points,
@@ -348,6 +379,7 @@ def plot_regression_results(
         sizes=sizes,
         figure=figure,
         marker_size=marker_size,
+        trace_title="regressions",
         labels_title=labels_title,
         sizes_title=sizes_title,
         show_colorbar_title=show_colorbar_title,
@@ -387,9 +419,11 @@ def plot_pr_curve(
     if figure is None:
         figure = go.Figure()
 
-    figure.add_shape(
-        type=style, x=recall, y=precision, line_color=_DEFAULT_LINE_COLOR
-    )
+    params = {"mode": "lines", "line_color": _DEFAULT_LINE_COLOR}
+    if style == "area":
+        params["fill"] = "tozeroy"
+
+    figure.add_trace(go.Scatter(x=recall, y=precision, **params))
 
     # Add 50/50 line
     figure.add_shape(
@@ -526,7 +560,11 @@ def plot_roc_curve(
     if figure is None:
         figure = go.Figure()
 
-    figure.add_shape(type=style, x=fpr, y=tpr, line_color=_DEFAULT_LINE_COLOR)
+    params = {"mode": "lines", "line_color": _DEFAULT_LINE_COLOR}
+    if style == "area":
+        params["fill"] = "tozeroy"
+
+    figure.add_trace(go.Scatter(x=fpr, y=tpr, **params))
 
     # Add 50/50 line
     figure.add_shape(
@@ -568,6 +606,7 @@ def scatterplot(
     figure=None,
     multi_trace=None,
     marker_size=None,
+    trace_title=None,
     labels_title=None,
     sizes_title=None,
     edges_title=None,
@@ -603,7 +642,6 @@ def scatterplot(
             -   ``"frames"``, if the points correspond to frames
             -   the name of a :class:`fiftyone.core.labels.Label` field, if the
                 points correspond to the labels in this field
-
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -616,7 +654,6 @@ def scatterplot(
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -629,7 +666,6 @@ def scatterplot(
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         edges (None): an optional ``num_edges x 2`` array of row indices into
             ``points`` defining undirected edges between points to render as a
             separate trace on the scatterplot
@@ -645,6 +681,8 @@ def scatterplot(
             will be true if there are up to 25 classes
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        trace_title (None): a name for the scatter trace. Only applicable when
+            plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -690,12 +728,12 @@ def scatterplot(
         classes,
         categorical,
     ) = _parse_scatter_inputs(
-        points, samples, link_field, labels, sizes, edges, classes
+        points, samples, ids, link_field, labels, sizes, edges, classes
     )
 
     if categorical:
         if multi_trace is None:
-            multi_trace = len(classes) <= 25
+            multi_trace = len(classes) <= _MAX_LABEL_TRACES
 
         if multi_trace:
             figure = _plot_scatter_categorical(
@@ -723,6 +761,7 @@ def scatterplot(
                 ids,
                 figure,
                 marker_size,
+                trace_title,
                 labels_title,
                 sizes_title,
                 edges_title,
@@ -738,6 +777,7 @@ def scatterplot(
             ids,
             figure,
             marker_size,
+            trace_title,
             labels_title,
             sizes_title,
             edges_title,
@@ -811,15 +851,14 @@ def _parse_titles(
 
 
 def _parse_scatter_inputs(
-    points, samples, link_field, labels, sizes, edges, classes
+    points, samples, ids, link_field, labels, sizes, edges, classes
 ):
     num_dims = points.shape[1]
 
     labels = _get_data_for_points(points, samples, labels, "labels")
     sizes = _get_data_for_points(points, samples, sizes, "sizes")
 
-    ids = None
-    if samples is not None:
+    if ids is None and samples is not None:
         if num_dims != 2:
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
@@ -926,6 +965,7 @@ def _parse_data(points, ids, labels, sizes, edges, classes):
 def location_scatterplot(
     locations=None,
     samples=None,
+    ids=None,
     labels=None,
     sizes=None,
     edges=None,
@@ -935,6 +975,7 @@ def location_scatterplot(
     figure=None,
     multi_trace=None,
     marker_size=None,
+    trace_title=None,
     labels_title=None,
     sizes_title=None,
     edges_title=None,
@@ -967,9 +1008,11 @@ def location_scatterplot(
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
-
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        ids (None): an array of IDs corresponding to the locations. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -979,7 +1022,6 @@ def location_scatterplot(
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -989,7 +1031,6 @@ def location_scatterplot(
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
-
         edges (None): an optional ``num_edges x 2`` array of row indices into
             ``locations`` defining undirected edges between points to render as
             a separate trace on the scatterplot
@@ -1010,6 +1051,8 @@ def location_scatterplot(
             will be true if there are up to 25 classes
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        trace_title (None): a name for the scatter trace. Only applicable when
+            plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -1049,7 +1092,7 @@ def location_scatterplot(
         classes,
         categorical,
     ) = _parse_scatter_inputs(
-        locations, samples, None, labels, sizes, edges, classes
+        locations, samples, ids, None, labels, sizes, edges, classes
     )
 
     if style not in (None, "scatter", "density"):
@@ -1058,7 +1101,7 @@ def location_scatterplot(
 
     if categorical:
         if multi_trace is None:
-            multi_trace = len(classes) <= 25
+            multi_trace = len(classes) <= _MAX_LABEL_TRACES
 
         if multi_trace:
             figure = _plot_scatter_mapbox_categorical(
@@ -1085,6 +1128,7 @@ def location_scatterplot(
                 ids,
                 figure,
                 marker_size,
+                trace_title,
                 labels_title,
                 sizes_title,
                 edges_title,
@@ -1101,6 +1145,7 @@ def location_scatterplot(
             ids,
             radius,
             figure,
+            trace_title,
             labels_title,
             sizes_title,
             colorbar_title,
@@ -1114,6 +1159,7 @@ def location_scatterplot(
             ids,
             figure,
             marker_size,
+            trace_title,
             labels_title,
             sizes_title,
             edges_title,
@@ -2043,6 +2089,7 @@ def _plot_scatter_categorical_single_trace(
     ids,
     figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -2108,6 +2155,7 @@ def _plot_scatter_categorical_single_trace(
         mode="markers",
         marker=marker,
         text=labels,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -2145,6 +2193,7 @@ def _plot_scatter_numeric(
     ids,
     figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -2202,6 +2251,7 @@ def _plot_scatter_numeric(
         customdata=ids,
         mode="markers",
         marker=marker,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -2329,6 +2379,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
     ids,
     figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -2391,6 +2442,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
         mode="markers",
         marker=marker,
         text=labels,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -2422,6 +2474,7 @@ def _plot_scatter_mapbox_numeric(
     ids,
     figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -2475,6 +2528,7 @@ def _plot_scatter_mapbox_numeric(
         customdata=ids,
         mode="markers",
         marker=marker,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -2505,6 +2559,7 @@ def _plot_scatter_mapbox_density(
     ids,
     radius,
     figure,
+    trace_title,
     labels_title,
     sizes_title,
     colorbar_title,
@@ -2548,6 +2603,7 @@ def _plot_scatter_mapbox_density(
         radius=radius,
         customdata=ids,
         colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 

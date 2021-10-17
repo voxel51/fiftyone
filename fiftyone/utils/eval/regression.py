@@ -250,8 +250,7 @@ class SimpleEvaluation(RegressionEvaluation):
 
             try:
                 return error_fcn(yp, yt)
-            except Exception as e:
-                warnings.warn(str(e))
+            except:
                 return None
 
         # note: fields are manually declared so they'll exist even when
@@ -404,7 +403,8 @@ class RegressionResults(foe.EvaluationResults):
                 -   a :class:`fiftyone.core.expressions.ViewExpression`
                     defining numeric or string values to extract via
                     :meth:`fiftyone.core.collections.SampleCollection.values`
-                -   a list or array-like of numeric or string values
+                -   a list or array-like of numeric or string values (or lists
+                    of lists for frame-level regressions)
 
             sizes (None): data to use to scale the sizes of the points. Can be
                 any of the following:
@@ -414,19 +414,20 @@ class RegressionResults(foe.EvaluationResults):
                 -   a :class:`fiftyone.core.expressions.ViewExpression`
                     defining numeric values to extract via
                     :meth:`fiftyone.core.collections.SampleCollection.values`
-                -   a list or array-like of numeric values
+                -   a list or array-like of numeric values (or lists of lists
+                    for frame-level regressions)
 
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
 
-                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_regression_results`
-                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_regression_results`
+                -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_regressions`
+                -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_regressions`
 
         Returns:
             an :class:`fiftyone.core.plots.base.InteractivePlot`
         """
-        return fop.plot_regression_results(
+        return fop.plot_regressions(
             self.ytrue,
             self.ypred,
             samples=self._samples,

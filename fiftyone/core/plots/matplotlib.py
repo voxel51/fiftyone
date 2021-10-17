@@ -125,13 +125,14 @@ def plot_confusion_matrix(
     return fig
 
 
-def plot_regression_results(
+def plot_regressions(
     ytrue,
     ypred,
     samples=None,
     ids=None,
     labels=None,
     sizes=None,
+    classes=None,
     gt_field=None,
     pred_field=None,
     best_fit_label=None,
@@ -163,7 +164,6 @@ def plot_regression_results(
             -   a list or array-like of numeric or string values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -175,7 +175,8 @@ def plot_regression_results(
             -   a list or array-like of numeric values
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames
-
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         best_fit_label (None): a custom legend label for the best fit line
@@ -194,8 +195,17 @@ def plot_regression_results(
     if ax is None:
         _, ax = plt.subplots()
 
-    ytrue = np.asarray(ytrue)
-    ypred = np.asarray(ypred)
+    points = np.stack([ytrue, ypred], axis=-1)
+
+    points, labels, sizes, _, inds, _ = _parse_scatter_inputs(
+        points, labels, sizes, classes
+    )
+
+    if ids is not None and inds is not None:
+        ids = np.asarray(ids)[inds]
+
+    ytrue = points[:, 0]
+    ypred = points[:, 1]
 
     if best_fit_label is None:
         r2_score = skm.r2_score(ytrue, ypred, sample_weight=None)
@@ -204,8 +214,8 @@ def plot_regression_results(
     model = skl.LinearRegression()
     model.fit(ytrue[:, np.newaxis], ypred)
 
-    xline = np.array([[ytrue.min()], [ytrue.max()]])
-    yline = model.predict(xline)
+    xline = np.array([ytrue.min(), ytrue.max()])
+    yline = model.predict(xline[:, np.newaxis])
 
     xlabel = gt_field if gt_field is not None else "Ground truth"
     ylabel = pred_field if pred_field is not None else "Predictions"
@@ -215,8 +225,6 @@ def plot_regression_results(
         ax.set(xlabel=xlabel, ylabel=ylabel)
         ax.legend()
         ax.axis("equal")
-
-    points = np.stack([ytrue, ypred], axis=-1)
 
     if (
         samples is not None
@@ -409,7 +417,6 @@ def scatterplot(
             -   ``"frames"``, if the points correspond to frames
             -   the name of a :class:`fiftyone.core.labels.Label` field, if the
                 points correspond to the labels in this field
-
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -422,7 +429,6 @@ def scatterplot(
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -435,7 +441,6 @@ def scatterplot(
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         marker_size (None): the marker size to use. If ``sizes`` are provided,
@@ -621,7 +626,6 @@ def location_scatterplot(
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
-
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
         ids (None): an array of IDs corresponding to the locations. If not
@@ -636,7 +640,6 @@ def location_scatterplot(
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -646,7 +649,6 @@ def location_scatterplot(
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
-
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         map_type ("satellite"): the map type to render. Supported values are
