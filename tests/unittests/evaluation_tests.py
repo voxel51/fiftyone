@@ -101,10 +101,16 @@ class ClassificationTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -178,10 +184,16 @@ class ClassificationTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[2, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
+        expected = np.array([[2, 0], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[2, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -208,8 +220,15 @@ class ClassificationTests(unittest.TestCase):
                 k=1,
             )
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
         expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
@@ -377,10 +396,16 @@ class VideoClassificationTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -457,10 +482,16 @@ class VideoClassificationTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[2, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
+        expected = np.array([[2, 0], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[2, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -490,8 +521,15 @@ class VideoClassificationTests(unittest.TestCase):
                 k=1,
             )
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
+
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
         expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 1]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
@@ -883,10 +921,16 @@ class DetectionsTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -935,10 +979,16 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1013,10 +1063,16 @@ class DetectionsTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1064,10 +1120,16 @@ class DetectionsTests(unittest.TestCase):
             **kwargs,
         )
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1252,10 +1314,16 @@ class VideoDetectionsTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1315,10 +1383,16 @@ class VideoDetectionsTests(unittest.TestCase):
             classwise=False,  # allow matches w/ different classes
         )
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1392,10 +1466,16 @@ class VideoDetectionsTests(unittest.TestCase):
         metrics = results.metrics()
         self.assertEqual(metrics["support"], 3)
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1454,10 +1534,16 @@ class VideoDetectionsTests(unittest.TestCase):
             classwise=False,  # allow matches w/ different classes
         )
 
-        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        # rows = GT, cols = predicted, labels = [cat, dog]
         actual = results.confusion_matrix()
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1], [0, 0]], dtype=int)
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertTrue((actual == expected).all())
 
+        # rows = GT, cols = predicted, labels = [cat, dog, None]
+        classes = list(results.classes) + [results.missing]
+        actual = results.confusion_matrix(classes=classes)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
