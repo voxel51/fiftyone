@@ -470,6 +470,7 @@ const UPDATE_LABEL = {
       }
 
       cache[i] = get32BitColor(coloring.targets[i]);
+      return cache[i];
     };
 
     for (const i in overlay) {
