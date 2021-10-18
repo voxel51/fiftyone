@@ -8,13 +8,12 @@ Dataset run documents.
 from mongoengine import (
     DictField,
     ListField,
-    ReferenceField,
     StringField,
     DateTimeField,
     FileField,
 )
 
-from .document import EmbeddedDocument
+from .embedded_document import EmbeddedDocument
 
 
 class RunDocument(EmbeddedDocument):

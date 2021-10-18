@@ -15,7 +15,7 @@ import numpy as np
 import eta.core.frameutils as etaf
 import eta.core.image as etai
 
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou

@@ -13,9 +13,9 @@ from bson import json_util, ObjectId
 import mongoengine
 import pymongo
 
-import fiftyone.core.utils as fou
-
 import eta.core.serial as etas
+
+import fiftyone.core.utils as fou
 
 
 class SerializableDocument(object):
@@ -329,14 +329,6 @@ class BaseDocument(MongoEngineBaseDocument):
         return self.id is not None
 
 
-class BaseEmbeddedDocument(MongoEngineBaseDocument):
-    """Base class for documents that are embedded within other documents and
-    therefore are not stored in their own collection in the database.
-    """
-
-    pass
-
-
 class Document(BaseDocument, mongoengine.Document):
     """Base class for documents that are stored in a MongoDB collection.
 
@@ -471,32 +463,3 @@ class Document(BaseDocument, mongoengine.Document):
             updated_existing = None
 
         return updated_existing
-
-
-class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
-    """Base class for documents that are embedded within other documents and
-    therefore are not stored in their own collection in the database.
-    """
-
-    meta = {"abstract": True}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.validate()
-
-
-class DynamicEmbeddedDocument(
-    BaseEmbeddedDocument, mongoengine.DynamicEmbeddedDocument,
-):
-    """Base class for dynamic documents that are embedded within other
-    documents and therefore aren't stored in their own collection in the
-    database.
-
-    Dynamic documents can have arbitrary fields added to them.
-    """
-
-    meta = {"abstract": True}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.validate()

@@ -46,25 +46,14 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict, OrderedDict
-from functools import wraps
-import json
-import numbers
+from collections import OrderedDict
 import os
 import random
 
-from bson import json_util, ObjectId
-from bson.binary import Binary
-from mongoengine.errors import InvalidQueryError
-import numpy as np
-import six
-
 import fiftyone as fo
 import fiftyone.core.fields as fof
-import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
-import fiftyone.core.utils as fou
 
 from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin

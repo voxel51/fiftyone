@@ -22,7 +22,8 @@ from fiftyone.core.fields import (
     TargetsField,
 )
 
-from .document import Document, EmbeddedDocument, BaseEmbeddedDocument
+from .document import Document
+from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
 
 
@@ -83,6 +84,27 @@ def create_field(
             for name, field_kwargs in fields.items()
         }
 
+    if issubclass(ftype, (ListField, DictField)):
+        if subfield is not None:
+            if inspect.isclass(subfield):
+                if (
+                    issubclass(subfield, EmbeddedDocumentField)
+                    and fields is not None
+                ):
+                    subfield = subfield(
+                        fields=fields, document_type=embedded_doc_type
+                    )
+                else:
+                    subfield = subfield()
+
+            if not isinstance(subfield, Field):
+                raise ValueError(
+                    "Invalid subfield type %s; must be a subclass of %s"
+                    % (type(subfield), Field)
+                )
+
+            kwargs["field"] = subfield
+
     if issubclass(ftype, EmbeddedDocumentField):
         if not issubclass(embedded_doc_type, BaseEmbeddedDocument):
             raise ValueError(
@@ -94,25 +116,6 @@ def create_field(
 
         if fields is not None:
             kwargs["fields"] = fields
-
-    elif issubclass(ftype, (ListField, DictField)):
-        if subfield is not None:
-            if inspect.isclass(subfield):
-                if (
-                    issubclass(subfield, EmbeddedDocumentField)
-                    and fields is not None
-                ):
-                    subfield = subfield(fields=fields)
-                else:
-                    subfield = subfield()
-
-            if not isinstance(subfield, Field):
-                raise ValueError(
-                    "Invalid subfield type %s; must be a subclass of %s"
-                    % (type(subfield), Field)
-                )
-
-            kwargs["field"] = subfield
 
     field = ftype(**kwargs)
     field.name = field_name
@@ -128,7 +131,9 @@ class SampleFieldDocument(EmbeddedDocument):
     subfield = StringField(null=True)
     embedded_doc_type = StringField(null=True)
     db_field = StringField(null=True)
-    fields = DictField(EmbeddedDocumentField("SampleFieldDocument"))
+    fields = DictField(
+        EmbeddedDocumentField(document_type="SampleFieldDocument")
+    )
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -173,7 +178,6 @@ class SampleFieldDocument(EmbeddedDocument):
         Returns:
             a :class:`SampleFieldDocument`
         """
-        print(field)
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
@@ -211,16 +215,17 @@ class SampleFieldDocument(EmbeddedDocument):
         if self.db_field != field.db_field:
             return False
 
-        if self.fields is not None:
-            fields = getattr(field, "fields", {})
-            if len(fields) != len(self.fields):
+        cur_fields = getattr(self, "fields", None)
+        fields = getattr(field, "fields", None)
+        if cur_fields and fields:
+            if len(fields) != len(cur_fields):
+                return False
+
+            if any([name not in cur_fields for name in fields]):
                 return False
 
             return any(
-                [
-                    not self.fields[name].matches(fields[name])
-                    for name in fields
-                ]
+                [not cur_fields[name].matches(fields[name]) for name in fields]
             )
 
         return True
@@ -230,15 +235,17 @@ class SampleFieldDocument(EmbeddedDocument):
         attr = getattr(field, attr_name, None)
         return etau.get_class_name(attr) if attr else None
 
-    @staticmethod
-    def _get_field_documents(field):
+    @classmethod
+    def _get_field_documents(cls, field):
         if not isinstance(field, EmbeddedDocumentField):
             return None
 
         if not hasattr(field, "fields"):
             return None
 
-        return field.fields
+        return {
+            name: cls.from_field(value) for name, value in field.fields.items()
+        }
 
 
 class DatasetDocument(Document):

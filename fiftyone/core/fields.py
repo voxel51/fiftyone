@@ -218,15 +218,15 @@ class DictField(mongoengine.fields.DictField, Field):
         return etau.get_class_name(self)
 
     def validate(self, value):
-        if not isinstance(value, dict):
-            self.error("Value must be a dict")
-
         if not all(map(lambda k: etau.is_str(k), value)):
             self.error("Dict fields must have string keys")
 
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
+
+        if value is not None and not isinstance(value, dict):
+            self.error("Value must be a dict")
 
 
 class IntDictField(DictField):
@@ -620,7 +620,16 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                     % field_name
                 )
 
-            field.validate(field_value)
+            try:
+                field.validate(field_value)
+            except Exception as e:
+                print(field_name)
+                raise e
+
+    def to_python(self, value):
+        doc = super().to_python(value)
+        doc._set_parent_field(self)
+        return doc
 
 
 class EmbeddedDocumentListField(

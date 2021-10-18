@@ -14,7 +14,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
