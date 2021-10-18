@@ -84,10 +84,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Returns:
             a dict
         """
-        if classes is not None:
-            labels = np.asarray(classes)
-        else:
-            labels = self.classes
+        labels = self._parse_classes(classes)
 
         if self.ytrue.size == 0 or labels.size == 0:
             d = {}
@@ -132,10 +129,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Returns:
             a dict
         """
-        if classes is not None:
-            labels = np.asarray(classes)
-        else:
-            labels = self.classes
+        labels = self._parse_classes(classes)
 
         accuracy = _compute_accuracy(
             self.ytrue, self.ypred, labels=labels, weights=self.weights
@@ -172,10 +166,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
                 report
             digits (2): the number of digits of precision to print
         """
-        if classes is not None:
-            labels = np.asarray(classes)
-        else:
-            labels = self.classes
+        labels = self._parse_classes(classes)
 
         if labels.size == 0:
             print("No classes to analyze")
@@ -287,6 +278,12 @@ class BaseEvaluationResults(foe.EvaluationResults):
             backend=backend,
             **kwargs,
         )
+
+    def _parse_classes(self, classes):
+        if classes is not None:
+            return np.asarray(classes)
+
+        return np.array([c for c in self.classes if c != self.missing])
 
     def _confusion_matrix(
         self,
