@@ -211,12 +211,12 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
   }: Readonly<State>) {
     if (this.width !== width) {
       const dpr = getDPR();
-      this.element.width = Math.ceil(width * dpr);
+      this.element.width = width * dpr;
       this.width = width;
     }
     if (this.height !== height) {
       const dpr = getDPR();
-      this.element.height = Math.ceil(height * dpr);
+      this.element.height = height * dpr;
       this.height = height;
     }
 

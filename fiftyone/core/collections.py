@@ -4644,11 +4644,12 @@ class SampleCollection(object):
             field_or_expr: can be any of the following:
 
                 -   a :class:`fiftyone.core.labels.TemporalDetection`,
-                    :class:`fiftyone.core.labels.TemporalDetections`, or
+                    :class:`fiftyone.core.labels.TemporalDetections`,
                     :class:`fiftyone.core.fields.FrameSupportField`, or list of
                     :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
                     types:
+
                     -   :class:`fiftyone.core.labels.Classifications`
                     -   :class:`fiftyone.core.labels.Detections`
                     -   :class:`fiftyone.core.labels.Polylines`

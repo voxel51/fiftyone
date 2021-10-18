@@ -8,6 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
+from datetime import date, datetime, timedelta
 import math
 import os
 import traceback
@@ -41,6 +42,7 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
+import fiftyone.core.utils as fout
 import fiftyone.core.view as fov
 
 from fiftyone.server.colorscales import ColorscalesHandler
@@ -246,6 +248,7 @@ class PageHandler(tornado.web.RequestHandler):
             self.write({"results": [], "more": False})
             return
 
+        view = get_extended_view(view, state.filters, count_labels_tags=True)
         if view.media_type == fom.VIDEO:
             if isinstance(view, focl.ClipsView):
                 expr = F("frame_number") == F("$support")[0]
@@ -254,7 +257,6 @@ class PageHandler(tornado.web.RequestHandler):
 
             view = view.set_field("frames", F("frames").filter(expr))
 
-        view = get_extended_view(view, state.filters, count_labels_tags=True)
         view = view.skip((page - 1) * page_length)
 
         samples = await foo.aggregate(
@@ -768,6 +770,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         aggregations = fos.DatasetStatistics(view, filters).aggregations
 
         results = await view._async_aggregate(aggregations)
+        convert(results)
 
         data = []
         for agg, result in zip(aggregations, results):
@@ -1012,6 +1015,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             aggregations = fos.DatasetStatistics(view, filters).aggregations
             results = await view._async_aggregate(aggregations)
+            convert(results)
 
             for agg, result in zip(aggregations, results):
                 data.append(
@@ -1077,7 +1081,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=self)
 
     @classmethod
-    async def on_distributions(cls, self, group, omit=[]):
+    async def on_distributions(cls, self, group):
         """Sends distribution data with respect to a group to the requesting
         client.
 
@@ -1133,10 +1137,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif results is None:
 
             def filter(field):
-                if (
-                    field.name in {"tags"}
-                    or field.name in omit
-                    or field.name.startswith("_")
+                if field.name in {"tags", "filepath"} or field.name.startswith(
+                    "_"
                 ):
                     return None
 
@@ -1242,12 +1244,19 @@ def _filter_deactivated_clients(clients):
     return filtered
 
 
+def _create_histogram_key(field, start, end):
+    if isinstance(field, (fof.DateField, fof.DateTimeField)):
+        return fout.datetime_to_timestamp(start + ((end - start) / 2))
+
+    return round((start + end) / 2, 4)
+
+
 def _parse_histogram_values(result, field):
     counts, edges, other = result
     data = sorted(
         [
             {
-                "key": round((k + edges[idx + 1]) / 2, 4),
+                "key": _create_histogram_key(field, k, edges[idx + 1]),
                 "count": v,
                 "edges": (k, edges[idx + 1]),
             }
@@ -1363,7 +1372,7 @@ def _numeric_bounds(paths):
 async def _numeric_histograms(view, schema, prefix=""):
     paths = []
     fields = []
-    numerics = (fof.IntField, fof.FloatField)
+    numerics = (fof.IntField, fof.FloatField, fof.DateField, fof.DateTimeField)
     for name, field in schema.items():
         if prefix != "" and name == "frame_number":
             continue
@@ -1381,17 +1390,22 @@ async def _numeric_histograms(view, schema, prefix=""):
         num_ticks = None
         if range_[0] == range_[1]:
             bins = 1
+            if range_[0] is None:
+                range_ = [0, 1]
 
-        if range_ == (None, None):
-            range_ = (0, 1)
-        elif fos._meets_type(field, fof.IntField):
+        if isinstance(range_[1], datetime):
+            range_ = (range_[0], range_[1] + timedelta(milliseconds=1))
+        elif isinstance(range_[1], date):
+            range_ = (range_[0], range_[1] + timedelta(days=1))
+        else:
+            range_ = (range_[0], range_[1] + 1e-6)
+
+        if fos._meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]
             range_ = (range_[0] - 0.5, range_[1] + 0.5)
             if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
                 bins = delta + 1
                 num_ticks = 0
-        else:
-            range_ = (range_[0], range_[1] + 0.01)
 
         ticks.append(num_ticks)
         aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))

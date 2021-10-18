@@ -449,6 +449,13 @@ export const gridZoom = selector<number | null>({
   },
 });
 
+export const timeZone = selector<string>({
+  key: "timeZone",
+  get: ({ get }) => {
+    return get(appConfig).timezone || "UTC";
+  },
+});
+
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {
@@ -667,6 +674,8 @@ export const coloring = selectorFamily<Coloring, boolean>({
       pool,
       scale: get(atoms.stateDescription).colorscale,
       byLabel: get(atoms.colorByLabel(modal)),
+      defaultMaskTargets: get(defaultTargets),
+      maskTargets: get(targets).fields,
       targets: new Array(pool.length)
         .fill(0)
         .map((_, i) => getColor(pool, seed, i)),
@@ -810,6 +819,18 @@ export const fieldType = selectorFamily<string, string>({
     return frame
       ? entry[path.slice("frames.".length)].ftype
       : entry[path].ftype;
+  },
+});
+
+export const subfieldType = selectorFamily<string, string>({
+  key: "subfieldType",
+  get: (path) => ({ get }) => {
+    const frame = path.startsWith("frames.") && get(isVideoDataset);
+
+    const entry = get(fields(frame ? "frame" : "sample"));
+    return frame
+      ? entry[path.slice("frames.".length)].subfield
+      : entry[path].subfield;
   },
 });
 

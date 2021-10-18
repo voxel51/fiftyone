@@ -98,6 +98,7 @@ class StateDescription(etas.Serializable):
             d["dataset"] = _dataset
             d["view"] = _view
             d["view_cls"] = _view_cls
+            d["config"]["timezone"] = fo.config.timezone
 
             if self.config.colorscale:
                 d["colorscale"] = self.config.get_colormap()
@@ -143,6 +144,10 @@ class StateDescription(etas.Serializable):
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
+
+        timezone = d.get("config", {}).get("timezone", None)
+        if timezone:
+            fo.config.timezone = timezone
 
         close = d.get("close", False)
         refresh = d.get("refresh", False)
@@ -195,15 +200,22 @@ class DatasetStatistics(object):
 
         schema = collection.get_field_schema()
         for field_name, field in schema.items():
-            if field_name != "metadata":
-                result.append((field_name, field))
+            if field_name == "metadata":
+                continue
 
-        if collection.media_type == fom.VIDEO:
-            prefix = collection._FRAMES_PREFIX
-            frame_schema = collection.get_frame_field_schema()
-            for field_name, field in frame_schema.items():
-                if field_name not in ("id", "frame_number"):
-                    result.append((prefix + field_name, field))
+            result.append((field_name, field))
+
+        if collection.media_type != fom.VIDEO:
+            return result
+
+        prefix = collection._FRAMES_PREFIX
+        frame_schema = collection.get_frame_field_schema()
+
+        for field_name, field in frame_schema.items():
+            if field_name in ("id", "frame_number"):
+                continue
+
+            result.append((prefix + field_name, field))
 
         return result
 
@@ -243,9 +255,11 @@ class DatasetStatistics(object):
         aggregations = [foa.Count()]
 
         if view.media_type == fom.VIDEO:
-            aggregations.extend([foa.Count("frames")])
+            aggregations.append(foa.Count("frames"))
 
         for field_name, field in self.fields(view):
+            path = field_name
+
             if _is_label(field):
                 path = _expand_labels_path(field_name, field)
                 aggregations.extend(
@@ -279,30 +293,27 @@ class DatasetStatistics(object):
                 if _has_support(field):
                     support_path = "%s.support" % path
                     aggregations.extend(
-                        [foa.Bounds(support_path), foa.Count(support_path),]
+                        [foa.Bounds(support_path), foa.Count(support_path)]
                     )
-            else:
-                aggregations.append(foa.Count(field_name))
-                if _meets_type(
-                    field,
-                    (fof.IntField, fof.FloatField, fof.FrameSupportField),
-                ):
-                    aggregations.append(foa.Bounds(field_name))
-                elif _meets_type(field, fof.BooleanField):
-                    aggregations.append(foa.CountValues(field_name, _first=3))
-                elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
-                    include = (
-                        None
-                        if filters is None
-                        or field_name not in filters
-                        or field_name == "tags"
-                        else filters[field_name]["values"]
-                    )
-                    aggregations.append(
-                        foa.CountValues(
-                            field_name, _first=200, _include=include
-                        )
-                    )
+
+            elif _meets_type(
+                field,
+                (
+                    fof.DateField,
+                    fof.DateTimeField,
+                    fof.FloatField,
+                    fof.IntField,
+                ),
+            ):
+                aggregations.append(foa.Bounds(field_name))
+            elif _meets_type(field, fof.BooleanField):
+                aggregations.append(foa.CountValues(field_name, _first=3))
+            elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
+                aggregations.append(
+                    _get_categorical_aggregation(path, filters)
+                )
+
+            aggregations.append(fo.Count(path))
 
         return aggregations
 
@@ -312,6 +323,15 @@ def _expand_labels_path(root, label_field):
         return "%s.%s" % (root, label_field.document_type._LABEL_LIST_FIELD,)
 
     return root
+
+
+def _get_categorical_aggregation(path, filters):
+    include = (
+        None
+        if filters is None or path not in filters or path == "tags"
+        else filters[path]["values"]
+    )
+    return foa.CountValues(path, _first=200, _include=include)
 
 
 def _meets_type(field, t):

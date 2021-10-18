@@ -30,6 +30,7 @@ import { sortFilterResults } from "../recoil/atoms";
 const Body = styled.div`
   vertical-align: middle;
   font-weight: bold;
+  overflow: visible;
 
   & > div {
     margin-top: 3px;
@@ -128,6 +129,7 @@ const Body = styled.div`
 
 const CheckboxContainer = animated(styled.div`
   position: relative;
+  overflow: visible;
 `);
 
 const CheckboxText = ({

@@ -146,9 +146,11 @@ export const colorByLabel = atomFamily<boolean, boolean>({
   default: false,
 });
 
+export const DEFAULT_ALPHA = 0.7;
+
 export const alpha = atomFamily<number, boolean>({
   key: "alpha",
-  default: 0.7,
+  default: DEFAULT_ALPHA,
 });
 
 export const colorPool = atom<string[]>({

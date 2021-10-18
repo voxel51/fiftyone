@@ -658,7 +658,7 @@ updated to reflect the new field:
         integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
-`list`, `dict`, or more complex data structures
+`date`, `datetime`, `list`, `dict`, or more complex data structures
 :ref:`like label types <using-labels>`:
 
 .. code-block:: python
@@ -958,6 +958,81 @@ some workflows when it is available.
                 }>,
                 'frames': <Frames: 0>,
             }>
+
+.. _dates-and-datetimes:
+
+Dates and datetimes
+___________________
+
+You can store date information in FiftyOne datasets by populating fields with
+`date` or `datetime` values:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import date, datetime
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath="image1.png",
+                created_at=datetime(2021, 8, 24, 21, 18, 7),
+                created_date=date(2021, 8, 24),
+            ),
+            fo.Sample(
+                filepath="image2.png",
+                created_at=datetime.utcnow(),
+                created_date=date.today(),
+            ),
+        ]
+    )
+
+    print(dataset)
+    print(dataset.head())
+
+.. note::
+
+    Did you know? You can :ref:`create dataset views <date-views>` with
+    date-based queries!
+
+Internally, FiftyOne stores all dates as UTC timestamps, but you can provide
+any valid `datetime` object when setting a |DateTimeField| of a sample,
+including timezone-aware datetimes, which are internally converted to UTC
+format for safekeeping.
+
+.. code-block:: python
+    :linenos:
+
+    # A datetime in your local timezone
+    now = datetime.utcnow().astimezone()
+
+    sample = fo.Sample(filepath="image.png", created_at=now)
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    # Samples are singletons, so we reload so `sample` will contain values as
+    # loaded from the database
+    dataset.reload()
+
+    sample.created_at.tzinfo  # None
+
+By default, when you access a datetime field of a sample in a dataset, it is
+retrieved as a naive `datetime` instance expressed in UTC format.
+
+However, if you prefer, you can
+:ref:`configure FiftyOne <configuring-timezone>` to load datetime fields as
+timezone-aware `datetime` instances in a timezone of your choice.
+
+.. warning::
+
+    FiftyOne assumes that all `datetime` instances with no explicit timezone
+    are stored in UTC format.
+
+    Therefore, never use `datetime.datetime.now()` when populating a datetime
+    field of a FiftyOne dataset! Instead, use `datetime.datetime.utcnow()`.
 
 .. _using-labels:
 
@@ -1750,11 +1825,10 @@ extent when visualizing in the App.
 
 When visualizing heatmaps :ref:`in the App <fiftyone-app>`, when the App is
 in color-by-field mode, heatmaps are rendered in their field's color with
-transparency inversely proportional to the magnitude of the heatmap's values.
-For example, for a heatmap whose
-:attr:`range <fiftyone.core.labels.Heatmap.range>` is ``[-10, 10]``, pixels
-with the value +9 will be rendered with 90% opacity, and pixels with the value
--3 will be rendered with 30% opacity.
+opacity proportional to the magnitude of the heatmap's values. For example, for
+a heatmap whose :attr:`range <fiftyone.core.labels.Heatmap.range>` is
+`[-10, 10]`, pixels with the value +9 will be rendered with 90% opacity, and
+pixels with the value -3 will be rendered with 30% opacity.
 
 When the App is in color-by-value mode, heatmaps are rendered using the
 colormap defined by the `colorscale` of your
@@ -1765,18 +1839,18 @@ colormap defined by the `colorscale` of your
 
 -   A manually-defined colorscale like the following::
 
-    [
-        [0.000, "rgb(165,0,38)"],
-        [0.111, "rgb(215,48,39)"],
-        [0.222, "rgb(244,109,67)"],
-        [0.333, "rgb(253,174,97)"],
-        [0.444, "rgb(254,224,144)"],
-        [0.555, "rgb(224,243,248)"],
-        [0.666, "rgb(171,217,233)"],
-        [0.777, "rgb(116,173,209)"],
-        [0.888, "rgb(69,117,180)"],
-        [1.000, "rgb(49,54,149)"],
-    ]
+        [
+            [0.000, "rgb(165,0,38)"],
+            [0.111, "rgb(215,48,39)"],
+            [0.222, "rgb(244,109,67)"],
+            [0.333, "rgb(253,174,97)"],
+            [0.444, "rgb(254,224,144)"],
+            [0.555, "rgb(224,243,248)"],
+            [0.666, "rgb(171,217,233)"],
+            [0.777, "rgb(116,173,209)"],
+            [0.888, "rgb(69,117,180)"],
+            [1.000, "rgb(49,54,149)"],
+        ]
 
 The example code below demonstrates the possibilities that heatmaps provide by
 overlaying random gaussian kernels with positive or negative sign on an image
@@ -1796,7 +1870,6 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
         x, y = np.meshgrid(np.linspace(-1, 1, w), np.linspace(-1, 1, h))
         x0, y0 = np.random.random(2) - 0.5
         kernel = sign * np.exp(-np.sqrt((x - x0) ** 2 + (y - y0) ** 2))
-
         return fo.Heatmap(map=kernel, range=[-1, 1])
 
     dataset = foz.load_zoo_dataset("quickstart").select_fields().clone()

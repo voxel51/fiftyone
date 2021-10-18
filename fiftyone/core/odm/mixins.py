@@ -6,6 +6,7 @@ Mixins and helpers for dataset backing documents.
 |
 """
 from collections import OrderedDict
+from datetime import date, datetime
 import json
 import logging
 import numbers
@@ -21,7 +22,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
 from .database import get_db_conn
-from .dataset import create_field, SampleFieldDocument, DatasetDocument
+from .dataset import create_field, SampleFieldDocument
 from .document import Document, BaseEmbeddedDocument
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -164,6 +165,12 @@ def get_implied_field_kwargs(value):
     if isinstance(value, six.string_types):
         return {"ftype": fof.StringField}
 
+    if isinstance(value, datetime):
+        return {"ftype": fof.DateTimeField}
+
+    if isinstance(value, date):
+        return {"ftype": fof.DateField}
+
     if isinstance(value, (list, tuple)):
         kwargs = {"ftype": fof.ListField}
 
@@ -259,6 +266,12 @@ def _get_list_value_type(value):
 
     if isinstance(value, BaseEmbeddedDocument):
         return value.__class__
+
+    if isinstance(value, datetime):
+        return fof.DateTimeField
+
+    if isinstance(value, date):
+        return fof.DateField
 
     return None
 
@@ -825,10 +838,12 @@ class DatasetMixin(object):
     @classmethod
     def _rename_field_schema(cls, field_name, new_field_name):
         # pylint: disable=no-member
-        field = cls._fields[field_name]
-        field = _rename_field(field, new_field_name)
+        field = cls._fields.pop(field_name)
+
+        field.db_field = new_field_name
+        field.name = new_field_name
+
         cls._fields[new_field_name] = field
-        del cls._fields[field_name]
 
         cls._fields_ordered = tuple(
             (fn if fn != field_name else new_field_name)
@@ -1142,45 +1157,13 @@ class NoDatasetMixin(object):
             if k == "id":
                 k = "_id"
 
-            if hasattr(v, "to_dict"):
-                # Embedded document
-                d[k] = v.to_dict(extended=extended)
-            elif isinstance(v, np.ndarray):
-                # Must handle arrays separately, since they are non-primitives
-                v_binary = fou.serialize_numpy_array(v)
-                if extended:
-                    # @todo improve this
-                    d[k] = json.loads(json_util.dumps(Binary(v_binary)))
-                else:
-                    d[k] = v_binary
-            else:
-                # JSON primitive
-                d[k] = v
+            d[k] = _serialize_value(v, extended=extended)
 
         return d
 
     @classmethod
     def from_dict(cls, d, extended=False):
-        kwargs = {}
-        for k, v in d.items():
-            if isinstance(v, dict):
-                if "_cls" in v:
-                    # Serialized embedded document
-                    _cls = getattr(fo, v["_cls"])
-                    kwargs[k] = _cls.from_dict(v)
-                elif "$binary" in v:
-                    # Serialized array in extended format
-                    binary = json_util.loads(json.dumps(v))
-                    kwargs[k] = fou.deserialize_numpy_array(binary)
-                else:
-                    kwargs[k] = v
-            elif isinstance(v, six.binary_type):
-                # Serialized array in non-extended format
-                kwargs[k] = fou.deserialize_numpy_array(v)
-            else:
-                kwargs[k] = v
-
-        return cls(**kwargs)
+        return cls(**{k: _deserialize_value(v) for k, v in d.items()})
 
     def save(self):
         pass
@@ -1192,7 +1175,51 @@ class NoDatasetMixin(object):
         pass
 
 
-def _rename_field(field, new_field_name):
-    field.db_field = new_field_name
-    field.name = new_field_name
-    return field
+def _serialize_value(value, extended=False):
+    if hasattr(value, "to_dict"):
+        # EmbeddedDocumentField
+        return value.to_dict(extended=extended)
+
+    if type(value) is date:
+        # DateField
+        return datetime(value.year, value.month, value.day)
+
+    if isinstance(value, np.ndarray):
+        # VectorField/ArrayField
+        binary = fou.serialize_numpy_array(value)
+        if not extended:
+            return binary
+
+        # @todo improve this
+        return json.loads(json_util.dumps(Binary(binary)))
+
+    if isinstance(value, (list, tuple)):
+        return [_serialize_value(v, extended=extended) for v in value]
+
+    if isinstance(value, dict):
+        return {
+            k: _serialize_value(v, extended=extended) for k, v in value.items()
+        }
+
+    return value
+
+
+def _deserialize_value(value):
+    if isinstance(value, dict):
+        if "_cls" in value:
+            # Serialized embedded document
+            _cls = getattr(fo, value["_cls"])
+            return _cls.from_dict(value)
+
+        if "$binary" in value:
+            # Serialized array in extended format
+            binary = json_util.loads(json.dumps(value))
+            return fou.deserialize_numpy_array(binary)
+
+        return value
+
+    if isinstance(value, six.binary_type):
+        # Serialized array in non-extended format
+        return fou.deserialize_numpy_array(value)
+
+    return value
