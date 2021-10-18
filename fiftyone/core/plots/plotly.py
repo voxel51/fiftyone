@@ -48,6 +48,7 @@ def plot_confusion_matrix(
     gt_field=None,
     pred_field=None,
     colorscale="oranges",
+    log_colorscale=False,
     **kwargs,
 ):
     """Plots a confusion matrix.
@@ -70,7 +71,10 @@ def plot_confusion_matrix(
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         colorscale ("oranges"): a plotly colorscale to use. See
-            https://plotly.com/python/builtin-colorscales for options
+            https://plotly.com/python/colorscales for options
+        log_colorscale (False): whether to apply the colorscale on a log scale.
+            This is useful to better visualize variations in smaller values
+            when large values are also present
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
@@ -82,6 +86,10 @@ def plot_confusion_matrix(
             are working in a Jupyter notebook
         -   a plotly figure, otherwise
     """
+    if log_colorscale:
+        maxval = confusion_matrix.max()
+        colorscale = _to_log_colorscale(colorscale, maxval)
+
     if ids is None:
         return _plot_confusion_matrix_static(
             confusion_matrix, labels, colorscale=colorscale, **kwargs
@@ -416,6 +424,8 @@ def scatterplot(
     classes=None,
     multi_trace=None,
     marker_size=None,
+    colorscale=None,
+    log_colorscale=False,
     labels_title=None,
     sizes_title=None,
     edges_title=None,
@@ -487,6 +497,12 @@ def scatterplot(
             will be true if there are up to 25 classes
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        colorscale (None): a plotly colorscale to use. Only applicable when
+            ``labels`` contains numeric data. See
+            https://plotly.com/python/colorscales for options
+        log_colorscale (False): whether to apply the colorscale on a log scale.
+            This is useful to better visualize variations in smaller values
+            when large values are also present
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -577,6 +593,8 @@ def scatterplot(
             edges,
             ids,
             marker_size,
+            colorscale,
+            log_colorscale,
             labels_title,
             sizes_title,
             edges_title,
@@ -765,6 +783,8 @@ def location_scatterplot(
     radius=None,
     multi_trace=None,
     marker_size=None,
+    colorscale=None,
+    log_colorscale=False,
     labels_title=None,
     sizes_title=None,
     edges_title=None,
@@ -838,6 +858,12 @@ def location_scatterplot(
             will be true if there are up to 25 classes
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        colorscale (None): a plotly colorscale to use. Only applicable when
+            ``labels`` contains numeric data. See
+            https://plotly.com/python/colorscales for options
+        log_colorscale (False): whether to apply the colorscale on a log scale.
+            This is useful to better visualize variations in smaller values
+            when large values are also present
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -926,6 +952,8 @@ def location_scatterplot(
             sizes,
             ids,
             radius,
+            colorscale,
+            log_colorscale,
             labels_title,
             sizes_title,
             colorbar_title,
@@ -938,6 +966,8 @@ def location_scatterplot(
             edges,
             ids,
             marker_size,
+            colorscale,
+            log_colorscale,
             labels_title,
             sizes_title,
             edges_title,
@@ -1045,6 +1075,17 @@ def get_colormap(colorscale, n=256, hex_strs=False):
         return ["#%02x%02x%02x" % rgb for rgb in rgb_tuples]
 
     return rgb_tuples
+
+
+def _to_log_colorscale(colorscale, maxval):
+    if etau.is_str(colorscale):
+        colorscale = _get_colorscale(colorscale)
+
+    # Here we're doing something like the plotly example below
+    # https://plotly.com/python/colorscales/#logarithmic-color-scale-with-graph-objects
+    m = np.log10(maxval)
+    f = lambda x: (np.exp(m * x) - 1) / (np.exp(m) - 1)
+    return [[f(x), c] for x, c in colorscale]
 
 
 def _get_colorscale(name):
@@ -1960,6 +2001,8 @@ def _plot_scatter_numeric(
     edges,
     ids,
     marker_size,
+    colorscale,
+    log_colorscale,
     labels_title,
     sizes_title,
     edges_title,
@@ -1971,11 +2014,18 @@ def _plot_scatter_numeric(
     marker = dict()
 
     if values is not None:
+        if colorscale is None:
+            colorscale = _DEFAULT_CONTINUOUS_COLORSCALE
+
+        if log_colorscale:
+            maxval = values.max()
+            colorscale = _to_log_colorscale(colorscale, maxval)
+
         marker.update(
             dict(
                 color=values,
                 colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
-                colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
+                colorscale=colorscale,
                 showscale=True,
             )
         )
@@ -2225,6 +2275,8 @@ def _plot_scatter_mapbox_numeric(
     edges,
     ids,
     marker_size,
+    colorscale,
+    log_colorscale,
     labels_title,
     sizes_title,
     edges_title,
@@ -2233,11 +2285,18 @@ def _plot_scatter_mapbox_numeric(
     marker = dict()
 
     if values is not None:
+        if colorscale is None:
+            colorscale = _DEFAULT_CONTINUOUS_COLORSCALE
+
+        if log_colorscale:
+            maxval = values.max()
+            colorscale = _to_log_colorscale(colorscale, maxval)
+
         marker.update(
             dict(
                 color=values,
                 colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
-                colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
+                colorscale=colorscale,
                 showscale=True,
             )
         )
@@ -2304,6 +2363,8 @@ def _plot_scatter_mapbox_density(
     sizes,
     ids,
     radius,
+    colorscale,
+    log_colorscale,
     labels_title,
     sizes_title,
     colorbar_title,
@@ -2340,13 +2401,19 @@ def _plot_scatter_mapbox_density(
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
+    if colorscale is None:
+        colorscale = _DEFAULT_CONTINUOUS_COLORSCALE
+
+    if log_colorscale:
+        logger.warning("Log colorscales are not supported for density plots")
+
     density = go.Densitymapbox(
         lat=coords[:, 1],
         lon=coords[:, 0],
         z=values,
         radius=radius,
         customdata=ids,
-        colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
+        colorscale=colorscale,
         hovertemplate=hovertemplate,
     )
 
