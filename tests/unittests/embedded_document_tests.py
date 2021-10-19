@@ -84,23 +84,22 @@ class EmbeddedDocumentTests(unittest.TestCase):
 
         # init
         value = 51
-        field["field"] = value
-        return
-        self.assertEqual(field.field, value)
+        field["int"] = value
+        self.assertEqual(field.int, value)
 
         # update setitem
         value = 52
-        field["field"] = value
-        self.assertEqual(field.field, value)
+        field["int"] = value
+        self.assertEqual(field.int, value)
 
         # update setattr
         value = 53
-        field.field = value
-        self.assertEqual(field.field, value)
+        field.int = value
+        self.assertEqual(field.int, value)
 
         # attempt type change
         with self.assertRaises(mongoengine.errors.ValidationError):
-            field.field = "string"
+            field.int = "string"
 
     @drop_datasets
     def test_lists(self):
@@ -110,6 +109,8 @@ class EmbeddedDocumentTests(unittest.TestCase):
         sample = fo.Sample(filepath="/path/to/image.jpg", test=test)
         dataset = fo.Dataset()
         dataset.add_sample(sample)
+
+        # pylint: disable=no-member
         doc = sample.test.detections[0]
         doc["tp"] = True
 
@@ -119,6 +120,22 @@ class EmbeddedDocumentTests(unittest.TestCase):
             .fields["detections"]
             .field.fields,
         )
+        return
+        # pylint: disable=no-member
+        sample.test.detections[0] = fo.Detection(
+            label="dog", bounding_box=[0, 0, 1, 1], attr="woof"
+        )
+        sample.save()
+
+    @drop_datasets
+    def test_expansion(self):
+        sample = fo.Sample(filepath="/path/to/image.jpg")
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        sample["test"] = fo.Label()
+        sample.test = fo.Label(attr="value")
+        sample.save()
 
 
 if __name__ == "__main__":

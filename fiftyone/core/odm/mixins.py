@@ -145,7 +145,10 @@ class DatasetMixin(object):
 
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
-            self._fields[name].validate(value)
+            if isinstance(self._fields[name], fof.EmbeddedDocumentField):
+                self._fields[name].validate(value, expand=True)
+            else:
+                self._fields[name].validate(value)
 
         super().__setattr__(name, value)
 
@@ -664,16 +667,17 @@ class DatasetMixin(object):
             cls._fields_ordered += (field.name,)
             setattr(cls, field.name, field)
         else:
-            field = getattr(cls, path[0])
+            parent = getattr(cls, path[0])
             for field_name in path[1:-1]:
                 if hasattr(field, "field") and field.field:
-                    field = field.field
+                    parent = field.field
 
-                field = field.fields[field_name]
+                parent = parent.fields[field_name]
 
-            if hasattr(field, "field") and field.field:
-                field = field.field
-            field.fields[path[-1]] = field
+            if hasattr(parent, "field") and parent.field:
+                parent = parent.field
+
+            parent.fields[path[-1]] = field
 
     @classmethod
     def _add_field_schema(

@@ -17,6 +17,7 @@ import six
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 
@@ -601,9 +602,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             etau.get_class_name(self.document_type),
         )
 
-    def validate(self, value, clean=True):
-        super().validate(value, clean)
-
+    def validate(self, value, clean=True, expand=False):
         fields = getattr(self, "fields", {})
         for field_name in value._fields_ordered:
             field = None
@@ -619,13 +618,20 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 # pylint: disable=no-member
                 field = self.fields[field_name]
 
-            if field is None:
+            if field is None and expand:
+                field_kwargs = foo.get_implied_field_kwargs(field_value)
+                field = foo.create_field(field_name, **field_kwargs)
+                self._save_field(field, [field_name])
+            elif field is None:
                 self.error(
-                    "Embedded document field does not have field '%s' declared"
-                    % field_name
+                    "field does not have field '%s' declared" % field_name
                 )
+            elif isinstance(field, EmbeddedDocumentField):
+                field.validate(field_value, expand=expand)
+            else:
+                field.validate(field_value)
 
-            field.validate(field_value)
+        super().validate(value, clean)
 
     def to_python(self, value):
         doc = super().to_python(value)
@@ -636,8 +642,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         if keys[0] not in self.fields:
             self.fields[keys[0]] = field
 
-        if "field" in keys:
-            print(self.fields, field)
         keys = [self.name] + keys
         if self._parent:
             self._parent._save_field(field, keys)
