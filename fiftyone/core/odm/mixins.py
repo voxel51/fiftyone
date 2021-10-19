@@ -683,15 +683,27 @@ class DatasetMixin(object):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            parent=cls,
             **kwargs,
         )
 
         cls._declare_field(field)
+        cls._save_field(field, [field.name])
 
+    @classmethod
+    def _save_field(cls, field, keys):
         dataset_doc = cls._dataset_doc()
-        sample_field = SampleFieldDocument.from_field(field)
 
-        dataset_doc[cls._fields_attr()].append(sample_field)
+        fields = dataset_doc[cls._fields_attr()]
+        sample_field = SampleFieldDocument.from_field(field)
+        if len(keys) == 1:
+            fields.append(sample_field)
+        else:
+            fields = {f.name: f for f in fields}
+            for key in keys[:-1]:
+                fields = fields[key]
+            fields[keys[-1]] = sample_field
+
         dataset_doc.save()
 
     @classmethod

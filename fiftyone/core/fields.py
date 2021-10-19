@@ -590,6 +590,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             stored in this field
     """
 
+    def __init__(self, document_type, **kwargs):
+        super().__init__(document_type, **kwargs)
+        self._parent = None
+        self.fields = kwargs.get("fields", {})
+
     def __str__(self):
         return "%s(%s)" % (
             etau.get_class_name(self),
@@ -620,16 +625,24 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                     % field_name
                 )
 
-            try:
-                field.validate(field_value)
-            except Exception as e:
-                print(field_name)
-                raise e
+            field.validate(field_value)
 
     def to_python(self, value):
         doc = super().to_python(value)
-        doc._set_parent_field(self)
+        doc._set_parent(self)
         return doc
+
+    def _save_field(self, field, keys):
+        if keys[0] not in self.fields:
+            self.fields[keys[0]] = field
+
+        keys = [self.name] + keys
+        print(self.name, keys, self._parent)
+        if self._parent:
+            self._parent._save_field(field, keys)
+
+    def _set_parent(self, parent):
+        self._parent = parent
 
 
 class EmbeddedDocumentListField(

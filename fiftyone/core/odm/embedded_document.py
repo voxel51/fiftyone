@@ -6,6 +6,7 @@ Base classes for documents that back dataset contents.
 |
 """
 import mongoengine
+from fiftyone.core.fields import DictField, EmbeddedDocumentField, ListField
 
 import fiftyone.core.utils as fou
 
@@ -20,19 +21,24 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     therefore are not stored in their own collection in the database.
     """
 
-    _parent_field = None
+    _parent = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        for name, field in self._fields.items():
+            if isinstance(field, (DictField, ListField)):
+                field = field.field
+            if isinstance(field, EmbeddedDocumentField):
+                field.name = name
 
-    def _set_parent_field(self, parent_field):
-        self._parent_field = parent_field
+    def _set_parent(self, parent):
+        self._parent = parent
 
     def _get_custom_fields(self):
-        if not self._parent_field:
+        if not self._parent:
             return {}
 
-        return getattr(self._parent_field, "fields", {})
+        return getattr(self._parent, "fields", {})
 
     def has_field(self, field_name):
         if super().has_field(field_name):
@@ -45,6 +51,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def __setattr__(self, name, value):
         custom_fields = self._get_custom_fields()
+
         if name in custom_fields:
             custom_fields[name].validate(value)
 
@@ -148,9 +155,8 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         else:
             field = field_or_doc
 
-        if self._parent_field is not None:
-            custom_fields = self._get_custom_fields()
-            custom_fields[field.name] = field
+        if self._parent is not None:
+            self._parent._save_field(field, [field.name])
 
 
 class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):

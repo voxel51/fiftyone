@@ -34,6 +34,7 @@ def create_field(
     subfield=None,
     db_field=None,
     fields=None,
+    parent=None,
 ):
     """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
     given specification.
@@ -63,6 +64,7 @@ def create_field(
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
             Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
+        parent (None): a parent
 
     Returns:
         a :class:`fiftyone.core.fields.Field` instance
@@ -87,15 +89,15 @@ def create_field(
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
             if inspect.isclass(subfield):
-                if (
-                    issubclass(subfield, EmbeddedDocumentField)
-                    and fields is not None
-                ):
+                if issubclass(subfield, EmbeddedDocumentField):
+                    fields = fields or {}
                     subfield = subfield(
                         fields=fields, document_type=embedded_doc_type
                     )
                 else:
                     subfield = subfield()
+
+                subfield.name = field_name
 
             if not isinstance(subfield, Field):
                 raise ValueError(
@@ -112,13 +114,23 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
-        kwargs.update({"document_type": embedded_doc_type})
-
-        if fields is not None:
-            kwargs["fields"] = fields
+        kwargs.update(
+            {"document_type": embedded_doc_type, "fields": fields or {}}
+        )
 
     field = ftype(**kwargs)
     field.name = field_name
+
+    if parent is not None:
+        field._set_parent(parent)
+
+    if fields:
+        parent = field.field if subfield else field
+        for child in fields.values():
+            if not isinstance(child, EmbeddedDocumentField):
+                continue
+
+            child._set_parent(parent)
 
     return field
 

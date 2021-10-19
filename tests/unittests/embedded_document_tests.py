@@ -1,5 +1,5 @@
 """
-FiftyOne patches-related unit tests.
+FiftyOne embedded document unit tests.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -103,22 +103,18 @@ class EmbeddedDocumentTests(unittest.TestCase):
 
     @drop_datasets
     def test_lists(self):
-        sample = fo.Sample(
-            filepath="/path/to/image.jpg",
-            detections=fo.Detections(
-                detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 1, 1])
-                ]
-            ),
+        test = fo.Detections(
+            detections=[fo.Detection(label="cat", bounding_box=[0, 0, 1, 1])]
         )
+        sample = fo.Sample(filepath="/path/to/image.jpg", test=test)
         dataset = fo.Dataset()
         dataset.add_sample(sample)
-        doc = sample.detections.detections[0]
+        doc = sample.test.detections[0]
         doc["tp"] = True
 
         self.assertIn(
             "tp",
-            dataset.get_field_schema()["detections"]
+            dataset.get_field_schema()["test"]
             .fields["detections"]
             .field.fields,
         )
