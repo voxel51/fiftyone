@@ -137,6 +137,18 @@ class EmbeddedDocumentTests(unittest.TestCase):
         sample.test = fo.Label(attr="value")
         sample.save()
 
+    @drop_datasets
+    def test_default_fields(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "test_default",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+
+        schema = dataset.get_field_schema()
+        self.assertIn("confidence", schema["test_default"].fields)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

@@ -25,6 +25,7 @@ from fiftyone.core.fields import (
 from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
+from .utils import get_embedded_document_fields
 
 
 def create_field(
@@ -81,16 +82,20 @@ def create_field(
     kwargs = dict(null=True, db_field=db_field)
 
     if fields is not None:
-        fields = {
-            name: create_field(name, **field_kwargs)
-            for name, field_kwargs in fields.items()
-        }
+        for name, value in fields.items():
+            if isinstance(value, Field):
+                continue
+
+            fields[name] = create_field(name, **value)
 
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
                     fields = fields or {}
+                    fields.update(
+                        get_embedded_document_fields(embedded_doc_type)
+                    )
                     subfield = subfield(
                         fields=fields, document_type=embedded_doc_type
                     )
@@ -114,6 +119,8 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
+        fields = fields or {}
+        fields.update(get_embedded_document_fields(embedded_doc_type))
         kwargs.update(
             {"document_type": embedded_doc_type, "fields": fields or {}}
         )

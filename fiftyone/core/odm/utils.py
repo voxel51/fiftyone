@@ -13,7 +13,6 @@ from bson.objectid import ObjectId
 import numpy as np
 
 import fiftyone.core.fields as fof
-from fiftyone.core.odm import document
 import fiftyone.core.utils as fou
 
 foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
@@ -33,7 +32,7 @@ def get_implied_field_kwargs(value):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
-            "fields": _get_embedded_document_fields(value),
+            "fields": get_embedded_document_fields(value),
         }
 
     if isinstance(value, bool):
@@ -96,11 +95,9 @@ def get_implied_field_kwargs(value):
     )
 
 
-def _get_embedded_document_fields(value):
+def get_embedded_document_fields(value):
     return {
-        field: get_implied_field_kwargs(value.get_field(field))
-        for field in value._fields_ordered
-        if not field.startswith("_") and value.get_field(field) is not None
+        name: field for name, field in value._fields.items() if name != "_cls"
     }
 
 
