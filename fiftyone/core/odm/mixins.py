@@ -653,15 +653,27 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
-    def _declare_field(cls, field_or_doc):
+    def _declare_field(cls, field_or_doc, path=None):
         if isinstance(field_or_doc, SampleFieldDocument):
             field = field_or_doc.to_field()
         else:
             field = field_or_doc
 
-        cls._fields[field.name] = field
-        cls._fields_ordered += (field.name,)
-        setattr(cls, field.name, field)
+        if not path:
+            cls._fields[field.name] = field
+            cls._fields_ordered += (field.name,)
+            setattr(cls, field.name, field)
+        else:
+            field = getattr(cls, path[0])
+            for field_name in path[1:-1]:
+                if hasattr(field, "field") and field.field:
+                    field = field.field
+
+                field = field.fields[field_name]
+
+            if hasattr(field, "field") and field.field:
+                field = field.field
+            field.fields[path[-1]] = field
 
     @classmethod
     def _add_field_schema(
@@ -688,23 +700,25 @@ class DatasetMixin(object):
         )
 
         cls._declare_field(field)
-        cls._save_field(field, [field.name])
+        dataset_doc = cls._dataset_doc()
+        fields = dataset_doc[cls._fields_attr()]
+        sample_field = SampleFieldDocument.from_field(field)
+        fields.append(sample_field)
+        dataset_doc.save()
 
     @classmethod
-    def _save_field(cls, field, keys):
+    def _save_field(cls, field, path):
         dataset_doc = cls._dataset_doc()
 
         fields = dataset_doc[cls._fields_attr()]
         sample_field = SampleFieldDocument.from_field(field)
-        if len(keys) == 1:
-            fields.append(sample_field)
-        else:
-            fields = {f.name: f for f in fields}
-            for key in keys[:-1]:
-                fields = fields[key]
-            fields[keys[-1]] = sample_field
+        fields = {"fields": {f.name: f for f in fields}}
+        for field_name in path[:-1]:
+            fields = fields["fields"][field_name]
+        fields.fields[path[-1]] = sample_field
 
         dataset_doc.save()
+        cls._declare_field(field, path)
 
     @classmethod
     def _rename_field_schema(cls, field_name, new_field_name):

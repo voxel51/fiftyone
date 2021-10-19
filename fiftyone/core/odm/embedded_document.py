@@ -33,6 +33,11 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def _set_parent(self, parent):
         self._parent = parent
+        for field in self._fields.values():
+            if isinstance(field, (DictField, ListField)):
+                field = field.field
+            if isinstance(field, EmbeddedDocumentField):
+                field._set_parent(parent)
 
     def _get_custom_fields(self):
         if not self._parent:
@@ -51,7 +56,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def __setattr__(self, name, value):
         custom_fields = self._get_custom_fields()
-
         if name in custom_fields:
             custom_fields[name].validate(value)
 
@@ -72,7 +76,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
                     "%s has no field '%s'" % (self.__class__, field_name)
                 )
 
-        self.__setattr__(field_name, value)
+        setattr(self, field_name, value)
 
     def add_implied_field(self, field_name, value):
         """Adds the field to the document, inferring the field type from the
@@ -146,7 +150,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             subfield=subfield,
             **kwargs,
         )
-
         self._declare_field(field)
 
     def _declare_field(self, field_or_doc):

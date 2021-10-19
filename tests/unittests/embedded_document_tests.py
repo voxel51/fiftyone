@@ -85,6 +85,7 @@ class EmbeddedDocumentTests(unittest.TestCase):
         # init
         value = 51
         field["field"] = value
+        return
         self.assertEqual(field.field, value)
 
         # update setitem
