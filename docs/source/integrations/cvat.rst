@@ -667,13 +667,18 @@ take additional values:
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
 
-.. note::
+.. warning::
 
-    When uploading existing labels to CVAT, their label IDs in FiftyOne are
-    always uploaded as attributes. This information is used to keep track of
-    modifications to existing labels, and changing or deleting these ID
-    attributes in CVAT will result in labels being overwritten rather than
-    merged when loading annotations back into FiftyOne.
+    When uploading existing labels to CVAT, the `id` of the labels in FiftyOne
+    are stored in a `label_id` attribute of the CVAT shapes.
+
+    **IMPORTANT**: `label_id` is the single-source of provenance for a label.
+    If this attribute is modified or deleted in CVAT, then FiftyOne will not be
+    able to merge the annotation with its existing |Label| instance when the
+    annotations are loaded back into FiftyOne. Instead, the existing label will
+    be deleted and a new |Label| will be created. This can result in data loss
+    if you sent only a subset of the label's attributes to CVAT. See
+    :ref:`this section <cvat-limitations>` for more details.
 
 .. _cvat-restricting-edits:
 
@@ -762,7 +767,7 @@ for this as follows:
         attributes=attributes,
     )
 
-.. note::
+.. warning::
 
     The CVAT backend does not support restrictions to additions, deletions,
     spatial edits, and read-only attributes in its editing interface.
@@ -771,6 +776,16 @@ for this as follows:
     still be enforced when you call
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
     to merge the annotations back into FiftyOne.
+
+    **IMPORTANT**: When uploading existing labels to CVAT, the `id` of the
+    labels in FiftyOne are stored in a `label_id` attribute of the CVAT shapes.
+    This `label_id` is the single-source of provenance for a label, and thus,
+    if it is modified or deleted in CVAT, then FiftyOne cannot merge the
+    annotation with its existing |Label| instance; it must instead delete the
+    existing label and create a new |Label| with the shape's contents. In such
+    cases, if `allow_additions` and/or `allow_deletions` were set to `False` on
+    the annotation schema, this can result in CVAT edits being rejected.
+    See :ref:`this section <cvat-limitations>` for more details.
 
 .. _cvat-labeling-videos:
 
@@ -833,6 +848,83 @@ will be uploaded to CVAT.
 
     See :ref:`this section <cvat-annotating-videos>` for video annotation
     examples!
+
+.. warning::
+
+    When uploading existing labels to CVAT, the `id` of the labels in FiftyOne
+    are stored in a `label_id` attribute of the CVAT shapes.
+
+    **IMPORTANT**: `label_id` is the single-source of provenance for a label.
+    If this attribute is modified or deleted in CVAT, then FiftyOne will not be
+    able to merge the annotation with its existing |Label| instance when the
+    annotations are loaded back into FiftyOne. Instead, the existing label will
+    be deleted and a new |Label| will be created. This can result in data loss
+    when splitting or merging video tracks in CVAT. See
+    :ref:`this section <cvat-limitations>` for more details.
+
+.. _cvat-limitations:
+
+Known limitations
+-----------------
+
+When uploading existing labels to CVAT, the `id` of the labels in FiftyOne are
+stored in a `label_id` attribute of the CVAT shapes. This `label_id` is the
+single-source of provenance for a label, and thus, if it is modified or deleted
+in CVAT, then FiftyOne cannot merge the annotation with its existing |Label|
+instance; it must instead delete the existing label and create a new |Label|
+with the shape's contents.
+
+Unfortunately, CVAT automatically clears/edits all attributes of a shape,
+including the `label_id` attribute, in the following cases:
+
+-   When using a label schema with
+    :ref:`per-class attributes <cvat-label-schema>`, all attributes of a shape
+    are cleared whenever the class label of the shape is changed to a class
+    whose attribute schema differs from the previous class. The recommended
+    workaround in this case is to manually copy the `label_id` before changing
+    the class and then pasting it back to ensure that the ID doesn't change.
+
+-   When splitting a video track, CVAT propagates the attributes from the first
+    observation of the new track to all subsequent instances of that track.
+    This results in duplicate `label_id` values, and, although these duplicate
+    IDs will be gracefully ignored by FiftyOne during import, provenance has
+    still been lost and thus the existing |Label| instances must be deleted and
+    replaced with newly created |Label| instances.
+
+The primary issues that can arise due to modified/deleted `label_id` attributes
+are:
+
+-   If the original |Label| in FiftyOne contained additional attributes that
+    weren't included in the CVAT run, then those attributes will be lost
+    whenever loading annotations requires deleting the existing label and
+    creating a new one
+
+-   When working with annotation schemas that specify
+    :ref:`edit restrictions <cvat-restricting-edits>`, CVAT edits that cause
+    `label_id` changes may need to be rejected. For example, if
+    `allow_additions` and `allow_deletions` are set to `False` and editing a
+    CVAT shape's class label causes its attributes to be cleared, then this
+    change will be rejected by FiftyOne because it would require both deleting
+    an existing label and creating a new one.
+
+.. note::
+
+    Pro tip: if you are editing existing labels and only uploading a subset of
+    their attributes to CVAT,
+    :ref:`restrciting label deletions <cvat-restricting-edits>` by setting
+    `allow_deletions=False` provides a helpful guarantee that no labels will be
+    deleted if `label_id` snafus occur in CVAT.
+
+.. note::
+
+    Pro tip: when working with annotation schemas that include
+    :ref:`per-class attributes <cvat-label-schema>`, be sure that any class
+    label changes that you would reasonably make all share the same attribute
+    schemas so that unwanted `label_id` changes do not occur.
+
+    If a schema-altering class change must occur, remember to manually copy the
+    `label_id` before making the change and then paste it back to ensure that
+    the ID doesn't change.
 
 .. _cvat-loading-annotations:
 
@@ -1088,13 +1180,18 @@ can be used to annotate new classes and/or attributes:
    :alt: cvat-new-class
    :align: center
 
-.. note::
+.. warning::
 
-    When uploading existing labels to CVAT, the label IDs are uploaded as
-    attributes. This information is used to keep track of which labels have
-    been modified, added, or deleted, and thus editing these label IDs will
-    result in labels being overwritten when
-    loaded into FiftyOne rather than being merged.
+    When uploading existing labels to CVAT, the `id` of the labels in FiftyOne
+    are stored in a `label_id` attribute of the CVAT shapes.
+
+    **IMPORTANT**: `label_id` is the single-source of provenance for a label.
+    If this attribute is modified or deleted in CVAT, then FiftyOne will not be
+    able to merge the annotation with its existing |Label| instance when the
+    annotations are loaded back into FiftyOne. Instead, the existing label will
+    be deleted and a new |Label| will be created. This can result in data loss
+    if you sent only a subset of the label's attributes to CVAT. See
+    :ref:`this section <cvat-limitations>` for more details.
 
 Restricting label edits
 -----------------------
@@ -1204,7 +1301,7 @@ attribute be populated without allowing edits to the vehicle's `type`:
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. note::
+.. warning::
 
     The CVAT backend does not support restrictions to additions, deletions,
     spatial edits, and read-only attributes in its editing interface.
@@ -1213,6 +1310,16 @@ attribute be populated without allowing edits to the vehicle's `type`:
     still be enforced when you call
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
     to merge the annotations back into FiftyOne.
+
+    **IMPORTANT**: When uploading existing labels to CVAT, the `id` of the
+    labels in FiftyOne are stored in a `label_id` attribute of the CVAT shapes.
+    This `label_id` is the single-source of provenance for a label, and thus,
+    if it is modified or deleted in CVAT, then FiftyOne cannot merge the
+    annotation with its existing |Label| instance; it must instead delete the
+    existing label and create a new |Label| with the shape's contents. In such
+    cases, if `allow_additions` and/or `allow_deletions` were set to `False` on
+    the annotation schema, this can result in CVAT edits being rejected.
+    See :ref:`this section <cvat-limitations>` for more details.
 
 Annotating multiple fields
 --------------------------
@@ -1719,6 +1826,19 @@ every 10th frame as a keyframe to provide a better editing experience in CVAT:
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
+
+.. warning::
+
+    When uploading existing labels to CVAT, the `id` of the labels in FiftyOne
+    are stored in a `label_id` attribute of the CVAT shapes.
+
+    **IMPORTANT**: `label_id` is the single-source of provenance for a label.
+    If this attribute is modified or deleted in CVAT, then FiftyOne will not be
+    able to merge the annotation with its existing |Label| instance when the
+    annotations are loaded back into FiftyOne. Instead, the existing label will
+    be deleted and a new |Label| will be created. This can result in data loss
+    when splitting or merging video tracks in CVAT. See
+    :ref:`this section <cvat-limitations>` for more details.
 
 .. _cvat-utils:
 
