@@ -45,7 +45,11 @@ def _handle_date(dt):
 
 
 def _is_invalid_number(value):
-    return value in {float("inf"), -float("inf"), float("nan")}
+    return type(value) == float and value in {
+        float("inf"),
+        -float("inf"),
+        float("nan"),
+    }
 
 
 def convert(d):
@@ -68,8 +72,8 @@ def convert(d):
                 d[idx] = list(i)
                 i = d[idx]
 
-            if _is_invalid_number(v):
-                d[idx] = str(v)
+            if _is_invalid_number(i):
+                d[idx] = str(i)
             elif isinstance(i, bytes):
                 d[idx] = _handle_numpy_array(i)
             elif isinstance(i, (date, datetime)):
