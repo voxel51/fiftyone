@@ -603,21 +603,17 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         )
 
     def validate(self, value, clean=True, expand=False):
-        fields = getattr(self, "fields", {})
+        schema = self.get_field_schema()
         for field_name in value._fields_ordered:
             field = None
             field_value = value.get_field(field_name)
             if field_value is None:
                 continue
 
-            if field_name in self.document_type._fields_ordered:
-                # pylint: disable=no-member
-                field = getattr(self.document_type, field_name)
+            if field_name.startswith("_"):
+                continue
 
-            if field_name in fields:
-                # pylint: disable=no-member
-                field = self.fields[field_name]
-
+            field = schema.get(field_name, None)
             if field is None and expand:
                 field_kwargs = foo.get_implied_field_kwargs(field_value)
                 field = foo.create_field(field_name, **field_kwargs)
@@ -655,17 +651,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         fields = {
             name: field for name, field in self.document_type._fields.items()
         }
-        fields.update(
-            {
-                name: field
-                for name, field in self.fields.items()
-                if (ftype is None or isinstance(field, ftype))
-            }
-        )
+        fields.update(self.fields)
 
         filtered_fields = {}
 
-        for name, field in self.document_type._fields.items():
+        for name, field in fields.items():
             if not include_private and name.startswith("_"):
                 continue
 
