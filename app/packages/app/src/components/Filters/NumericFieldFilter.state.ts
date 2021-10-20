@@ -16,8 +16,14 @@ import {
   INT_FIELD,
   DATE_TIME_FIELD,
   DATE_FIELD,
+  FLOAT_FIELD,
 } from "../../utils/labels";
-import { filterStage } from "./atoms";
+import {
+  extendedModalStats,
+  filterStage,
+  modalStats,
+  noneCount,
+} from "./atoms";
 
 export const isDateTimeField = selectorFamily<boolean, string>({
   key: "isDateTimeField",
@@ -83,6 +89,9 @@ export const isIntField = selectorFamily<boolean, string>({
 type NumericFilter = {
   range: Range;
   none: boolean;
+  nan: boolean;
+  ninf: boolean;
+  inf: boolean;
   _CLS: string;
 };
 
@@ -98,17 +107,31 @@ const getFilter = (
     ...{
       range: bounds,
       none: true,
+      nan: true,
+      inf: true,
+      ninf: true,
     },
     ...get(filterStage({ modal, path })),
   };
-  if (!meetsDefault({ ...result, none: true }, bounds)) {
-    return { ...result, none: false };
+  if (
+    !meetsDefault(
+      { ...result, none: true, nan: true, inf: true, ninf: true },
+      bounds
+    )
+  ) {
+    return { ...result, none: false, nan: false, ninf: false, inf: false };
   }
   return result;
 };
 
 const meetsDefault = (filter: NumericFilter, bounds: Range) => {
-  return filter.range.every((r, i) => r === bounds[i]) && filter.none === true;
+  return (
+    filter.range.every((r, i) => r === bounds[i]) &&
+    filter.none &&
+    filter.nan &&
+    filter.inf &&
+    filter.ninf
+  );
 };
 
 const setFilter = (
@@ -128,8 +151,8 @@ const setFilter = (
     _CLS: "numeric",
   };
 
-  const check = { ...filter, none: true };
-  if (key === "none") {
+  const check = { ...filter, none: true, nan: true, ninf: true, inf: true };
+  if (["none", "ninf", "nan", "inf"].includes(key)) {
     check[key] = Boolean(value);
   }
 
@@ -160,6 +183,10 @@ export const boundsAtom = selectorFamily<
 
         if (isDateOrDateTime) {
           return cur.result.map((v) => (v ? v.datetime : v));
+        }
+
+        if (cur.result.bounds) {
+          return cur.result.bounds;
         }
 
         return cur.result;
@@ -200,19 +227,101 @@ export const rangeAtom = selectorFamily<
   },
 });
 
-export const noneAtom = selectorFamily<
+export const otherAtom = selectorFamily<
   boolean,
   {
     defaultRange?: Range;
     modal: boolean;
     path: string;
+    key: "nan" | "none" | "inf" | "ninf";
   }
 >({
-  key: "filterNumericFieldNone",
-  get: ({ defaultRange, modal, path }) => ({ get }) =>
-    getFilter(get, modal, path, defaultRange).none,
-  set: ({ defaultRange, modal, path }) => ({ get, set }, value) =>
-    setFilter(get, set, modal, path, "none", value, defaultRange),
+  key: "otherAtom",
+  get: ({ defaultRange, modal, path, key }) => ({ get }) =>
+    getFilter(get, modal, path, defaultRange)[key],
+  set: ({ defaultRange, modal, path, key }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, key, value, defaultRange),
+});
+
+export interface OtherCounts {
+  none: number;
+  inf?: number;
+  ninf?: number;
+  nan?: number;
+}
+
+export const otherCounts = selectorFamily<
+  OtherCounts,
+  { modal: boolean; path: string }
+>({
+  key: "otherFilteredCounts",
+  get: ({ modal, path }) => ({ get }) => {
+    const none = get(noneCount({ modal, path }));
+    const type = get(selectors.fieldType(path));
+    const subType = get(selectors.subfieldType(path));
+    if ([type, subType].includes(FLOAT_FIELD)) {
+      let { inf, "-inf": ninf, nan } = (
+        get(modal ? modalStats : selectors.datasetStats) ?? []
+      ).reduce(
+        (acc, cur) => {
+          if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
+            return acc;
+          }
+
+          if (cur.result.bounds) {
+            return cur.result;
+          }
+
+          return cur.result;
+        },
+        { nan: 0, ninf: 0, inf: 0 }
+      );
+      return {
+        none,
+        inf,
+        ninf,
+        nan,
+      };
+    }
+    return { none };
+  },
+});
+
+export const otherFilteredCounts = selectorFamily<
+  OtherCounts,
+  { modal: boolean; path: string }
+>({
+  key: "otherFilteredCounts",
+  get: ({ modal, path }) => ({ get }) => {
+    const none = get(noneCount({ modal, path }));
+    const type = get(selectors.fieldType(path));
+    const subType = get(selectors.subfieldType(path));
+    if ([type, subType].includes(FLOAT_FIELD)) {
+      let { inf, "-inf": ninf, nan } = (
+        get(modal ? extendedModalStats : selectors.extendedDatasetStats) ?? []
+      ).reduce(
+        (acc, cur) => {
+          if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
+            return acc;
+          }
+
+          if (cur.result.bounds) {
+            return cur.result;
+          }
+
+          return cur.result;
+        },
+        { nan: 0, ninf: 0, inf: 0 }
+      );
+      return {
+        none,
+        inf,
+        ninf,
+        nan,
+      };
+    }
+    return { none };
+  },
 });
 
 export const fieldIsFiltered = selectorFamily<
@@ -225,14 +334,20 @@ export const fieldIsFiltered = selectorFamily<
 >({
   key: "numericFieldIsFiltered",
   get: ({ path, defaultRange, modal }) => ({ get }) => {
-    const [none, range] = [
-      get(noneAtom({ modal, path, defaultRange })),
+    const [none, nan, ninf, inf, range] = [
+      get(otherAtom({ modal, path, defaultRange, key: "none" })),
+      get(otherAtom({ modal, path, defaultRange, key: "nan" })),
+      get(otherAtom({ modal, path, defaultRange, key: "ninf" })),
+      get(otherAtom({ modal, path, defaultRange, key: "inf" })),
       get(rangeAtom({ modal, path, defaultRange })),
     ];
     const bounds = get(boundsAtom({ path, defaultRange }));
 
     return (
       !none ||
+      !nan ||
+      !ninf ||
+      !inf ||
       (bounds.some(
         (b, i) => range[i] !== b && b !== null && range[i] !== null
       ) &&

@@ -234,6 +234,10 @@ def _is_datetime(field):
     return isinstance(field, (fof.DateField, fof.DateTimeField))
 
 
+def _is_float(field):
+    return isinstance(field, fof.FloatField)
+
+
 def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
@@ -262,6 +266,7 @@ def _make_scalar_expression(f, args, field):
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
+
     elif cls == _STR_FILTER:
         values = args["values"]
         if not values:
@@ -284,7 +289,32 @@ def _make_scalar_expression(f, args, field):
 
         return expr
 
-    none = args["none"]
+    _apply_others(expr, f, args)
+
+    return expr
+
+
+def _apply_others(expr, f, args):
+    if "none" in args:
+        _apply_none(expr, f, args["none"])
+
+    nonfinites = {
+        "nan": float("nan"),
+        "ninf": -float("inf"),
+        "inf": float("inf"),
+    }
+    include = []
+    for k, v in nonfinites.items():
+        if k in args:
+            include.append(v)
+
+    if expr is None:
+        return f.is_in(include)
+
+    return expr | f.is_in(include)
+
+
+def _apply_none(expr, f, none):
     if not none:
         if expr is not None:
             expr &= f.exists()
