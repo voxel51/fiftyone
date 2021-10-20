@@ -236,9 +236,12 @@ class Bounds(Aggregation):
             floating point values
     """
 
-    def __init__(self, field_or_expr, expr=None, safe=False):
+    def __init__(
+        self, field_or_expr, expr=None, safe=False, _count_nonfinites=False
+    ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._field_type = None
+        self._count_nonfinites = _count_nonfinites
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -261,7 +264,15 @@ class Bounds(Aggregation):
 
         if self._field_type is not None:
             p = self._field_type.to_python
-            return p(bounds[0]), p(bounds[1])
+            bounds = p(bounds[0]), p(bounds[1])
+
+        if self._count_nonfinites:
+            return {
+                "bounds": bounds,
+                "inf": d["inf"],
+                "-inf": d["-inf"],
+                "nan": d["nan"],
+            }
 
         return bounds
 
@@ -270,7 +281,7 @@ class Bounds(Aggregation):
             sample_collection,
             self._field_name,
             expr=self._expr,
-            safe=self._safe,
+            safe=self._safe and not self._count_nonfinites,
         )
 
         self._field_type = field_type
@@ -280,15 +291,32 @@ class Bounds(Aggregation):
         else:
             value = "$" + path
 
+        if self._safe and self._count_nonfinites:
+            safe_value = _to_safe_expr(F(value), self._field_type).to_mongo()
+        else:
+            safe_value = value
+
         pipeline.append(
             {
                 "$group": {
                     "_id": None,
-                    "min": {"$min": value},
-                    "max": {"$max": value},
+                    "min": {"$min": safe_value},
+                    "max": {"$max": safe_value},
                 }
             }
         )
+
+        if self._count_nonfinites:
+            for nonfinite in (float("inf"), -float("inf"), float("nan")):
+                pipeline[-1]["$group"][str(nonfinite)] = {
+                    "$sum": {
+                        "$cond": {
+                            "if": {"$eq": [value, nonfinite]},
+                            "then": 1,
+                            "else": 0,
+                        }
+                    }
+                }
 
         return pipeline
 
