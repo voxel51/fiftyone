@@ -176,7 +176,7 @@ class SimpleEvaluationConfig(RegressionEvaluationConfig):
         return self._metric if etau.is_str(self._metric) else "custom"
 
     def attributes(self):
-        return ["pred_field", "gt_field", "metric"]
+        return super().attributes() + ["metric"]
 
 
 class SimpleEvaluation(RegressionEvaluation):
@@ -350,19 +350,29 @@ class RegressionResults(foe.EvaluationResults):
         yp = self.ypred
         w = weights
 
-        mse = skm.mean_squared_error(yt, yp, sample_weight=w)
-        rmse = np.sqrt(mse)
-        mean_absolute_error = skm.mean_absolute_error(yt, yp, sample_weight=w)
-        median_absolute_error = skm.median_absolute_error(yt, yp)
-        r2_score = skm.r2_score(yt, yp, sample_weight=w)
-        ev_score = skm.explained_variance_score(yt, yp, sample_weight=w)
-        max_error = skm.max_error(yt, yp)
-        support = len(yt)
+        if yt.size > 0:
+            mse = skm.mean_squared_error(yt, yp, sample_weight=w)
+            rmse = np.sqrt(mse)
+            mae = skm.mean_absolute_error(yt, yp, sample_weight=w)
+            median_absolute_error = skm.median_absolute_error(yt, yp)
+            r2_score = skm.r2_score(yt, yp, sample_weight=w)
+            ev_score = skm.explained_variance_score(yt, yp, sample_weight=w)
+            max_error = skm.max_error(yt, yp)
+            support = len(yt)
+        else:
+            mse = 0.0
+            rmse = 0.0
+            mae = 0.0
+            median_absolute_error = 0.0
+            r2_score = 0.0
+            ev_score = 0.0
+            max_error = 0.0
+            support = 0
 
         return {
             "mean_squared_error": mse,
             "root_mean_squared_error": rmse,
-            "mean_absolute_error": mean_absolute_error,
+            "mean_absolute_error": mae,
             "median_absolute_error": median_absolute_error,
             "r2_score": r2_score,
             "explained_variance_score": ev_score,
