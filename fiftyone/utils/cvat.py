@@ -3633,9 +3633,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     ):
 
         is_video = samples_batch.media_type == fom.VIDEO
-        _anno_tags = []
-        _anno_shapes = []
-        _anno_tracks = []
+        anno_tags = []
+        anno_shapes = []
+        anno_tracks = []
         if label_type in ("classification", "classifications", "scalar",):
             # Tag annotations
             (_id_map, anno_tags,) = self._create_shapes_tags_tracks(
@@ -3671,9 +3671,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
         id_map[label_field].update(_id_map)
-        anno_tags.extend(_anno_tags)
-        anno_shapes.extend(_anno_shapes)
-        anno_tracks.extend(_anno_tracks)
+        tags.extend(anno_tags)
+        shapes.extend(anno_shapes)
+        tracks.extend(anno_tracks)
 
     def download_annotations(self, results):
         """Download the annotations from the CVAT server for the given results
