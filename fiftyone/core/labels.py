@@ -35,7 +35,7 @@ no_default = _NoDefault()
 
 
 class Label(DynamicEmbeddedDocument):
-    """Base class for labels.""
+    """Base class for labels.
 
     Label instances represent a logical collection of data associated with a
     particular task for a sample or frame in a dataset.
