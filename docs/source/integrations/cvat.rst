@@ -450,6 +450,10 @@ provided:
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
 -   **project_name** (*None*): an optional project name in which to store the
     annotation tasks. By default, no project is created
+-   **task_per_field** (*False*): whether to upload all label fields and classes
+    into one CVAT task (`False`) or to create a new CVAT task for every
+    label field being annotated (`True`)
+
 
 .. _cvat-label-schema:
 
@@ -1257,7 +1261,10 @@ fields at once:
 
 .. note:
 
-    When annotating multiple fields, each field will get its own CVAT task.
+    When annotating multiple fields, they will all be loaded into one task
+    unless `task_per_field` is set to `True`. If different fields contain the
+    same class, the name of the label field will be appended to the class
+    in order to distinguish them in the CVAT editor.
 
 .. image:: /images/integrations/cvat_multiple_fields.png
    :alt: cvat-multiple-fields
