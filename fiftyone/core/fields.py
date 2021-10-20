@@ -672,9 +672,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             if ftype and not isinstance(field, ftype):
                 continue
 
-            if (
-                embedded_doc_type
-                and not isinstance(field, EmbeddedDocumentField)
+            if embedded_doc_type and (
+                not isinstance(field, EmbeddedDocumentField)
                 or embedded_doc_type != field.document_type
             ):
                 continue

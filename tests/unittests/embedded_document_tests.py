@@ -6,6 +6,7 @@ FiftyOne embedded document unit tests.
 |
 """
 import unittest
+from fiftyone.core.fields import DictField, EmbeddedDocumentField, ListField
 
 import mongoengine
 
@@ -16,6 +17,26 @@ from decorators import drop_datasets
 
 
 class EmbeddedDocumentTests(unittest.TestCase):
+    def assertField(
+        self, collection, path, ftype, subfield=None, document_type=None
+    ):
+        schema = collection.get_field_schema()
+        for field_name in path.split("."):
+            field = schema[field_name]
+
+            if isinstance(field, (ListField, DictField)):
+                field = field.field
+
+            if isinstance(field, EmbeddedDocumentField):
+                schema = field.get_field_schema()
+
+        self.assertIsInstance(field, ftype)
+        if subfield is not None:
+            self.assertIsInstance(field.field, subfield)
+
+        if document_type is not None:
+            self.assertEqual(field.document_type, document_type)
+
     @drop_datasets
     def test_get_field(self):
         field_value = "custom_value"
@@ -140,27 +161,61 @@ class EmbeddedDocumentTests(unittest.TestCase):
     @drop_datasets
     def test_default_fields(self):
         dataset = fo.Dataset()
+
+        # singles
         dataset.add_sample_field(
             "test_default",
             fo.EmbeddedDocumentField,
             embedded_doc_type=fo.Classification,
         )
-
-        schema = dataset.get_field_schema()
-        self.assertIn("confidence", schema["test_default"].fields)
+        self.assertField(dataset, "test_default.confidence", fo.FloatField)
 
         sample = fo.Sample(
             filepath="/path/to/image.jpg",
             test_catch_default=fo.Classification(),
         )
         dataset.add_sample(sample)
-        schema = dataset.get_field_schema()
-        self.assertIn("confidence", schema["test_catch_default"].fields)
+        self.assertField(
+            dataset, "test_catch_default.confidence", fo.FloatField
+        )
 
         sample["test_set_default"] = fo.Classification()
-        schema = dataset.get_field_schema()
-        self.assertIn("confidence", schema["test_set_default"].fields)
-        print(dataset._doc)
+        self.assertField(dataset, "test_set_default.confidence", fo.FloatField)
+
+        # lists
+        dataset.add_sample_field(
+            "test_list_default",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classifications,
+        )
+        self.assertField(
+            dataset,
+            "test_list_default.classifications.confidence",
+            fo.FloatField,
+        )
+
+        sample = fo.Sample(
+            filepath="/path/to/image.jpg",
+            test_catch_list_default=fo.Classifications(),
+        )
+        dataset.add_sample(sample)
+        self.assertField(
+            dataset,
+            "test_catch_list_default.classifications.confidence",
+            fo.FloatField,
+        )
+
+        sample["test_set_list_default"] = fo.Classifications()
+        self.assertField(
+            dataset,
+            "test_set_list_default.classifications.confidence",
+            fo.FloatField,
+        )
+
+    @drop_datasets
+    def test_metadata_fields(self):
+        dataset = fo.Dataset()
+        self.assertField(dataset, "metadata.size_bytes", fo.IntField)
 
 
 if __name__ == "__main__":

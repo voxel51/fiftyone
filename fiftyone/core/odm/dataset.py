@@ -169,7 +169,8 @@ class SampleFieldDocument(EmbeddedDocument):
 
         subfield = self.subfield
         if subfield is not None:
-            subfield = etau.get_class(subfield)()
+            args = (embedded_doc_type,) if embedded_doc_type else ()
+            subfield = etau.get_class(subfield)(*args)
 
         fields = None
         if self.fields is not None:
@@ -197,11 +198,17 @@ class SampleFieldDocument(EmbeddedDocument):
         Returns:
             a :class:`SampleFieldDocument`
         """
+        embedded_doc_type = cls._get_attr_repr(field, "document_type")
+        if isinstance(field, (ListField, DictField)) and field.field:
+            embedded_doc_type = cls._get_attr_repr(
+                field.field, "document_type"
+            )
+
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
             subfield=cls._get_attr_repr(field, "field"),
-            embedded_doc_type=cls._get_attr_repr(field, "document_type"),
+            embedded_doc_type=embedded_doc_type,
             db_field=field.db_field,
             fields=cls._get_field_documents(field),
         )
@@ -256,15 +263,29 @@ class SampleFieldDocument(EmbeddedDocument):
 
     @classmethod
     def _get_field_documents(cls, field):
+        if isinstance(field, ListField):
+            field = field.field
+
         if not isinstance(field, EmbeddedDocumentField):
             return None
 
         if not hasattr(field, "fields"):
             return None
 
-        return {
-            name: cls.from_field(value) for name, value in field.fields.items()
+        field_docs = {
+            name: cls.from_field(value)
+            for name, value in field.document_type._fields.items()
+            if name != "_cls"
         }
+
+        field_docs.update(
+            {
+                name: cls.from_field(value)
+                for name, value in field.fields.items()
+            }
+        )
+
+        return field_docs
 
 
 class DatasetDocument(Document):
