@@ -3,7 +3,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { NamedRangeSlider } from "./RangeSlider";
+import { NamedRangeSlider, Other } from "./RangeSlider";
 import CategoricalFilter from "./CategoricalFilter";
 import {
   CONFIDENCE_LABELS,
@@ -105,12 +105,19 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               color={entry.color}
               name={"Confidence"}
-              noneAtom={numericField.noneAtom({
-                modal,
+              getOtherAtom={(key: Other) =>
+                numericField.otherAtom({
+                  modal,
+                  path: cPath,
+                  defaultRange: [0, 1],
+                  key,
+                })
+              }
+              otherCountsAtom={numericField.otherCounts({ path: cPath, modal })}
+              otherFilteredCountsAtom={numericField.otherFilteredCounts({
                 path: cPath,
-                defaultRange: [0, 1],
+                modal,
               })}
-              noneCountAtom={noneCount({ path: cPath, modal })}
               boundsAtom={numericField.boundsAtom({
                 path: cPath,
                 defaultRange: [0, 1],
@@ -127,11 +134,18 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               color={entry.color}
               name={"Support"}
-              noneAtom={numericField.noneAtom({
-                modal,
+              getOtherAtom={(key: Other) =>
+                numericField.otherAtom({
+                  modal,
+                  path: sPath,
+                  key,
+                })
+              }
+              otherCountsAtom={numericField.otherCounts({ path: sPath, modal })}
+              otherFilteredCountsAtom={numericField.otherFilteredCounts({
                 path: sPath,
+                modal,
               })}
-              noneCountAtom={noneCount({ path: sPath, modal })}
               boundsAtom={numericField.boundsAtom({
                 path: sPath,
               })}

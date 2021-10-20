@@ -4,6 +4,7 @@ import styled from "styled-components";
 import {
   RecoilState,
   RecoilValueReadOnly,
+  SetterOrUpdater,
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
@@ -15,6 +16,7 @@ import { Button } from "../FieldsSidebar";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   INT_FIELD,
 } from "../../utils/labels";
@@ -355,14 +357,21 @@ const RangeSliderContainer = styled.div`
   padding: 0.25rem 0.5rem 0 0.5rem;
 `;
 
+export type Other = "nan" | "ninf" | "inf" | "none";
+
+const OTHER_NAMES = {
+  nan: "nan",
+  ninf: "-inf",
+  inf: "inf",
+  none: null,
+};
+
 type NamedProps = {
   valueAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
   otherCountsAtom: RecoilValueReadOnly<OtherCounts>;
   otherFilteredCountsAtom: RecoilValueReadOnly<OtherCounts>;
-  otherAtoms: {
-    [key: string]: RecoilState<boolean>;
-  };
+  getOtherAtom: (key: Other) => RecoilState<boolean>;
   fieldType: string;
   name?: string;
   color: string;
@@ -379,7 +388,8 @@ export const NamedRangeSlider = React.memo(
         otherCountsAtom,
         otherFilteredCountsAtom,
         name,
-        otherAtoms,
+        getOtherAtom,
+        fieldType,
         ...rangeSliderProps
       }: NamedProps,
       ref
@@ -388,22 +398,27 @@ export const NamedRangeSlider = React.memo(
       const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
       const hasDefaultRange = isDefaultRange(range, bounds);
       const hasBounds = bounds.every((b) => b !== null);
-      const others: any = Object.entries(otherAtoms).map(([k, atom]) => {
-        return [k, useResetRecoilState(atom)];
-      });
       const otherCounts = useRecoilValue(otherCountsAtom);
       const otherFilteredCounts = useRecoilValue(otherFilteredCountsAtom);
 
-      if (!hasBounds) {
-        return null;
-      }
+      const others: [
+        string,
+        [boolean, SetterOrUpdater<boolean>]
+      ][] = (fieldType === FLOAT_FIELD
+        ? ["inf", "ninf", "nan", "none"]
+        : ["none"]
+      ).map((key) => [key, useRecoilState(getOtherAtom(key))]);
 
       return (
         <NamedRangeSliderContainer ref={ref}>
           {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
           <RangeSliderContainer>
             {hasBounds && (
-              <RangeSlider {...rangeSliderProps} showBounds={false} />
+              <RangeSlider
+                {...rangeSliderProps}
+                showBounds={false}
+                fieldType={fieldType}
+              />
             )}
             {others
               .filter(([k]) => otherCounts[k] > 0)
@@ -411,10 +426,11 @@ export const NamedRangeSlider = React.memo(
                 return (
                   <Checkbox
                     color={rangeSliderProps.color}
-                    name={null}
+                    name={OTHER_NAMES[key]}
                     value={value}
                     setValue={setValue}
                     count={otherCounts[key]}
+                    forceColor={true}
                   />
                 );
               })}

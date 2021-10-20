@@ -257,33 +257,28 @@ export const otherCounts = selectorFamily<
   key: "otherFilteredCounts",
   get: ({ modal, path }) => ({ get }) => {
     const none = get(noneCount({ modal, path }));
-    const type = get(selectors.fieldType(path));
-    const subType = get(selectors.subfieldType(path));
-    if ([type, subType].includes(FLOAT_FIELD)) {
-      let { inf, "-inf": ninf, nan } = (
-        get(modal ? modalStats : selectors.datasetStats) ?? []
-      ).reduce(
-        (acc, cur) => {
-          if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
-            return acc;
-          }
+    let { inf, "-inf": ninf, nan } = (
+      get(modal ? modalStats : selectors.datasetStats) ?? []
+    ).reduce(
+      (acc, cur) => {
+        if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
+          return acc;
+        }
 
-          if (cur.result.bounds) {
-            return cur.result;
-          }
-
+        if (cur.result.bounds) {
           return cur.result;
-        },
-        { nan: 0, ninf: 0, inf: 0 }
-      );
-      return {
-        none,
-        inf,
-        ninf,
-        nan,
-      };
-    }
-    return { none };
+        }
+
+        return cur.result;
+      },
+      { nan: 0, ninf: 0, inf: 0 }
+    );
+    return {
+      none,
+      inf,
+      ninf,
+      nan,
+    };
   },
 });
 
@@ -294,33 +289,28 @@ export const otherFilteredCounts = selectorFamily<
   key: "otherFilteredCounts",
   get: ({ modal, path }) => ({ get }) => {
     const none = get(noneCount({ modal, path }));
-    const type = get(selectors.fieldType(path));
-    const subType = get(selectors.subfieldType(path));
-    if ([type, subType].includes(FLOAT_FIELD)) {
-      let { inf, "-inf": ninf, nan } = (
-        get(modal ? extendedModalStats : selectors.extendedDatasetStats) ?? []
-      ).reduce(
-        (acc, cur) => {
-          if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
-            return acc;
-          }
+    let { inf, "-inf": ninf, nan } = (
+      get(modal ? extendedModalStats : selectors.extendedDatasetStats) ?? []
+    ).reduce(
+      (acc, cur) => {
+        if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
+          return acc;
+        }
 
-          if (cur.result.bounds) {
-            return cur.result;
-          }
-
+        if (cur.result.bounds) {
           return cur.result;
-        },
-        { nan: 0, ninf: 0, inf: 0 }
-      );
-      return {
-        none,
-        inf,
-        ninf,
-        nan,
-      };
-    }
-    return { none };
+        }
+
+        return cur.result;
+      },
+      { nan: 0, ninf: 0, inf: 0 }
+    );
+    return {
+      none,
+      inf,
+      ninf,
+      nan,
+    };
   },
 });
 
