@@ -5,12 +5,17 @@ FiftyOne embedded document unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 import unittest
-from fiftyone.core.fields import DictField, EmbeddedDocumentField, ListField
 
 import mongoengine
+import numpy as np
+
+import eta.core.utils as etau
+import eta.core.image as etai
 
 import fiftyone as fo
+from fiftyone.core.fields import DictField, EmbeddedDocumentField, ListField
 from fiftyone.core.odm import DynamicEmbeddedDocument
 
 from decorators import drop_datasets
@@ -216,6 +221,18 @@ class EmbeddedDocumentTests(unittest.TestCase):
     def test_metadata_fields(self):
         dataset = fo.Dataset()
         self.assertField(dataset, "metadata.size_bytes", fo.IntField)
+        self.assertField(dataset, "metadata.mime_type", fo.StringField)
+
+        with etau.TempDir() as tmp_dir:
+            image_path = os.path.join(tmp_dir, "image.jpg")
+            img = np.random.randint(255, size=(480, 640, 3), dtype=np.uint8)
+            etai.write(img, image_path)
+            dataset.add_sample(fo.Sample(filepath=image_path))
+            dataset.compute_metadata()
+
+        self.assertField(dataset, "metadata.num_channels", fo.IntField)
+        self.assertField(dataset, "metadata.width", fo.IntField)
+        self.assertField(dataset, "metadata.height", fo.IntField)
 
 
 if __name__ == "__main__":
