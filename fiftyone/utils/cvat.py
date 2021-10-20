@@ -4623,7 +4623,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if occluded_attrs is not None:
             attr_name = occluded_attrs.get(class_name, None)
             if attr_name is not None:
-                is_occluded = bool(label.get_attribute_value(attr_name, False))
+                is_occluded = _parse_occlusion_value(
+                    label.get_attribute_value(attr_name, False)
+                )
 
         return (
             class_name,
@@ -5250,6 +5252,24 @@ def _parse_value(value):
         pass
 
     return value
+
+
+def _parse_occlusion_value(value):
+    if isinstance(value, bool):
+        return value
+
+    orig_type = type(value)
+    str_value = "'%s'" % value if etau.is_str(value) else str(value)
+    bool_value = bool(value)
+
+    msg = "Casting occlusion value %s of type %s to boolean %s" % (
+        str_value,
+        orig_type,
+        bool_value,
+    )
+    warnings.warn(msg)
+
+    return bool_value
 
 
 # Track interpolation code sourced from CVAT:
