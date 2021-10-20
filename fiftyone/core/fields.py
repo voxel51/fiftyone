@@ -633,6 +633,56 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         super().validate(value, clean)
 
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        """Returns a schema dictionary describing the fields of the embedded
+        document field.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
+
+        Returns:
+             an ``OrderedDict`` mapping field names to field types
+        """
+        fields = {
+            name: field for name, field in self.document_type._fields.items()
+        }
+        fields.update(
+            {
+                name: field
+                for name, field in self.fields.items()
+                if (ftype is None or isinstance(field, ftype))
+            }
+        )
+
+        filtered_fields = {}
+
+        for name, field in self.document_type._fields.items():
+            if not include_private and name.startswith("_"):
+                continue
+
+            if ftype and not isinstance(field, ftype):
+                continue
+
+            if (
+                embedded_doc_type
+                and not isinstance(field, EmbeddedDocumentField)
+                or embedded_doc_type != field.document_type
+            ):
+                continue
+
+            filtered_fields[name] = field
+
+        return filtered_fields
+
     def to_python(self, value):
         doc = super().to_python(value)
         doc._set_parent(self)
