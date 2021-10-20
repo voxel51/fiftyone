@@ -9,6 +9,7 @@ from bson import ObjectId, json_util
 from collections import OrderedDict
 from datetime import date, datetime
 from json import JSONEncoder
+import math
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -45,19 +46,16 @@ def _handle_date(dt):
 
 
 def _is_invalid_number(value):
-    return type(value) == float and value in {
-        float("inf"),
-        -float("inf"),
-        float("nan"),
-    }
+    if not isinstance(value, float):
+        return False
+
+    return math.isnan(value) or math.isinf(value)
 
 
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
-            if _is_invalid_number(v):
-                d[k] = str(v)
-            elif isinstance(v, bytes):
+            if isinstance(v, bytes):
                 d[k] = _handle_numpy_array(v, d.get("_cls", None))
             elif isinstance(v, (date, datetime)):
                 d[k] = _handle_date(v)
@@ -65,6 +63,8 @@ def convert(d):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
+            elif _is_invalid_number(v):
+                d[k] = str(v)
 
     if isinstance(d, list):
         for idx, i in enumerate(d):
@@ -72,9 +72,7 @@ def convert(d):
                 d[idx] = list(i)
                 i = d[idx]
 
-            if _is_invalid_number(i):
-                d[idx] = str(i)
-            elif isinstance(i, bytes):
+            if isinstance(i, bytes):
                 d[idx] = _handle_numpy_array(i)
             elif isinstance(i, (date, datetime)):
                 d[idx] = _handle_date(i)
@@ -82,6 +80,8 @@ def convert(d):
                 d[idx] = str(i)
             elif isinstance(i, (dict, OrderedDict, list)):
                 convert(i)
+            elif _is_invalid_number(i):
+                d[idx] = str(i)
 
 
 class FiftyOneJSONEncoder(JSONEncoder):
