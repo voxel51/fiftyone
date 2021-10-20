@@ -10,15 +10,12 @@ from copy import deepcopy
 import getpass
 import logging
 import os
-import warnings
 
 from bson import ObjectId
 
 import eta.core.annotations as etaa
-import eta.core.frames as etaf
 import eta.core.image as etai
 import eta.core.utils as etau
-import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foag
@@ -1231,29 +1228,32 @@ def _merge_labels(
         added_id_map = defaultdict(list)
 
     existing_ids = set()
-    for sample_labels in id_map.values():
+    for sample_id, sample_labels in id_map.items():
         if is_video:
-            for frame_labels in sample_labels.values():
-                existing_ids.update(_to_list(frame_labels))
+            for frame_id, frame_labels in sample_labels.items():
+                for label_id in _to_list(frame_labels):
+                    existing_ids.add((sample_id, frame_id, label_id))
         else:
-            existing_ids.update(_to_list(sample_labels))
-
-    existing_ids.discard(None)
+            for label_id in _to_list(sample_labels):
+                existing_ids.add((sample_id, label_id))
 
     anno_ids = set()
-    for sample in anno_dict.values():
+    for sample_id, sample_labels in anno_dict.items():
         if is_video:
-            for frame in sample.values():
-                anno_ids.update(frame.keys())
+            for frame_id, frame_labels in sample_labels.items():
+                for label_id in frame_labels.keys():
+                    anno_ids.add((sample_id, frame_id, label_id))
         else:
-            anno_ids.update(sample.keys())
+            for label_id in sample_labels.keys():
+                anno_ids.add((sample_id, label_id))
 
     delete_ids = existing_ids - anno_ids
     new_ids = anno_ids - existing_ids
     merge_ids = anno_ids - new_ids
 
     if delete_ids and allow_deletions:
-        samples._dataset.delete_labels(ids=delete_ids, fields=label_field)
+        _del_ids = [key[-1] for key in delete_ids]
+        samples._dataset.delete_labels(ids=_del_ids, fields=label_field)
 
     sample_ids = list(anno_dict.keys())
     view = samples._dataset.select(sample_ids).select_fields(label_field)
@@ -1270,7 +1270,8 @@ def _merge_labels(
 
         for image in images:
             if is_video:
-                image_annos = sample_annos.get(image.id, None)
+                frame_id = image.id
+                image_annos = sample_annos.get(frame_id, None)
                 if not image_annos:
                     continue
             else:
@@ -1287,17 +1288,17 @@ def _merge_labels(
                     )
 
                     if is_video:
-                        added_id_map[sample_id][image.id].extend(label_ids)
+                        added_id_map[sample_id][frame_id].extend(label_ids)
                     else:
                         added_id_map[sample_id].extend(label_ids)
                 elif image_annos:
-                    anno_id, anno_label = next(iter(image_annos.items()))
+                    label_id, anno_label = next(iter(image_annos.items()))
                     image[field] = anno_label
 
                     if is_video:
-                        added_id_map[sample_id][image.id] = anno_id
+                        added_id_map[sample_id][frame_id] = label_id
                     else:
-                        added_id_map[sample_id] = anno_id
+                        added_id_map[sample_id] = label_id
             else:
                 if is_list:
                     labels = image_label[list_field]
@@ -1306,8 +1307,14 @@ def _merge_labels(
 
                 # Merge labels that existed before and after annotation
                 for label in labels:
-                    if label.id in merge_ids:
-                        anno_label = image_annos[label.id]
+                    label_id = label.id
+                    if is_video:
+                        key = (sample_id, frame_id, label_id)
+                    else:
+                        key = (sample_id, label_id)
+
+                    if key in merge_ids:
+                        anno_label = image_annos[label_id]
 
                         _merge_label(
                             label,
@@ -1321,16 +1328,21 @@ def _merge_labels(
 
                 # Add new labels to label list fields
                 if is_list and allow_additions:
-                    for anno_id, anno_label in image_annos.items():
-                        if anno_id not in new_ids:
+                    for label_id, anno_label in image_annos.items():
+                        if is_video:
+                            key = (sample_id, frame_id, label_id)
+                        else:
+                            key = (sample_id, label_id)
+
+                        if key not in new_ids:
                             continue
 
                         labels.append(anno_label)
 
                         if is_video:
-                            added_id_map[sample_id][image.id].append(anno_id)
+                            added_id_map[sample_id][frame_id].append(label_id)
                         else:
-                            added_id_map[sample_id].append(anno_id)
+                            added_id_map[sample_id].append(label_id)
 
         sample.save()
 
