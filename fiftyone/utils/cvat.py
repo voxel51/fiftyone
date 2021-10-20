@@ -3252,24 +3252,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_per_field = config.task_per_field
 
         if task_per_field:
-            (
-                id_map,
-                project_ids,
-                task_ids,
-                job_ids,
-                frame_id_map,
-                labels_task_map,
-            ) = self._upload_task_per_field(samples, config)
-
+            upload_method = self._upload_task_per_field
         else:
-            (
-                id_map,
-                project_ids,
-                task_ids,
-                job_ids,
-                frame_id_map,
-                labels_task_map,
-            ) = self._upload_fields_together(samples, config)
+            upload_method = self._upload_fields_together
+
+        (
+            id_map,
+            project_ids,
+            task_ids,
+            job_ids,
+            frame_id_map,
+            labels_task_map,
+        ) = upload_method(samples, config)
 
         return CVATAnnotationResults(
             samples,
@@ -3283,29 +3277,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             backend=backend,
         )
 
-    def _upload_task_per_field(self, samples, config):
-        label_schema = config.label_schema
-        media_field = config.media_field
-        segment_size = config.segment_size
-        image_quality = config.image_quality
-        use_cache = config.use_cache
-        use_zip_chunks = config.use_zip_chunks
-        chunk_size = config.chunk_size
-        task_assignee = config.task_assignee
-        job_assignees = config.job_assignees
-        job_reviewers = config.job_reviewers
-        project_name = config.project_name
-
-        id_map = {}
-        project_ids = []
-        task_ids = []
-        job_ids = {}
-        frame_id_map = {}
-        labels_task_map = {}
-
+    def _setup_batches(self, samples):
         num_samples = len(samples)
         is_video = samples.media_type == fom.VIDEO
-
         if is_video:
             # CVAT only allows for one video per task
             batch_size = 1
@@ -3316,6 +3290,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             batch_size = num_samples
             samples.compute_metadata()
+        return batch_size
+
+    def _upload_task_per_field(self, samples, config):
+        label_schema = config.label_schema
+        project_name = config.project_name
+
+        id_map = {}
+        project_ids = []
+        task_ids = []
+        job_ids = {}
+        frame_id_map = {}
+        labels_task_map = {}
+
+        num_samples = len(samples)
+        batch_size = self._setup_batches(samples)
 
         # Create a new task for every label field to annotate
         for label_field, label_info in label_schema.items():
@@ -3347,154 +3336,57 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Create a new task for every video sample
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
-
                 anno_tags = []
                 anno_shapes = []
                 anno_tracks = []
 
                 if is_existing_field:
-                    if label_type in (
-                        "classification",
-                        "classifications",
-                        "scalar",
-                    ):
-                        # Tag annotations
-                        (
-                            _id_map,
-                            anno_tags,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            assign_scalar_attrs=assign_scalar_attrs,
-                        )
-                    elif is_video and label_type != "segmentation":
-                        # Video track annotations
-                        (
-                            _id_map,
-                            anno_shapes,
-                            anno_tracks,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            load_tracks=True,
-                            only_keyframes=only_keyframes,
-                            occluded_attrs=occluded_attrs,
-                        )
-                    else:
-                        # Shape annotations
-                        (
-                            _id_map,
-                            anno_shapes,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            occluded_attrs=occluded_attrs,
-                        )
-
-                    id_map[label_field].update(_id_map)
-
-                current_job_assignees = job_assignees
-                current_job_reviewers = job_reviewers
-                current_task_assignee = task_assignee
-                if is_video:
-                    # Videos are uploaded in multiple tasks with 1 job per task
-                    # Assign the correct users for the current task
-                    if job_assignees is not None:
-                        job_assignee_ind = idx % len(job_assignees)
-                        current_job_assignees = [
-                            job_assignees[job_assignee_ind]
-                        ]
-
-                    if job_reviewers is not None:
-                        job_reviewer_ind = idx % len(job_reviewers)
-                        current_job_reviewers = [
-                            job_reviewers[job_reviewer_ind]
-                        ]
-
-                if task_assignee is not None:
-                    if isinstance(task_assignee, str):
-                        current_task_assignee = task_assignee
-                    else:
-                        task_assignee_ind = idx % len(task_assignee)
-                        current_task_assignee = task_assignee[
-                            task_assignee_ind
-                        ]
+                    self._update_shapes_tags_tracks(
+                        anno_tags,
+                        anno_shapes,
+                        anno_tracks,
+                        id_map,
+                        label_type,
+                        samples_batch,
+                        label_field,
+                        label_info,
+                        cvat_schema,
+                        assign_scalar_attrs,
+                        only_keyframes,
+                        occluded_attrs,
+                    )
 
                 task_name = "FiftyOne_%s_%s" % (
                     samples_batch._root_dataset.name.replace(" ", "_"),
                     label_field.replace(" ", "_"),
                 )
 
-                # Create task
-                task_id, class_id_map, attr_id_map = self.create_task(
+                (
+                    task_id,
+                    class_id_map,
+                    attr_id_map,
+                ) = self._create_task_upload_data(
+                    config,
+                    idx,
                     task_name,
-                    schema=cvat_schema,
-                    segment_size=segment_size,
-                    image_quality=image_quality,
-                    task_assignee=current_task_assignee,
-                    project_id=project_id,
+                    cvat_schema,
+                    project_id,
+                    samples_batch,
+                    task_ids,
+                    job_ids,
+                    frame_id_map,
                 )
 
-                task_ids.append(task_id)
                 labels_task_map[label_field].append(task_id)
 
-                # Upload media
-                job_ids[task_id] = self.upload_data(
+                self._remap_upload_annotations(
+                    anno_shapes,
+                    anno_tags,
+                    anno_tracks,
+                    class_id_map,
+                    attr_id_map,
                     task_id,
-                    samples_batch.values(media_field),
-                    image_quality=image_quality,
-                    use_cache=use_cache,
-                    use_zip_chunks=use_zip_chunks,
-                    chunk_size=chunk_size,
-                    job_assignees=current_job_assignees,
-                    job_reviewers=current_job_reviewers,
                 )
-                frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
-
-                # Remap annotations to use the class/attribute IDs generated
-                # when the CVAT task was created
-                anno_shapes = self._remap_ids(
-                    anno_shapes, class_id_map, attr_id_map
-                )
-                anno_tags = self._remap_ids(
-                    anno_tags, class_id_map, attr_id_map
-                )
-                anno_tracks = self._remap_track_ids(
-                    anno_tracks, class_id_map, attr_id_map
-                )
-
-                anno_json = {
-                    "version": 0,
-                    "shapes": anno_shapes,
-                    "tags": anno_tags,
-                    "tracks": anno_tracks,
-                }
-                num_shapes = len(anno_shapes)
-                num_tags = len(anno_tags)
-                num_tracks = len(anno_tracks)
-
-                # Upload annotations
-                # @todo is this loop really needed?
-                num_uploaded_shapes = 0
-                num_uploaded_tags = 0
-                num_uploaded_tracks = 0
-                while (
-                    num_uploaded_shapes != num_shapes
-                    or num_uploaded_tags != num_tags
-                    or num_uploaded_tracks != num_tracks
-                ):
-                    anno_resp = self.put(
-                        self.task_annotation_url(task_id), json=anno_json
-                    ).json()
-                    num_uploaded_shapes = len(anno_resp["shapes"])
-                    num_uploaded_tags = len(anno_resp["tags"])
-                    num_uploaded_tracks = len(anno_resp["tracks"])
 
         return (
             id_map,
@@ -3506,7 +3398,120 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def _upload_fields_together(self, samples, config):
+        # Create one task for all label fields
         label_schema = config.label_schema
+        project_name = config.project_name
+
+        id_map = {}
+        task_ids = []
+        job_ids = {}
+        frame_id_map = {}
+        labels_task_map = {}
+
+        num_samples = len(samples)
+        batch_size = self._setup_batches(samples)
+
+        (
+            cvat_schema,
+            assign_scalar_attrs,
+            occluded_attrs,
+            _,
+        ) = self._build_cvat_schema(label_schema)
+
+        project_id = None
+        if project_name is not None:
+            project_id = self.create_project(project_name, cvat_schema)
+
+        # Create a new task for every video sample
+        for idx, offset in enumerate(range(0, num_samples, batch_size)):
+            samples_batch = samples[offset : (offset + batch_size)]
+            anno_tags = []
+            anno_shapes = []
+            anno_tracks = []
+
+            for label_field, label_info in label_schema.items():
+                _tags = []
+                _shapes = []
+                _tracks = []
+
+                if label_field not in id_map:
+                    id_map[label_field] = {}
+
+                if label_field not in labels_task_map:
+                    labels_task_map[label_field] = []
+
+                label_type = label_info["type"]
+                is_existing_field = label_info["existing_field"]
+                only_keyframes = label_info.get("only_keyframes", False)
+
+                if is_existing_field:
+                    self._update_shapes_tags_tracks(
+                        _tags,
+                        _shapes,
+                        _tracks,
+                        id_map,
+                        label_type,
+                        samples_batch,
+                        label_field,
+                        label_info,
+                        cvat_schema,
+                        assign_scalar_attrs,
+                        only_keyframes,
+                        occluded_attrs,
+                    )
+                anno_tags.extend(_tags)
+                anno_shapes.extend(_shapes)
+                anno_tracks.extend(_tracks)
+
+            task_name = (
+                "FiftyOne_%s"
+                % samples_batch._root_dataset.name.replace(" ", "_")
+            )
+            task_id, class_id_map, attr_id_map = self._create_task_upload_data(
+                config,
+                idx,
+                task_name,
+                cvat_schema,
+                project_id,
+                samples_batch,
+                task_ids,
+                job_ids,
+                frame_id_map,
+            )
+
+            for label_field in label_schema.keys():
+                labels_task_map[label_field].append(task_id)
+
+            self._remap_upload_annotations(
+                anno_shapes,
+                anno_tags,
+                anno_tracks,
+                class_id_map,
+                attr_id_map,
+                task_id,
+            )
+
+        return (
+            id_map,
+            [project_id],
+            task_ids,
+            job_ids,
+            frame_id_map,
+            labels_task_map,
+        )
+
+    def _create_task_upload_data(
+        self,
+        config,
+        idx,
+        task_name,
+        cvat_schema,
+        project_id,
+        samples_batch,
+        task_ids,
+        job_ids,
+        frame_id_map,
+    ):
         media_field = config.media_field
         segment_size = config.segment_size
         image_quality = config.image_quality
@@ -3516,219 +3521,159 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_assignee = config.task_assignee
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
-        project_name = config.project_name
 
-        id_map = {}
-        project_ids = []
-        task_ids = []
-        job_ids = {}
-        frame_id_map = {}
-        labels_task_map = {}
+        is_video = samples_batch.media_type == fom.VIDEO
 
-        num_samples = len(samples)
-        is_video = samples.media_type == fom.VIDEO
-
+        current_job_assignees = job_assignees
+        current_job_reviewers = job_reviewers
+        current_task_assignee = task_assignee
         if is_video:
-            # CVAT only allows for one video per task
-            batch_size = 1
+            # Videos are uploaded in multiple tasks with 1 job per task
+            # Assign the correct users for the current task
+            if job_assignees is not None:
+                job_assignee_ind = idx % len(job_assignees)
+                current_job_assignees = [job_assignees[job_assignee_ind]]
 
-            # The current implementation (both upload and download) requires
-            # frame IDs for all frames that might get labels
-            samples.ensure_frames()
-        else:
-            batch_size = num_samples
-            samples.compute_metadata()
+            if job_reviewers is not None:
+                job_reviewer_ind = idx % len(job_reviewers)
+                current_job_reviewers = [job_reviewers[job_reviewer_ind]]
 
-        (
-            cvat_schema,
-            assign_scalar_attrs,
-            occluded_attrs,
-            _,
-        ) = self._build_cvat_schema(label_schema)
+        if task_assignee is not None:
+            if isinstance(task_assignee, str):
+                current_task_assignee = task_assignee
+            else:
+                task_assignee_ind = idx % len(task_assignee)
+                current_task_assignee = task_assignee[task_assignee_ind]
 
-        # Create one task for all label fields
-        for label_field, label_info in label_schema.items():
-
-            id_map[label_field] = {}
-            labels_task_map[label_field] = []
-
-            project_id = None
-            if project_name is not None:
-                _project_name = project_name
-                if project_ids:
-                    _project_name += "_%d" % (len(project_ids) + 1)
-
-                project_id = self.create_project(_project_name, cvat_schema)
-                project_ids.append(project_id)
-
-        # Create a new task for every video sample
-        for idx, offset in enumerate(range(0, num_samples, batch_size)):
-            samples_batch = samples[offset : (offset + batch_size)]
-
-            anno_tags = []
-            anno_shapes = []
-            anno_tracks = []
-
-            for label_field, label_info in label_schema.items():
-                _anno_tags = []
-                _anno_shapes = []
-                _anno_tracks = []
-
-                label_type = label_info["type"]
-                is_existing_field = label_info["existing_field"]
-                only_keyframes = label_info.get("only_keyframes", False)
-
-                if is_existing_field:
-                    if label_type in (
-                        "classification",
-                        "classifications",
-                        "scalar",
-                    ):
-                        # Tag annotations
-                        (
-                            _id_map,
-                            _anno_tags,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            assign_scalar_attrs=assign_scalar_attrs[
-                                label_field
-                            ],
-                        )
-                    elif is_video and label_type != "segmentation":
-                        # Video track annotations
-                        (
-                            _id_map,
-                            _anno_shapes,
-                            _anno_tracks,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            load_tracks=True,
-                            only_keyframes=only_keyframes,
-                            occluded_attrs=occluded_attrs[label_field],
-                        )
-                    else:
-                        # Shape annotations
-                        (
-                            _id_map,
-                            _anno_shapes,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            occluded_attrs=occluded_attrs[label_field],
-                        )
-
-                    id_map[label_field].update(_id_map)
-
-                anno_tags.extend(_anno_tags)
-                anno_shapes.extend(_anno_shapes)
-                anno_tracks.extend(_anno_tracks)
-
-            current_job_assignees = job_assignees
-            current_job_reviewers = job_reviewers
-            current_task_assignee = task_assignee
-            if is_video:
-                # Videos are uploaded in multiple tasks with 1 job per task
-                # Assign the correct users for the current task
-                if job_assignees is not None:
-                    job_assignee_ind = idx % len(job_assignees)
-                    current_job_assignees = [job_assignees[job_assignee_ind]]
-
-                if job_reviewers is not None:
-                    job_reviewer_ind = idx % len(job_reviewers)
-                    current_job_reviewers = [job_reviewers[job_reviewer_ind]]
-
-            if task_assignee is not None:
-                if isinstance(task_assignee, str):
-                    current_task_assignee = task_assignee
-                else:
-                    task_assignee_ind = idx % len(task_assignee)
-                    current_task_assignee = task_assignee[task_assignee_ind]
-
-            task_name = (
-                "FiftyOne_%s"
-                % samples_batch._root_dataset.name.replace(" ", "_")
-            )
-
-            # Create task
-            task_id, class_id_map, attr_id_map = self.create_task(
-                task_name,
-                schema=cvat_schema,
-                segment_size=segment_size,
-                image_quality=image_quality,
-                task_assignee=current_task_assignee,
-                project_id=project_id,
-            )
-
-            task_ids.append(task_id)
-            for label_field in label_schema.keys():
-                labels_task_map[label_field].append(task_id)
-
-            # Upload media
-            job_ids[task_id] = self.upload_data(
-                task_id,
-                samples_batch.values(media_field),
-                image_quality=image_quality,
-                use_cache=use_cache,
-                use_zip_chunks=use_zip_chunks,
-                chunk_size=chunk_size,
-                job_assignees=current_job_assignees,
-                job_reviewers=current_job_reviewers,
-            )
-            frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
-
-            # Remap annotations to use the class/attribute IDs generated
-            # when the CVAT task was created
-            anno_shapes = self._remap_ids(
-                anno_shapes, class_id_map, attr_id_map
-            )
-            anno_tags = self._remap_ids(anno_tags, class_id_map, attr_id_map)
-            anno_tracks = self._remap_track_ids(
-                anno_tracks, class_id_map, attr_id_map
-            )
-
-            anno_json = {
-                "version": 0,
-                "shapes": anno_shapes,
-                "tags": anno_tags,
-                "tracks": anno_tracks,
-            }
-            num_shapes = len(anno_shapes)
-            num_tags = len(anno_tags)
-            num_tracks = len(anno_tracks)
-
-            # Upload annotations
-            # @todo is this loop really needed?
-            num_uploaded_shapes = 0
-            num_uploaded_tags = 0
-            num_uploaded_tracks = 0
-            while (
-                num_uploaded_shapes != num_shapes
-                or num_uploaded_tags != num_tags
-                or num_uploaded_tracks != num_tracks
-            ):
-                anno_resp = self.put(
-                    self.task_annotation_url(task_id), json=anno_json
-                ).json()
-                num_uploaded_shapes = len(anno_resp["shapes"])
-                num_uploaded_tags = len(anno_resp["tags"])
-                num_uploaded_tracks = len(anno_resp["tracks"])
-
-        return (
-            id_map,
-            project_ids,
-            task_ids,
-            job_ids,
-            frame_id_map,
-            labels_task_map,
+        # Create task
+        task_id, class_id_map, attr_id_map = self.create_task(
+            task_name,
+            schema=cvat_schema,
+            segment_size=segment_size,
+            image_quality=image_quality,
+            task_assignee=current_task_assignee,
+            project_id=project_id,
         )
+        task_ids.append(task_id)
+
+        # Upload media
+        job_ids[task_id] = self.upload_data(
+            task_id,
+            samples_batch.values(media_field),
+            image_quality=image_quality,
+            use_cache=use_cache,
+            use_zip_chunks=use_zip_chunks,
+            chunk_size=chunk_size,
+            job_assignees=current_job_assignees,
+            job_reviewers=current_job_reviewers,
+        )
+        frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
+
+        return task_id, class_id_map, attr_id_map
+
+    def _remap_upload_annotations(
+        self,
+        anno_shapes,
+        anno_tags,
+        anno_tracks,
+        class_id_map,
+        attr_id_map,
+        task_id,
+    ):
+
+        # Remap annotations to use the class/attribute IDs generated
+        # when the CVAT task was created
+        anno_shapes = self._remap_ids(anno_shapes, class_id_map, attr_id_map)
+        anno_tags = self._remap_ids(anno_tags, class_id_map, attr_id_map)
+        anno_tracks = self._remap_track_ids(
+            anno_tracks, class_id_map, attr_id_map
+        )
+
+        anno_json = {
+            "version": 0,
+            "shapes": anno_shapes,
+            "tags": anno_tags,
+            "tracks": anno_tracks,
+        }
+        num_shapes = len(anno_shapes)
+        num_tags = len(anno_tags)
+        num_tracks = len(anno_tracks)
+
+        # Upload annotations
+        # @todo is this loop really needed?
+        num_uploaded_shapes = 0
+        num_uploaded_tags = 0
+        num_uploaded_tracks = 0
+        while (
+            num_uploaded_shapes != num_shapes
+            or num_uploaded_tags != num_tags
+            or num_uploaded_tracks != num_tracks
+        ):
+            anno_resp = self.put(
+                self.task_annotation_url(task_id), json=anno_json
+            ).json()
+            num_uploaded_shapes = len(anno_resp["shapes"])
+            num_uploaded_tags = len(anno_resp["tags"])
+            num_uploaded_tracks = len(anno_resp["tracks"])
+
+    def _update_shapes_tags_tracks(
+        self,
+        tags,
+        shapes,
+        tracks,
+        id_map,
+        label_type,
+        samples_batch,
+        label_field,
+        label_info,
+        cvat_schema,
+        assign_scalar_attrs,
+        only_keyframes,
+        occluded_attrs,
+    ):
+
+        is_video = samples_batch.media_type == fom.VIDEO
+        _anno_tags = []
+        _anno_shapes = []
+        _anno_tracks = []
+        if label_type in ("classification", "classifications", "scalar",):
+            # Tag annotations
+            (_id_map, anno_tags,) = self._create_shapes_tags_tracks(
+                samples_batch,
+                label_field,
+                label_info,
+                cvat_schema,
+                assign_scalar_attrs=assign_scalar_attrs,
+            )
+        elif is_video and label_type != "segmentation":
+            # Video track annotations
+            (
+                _id_map,
+                anno_shapes,
+                anno_tracks,
+            ) = self._create_shapes_tags_tracks(
+                samples_batch,
+                label_field,
+                label_info,
+                cvat_schema,
+                load_tracks=True,
+                only_keyframes=only_keyframes,
+                occluded_attrs=occluded_attrs,
+            )
+        else:
+            # Shape annotations
+            (_id_map, anno_shapes,) = self._create_shapes_tags_tracks(
+                samples_batch,
+                label_field,
+                label_info,
+                cvat_schema,
+                occluded_attrs=occluded_attrs,
+            )
+
+        id_map[label_field].update(_id_map)
+        anno_tags.extend(_anno_tags)
+        anno_shapes.extend(_anno_shapes)
+        anno_tracks.extend(_anno_tracks)
 
     def download_annotations(self, results):
         """Download the annotations from the CVAT server for the given results
