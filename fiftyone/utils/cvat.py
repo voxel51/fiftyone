@@ -3327,8 +3327,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 cvat_schema,
                 assign_scalar_attrs,
                 occluded_attrs,
+                _,
             ) = self._build_cvat_schema({label_field: label_info})
             assign_scalar_attrs = assign_scalar_attrs[label_field]
+            occluded_attrs = occluded_attrs[label_field]
 
             id_map[label_field] = {}
             labels_task_map[label_field] = []
@@ -3541,6 +3543,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             cvat_schema,
             assign_scalar_attrs,
             occluded_attrs,
+            _,
         ) = self._build_cvat_schema(label_schema)
 
         # Create one task for all label fields
@@ -3590,7 +3593,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            assign_scalar_attrs=assign_scalar_attrs,
+                            assign_scalar_attrs=assign_scalar_attrs[
+                                label_field
+                            ],
                         )
                     elif is_video and label_type != "segmentation":
                         # Video track annotations
@@ -3605,7 +3610,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             cvat_schema,
                             load_tracks=True,
                             only_keyframes=only_keyframes,
-                            occluded_attrs=occluded_attrs,
+                            occluded_attrs=occluded_attrs[label_field],
                         )
                     else:
                         # Shape annotations
@@ -3617,7 +3622,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
-                            occluded_attrs=occluded_attrs,
+                            occluded_attrs=occluded_attrs[label_field],
                         )
 
                     id_map[label_field].update(_id_map)
@@ -3679,9 +3684,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
             frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
 
-            import pdb
-
-            pdb.set_trace()
             # Remap annotations to use the class/attribute IDs generated
             # when the CVAT task was created
             anno_shapes = self._remap_ids(
@@ -3739,98 +3741,106 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the annotations dict
         """
         label_schema = results.config.label_schema
+        task_per_field = results.config.task_per_field
         id_map = results.id_map
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
 
-        assigned_scalar_attrs = {}
-        occluded_attrs = {}
-        for label_field, label_info in label_schema.items():
-            _, scalar_attrs, occ_attrs = self._build_cvat_schema(
-                {label_field: label_info}
-            )
+        if task_per_field:
+            assigned_scalar_attrs = {}
+            occluded_attrs = {}
+            label_field_classes = {}
+            for label_field, label_info in label_schema.items():
+                (
+                    _,
+                    scalar_attrs,
+                    occ_attrs,
+                    lf_classes,
+                ) = self._build_cvat_schema({label_field: label_info})
 
-            assigned_scalar_attrs[label_field] = scalar_attrs
-            occluded_attrs[label_field] = occ_attrs
+                assigned_scalar_attrs.update(scalar_attrs)
+                occluded_attrs.update(occ_attrs)
+                label_field_classes.update(lf_classes)
 
-        labels_task_map_rev = {}
+        else:
+            (
+                _,
+                assigned_scalar_attrs,
+                occluded_attrs,
+                label_field_classes,
+            ) = self._build_cvat_schema(label_schema)
+
+        labels_task_map_rev = defaultdict(list)
         for lf, tasks in labels_task_map.items():
             for task in tasks:
-                labels_task_map_rev[task] = lf
+                labels_task_map_rev[task].append(lf)
 
         annotations = {}
 
         for task_id in task_ids:
-            label_field = labels_task_map_rev[task_id]
-            label_info = label_schema[label_field]
-            label_type = label_info["type"]
-            scalar_attrs = assigned_scalar_attrs.get(label_field, False)
-            occ_attrs = occluded_attrs.get(label_field, {})
-            _id_map = id_map.get(label_field, {})
-
             # Download task data
             task_json = self.get(self.task_url(task_id)).json()
             attr_id_map = {}
-            class_map = {}
+            _class_map = {}
             labels = task_json["labels"]
             for label in labels:
-                class_map[label["id"]] = label["name"]
+                _class_map[label["id"]] = label["name"]
                 attr_id_map[label["id"]] = {
                     i["name"]: i["id"] for i in label["attributes"]
                 }
+            _class_map_rev = {n: i for i, n in _class_map.items()}
 
             task_resp = self.get(self.task_annotation_url(task_id)).json()
-            shapes = task_resp["shapes"]
-            tags = task_resp["tags"]
-            tracks = task_resp["tracks"]
+            all_shapes = task_resp["shapes"]
+            all_tags = task_resp["tags"]
+            all_tracks = task_resp["tracks"]
 
             data_resp = self.get(self.task_data_meta_url(task_id)).json()
             frames = data_resp["frames"]
 
-            label_field_results = {}
+            label_fields = labels_task_map_rev[task_id]
+            for label_field in label_fields:
+                label_info = label_schema[label_field]
+                label_type = label_info["type"]
+                scalar_attrs = assigned_scalar_attrs.get(label_field, False)
+                occ_attrs = occluded_attrs.get(label_field, {})
+                _id_map = id_map.get(label_field, {})
 
-            tag_results = self._parse_shapes_tags(
-                "tags",
-                tags,
-                frame_id_map[task_id],
-                label_type,
-                _id_map,
-                class_map,
-                attr_id_map,
-                frames,
-                assigned_scalar_attrs=scalar_attrs,
-            )
-            label_field_results = self._merge_results(
-                label_field_results, tag_results
-            )
+                label_field_results = {}
 
-            shape_results = self._parse_shapes_tags(
-                "shapes",
-                shapes,
-                frame_id_map[task_id],
-                label_type,
-                _id_map,
-                class_map,
-                attr_id_map,
-                frames,
-                assigned_scalar_attrs=scalar_attrs,
-                occluded_attrs=occ_attrs,
-            )
-            label_field_results = self._merge_results(
-                label_field_results, shape_results
-            )
+                # Dict mapping class to class_label_field classes that
+                # appear in multiple fields, otherwise just class to class
+                # mapping
+                _classes = label_field_classes[label_field]
 
-            for track_index, track in enumerate(tracks, 1):
-                label_id = track["label_id"]
-                shapes = track["shapes"]
-                for shape in shapes:
-                    shape["label_id"] = label_id
+                # Map ids back to original class names from FiftyOne
+                class_map = {
+                    _class_map_rev[name_lf]: name
+                    for name, name_lf in _classes.items()
+                }
+                _cvat_classes = class_map.keys()
+                tags, shapes, tracks = self._filter_field_classes(
+                    all_tags, all_shapes, all_tracks, _cvat_classes
+                )
 
-                immutable_attrs = track["attributes"]
+                tag_results = self._parse_shapes_tags(
+                    "tags",
+                    tags,
+                    frame_id_map[task_id],
+                    label_type,
+                    _id_map,
+                    class_map,
+                    attr_id_map,
+                    frames,
+                    assigned_scalar_attrs=scalar_attrs,
+                )
+                label_field_results = self._merge_results(
+                    label_field_results, tag_results
+                )
 
-                track_shape_results = self._parse_shapes_tags(
-                    "track",
+                shape_results = self._parse_shapes_tags(
+                    "shapes",
                     shapes,
                     frame_id_map[task_id],
                     label_type,
@@ -3839,34 +3849,64 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     attr_id_map,
                     frames,
                     assigned_scalar_attrs=scalar_attrs,
-                    track_index=track_index,
-                    immutable_attrs=immutable_attrs,
                     occluded_attrs=occ_attrs,
                 )
                 label_field_results = self._merge_results(
-                    label_field_results, track_shape_results
+                    label_field_results, shape_results
                 )
 
-            frames_metadata = {}
-            for cvat_frame_id, frame_data in frame_id_map[task_id].items():
-                sample_id = frame_data["sample_id"]
-                if "frame_id" in frame_data and len(frames) == 1:
-                    frames_metadata[sample_id] = frames[0]
-                    break
+                for track_index, track in enumerate(tracks, 1):
+                    label_id = track["label_id"]
+                    shapes = track["shapes"]
+                    for shape in shapes:
+                        shape["label_id"] = label_id
 
-                frames_metadata[sample_id] = frames[cvat_frame_id]
+                    immutable_attrs = track["attributes"]
 
-            # Polyline(s) corresponding to instance/semantic masks need to be
-            # converted to their final format
-            self._convert_polylines_to_masks(
-                label_field_results, label_info, frames_metadata
-            )
+                    track_shape_results = self._parse_shapes_tags(
+                        "track",
+                        shapes,
+                        frame_id_map[task_id],
+                        label_type,
+                        _id_map,
+                        class_map,
+                        attr_id_map,
+                        frames,
+                        assigned_scalar_attrs=scalar_attrs,
+                        track_index=track_index,
+                        immutable_attrs=immutable_attrs,
+                        occluded_attrs=occ_attrs,
+                    )
+                    label_field_results = self._merge_results(
+                        label_field_results, track_shape_results
+                    )
 
-            annotations = self._merge_results(
-                annotations, {label_field: label_field_results}
-            )
+                frames_metadata = {}
+                for cvat_frame_id, frame_data in frame_id_map[task_id].items():
+                    sample_id = frame_data["sample_id"]
+                    if "frame_id" in frame_data and len(frames) == 1:
+                        frames_metadata[sample_id] = frames[0]
+                        break
+
+                    frames_metadata[sample_id] = frames[cvat_frame_id]
+
+                # Polyline(s) corresponding to instance/semantic masks need to be
+                # converted to their final format
+                self._convert_polylines_to_masks(
+                    label_field_results, label_info, frames_metadata
+                )
+
+                annotations = self._merge_results(
+                    annotations, {label_field: label_field_results}
+                )
 
         return annotations
+
+    def _filter_field_classes(self, tags, shapes, tracks, _cvat_classes):
+        _tags = [t for t in tags if t["label_id"] in _cvat_classes]
+        _shapes = [s for s in shapes if s["label_id"] in _cvat_classes]
+        _tracks = [t for t in tracks if t["label_id"] in _cvat_classes]
+        return _tags, _shapes, _tracks
 
     def _convert_polylines_to_masks(
         self, results, label_info, frames_metadata
@@ -4235,8 +4275,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _build_cvat_schema(self, label_schema):
         cvat_schema = {}
-        occluded_attrs = {}
+        occluded_attrs = defaultdict(dict)
         assign_scalar_attrs = {}
+        label_field_classes = defaultdict(dict)
         _class_label_fields = {}
         _duplicate_class_names = []
         for label_field, label_info in label_schema.items():
@@ -4292,20 +4333,28 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         new_name = "%s_%s" % (name, prev_field)
                         del cvat_schema[name]
                         cvat_schema[new_name] = prev_attrs
+                        label_field_classes[prev_field][name] = new_name
                         if name in occluded_attrs:
-                            prev_occ_attr_name = occluded_attrs[name]
-                            del occluded_attrs[name]
-                            occluded_attrs[new_name] = prev_occ_attr_name
+                            prev_occ_attr_name = occluded_attrs[label_field][
+                                name
+                            ]
+                            del occluded_attrs[label_field][name]
+                            occluded_attrs[label_field][
+                                new_name
+                            ] = prev_occ_attr_name
                         _duplicate_class_names.append(name)
 
                     if name in _duplicate_class_names:
-                        name = "%s_%s" % (name, label_field)
+                        new_name = "%s_%s" % (name, label_field)
+                        label_field_classes[label_field][name] = new_name
+                        name = new_name
                     else:
                         _class_label_fields[name] = label_field
+                        label_field_classes[label_field][name] = name
 
                     cvat_schema[name] = deepcopy(attributes)
                     if occluded_attr_name is not None:
-                        occluded_attrs[name] = occluded_attr_name
+                        occluded_attrs[label_field][name] = occluded_attr_name
 
             # Class-specific attributes
             for _class in classes:
@@ -4329,9 +4378,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                     cvat_schema[name].update(_attrs)
                     if _occluded_attr_name is not None:
-                        occluded_attrs[name] = _occluded_attr_name
+                        occluded_attrs[label_field][name] = _occluded_attr_name
 
-        return cvat_schema, assign_scalar_attrs, occluded_attrs
+        return (
+            cvat_schema,
+            assign_scalar_attrs,
+            occluded_attrs,
+            label_field_classes,
+        )
 
     def _to_cvat_attributes(self, attributes):
         cvat_attrs = {}
