@@ -4889,12 +4889,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attrs=None,
     ):
         label_field_class_name = "%s_%s" % (label.label, label_field)
-        class_name = label.label
-        if class_name not in cvat_schema:
-            if label_field_class_name in cvat_schema:
-                class_name = label_field_class_name
-            else:
-                return None, None, None, None, None
+        frame_field_class_name = "%s_frames.%s" % (label.label, label_field)
+        if label.label in cvat_schema:
+            class_name = label.label
+        elif label_field_class_name in cvat_schema:
+            class_name = label_field_class_name
+        elif frame_field_class_name in cvat_schema:
+            class_name = frame_field_class_name
+        else:
+            return None, None, None, None, None
 
         attr_schema = cvat_schema[class_name]
 
