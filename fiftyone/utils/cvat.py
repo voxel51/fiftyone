@@ -4420,7 +4420,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if label_type == "scalar":
                     labels = label
                     kwargs["assign_scalar_attrs"] = assign_scalar_attrs
-                    kwargs["label_field"] = label_field
                     func = self._create_scalar_tags
                 elif label_type == "classification":
                     labels = [label]
@@ -4496,11 +4495,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         label,
         cvat_schema,
+        label_field,
         frame_id,
         frame_size,
         label_type=None,
         assign_scalar_attrs=False,
-        label_field=None,
     ):
         if label is None:
             label = ""
