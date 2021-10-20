@@ -3403,6 +3403,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_name = config.project_name
 
         id_map = {}
+        project_ids = []
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3421,6 +3422,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_id = None
         if project_name is not None:
             project_id = self.create_project(project_name, cvat_schema)
+            project_ids.append(project_id)
 
         # Create a new task for every video sample
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
@@ -3493,7 +3495,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return (
             id_map,
-            [project_id],
+            project_ids,
             task_ids,
             job_ids,
             frame_id_map,
