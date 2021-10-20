@@ -31,11 +31,17 @@ import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import * as fieldAtoms from "./Filters/utils";
 import * as selectors from "../recoil/selectors";
-import { FILTERABLE_TYPES, FRAME_SUPPORT_FIELD } from "../utils/labels";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FILTERABLE_TYPES,
+  FRAME_SUPPORT_FIELD,
+} from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
-import { prettify } from "../utils/generic";
+import { formatDateTime, prettify } from "../utils/generic";
 import * as filterAtoms from "./Filters/atoms";
+import { DATE_TIME } from "@fiftyone/looker/src/constants";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -559,6 +565,9 @@ const OthersCell = ({ modal }: OthersCellProps) => {
     useRecoilValue(filterAtoms.scalarCounts(modal)),
   ];
   const types = useRecoilValue(selectors.primitivesMap("sample"));
+  const timeZone = useRecoilValue(selectors.timeZone);
+  const subTypes = useRecoilValue(selectors.primitiveSubfields("sample"));
+  const dates = [DATE_TIME_FIELD, DATE_FIELD];
 
   return (
     <Cell
@@ -576,7 +585,20 @@ const OthersCell = ({ modal }: OthersCellProps) => {
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {
-          const value = modal ? count[dbFields[name]] : null;
+          let value = modal ? count[dbFields[name]] : null;
+
+          if (
+            value &&
+            (dates.includes(types[name]) || dates.includes(subTypes[name]))
+          ) {
+            value = formatDateTime(
+              value.datetime,
+              types[name] === DATE_FIELD || subTypes[name] === DATE_TIME_FIELD
+                ? "UTC"
+                : timeZone
+            );
+          }
+
           return {
             name,
             disabled: false,

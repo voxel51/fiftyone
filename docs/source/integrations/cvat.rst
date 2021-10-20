@@ -401,9 +401,9 @@ details:
     `label_field` or all fields in `label_schema` without classes specified.
     All new label fields must have a class list provided via one of the
     supported methods. For existing label fields, if classes are not provided
-    by this argument nor `label_schema`, they are parsed from
-    :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
-    :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+    by this argument nor `label_schema`, they are retrieved from
+    :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
+    if possible, or else the observed labels on your dataset are used
 -   **attributes** (*True*): specifies the label attributes of each label field
     to include (other than their `label`, which is always included) in the
     annotation export. Can be any of the following:
@@ -590,7 +590,7 @@ FiftyOne can infer the appropriate values to use:
     lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
     properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list.
+    observed labels on your dataset will be used to construct a classes list
 -   **mask_targets**: if omitted for a semantic segmentation field, the mask
     targets from the
     :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or

@@ -728,11 +728,29 @@ clips.
 
 Creating a clips view for a |TemporalDetection| or |TemporalDetections| field
 will create one sample per temporal detection defined by its `[first, last]`
-frame support, while creating a clips view for a frame-level label list field
-such as |Detections| will contain one sample per contiguous range of frames
-that contains at least one label in the specified field. See
-:ref:`this section <clip-views>` for more information about defining clip
-views.
+frame support:
+
+.. image:: /images/app/app-clip-views1.gif
+    :alt: clip-views
+    :align: center
+
+|br|
+Creating a clips view for a frame-level label list field such as |Detections|
+will contain one sample per contiguous range of frames that contains at least
+one label in the specified field:
+
+.. image:: /images/app/app-clip-views2.gif
+    :alt: clip-views
+    :align: center
+
+.. note::
+
+    Switching to clips view will create clips for **only** the contents of
+    your current view, so you can use the view bar and the filters sidebar to
+    select only the content of interest prior to extracting clips.
+
+    See :ref:`this section <clip-views>` for more information about defining
+    clip views.
 
 When you hover over a clip in the grid view, the clip and its labels will play
 on loop. Similarly, when you open a clip in the
@@ -741,17 +759,6 @@ you play the video. If you would like to see other segments of the video from
 which a clip was extracted, simply drag the video scrubber outside the range of
 the clip.
 
-.. note::
-
-    Switching to clips view will create clips for **only** the contents of
-    your current view, so you can use the view bar and the filters sidebar to
-    select only the content of interest prior to extracting clips.
-
-.. image:: /images/app/app-clip-views.gif
-    :alt: clip-views
-    :align: center
-
-|br|
 You can interact with clip views in the App just like you would with any other
 view, including:
 

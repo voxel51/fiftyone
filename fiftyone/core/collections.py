@@ -184,6 +184,42 @@ class SampleCollection(object):
     def default_classes(self, classes):
         raise NotImplementedError("Subclass must implement default_classes")
 
+    def has_classes(self, field):
+        """Determines whether this collection has a classes list for the given
+        field.
+
+        Classes may be defined either in :meth:`classes` or
+        :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.classes or bool(self.default_classes)
+
+    def get_classes(self, field):
+        """Gets the classes list for the given field, or None if no classes
+        are available.
+
+        Classes are first retrieved from :meth:`classes` if they exist,
+        otherwise from :meth:`default_classes`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.classes:
+            return self.classes[field]
+
+        if self.default_classes:
+            return self.default_classes
+
+        return None
+
     @property
     def mask_targets(self):
         """The mask targets of the underlying dataset.
@@ -213,6 +249,42 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement default_mask_targets"
         )
+
+    def has_mask_targets(self, field):
+        """Determines whether this collection has mask targets for the given
+        field.
+
+        Mask targets may be defined either in :meth:`mask_targets` or
+        :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.mask_targets or bool(self.default_mask_targets)
+
+    def get_mask_targets(self, field):
+        """Gets the mask targets for the given field, or None if no mask
+        targets are available.
+
+        Mask targets are first retrieved from :meth:`mask_targets` if they
+        exist, otherwise from :meth:`default_mask_targets`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.mask_targets:
+            return self.mask_targets[field]
+
+        if self.default_mask_targets:
+            return self.default_mask_targets
+
+        return None
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -2354,7 +2426,7 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def exists(self, field, bool=True):
+    def exists(self, field, bool=None):
         """Returns a view containing the samples in the collection that have
         (or do not have) a non-``None`` value for the given field or embedded
         field.
@@ -2412,8 +2484,8 @@ class SampleCollection(object):
 
         Args:
             field: the field name or ``embedded.field.name``
-            bool (True): whether to check if the field exists (True) or does
-                not exist (False)
+            bool (None): whether to check if the field exists (None or True) or
+                does not exist (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -3558,13 +3630,16 @@ class SampleCollection(object):
 
     @view_stage
     def match_labels(
-        self, labels=None, ids=None, tags=None, filter=None, fields=None
+        self,
+        labels=None,
+        ids=None,
+        tags=None,
+        filter=None,
+        fields=None,
+        bool=None,
     ):
-        """Selects the samples from the collection that contain the specified
-        labels.
-
-        The returned view will only contain samples that have at least one
-        label that matches the specified selection criteria.
+        """Selects the samples from the collection that contain (or do not
+        contain) at least one label that matches the specified criteria.
 
         Note that, unlike :meth:`select_labels` and :meth:`filter_labels`, this
         stage will not filter the labels themselves; it only selects the
@@ -3584,6 +3659,10 @@ class SampleCollection(object):
         -   Provide the ``filter`` argument to match labels based on a boolean
             :class:`fiftyone.core.expressions.ViewExpression` that is applied
             to each individual :class:`fiftyone.core.labels.Label` element
+
+        -   Pass ``bool=False`` to negate the operation and instead match
+            samples that *do not* contain at least one label matching the
+            specified criteria
 
         If multiple criteria are specified, labels must match all of them in
         order to trigger a sample match.
@@ -3675,18 +3754,26 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Detections`, the filter is applied
                 to the list elements, not the root field
             fields (None): a field or iterable of fields from which to select
+            bool (None): whether to match samples that have (None or True) or
+                do not have (False) at least one label that matches the
+                specified criteria
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
             fos.MatchLabels(
-                labels=labels, ids=ids, tags=tags, filter=filter, fields=fields
+                labels=labels,
+                ids=ids,
+                tags=tags,
+                filter=filter,
+                fields=fields,
+                bool=bool,
             )
         )
 
     @view_stage
-    def match_tags(self, tags, bool=True):
+    def match_tags(self, tags, bool=None):
         """Returns a view containing the samples in the collection that have
         (or do not have) any of the given tag(s).
 
@@ -3737,8 +3824,8 @@ class SampleCollection(object):
 
         Args:
             tags: the tag or iterable of tags to match
-            bool (True): whether to match samples that have (True) or do not
-                have (False) the given tags
+            bool (None): whether to match samples that have (None or True) or
+                do not have (False) the given tags
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4577,6 +4664,7 @@ class SampleCollection(object):
                     :class:`fiftyone.core.fields.FrameSupportField` field
                 -   a frame-level label list field of any of the following
                     types:
+
                     -   :class:`fiftyone.core.labels.Classifications`
                     -   :class:`fiftyone.core.labels.Detections`
                     -   :class:`fiftyone.core.labels.Polylines`
@@ -5887,8 +5975,9 @@ class SampleCollection(object):
                 classes specified. All new label fields must have a class list
                 provided via one of the supported methods. For existing label
                 fields, if classes are not provided by this argument nor
-                ``label_schema``, they are parsed from :meth:`classes` or
-                :meth:`default_classes`
+                ``label_schema``, they are retrieved from :meth:`get_classes`
+                if possible, or else the observed labels on your dataset are
+                used
             attributes (True): specifies the label attributes of each label
                 field to include (other than their ``label``, which is always
                 included) in the annotation export. Can be any of the

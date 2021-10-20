@@ -3,6 +3,97 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.0:
+
+FiftyOne 0.14.0
+---------------
+*Released October 15, 2021*
+
+App
+
+- Added support for visualizing :ref:`heatmaps <heatmaps>` using either
+  transparency or a customizable colorscale
+- Added a label opacity slider in both the sample grid and the expanded sample
+  view
+- Added support for visualizing :ref:`clips views <app-video-clips>`
+- Added support for rendering and filtering |DateField| and |DateTimeField|
+  data
+- Improved error handling in the grid and when streaming frames
+- Fixed a bug that caused incorrect label rendering for sparse frame labels
+  in the video visualizer
+- Added a `default_app_address` setting to the FiftyOne config for restricting
+  sessions to a hostname. See :ref:`this page <restricting-app-address>` for
+  more details
+
+Core
+
+- Added a :ref:`Heatmap label type <heatmaps>`
+- Added support for adding
+  :ref:`date and datetime fields <dates-and-datetimes>` to FiftyOne datasets
+- Added the
+  :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>`
+  method for creating clips views into video datasets
+- Added clip views sections to the :ref:`App user guide page <app-video-clips>`
+  and :ref:`dataset views user guide page <clip-views>`
+- Added support for :ref:`exporting video clips <export-label-coercion>` in
+  labeled video formats
+- Added a `trajectories=True` flag to
+  :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+  that allows for matching entire object trajectories for which a given filter
+  matches the object in at least one frame of the video
+- Added set operations
+  :meth:`is_subset() <fiftyone.core.expressions.ViewExpression.is_subset>`,
+  :meth:`set_equals() <fiftyone.core.expressions.ViewExpression.set_equals>`,
+  :meth:`unique() <fiftyone.core.expressions.ViewExpression.unique>`,
+  :meth:`union() <fiftyone.core.expressions.ViewExpression.union>`,
+  :meth:`intersection() <fiftyone.core.expressions.ViewExpression.intersection>`,
+  :meth:`difference() <fiftyone.core.expressions.ViewExpression.difference>`, and
+  :meth:`contains(all=True) <fiftyone.core.expressions.ViewExpression.contains>`
+  to the view expression API
+- Added date operations
+  :meth:`to_date() <fiftyone.core.expressions.ViewExpression.to_date>`,
+  :meth:`millisecond() <fiftyone.core.expressions.ViewExpression.millisecond>`,
+  :meth:`second() <fiftyone.core.expressions.ViewExpression.second>`,
+  :meth:`minute() <fiftyone.core.expressions.ViewExpression.minute>`,
+  :meth:`hour() <fiftyone.core.expressions.ViewExpression.hour>`,
+  :meth:`day_of_week() <fiftyone.core.expressions.ViewExpression.day_of_week>`,
+  :meth:`day_of_month() <fiftyone.core.expressions.ViewExpression.day_of_month>`,
+  :meth:`day_of_year() <fiftyone.core.expressions.ViewExpression.day_of_year>`,
+  :meth:`month() <fiftyone.core.expressions.ViewExpression.month>`, and
+  :meth:`year() <fiftyone.core.expressions.ViewExpression.year>`
+  to the view expression API
+- Missing ground truth/predictions are now included by default when viewing
+  :ref:`confusion matrices <confusion-matrix-plots>` for detection tasks
+
+Annotation
+
+- Added support for specifying per-class attributes when
+  :ref:`defining a label schema <annotation-label-schema>` for an annotation
+  task
+- Added support for specifying whether labels can be added, deleted or moved
+  and whether certain label attributes are read-only when
+  :ref:`configuring an annotation task <annotation-restricting-edits>`
+- Added support for respecting keyframe information when adding or editing
+  :ref:`video annotations <annotation-labeling-videos>`
+- Fixed a 0-based versus 1-based frame numbering bug when
+  :ref:`importing <CVATVideoDataset-import>` and
+  :ref:`exporting <CVATVideoDataset-export>` labels in CVAT video format
+- Added support for adding/editing bounding box shapes (not tracks) if desired
+  when annotating video frames using the :ref:`CVAT backend <cvat-integration>`
+- Fixed a bug that prevented importing of video annotations from the CVAT
+  backend that involved the splitting or merging of object tracks
+- Added a `project_name` parameter that allows for
+  :ref:`creating annotation tasks <cvat-requesting-annotations>` within a new
+  project when using the CVAT backend
+- Added support for specifying a list of task assignees when creating video
+  annotation tasks (which generate one task per video) using the CVAT backend
+- Fixed a bug when adding/editing boolean attributes in an annotation task
+  using the CVAT backend
+- Added a new `occluded` attribute type option that links an attribute to the
+  builtin occlusion icon when
+  :ref:`annotating label attributes <cvat-label-attributes>` using the CVAT
+  backend
+
 .. _release-notes-v0.13.3:
 
 FiftyOne 0.13.3
@@ -18,23 +109,9 @@ App
 
 Core
 
-- Added support for annotating semantic segmentations and instance
-  segmentations using the :ref:`CVAT backend <cvat-requesting-annotations>`
-- Added support for annotating polylines using the CVAT backend
-- Added support for immutable attributes when annotating object tracks for
-  video datasets using the CVAT backend
-- Exposed the `use_cache`, `use_zip_chunks`, and `chunk_size` parameters when
-  uploading annotations via the CVAT backend
 - Added support for importing/exporting segmentation masks with greater than
   256 classes when working with the
   :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-export>` format
-- Fixed a bug that prevented multiple imports of the same annotation run from
-  working as expected when a label is deleted but then later re-added
-- Fixed a bug that prevented annotations for new label fields of video datasets
-  from being imported properly
-- Fixed a bug that would cause unsuppoted shapes such as polygons with less
-  than 3 vertices to be deleted when editing existing labels with the CVAT
-  backend
 - Added support for importing GeoTIFF images via a new
   :ref:`GeoTIFFDataset <GeoTIFFDataset-import>` format
 - Added new
@@ -52,6 +129,23 @@ Core
 - Fixed a race condition that could prevent callbacks on
   :ref:`interactive plots <interactive-plots>` from working properly on
   sufficiently large datasets
+
+Annotation
+
+- Added support for annotating semantic segmentations and instance
+  segmentations using the :ref:`CVAT backend <cvat-requesting-annotations>`
+- Added support for annotating polylines using the CVAT backend
+- Added support for immutable attributes when annotating object tracks for
+  video datasets using the CVAT backend
+- Exposed the `use_cache`, `use_zip_chunks`, and `chunk_size` parameters when
+  uploading annotations via the CVAT backend
+- Fixed a bug that prevented multiple imports of the same annotation run from
+  working as expected when a label is deleted but then later re-added
+- Fixed a bug that prevented annotations for new label fields of video datasets
+  from being imported properly
+- Fixed a bug that would cause unsuppoted shapes such as polygons with less
+  than 3 vertices to be deleted when editing existing labels with the CVAT
+  backend
 
 .. _release-notes-v0.13.2:
 
@@ -92,7 +186,7 @@ App
 
 - Fixed `id` rendering in the grid when the `id` checkbox is active
 
-Core
+Annotation
 
 - Fixed a bug that could cause mismatches between media and their pre-existing
   labels when uploading data to CVAT for annotation whose source media lives in
@@ -149,12 +243,6 @@ Brain
 
 Core
 
-- Added a powerful :ref:`annotation API <fiftyone-annotation>` that makes it
-  easy to add or edit labels on your FiftyOne datasets or specific views into
-  them
-- Added a native :ref:`CVAT integration <cvat-integration>` that enables you
-  to use the annotation API with
-  `CVAT <https://github.com/openvinotoolkit/cvat>`_
 - Added support for pip-installing FiftyOne on Apple Silicon Macs. Note that
   MongoDB must be :ref:`self-installed <configuring-mongodb-connection>` in
   this case
@@ -173,6 +261,15 @@ Core
 - Added support for importing/exporting confidences via the `score` field when
   working with :ref:`BDD format <BDDDataset-import>`
 - Fixed some Windows-style path bugs
+
+Annnotation
+
+- Added a powerful :ref:`annotation API <fiftyone-annotation>` that makes it
+  easy to add or edit labels on your FiftyOne datasets or specific views into
+  them
+- Added a native :ref:`CVAT integration <cvat-integration>` that enables you
+  to use the annotation API with
+  `CVAT <https://github.com/openvinotoolkit/cvat>`_
 
 Docs
 

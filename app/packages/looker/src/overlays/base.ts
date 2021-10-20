@@ -2,6 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { getColor } from "../color";
 import { BaseState, Coordinates } from "../state";
 import { sizeBytes } from "./util";
 
@@ -18,15 +19,12 @@ export interface BaseLabel {
   frame_number?: number;
   tags: string[];
   index?: number;
-  mask?: {
-    shape: [number, number];
-  };
 }
 
-export interface PointInfo {
+export interface PointInfo<Label extends BaseLabel> {
   color: string;
   field: string;
-  label: BaseLabel;
+  label: Label;
   point?: Coordinates;
   target?: number;
   type: string;
@@ -81,7 +79,8 @@ export abstract class CoordinateOverlay<
   Label extends RegularLabel
 > implements Overlay<State> {
   readonly field: string;
-  protected readonly label: Label;
+  protected label: Label;
+  private color: string;
 
   constructor(field: string, label: Label) {
     this.field = field;
@@ -99,15 +98,18 @@ export abstract class CoordinateOverlay<
   }
 
   getColor({ options }: Readonly<State>): string {
-    const key = options.colorByLabel ? this.label.label : this.field;
-    return options.colorMap(key);
+    if (!this.color) {
+      const key = options.coloring.byLabel ? this.label.label : this.field;
+      this.color = getColor(options.coloring.pool, options.coloring.seed, key);
+    }
+    return this.color;
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;
 
   abstract getMouseDistance(state: Readonly<State>): number;
 
-  abstract getPointInfo(state: Readonly<State>): PointInfo;
+  abstract getPointInfo(state: Readonly<State>): PointInfo<Label>;
 
   abstract getPoints(state: Readonly<State>): Coordinates[];
 
