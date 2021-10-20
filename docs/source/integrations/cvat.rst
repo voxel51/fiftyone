@@ -888,16 +888,17 @@ including the `label_id` attribute, in the following cases:
     observation of the new track to all subsequent instances of that track.
     This results in duplicate `label_id` values, and, although these duplicate
     IDs will be gracefully ignored by FiftyOne during import, provenance has
-    still been lost and thus the existing |Label| instances must be deleted and
-    replaced with newly created |Label| instances.
+    still been lost and thus the existing |Label| instances for the
+    now-separate track must be deleted and replaced with newly created |Label|
+    instances.
 
 The primary issues that can arise due to modified/deleted `label_id` attributes
 are:
 
 -   If the original |Label| in FiftyOne contained additional attributes that
-    weren't included in the CVAT run, then those attributes will be lost
-    whenever loading annotations requires deleting the existing label and
-    creating a new one
+    weren't included in the CVAT annotation run, then those attributes will be
+    lost whenever loading annotations requires deleting the existing label and
+    creating a new one.
 
 -   When working with annotation schemas that specify
     :ref:`edit restrictions <cvat-restricting-edits>`, CVAT edits that cause
@@ -909,18 +910,18 @@ are:
 
 .. note::
 
-    Pro tip: if you are editing existing labels and only uploading a subset of
-    their attributes to CVAT,
-    :ref:`restrciting label deletions <cvat-restricting-edits>` by setting
+    **Pro tip**: if you are editing existing labels and only uploading a subset
+    of their attributes to CVAT,
+    :ref:`restricting label deletions <cvat-restricting-edits>` by setting
     `allow_deletions=False` provides a helpful guarantee that no labels will be
     deleted if `label_id` snafus occur in CVAT.
 
 .. note::
 
-    Pro tip: when working with annotation schemas that include
+    **Pro tip**: when working with annotation schemas that include
     :ref:`per-class attributes <cvat-label-schema>`, be sure that any class
     label changes that you would reasonably make all share the same attribute
-    schemas so that unwanted `label_id` changes do not occur.
+    schemas so that unwanted `label_id` changes are not caused by CVAT.
 
     If a schema-altering class change must occur, remember to manually copy the
     `label_id` before making the change and then paste it back to ensure that
