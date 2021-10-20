@@ -149,6 +149,19 @@ class EmbeddedDocumentTests(unittest.TestCase):
         schema = dataset.get_field_schema()
         self.assertIn("confidence", schema["test_default"].fields)
 
+        sample = fo.Sample(
+            filepath="/path/to/image.jpg",
+            test_catch_default=fo.Classification(),
+        )
+        dataset.add_sample(sample)
+        schema = dataset.get_field_schema()
+        self.assertIn("confidence", schema["test_catch_default"].fields)
+
+        sample["test_set_default"] = fo.Classification()
+        schema = dataset.get_field_schema()
+        self.assertIn("confidence", schema["test_set_default"].fields)
+        print(dataset._doc)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
