@@ -4646,40 +4646,51 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     _track["shapes"].extend(track["shapes"])
                     _track["frame"] = max(track["frame"], _track["frame"])
 
-    def _update_outside_shapes(self, track, last_frame, only_keyframes):
-        # If there is a gap of more than 1 frame between shapes, set the
-        # previous shape to "outside"
+    def _finalize_tracks(self, tracks, frame_count, only_keyframes):
+        formatted_tracks = []
+        for class_tracks in tracks.values():
+            for track in class_tracks.values():
+                formatted_track = self._finalize_track(
+                    track, frame_count, only_keyframes
+                )
+                formatted_tracks.append(track)
+
+        return formatted_tracks
+
+    def _finalize_track(self, track, frame_count, only_keyframes):
+        shapes = track["shapes"]
+        new_shapes = []
         prev_frame_shape_inds = []
         prev_frame = None
-        new_shapes = []
+        next_is_keyframe = True
 
-        # Set the first frame of a track to a keyframe
-        set_keyframe = True
-
-        for ind, shape in enumerate(track["shapes"]):
+        for ind, shape in enumerate(shapes):
             frame = shape["frame"]
             if prev_frame is None:
                 prev_frame = frame
 
             if frame != prev_frame:
-                if only_keyframes and set_keyframe:
-                    # Set the first frame after a gap to a keyframe
+                if only_keyframes and next_is_keyframe:
+                    # The first frame of a new segment is always a keyframe
+                    next_is_keyframe = False
                     for ind in prev_frame_shape_inds:
-                        track["shapes"][ind]["keyframe"] = True
-                    set_keyframe = False
+                        shapes[ind]["keyframe"] = True
 
+                # If there is a gap between shapes, we must mark the end of the
+                # previous segment as "outside"
                 if frame > prev_frame + 1:
                     for prev_ind in prev_frame_shape_inds:
-                        last_shape = track["shapes"][prev_ind]
+                        last_shape = shapes[prev_ind]
                         new_shape = deepcopy(last_shape)
                         new_shape["frame"] += 1
                         new_shape["outside"] = True
                         if only_keyframes:
                             new_shape["keyframe"] = True
+
                         new_shapes.append(
                             (max(prev_frame_shape_inds), new_shape)
                         )
-                        set_keyframe = True
+                        next_is_keyframe = True
 
                 prev_frame_shape_inds = []
                 prev_frame = frame
@@ -4687,36 +4698,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             prev_frame_shape_inds.append(ind)
 
         # The shapes in the last frame in the track must be set to "outside"
-        last_shape = track["shapes"][-1]
-        if last_shape["frame"] < last_frame - 1:
+        last_shape = shapes[-1]
+        if last_shape["frame"] < frame_count - 1:
             new_shape = deepcopy(last_shape)
             new_shape["frame"] += 1
             new_shape["outside"] = True
             if only_keyframes:
                 new_shape["keyframe"] = True
-            new_shapes.append((len(track["shapes"]), new_shape))
+
+            new_shapes.append((len(shapes), new_shape))
 
         # Insert new shapes into track
         for ind, shape in new_shapes[::-1]:
-            track["shapes"].insert(ind, shape)
+            shapes.insert(ind, shape)
 
-        # Remove non-keyframes
+        # Remove non-keyframes if necessary
         if only_keyframes:
-            _shapes = [s for s in track["shapes"] if s["keyframe"]]
-            track["shapes"] = _shapes
+            track["shapes"] = [s for s in shapes if s["keyframe"]]
 
         return track
-
-    def _finalize_tracks(self, tracks, last_frame, only_keyframes):
-        formatted_tracks = []
-        for class_tracks in tracks.values():
-            for track in class_tracks.values():
-                formatted_track = self._update_outside_shapes(
-                    track, last_frame, only_keyframes
-                )
-                formatted_tracks.append(track)
-
-        return formatted_tracks
 
     def _build_frame_id_map(self, samples):
         is_video = samples.media_type == fom.VIDEO
