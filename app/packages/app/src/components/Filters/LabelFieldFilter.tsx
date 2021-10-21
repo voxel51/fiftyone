@@ -128,6 +128,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 defaultRange: [0, 1],
               })}
               fieldType={FLOAT_FIELD}
+              excludeAtom={numericField.excludeAtom({ path: cPath, modal })}
             />
           )}
           {SUPPORT_LABELS.includes(entry.labelType) && (

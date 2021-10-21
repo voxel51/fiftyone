@@ -26,6 +26,7 @@ import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "../../utils/hooks";
 import { isDateTimeField, OtherCounts } from "./NumericFieldFilter.state";
 import { FRAME_SUPPORT_FIELD } from "@fiftyone/looker/src/constants";
+import ExcludeOption from "./Exclude";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -369,6 +370,7 @@ const OTHER_NAMES = {
 type NamedProps = {
   valueAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
+  excludeAtom?: RecoilState<boolean>;
   otherCountsAtom: RecoilValueReadOnly<OtherCounts>;
   otherFilteredCountsAtom: RecoilValueReadOnly<OtherCounts>;
   getOtherAtom: (key: Other) => RecoilState<boolean>;
@@ -390,6 +392,7 @@ export const NamedRangeSlider = React.memo(
         name,
         getOtherAtom,
         fieldType,
+        excludeAtom,
         ...rangeSliderProps
       }: NamedProps,
       ref
@@ -402,12 +405,22 @@ export const NamedRangeSlider = React.memo(
       const otherFilteredCounts = useRecoilValue(otherFilteredCountsAtom);
 
       const others: [
-        string,
+        Other,
         [boolean, SetterOrUpdater<boolean>]
       ][] = (fieldType === FLOAT_FIELD
-        ? ["inf", "ninf", "nan", "none"]
-        : ["none"]
-      ).map((key) => [key, useRecoilState(getOtherAtom(key))]);
+        ? (["inf", "ninf", "nan", "none"] as Other[])
+        : (["none"] as Other[])
+      )
+        .map((key) => [key, useRecoilState(getOtherAtom(key))])
+        .filter(([key]) => otherCounts[key as string] > 0);
+
+      const onlyNoneOther = others.length === 1 && others[0][0] === "none";
+
+      if (!hasBounds && onlyNoneOther) {
+        return null;
+      }
+
+      console.log(name, hasBounds, onlyNoneOther, otherCounts);
 
       return (
         <NamedRangeSliderContainer ref={ref}>
@@ -420,20 +433,28 @@ export const NamedRangeSlider = React.memo(
                 fieldType={fieldType}
               />
             )}
-            {others
-              .filter(([k]) => otherCounts[k] > 0)
-              .map(([key, [value, setValue]]) => {
-                return (
-                  <Checkbox
-                    color={rangeSliderProps.color}
-                    name={OTHER_NAMES[key]}
-                    value={value}
-                    setValue={setValue}
-                    count={otherCounts[key]}
-                    forceColor={true}
-                  />
-                );
-              })}
+            {hasDefaultRange &&
+              others
+                .filter(([k]) => otherCounts[k] > 0)
+                .map(([key, [value, setValue]]) => {
+                  return (
+                    <Checkbox
+                      color={rangeSliderProps.color}
+                      name={OTHER_NAMES[key]}
+                      value={value}
+                      setValue={setValue}
+                      count={otherCounts[key]}
+                      forceColor={true}
+                    />
+                  );
+                })}
+            {excludeAtom && !onlyNoneOther && (
+              <ExcludeOption
+                excludeAtom={excludeAtom}
+                valueName={""}
+                color={rangeSliderProps.color}
+              />
+            )}
           </RangeSliderContainer>
         </NamedRangeSliderContainer>
       );

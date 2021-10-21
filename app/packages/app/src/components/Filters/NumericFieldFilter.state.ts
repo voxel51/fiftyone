@@ -16,7 +16,6 @@ import {
   INT_FIELD,
   DATE_TIME_FIELD,
   DATE_FIELD,
-  FLOAT_FIELD,
 } from "../../utils/labels";
 import {
   extendedModalStats,
@@ -92,6 +91,7 @@ type NumericFilter = {
   nan: boolean;
   ninf: boolean;
   inf: boolean;
+  exclude: boolean;
   _CLS: string;
 };
 
@@ -110,16 +110,31 @@ const getFilter = (
       nan: true,
       inf: true,
       ninf: true,
+      exclude: false,
     },
     ...get(filterStage({ modal, path })),
   };
   if (
     !meetsDefault(
-      { ...result, none: true, nan: true, inf: true, ninf: true },
+      {
+        ...result,
+        none: true,
+        nan: true,
+        inf: true,
+        ninf: true,
+        exclude: false,
+      },
       bounds
     )
   ) {
-    return { ...result, none: false, nan: false, ninf: false, inf: false };
+    return {
+      ...result,
+      none: false,
+      nan: false,
+      ninf: false,
+      inf: false,
+      exclude: false,
+    };
   }
   return result;
 };
@@ -130,7 +145,8 @@ const meetsDefault = (filter: NumericFilter, bounds: Range) => {
     filter.none &&
     filter.nan &&
     filter.inf &&
-    filter.ninf
+    filter.ninf &&
+    !filter.exclude
   );
 };
 
@@ -152,7 +168,7 @@ const setFilter = (
   };
 
   const check = { ...filter, none: true, nan: true, ninf: true, inf: true };
-  if (["none", "ninf", "nan", "inf"].includes(key)) {
+  if (["none", "ninf", "nan", "inf", "exlucde"].includes(key)) {
     check[key] = Boolean(value);
   }
 
@@ -314,6 +330,21 @@ export const otherFilteredCounts = selectorFamily<
   },
 });
 
+export const excludeAtom = selectorFamily<
+  boolean,
+  {
+    defaultRange?: Range;
+    modal: boolean;
+    path: string;
+  }
+>({
+  key: "filterNumericFieldExclude",
+  get: ({ modal, path, defaultRange }) => ({ get }) =>
+    getFilter(get, modal, path, defaultRange).exclude,
+  set: ({ modal, path, defaultRange }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, "exclude", value, defaultRange),
+});
+
 export const fieldIsFiltered = selectorFamily<
   boolean,
   {
@@ -324,12 +355,13 @@ export const fieldIsFiltered = selectorFamily<
 >({
   key: "numericFieldIsFiltered",
   get: ({ path, defaultRange, modal }) => ({ get }) => {
-    const [none, nan, ninf, inf, range] = [
+    const [none, nan, ninf, inf, range, exclude] = [
       get(otherAtom({ modal, path, defaultRange, key: "none" })),
       get(otherAtom({ modal, path, defaultRange, key: "nan" })),
       get(otherAtom({ modal, path, defaultRange, key: "ninf" })),
       get(otherAtom({ modal, path, defaultRange, key: "inf" })),
       get(rangeAtom({ modal, path, defaultRange })),
+      get(excludeAtom({ modal, path, defaultRange })),
     ];
     const bounds = get(boundsAtom({ path, defaultRange }));
 
@@ -338,6 +370,7 @@ export const fieldIsFiltered = selectorFamily<
       !nan ||
       !ninf ||
       !inf ||
+      exclude ||
       (bounds.some(
         (b, i) => range[i] !== b && b !== null && range[i] !== null
       ) &&
