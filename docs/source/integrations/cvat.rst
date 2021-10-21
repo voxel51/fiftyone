@@ -864,8 +864,8 @@ will be uploaded to CVAT.
 
 .. _cvat-limitations:
 
-Known limitations
------------------
+CVAT limitations
+----------------
 
 When uploading existing labels to CVAT, the `id` of the labels in FiftyOne are
 stored in a `label_id` attribute of the CVAT shapes. This `label_id` is the
@@ -884,13 +884,12 @@ including the `label_id` attribute, in the following cases:
     workaround in this case is to manually copy the `label_id` before changing
     the class and then pasting it back to ensure that the ID doesn't change.
 
--   When splitting a video track, CVAT propagates the attributes from the first
-    observation of the new track to all subsequent instances of that track.
-    This results in duplicate `label_id` values, and, although these duplicate
-    IDs will be gracefully ignored by FiftyOne during import, provenance has
-    still been lost and thus the existing |Label| instances for the
-    now-separate track must be deleted and replaced with newly created |Label|
-    instances.
+-   When splitting or merging video tracks, CVAT may clear or duplicate the
+    shape's attributes during the process. If this results in missing or
+    duplicate `label_id` values, then, although FiftyOne will gracefully
+    proceed with the import, provenance has still been lost and thus existing
+    |Label| instances whose IDs no longer exist must be deleted and replaced
+    with newly created |Label| instances.
 
 The primary issues that can arise due to modified/deleted `label_id` attributes
 are:
