@@ -4129,7 +4129,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "segmentation",
                 ):
                     kwargs["load_tracks"] = load_tracks
-                    kwargs["only_keyframes"] = only_keyframes
                     kwargs["occluded_attrs"] = occluded_attrs
 
                 if label_type == "scalar":
@@ -4200,7 +4199,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attr["name"] = remapped_attrs.get(name, name)
 
         if load_tracks:
-            tracks = self._finalize_tracks(tracks, frame_id)
+            tracks = self._finalize_tracks(tracks, frame_id, only_keyframes)
             return id_map, tags_or_shapes, tracks
 
         return id_map, tags_or_shapes
@@ -4294,7 +4293,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         label_id=None,
         load_tracks=False,
-        only_keyframes=False,
         occluded_attrs=None,
     ):
         ids = []
@@ -4317,17 +4315,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
             if class_name is None:
-                continue
-
-            if (
-                load_tracks
-                and only_keyframes
-                and det.index is not None
-                and not det.get_attribute_value("keyframe", False)
-            ):
-                # Record the ID even though we don't upload non-keyframes
-                # because the downloaded annotations still supercede this label
-                ids.append(det.id)
                 continue
 
             curr_shapes = []
@@ -4391,6 +4378,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and det.index is not None:
+                keyframe = det.get_attribute_value("keyframe", False)
                 self._add_shapes_to_tracks(
                     tracks,
                     curr_shapes,
@@ -4398,6 +4386,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     det.index,
                     frame_id,
                     immutable_attrs,
+                    keyframe,
                 )
             else:
                 shapes.extend(curr_shapes)
@@ -4412,7 +4401,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_size,
         label_type=None,
         load_tracks=False,
-        only_keyframes=False,
         occluded_attrs=None,
     ):
         ids = []
@@ -4434,17 +4422,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if class_name is None:
                 continue
 
-            if (
-                load_tracks
-                and only_keyframes
-                and kp.index is not None
-                and not kp.get_attribute_value("keyframe", False)
-            ):
-                # Record the ID even though we don't upload non-keyframes
-                # because the downloaded annotations still supercede this label
-                ids.append(kp.id)
-                continue
-
             abs_points = HasCVATPoints._to_abs_points(kp.points, frame_size)
             flattened_points = list(itertools.chain.from_iterable(abs_points))
 
@@ -4464,6 +4441,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and kp.index is not None:
+                keyframe = kp.get_attribute_value("keyframe", False)
                 self._add_shapes_to_tracks(
                     tracks,
                     [shape],
@@ -4471,6 +4449,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     kp.index,
                     frame_id,
                     immutable_attrs,
+                    keyframe,
                 )
             else:
                 shapes.append(shape)
@@ -4485,7 +4464,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_size,
         label_type=None,
         load_tracks=False,
-        only_keyframes=False,
         occluded_attrs=None,
     ):
         ids = []
@@ -4505,17 +4483,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             )
 
             if class_name is None:
-                continue
-
-            if (
-                load_tracks
-                and only_keyframes
-                and poly.index is not None
-                and not poly.get_attribute_value("keyframe", False)
-            ):
-                # Record the ID even though we don't upload non-keyframes
-                # because the downloaded annotations still supercede this label
-                ids.append(poly.id)
                 continue
 
             curr_shapes = []
@@ -4549,6 +4516,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and poly.index is not None:
+                keyframe = poly.get_attribute_value("keyframe", False)
                 self._add_shapes_to_tracks(
                     tracks,
                     curr_shapes,
@@ -4556,6 +4524,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     poly.index,
                     frame_id,
                     immutable_attrs,
+                    keyframe,
                 )
             else:
                 shapes.extend(curr_shapes)
@@ -4634,7 +4603,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def _add_shapes_to_tracks(
-        self, tracks, shapes, class_name, index, frame_id, immutable_attrs
+        self,
+        tracks,
+        shapes,
+        class_name,
+        index,
+        frame_id,
+        immutable_attrs,
+        keyframe,
     ):
         if class_name not in tracks:
             tracks[class_name] = {}
@@ -4652,6 +4628,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         for shape in shapes:
             shape["outside"] = False
+            shape["keyframe"] = keyframe
             del shape["label_id"]
             _shapes.append(shape)
 
@@ -4669,20 +4646,77 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     _track["shapes"].extend(track["shapes"])
                     _track["frame"] = max(track["frame"], _track["frame"])
 
-    def _finalize_tracks(self, tracks, last_frame):
+    def _finalize_tracks(self, tracks, frame_count, only_keyframes):
         formatted_tracks = []
         for class_tracks in tracks.values():
             for track in class_tracks.values():
-                last_shape = track["shapes"][-1]
-                if last_shape["frame"] < last_frame - 1:
-                    new_shape = deepcopy(last_shape)
-                    new_shape["frame"] += 1
-                    new_shape["outside"] = True
-                    track["shapes"].append(new_shape)
-
+                formatted_track = self._finalize_track(
+                    track, frame_count, only_keyframes
+                )
                 formatted_tracks.append(track)
 
         return formatted_tracks
+
+    def _finalize_track(self, track, frame_count, only_keyframes):
+        shapes = track["shapes"]
+        new_shapes = []
+        prev_frame_shape_inds = []
+        prev_frame = None
+        next_is_keyframe = True
+
+        for ind, shape in enumerate(shapes):
+            frame = shape["frame"]
+            if prev_frame is None:
+                prev_frame = frame
+
+            if frame != prev_frame:
+                if only_keyframes and next_is_keyframe:
+                    # The first frame of a new segment is always a keyframe
+                    next_is_keyframe = False
+                    for ind in prev_frame_shape_inds:
+                        shapes[ind]["keyframe"] = True
+
+                # If there is a gap between shapes, we must mark the end of the
+                # previous segment as "outside"
+                if frame > prev_frame + 1:
+                    for prev_ind in prev_frame_shape_inds:
+                        last_shape = shapes[prev_ind]
+                        new_shape = deepcopy(last_shape)
+                        new_shape["frame"] += 1
+                        new_shape["outside"] = True
+                        if only_keyframes:
+                            new_shape["keyframe"] = True
+
+                        new_shapes.append(
+                            (max(prev_frame_shape_inds), new_shape)
+                        )
+                        next_is_keyframe = True
+
+                prev_frame_shape_inds = []
+                prev_frame = frame
+
+            prev_frame_shape_inds.append(ind)
+
+        # The shapes in the last frame in the track must be set to "outside"
+        last_shape = shapes[-1]
+        if last_shape["frame"] < frame_count - 1:
+            new_shape = deepcopy(last_shape)
+            new_shape["frame"] += 1
+            new_shape["outside"] = True
+            if only_keyframes:
+                new_shape["keyframe"] = True
+
+            new_shapes.append((len(shapes), new_shape))
+
+        # Insert new shapes into track
+        for ind, shape in new_shapes[::-1]:
+            shapes.insert(ind, shape)
+
+        # Remove non-keyframes if necessary
+        if only_keyframes:
+            track["shapes"] = [s for s in shapes if s["keyframe"]]
+
+        return track
 
     def _build_frame_id_map(self, samples):
         is_video = samples.media_type == fom.VIDEO
