@@ -1470,6 +1470,11 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
             for _label_id in list(frame_annos.keys()):  # list b/c we'll edit
                 label = frame_annos[_label_id]
 
+                # If the annotation task did not consider keyframes, then never
+                # import `keyframe` attributes into FiftyOne
+                if not only_keyframes and hasattr(label, "keyframe"):
+                    delattr(label, "keyframe")
+
                 # Don't remap non-trajectories
                 if label.index is None:
                     continue
