@@ -25,6 +25,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # pylint: disable=no-member
         for name, field in self._fields.items():
             if isinstance(field, (DictField, ListField)):
                 field = field.field
@@ -33,6 +34,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def _set_parent(self, parent):
         self._parent = parent
+        # pylint: disable=no-member
         for field in self._fields.values():
             if isinstance(field, (DictField, ListField)):
                 field = field.field
@@ -152,17 +154,12 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         )
         self._declare_field(field)
 
-    def _declare_field(self, field_or_doc):
-        if isinstance(field_or_doc, food.SampleFieldDocument):
-            field = field_or_doc.to_field()
-        else:
-            field = field_or_doc
-
+    def _declare_field(self, field):
         if self._parent is not None:
             self._parent._save_field(field, [field.name])
 
 
-class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
+class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
     """

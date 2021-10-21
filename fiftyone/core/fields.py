@@ -168,6 +168,13 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
+    def validate(self, value):
+        if isinstance(self.field, EmbeddedDocumentField):
+            for v in value:
+                self.field.validate(v, clean=True, expand=True)
+
+        super().validate(value)
+
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
@@ -627,6 +634,9 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             else:
                 field.validate(field_value)
 
+        if isinstance(value, foo.DynamicEmbeddedDocument):
+            value._set_parent(self)
+
         super().validate(value, clean)
 
     def get_field_schema(
@@ -674,7 +684,9 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
     def to_python(self, value):
         doc = super().to_python(value)
-        doc._set_parent(self)
+
+        if isinstance(doc, foo.DynamicEmbeddedDocument):
+            doc._set_parent(self)
         return doc
 
     def _save_field(self, field, keys):

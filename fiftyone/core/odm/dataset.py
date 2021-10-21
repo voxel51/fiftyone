@@ -21,6 +21,7 @@ from fiftyone.core.fields import (
     StringField,
     TargetsField,
 )
+from mongoengine.base.datastructures import BaseDict
 
 from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
@@ -272,11 +273,15 @@ class SampleFieldDocument(EmbeddedDocument):
         if not hasattr(field, "fields"):
             return None
 
-        field_docs = {
-            name: cls.from_field(value)
-            for name, value in field.document_type._fields.items()
-            if name != "_cls"
-        }
+        field_docs = BaseDict(
+            {
+                name: cls.from_field(value)
+                for name, value in field.document_type._fields.items()
+                if name != "_cls"
+            },
+            cls,
+            None,
+        )
 
         field_docs.update(
             {

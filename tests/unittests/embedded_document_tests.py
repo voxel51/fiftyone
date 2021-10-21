@@ -26,15 +26,16 @@ class EmbeddedDocumentTests(unittest.TestCase):
         self, collection, path, ftype, subfield=None, document_type=None
     ):
         schema = collection.get_field_schema()
-        for field_name in path.split("."):
+        keys = path.split(".")
+        for field_name in keys[:-1]:
             field = schema[field_name]
-
             if isinstance(field, (ListField, DictField)):
                 field = field.field
 
             if isinstance(field, EmbeddedDocumentField):
                 schema = field.get_field_schema()
 
+        field = schema[keys[-1]]
         self.assertIsInstance(field, ftype)
         if subfield is not None:
             self.assertIsInstance(field.field, subfield)
@@ -105,27 +106,40 @@ class EmbeddedDocumentTests(unittest.TestCase):
         sample = fo.Sample(
             filepath="/path/to/image.jpg", field=DynamicEmbeddedDocument()
         )
-        fo.Dataset().add_sample(sample)
-        field = sample.field
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
 
         # init
         value = 51
-        field["int"] = value
-        self.assertEqual(field.int, value)
+        sample.field["int"] = value
+        self.assertEqual(sample.field.int, value)
+        self.assertField(dataset, "field.int", fo.IntField)
+
+        sample["after"] = DynamicEmbeddedDocument(int=value)
+        self.assertField(dataset, "after.int", fo.IntField)
+        self.assertField(
+            dataset,
+            "after",
+            EmbeddedDocumentField,
+            document_type=DynamicEmbeddedDocument,
+        )
+
+        sample.after["after"] = value
+        self.assertField(dataset, "after.after", fo.IntField)
 
         # update setitem
         value = 52
-        field["int"] = value
-        self.assertEqual(field.int, value)
+        sample.field["int"] = value
+        self.assertEqual(sample.field.int, value)
 
         # update setattr
         value = 53
-        field.int = value
-        self.assertEqual(field.int, value)
+        sample.field.int = value
+        self.assertEqual(sample.field.int, value)
 
         # attempt type change
         with self.assertRaises(mongoengine.errors.ValidationError):
-            field.int = "string"
+            sample.field.int = "string"
 
     @drop_datasets
     def test_lists(self):
@@ -137,21 +151,19 @@ class EmbeddedDocumentTests(unittest.TestCase):
         dataset.add_sample(sample)
 
         # pylint: disable=no-member
-        doc = sample.test.detections[0]
-        doc["tp"] = True
+        sample.test.detections[0]["tp"] = True
+        self.assertField(dataset, "test.detections.tp", fo.BooleanField)
 
-        self.assertIn(
-            "tp",
-            dataset.get_field_schema()["test"]
-            .fields["detections"]
-            .field.fields,
-        )
-        return
         # pylint: disable=no-member
-        sample.test.detections[0] = fo.Detection(
-            label="dog", bounding_box=[0, 0, 1, 1], attr="woof"
+        sample.test.detections = [
+            fo.Detection(label="dog", bounding_box=[0, 0, 1, 1], attr="woof")
+        ]
+        self.assertField(dataset, "test.detections.attr", fo.StringField)
+
+        sample.test.detections[0]["ints"] = [1, 2, 3]
+        self.assertField(
+            dataset, "test.detections.ints", fo.ListField, subfield=fo.IntField
         )
-        sample.save()
 
     @drop_datasets
     def test_expansion(self):

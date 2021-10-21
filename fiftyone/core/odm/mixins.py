@@ -22,6 +22,7 @@ import fiftyone.core.utils as fou
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
 from .document import Document
+from .embedded_document import DynamicEmbeddedDocument
 from .utils import get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -351,6 +352,9 @@ class DatasetMixin(object):
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
 
+        if isinstance(value, DynamicEmbeddedDocument):
+            value._set_parent(self.__class__)
+
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
@@ -669,12 +673,12 @@ class DatasetMixin(object):
         else:
             parent = getattr(cls, path[0])
             for field_name in path[1:-1]:
-                if hasattr(field, "field") and field.field:
-                    parent = field.field
+                if isinstance(parent, (fo.DictField, fo.ListField)):
+                    parent = parent.field
 
-                parent = parent.fields[field_name]
+                parent = parent.get_field_schema()[field_name]
 
-            if hasattr(parent, "field") and parent.field:
+            if isinstance(parent, (fo.DictField, fo.ListField)):
                 parent = parent.field
 
             parent.fields[path[-1]] = field
@@ -713,13 +717,19 @@ class DatasetMixin(object):
     @classmethod
     def _save_field(cls, field, path):
         dataset_doc = cls._dataset_doc()
-
-        fields = dataset_doc[cls._fields_attr()]
         sample_field = SampleFieldDocument.from_field(field)
-        fields = {"fields": {f.name: f for f in fields}}
-        for field_name in path[:-1]:
-            fields = fields["fields"][field_name]
-        fields.fields[path[-1]] = sample_field
+        top_level_fields = dataset_doc[cls._fields_attr()]
+        if len(path) == 1:
+            top_level_fields.append(sample_field)
+        else:
+            for doc_field in top_level_fields:
+                if doc_field.name == path[0]:
+                    break
+
+            for key in path[1:-1]:
+                doc_field = doc_field.fields[key]
+
+            doc_field.fields[path[-1]] = sample_field
 
         dataset_doc.save()
         cls._declare_field(field, path)
