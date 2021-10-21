@@ -1461,8 +1461,15 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
                 if _label_id in existing_map:
                     _existing_index = existing_map[_label_id]
                     if _existing_index not in _seen_indexes:
-                        index_map[(_id, label.index)] = _existing_index
                         _seen_indexes.add(_existing_index)
+
+                        _index = index_map.get((_id, label.index), None)
+                        if _index is not None:
+                            # We found two existing trajectories that have been
+                            # merged. Use the smallest index
+                            _existing_index = min(_index, _existing_index)
+
+                        index_map[(_id, label.index)] = _existing_index
 
     # Perform necessary transformations
     for _id, sample_annos in anno_dict.items():
