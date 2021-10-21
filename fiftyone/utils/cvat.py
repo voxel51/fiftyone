@@ -5258,13 +5258,16 @@ def _parse_occlusion_value(value):
     if isinstance(value, bool):
         return value
 
-    orig_type = type(value)
-    str_value = "'%s'" % value if etau.is_str(value) else str(value)
-    bool_value = bool(value)
+    if etau.is_str(value):
+        str_value = "'%s'" % value
+        bool_value = False if value.lower() == "false" else bool(value)
+    else:
+        str_value = str(value)
+        bool_value = bool(value)
 
     msg = "Casting occlusion value %s of type %s to boolean %s" % (
         str_value,
-        orig_type,
+        type(value),
         bool_value,
     )
     warnings.warn(msg)
