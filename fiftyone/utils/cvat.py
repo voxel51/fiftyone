@@ -2445,8 +2445,10 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
-        project_name (None): an optional project name in which to store the
-            annotation tasks. By default, no project is created
+        project_name (None): an optional project name to which to upload the
+            created CVAT task. If a project with this name is found, it will be
+            used, otherwise a new project with this name is created. By
+            default, no project is used
         project_id (None): an optional integer id of an existing CVAT project to
             which to upload the annotation tasks. By default, no project is
             used
@@ -2603,7 +2605,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         samples,
         config,
         id_map,
-        project_ids,
+        project_id,
         task_ids,
         job_ids,
         frame_id_map,
@@ -2612,7 +2614,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
     ):
         super().__init__(samples, config, id_map, backend=backend)
 
-        self.project_ids = project_ids
+        self.project_id = project_id
         self.task_ids = task_ids
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
@@ -2677,12 +2679,11 @@ class CVATAnnotationResults(foua.AnnotationResults):
             logger.info("Deleting tasks...")
             api.delete_tasks(self.task_ids)
 
-        if self.project_ids:
-            logger.info("Deleting projects...")
-            api.delete_projects(self.project_ids)
+        if self.project_id:
+            logger.info("Deleting project...")
+            api.delete_project(self.project_id)
 
         # @todo save updated results to DB?
-        self.project_ids = []
         self.task_ids = []
         self.job_ids = {}
 
@@ -2783,7 +2784,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
-            d.get("project_ids", []),
+            d.get("project_id", None),
             d["task_ids"],
             job_ids,
             frame_id_map,
@@ -2818,7 +2819,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         self._session = None
         self._user_id_map = {}
-        self._existing_project_ids = []
+        self._project_id_map = {}
 
         self._setup()
 
@@ -2888,7 +2889,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def user_search_url(self, username):
         return "%s/users?search=%s" % (self.base_api_url, username)
 
-    def project_search_url(self, project_id):
+    def project_search_url(self, project_name):
+        return "%s/projects?search=%s" % (self.base_api_url, project_name)
+
+    def project_id_search_url(self, project_id):
         return "%s/projects?id=%d" % (self.base_api_url, project_id)
 
     def _setup(self):
@@ -2987,6 +2991,35 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._validate(response, kwargs)
         return response
 
+    def _get_value_from_search(
+        self, search_url_fcn, target, target_key, value_key
+    ):
+        search_url = search_url_fcn(target)
+        resp = self.get(search_url).json()
+        for info in resp["results"]:
+            if info[target_key] == target:
+                return info[value_key]
+
+        return None
+
+    def _get_value_update_map(
+        self, name, id_map, result_name, search_url_fcn, name_type
+    ):
+        if name is None:
+            return None
+
+        if name in id_map:
+            return id_map[name]
+
+        _id = self._get_value_from_search(
+            search_url_fcn, name, result_name, "id"
+        )
+        if _id is not None:
+            id_map[name] = _id
+            return _id
+
+        logger.warning("%s '%s' not found", name_type, name)
+
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.
 
@@ -2996,21 +3029,49 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the user ID, or None if the user was not found
         """
-        if username is None:
-            return
+        return self._get_value_update_map(
+            username,
+            self._user_id_map,
+            "username",
+            self.user_search_url,
+            "User",
+        )
 
-        if username in self._user_id_map:
-            return self._user_id_map[username]
+    def get_project_id(self, project_name):
+        """Retrieves the CVAT project ID for the first instance of the given
+        project name.
 
-        search_url = self.user_search_url(username)
-        resp = self.get(search_url).json()
-        for user_info in resp["results"]:
-            if user_info["username"] == username:
-                user_id = user_info["id"]
-                self._user_id_map[username] = user_id
-                return user_id
+        Args:
+            project_name: the name of the project
 
-        logger.warning("User '%s' not found in %s", username, search_url)
+        Returns:
+            the project ID, or None if no project with the given name was found
+        """
+        return self._get_value_update_map(
+            project_name,
+            self._project_id_map,
+            "name",
+            self.project_search_url,
+            "Project",
+        )
+
+    def get_project_name(self, project_id):
+        """Retrieves the CVAT project name for the given project id.
+
+        Args:
+            project_id: the id of the project
+
+        Returns:
+            the project name, or None if no project with the given id was found
+        """
+        id_map = {i: n for n, i in self._project_id_map.items()}
+        project_name = id_map.get(project_id)
+        if project_name:
+            return project_name
+
+        return self._get_value_from_search(
+            self.project_id_search_url, project_id, "id", "name",
+        )
 
     def create_project(self, name, schema=None):
         """Creates a project on the CVAT server using the given label schema.
@@ -3257,10 +3318,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # Create one task for all label fields
         label_schema = config.label_schema
         project_name = config.project_name
-        existing_project_id = config.project_id
+        _project_id = config.project_id
+
+        project_name, existing_project_id = self._parse_project_name_id(
+            project_name, _project_id
+        )
 
         id_map = {}
-        project_ids = []
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3278,13 +3342,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_schema=label_schema, project_id=existing_project_id,
         )
 
+        created_project_id = None
         if existing_project_id is not None:
             project_id = existing_project_id
         else:
             project_id = None
             if project_name is not None:
-                project_id = self.create_project(project_name, cvat_schema)
-                project_ids.append(project_id)
+                created_project_id = self.create_project(
+                    project_name, cvat_schema
+                )
+                project_id = created_project_id
 
         # Create a new task for every video sample
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
@@ -3359,7 +3426,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             samples,
             config,
             id_map,
-            project_ids,
+            created_project_id,
             task_ids,
             job_ids,
             frame_id_map,
@@ -3378,11 +3445,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the annotations dict
         """
         label_schema = results.config.label_schema
-        existing_project_id = results.config.project_id
+        project_name = results.config.project_name
+        _project_id = results.config.project_id
         id_map = results.id_map
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
+
+        _, existing_project_id = self._parse_project_name_id(
+            project_name, _project_id
+        )
 
         (
             _,
@@ -3524,27 +3596,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return annotations
 
-    def verify_existing_project(self, project_id):
-        """Verifies that the project with the given ID exists in CVAT.
-
-        Args:
-            project_id: the id of the project 
-
-        Returns:
-            boolean indicating if a project with the given id exists
-        """
-        if project_id in self._existing_project_ids:
-            return True
-
-        search_url = self.project_search_url(project_id)
-        resp = self.get(search_url).json()
-        for project_info in resp["results"]:
-            if project_info["id"] == project_id:
-                self._existing_project_ids.append(project_id)
-                return True
-
-        return False
-
     def get_existing_project_labels(self, project_id):
         """Get CVAT labels schema from an existing project
         Args:
@@ -3553,10 +3604,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the labels dictionary downloaded from the CVAT project
         """
-        if not self.verify_existing_project(project_id):
+        if self.get_project_name(project_id) is None:
             raise ValueError("Project '%s' not found", project_id)
 
         return self.get(self.project_url(project_id)).json()["labels"]
+
+    def _parse_project_name_id(self, project_name, project_id):
+        if project_id:
+            if project_name:
+                logger.warning(
+                    "Found `project_id` and `project_name` arguments. Ignoring `project_name`..."
+                )
+            project_name = self.get_project_name(project_id)
+            if not project_name:
+                raise ValueError("Project '%d' not found", project_id)
+
+        elif project_name:
+            project_id = self.get_project_id(project_name)
+
+        return project_name, project_id
 
     def _update_project_config(self, project_id, config):
         project_name = config.project_name
