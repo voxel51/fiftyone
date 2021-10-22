@@ -117,28 +117,7 @@ const getFilter = (
     },
     ...get(filterStage({ modal, path })),
   };
-  if (
-    !meetsDefault(
-      {
-        ...result,
-        none: true,
-        nan: true,
-        inf: true,
-        ninf: true,
-        exclude: false,
-      },
-      bounds
-    )
-  ) {
-    return {
-      ...result,
-      none: false,
-      nan: false,
-      ninf: false,
-      inf: false,
-      exclude: false,
-    };
-  }
+
   return result;
 };
 
@@ -175,7 +154,10 @@ const setFilter = (
     [key]: value,
   };
 
-  if (meetsDefault(check, bounds)) {
+  const isDefault = meetsDefault(check, bounds);
+  if (!isDefault && meetsDefault({ ...check, range: bounds }, bounds)) {
+    set(filterStage({ modal, path }), { range: filter.range, _CLS: "numeric" });
+  } else if (isDefault) {
     set(filterStage({ modal, path }), null);
   } else {
     set(filterStage({ modal, path }), filter);
@@ -360,8 +342,9 @@ export const excludeAtom = selectorFamily<
   }
 >({
   key: "filterNumericFieldExclude",
-  get: ({ modal, path, defaultRange }) => ({ get }) =>
-    getFilter(get, modal, path, defaultRange).exclude,
+  get: ({ modal, path, defaultRange }) => ({ get }) => {
+    return getFilter(get, modal, path, defaultRange).exclude;
+  },
   set: ({ modal, path, defaultRange }) => ({ get, set }, value) => {
     setFilter(get, set, modal, path, "exclude", value, defaultRange);
   },

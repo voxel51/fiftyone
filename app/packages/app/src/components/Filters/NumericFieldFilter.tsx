@@ -10,6 +10,7 @@ import styled from "styled-components";
 
 import { countsAtom, filterStage } from "./atoms";
 
+import * as selectors from "../../recoil/selectors";
 import { useExpand } from "./hooks";
 import * as filterAtoms from "./NumericFieldFilter.state";
 import CategoricalFilter from "./CategoricalFilter";
@@ -18,7 +19,7 @@ import RangeSlider from "./RangeSlider";
 import { Entry } from "../CheckboxGroup";
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../FieldsSidebar";
-import { FLOAT_FIELD } from "../../utils/labels";
+import { FLOAT_FIELD, LIST_FIELD } from "../../utils/labels";
 
 const NamedRangeSliderContainer = styled.div`
   padding-bottom: 0.5rem;
@@ -58,30 +59,41 @@ type NamedProps = {
   fieldType: string;
 };
 
-const useFieldType = () => {};
-
 const useOthers = ({
   fieldType,
+  otherCounts,
   ...rest
 }: {
   fieldType: string;
   defaultRange?: [number, number];
   modal: boolean;
   path: string;
+  otherCounts: filterAtoms.OtherCounts;
 }): [Other, [boolean, SetterOrUpdater<boolean>]][] => {
   const [none, setNone] = useRecoilState(
     filterAtoms.otherAtom({ ...rest, key: "none" })
   );
-  if (fieldType !== FLOAT_FIELD) {
-    return [["none", [none, setNone]]];
-  }
 
-  return [
-    ["inf", useRecoilState(filterAtoms.otherAtom({ ...rest, key: "inf" }))],
-    ["ninf", useRecoilState(filterAtoms.otherAtom({ ...rest, key: "ninf" }))],
-    ["nan", useRecoilState(filterAtoms.otherAtom({ ...rest, key: "nan" }))],
-    ["none", [none, setNone]],
-  ];
+  const others: [Other, [boolean, SetterOrUpdater<boolean>]][] =
+    fieldType !== FLOAT_FIELD
+      ? [["none", [none, setNone]]]
+      : [
+          [
+            "inf",
+            useRecoilState(filterAtoms.otherAtom({ ...rest, key: "inf" })),
+          ],
+          [
+            "ninf",
+            useRecoilState(filterAtoms.otherAtom({ ...rest, key: "ninf" })),
+          ],
+          [
+            "nan",
+            useRecoilState(filterAtoms.otherAtom({ ...rest, key: "nan" })),
+          ],
+          ["none", [none, setNone]],
+        ];
+
+  return others.filter(([k]) => otherCounts[k] > 0);
 };
 
 export const NamedRangeSlider = React.memo(
@@ -95,10 +107,10 @@ export const NamedRangeSlider = React.memo(
     const otherCounts = useRecoilValue(
       filterAtoms.otherCounts({ modal: rest.modal, path: rest.path })
     );
-    const others = useOthers({ ...rest, fieldType });
+    const others = useOthers({ ...rest, fieldType, otherCounts });
     const isFiltered = useRecoilValue(filterAtoms.fieldIsFiltered(rest));
 
-    if (!hasBounds) {
+    if (!hasBounds && others.length === 1 && others[0][0] === "none") {
       return null;
     }
 
@@ -116,25 +128,24 @@ export const NamedRangeSlider = React.memo(
               color={color}
             />
           )}
-          {hasDefaultRange &&
-            others
-              .filter(([k]) => otherCounts[k] > 0)
-              .map(([key, [value, setValue]]) => (
-                <Checkbox
-                  color={color}
-                  name={OTHER_NAMES[key]}
-                  value={value}
-                  setValue={setValue}
-                  count={otherCounts[key]}
-                  subCountAtom={filterAtoms.otherKeyedFilteredCount({
-                    key,
-                    modal: rest.modal,
-                    path: rest.path,
-                  })}
-                  forceColor={true}
-                />
-              ))}
-          {fieldType === FLOAT_FIELD && isFiltered && (
+          {(hasDefaultRange ||
+            others.some(([_, [v]]) => v !== others[0][1][0])) &&
+            others.map(([key, [value, setValue]]) => (
+              <Checkbox
+                color={color}
+                name={OTHER_NAMES[key]}
+                value={value}
+                setValue={setValue}
+                count={otherCounts[key]}
+                subCountAtom={filterAtoms.otherKeyedFilteredCount({
+                  key,
+                  modal: rest.modal,
+                  path: rest.path,
+                })}
+                forceColor={true}
+              />
+            ))}
+          {isFiltered && others.length > 0 && hasBounds && hasDefaultRange && (
             <ExcludeOption
               excludeAtom={filterAtoms.excludeAtom(rest)}
               valueName={""}
@@ -169,9 +180,15 @@ const NumericFieldFilter = ({
   expanded: boolean;
   entry: Entry;
   modal: boolean;
-  fieldType: string;
+  fieldType?: string;
 }) => {
   const [ref, props] = useExpand(expanded);
+  if (!fieldType) {
+    const type = useRecoilValue(selectors.fieldType(entry.path));
+    const subType = useRecoilValue(selectors.subfieldType(entry.path));
+
+    fieldType = type === LIST_FIELD ? subType : type;
+  }
 
   return (
     <animated.div style={props}>

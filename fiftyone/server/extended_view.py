@@ -311,7 +311,7 @@ def _apply_others(expr, f, args):
     if "none" in args:
         expr = _apply_none(expr, f, args["none"])
 
-    if args["exclude"]:
+    if "exclude" in args and args["exclude"]:
         # pylint: disable=invalid-unary-operand-type
         expr = ~expr
 
