@@ -105,55 +105,14 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               color={entry.color}
               name={"Confidence"}
-              getOtherAtom={(key: Other) =>
-                numericField.otherAtom({
-                  modal,
-                  path: cPath,
-                  defaultRange: [0, 1],
-                  key,
-                })
-              }
-              otherCountsAtom={numericField.otherCounts({ path: cPath, modal })}
-              otherFilteredCountsAtom={numericField.otherFilteredCounts({
-                path: cPath,
-                modal,
-              })}
-              boundsAtom={numericField.boundsAtom({
-                path: cPath,
-                defaultRange: [0, 1],
-              })}
-              valueAtom={numericField.rangeAtom({
-                modal,
-                path: cPath,
-                defaultRange: [0, 1],
-              })}
-              fieldType={FLOAT_FIELD}
-              excludeAtom={numericField.excludeAtom({ path: cPath, modal })}
+              path={entry.path}
             />
           )}
           {SUPPORT_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
               color={entry.color}
               name={"Support"}
-              getOtherAtom={(key: Other) =>
-                numericField.otherAtom({
-                  modal,
-                  path: sPath,
-                  key,
-                })
-              }
-              otherCountsAtom={numericField.otherCounts({ path: sPath, modal })}
-              otherFilteredCountsAtom={numericField.otherFilteredCounts({
-                path: sPath,
-                modal,
-              })}
-              boundsAtom={numericField.boundsAtom({
-                path: sPath,
-              })}
-              valueAtom={numericField.rangeAtom({
-                modal,
-                path: sPath,
-              })}
+              path={entry.path}
               fieldType={FRAME_SUPPORT_FIELD}
             />
           )}

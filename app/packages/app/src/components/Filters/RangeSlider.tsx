@@ -4,29 +4,22 @@ import styled from "styled-components";
 import {
   RecoilState,
   RecoilValueReadOnly,
-  SetterOrUpdater,
   useRecoilState,
   useRecoilValue,
-  useResetRecoilState,
 } from "recoil";
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
-import Checkbox from "../Common/Checkbox";
-import { Button } from "../FieldsSidebar";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
-  FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   INT_FIELD,
 } from "../../utils/labels";
-import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "../../utils/hooks";
-import { isDateTimeField, OtherCounts } from "./NumericFieldFilter.state";
-import { FRAME_SUPPORT_FIELD } from "@fiftyone/looker/src/constants";
-import ExcludeOption from "./Exclude";
+import { isDateTimeField } from "./NumericFieldFilter.state";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -337,129 +330,5 @@ export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
     />
   );
 };
-
-const NamedRangeSliderContainer = styled.div`
-  padding-bottom: 0.5rem;
-  margin: 3px;
-  font-weight: bold;
-`;
-
-const NamedRangeSliderHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-`;
-
-const RangeSliderContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem 0 0.5rem;
-`;
-
-export type Other = "nan" | "ninf" | "inf" | "none";
-
-const OTHER_NAMES = {
-  nan: "nan",
-  ninf: "-inf",
-  inf: "inf",
-  none: null,
-};
-
-type NamedProps = {
-  valueAtom: RecoilState<Range>;
-  boundsAtom: RecoilValueReadOnly<Range>;
-  excludeAtom?: RecoilState<boolean>;
-  otherCountsAtom: RecoilValueReadOnly<OtherCounts>;
-  otherFilteredCountsAtom: RecoilValueReadOnly<OtherCounts>;
-  getOtherAtom: (key: Other) => RecoilState<boolean>;
-  fieldType: string;
-  name?: string;
-  color: string;
-};
-
-const isDefaultRange = (range, bounds) => {
-  return bounds.every((b, i) => b === range[i]);
-};
-
-export const NamedRangeSlider = React.memo(
-  React.forwardRef(
-    (
-      {
-        otherCountsAtom,
-        otherFilteredCountsAtom,
-        name,
-        getOtherAtom,
-        fieldType,
-        excludeAtom,
-        ...rangeSliderProps
-      }: NamedProps,
-      ref
-    ) => {
-      const [range, setRange] = useRecoilState(rangeSliderProps.valueAtom);
-      const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
-      const hasDefaultRange = isDefaultRange(range, bounds);
-      const hasBounds = bounds.every((b) => b !== null);
-      const otherCounts = useRecoilValue(otherCountsAtom);
-      const otherFilteredCounts = useRecoilValue(otherFilteredCountsAtom);
-
-      const others: [
-        Other,
-        [boolean, SetterOrUpdater<boolean>]
-      ][] = (fieldType === FLOAT_FIELD
-        ? (["inf", "ninf", "nan", "none"] as Other[])
-        : (["none"] as Other[])
-      )
-        .map((key) => [key, useRecoilState(getOtherAtom(key))])
-        .filter(([key]) => otherCounts[key as string] > 0);
-
-      const onlyNoneOther = others.length === 1 && others[0][0] === "none";
-
-      if (!hasBounds && onlyNoneOther) {
-        return null;
-      }
-
-      console.log(name, hasBounds, onlyNoneOther, otherCounts);
-
-      return (
-        <NamedRangeSliderContainer ref={ref}>
-          {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
-          <RangeSliderContainer>
-            {hasBounds && (
-              <RangeSlider
-                {...rangeSliderProps}
-                showBounds={false}
-                fieldType={fieldType}
-              />
-            )}
-            {hasDefaultRange &&
-              others
-                .filter(([k]) => otherCounts[k] > 0)
-                .map(([key, [value, setValue]]) => {
-                  return (
-                    <Checkbox
-                      color={rangeSliderProps.color}
-                      name={OTHER_NAMES[key]}
-                      value={value}
-                      setValue={setValue}
-                      count={otherCounts[key]}
-                      forceColor={true}
-                    />
-                  );
-                })}
-            {excludeAtom && !onlyNoneOther && (
-              <ExcludeOption
-                excludeAtom={excludeAtom}
-                valueName={""}
-                color={rangeSliderProps.color}
-              />
-            )}
-          </RangeSliderContainer>
-        </NamedRangeSliderContainer>
-      );
-    }
-  )
-);
 
 export default RangeSlider;

@@ -1,25 +1,120 @@
 import React from "react";
 import { animated } from "react-spring";
-import { useRecoilValue } from "recoil";
+import { SetterOrUpdater, useRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
 
-import * as selectors from "../../recoil/selectors";
-import { NamedRangeSlider, Other } from "./RangeSlider";
 import { useExpand } from "./hooks";
-import {
-  boundsAtom,
-  rangeAtom,
-  otherAtom,
-  otherCounts,
-  otherFilteredCounts,
-} from "./NumericFieldFilter.state";
+import * as filterAtoms from "./NumericFieldFilter.state";
 import { countsAtom } from "./atoms";
 import CategoricalFilter from "./CategoricalFilter";
-import { LIST_FIELD } from "../../utils/labels";
+import ExcludeOption from "./Exclude";
+import RangeSlider from "./RangeSlider";
+
+const NamedRangeSliderContainer = styled.div`
+  padding-bottom: 0.5rem;
+  margin: 3px;
+  font-weight: bold;
+`;
+
+const NamedRangeSliderHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+`;
+
+const RangeSliderContainer = styled.div`
+  background: ${({ theme }) => theme.backgroundDark};
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem 0 0.5rem;
+`;
+
+export type Other = "nan" | "ninf" | "inf" | "none";
+
+const OTHER_NAMES = {
+  nan: "nan",
+  ninf: "-inf",
+  inf: "inf",
+  none: null,
+};
+
+type NamedProps = {
+  color: string;
+  defaultRange?: [number, number];
+  modal: boolean;
+  name?: string;
+  path: string;
+};
+
+const useFieldType = () => {};
+
+const useOthers = () => {};
+
+export const NamedRangeSlider = React.memo(
+  React.forwardRef(({ color, name, ...rest }: NamedProps, ref) => {
+    const [range, setRange] = useRecoilState(filterAtoms.rangeAtom(rest));
+    const bounds = useRecoilValue(filterAtoms.boundsAtom(rest));
+    const hasDefaultRange = useRecoilValue(filterAtoms.isDefaultRange(rest));
+    const hasBounds = bounds.every((b) => b !== null);
+    const otherCounts = useRecoilValue(
+      filterAtoms.otherCounts({ modal: rest.modal, path: rest.path })
+    );
+    const isFiltered = useRecoilValue(filterAtoms.fieldIsFiltered(rest));
+
+    const others: [
+      Other,
+      [boolean, SetterOrUpdater<boolean>]
+    ][] = (fieldType === FLOAT_FIELD
+      ? (["inf", "ninf", "nan", "none"] as Other[])
+      : (["none"] as Other[])
+    )
+      .map((key) => [key, useRecoilState(getOtherAtom(key))])
+      .filter(([key]) => otherCounts[key as string] > 0);
+
+    const onlyNoneOther = others.length === 1 && others[0][0] === "none";
+
+    if (!hasBounds && onlyNoneOther) {
+      return null;
+    }
+
+    return (
+      <NamedRangeSliderContainer ref={ref}>
+        {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
+        <RangeSliderContainer>
+          {hasBounds && (
+            <RangeSlider {...rest} showBounds={false} fieldType={fieldType} />
+          )}
+          {hasDefaultRange &&
+            others
+              .filter(([k]) => otherCounts[k] > 0)
+              .map(([key, [value, setValue]]) => {
+                return (
+                  <Checkbox
+                    color={rangeSliderProps.color}
+                    name={OTHER_NAMES[key]}
+                    value={value}
+                    setValue={setValue}
+                    count={otherCounts[key]}
+                    forceColor={true}
+                  />
+                );
+              })}
+          {excludeAtom && isFiltered && (
+            <ExcludeOption
+              excludeAtom={excludeAtom}
+              valueName={""}
+              color={rangeSliderProps.color}
+            />
+          )}
+        </RangeSliderContainer>
+      </NamedRangeSliderContainer>
+    );
+  })
+);
 
 const NumericFieldFilter = ({ expanded, entry, modal }) => {
   const [ref, props] = useExpand(expanded);
-  const type = useRecoilValue(selectors.fieldType(entry.path));
-  const subType = useRecoilValue(selectors.subfieldType(entry.path));
 
   return (
     <animated.div style={props}>
@@ -36,17 +131,8 @@ const NumericFieldFilter = ({ expanded, entry, modal }) => {
       ) : (
         <NamedRangeSlider
           color={entry.color}
-          boundsAtom={boundsAtom({ path: entry.path })}
-          otherCountsAtom={otherCounts({ modal, path: entry.path })}
-          otherFilteredCountsAtom={otherFilteredCounts({
-            modal,
-            path: entry.path,
-          })}
-          valueAtom={rangeAtom({ modal, path: entry.path })}
-          getOtherAtom={(key: Other) =>
-            otherAtom({ modal, path: entry.path, key })
-          }
-          fieldType={type === LIST_FIELD ? subType : type}
+          modal={modal}
+          path={entry.path}
           ref={ref}
         />
       )}

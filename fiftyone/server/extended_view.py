@@ -241,6 +241,7 @@ def _is_float(field):
 def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
+    print(args)
 
     if cls == _BOOL_FILTER:
         true, false = args["true"], args["false"]
@@ -289,15 +290,10 @@ def _make_scalar_expression(f, args, field):
 
         return expr
 
-    _apply_others(expr, f, args)
-
-    return expr
+    return _apply_others(expr, f, args)
 
 
 def _apply_others(expr, f, args):
-    if "none" in args:
-        _apply_none(expr, f, args["none"])
-
     nonfinites = {
         "nan": float("nan"),
         "ninf": -float("inf"),
@@ -309,9 +305,18 @@ def _apply_others(expr, f, args):
             include.append(v)
 
     if expr is None:
-        return f.is_in(include)
+        expr = f.is_in(include)
+    else:
+        expr |= f.is_in(include)
 
-    return expr | f.is_in(include)
+    if "none" in args:
+        _apply_none(expr, f, args["none"])
+
+    if args["exclude"]:
+        # pylint: disable=invalid-unary-operand-type
+        expr = ~expr
+
+    return expr
 
 
 def _apply_none(expr, f, none):

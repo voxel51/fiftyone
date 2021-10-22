@@ -167,15 +167,22 @@ const setFilter = (
     _CLS: "numeric",
   };
 
-  const check = { ...filter, none: true, nan: true, ninf: true, inf: true };
-  if (["none", "ninf", "nan", "inf", "exlucde"].includes(key)) {
+  const check = {
+    ...filter,
+    none: true,
+    nan: true,
+    ninf: true,
+    inf: true,
+    exclude: false,
+  };
+  if (["none", "ninf", "nan", "inf", "exclude"].includes(key)) {
     check[key] = Boolean(value);
   }
 
   if (meetsDefault(check, bounds)) {
     set(filterStage({ modal, path }), null);
   } else {
-    set(filterStage({ modal, path }), { ...filter, none: false });
+    set(filterStage({ modal, path }), filter);
   }
 };
 
@@ -341,8 +348,9 @@ export const excludeAtom = selectorFamily<
   key: "filterNumericFieldExclude",
   get: ({ modal, path, defaultRange }) => ({ get }) =>
     getFilter(get, modal, path, defaultRange).exclude,
-  set: ({ modal, path, defaultRange }) => ({ get, set }, value) =>
-    setFilter(get, set, modal, path, "exclude", value, defaultRange),
+  set: ({ modal, path, defaultRange }) => ({ get, set }, value) => {
+    setFilter(get, set, modal, path, "exclude", value, defaultRange);
+  },
 });
 
 export const fieldIsFiltered = selectorFamily<
@@ -354,27 +362,20 @@ export const fieldIsFiltered = selectorFamily<
   }
 >({
   key: "numericFieldIsFiltered",
-  get: ({ path, defaultRange, modal }) => ({ get }) => {
-    const [none, nan, ninf, inf, range, exclude] = [
-      get(otherAtom({ modal, path, defaultRange, key: "none" })),
-      get(otherAtom({ modal, path, defaultRange, key: "nan" })),
-      get(otherAtom({ modal, path, defaultRange, key: "ninf" })),
-      get(otherAtom({ modal, path, defaultRange, key: "inf" })),
-      get(rangeAtom({ modal, path, defaultRange })),
-      get(excludeAtom({ modal, path, defaultRange })),
-    ];
-    const bounds = get(boundsAtom({ path, defaultRange }));
+  get: ({ path, defaultRange, modal }) => ({ get }) =>
+    meetsDefault(
+      getFilter(get, modal, path, defaultRange),
+      get(boundsAtom({ path, defaultRange }))
+    ),
+});
 
-    return (
-      !none ||
-      !nan ||
-      !ninf ||
-      !inf ||
-      exclude ||
-      (bounds.some(
-        (b, i) => range[i] !== b && b !== null && range[i] !== null
-      ) &&
-        bounds[0] !== bounds[1])
-    );
+export const isDefaultRange = selectorFamily<
+  boolean,
+  { defaultRange?: Range; modal: boolean; path: string }
+>({
+  key: "isDefaultNumericFieldRange",
+  get: (params) => ({ get }) => {
+    const range = get(rangeAtom(params));
+    return get(boundsAtom(params)).every((b, i) => b === range[i]);
   },
 });
