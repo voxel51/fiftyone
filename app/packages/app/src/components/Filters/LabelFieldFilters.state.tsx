@@ -43,16 +43,18 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     for (const field of labels) {
       if (primitives.includes(field)) {
         if (get(numericField.isNumericField(field))) {
-          const [range, none, inf, ninf, nan] = [
+          const [range, none, inf, ninf, nan, exclude] = [
             get(numericField.rangeAtom({ modal, path: field })),
             get(numericField.otherAtom({ modal, path: field, key: "none" })),
             get(numericField.otherAtom({ modal, path: field, key: "inf" })),
             get(numericField.otherAtom({ modal, path: field, key: "ninf" })),
             get(numericField.otherAtom({ modal, path: field, key: "nan" })),
+            get(numericField.excludeAtom({ modal, path: field })),
           ];
           filters[field] = (value) => {
-            const inRange =
-              range[0] - 0.005 <= value && value <= range[1] + 0.005;
+            const inRange = exclude
+              ? range[0] - 0.005 > value || value > range[1] + 0.005
+              : range[0] - 0.005 <= value && value <= range[1] + 0.005;
             const noNone = none && value === undefined;
             return (
               inRange ||
@@ -111,7 +113,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
 
-      const [cRange, cNone, cInf, cNinf, cNan, lValues, lExclude] = [
+      let [cRange, cNone, cInf, cNinf, cNan, cExclude, lValues, lExclude] = [
         get(
           numericField.rangeAtom({ modal, path: cPath, defaultRange: [0, 1] })
         ),
@@ -147,9 +149,23 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
             key: "nan",
           })
         ),
+        get(
+          numericField.excludeAtom({
+            modal,
+            path: cPath,
+            defaultRange: [0, 1],
+          })
+        ),
         get(stringField.selectedValuesAtom({ modal, path: lPath })),
         get(stringField.excludeAtom({ modal, path: lPath })),
       ];
+
+      if (cExclude) {
+        cNone = !cNone;
+        cInf = !cInf;
+        cNinf = !cNinf;
+        cNan = !cNan;
+      }
 
       const matchedTags = get(filterAtoms.matchedTags({ key: "label", modal }));
 
@@ -157,9 +173,11 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         if (hiddenLabels && hiddenLabels[s.id ?? s._id]) {
           return false;
         }
-        const inRange =
-          cRange[0] - 0.005 <= s.confidence &&
-          s.confidence <= cRange[1] + 0.005;
+
+        const inRange = cExclude
+          ? cRange[0] - 0.005 > s.confidence || s.confidence > cRange[1] + 0.005
+          : cRange[0] - 0.005 <= s.confidence &&
+            s.confidence <= cRange[1] + 0.005;
         const noConfidence = cNone && s.confidence === undefined;
         let label = s.label ? s.label : s.value;
         if (label === undefined) {

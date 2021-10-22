@@ -300,7 +300,7 @@ def _apply_others(expr, f, args):
     }
     include = []
     for k, v in nonfinites.items():
-        if k in args:
+        if k in args and args[k]:
             include.append(v)
 
     if expr is None:
@@ -309,7 +309,7 @@ def _apply_others(expr, f, args):
         expr |= f.is_in(include)
 
     if "none" in args:
-        _apply_none(expr, f, args["none"])
+        expr = _apply_none(expr, f, args["none"])
 
     if args["exclude"]:
         # pylint: disable=invalid-unary-operand-type

@@ -20,8 +20,10 @@ import {
 import {
   extendedModalStats,
   filterStage,
+  hasFilters,
   modalStats,
   noneCount,
+  noneFilteredFieldCounts,
 } from "./atoms";
 import { Other } from "./NumericFieldFilter";
 
@@ -290,6 +292,7 @@ export const otherCounts = selectorFamily<
       },
       { nan: 0, "-inf": 0, inf: 0 }
     );
+
     return {
       none,
       inf,
@@ -305,10 +308,16 @@ export const otherFilteredCounts = selectorFamily<
 >({
   key: "otherFilteredCounts",
   get: ({ modal, path }) => ({ get }) => {
-    const none = get(noneCount({ modal, path }));
-    let { inf, "-inf": ninf, nan } = (
-      get(modal ? extendedModalStats : selectors.extendedDatasetStats) ?? []
-    ).reduce(
+    const none = get(noneFilteredFieldCounts(modal))[path];
+    const filtered = get(hasFilters(modal));
+
+    const stats =
+      get(modal ? extendedModalStats : selectors.extendedDatasetStats) ?? [];
+
+    if (!filtered || !stats.length) {
+      return get(otherCounts({ modal, path }));
+    }
+    let { inf, "-inf": ninf, nan } = stats.reduce(
       (acc, cur) => {
         if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
           return acc;
