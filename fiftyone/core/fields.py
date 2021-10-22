@@ -171,9 +171,9 @@ class ListField(mongoengine.fields.ListField, Field):
     def validate(self, value):
         if isinstance(self.field, EmbeddedDocumentField):
             for v in value:
-                self.field.validate(v, clean=True, expand=True)
-
-        super().validate(value)
+                self.field.validate(v, clean=False, expand=True)
+        else:
+            super().validate(value)
 
 
 class HeatmapRangeField(ListField):
@@ -602,6 +602,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         super().__init__(document_type, **kwargs)
         self._parent = None
         self.fields = kwargs.get("fields", {})
+        self._validation_schema = None
 
     def __str__(self):
         return "%s(%s)" % (
@@ -610,7 +611,14 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         )
 
     def validate(self, value, clean=True, expand=False):
-        schema = self.get_field_schema()
+        if clean:
+            super().validate(value, clean)
+            return
+
+        if self._validation_schema is None:
+            self._validation_schema = self.get_field_schema()
+
+        schema = self._validation_schema
         for field_name in value._fields_ordered:
             field = None
             field_value = value.get_field(field_name)
@@ -630,14 +638,12 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                     "field does not have field '%s' declared" % field_name
                 )
             elif isinstance(field, EmbeddedDocumentField):
-                field.validate(field_value, expand=expand)
+                field.validate(field_value, clean=False, expand=expand)
             else:
                 field.validate(field_value)
 
         if isinstance(value, foo.DynamicEmbeddedDocument):
             value._set_parent(self)
-
-        super().validate(value, clean)
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -692,6 +698,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     def _save_field(self, field, keys):
         if keys[0] not in self.fields:
             self.fields[keys[0]] = field
+            self._validation_schema = self.get_field_schema()
 
         keys = [self.name] + keys
         if self._parent:
