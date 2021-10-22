@@ -30,8 +30,12 @@ def beam_import(
     """Imports the given samples into the dataset via
     `Apache Beam <https://beam.apache.org>`_.
 
-    This function is a parallelized alternative to directly calling
+    This function is a parallelized alternative to
     :meth:`fiftyone.core.dataset.Dataset.add_samples`.
+
+    .. note::
+
+        The insertion order of the samples is not guaranteed.
 
     Example::
 
@@ -45,7 +49,21 @@ def beam_import(
         def make_sample(idx):
             return fo.Sample(filepath="image%d.png" % idx, uuid=idx)
 
+        #
+        # Option 1: build the samples on the workers
+        #
+
         foub.beam_import(dataset, samples, parse_fcn=make_sample)
+
+        #
+        # Option 2: build the samples in the main thread
+        #
+        # This is generally not preferred but may be necessary if your
+        # ``parse_fcn`` is not serializable
+        #
+
+        samples = map(make_sample, samples)
+        foub.beam_import(dataset, samples)
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -73,6 +91,22 @@ def beam_import(
             direct_running_mode="multi_threading",
         )
 
+    sample0, samples = _pop_first(samples)
+
+    if sample0 is None:
+        return  # empty
+
+    if parse_fcn is not None:
+        sample0 = parse_fcn(sample0)
+
+    # Manually insert first sample to reduce chances of parallel schema changes
+    dataset.add_sample(sample0, expand_schema=expand_schema, validate=validate)
+
+    if parse_fcn is None:
+        # `Sample` objects are not serializable so we must manually serialize
+        # and deserialize in `ImportBatch`
+        samples = map(lambda s: s.to_mongo_dict(True), samples)
+
     import_batch = ImportBatch(
         dataset.name,
         parse_fcn=parse_fcn,
@@ -80,10 +114,7 @@ def beam_import(
         validate=validate,
     )
 
-    if parse_fcn is None:
-        samples = map(lambda s: s.to_mongo_dict(True), samples)
-
-    logger = logging.getLogger("apache_beam")
+    logger = logging.getLogger()
     level = logger.level if verbose else logging.CRITICAL
     with fou.SetAttributes(logger, level=level):
         with beam.Pipeline(options=options) as pipeline:
@@ -92,6 +123,9 @@ def beam_import(
                 | "CreateBatches" >> beam.Create(samples)
                 | "ExportBatches" >> beam.ParDo(import_batch)
             )
+
+    # The dataset's schema may have changed in another process
+    dataset.reload()
 
 
 def beam_export(
@@ -105,13 +139,17 @@ def beam_export(
     """Exports the given sample collection in the specified number shards via
     `Apache Beam <https://beam.apache.org>`_.
 
-    This function is a parallelized alternative to directly calling
-    :meth:`fiftyone.core.collections.SampleCollection.export`.
+    This function is a parallelized alternative to
+    :meth:`fiftyone.core.collections.SampleCollection.export` that effectively
+    performs the following sharded export in parallel::
+
+        for idx, (first, last) in enumerate(shards, 1):
+            _kwargs = render_kwargs(kwargs, idx)
+            sample_collection[first:last].export(**_kwargs)
 
     Example::
 
         from apache_beam.options.pipeline_options import PipelineOptions
-        import eta.core.utils as etau
 
         import fiftyone as fo
         import fiftyone.utils.beam as foub
@@ -119,21 +157,20 @@ def beam_export(
 
         dataset = foz.load_zoo_dataset("quickstart")
 
+        # Use multithreading instead of the default multiprocessing
         options = PipelineOptions(
             runner="direct",
             direct_num_workers=10,
             direct_running_mode="multi_threading",
         )
 
-        etau.ensure_dir("/tmp/beam")
-
         foub.beam_export(
             dataset,
-            num_shards=10,
+            num_shards=20,
             options=options,
             dataset_type=fo.types.TFObjectDetectionDataset,
             label_field="ground_truth",
-            tf_records_path="/tmp/beam/tf.records-%05d-of-00010",
+            tf_records_path="/tmp/beam/tf.records-%05d-of-00020",
         )
 
     Args:
@@ -182,7 +219,7 @@ def beam_export(
         for idx, (start, stop) in enumerate(zip(edges[:-1], edges[1:]), 1)
     ]
 
-    logger = logging.getLogger("apache_beam")
+    logger = logging.getLogger()
     level = logger.level if verbose else logging.CRITICAL
     with fou.SetAttributes(logger, level=level):
         with beam.Pipeline(options=options) as pipeline:
@@ -223,9 +260,10 @@ class ImportBatch(beam.DoFn):
         self._samples.append(sample)
 
     def finish_bundle(self):
-        self._dataset._add_samples_batch(
-            self._samples, self.expand_schema, self.validate
-        )
+        if self._samples:
+            self._dataset._add_samples_batch(
+                self._samples, self.expand_schema, self.validate
+            )
 
 
 class ExportBatch(beam.DoFn):
@@ -275,3 +313,14 @@ class ExportBatch(beam.DoFn):
 
         with fou.SetAttributes(fo.config, show_progress_bars=False):
             self._sample_collection[start:stop].export(**kwargs)
+
+
+def _pop_first(x):
+    xi = iter(x)
+
+    try:
+        x0 = next(xi)
+    except StopIteration:
+        x0 = None
+
+    return x0, xi
