@@ -241,7 +241,6 @@ def _is_float(field):
 def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
-    print(args)
 
     if cls == _BOOL_FILTER:
         true, false = args["true"], args["false"]

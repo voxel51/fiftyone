@@ -23,6 +23,7 @@ import {
   modalStats,
   noneCount,
 } from "./atoms";
+import { Other } from "./NumericFieldFilter";
 
 export const isDateTimeField = selectorFamily<boolean, string>({
   key: "isDateTimeField",
@@ -169,15 +170,8 @@ const setFilter = (
 
   const check = {
     ...filter,
-    none: true,
-    nan: true,
-    ninf: true,
-    inf: true,
-    exclude: false,
+    [key]: value,
   };
-  if (["none", "ninf", "nan", "inf", "exclude"].includes(key)) {
-    check[key] = Boolean(value);
-  }
 
   if (meetsDefault(check, bounds)) {
     set(filterStage({ modal, path }), null);
@@ -294,7 +288,7 @@ export const otherCounts = selectorFamily<
 
         return cur.result;
       },
-      { nan: 0, ninf: 0, inf: 0 }
+      { nan: 0, "-inf": 0, inf: 0 }
     );
     return {
       none,
@@ -326,14 +320,25 @@ export const otherFilteredCounts = selectorFamily<
 
         return cur.result;
       },
-      { nan: 0, ninf: 0, inf: 0 }
+      { nan: 0, "-inf": 0, inf: 0 }
     );
+
     return {
       none,
       inf,
       ninf,
       nan,
     };
+  },
+});
+
+export const otherKeyedFilteredCount = selectorFamily<
+  number,
+  { modal: boolean; path: string; key: Other }
+>({
+  key: "otherKeyedFilteredCount",
+  get: ({ key, ...params }) => ({ get }) => {
+    return get(otherFilteredCounts(params))[key];
   },
 });
 
@@ -363,7 +368,7 @@ export const fieldIsFiltered = selectorFamily<
 >({
   key: "numericFieldIsFiltered",
   get: ({ path, defaultRange, modal }) => ({ get }) =>
-    meetsDefault(
+    !meetsDefault(
       getFilter(get, modal, path, defaultRange),
       get(boundsAtom({ path, defaultRange }))
     ),
