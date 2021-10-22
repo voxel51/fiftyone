@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import multiprocessing
 import numpy as np
 
@@ -17,8 +18,89 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 
 
+def beam_import(
+    dataset,
+    samples,
+    parse_fcn=None,
+    expand_schema=True,
+    validate=True,
+    options=None,
+    verbose=False,
+):
+    """Imports the given samples into the dataset via
+    `Apache Beam <https://beam.apache.org>`_.
+
+    This function is a parallelized alternative to directly calling
+    :meth:`fiftyone.core.dataset.Dataset.add_samples`.
+
+    Example::
+
+        import fiftyone as fo
+        import fiftyone.utils.beam as foub
+
+        dataset = fo.Dataset()
+
+        samples = range(10000)
+
+        def make_sample(idx):
+            return fo.Sample(filepath="image%d.png" % idx, uuid=idx)
+
+        foub.beam_import(dataset, samples, parse_fcn=make_sample)
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        samples: an iterable of samples. If no ``parse_fcn`` is provided, these
+            must be :class:`fiftyone.core.sample.Sample` instances. If a
+            ``parse_fcn`` is provided, these are passed to it for parsing
+        parse_fcn (None): an optional function that converts elements of
+            ``samples`` to :class:`fiftyone.core.sample.Sample` instances
+        expand_schema (True): whether to dynamically add new sample fields
+            encountered to the dataset schema. If False, an error is raised
+            if a sample's schema is not a subset of the dataset schema
+        validate (True): whether to validate that the fields of each sample
+            are compliant with the dataset schema before adding it
+        options (None): a
+            ``apache_beam.options.pipeline_options.PipelineOptions`` that
+            configures how to run the pipeline. By default, the pipeline will
+            be run via Beam's direct runner using
+            ``multiprocessing.cpu_count()`` threads
+        verbose (False): whether to log the Beam pipeline's messages
+    """
+    if options is None:
+        options = PipelineOptions(
+            runner="direct",
+            direct_num_workers=multiprocessing.cpu_count(),
+            direct_running_mode="multi_threading",
+        )
+
+    import_batch = ImportBatch(
+        dataset.name,
+        parse_fcn=parse_fcn,
+        expand_schema=expand_schema,
+        validate=validate,
+    )
+
+    if parse_fcn is None:
+        samples = map(lambda s: s.to_mongo_dict(True), samples)
+
+    logger = logging.getLogger("apache_beam")
+    level = logger.level if verbose else logging.CRITICAL
+    with fou.SetAttributes(logger, level=level):
+        with beam.Pipeline(options=options) as pipeline:
+            _ = (
+                pipeline
+                | "CreateBatches" >> beam.Create(samples)
+                | "ExportBatches" >> beam.ParDo(import_batch)
+            )
+
+
 def beam_export(
-    sample_collection, num_shards, options=None, render_kwargs=None, **kwargs
+    sample_collection,
+    num_shards,
+    options=None,
+    verbose=False,
+    render_kwargs=None,
+    **kwargs,
 ):
     """Exports the given sample collection in the specified number shards via
     `Apache Beam <https://beam.apache.org>`_.
@@ -63,6 +145,7 @@ def beam_export(
             configures how to run the pipeline. By default, the pipeline will
             be run via Beam's direct runner using
             ``min(num_shards, multiprocessing.cpu_count())`` processes
+        verbose (False): whether to log the Beam pipeline's messages
         render_kwargs (None): a function that renders ``kwargs`` for the
             current shard. The function should have signature
             ``def render_kwargs(kwargs, idx) -> kwargs``, where ``idx`` in
@@ -99,11 +182,49 @@ def beam_export(
         for idx, (start, stop) in enumerate(zip(edges[:-1], edges[1:]), 1)
     ]
 
-    with beam.Pipeline(options=options) as pipeline:
-        _ = (
-            pipeline
-            | "CreateBatches" >> beam.Create(batches)
-            | "ExportBatches" >> beam.ParDo(export_batch, **kwargs)
+    logger = logging.getLogger("apache_beam")
+    level = logger.level if verbose else logging.CRITICAL
+    with fou.SetAttributes(logger, level=level):
+        with beam.Pipeline(options=options) as pipeline:
+            _ = (
+                pipeline
+                | "CreateBatches" >> beam.Create(batches)
+                | "ExportBatches" >> beam.ParDo(export_batch, **kwargs)
+            )
+
+
+class ImportBatch(beam.DoFn):
+    def __init__(
+        self, dataset_name, parse_fcn=None, expand_schema=True, validate=True
+    ):
+        self.dataset_name = dataset_name
+        self.parse_fcn = parse_fcn
+        self.expand_schema = expand_schema
+        self.validate = validate
+        self._dataset = None
+        self._samples = None
+
+    def setup(self):
+        import fiftyone as fo
+
+        self._dataset = fo.load_dataset(self.dataset_name)
+
+    def start_bundle(self):
+        self._samples = []
+
+    def process(self, sample):
+        if self.parse_fcn is not None:
+            sample = self.parse_fcn(sample)
+        else:
+            import fiftyone as fo
+
+            sample = fo.Sample.from_dict(sample)
+
+        self._samples.append(sample)
+
+    def finish_bundle(self):
+        self._dataset._add_samples_batch(
+            self._samples, self.expand_schema, self.validate
         )
 
 
