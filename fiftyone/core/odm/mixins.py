@@ -383,20 +383,20 @@ class DatasetMixin(object):
 
     @classmethod
     def add_implied_field(cls, field_name, value):
-        """Adds the field to the document, inferring the field type from the
-        provided value.
+        """Adds the field to the document, if necessary, inferring the field
+        type from the provided value
 
         Args:
             field_name: the field name
             value: the field value
         """
+        kwargs = get_implied_field_kwargs(value)
+
         # pylint: disable=no-member
         if field_name in cls._fields:
-            raise ValueError(
-                "%s field '%s' already exists" % (cls._doc_name(), field_name)
-            )
-
-        cls.add_field(field_name, **get_implied_field_kwargs(value))
+            validate_fields_match(field_name, kwargs, cls._fields[field_name])
+        else:
+            cls.add_field(field_name, **kwargs)
 
     def set_field(self, field_name, value, create=False):
         if field_name.startswith("_"):

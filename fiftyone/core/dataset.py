@@ -818,11 +818,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.add_implied_field(field_name, value)
         self._reload()
 
-    def _add_implied_sample_field_if_necessary(self, field_name, value):
-        self._add_sample_field_if_necessary(
-            field_name, **foo.get_implied_field_kwargs(value)
-        )
-
     def add_frame_field(
         self,
         field_name,
@@ -889,11 +884,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._frame_doc_cls.add_implied_field(field_name, value)
         self._reload()
-
-    def _add_implied_frame_field_if_necessary(self, field_name, value):
-        self._add_frame_field_if_necessary(
-            field_name, **foo.get_implied_field_kwargs(value)
-        )
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -1659,7 +1649,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _merge_samples_pipeline(
                 samples,
                 self,
-                key_field,
+                key_field=key_field,
                 skip_existing=skip_existing,
                 insert_new=insert_new,
                 fields=fields,
@@ -5086,7 +5076,7 @@ def _get_single_index_map(coll):
 def _merge_samples_python(
     dataset,
     samples,
-    key_field=None,
+    key_field="filepath",
     key_fcn=None,
     skip_existing=False,
     insert_new=True,
@@ -5097,6 +5087,18 @@ def _merge_samples_python(
     expand_schema=True,
     num_samples=None,
 ):
+    if fields is not None:
+        if etau.is_str(fields):
+            fields = [fields]
+        elif not isinstance(fields, dict):
+            fields = list(fields)
+
+    if omit_fields is not None:
+        if etau.is_str(omit_fields):
+            omit_fields = [omit_fields]
+        else:
+            omit_fields = list(omit_fields)
+
     if num_samples is None:
         try:
             num_samples = len(samples)
@@ -5201,7 +5203,7 @@ def _make_merge_samples_generator(
 def _merge_samples_pipeline(
     src_collection,
     dst_dataset,
-    key_field,
+    key_field="filepath",
     skip_existing=False,
     insert_new=True,
     fields=None,
