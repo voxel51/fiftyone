@@ -1449,7 +1449,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-
         target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
             samples, target_latency, init_batch_size=1, max_batch_beta=2.0
@@ -1671,7 +1670,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _merge_samples_pipeline(
                 samples,
                 self,
-                key_field=key_field,
+                key_field,
                 skip_existing=skip_existing,
                 insert_new=insert_new,
                 fields=fields,
@@ -5109,18 +5108,6 @@ def _merge_samples_python(
     expand_schema=True,
     num_samples=None,
 ):
-    if fields is not None:
-        if etau.is_str(fields):
-            fields = [fields]
-        elif not isinstance(fields, dict):
-            fields = list(fields)
-
-    if omit_fields is not None:
-        if etau.is_str(omit_fields):
-            omit_fields = [omit_fields]
-        else:
-            omit_fields = list(omit_fields)
-
     if num_samples is None:
         try:
             num_samples = len(samples)
@@ -5216,7 +5203,7 @@ def _make_merge_samples_generator(
 def _merge_samples_pipeline(
     src_collection,
     dst_dataset,
-    key_field="filepath",
+    key_field,
     skip_existing=False,
     insert_new=True,
     fields=None,

@@ -384,7 +384,7 @@ class DatasetMixin(object):
     @classmethod
     def add_implied_field(cls, field_name, value):
         """Adds the field to the document, if necessary, inferring the field
-        type from the provided value
+        type from the provided value.
 
         Args:
             field_name: the field name

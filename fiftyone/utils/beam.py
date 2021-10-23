@@ -43,8 +43,6 @@ def beam_import(
         import fiftyone as fo
         import fiftyone.utils.beam as foub
 
-        dataset = fo.Dataset()
-
         samples = range(10000)
 
         def make_sample(idx):
@@ -54,7 +52,10 @@ def beam_import(
         # Option 1: build the samples on the workers
         #
 
+        dataset = fo.Dataset()
+
         foub.beam_import(dataset, samples, parse_fcn=make_sample)
+        print(dataset)
 
         #
         # Option 2: build the samples in the main thread
@@ -63,8 +64,12 @@ def beam_import(
         # ``parse_fcn`` is not serializable
         #
 
+        dataset = fo.Dataset()
+
         samples = map(make_sample, samples)
+
         foub.beam_import(dataset, samples)
+        print(dataset)
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -147,8 +152,8 @@ def beam_merge(
     Example::
 
         import fiftyone as fo
-        import fiftyone.zoo as foz
         import fiftyone.utils.beam as foub
+        import fiftyone.zoo as foz
 
         dataset = foz.load_zoo_dataset("quickstart").clone()
 
