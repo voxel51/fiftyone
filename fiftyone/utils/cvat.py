@@ -3022,8 +3022,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             id_map[name] = _id
             return _id
 
-        logger.warning("%s '%s' not found", name_type, name)
-
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.
 
@@ -3033,13 +3031,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the user ID, or None if the user was not found
         """
-        return self._get_value_update_map(
+        user_id = self._get_value_update_map(
             username,
             self._user_id_map,
             "username",
             self.user_search_url,
             "User",
         )
+
+        if username is not None and user_id is None:
+            logger.warning("User '%s' not found", username)
+
+        return user_id
 
     def get_project_id(self, project_name):
         """Retrieves the CVAT project ID for the first instance of the given
@@ -3323,6 +3326,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_schema = config.label_schema
         project_name = config.project_name
         _project_id = config.project_id
+        project_id = None
 
         project_name, existing_project_id = self._parse_project_name_id(
             project_name, _project_id
@@ -3357,17 +3361,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ) = self._get_cvat_schema(
             label_schema=label_schema, project_id=existing_project_id,
         )
-
-        created_project_id = None
-        if existing_project_id is not None:
-            project_id = existing_project_id
-        else:
-            project_id = None
-            if project_name is not None:
-                created_project_id = self.create_project(
-                    project_name, cvat_schema
-                )
-                project_id = created_project_id
 
         # Create a new task for every video sample
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
@@ -3409,6 +3402,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_tags.extend(_tags)
                 anno_shapes.extend(_shapes)
                 anno_tracks.extend(_tracks)
+
+            if project_id is None:
+                created_project_id = None
+                if existing_project_id is not None:
+                    project_id = existing_project_id
+                else:
+                    project_id = None
+                    if project_name is not None:
+                        created_project_id = self.create_project(
+                            project_name, cvat_schema
+                        )
+                        project_id = created_project_id
 
             task_name = (
                 "FiftyOne_%s"
