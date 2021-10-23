@@ -1438,6 +1438,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [str(d["_id"]) for d in dicts]
 
+    def _upsert_samples(
+        self, samples, expand_schema=True, validate=True, num_samples=None
+    ):
+        if num_samples is None:
+            try:
+                num_samples = len(samples)
+            except:
+                pass
+
+        # Dynamically size batches so that they are as large as possible while
+        # still achieving a nice frame rate on the progress bar
+
+        target_latency = 0.2  # in seconds
+        batcher = fou.DynamicBatcher(
+            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+        )
+
+        with fou.ProgressBar(total=num_samples) as pb:
+            for batch in batcher:
+                self._upsert_samples_batch(batch, expand_schema, validate)
+                pb.update(count=len(batch))
+
     def _upsert_samples_batch(self, samples, expand_schema, validate):
         if self.media_type is None and samples:
             self.media_type = samples[0].media_type
@@ -5128,18 +5150,10 @@ def _merge_samples_python(
         expand_schema=expand_schema,
     )
 
-    # Dynamically size batches so that they are as large as possible while
-    # still achieving a nice frame rate on the progress bar
-    target_latency = 0.2  # in seconds
-    batcher = fou.DynamicBatcher(
-        _samples, target_latency, init_batch_size=1, max_batch_beta=2.0
-    )
-
     logger.info("Merging samples...")
-    with fou.ProgressBar(total=num_samples) as pb:
-        for batch in batcher:
-            dataset._upsert_samples_batch(batch, expand_schema, True)
-            pb.update(count=len(batch))
+    dataset._upsert_samples(
+        _samples, expand_schema=expand_schema, num_samples=num_samples
+    )
 
 
 def _make_merge_samples_generator(
@@ -5188,7 +5202,6 @@ def _make_merge_samples_generator(
                 )
 
                 yield existing_sample
-
         elif insert_new:
             if insert_fields is not None or insert_omit_fields is not None:
                 sample = sample.copy(
