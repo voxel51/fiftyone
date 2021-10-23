@@ -9,6 +9,7 @@ import logging
 import multiprocessing
 import numpy as np
 
+import fiftyone.core.dataset as fod
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -105,7 +106,7 @@ def beam_import(
     if parse_fcn is None:
         # `Sample` objects are not serializable so we must manually serialize
         # and deserialize in `ImportBatch`
-        samples = map(lambda s: s.to_mongo_dict(True), samples)
+        samples = map(lambda s: s.to_mongo_dict(include_id=True), samples)
 
     import_batch = ImportBatch(
         dataset.name,
@@ -120,8 +121,101 @@ def beam_import(
         with beam.Pipeline(options=options) as pipeline:
             _ = (
                 pipeline
-                | "CreateBatches" >> beam.Create(samples)
-                | "ExportBatches" >> beam.ParDo(import_batch)
+                | "InitImport" >> beam.Create(samples)
+                | "ImportBatches" >> beam.ParDo(import_batch)
+            )
+
+    # The dataset's schema may have changed in another process
+    dataset.reload()
+
+
+def beam_merge(
+    dataset, samples, parse_fcn=None, options=None, verbose=False, **kwargs
+):
+    """Merges the given samples into the dataset via
+    `Apache Beam <https://beam.apache.org>`_.
+
+    This function is a parallelized alternative to
+    :meth:`fiftyone.core.dataset.Dataset.merge_samples`.
+
+    .. note::
+
+        This function is only useful for merging **in-memory samples** into a
+        dataset. If you are merging a sample collection, simply call
+        :meth:`fiftyone.core.dataset.Dataset.merge_samples`.
+
+    Example::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        import fiftyone.utils.beam as foub
+
+        dataset = foz.load_zoo_dataset("quickstart").clone()
+
+        samples = iter(dataset.select_fields("predictions"))
+
+        foub.beam_merge(dataset, samples, fields={"predictions": "predictions2"})
+
+        print(dataset.count("predictions.detections"))
+        print(dataset.count("predictions2.detections"))
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        samples: an iterable of samples. If no ``parse_fcn`` is provided, these
+            must be :class:`fiftyone.core.sample.Sample` instances. If a
+            ``parse_fcn`` is provided, these are passed to it for parsing
+        parse_fcn (None): an optional function that converts elements of
+            ``samples`` to :class:`fiftyone.core.sample.Sample` instances
+        options (None): a
+            ``apache_beam.options.pipeline_options.PipelineOptions`` that
+            configures how to run the pipeline. By default, the pipeline will
+            be run via Beam's direct runner using
+            ``multiprocessing.cpu_count()`` threads
+        verbose (False): whether to log the Beam pipeline's messages
+        **kwargs: keyword arguments for
+            :meth:`fiftyone.core.dataset.Dataset.merge_samples`
+    """
+
+    # If the merge does not require a `key_fcn`, then it is fastest to import
+    # the samples into a temporary collection and then merge that
+    if kwargs.get("key_fcn", None) is None:
+        tmp_dataset = fod.Dataset()
+
+        beam_import(
+            tmp_dataset,
+            samples,
+            parse_fcn=parse_fcn,
+            options=options,
+            verbose=verbose,
+        )
+
+        dataset.merge_samples(tmp_dataset, **kwargs)
+        tmp_dataset.delete()
+
+        return
+
+    if options is None:
+        options = PipelineOptions(
+            runner="direct",
+            direct_num_workers=multiprocessing.cpu_count(),
+            direct_running_mode="multi_threading",
+        )
+
+    if parse_fcn is None:
+        # `Sample` objects are not serializable so we must manually serialize
+        # and deserialize in `MergeBatch`
+        samples = map(lambda s: s.to_mongo_dict(include_id=True), samples)
+
+    merge_batch = MergeBatch(dataset.name, parse_fcn=parse_fcn, **kwargs)
+
+    logger = logging.getLogger()
+    level = logger.level if verbose else logging.CRITICAL
+    with fou.SetAttributes(logger, level=level):
+        with beam.Pipeline(options=options) as pipeline:
+            _ = (
+                pipeline
+                | "InitMerge" >> beam.Create(samples)
+                | "MergeBatches" >> beam.ParDo(merge_batch)
             )
 
     # The dataset's schema may have changed in another process
@@ -225,7 +319,7 @@ def beam_export(
         with beam.Pipeline(options=options) as pipeline:
             _ = (
                 pipeline
-                | "CreateBatches" >> beam.Create(batches)
+                | "InitExport" >> beam.Create(batches)
                 | "ExportBatches" >> beam.ParDo(export_batch, **kwargs)
             )
 
@@ -238,6 +332,7 @@ class ImportBatch(beam.DoFn):
         self.parse_fcn = parse_fcn
         self.expand_schema = expand_schema
         self.validate = validate
+
         self._dataset = None
         self._samples = None
 
@@ -250,11 +345,11 @@ class ImportBatch(beam.DoFn):
         self._samples = []
 
     def process(self, sample):
+        import fiftyone as fo
+
         if self.parse_fcn is not None:
             sample = self.parse_fcn(sample)
         else:
-            import fiftyone as fo
-
             sample = fo.Sample.from_dict(sample)
 
         self._samples.append(sample)
@@ -266,11 +361,89 @@ class ImportBatch(beam.DoFn):
             )
 
 
+class MergeBatch(beam.DoFn):
+    def __init__(
+        self,
+        dataset_name,
+        parse_fcn=None,
+        key_field="filepath",
+        key_fcn=None,
+        expand_schema=True,
+        **kwargs,
+    ):
+        self.dataset_name = dataset_name
+        self.parse_fcn = parse_fcn
+        self.key_field = key_field
+        self.key_fcn = key_fcn
+        self.expand_schema = expand_schema
+        self.kwargs = kwargs
+
+        self._dataset = None
+        self._id_map = None
+        self._key_fcn = None
+        self._samples = None
+
+    def setup(self):
+        import fiftyone as fo
+
+        dataset = fo.load_dataset(self.dataset_name)
+
+        if self.key_fcn is None:
+            key_field = self.key_field
+            key_fcn = lambda sample: sample[key_field]
+            id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        else:
+            key_fcn = self.key_fcn
+            id_map = {key_fcn(s): s.id for s in dataset}
+
+        self._dataset = dataset
+        self._key_fcn = key_fcn
+        self._id_map = id_map
+
+    def start_bundle(self):
+        self._samples = []
+
+    def process(self, sample):
+        import fiftyone as fo
+
+        if self.parse_fcn is not None:
+            sample = self.parse_fcn(sample)
+        else:
+            sample = fo.Sample.from_dict(sample)
+
+        self._samples.append(sample)
+
+    def finish_bundle(self):
+        import fiftyone.core.dataset as fod
+        import fiftyone.core.utils as fou
+
+        if not self._samples:
+            return
+
+        kwargs, _ = fou.extract_kwargs_for_function(
+            fod._make_merge_samples_generator, self.kwargs
+        )
+
+        samples = fod._make_merge_samples_generator(
+            self._dataset,
+            self._samples,
+            self._key_fcn,
+            self._id_map,
+            expand_schema=self.expand_schema,
+            **kwargs,
+        )
+
+        self._dataset._upsert_samples_batch(
+            list(samples), self.expand_schema, True
+        )
+
+
 class ExportBatch(beam.DoFn):
     def __init__(self, dataset_name, view_stages=None, render_kwargs=None):
         self.dataset_name = dataset_name
         self.view_stages = view_stages
         self.render_kwargs = render_kwargs or self.default_render_kwargs
+
         self._sample_collection = None
 
     @staticmethod
