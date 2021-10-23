@@ -1090,7 +1090,15 @@ class NoDatasetMixin(object):
 
     @classmethod
     def from_dict(cls, d, extended=False):
-        return cls(**{k: _deserialize_value(v) for k, v in d.items()})
+        kwargs = {}
+        for k, v in d.items():
+            # @todo `use_db_field` hack
+            if k == "_id":
+                k = "id"
+
+            kwargs[k] = _deserialize_value(v)
+
+        return cls(**kwargs)
 
     def save(self):
         pass
