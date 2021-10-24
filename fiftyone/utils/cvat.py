@@ -3408,7 +3408,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_info = label_schema[label_field]
                 label_type = label_info["type"]
                 scalar_attrs = assigned_scalar_attrs.get(label_field, False)
-                occ_attrs = occluded_attrs.get(label_field, {})
+                _occluded_attrs = occluded_attrs.get(label_field, {})
                 _id_map = id_map.get(label_field, {})
 
                 label_field_results = {}
@@ -3453,7 +3453,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     attr_id_map,
                     frames,
                     assigned_scalar_attrs=scalar_attrs,
-                    occluded_attrs=occ_attrs,
+                    occluded_attrs=_occluded_attrs,
                 )
                 label_field_results = self._merge_results(
                     label_field_results, shape_results
@@ -3479,7 +3479,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         assigned_scalar_attrs=scalar_attrs,
                         track_index=track_index,
                         immutable_attrs=immutable_attrs,
-                        occluded_attrs=occ_attrs,
+                        occluded_attrs=_occluded_attrs,
                     )
                     label_field_results = self._merge_results(
                         label_field_results, track_shape_results
@@ -3647,9 +3647,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attrs,
     ):
         is_video = samples_batch.media_type == fom.VIDEO
+
         anno_tags = []
         anno_shapes = []
         anno_tracks = []
+
         if label_type in ("classification", "classifications", "scalar"):
             # Tag annotations
             _id_map, anno_tags = self._create_shapes_tags_tracks(
@@ -4170,8 +4172,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return (
             cvat_schema,
             assign_scalar_attrs,
-            occluded_attrs,
-            label_field_classes,
+            dict(occluded_attrs),
+            dict(label_field_classes),
         )
 
     def _to_cvat_attributes(self, attributes):
@@ -4214,6 +4216,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         classes = label_info["classes"]
         mask_targets = label_info.get("mask_targets", None)
 
+        if occluded_attrs is not None:
+            occluded_attrs = occluded_attrs.get(label_field, None)
+
         id_map = {}
         tags_or_shapes = []
         tracks = {}
@@ -4226,7 +4231,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         is_video = samples.media_type == fom.VIDEO
 
         if is_video:
-            label_field, _ = samples._handle_frame_field(label_field)
+            field, _ = samples._handle_frame_field(label_field)
+        else:
+            field = label_field
 
         frame_id = -1
         for sample in samples:
@@ -4242,7 +4249,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for image in images:
                 frame_id += 1
 
-                label = image[label_field]
+                label = image[field]
 
                 if label is None:
                     continue
@@ -4391,7 +4398,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 _,
                 _remapped_attrs,
                 _,
-            ) = self._create_attributes(cn, cvat_schema, label_field)
+            ) = self._parse_label(cn, cvat_schema, label_field)
 
             if class_name is None:
                 continue
@@ -4437,7 +4444,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
-            ) = self._create_attributes(
+            ) = self._parse_label(
                 det,
                 cvat_schema,
                 label_field,
@@ -4547,7 +4554,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
-            ) = self._create_attributes(
+            ) = self._parse_label(
                 kp, cvat_schema, label_field, occluded_attrs=occluded_attrs
             )
 
@@ -4611,7 +4618,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
-            ) = self._create_attributes(
+            ) = self._parse_label(
                 poly, cvat_schema, label_field, occluded_attrs=occluded_attrs
             )
 
@@ -4689,7 +4696,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return label_id, shapes, tracks, remapped_attrs
 
-    def _create_attributes(
+    def _parse_label(
         self,
         label,
         cvat_schema,
@@ -4697,14 +4704,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_id=None,
         occluded_attrs=None,
     ):
-        label_field_class_name = "%s_%s" % (label.label, label_field)
-        frame_field_class_name = "%s_frames.%s" % (label.label, label_field)
+        # If the class is a duplicate, it will have this name
+        dup_class_name = "%s_%s" % (label.label, label_field)
+
         if label.label in cvat_schema:
             class_name = label.label
-        elif label_field_class_name in cvat_schema:
-            class_name = label_field_class_name
-        elif frame_field_class_name in cvat_schema:
-            class_name = frame_field_class_name
+        elif dup_class_name in cvat_schema:
+            class_name = dup_class_name
         else:
             return None, None, None, None, None
 
