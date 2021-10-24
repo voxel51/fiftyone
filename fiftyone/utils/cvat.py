@@ -3522,7 +3522,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             frames = data_resp["frames"]
 
             label_fields = labels_task_map_rev[task_id]
-            for label_field in label_fields:
+            label_types = self._get_return_label_types(
+                label_schema, label_fields
+            )
+            for lf_ind, label_field in enumerate(label_fields):
                 label_info = label_schema[label_field]
                 label_type = label_info.get("type", None)
                 scalar_attrs = assigned_scalar_attrs.get(label_field, False)
@@ -3543,7 +3546,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 }
                 _cvat_classes = class_map.keys()
                 tags, shapes, tracks = self._filter_field_classes(
-                    all_tags, all_shapes, all_tracks, _cvat_classes
+                    all_tags, all_shapes, all_tracks, _cvat_classes,
+                )
+
+                is_last_field = lf_ind == len(label_fields) - 1
+                ignore_types = self._get_ignored_types(
+                    existing_project_id,
+                    label_types,
+                    label_type,
+                    is_last_field,
                 )
 
                 tag_results = self._parse_shapes_tags(
@@ -3555,6 +3566,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     class_map,
                     attr_id_map,
                     frames,
+                    ignore_types,
                     assigned_scalar_attrs=scalar_attrs,
                 )
                 label_field_results = self._merge_results(
@@ -3570,6 +3582,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     class_map,
                     attr_id_map,
                     frames,
+                    ignore_types,
                     assigned_scalar_attrs=scalar_attrs,
                     occluded_attrs=occ_attrs,
                 )
@@ -3594,6 +3607,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         class_map,
                         attr_id_map,
                         frames,
+                        ignore_types,
                         assigned_scalar_attrs=scalar_attrs,
                         track_index=track_index,
                         immutable_attrs=immutable_attrs,
@@ -3884,7 +3898,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 _seen_type = foua._RETURN_TYPES_MAP[label_type]
             if _seen_type not in _seen_label_types:
-
                 _seen_label_types.append(_seen_type)
                 _label_schema[lf] = lf_info
             elif verbose:
@@ -4091,6 +4104,39 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         _tracks = [t for t in tracks if t["label_id"] in _cvat_classes]
         return _tags, _shapes, _tracks
 
+    def _get_return_label_types(self, label_schema, label_fields):
+        label_types = []
+        for label_field in label_fields:
+            label_type = label_schema[label_field].get("type", None)
+            if label_type:
+                label_types.append(foua._RETURN_TYPES_MAP[label_type])
+        return label_types
+
+    def _get_ignored_types(
+        self, existing_project_id, label_types, label_type, is_last_field
+    ):
+        """Used when uploading multiple fields to an existing project.
+        Each field must have a different type, but can have the same class
+        names. When loading annotations, if a field exists for a found label
+        type, that label will not be loaded with any other fields.
+        """
+        if not existing_project_id and len(label_types) > 1:
+            # Not relevant unless uploading to a project and there are multiple
+            # types of labels
+            return []
+
+        # The last label field being loaded stores all unexpected label types
+        # Ignore only the other label types that have been loaded
+        if is_last_field:
+            ignored_types = set(label_types) - {label_type}
+        else:
+            # Other fields only load the expected type
+            # Ignore all other types
+            all_label_types = foua._RETURN_TYPES_MAP.values()
+            ignored_types = set(all_label_types) - {label_type}
+
+        return ignored_types
+
     def _convert_polylines_to_masks(
         self, results, label_info, frames_metadata
     ):
@@ -4167,6 +4213,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         class_map,
         attr_id_map,
         frames,
+        ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
         immutable_attrs=None,
@@ -4203,6 +4250,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 class_map,
                 attr_id_map,
                 frames,
+                ignore_types,
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
                 immutable_attrs=immutable_attrs,
@@ -4228,6 +4276,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     class_map,
                     attr_id_map,
                     frames,
+                    ignore_types,
                     assigned_scalar_attrs=assigned_scalar_attrs,
                     track_index=track_index,
                     immutable_attrs=immutable_attrs,
@@ -4248,6 +4297,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         class_map,
         attr_id_map,
         frames,
+        ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
         immutable_attrs=None,
@@ -4367,7 +4417,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 cvat_tag = CVATTag(anno, class_map, attr_id_map)
                 label = cvat_tag.to_classification()
 
-        if label is None:
+        if label is None or label_type in ignore_types:
             return prev_type
 
         if label_type not in results:
