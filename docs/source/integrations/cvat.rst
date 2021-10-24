@@ -1217,8 +1217,8 @@ attribute be populated without allowing edits to the vehicle's `type`:
 Annotating multiple fields
 --------------------------
 
-The `label_schema` argument allows you to define annotation tasks for multiple
-fields at once:
+The `label_schema` argument allows you to define an annotation task that
+involves multiple fields:
 
 .. code:: python
     :linenos:
@@ -1250,14 +1250,17 @@ fields at once:
     view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
     print(dataset.get_annotation_info(anno_key))
 
-    # Add annotations in both CVAT tasks that were created
+    # Add annotations in CVAT...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. note:
+.. note::
 
-    When annotating multiple fields, each field will get its own CVAT task.
+    CVAT annotation schemas do not have a notion of label fields. Therefore,
+    if you define an annotation schema that involves the same class label in
+    multiple fields, the name of the label field will be appended to the class
+    in CVAT in order to distinguish the class labels.
 
 .. image:: /images/integrations/cvat_multiple_fields.png
    :alt: cvat-multiple-fields
