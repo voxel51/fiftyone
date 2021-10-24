@@ -5202,9 +5202,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             class_id = class_id_map[label_name]
             obj["label_id"] = class_id
             attr_map = attr_id_map[class_id]
+            attrs = []
             for attr in obj["attributes"]:
                 attr_name = attr["spec_id"]
-                attr["spec_id"] = attr_map[attr_name]
+                if attr_name in attr_map:
+                    attr["spec_id"] = attr_map[attr_name]
+                    attrs.append(attr_name)
+            obj["attributes"] = attrs
 
         return shapes_or_tags
 
@@ -5215,13 +5219,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             track["label_id"] = class_id
             attr_map = attr_id_map[class_id]
             for shape in track["shapes"]:
+                attrs = []
                 for attr in shape["attributes"]:
                     attr_name = attr["spec_id"]
-                    attr["spec_id"] = attr_map[attr_name]
+                    if attr_name in attr_map:
+                        attr["spec_id"] = attr_map[attr_name]
+                        attrs.append(attr_name)
+                shape["attributes"] = attrs
 
+            attrs = []
             for attr in track["attributes"]:
                 attr_name = attr["spec_id"]
-                attr["spec_id"] = attr_id_map[attr_name]
+                if attr_name in attr_map:
+                    attr["spec_id"] = attr_map[attr_name]
+                    attrs.append(attr_name)
+
+            track["attributes"] = attrs
 
         return tracks
 
