@@ -2685,7 +2685,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
         if self.project_ids:
             logger.info("Deleting projects...")
-            api.delete_project(self.project_ids)
+            api.delete_projects(self.project_ids)
 
         # @todo save updated results to DB?
         self.project_ids = []
