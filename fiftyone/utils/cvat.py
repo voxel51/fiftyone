@@ -3786,7 +3786,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             elif verbose:
                 logger.warning(
                     "A field with label type `%s` is already being annotated. Ignoring field `%s`...",
-                    label_type,
+                    _seen_type,
                     lf,
                 )
         return _label_schema
