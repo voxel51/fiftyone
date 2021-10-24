@@ -2,46 +2,138 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { get32BitColor } from "./color";
 import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
-import { deserialize } from "./numpy";
-import { FrameChunk } from "./state";
+import { ARRAY_TYPES, deserialize } from "./numpy";
+import { Coloring, FrameChunk, MaskTargets } from "./state";
+
+interface ResolveColor {
+  key: string | number;
+  seed: number;
+  color: string;
+}
+
+type ResolveColorMethod = ReaderMethod & ResolveColor;
+
+const [requestColor, resolveColor] = ((): [
+  (pool: string[], seed: number, key: string | number) => Promise<string>,
+  (result: ResolveColor) => void
+] => {
+  const cache = {};
+  const requests = {};
+  const promises = {};
+
+  return [
+    (pool, seed, key) => {
+      if (!(seed in cache)) {
+        cache[seed] = {};
+      }
+
+      const colors = cache[seed];
+
+      if (!(key in colors)) {
+        if (!(seed in requests)) {
+          requests[seed] = {};
+          promises[seed] = {};
+        }
+
+        const seedRequests = requests[seed];
+        const seedPromises = promises[seed];
+
+        if (!(key in seedRequests)) {
+          seedPromises[key] = new Promise((resolve) => {
+            seedRequests[key] = resolve;
+            postMessage({
+              method: "requestColor",
+              key,
+              seed,
+              pool,
+            });
+          });
+        }
+
+        return seedPromises[key];
+      }
+
+      return Promise.resolve(colors[key]);
+    },
+    ({ key, seed, color }) => {
+      requests[seed][key](color);
+    },
+  ];
+})();
 
 const DESERIALIZE = {
   Detection: (label, buffers) => {
     if (typeof label.mask === "string") {
-      label.mask = deserialize(label.mask);
-      buffers.push(label.mask.buffer);
+      const data = deserialize(label.mask);
+      const [height, width] = data.shape;
+
+      label.mask = {
+        data,
+        image: new ImageData(width, height).data.buffer,
+      };
+      buffers.push(data.buffer);
+      buffers.push(label.mask.image);
     }
   },
   Detections: (labels, buffers) => {
-    labels.detections.forEach((label) => {
-      if (typeof label.mask === "string") {
-        label.mask = deserialize(label.mask);
-        buffers.push(label.mask.buffer);
-      }
-    });
+    labels.detections.forEach((label) =>
+      DESERIALIZE[label._cls](label, buffers)
+    );
+  },
+  Heatmap: (label, buffers) => {
+    if (typeof label.map === "string") {
+      const data = deserialize(label.map);
+      const [height, width] = data.shape;
+
+      label.map = {
+        data,
+        image: new ImageData(width, height).data.buffer,
+      };
+
+      buffers.push(data.buffer);
+      buffers.push(label.map.image);
+    }
   },
   Segmentation: (label, buffers) => {
     if (typeof label.mask === "string") {
-      label.mask = deserialize(label.mask);
-      buffers.push(label.mask.buffer);
+      const data = deserialize(label.mask);
+      const [height, width] = data.shape;
+
+      label.mask = {
+        data,
+        image: new ImageData(width, height).data.buffer,
+      };
+
+      buffers.push(data.buffer);
+      buffers.push(label.mask.image);
     }
   },
 };
 
 const mapId = (obj) => {
-  obj.id = obj._id;
-  delete obj._id;
+  if (obj._id) {
+    obj.id = obj._id;
+    delete obj._id;
+  }
   return obj;
 };
 
-const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
+const processLabels = (
+  sample: { [key: string]: any },
+  coloring: Coloring,
+  prefix: string = ""
+): Promise<ArrayBuffer[]> => {
   let buffers: ArrayBuffer[] = [];
+  const promises = [];
+
   for (const field in sample) {
     const label = sample[field];
     if (!label) {
       continue;
     }
+
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
     }
@@ -56,9 +148,13 @@ const processLabels = (sample: { [key: string]: any }): ArrayBuffer[] => {
         mapId(label);
       }
     }
+
+    if (UPDATE_LABEL[label._cls]) {
+      promises.push(UPDATE_LABEL[label._cls](prefix + field, label, coloring));
+    }
   }
 
-  return buffers;
+  return Promise.all(promises).then(() => buffers);
 };
 
 /** GLOBALS */
@@ -75,68 +171,76 @@ interface ReaderMethod {
 }
 
 interface ProcessSample {
-  origin: string;
   uuid: string;
   sample: {
     [key: string]: object;
     frames: any[];
   };
+  coloring: Coloring;
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({ sample, uuid }: ProcessSample) => {
-  let buffers = processLabels(sample);
+const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
+  mapId(sample);
+
+  let bufferPromises = [processLabels(sample, coloring)];
 
   if (sample.frames && sample.frames.length) {
-    buffers = [
-      ...buffers,
+    bufferPromises = [
+      ...bufferPromises,
       ...sample.frames
-        .map<ArrayBuffer[]>((frame) => processLabels(frame))
+        .map((frame) => processLabels(frame, coloring, "frames."))
         .flat(),
     ];
   }
 
-  mapId(sample);
-  postMessage(
-    {
-      method: "processSample",
-      sample,
-      uuid,
-    },
-    // @ts-ignore
-    buffers
-  );
+  Promise.all(bufferPromises).then((buffers) => {
+    postMessage(
+      {
+        method: "processSample",
+        sample,
+        uuid,
+      },
+      // @ts-ignore
+      buffers.flat()
+    );
+  });
 };
 
 interface FrameStream {
   chunkSize: number;
   frameNumber: number;
   sampleId: string;
-  reader: ReadableStreamDefaultReader<FrameChunk>;
+  reader: ReadableStreamDefaultReader<FrameChunkResponse>;
   cancel: () => void;
+}
+
+interface FrameChunkResponse extends FrameChunk {
+  coloring: Coloring;
 }
 
 const createReader = ({
   chunkSize,
+  coloring,
   frameCount,
   frameNumber,
   sampleId,
   url,
 }: {
   chunkSize: number;
+  coloring: Coloring;
   frameCount: number;
   frameNumber: number;
-  origin: string;
   sampleId: string;
   url: string;
 }): FrameStream => {
   let cancelled = false;
 
-  const privateStream = new ReadableStream<FrameChunk>(
+  const privateStream = new ReadableStream<FrameChunkResponse>(
     {
       pull: (controller: ReadableStreamDefaultController) => {
-        if (frameNumber >= frameCount || cancelled) {
+        if (frameNumber > frameCount || cancelled) {
           controller.close();
           return Promise.resolve();
         }
@@ -153,7 +257,7 @@ const createReader = ({
           )
             .then((response: Response) => response.json())
             .then(({ frames, range }: FrameChunk) => {
-              controller.enqueue({ frames, range });
+              controller.enqueue({ frames, range, coloring });
               frameNumber = range[1] + 1;
               resolve();
             })
@@ -181,24 +285,25 @@ const getSendChunk = (uuid: string) => ({
   value,
 }: {
   done: boolean;
-  value?: FrameChunk;
+  value?: FrameChunkResponse;
 }) => {
   if (value) {
-    let buffers: ArrayBuffer[] = [];
-
-    value.frames.forEach((frame) => {
-      buffers = [...buffers, ...processLabels(frame)];
+    Promise.all(
+      value.frames.map((frame) =>
+        processLabels(frame, value.coloring, "frames.")
+      )
+    ).then((buffers) => {
+      postMessage(
+        {
+          method: "frameChunk",
+          frames: value.frames,
+          range: value.range,
+          uuid,
+        },
+        // @ts-ignore
+        buffers.flat()
+      );
     });
-    postMessage(
-      {
-        method: "frameChunk",
-        frames: value.frames,
-        range: value.range,
-        uuid,
-      },
-      // @ts-ignore
-      buffers
-    );
   }
 };
 
@@ -206,47 +311,180 @@ interface RequestFrameChunk {
   uuid: string;
 }
 
+type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
+
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
-    stream && stream.reader.read().then(getSendChunk(uuid));
+    stream &&
+      stream.reader
+        .read()
+        .then(getSendChunk(uuid))
+        .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
   }
 };
 
 interface SetStream {
-  sampleId: string;
-  frameNumber: number;
+  coloring: Coloring;
   frameCount: number;
+  frameNumber: number;
+  sampleId: string;
   uuid: string;
   url: string;
-  origin: string;
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
 
 const setStream = ({
-  sampleId,
-  frameNumber,
+  coloring,
   frameCount,
+  frameNumber,
+  sampleId,
   uuid,
   url,
 }: SetStream) => {
-  if (stream) {
-    stream.cancel();
-  }
+  stream && stream.cancel();
   streamId = uuid;
   stream = createReader({
+    coloring,
     chunkSize: CHUNK_SIZE,
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
     url,
-    origin,
   });
 
-  stream.reader.read().then(getSendChunk(uuid));
+  stream.reader
+    .read()
+    .then(getSendChunk(uuid))
+    .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
 };
 
-type Method = SetStreamMethod | ProcessSampleMethod;
+const isFloatArray = (arr) =>
+  arr instanceof Float32Array || arr instanceof Float64Array;
+
+const UPDATE_LABEL = {
+  Detection: async (field, label, coloring: Coloring) => {
+    if (!label.mask) {
+      return;
+    }
+
+    const color = await requestColor(
+      coloring.pool,
+      coloring.seed,
+      coloring.byLabel ? label.label : field
+    );
+
+    const overlay = new Uint32Array(label.mask.image);
+    const targets = new ARRAY_TYPES[label.mask.data.arrayType](
+      label.mask.data.buffer
+    );
+    const bitColor = get32BitColor(color);
+
+    for (const i in overlay) {
+      if (targets[i]) {
+        overlay[i] = bitColor;
+      }
+    }
+  },
+  Detections: async (field, labels, coloring: Coloring) => {
+    const promises = labels.detections.map((label) =>
+      UPDATE_LABEL[label._cls](field, label, coloring)
+    );
+
+    await Promise.all(promises);
+  },
+  Heatmap: async (field, label, coloring: Coloring) => {
+    if (!label.map) {
+      return;
+    }
+
+    const overlay = new Uint32Array(label.map.image);
+    const targets = new ARRAY_TYPES[label.map.data.arrayType](
+      label.map.data.buffer
+    );
+    const [start, stop] = label.range
+      ? label.range
+      : isFloatArray(targets)
+      ? [0, 1]
+      : [0, 255];
+
+    const max = Math.max(Math.abs(start), Math.abs(stop));
+
+    const color = await requestColor(coloring.pool, coloring.seed, field);
+
+    const getColor = coloring.byLabel
+      ? (value) => {
+          if (value === 0) {
+            return 0;
+          }
+
+          const index = Math.round(
+            (Math.max(value - start, 0) / (stop - start)) *
+              (coloring.scale.length - 1)
+          );
+
+          return get32BitColor(coloring.scale[index]);
+        }
+      : (value) => {
+          if (value === 0) {
+            return 0;
+          }
+
+          return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
+        };
+
+    for (const i in overlay) {
+      if (targets[i] !== 0) {
+        overlay[i] = getColor(targets[i]);
+      }
+    }
+  },
+  Segmentation: async (field, label, coloring) => {
+    if (!label.mask) {
+      return;
+    }
+
+    const overlay = new Uint32Array(label.mask.image);
+    const targets = new ARRAY_TYPES[label.mask.data.arrayType](
+      label.mask.data.buffer
+    );
+    let maskTargets = coloring.maskTargets[field];
+
+    if (!maskTargets) {
+      maskTargets = coloring.defaultMaskTargets;
+    }
+    const cache = {};
+
+    let color;
+    if (maskTargets && Object.keys(maskTargets).length === 1) {
+      color = get32BitColor(
+        await requestColor(coloring.pool, coloring.seed, field)
+      );
+    }
+
+    const getColor = (i) => {
+      i = Math.round(Math.abs(i)) % coloring.targets.length;
+
+      if (!(i in cache)) {
+        cache[i] = get32BitColor(coloring.targets[i]);
+      }
+
+      return cache[i];
+    };
+
+    for (const i in overlay) {
+      if (targets[i] !== 0) {
+        overlay[i] = color ? color : getColor(targets[i]);
+      }
+    }
+  },
+};
+
+type Method =
+  | ProcessSampleMethod
+  | RequestFrameChunkMethod
+  | SetStreamMethod
+  | ResolveColorMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
   switch (method) {
@@ -258,6 +496,9 @@ onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
       return;
     case "setStream":
       setStream(args as SetStream);
+      return;
+    case "resolveColor":
+      resolveColor(args as ResolveColor);
       return;
     default:
       throw new Error("unknown method");

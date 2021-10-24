@@ -19,8 +19,9 @@ import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-import fiftyone.core.stages as fost
 import fiftyone.core.utils as fou
+
+fost = fou.lazy_import("fiftyone.core.stages")
 
 
 class DatasetView(foc.SampleCollection):
@@ -151,10 +152,6 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def info(self):
-        """The info dict of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.info` for more information.
-        """
         return self._root_dataset.info
 
     @info.setter
@@ -163,10 +160,6 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def classes(self):
-        """The classes of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
-        """
         return self._root_dataset.classes
 
     @classes.setter
@@ -175,11 +168,6 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def default_classes(self):
-        """The default classes of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
-        information.
-        """
         return self._root_dataset.default_classes
 
     @default_classes.setter
@@ -188,11 +176,6 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def mask_targets(self):
-        """The mask targets of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
-        information.
-        """
         return self._root_dataset.mask_targets
 
     @mask_targets.setter
@@ -201,11 +184,6 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def default_mask_targets(self):
-        """The default mask targets of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
-        information.
-        """
         return self._root_dataset.default_mask_targets
 
     @default_mask_targets.setter

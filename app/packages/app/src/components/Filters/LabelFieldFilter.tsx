@@ -5,7 +5,12 @@ import styled from "styled-components";
 
 import { NamedRangeSlider } from "./RangeSlider";
 import CategoricalFilter from "./CategoricalFilter";
-import { CONFIDENCE_LABELS } from "../../utils/labels";
+import {
+  CONFIDENCE_LABELS,
+  FLOAT_FIELD,
+  FRAME_SUPPORT_FIELD,
+  SUPPORT_LABELS,
+} from "../../utils/labels";
 import { useExpand } from "./hooks";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
@@ -76,6 +81,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const path = `${entry.path}${getPathExtension(entry.labelType)}`;
   const cPath = `${path}.confidence`;
   const lPath = `${path}.label`;
+  const sPath = `${path}.support`;
 
   return (
     <animated.div style={{ ...props }}>
@@ -114,6 +120,26 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 path: cPath,
                 defaultRange: [0, 1],
               })}
+              fieldType={FLOAT_FIELD}
+            />
+          )}
+          {SUPPORT_LABELS.includes(entry.labelType) && (
+            <NamedRangeSlider
+              color={entry.color}
+              name={"Support"}
+              noneAtom={numericField.noneAtom({
+                modal,
+                path: sPath,
+              })}
+              noneCountAtom={noneCount({ path: sPath, modal })}
+              boundsAtom={numericField.boundsAtom({
+                path: sPath,
+              })}
+              valueAtom={numericField.rangeAtom({
+                modal,
+                path: sPath,
+              })}
+              fieldType={FRAME_SUPPORT_FIELD}
             />
           )}
         </div>

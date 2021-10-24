@@ -11,6 +11,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
+import fiftyone.core.utils as fou
 
 
 _BOOL_FILTER = "bool"
@@ -140,7 +141,7 @@ def _make_filter_stages(
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_scalar_expression(F(keys[-1]), args)
+            expr = _make_scalar_expression(F(keys[-1]), args, field)
             if expr is not None:
                 if hide_result:
                     new_field = "__%s" % path.split(".")[0]
@@ -163,12 +164,14 @@ def _make_filter_stages(
         else:
             view_field = get_view_field(fields_map, path)
 
-            if isinstance(field, fof.ListField):
-                filter = _make_scalar_expression(F(), args)
+            if isinstance(field, fof.ListField) and not isinstance(
+                field, fof.FrameSupportField
+            ):
+                filter = _make_scalar_expression(F(), args, field.field)
                 if filter is not None:
                     expr = view_field.filter(filter).length() > 0
             else:
-                expr = _make_scalar_expression(view_field, args)
+                expr = _make_scalar_expression(view_field, args, field)
 
             if expr is not None:
                 stages.append(fosg.Match(expr))
@@ -213,9 +216,28 @@ def _make_filter_stages(
     return stages, cleanup, filtered_labels
 
 
-def _make_scalar_expression(f, args):
+def _is_support(field):
+    if isinstance(field, fof.FrameSupportField):
+        return True
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if field.document_type in (
+            fol.TemporalDetection,
+            fol.TemporalDetections,
+        ):
+            return True
+
+    return False
+
+
+def _is_datetime(field):
+    return isinstance(field, (fof.DateField, fof.DateTimeField))
+
+
+def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
+
     if cls == _BOOL_FILTER:
         true, false = args["true"], args["false"]
         if true and false:
@@ -230,6 +252,13 @@ def _make_scalar_expression(f, args):
         if not true and not false:
             expr = (f != True) & (f != False)
 
+    elif cls == _NUMERIC_FILTER and _is_support(field):
+        mn, mx = args["range"]
+        expr = (f[0] >= mn) & (f[1] <= mx)
+    elif cls == _NUMERIC_FILTER and _is_datetime(field):
+        mn, mx = args["range"]
+        p = fou.timestamp_to_datetime
+        expr = (f >= p(mn)) & (f <= p(mx))
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)

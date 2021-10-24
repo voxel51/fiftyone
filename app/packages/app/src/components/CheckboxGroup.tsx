@@ -11,7 +11,10 @@ import { animated, useSpring } from "react-spring";
 
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
 import { isBooleanField } from "./Filters/BooleanFieldFilter.state";
-import { isNumericField } from "./Filters/NumericFieldFilter.state";
+import {
+  isNumericField,
+  isSupportField,
+} from "./Filters/NumericFieldFilter.state";
 import { isStringField } from "./Filters/StringFieldFilter.state";
 
 import { labelTypeIsFilterable } from "../utils/labels";
@@ -27,6 +30,7 @@ import { sortFilterResults } from "../recoil/atoms";
 const Body = styled.div`
   vertical-align: middle;
   font-weight: bold;
+  overflow: visible;
 
   & > div {
     margin-top: 3px;
@@ -125,6 +129,7 @@ const Body = styled.div`
 
 const CheckboxContainer = animated(styled.div`
   position: relative;
+  overflow: visible;
 `);
 
 const CheckboxText = ({
@@ -221,7 +226,7 @@ type EntryProps = {
 };
 
 const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
-  const {
+  let {
     disabled,
     color,
     hasDropdown,
@@ -240,13 +245,16 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
+  const isBoolean = useRecoilValue(isBooleanField(path));
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
-  const isBoolean = useRecoilValue(isBooleanField(path));
   const fieldFiltered =
     useRecoilValue(fieldIsFiltered({ path, modal })) &&
     canFilter &&
     !((isNumeric || isBoolean || isString) && modal);
+
+  const isSupport = useRecoilValue(isSupportField(path));
+  hasDropdown = hasDropdown && (!isSupport || !modal);
 
   const checkboxClass = hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
