@@ -2609,7 +2609,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         samples,
         config,
         id_map,
-        project_id,
+        project_ids,
         task_ids,
         job_ids,
         frame_id_map,
@@ -2618,7 +2618,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
     ):
         super().__init__(samples, config, id_map, backend=backend)
 
-        self.project_id = project_id
+        self.project_ids = project_ids
         self.task_ids = task_ids
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
@@ -2683,11 +2683,12 @@ class CVATAnnotationResults(foua.AnnotationResults):
             logger.info("Deleting tasks...")
             api.delete_tasks(self.task_ids)
 
-        if self.project_id:
-            logger.info("Deleting project...")
-            api.delete_project(self.project_id)
+        if self.project_ids:
+            logger.info("Deleting projects...")
+            api.delete_project(self.project_ids)
 
         # @todo save updated results to DB?
+        self.project_ids = []
         self.task_ids = []
         self.job_ids = {}
 
@@ -2788,7 +2789,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
-            d.get("project_id", None),
+            d.get("project_ids", []),
             d["task_ids"],
             job_ids,
             frame_id_map,
@@ -3327,6 +3328,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_name = config.project_name
         _project_id = config.project_id
         project_id = None
+        project_ids = []
 
         project_name, existing_project_id = self._parse_project_name_id(
             project_name, _project_id
@@ -3401,7 +3403,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_tracks.extend(_tracks)
 
             if project_id is None:
-                created_project_id = None
                 if existing_project_id is not None:
                     project_id = existing_project_id
                 else:
@@ -3411,6 +3412,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             project_name, cvat_schema
                         )
                         project_id = created_project_id
+                        project_ids = [project_id]
 
             task_name = (
                 "FiftyOne_%s"
@@ -3444,7 +3446,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             samples,
             config,
             id_map,
-            created_project_id,
+            project_ids,
             task_ids,
             job_ids,
             frame_id_map,
