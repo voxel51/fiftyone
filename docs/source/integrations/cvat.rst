@@ -448,8 +448,14 @@ provided:
     video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
--   **project_name** (*None*): an optional project name in which to store the
-    annotation tasks. By default, no project is created
+-   **project_name** (*None*): an optional project name to which to upload the
+    created CVAT task. If a project with this name is found, it will be
+    used, otherwise a new project with this name is created. By
+    default, no project is used
+-   **project_id** (*None*): an optional integer id of an existing CVAT project to
+    which to upload the annotation tasks. By default, no project is
+    used
+
 
 
 .. _cvat-label-schema:
@@ -734,7 +740,8 @@ You can configure an annotation run for this as follows:
 You can also include a `read_only=True` parameter when uploading existing
 label attributes to specify that the attribute's value should be uploaded to
 the annotation backend for informational purposes, but any edits to the
-attribute's value should not be imported back into FiftyOne.
+attribute's value should not be imported back into FiftyOne. This parameter
+is not used when uploading to existing projects.
 
 For example, if you have vehicles with their `make` attribute populated and you
 want to populate a new `model` attribute based on this information without
@@ -1309,22 +1316,17 @@ Creating projects
 -----------------
 
 You can use the optional `project_name` parameter to specify the name of a
-CVAT project to which to upload the task(s) for an annotation run.
+CVAT project to which to upload the task(s) for an annotation run. If the given
+`project_name` already exists, the task will be uploaded to the existing
+project.
 
 A typical use case for this parameter is video annotation, since in CVAT every
 video must be annotated in a separate task. Creating a project allows all of
 the tasks to be organized together in one place.
 
-As with tasks, you can delete the project(s) associated with an annotation run
+As with tasks, you can delete the created project associated with an annotation run
 by passing the `cleanup=True` option to
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
-
-.. note::
-
-    All tasks within a CVAT project must share the same label schema. Thus, if
-    you specify a `project_name` for an annotation run that includes multiple
-    label fields, a new project (with the same base name) is created for each
-    label field.
 
 .. code:: python
     :linenos:
@@ -1349,6 +1351,80 @@ by passing the `cleanup=True` option to
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
+
+Upload to existing projects
+---------------------------
+
+The `project_name` and `project_id` parameters can both be used to specify an
+existing CVAT project to which to upload the task(s) for an annotation run.
+
+A typical use case for this workflow is video annotation, since in CVAT every
+video must be annotated in a separate task. Using a project allows all of
+the tasks to be organized together in one place. Similarly, when
+annotating tasks with the same schema over an extended period of time, it can be
+useful to organize these tasks in the same project in CVAT.
+
+When uploading to an existing project, the schema of the CVAT project is 
+used over any given classes or attributes. This means that the `label_field`
+and `label_schema` parameters are not necessary. However, they can
+still be used to define the
+label field(s) to upload or the names of new field(s) to store annotations when downloaded.
+If no label fields are provided, then each annotated label type will raise a
+command line prompt to enter a new label field name.
+
+.. note::
+
+   When uploading to existing projects, no two label fields of the same type can be
+   annotated in one run. 
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(3)
+
+    project_name="fiftyone_project_example"
+
+    # Create a project in CVAT
+    view.annotate(
+        "create_project",
+        label_field="ground_truth",
+        project_name=project_name,
+        launch_editor=True,
+    )
+
+    # Upload to existing project
+    anno_key = "cvat_existing_project"
+    view.annotate(
+        anno_key,
+        label_field="predictions",
+        project_name=project_name,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate videos in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+    # Annotate new fields based on project schema
+    anno_key = "cvat_new_fields"
+    view.annotate(
+        anno_key,
+        project_name=project_name,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate videos in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
 
 Assigning users
 ---------------

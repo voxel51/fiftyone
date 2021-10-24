@@ -2674,8 +2674,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self._get_status(log=True)
 
     def cleanup(self):
-        """Deletes all tasks associated with this annotation run from the
-        CVAT server.
+        """Deletes all tasks associated with this annotation run and any created
+        projects from the CVAT server.
         """
         api = self.connect_to_api()
 
