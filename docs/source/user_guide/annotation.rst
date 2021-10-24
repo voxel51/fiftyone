@@ -416,8 +416,8 @@ to manage the run in the future.
     subsets of the samples you wish to annotate.
 
     You can use :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
-    to get a sense for the total size of the label metadata in a dataset as a
-    rule of thumb to estimate the size of a candidate annotation run.
+    to get a sense for the total size of the labels in a dataset as a rule of
+    thumb to estimate the size of a candidate annotation run.
 
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
