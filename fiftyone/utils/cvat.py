@@ -4061,11 +4061,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _build_cvat_schema(self, label_schema):
         cvat_schema = {}
-        occluded_attrs = defaultdict(dict)
         assign_scalar_attrs = {}
+        occluded_attrs = defaultdict(dict)
         label_field_classes = defaultdict(dict)
+
         _class_label_fields = {}
-        _duplicate_class_names = []
+        _duplicate_classes = []
+
         for label_field, label_info in label_schema.items():
             label_type = label_info["type"]
             is_existing_field = label_info["existing_field"]
@@ -4078,8 +4080,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if is_existing_field and label_type != "scalar":
                 if "label_id" in attributes:
                     raise ValueError(
-                        "Label field '%s' attribute schema cannot use reserved "
-                        "name 'label_id'" % label_field
+                        "Label field '%s' attribute schema cannot use "
+                        "reserved name 'label_id'" % label_field
                     )
 
                 attributes["label_id"] = {
@@ -4105,7 +4107,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "mutable": True,
                     }
 
-            # Global attributes
+            # Handle class name clashes and global attributes
             for _class in classes:
                 if etau.is_str(_class):
                     _classes = [_class]
@@ -4113,24 +4115,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     _classes = _class["classes"]
 
                 for name in _classes:
+                    # If two label fields share a class name, we must append
+                    # `label_field` to all instances of `name` to disambiguate
                     if name in cvat_schema:
-                        prev_field = _class_label_fields[name]
-                        prev_attrs = cvat_schema[name]
-                        new_name = "%s_%s" % (name, prev_field)
-                        del cvat_schema[name]
-                        cvat_schema[new_name] = prev_attrs
-                        label_field_classes[prev_field][name] = new_name
-                        if name in occluded_attrs:
-                            prev_occ_attr_name = occluded_attrs[label_field][
-                                name
-                            ]
-                            del occluded_attrs[label_field][name]
-                            occluded_attrs[label_field][
-                                new_name
-                            ] = prev_occ_attr_name
-                        _duplicate_class_names.append(name)
+                        _duplicate_classes.append(name)
 
-                    if name in _duplicate_class_names:
+                        prev_field = _class_label_fields[name]
+
+                        new_name = "%s_%s" % (name, prev_field)
+                        cvat_schema[new_name] = cvat_schema.pop(name)
+
+                        label_field_classes[prev_field][name] = new_name
+
+                        if name in occluded_attrs[label_field]:
+                            attr_name = occluded_attrs[label_field].pop(name)
+                            occluded_attrs[label_field][new_name] = attr_name
+
+                    if name in _duplicate_classes:
                         new_name = "%s_%s" % (name, label_field)
                         label_field_classes[label_field][name] = new_name
                         name = new_name
@@ -4159,7 +4160,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     )
 
                 for name in _classes:
-                    if name in _duplicate_class_names:
+                    if name in _duplicate_classes:
                         name = "%s_%s" % (name, label_field)
 
                     cvat_schema[name].update(_attrs)
