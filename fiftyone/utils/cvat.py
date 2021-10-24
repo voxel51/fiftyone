@@ -3341,7 +3341,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 )
         elif label_schema != {None: {}}:
             label_schema = self._ensure_one_field_per_type(label_schema)
-            config.label_schema = label_schema
 
         id_map = {}
         task_ids = []
@@ -3360,6 +3359,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ) = self._get_cvat_schema(
             label_schema=label_schema, project_id=existing_project_id,
         )
+        if existing_project_id:
+            config.label_schema = label_schema
 
         # Create a new task for every video sample
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
@@ -3842,10 +3843,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         labels_to_update = set()
         occluded_attrs = {}
         assign_scalar_attrs = {}
+        classes_and_attrs = []
         for label in labels:
             name = label["name"]
             attrs = label["attributes"]
             cvat_schema[name] = {a["name"]: a for a in attrs}
+
             if "label_id" not in cvat_schema[name]:
                 labels_to_update.add(name)
                 cvat_schema[name]["label_id"] = {
@@ -3853,6 +3856,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "input_type": "text",
                     "mutable": True,
                 }
+
+            label_attrs = {}
+            for attr_name, attr in cvat_schema[name].items():
+                if attr_name != "label_id":
+                    input_type = attr["input_type"]
+                    label_attrs[attr_name] = {"type": input_type}
+                    default_value = attr["default_value"]
+                    values = attr["values"]
+                    if default_value:
+                        label_attrs[attr_name]["default"] = default_value
+                    if values and values[0] != "":
+                        label_attrs[attr_name]["values"] = values
+
+            classes_and_attrs.append(
+                {"classes": [name], "attributes": label_attrs,}
+            )
 
         label_field_classes = {}
         class_names = {n: n for n in cvat_schema.keys()}
@@ -3865,6 +3884,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # False: scalars are annotated as tag labels
                 assign_scalar_attrs[label_field] = not bool(classes)
             else:
+                if label_type is not None:
+                    label_schema[label_field]["attributes"] = {}
+                    label_schema[label_field]["classes"] = classes_and_attrs
                 assign_scalar_attrs[label_field] = None
 
             label_field_classes[label_field] = deepcopy(class_names)
