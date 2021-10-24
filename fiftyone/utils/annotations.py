@@ -1227,6 +1227,7 @@ def _merge_labels(
         field = label_field
         added_id_map = defaultdict(list)
 
+    # Record existing label IDs
     existing_ids = set()
     for sample_id, sample_labels in id_map.items():
         if is_video:
@@ -1237,28 +1238,60 @@ def _merge_labels(
             for label_id in _to_list(sample_labels):
                 existing_ids.add((sample_id, label_id))
 
+    # Record annotation label IDs
     anno_ids = set()
+    anno_id_counts = defaultdict(int)
     for sample_id, sample_labels in anno_dict.items():
         if is_video:
             for frame_id, frame_labels in sample_labels.items():
                 for label_id in frame_labels.keys():
                     anno_ids.add((sample_id, frame_id, label_id))
+                    anno_id_counts[label_id] += 1
         else:
             for label_id in sample_labels.keys():
                 anno_ids.add((sample_id, label_id))
+                anno_id_counts[label_id] += 1
 
+    # Determine whether labels should be added, merged, or deleted
     delete_ids = existing_ids - anno_ids
     new_ids = anno_ids - existing_ids
     merge_ids = anno_ids - new_ids
 
+    #
+    # Manually prevent duplicate label IDs from being imported by regnerating
+    # any newly added IDs that are duplicates.
+    #
+    # Duplicate IDs can happen when copying annotations or splitting/merging
+    # video track annotations in backends such as CVAT that don't provide good
+    # safeguards against modifying label IDs, which should be immutable.
+    #
+    dup_ids = set(_id for _id, count in anno_id_counts.items() if count > 1)
+    if dup_ids:
+        if is_video:
+            for sample_id, frame_id, label_id in new_ids:
+                if label_id in dup_ids:
+                    frame_labels = anno_dict[sample_id][frame_id]
+                    label = frame_labels.pop(label_id)
+                    label._id = ObjectId()  # regenerate label ID
+                    frame_labels[str(label._id)] = label
+        else:
+            for sample_id, label_id in new_ids:
+                if label_id in dup_ids:
+                    sample_labels = anno_dict[sample_id]
+                    label = sample_labels.pop(label_id)
+                    label._id = ObjectId()  # regenerate label ID
+                    sample_labels[str(label._id)] = label
+
+    logger.info("Loading labels for field '%s'...", label_field)
+
+    # Delete labels that were deleted in the annotation task
     if delete_ids and allow_deletions:
         _del_ids = [key[-1] for key in delete_ids]
         samples._dataset.delete_labels(ids=_del_ids, fields=label_field)
 
+    # Add/merge labels from the annotation task
     sample_ids = list(anno_dict.keys())
     view = samples._dataset.select(sample_ids).select_fields(label_field)
-
-    logger.info("Loading labels for field '%s'...", label_field)
     for sample in view.iter_samples(progress=True):
         sample_id = sample.id
         sample_annos = anno_dict[sample_id]
@@ -1474,7 +1507,7 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
     # Perform necessary transformations
     for _id, sample_annos in anno_dict.items():
         for _frame_id, frame_annos in sample_annos.items():
-            for _label_id in list(frame_annos.keys()):  # list b/c we'll edit
+            for _label_id in list(frame_annos.keys()):  # list b/c we may edit
                 label = frame_annos[_label_id]
 
                 # If the annotation task did not consider keyframes, then never
@@ -1495,16 +1528,21 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
 
                 label.index = _index
 
-                # If only keyframes were uploaded and this label coincides with
-                # an existing observation of its track, inherit the label ID
-                # from the existing observation so that the labels can be
-                # merged
-                if only_keyframes:
-                    _existing_id = id_map.get((_id, _frame_id, _index), None)
-                    if _existing_id is not None:
-                        label._id = ObjectId(_existing_id)
-                        del frame_annos[_label_id]
-                        frame_annos[_existing_id] = label
+                #
+                # If this label coincides with an existing observation of its
+                # track, inherit the label ID from the existing observation.
+                #
+                # This is required to properly import interpolated frames of
+                # keyframe-only annotation runs, and it is also helpful to
+                # mitigate any issues such as label ID duplication along a
+                # track, which can happen in annotation backends like CVAT that
+                # don't provide a good way to manage immutable label IDs
+                #
+                _existing_id = id_map.get((_id, _frame_id, _index), None)
+                if _existing_id is not None:
+                    label._id = ObjectId(_existing_id)
+                    del frame_annos[_label_id]
+                    frame_annos[_existing_id] = label
 
 
 class AnnotationBackendConfig(foa.AnnotationMethodConfig):
