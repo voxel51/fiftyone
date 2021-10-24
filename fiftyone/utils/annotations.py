@@ -1268,19 +1268,27 @@ def _merge_labels(
     dup_ids = set(_id for _id, count in anno_id_counts.items() if count > 1)
     if dup_ids:
         if is_video:
-            for sample_id, frame_id, label_id in new_ids:
+            for sample_id, frame_id, label_id in list(new_ids):
                 if label_id in dup_ids:
+                    # Regenerate duplicate label ID
                     frame_labels = anno_dict[sample_id][frame_id]
                     label = frame_labels.pop(label_id)
-                    label._id = ObjectId()  # regenerate label ID
-                    frame_labels[str(label._id)] = label
+                    label._id = ObjectId()
+                    new_label_id = str(label._id)
+                    frame_labels[new_label_id] = label
+                    new_ids.discard((sample_id, frame_id, label_id))
+                    new_ids.add((sample_id, frame_id, new_label_id))
         else:
-            for sample_id, label_id in new_ids:
+            for sample_id, label_id in list(new_ids):
                 if label_id in dup_ids:
+                    # Regenerate duplicate label ID
                     sample_labels = anno_dict[sample_id]
                     label = sample_labels.pop(label_id)
-                    label._id = ObjectId()  # regenerate label ID
-                    sample_labels[str(label._id)] = label
+                    label._id = ObjectId()
+                    new_label_id = str(label._id)
+                    sample_labels[new_label_id] = label
+                    new_ids.discard((sample_id, label_id))
+                    new_ids.add((sample_id, new_label_id))
 
     logger.info("Loading labels for field '%s'...", label_field)
 
