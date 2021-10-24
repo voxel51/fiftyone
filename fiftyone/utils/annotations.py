@@ -328,7 +328,7 @@ def _build_label_schema(
 ):
     if label_schema is None and label_field is None:
         if backend.allows_none_label_field:
-            return None, samples
+            return {None: {}}, samples
         raise ValueError("Either `label_schema` or `label_field` is required")
 
     if label_schema is None:
@@ -958,7 +958,7 @@ def load_annotations(
 
             anno_dict = annotations.get(label_field, {})
 
-        if expected_type not in anno_dict:
+        if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
 
         for anno_type, annos in anno_dict.items():
