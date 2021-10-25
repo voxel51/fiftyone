@@ -30,7 +30,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.13.3"  # open source compatibility version
+VERSION = "0.14.0"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
@@ -48,7 +48,7 @@ DEV_INSTALL = os.path.isdir(
 RC_INSTALL = "rc" in TEAMS_VERSION
 
 # App configuration
-DEFAULT_APP_COLOR_POOL = {
+DEFAULT_APP_COLOR_POOL = [
     "#ee0000",
     "#ee6600",
     "#993300",
@@ -62,7 +62,7 @@ DEFAULT_APP_COLOR_POOL = {
     "#6600ff",
     "#cc33cc",
     "#777799",
-}
+]
 
 # MongoDB setup
 try:

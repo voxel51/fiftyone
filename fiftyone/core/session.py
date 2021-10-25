@@ -101,8 +101,8 @@ def launch_app(
     called when another App exists, the existing App will be closed.
 
     Args:
-        dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
-            load
+        dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
+            :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
         port (None): the port number to serve the App. If None,
@@ -126,6 +126,7 @@ def launch_app(
         a :class:`Session`
     """
     global _session  # pylint: disable=global-statement
+
     #
     # Note, we always `close_app()` here rather than just calling
     # `session.open()` if a session already exists, because the app may have
@@ -229,8 +230,8 @@ class Session(foc.HasClient):
         terminate the session.
 
     Args:
-        dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
-            load
+        dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` or
+            :class:`fiftyone.core.view.DatasetView` to load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
         plots (None): an optional
@@ -271,6 +272,11 @@ class Session(foc.HasClient):
         auto=True,
         config=None,
     ):
+        # Allow `dataset` to be a view
+        if isinstance(dataset, fov.DatasetView):
+            view = dataset
+            dataset = dataset._root_dataset
+
         self._validate(dataset, view, plots, config)
 
         if port is None:

@@ -6,7 +6,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
 import * as selectors from "../recoil/selectors";
-import { gridZoom, gridZoomRange } from "./Flashlight";
+import { gridZoomRange } from "./Flashlight";
 import { useTheme } from "./../utils/hooks";
 import { Slider } from "./Filters/RangeSlider";
 import { CircularProgress } from "@material-ui/core";
@@ -21,6 +21,7 @@ const Wrapper = styled.div`
   display: flex;
   margin-bottom: 0.5rem;
   flex-shrink: 0;
+  padding: 0 1rem;
 
   ${DropdownHandle.Body} {
     width: 264px;
@@ -66,7 +67,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const element = useRecoilValue(selectors.elementNames);
   const filteredCount = useRecoilValue(selectors.filteredCount);
-  const setGridZoom = useSetRecoilState(gridZoom);
+  const setGridZoom = useSetRecoilState(selectors.gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
   let countStr = null;
@@ -110,12 +111,11 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
           <SliderContainer>
             <div style={{ flexGrow: 1 }} title={"Zoom"}>
               <Slider
-                valueAtom={gridZoom}
+                valueAtom={selectors.gridZoom}
                 boundsAtom={gridZoomRange}
                 color={theme.brand}
                 showBounds={false}
                 persistValue={false}
-                int={true}
                 style={{ padding: 0 }}
               />
             </div>

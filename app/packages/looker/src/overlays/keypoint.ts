@@ -2,7 +2,7 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
-import { DASH_COLOR, TOLERANCE } from "../constants";
+import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distance } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
@@ -45,7 +45,7 @@ export default class KeypointOverlay<
       ctx.fill();
 
       if (selected) {
-        ctx.fillStyle = DASH_COLOR;
+        ctx.fillStyle = INFO_COLOR;
         ctx.beginPath();
         ctx.arc(x, y, state.pointRadius, 0, Math.PI * 2);
         ctx.fill();
@@ -57,7 +57,7 @@ export default class KeypointOverlay<
     return this.getDistanceAndPoint(state)[0];
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<KeypointLabel> {
     return {
       color: this.getColor(state),
       field: this.field,

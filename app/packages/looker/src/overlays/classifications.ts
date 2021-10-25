@@ -2,11 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { getColor } from "../color";
 import {
-  DASH_COLOR,
   MOMENT_CLASSIFICATIONS,
-  TEXT_COLOR,
   TEMPORAL_DETECTION,
+  INFO_COLOR,
 } from "../constants";
 import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
 import {
@@ -41,8 +41,12 @@ export class ClassificationsOverlay<
   }
 
   getColor(state: Readonly<State>, field: string, label: Label): string {
-    const key = state.options.colorByLabel ? label.label : field;
-    return state.options.colorMap(key);
+    const key = state.options.coloring.byLabel ? label.label : field;
+    return getColor(
+      state.options.coloring.pool,
+      state.options.coloring.seed,
+      key
+    );
   }
 
   isShown(state: Readonly<State>): boolean {
@@ -71,9 +75,11 @@ export class ClassificationsOverlay<
     return CONTAINS.NONE;
   }
 
-  getPointInfo(state: Readonly<State>): PointInfo {
+  getPointInfo(state: Readonly<State>): PointInfo<Label> {
     const filtered = this.getFilteredAndFlat(state);
     const [w, h] = state.config.dimensions;
+
+    let result: PointInfo<Label>;
 
     for (const [field, label] of filtered) {
       const box = this.labelBoundingBoxes[label.id];
@@ -85,7 +91,7 @@ export class ClassificationsOverlay<
         const [px, py] = state.pixelCoordinates;
 
         if (px >= bx && py >= by && px <= bx + bw && py <= by + bh) {
-          return {
+          result = {
             field: field,
             label,
             type: "Classification",
@@ -94,6 +100,8 @@ export class ClassificationsOverlay<
         }
       }
     }
+
+    return result;
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
@@ -215,6 +223,8 @@ export class ClassificationsOverlay<
     const color = this.getColor(state, field, label);
     const [cx, cy] = state.canvasBBox;
 
+    const tmp = ctx.globalAlpha;
+    ctx.globalAlpha = state.options.alpha;
     let [tlx, tly, w, h] = [
       state.textPad + cx,
       top + cy,
@@ -229,8 +239,9 @@ export class ClassificationsOverlay<
     ctx.lineTo(tlx, tly + h);
     ctx.closePath();
     ctx.fill();
+    ctx.globalAlpha = tmp;
 
-    ctx.fillStyle = TEXT_COLOR;
+    ctx.fillStyle = INFO_COLOR;
     ctx.fillText(text, tlx + state.textPad, tly + h - state.textPad);
 
     this.strokeBorder(ctx, state, [tlx, tly, w, h], color);
@@ -240,7 +251,7 @@ export class ClassificationsOverlay<
         ctx,
         state,
         [tlx, tly, w, h],
-        DASH_COLOR,
+        INFO_COLOR,
         state.dashLength
       );
     }
@@ -288,6 +299,14 @@ export class ClassificationsOverlay<
     ctx.closePath();
     ctx.stroke();
   }
+
+  needsLabelUpdate() {
+    return false;
+  }
+  getLabelData() {
+    return [];
+  }
+  updateLabelData() {}
 }
 
 export interface TemporalDetectionLabel extends Classification {
@@ -300,7 +319,6 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
   TemporalDetectionLabel | ClassificationLabel
 > {
   getFiltered(state: Readonly<VideoState>) {
-    console.log(this.labels);
     return this.labels.map<
       [string, (TemporalDetectionLabel | ClassificationLabel)[]]
     >(([field, labels]) => [

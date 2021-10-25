@@ -201,7 +201,6 @@ class SampleInDatasetTests(unittest.TestCase):
         sample = fo.Sample(filepath="/path/to/image.jpg")
 
         self.assertIsNone(sample.id)
-        self.assertIsNone(sample.ingest_time)
         self.assertFalse(sample.in_dataset)
         self.assertIsNone(sample.dataset)
 
@@ -209,7 +208,6 @@ class SampleInDatasetTests(unittest.TestCase):
 
         self.assertIsNotNone(sample.id)
         self.assertIsInstance(sample.id, str)
-        self.assertIsInstance(sample.ingest_time, datetime.datetime)
         self.assertTrue(sample.in_dataset)
         self.assertIs(sample.dataset, dataset)
 

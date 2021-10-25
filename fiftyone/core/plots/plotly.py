@@ -12,6 +12,8 @@ import os
 import warnings
 
 import numpy as np
+from PIL import ImageColor
+import plotly.colors as pc
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -34,6 +36,7 @@ _DEFAULT_LAYOUT = dict(
 )
 
 _DEFAULT_LINE_COLOR = "#FF6D04"
+_DEFAULT_CONTINUOUS_COLORSCALE = "viridis"
 
 
 def plot_confusion_matrix(
@@ -986,6 +989,103 @@ def _parse_locations(locations, samples):
     return np.asarray(locations)
 
 
+def get_colormap(colorscale, n=256, hex_strs=False):
+    """Generates a continuous colormap with the specified number of colors from
+    the given plotly colorscale.
+
+    The provided ``colorscale`` can be any of the following:
+
+    -   The string name of any colorscale recognized by plotly. See
+        https://plotly.com/python/colorscales for possible options
+
+    -   A manually-defined colorscale like the following::
+
+            [
+                [0.000, "rgb(165,0,38)"],
+                [0.111, "rgb(215,48,39)"],
+                [0.222, "rgb(244,109,67)"],
+                [0.333, "rgb(253,174,97)"],
+                [0.444, "rgb(254,224,144)"],
+                [0.555, "rgb(224,243,248)"],
+                [0.666, "rgb(171,217,233)"],
+                [0.777, "rgb(116,173,209)"],
+                [0.888, "rgb(69,117,180)"],
+                [1.000, "rgb(49,54,149)"],
+            ]
+
+    The colorscale will be sampled evenly at the required resolution in order
+    to generate the colormap.
+
+    Args:
+        colorscale: a valid colorscale. See above for possible options
+        n (256): the desired number of colors
+        hex_strs (False): whether to return ``#RRGGBB`` hex strings rather than
+            ``(R, G, B)`` tuples
+
+    Returns:
+        a list of ``(R, G, B)`` tuples in `[0, 255]`, or, if ``hex_strs`` is
+        True, a list of `#RRGGBB` strings
+    """
+    if etau.is_str(colorscale):
+        colorscale = _get_colorscale(colorscale)
+
+    if not colorscale:
+        raise ValueError("colorscale must have at least one color")
+
+    values = np.linspace(0, 1, n)
+    rgb_strs = [_get_continuous_color(colorscale, v) for v in values]
+
+    # @todo don't cast to int here?
+    rgb_tuples = [
+        tuple(int(round(float(v.strip()))) for v in rgb_str[4:-1].split(","))
+        for rgb_str in rgb_strs
+    ]
+
+    if hex_strs:
+        return ["#%02x%02x%02x" % rgb for rgb in rgb_tuples]
+
+    return rgb_tuples
+
+
+def _get_colorscale(name):
+    from _plotly_utils.basevalidators import ColorscaleValidator
+
+    cv = ColorscaleValidator("colorscale", "")
+    return cv.validate_coerce(name)
+
+
+def _get_continuous_color(colorscale, value):
+    # Returns a string like `rgb(float, float, float)`
+
+    hex_to_rgb = lambda c: "rgb" + str(ImageColor.getcolor(c, "RGB"))
+
+    if value <= 0 or len(colorscale) == 1:
+        c = colorscale[0][1]
+        return c if c[0] != "#" else hex_to_rgb(c)
+
+    if value >= 1:
+        c = colorscale[-1][1]
+        return c if c[0] != "#" else hex_to_rgb(c)
+
+    for cutoff, color in colorscale:
+        if value > cutoff:
+            low_cutoff, low_color = cutoff, color
+        else:
+            high_cutoff, high_color = cutoff, color
+            break
+
+    if (low_color[0] == "#") or (high_color[0] == "#"):
+        low_color = hex_to_rgb(low_color)
+        high_color = hex_to_rgb(high_color)
+
+    return pc.find_intermediate_color(
+        lowcolor=low_color,
+        highcolor=high_color,
+        intermed=((value - low_cutoff) / (high_cutoff - low_cutoff)),
+        colortype="rgb",
+    )
+
+
 class PlotlyWidgetMixin(object):
     """Mixin for Plotly plots that use widgets to display in Jupyter
     notebooks.
@@ -1865,7 +1965,6 @@ def _plot_scatter_numeric(
     edges_title,
     colorbar_title,
     axis_equal,
-    colorscale="Viridis",
 ):
     num_dims = points.shape[1]
 
@@ -1876,7 +1975,7 @@ def _plot_scatter_numeric(
             dict(
                 color=values,
                 colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
-                colorscale=colorscale,
+                colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
                 showscale=True,
             )
         )
@@ -2130,7 +2229,6 @@ def _plot_scatter_mapbox_numeric(
     sizes_title,
     edges_title,
     colorbar_title,
-    colorscale="Viridis",
 ):
     marker = dict()
 
@@ -2139,7 +2237,7 @@ def _plot_scatter_mapbox_numeric(
             dict(
                 color=values,
                 colorbar=dict(title=colorbar_title, lenmode="fraction", len=1),
-                colorscale=colorscale,
+                colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
                 showscale=True,
             )
         )
@@ -2209,7 +2307,6 @@ def _plot_scatter_mapbox_density(
     labels_title,
     sizes_title,
     colorbar_title,
-    colorscale="Viridis",
 ):
     if values is not None and sizes is not None:
         hover_title = labels_title + " x " + sizes_title
@@ -2249,7 +2346,7 @@ def _plot_scatter_mapbox_density(
         z=values,
         radius=radius,
         customdata=ids,
-        colorscale=colorscale,
+        colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
         hovertemplate=hovertemplate,
     )
 

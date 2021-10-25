@@ -16,6 +16,7 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
@@ -26,9 +27,9 @@ import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
-import { Value } from "./types";
 import { subCountValueAtom } from "./atoms";
 import { genSort } from "../../utils/generic";
+import { FRAME_SUPPORT_FIELD } from "../../utils/labels";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -51,6 +52,8 @@ const NamedCategoricalFilterHeader = styled.div`
 `;
 
 const CHECKBOX_LIMIT = 20;
+
+type Value = string | number | null | boolean | [number, number];
 
 interface ExcludeOptionProps {
   excludeAtom: RecoilState<boolean>;
@@ -149,6 +152,10 @@ const Wrapper = ({
     value,
     counts[String(value)] ?? 0,
   ]);
+  const disableCount =
+    modal &&
+    useRecoilValue(selectors.primitivesSubfieldMap("sample"))[path] ===
+      FRAME_SUPPORT_FIELD;
 
   if (totalCount <= CHECKBOX_LIMIT || disableItems) {
     allValues = [
@@ -184,7 +191,9 @@ const Wrapper = ({
           disabled={(modal && allValues.length === 1) || disableItems}
           name={value}
           count={
-            selectedCounts.current.has(value)
+            disableCount
+              ? null
+              : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
               : count
           }
