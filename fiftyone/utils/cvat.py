@@ -1146,7 +1146,7 @@ class CVATImageAnno(object):
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
-            if _is_supported_attribute(k, v)
+            if _is_supported_attribute_type(v)
         ]
 
         return occluded, attributes
@@ -1159,6 +1159,12 @@ class CVATImageAnno(object):
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
+                if name == "label_id":
+                    # We assume that this is a `label_id` exported from an
+                    # CVAT annotation run created by our annotation API, which
+                    # should be ignored since we're not using the API here
+                    continue
+
                 value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
@@ -1817,7 +1823,7 @@ class CVATVideoAnno(object):
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
-            if _is_supported_attribute(k, v)
+            if _is_supported_attribute_type(v)
         ]
 
         return outside, occluded, keyframe, attributes
@@ -1832,6 +1838,12 @@ class CVATVideoAnno(object):
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
+                if name == "label_id":
+                    # We assume that this is a `label_id` exported from an
+                    # CVAT annotation run created by our annotation API, which
+                    # should be ignored since we're not using the API here
+                    continue
+
                 value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
@@ -3129,7 +3141,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def get_empty_projects(self, project_ids):
         """Check all given project ids to determine if they are empty or if
         they contain at least one task.
-        
+
         Args:
             project_ids: a list of project ids to check
 
@@ -3147,7 +3159,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         Args:
             name: a name for the project
-            schema (None): the label schema to use for the created project 
+            schema (None): the label schema to use for the created project
 
         Returns:
             the ID of the created project in CVAT
@@ -5700,13 +5712,7 @@ def load_cvat_video_annotations(xml_path):
     return info, cvat_task_labels, cvat_tracks
 
 
-def _is_supported_attribute(key, value):
-    if key == "label_id":
-        # We assume that this is a `label_id` exported from an CVAT annotation
-        # run created by our annotation API, which should just be ignored since
-        # we're not using that API here
-        return False
-
+def _is_supported_attribute_type(value):
     return (
         isinstance(value, bool) or etau.is_str(value) or etau.is_numeric(value)
     )
