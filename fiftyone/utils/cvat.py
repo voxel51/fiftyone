@@ -3713,10 +3713,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if label_type == "scalar":
                 _label_type = "classifications"
             else:
-                _label_type = foua._RETURN_TYPES_MAP.get(label_type, None)
-
-            if _label_type is None:
-                continue
+                _label_type = foua._RETURN_TYPES_MAP[label_type]
 
             if _label_type not in _seen_label_types:
                 _seen_label_types.append(_label_type)
