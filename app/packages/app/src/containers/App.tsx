@@ -1,27 +1,30 @@
 import React, { useState, useRef, Suspense } from "react";
 import { useRecoilCallback } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
-import NotificationHub from "../components/NotificationHub";
 
+import { toCamelCase } from "@fiftyone/utilities";
+
+import "../app.global.css";
+
+import { patching } from "../components/Actions/Patcher";
+import { similaritySorting } from "../components/Actions/Similar";
+import { savingFilters } from "../components/Actions/ActionsRow";
 import Header from "../components/Header";
-import Dataset from "./Dataset";
+import NotificationHub from "../components/NotificationHub";
+import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
+import { useClearModal } from "../recoil/utils";
+import socket, { handleId, isNotebook } from "../shared/connection";
 
 import {
   useEventHandler,
   useMessageHandler,
   useSendMessage,
 } from "../utils/hooks";
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
-import socket, { handleId, isNotebook } from "../shared/connection";
 
+import Dataset from "./Dataset";
 import Error from "./Error";
 import Setup from "./Setup";
-import "../app.global.css";
-import { patching } from "../components/Actions/Patcher";
-import { similaritySorting } from "../components/Actions/Similar";
-import { savingFilters } from "../components/Actions/ActionsRow";
-import { useClearModal } from "../recoil/utils";
 
 const useStateUpdate = () => {
   return useRecoilCallback(
@@ -31,7 +34,8 @@ const useStateUpdate = () => {
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
-      set(atoms.stateDescription, state);
+      console.log(state);
+      set(atoms.stateDescription, toCamelCase(state));
       set(selectors.anyTagging, false);
       set(patching, false);
       set(similaritySorting, false);

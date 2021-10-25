@@ -1,6 +1,8 @@
 import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 import { atom, atomFamily } from "recoil";
 
+import { State } from "./types";
+
 interface AppSample extends Sample {
   _id: string;
 }
@@ -97,9 +99,9 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-export const stateDescription = atom({
+export const stateDescription = atom<State.Description>({
   key: "stateDescription",
-  default: {},
+  default: null,
 });
 
 export const selectedSamples = atom<Set<string>>({

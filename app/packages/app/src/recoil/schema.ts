@@ -1,30 +1,30 @@
-import { selector } from "recoil";
-
-import { toCamelCase } from "@fiftyone/utilities";
+import { selectorFamily } from "recoil";
 
 import * as atoms from "./atoms";
+import { State } from "./types";
 
-interface Field {
-  ftype: string;
-  dbField: string;
-  name: string;
-  documentType: string;
-  subfield: string;
-  fields: {
-    [key: string]: Field;
-  };
-}
+const schemaReduce = (
+  schema: State.Schema,
+  field: State.Field
+): State.Schema => {
+  schema[field.name] = field;
+  return schema;
+};
 
-interface Schema {
-  [key: string]: Field;
-}
-
-const schema = selector<Schema>({
-  key: "schema",
-  get: ({ get }) => {
+export const sampleSchema = selectorFamily<State.Schema, State.SPACE>({
+  key: "sampleSchema",
+  get: (space) => ({ get }) => {
     const state = get(atoms.stateDescription);
-    const doc = toCamelCase(state.dataset);
 
-    console.log(doc);
+    if (!state.dataset) {
+      return {};
+    }
+
+    const fields =
+      space === State.SPACE.FRAME
+        ? state.dataset.frameFields
+        : state.dataset.sampleFields;
+
+    return fields.reduce(schemaReduce, {});
   },
 });
