@@ -2552,6 +2552,10 @@ class CVATBackend(foua.AnnotationBackend):
     def supports_keyframes(self):
         return True
 
+    @property
+    def requires_label_schema(self):
+        return False  # schemas can be inferred from existing CVAT projects
+
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
             if name == "occluded":
@@ -3344,8 +3348,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if project_id is not None:
             self._ensure_one_field_per_type(label_schema)
+            config.label_schema = label_schema
 
         id_map = {}
+        project_ids = []
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3362,12 +3368,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ) = self._get_cvat_schema(
             label_schema=label_schema, project_id=project_id
         )
-
-        if project_id is not None:
-            config.label_schema = label_schema
-
-        if project_id is None and project_name is not None:
-            project_id = self.create_project(project_name, cvat_schema)
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
             samples_batch = samples[offset : (offset + batch_size)]
@@ -3409,6 +3409,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_shapes.extend(_shapes)
                 anno_tracks.extend(_tracks)
 
+            # We must do this here because `cvat_schema` may be altered the
+            # first time shapes are create
+            if project_id is None and project_name is not None:
+                project_id = self.create_project(project_name, cvat_schema)
+                project_ids.append(project_id)
+
             task_name = (
                 "FiftyOne_%s"
                 % samples_batch._root_dataset.name.replace(" ", "_")
@@ -3436,8 +3442,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 attr_id_map,
                 task_id,
             )
-
-        project_ids = [project_id] if project_id is not None else []
 
         return CVATAnnotationResults(
             samples,
