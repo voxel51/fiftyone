@@ -2684,8 +2684,10 @@ class CVATAnnotationResults(foua.AnnotationResults):
             api.delete_tasks(self.task_ids)
 
         if self.project_ids:
-            logger.info("Deleting projects...")
-            api.delete_projects(self.project_ids)
+            projects_to_delete = api.get_empty_projects(self.project_ids)
+            if projects_to_delete:
+                logger.info("Deleting projects...")
+                api.delete_projects(self.project_ids)
 
         # @todo save updated results to DB?
         self.project_ids = []
@@ -3080,6 +3082,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return self._get_value_from_search(
             self.project_id_search_url, project_id, "id", "name",
         )
+
+    def get_empty_projects(self, project_ids):
+        """Check all given project ids to determine if they are empty or if
+        they contain at least one task.
+        
+        Args:
+            project_ids: a list of project ids to check
+
+        Returns:
+            a list of empty project ids
+        """
+        return [pid for pid in project_ids if self._is_empty_project(pid)]
+
+    def _is_empty_project(self, project_id):
+        resp = self.get(self.project_url(project_id)).json()
+        return not resp["tasks"]
 
     def create_project(self, name, schema=None):
         """Creates a project on the CVAT server using the given label schema.
@@ -3699,7 +3717,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _convert_cvat_schema(self, project_id, label_schema):
         labels = self.get_existing_project_labels(project_id)
         cvat_schema = {}
-        labels_to_update = set()
+        labels_to_update = []
         occluded_attrs = {}
         assign_scalar_attrs = {}
         classes_and_attrs = []
@@ -3709,7 +3727,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             cvat_schema[name] = {a["name"]: a for a in attrs}
 
             if "label_id" not in cvat_schema[name]:
-                labels_to_update.add(name)
+                labels_to_update.append(label)
                 cvat_schema[name]["label_id"] = {
                     "name": "label_id",
                     "input_type": "text",
@@ -3763,10 +3781,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _add_project_label_ids(self, project_id, labels):
         labels_patch = {"labels": []}
         for label in labels:
-            new_label = {"name": label["name"]}
-            new_label["attributes"] = [
+            label["attributes"].append(
                 {"name": "label_id", "input_type": "text", "mutable": True,}
-            ]
+            )
             labels_patch["labels"].append(label)
 
         self.patch(self.project_url(project_id), json=labels_patch)
