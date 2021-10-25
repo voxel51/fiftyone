@@ -727,32 +727,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await StateHandler.on_update(caller, StateHandler.state)
 
     @staticmethod
-    async def on_all_tags(caller, sample_id=None):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view._dataset
-        else:
-            view = state.dataset
-
-        if view is None:
-            label = []
-            sample = []
-        else:
-            (_, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(view)
-            results = await view._async_aggregate(
-                [foa.Distinct("tags")] + tag_aggs,
-            )
-            sample = results[0]
-
-            label = set()
-            for result in results[1:]:
-                label |= set(result.keys())
-
-        _write_message(
-            {"type": "all_tags", "sample": sample, "label": label}, only=caller
-        )
-
-    @staticmethod
     async def on_modal_statistics(caller, sample_id, uuid, filters=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -767,7 +741,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
 
-        aggregations = fos.DatasetStatistics(view, filters).aggregations
+        aggregations = fos.build_app_aggregations(view, filters)
 
         results = await view._async_aggregate(aggregations)
         convert(results)
@@ -890,11 +864,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         if labels:
             view = view.select_fields(active_labels)
-            (
-                count_aggs,
-                tag_aggs,
-            ) = fos.DatasetStatistics.get_label_aggregations(view)
-            results = await view._async_aggregate(count_aggs + tag_aggs)
+            count_aggs = []
+            results = []
 
             count = sum(results[: len(count_aggs)])
             tags = defaultdict(int)
@@ -1013,7 +984,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             if extended:
                 view = get_extended_view(view, filters)
 
-            aggregations = fos.DatasetStatistics(view, filters).aggregations
+            aggregations = fos.build_app_aggregations(view, filters)
             results = await view._async_aggregate(aggregations)
             convert(results)
 
