@@ -937,10 +937,9 @@ def load_annotations(
     annotations = results.backend.download_annotations(results)
 
     for label_field, label_info in label_schema.items():
-        label_type = label_info["type"]
+        label_type = label_info.get("type", None)
         global_attrs, class_attrs = _parse_attributes(label_info)
         allow_additions = label_info.get("allow_additions", True)
-
         expected_type = _RETURN_TYPES_MAP.get(label_type, None)
 
         anno_dict = annotations.get(label_field, {})
