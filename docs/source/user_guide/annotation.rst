@@ -406,11 +406,18 @@ you will provide it to methods like
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
-.. note::
+.. warning::
 
-    Calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    will upload the source media files to the annotation backend.
+    FiftyOne assumes that all labels in an annotation run can fit in memory.
+
+    If you are annotating very large scale video datasets with dense frame
+    labels, you may violate this assumption. Instead, consider breaking the
+    work into multiple smaller annotation runs that each contain limited
+    subsets of the samples you wish to annotate.
+
+    You can use :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
+    to get a sense for the total size of the labels in a dataset as a rule of
+    thumb to estimate the size of a candidate annotation run.
 
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
