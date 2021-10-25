@@ -1538,6 +1538,11 @@ command line prompt to enter a new label field name.
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
+.. note::
+
+    When uploading to an existing project, the only change that will occur to
+    the existing CVAT project schema is the addition of a `label_id` attribute
+    for every class which is required to upload annotations to the project.
 
 Assigning users
 ---------------
