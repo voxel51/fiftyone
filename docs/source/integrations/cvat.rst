@@ -1533,7 +1533,7 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Annotate videos in CVAT...
+    # Annotate in CVAT...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
@@ -1551,7 +1551,7 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Annotate videos in CVAT...
+    # Annotate in CVAT...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
