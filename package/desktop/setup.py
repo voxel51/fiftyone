@@ -17,7 +17,7 @@ import os
 import shutil
 
 
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 
 
 def get_version():
