@@ -47,7 +47,7 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.aggregations import (
     build_label_tag_aggregations,
-    build_app_aggregations,
+    get_app_statistics,
 )
 from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
@@ -749,24 +749,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
 
         view = view.select(sample_id)
-
-        aggregations = build_app_aggregations(view, filters)
-
-        results = await view._async_aggregate(aggregations)
-        convert(results)
-
-        data = []
-        for agg, result in zip(aggregations, results):
-            data.append(
-                {
-                    "_CLS": agg.__class__.__name__,
-                    "name": agg.field_name,
-                    "result": result,
-                }
-            )
-
-        message = {"type": "modal_statistics", "stats": data, "uuid": uuid}
-
+        result = await get_app_statistics(view, filters)
+        message = {"type": "modal_statistics", "stats": result, "uuid": uuid}
         _write_message(message, app=True, only=caller)
 
     @staticmethod
@@ -986,23 +970,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only (None): a client to restrict the message to
         """
         base_view = view
-        data = []
+        result = {}
         if view is not None and (not extended or filters):
             if extended:
                 view = get_extended_view(view, filters)
 
-            aggregations = build_app_aggregations(view, filters)
-            results = await view._async_aggregate(aggregations)
-            convert(results)
-
-            for agg, result in zip(aggregations, results):
-                data.append(
-                    {
-                        "_CLS": agg.__class__.__name__,
-                        "name": agg.field_name,
-                        "result": result,
-                    }
-                )
+            result = await get_app_statistics(view, filters)
 
         view = (
             base_view._serialize()
@@ -1012,7 +985,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         message = {
             "type": "statistics",
-            "stats": data,
+            "stats": result,
             "view": view,
             "filters": filters,
             "extended": extended,

@@ -5,6 +5,7 @@ FiftyOne Server aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from mongoengine.fields import ListField
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
@@ -12,6 +13,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 
 from fiftyone.server.utils import meets_type
+from fiftyone.server.json_util import convert
 
 
 def build_label_tag_aggregations(view: foc.SampleCollection):
@@ -35,9 +37,9 @@ def build_label_tag_aggregations(view: foc.SampleCollection):
     return counts, tags
 
 
-def build_app_aggregations(view, filters):
+async def get_app_statistics(view, filters):
     """
-    Builds the aggregations required by App components
+    Builds and executes the aggregations required by App components
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
@@ -56,6 +58,15 @@ def build_app_aggregations(view, filters):
             aggregations.update(
                 _build_field_aggregations("frames." + path, field, filters)
             )
+
+    ordered = [agg for path in aggregations.values() for agg in path]
+    results = await view._async_aggregate(ordered)
+    convert(results)
+
+    for aggregation, result in zip(ordered, results):
+        aggregations[aggregation.field_name][
+            aggregation.__class__.__name__
+        ] = result
 
     return aggregations
 
@@ -82,9 +93,12 @@ def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
     }
 
     if meets_type(field, fof.EmbeddedDocumentField):
+        if isinstance(field, (ListField)):
+            field = field.field
+
         for subfield_name, subfield in field.get_field_schema().items():
-            if subfield_name == "tags" and isinstance(
-                subfield.document_type, fol.Label
+            if subfield_name == "tags" and issubclass(
+                field.document_type, fol.Label
             ):
                 continue
 

@@ -12,6 +12,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
+from fiftyone.server.utils import iter_label_fields
 
 
 _BOOL_FILTER = "bool"
@@ -81,9 +82,9 @@ def get_extended_view(
 
 
 def _add_labels_tags_counts(view, filtered_fields, label_tags):
-    fields = fos.DatasetStatistics.labels(view)
     view = view.set_field(_LABEL_TAGS, [], _allow_missing=True)
-    for path, field in fields:
+
+    for path, field in iter_label_fields(view):
         if not issubclass(
             field.document_type, (fol._HasID, fol._HasLabelList)
         ):
@@ -177,7 +178,7 @@ def _make_filter_stages(
                 stages.append(fosg.Match(expr))
 
     if label_tags is not None and hide_result:
-        for path, _ in fos.DatasetStatistics.labels(view):
+        for path, _ in iter_label_fields(view):
             if hide_result and path not in filtered_labels:
                 new_field = _get_filtered_path(
                     view, path, filtered_labels, label_tags
@@ -203,7 +204,7 @@ def _make_filter_stages(
                 cleanup.add(new_field)
 
         match_exprs = []
-        for path, _ in fos.DatasetStatistics.labels(view):
+        for path, _ in iter_label_fields(view):
             prefix = "__" if hide_result else ""
             match_exprs.append(
                 fosg._get_label_field_only_matches_expr(

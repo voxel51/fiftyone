@@ -18,7 +18,10 @@ import PIL.Image
 import eta.core.video as etav
 
 from fiftyone import ViewField as F
+import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 
 
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
@@ -32,7 +35,7 @@ class UnknownImageFormat(UnknownFileFormat):
     pass
 
 
-def change_sample_tags(sample_collection, changes):
+def change_sample_tags(sample_collection: foc.SampleCollection, changes):
     """Applies the changes to tags to all samples of the collection, if
     necessary.
 
@@ -79,6 +82,28 @@ def change_label_tags(sample_collection, changes, label_fields=None):
             label_field, tag_expr
         )
         tag_view._edit_label_tags(edit_fcn, label_fields=[label_field])
+
+
+def iter_label_fields(view: foc.SampleCollection):
+    """
+    Yields the labels of the
+    :class:`fiftyone.core.collections.SampleCollection`
+
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+    """
+    for field_name, field in view.get_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    ).items():
+        yield field_name, field
+
+    if view.media_type != fom.VIDEO:
+        return
+
+    for field_name, field in view.get_frame_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    ).items():
+        yield "frames.%s" % field_name, field
 
 
 def meets_type(field: fof.Field, type_or_types):
