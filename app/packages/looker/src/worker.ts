@@ -465,11 +465,11 @@ const UPDATE_LABEL = {
     const getColor = (i) => {
       i = Math.round(Math.abs(i)) % coloring.targets.length;
 
-      if (i in cache) {
-        return cache[i];
+      if (!(i in cache)) {
+        cache[i] = get32BitColor(coloring.targets[i]);
       }
 
-      cache[i] = get32BitColor(coloring.targets[i]);
+      return cache[i];
     };
 
     for (const i in overlay) {
