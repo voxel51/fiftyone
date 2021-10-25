@@ -1132,8 +1132,8 @@ class CVATImageAnno(object):
     def _to_attributes(self):
         attributes = {a.name: a.value for a in self.attributes}
 
-        if self.occluded is not None:
-            attributes["occluded"] = bool(self.occluded)
+        if self.occluded == 1:
+            attributes["occluded"] = True
 
         return attributes
 
@@ -1751,10 +1751,14 @@ class CVATTrack(object):
         if not shapes:
             return
 
+        use_keyframes = any(s.keyframe for s in shapes.values())
+
         def _make_outside_shape(shape):
             shape = deepcopy(shape)
             shape.outside = 1
-            shape.keyframe = 1
+            if use_keyframes:
+                shape.keyframe = 1
+
             return shape
 
         # Add "outside" shapes to represent gaps of >= 1 frame in tracks
@@ -1794,11 +1798,11 @@ class CVATVideoAnno(object):
         # We don't include `outside` here because shapes marked as `outside`
         # are completely omitted
 
-        if self.occluded is not None:
-            attributes["occluded"] = bool(self.occluded)
+        if self.occluded == 1:
+            attributes["occluded"] = True
 
-        if self.keyframe is not None:
-            attributes["keyframe"] = bool(self.keyframe)
+        if self.keyframe == 1:
+            attributes["keyframe"] = True
 
         return attributes
 
@@ -1806,7 +1810,7 @@ class CVATVideoAnno(object):
     def _parse_attributes(label):
         attrs = dict(label.iter_attributes())
 
-        outside = 0  # FiftyOne labels do not use `outside`
+        outside = 0  # any FiftyOne label is implicitly not `outside`
         occluded = _to_int_bool(attrs.pop("occluded", None))
         keyframe = _to_int_bool(attrs.pop("keyframe", None))
 
