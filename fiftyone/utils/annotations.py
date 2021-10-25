@@ -1202,6 +1202,7 @@ def _merge_labels(
     if label_info is None:
         label_info = {}
 
+    existing_field = label_info.get("existing_field", False)
     only_keyframes = label_info.get("only_keyframes", False)
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
@@ -1220,6 +1221,10 @@ def _merge_labels(
     is_video = samples.media_type == fom.VIDEO
 
     if is_video and label_type in _TRACKABLE_TYPES:
+        if not existing_field:
+            # Always include keyframe info when importing new video tracks
+            only_keyframes = True
+
         _update_tracks(samples, label_field, anno_dict, only_keyframes)
 
     id_map = results.id_map.get(label_field, {})
