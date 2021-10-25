@@ -5,7 +5,6 @@ FiftyOne Server aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine.fields import ListField
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
@@ -93,7 +92,7 @@ def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
     }
 
     if meets_type(field, fof.EmbeddedDocumentField):
-        if isinstance(field, (ListField)):
+        if isinstance(field, (fof.ListField)):
             field = field.field
 
         for subfield_name, subfield in field.get_field_schema().items():
