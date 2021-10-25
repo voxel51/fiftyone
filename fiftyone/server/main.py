@@ -45,10 +45,19 @@ import fiftyone.core.uid as fou
 import fiftyone.core.utils as fout
 import fiftyone.core.view as fov
 
+from fiftyone.server.aggregations import (
+    build_label_tag_aggregations,
+    build_app_aggregations,
+)
 from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
-import fiftyone.server.utils as fosu
+from fiftyone.server.utils import (
+    change_label_tags,
+    change_sample_tags,
+    meets_type,
+    read_metadata,
+)
 
 
 db = foo.get_async_db_conn()
@@ -276,7 +285,7 @@ class PageHandler(tornado.web.RequestHandler):
         for r in results:
             filepath = r["sample"]["filepath"]
             if filepath not in metadata:
-                metadata[filepath] = fosu.read_metadata(
+                metadata[filepath] = read_metadata(
                     filepath, r["sample"].get("metadata", None)
                 )
 
@@ -716,9 +725,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.select(state.selected)
 
         if target_labels:
-            fosu.change_label_tags(view, changes, label_fields=active_labels)
+            change_label_tags(view, changes, label_fields=active_labels)
         else:
-            fosu.change_sample_tags(view, changes)
+            change_sample_tags(view, changes)
 
         StateHandler.state["refresh"] = not state.refresh
         for clients in PollingHandler.clients.values():
@@ -741,7 +750,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
 
-        aggregations = fos.build_app_aggregations(view, filters)
+        aggregations = build_app_aggregations(view, filters)
 
         results = await view._async_aggregate(aggregations)
         convert(results)
@@ -814,12 +823,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             else:
                 tag_view = view.select(sample_id)
 
-            fosu.change_label_tags(
-                tag_view, changes, label_fields=active_labels
-            )
+            change_label_tags(tag_view, changes, label_fields=active_labels)
         else:
             tag_view = view.select(sample_id)
-            fosu.change_sample_tags(tag_view, changes)
+            change_sample_tags(tag_view, changes)
 
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics", "statistics"})
@@ -864,8 +871,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         if labels:
             view = view.select_fields(active_labels)
-            count_aggs = []
-            results = []
+            count_aggs, tag_aggs = build_label_tag_aggregations(view)
+            results = await view._async_aggregate(count_aggs + tag_aggs)
 
             count = sum(results[: len(count_aggs)])
             tags = defaultdict(int)
@@ -984,7 +991,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             if extended:
                 view = get_extended_view(view, filters)
 
-            aggregations = fos.build_app_aggregations(view, filters)
+            aggregations = build_app_aggregations(view, filters)
             results = await view._async_aggregate(aggregations)
             convert(results)
 
@@ -1113,7 +1120,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 ):
                     return None
 
-                if fos._meets_type(field, (fof.BooleanField, fof.StringField)):
+                if meets_type(field, (fof.BooleanField, fof.StringField)):
                     return field.name
 
                 return None
@@ -1236,13 +1243,13 @@ def _parse_histogram_values(result, field):
         key=lambda i: i["key"],
     )
     if (
-        fos._meets_type(field, fof.IntField)
+        meets_type(field, fof.IntField)
         and len(data) == _DEFAULT_NUM_HISTOGRAM_BINS
     ):
         for bin_ in data:
             bin_["edges"] = [math.ceil(e) for e in bin_["edges"]]
             bin_["key"] = math.ceil(bin_["key"])
-    elif fos._meets_type(field, fof.IntField):
+    elif meets_type(field, fof.IntField):
         for bin_ in data:
             del bin_["edges"]
 
@@ -1348,7 +1355,7 @@ async def _numeric_histograms(view, schema, prefix=""):
         if prefix != "" and name == "frame_number":
             continue
 
-        if fos._meets_type(field, numerics):
+        if meets_type(field, numerics):
             paths.append("%s%s" % (prefix, name))
             fields.append(field)
 
@@ -1371,7 +1378,7 @@ async def _numeric_histograms(view, schema, prefix=""):
         else:
             range_ = (range_[0], range_[1] + 1e-6)
 
-        if fos._meets_type(field, fof.IntField):
+        if meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]
             range_ = (range_[0] - 0.5, range_[1] + 0.5)
             if delta < _DEFAULT_NUM_HISTOGRAM_BINS:

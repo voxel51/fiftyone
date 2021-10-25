@@ -7,17 +7,11 @@ Defines the shared state between the FiftyOne App and backend.
 """
 import logging
 
-from mongoengine.base import document
-
 import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -51,7 +45,6 @@ class StateDescription(etas.Serializable):
         dataset=None,
         view=None,
         filters=None,
-        settings=None,
         connected=False,
         active_handle=None,
         selected=None,
@@ -164,69 +157,3 @@ class StateDescription(etas.Serializable):
             refresh=refresh,
             close=close,
         )
-
-
-def build_app_aggregations(view, filters):
-    """
-    Builds the aggregations required by App components
-
-    Args:
-        view: a :class:`fiftyone.core.collections.SampleCollection`
-        filters: a `dict` defining the current App filters
-
-    Returns:
-        a `dict` mapping field paths to aggregation `dict`s
-    """
-    # @todo optmizie by removing unnecessary extended view aggregations, e.g. Bounds
-    aggregations = {"": foa.Count()}
-    for path, field in view.get_field_schema().items():
-        aggregations.update(_build_field_aggregations(path, field, filters))
-
-    return aggregations
-
-
-def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
-    aggregations = []
-    if _meets_type(
-        field,
-        (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField,),
-    ):
-        aggregations.append(foa.Bounds(path))
-    elif _meets_type(field, fof.BooleanField):
-        aggregations.append(foa.CountValues(path, _first=3))
-    elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
-        aggregations.append(_get_categorical_aggregation(path, filters))
-
-    aggregations.append(fo.Count(path))
-
-    aggregations = {
-        path: {
-            aggregations.__class__.__name__: aggregation
-            for aggregation in aggregations
-        }
-    }
-
-    if _meets_type(field, fof.EmbeddedDocumentField):
-        for subfield_name, subfield in field.get_field_schema().items():
-            aggregations.update(
-                _build_field_aggregations(
-                    ".".join([path, subfield_name]), subfield, filters
-                )
-            )
-
-    return aggregations
-
-
-def _get_categorical_aggregation(path, filters):
-    include = (
-        None
-        if filters is None or path not in filters or path == "tags"
-        else filters[path]["values"]
-    )
-    return foa.CountValues(path, _first=200, _include=include)
-
-
-def _meets_type(field, t):
-    return isinstance(field, t) or (
-        isinstance(field, fof.ListField) and isinstance(field.field, t)
-    )

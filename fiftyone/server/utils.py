@@ -13,10 +13,12 @@ import io
 import struct
 import warnings
 
-import eta.core.video as etav
 import PIL.Image
 
+import eta.core.video as etav
+
 from fiftyone import ViewField as F
+import fiftyone.core.fields as fof
 
 
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
@@ -77,6 +79,21 @@ def change_label_tags(sample_collection, changes, label_fields=None):
             label_field, tag_expr
         )
         tag_view._edit_label_tags(edit_fcn, label_fields=[label_field])
+
+
+def meets_type(field: fof.Field, type_or_types):
+    """
+    Determines whether the field meets type or types, or the field
+    is a :class:`fiftyone.core.fields.ListField` that meets the type or types
+
+    Args:
+        field: a class:`fiftyone.core.fields.Field`
+        type: a field type or `tuple` of field types
+    """
+    return isinstance(field, type_or_types) or (
+        isinstance(field, fof.ListField)
+        and isinstance(field.field, type_or_types)
+    )
 
 
 def _get_tag_expr(changes):
