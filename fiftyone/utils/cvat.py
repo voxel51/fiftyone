@@ -3348,7 +3348,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if project_id is not None:
             self._ensure_one_field_per_type(label_schema)
-            config.label_schema = label_schema
 
         id_map = {}
         project_ids = []
@@ -3368,6 +3367,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ) = self._get_cvat_schema(
             label_schema=label_schema, project_id=project_id
         )
+
+        if project_id is not None:
+            config.label_schema = label_schema
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
             samples_batch = samples[offset : (offset + batch_size)]
@@ -3543,7 +3545,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 is_last_field = lf_ind == len(label_fields) - 1
                 ignore_types = self._get_ignored_types(
-                    project_id, label_types, label_type, is_last_field,
+                    project_id, label_types, label_type, is_last_field
                 )
 
                 tag_results = self._parse_shapes_tags(
@@ -3629,7 +3631,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _get_project_labels(self, project_id):
         if self.get_project_name(project_id) is None:
-            raise ValueError("Project '%s' not found", project_id)
+            raise ValueError("Project '%s' not found" % project_id)
 
         return self.get(self.project_url(project_id)).json()["labels"]
 
@@ -3637,7 +3639,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if project_id is not None:
             project_name = self.get_project_name(project_id)
             if not project_name:
-                raise ValueError("Project '%d' not found", project_id)
+                raise ValueError("Project '%d' not found" % project_id)
+
         elif project_name is not None:
             project_id = self.get_project_id(project_name)
 
@@ -3679,6 +3682,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     values = attr["values"]
                     if default_value:
                         label_attrs[attr_name]["default"] = default_value
+
                     if values and values[0] != "":
                         label_attrs[attr_name]["values"] = values
 
@@ -3700,6 +3704,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if label_type is not None:
                     label_schema[label_field]["attributes"] = {}
                     label_schema[label_field]["classes"] = classes_and_attrs
+
                 assign_scalar_attrs[label_field] = None
 
             label_field_classes[label_field] = deepcopy(class_names)
@@ -3718,7 +3723,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         labels_patch = {"labels": []}
         for label in labels:
             label["attributes"].append(
-                {"name": "label_id", "input_type": "text", "mutable": True,}
+                {"name": "label_id", "input_type": "text", "mutable": True}
             )
             labels_patch["labels"].append(label)
 
