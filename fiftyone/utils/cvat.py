@@ -3933,7 +3933,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         names. When loading annotations, if a field exists for a found label
         type, that label will not be loaded with any other fields.
         """
-        if not project_id and len(label_types) > 1:
+        if not project_id or len(label_types) < 2:
             # Not relevant unless uploading to a project and there are multiple
             # types of labels
             return []
