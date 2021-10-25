@@ -1476,11 +1476,9 @@ existing CVAT project to which to upload the task(s) for an annotation run.
 In this case, the schema of the project is automatically applied to your
 annotation tasks.
 
-A typical use case for this workflow is video annotation, since in CVAT every
-video must be annotated in a separate task. Using a project allows all of the
-tasks to be organized together in one place. Similarly, if you use the same
-annotation schema for multiple datasets and/or workflows, it can be useful to
-organize the tasks under the same CVAT project.
+A typical use case for this workflow is when you use the same annotation schema
+for multiple datasets, since this allows you to organize the tasks under one
+CVAT project and avoid the need to re-specify the label schema in FiftyOne.
 
 .. note::
 
@@ -1507,9 +1505,13 @@ organize the tasks under the same CVAT project.
     dataset = foz.load_zoo_dataset("quickstart").clone()
     view = dataset.take(3)
 
-    project_name="fiftyone_project_example"
+    project_name = "fiftyone_project_example"
 
-    # Create a project in CVAT
+    #
+    # Upload existing `ground_truth` labels to a new CVAT project
+    # The label schema is automatically inferred from the existing labels
+    #
+
     view.annotate(
         "create_project",
         label_field="ground_truth",
@@ -1517,7 +1519,11 @@ organize the tasks under the same CVAT project.
         launch_editor=True,
     )
 
-    # Upload to existing project
+    #
+    # Now upload the `predictions` labels to the same CVAT project
+    # Here the label schema of the existing CVAT project is automatically used
+    #
+
     anno_key = "cvat_existing_project"
     view.annotate(
         anno_key,
@@ -1532,7 +1538,11 @@ organize the tasks under the same CVAT project.
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-    # Annotate new fields based on project schema
+    #
+    # Now add a task with unspecified label fields to the same CVAT project
+    # In this case you will be prompted for field names at download time
+    #
+
     anno_key = "cvat_new_fields"
     view.annotate(
         anno_key,

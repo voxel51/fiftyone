@@ -324,9 +324,12 @@ def _build_label_schema(
     allow_spatial_edits,
 ):
     if label_schema is None and label_field is None:
-        if backend.allows_none_label_field:
-            return {None: {}}, samples
-        raise ValueError("Either `label_schema` or `label_field` is required")
+        if backend.requires_label_schema:
+            raise ValueError(
+                "Either `label_schema` or `label_field` is required"
+            )
+
+        return {None: {}}, samples
 
     if label_schema is None:
         label_schema = _init_label_schema(
@@ -1684,11 +1687,11 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError("subclass must implement supports_keyframes")
 
     @property
-    def allows_none_label_field(self):
-        """Whether this backend supports creating annotation runs without a
-        defined label field or schema
+    def requires_label_schema(self):
+        """Whether this backend requires a pre-defined label schema for its
+        annotation runs.
         """
-        return False
+        return True
 
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name

@@ -2554,8 +2554,8 @@ class CVATBackend(foua.AnnotationBackend):
         return True
 
     @property
-    def allows_none_label_field(self):
-        return True
+    def requires_label_schema(self):
+        return False  # schemas can be inferred from existing CVAT projects
 
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
