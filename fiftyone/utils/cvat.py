@@ -1146,7 +1146,7 @@ class CVATImageAnno(object):
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
-            if _is_supported_attribute_type(v)
+            if _is_supported_attribute(k, v)
         ]
 
         return occluded, attributes
@@ -1817,7 +1817,7 @@ class CVATVideoAnno(object):
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
-            if _is_supported_attribute_type(v)
+            if _is_supported_attribute(k, v)
         ]
 
         return outside, occluded, keyframe, attributes
@@ -5700,7 +5700,13 @@ def load_cvat_video_annotations(xml_path):
     return info, cvat_task_labels, cvat_tracks
 
 
-def _is_supported_attribute_type(value):
+def _is_supported_attribute(key, value):
+    if key == "label_id":
+        # We assume that this is a `label_id` exported from an CVAT annotation
+        # run created by our annotation API, which should just be ignored since
+        # we're not using that API here
+        return False
+
     return (
         isinstance(value, bool) or etau.is_str(value) or etau.is_numeric(value)
     )
