@@ -324,7 +324,12 @@ def _build_label_schema(
     allow_spatial_edits,
 ):
     if label_schema is None and label_field is None:
-        raise ValueError("Either `label_schema` or `label_field` is required")
+        if backend.requires_label_schema:
+            raise ValueError(
+                "Either `label_schema` or `label_field` is required"
+            )
+
+        return {None: {}}, samples
 
     if label_schema is None:
         label_schema = _init_label_schema(
@@ -940,15 +945,14 @@ def load_annotations(
     annotations = results.backend.download_annotations(results)
 
     for label_field, label_info in label_schema.items():
-        label_type = label_info["type"]
+        label_type = label_info.get("type", None)
         global_attrs, class_attrs = _parse_attributes(label_info)
         allow_additions = label_info.get("allow_additions", True)
-
-        expected_type = _RETURN_TYPES_MAP[label_type]
+        expected_type = _RETURN_TYPES_MAP.get(label_type, None)
 
         anno_dict = annotations.get(label_field, {})
 
-        if expected_type not in anno_dict:
+        if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
 
         for anno_type, annos in anno_dict.items():
@@ -1675,6 +1679,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         existing video track annotations.
         """
         raise NotImplementedError("subclass must implement supports_keyframes")
+
+    @property
+    def requires_label_schema(self):
+        """Whether this backend requires a pre-defined label schema for its
+        annotation runs.
+        """
+        return True
 
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name
