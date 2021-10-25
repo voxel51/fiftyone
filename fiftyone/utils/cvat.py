@@ -3368,9 +3368,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_schema=label_schema, project_id=project_id
         )
 
-        if project_id is not None:
-            config.label_schema = label_schema
-
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
             samples_batch = samples[offset : (offset + batch_size)]
             anno_tags = []
