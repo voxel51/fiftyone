@@ -1039,11 +1039,14 @@ class Exists(ViewStage):
 
     Args:
         field: the field name or ``embedded.field.name``
-        bool (True): whether to check if the field exists (True) or does not
-            exist (False)
+        bool (True): whether to check if the field exists (None or True) or
+            does not exist (False)
     """
 
-    def __init__(self, field, bool=True):
+    def __init__(self, field, bool=None):
+        if bool is None:
+            bool = True
+
         self._field = field
         self._bool = bool
 
@@ -1087,8 +1090,8 @@ class Exists(ViewStage):
             {
                 "name": "bool",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "bool (default=True)",
+                "default": "None",
+                "placeholder": "bool (default=None)",
             },
         ]
 
@@ -3364,10 +3367,8 @@ class MatchFrames(ViewStage):
 
 
 class MatchLabels(ViewStage):
-    """Selects the samples from a collection that contain the specified labels.
-
-    The returned view will only contain samples that have at least one label
-    that matches the specified selection criteria.
+    """Selects the samples from a collection that contain (or do not contain)
+    at least one label that matches the specified criteria.
 
     Note that, unlike :class:`SelectLabels` and :class:`FilterLabels`, this
     stage will not filter the labels themselves; it only selects the
@@ -3387,6 +3388,10 @@ class MatchLabels(ViewStage):
     -   Provide the ``filter`` argument to match labels based on a boolean
         :class:`fiftyone.core.expressions.ViewExpression` that is applied to
         each individual :class:`fiftyone.core.labels.Label` element
+
+    -   Pass ``bool=False`` to negate the operation and instead match samples
+        that *do not* contain at least one label matching the specified
+        criteria
 
     If multiple criteria are specified, labels must match all of them in order
     to trigger a sample match.
@@ -3481,12 +3486,21 @@ class MatchLabels(ViewStage):
             :class:`fiftyone.core.labels.Detections`, the filter is applied to
             the list elements, not the root field
         fields (None): a field or iterable of fields from which to select
+        bool (None): whether to match samples that have (None or True) or do
+            not have (False) at least one label that matches the specified
+            criteria
     """
 
     _FILTER_PREFIX = "$$FIELD"
 
     def __init__(
-        self, labels=None, ids=None, tags=None, filter=None, fields=None,
+        self,
+        labels=None,
+        ids=None,
+        tags=None,
+        filter=None,
+        fields=None,
+        bool=None,
     ):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
@@ -3508,11 +3522,15 @@ class MatchLabels(ViewStage):
         elif fields is not None:
             fields = list(fields)
 
+        if bool is None:
+            bool = True
+
         self._labels = labels
         self._ids = ids
         self._tags = tags
         self._filter = filter
         self._fields = fields
+        self._bool = bool
         self._sample_ids = sample_ids
         self._labels_map = labels_map
         self._pipeline = None
@@ -3542,6 +3560,13 @@ class MatchLabels(ViewStage):
         """A list of fields from which labels are being matched."""
         return self._fields
 
+    @property
+    def bool(self):
+        """Whether to match samples that have (None or True) or do not have
+        (False) at least one label that matches the specified criteria.
+        """
+        return self._bool
+
     def to_mongo(self, _):
         if self._pipeline is None:
             raise ValueError(
@@ -3558,6 +3583,7 @@ class MatchLabels(ViewStage):
             ["tags", self._tags],
             ["filter", self._get_mongo_filter()],
             ["fields", self._fields],
+            ["bool", self._bool],
         ]
 
     @classmethod
@@ -3593,6 +3619,12 @@ class MatchLabels(ViewStage):
                 "placeholder": "fields",
                 "default": "None",
             },
+            {
+                "name": "bool",
+                "type": "bool",
+                "default": "None",
+                "placeholder": "bool (default=None)",
+            },
         ]
 
     def _get_mongo_filter(self):
@@ -3612,13 +3644,20 @@ class MatchLabels(ViewStage):
         return any(sample_collection._is_frame_field(f) for f in fields)
 
     def _make_labels_pipeline(self, sample_collection):
-        stage = Select(self._sample_ids)
+        if self._bool:
+            stage = Select(self._sample_ids)
+        else:
+            stage = Exclude(self._sample_ids)
+
         stage.validate(sample_collection)
         return stage.to_mongo(sample_collection)
 
     def _make_pipeline(self, sample_collection):
         if self._ids is None and self._tags is None and self._filter is None:
-            return [{"$match": {"$expr": False}}]
+            if self._bool:
+                return [{"$match": {"$expr": False}}]
+
+            return []
 
         if self._fields is not None:
             fields = self._fields
@@ -3666,9 +3705,11 @@ class MatchLabels(ViewStage):
             stage.validate(sample_collection)
             pipeline.extend(stage.to_mongo(sample_collection))
 
-        # Select samples that have selected labels
+        # Select samples that have (or do not have) the selected labels
         pipeline.extend(
-            _make_match_empty_labels_pipeline(sample_collection, fields_map)
+            _make_match_empty_labels_pipeline(
+                sample_collection, fields_map, match_empty=not self._bool
+            )
         )
 
         # Delete temporary fields
@@ -3789,15 +3830,18 @@ class MatchTags(ViewStage):
 
     Args:
         tags: the tag or iterable of tags to match
-        bool (True): whether to match samples that have (True) or do not have
-            (False) the given tags
+        bool (None): whether to match samples that have (None or True) or do
+            not have (False) the given tags
     """
 
-    def __init__(self, tags, bool=True):
+    def __init__(self, tags, bool=None):
         if etau.is_str(tags):
             tags = [tags]
         else:
             tags = list(tags)
+
+        if bool is None:
+            bool = True
 
         self._tags = tags
         self._bool = bool
@@ -3834,8 +3878,8 @@ class MatchTags(ViewStage):
             {
                 "name": "bool",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "bool (default=True)",
+                "default": "None",
+                "placeholder": "bool (default=None)",
             },
         ]
 

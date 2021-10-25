@@ -1479,6 +1479,26 @@ class ViewStageTests(unittest.TestCase):
         view = dataset.match_labels(tags="good", filter=F("confidence") < 0.95)
         self.assertEqual(len(view), 1)
 
+        # Test `bool=False`
+
+        view1 = dataset.match_labels(tags="bad")
+        view2 = dataset.match_labels(tags="bad", bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
+
+        view1 = dataset.match_labels(filter=F("confidence") > 0.8)
+        view2 = dataset.match_labels(filter=F("confidence") > 0.8, bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
+
     def test_match_labels_video(self):
         sample1 = fo.Sample(filepath="video1.mp4")
         sample1.frames[1] = fo.Frame(
@@ -1536,6 +1556,26 @@ class ViewStageTests(unittest.TestCase):
 
         view = dataset.match_labels(tags="bad", filter=F("confidence") < 0.5)
         self.assertEqual(len(view), 1)
+
+        # Test `bool=False`
+
+        view1 = dataset.match_labels(tags="bad")
+        view2 = dataset.match_labels(tags="bad", bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
+
+        view1 = dataset.match_labels(filter=F("label") == "friend")
+        view2 = dataset.match_labels(filter=F("label") == "friend", bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
 
     def test_match_tags(self):
         self.sample1.tags.append("test")
