@@ -3605,7 +3605,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return annotations
 
-    def _get_existing_project_labels(self, project_id):
+    def _get_project_labels(self, project_id):
         if self.get_project_name(project_id) is None:
             raise ValueError("Project '%s' not found", project_id)
 
@@ -3628,7 +3628,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return self._build_cvat_schema(label_schema)
 
     def _convert_cvat_schema(self, label_schema, project_id):
-        labels = self._get_existing_project_labels(project_id)
+        labels = self._get_project_labels(project_id)
 
         cvat_schema = {}
         labels_to_update = set()
