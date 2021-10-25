@@ -1546,13 +1546,6 @@ organize the tasks under the same CVAT project.
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. note::
-
-    When uploading to existing projects, you cannot specify two label fields of
-    the same type (e.g., |Detections|) in any annotation run, since this would
-    create ambiguity as to which field annotations of that type should be
-    imported into.
-
 Assigning users
 ---------------
 

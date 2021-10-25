@@ -3724,8 +3724,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_schema.pop(label_field)
                 logger.warning(
                     "A field with label type '%s' is already being annotated. "
-                    "Ignoring field `%s`...",
-                    label_type,
+                    "Ignoring field '%s'...",
+                    _label_type,
                     label_field,
                 )
 
@@ -3943,6 +3943,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # The last label field being loaded stores all unexpected label types
         # Ignore only the other label types that have been loaded
+        label_type = foua._RETURN_TYPES_MAP[label_type]
         if is_last_field:
             ignored_types = set(label_types) - {label_type}
         else:
