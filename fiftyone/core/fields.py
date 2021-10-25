@@ -611,10 +611,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         )
 
     def validate(self, value, clean=True, expand=False):
-        if clean:
-            super().validate(value, clean)
-            return
-
         if self._validation_schema is None:
             self._validation_schema = self.get_field_schema()
 
@@ -644,6 +640,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         if isinstance(value, foo.DynamicEmbeddedDocument):
             value._set_parent(self)
+
+        super().validate(value, clean)
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False

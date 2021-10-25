@@ -1694,7 +1694,7 @@ __metadata:
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: 2.0.9
-    recoil: ^0.3.1
+    recoil: ^0.4.1
     reconnecting-websocket: ^4.4.0
     resize-observer-polyfill: ^1.5.1
     rollup-plugin-polyfill-node: ^0.6.2
@@ -1740,7 +1740,6 @@ __metadata:
     "@types/lru-cache": ^5.1.0
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
-    color-string: ^1.5.5
     copy-to-clipboard: ^3.3.1
     immutable: ^4.0.0-rc.12
     json-format-highlight: ^1.0.4
@@ -1758,6 +1757,19 @@ __metadata:
 "@fiftyone/prettier-config@*, @fiftyone/prettier-config@workspace:packages/prettier-config":
   version: 0.0.0-use.local
   resolution: "@fiftyone/prettier-config@workspace:packages/prettier-config"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/utilities@workspace:packages/utilities":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/utilities@workspace:packages/utilities"
+  dependencies:
+    "@fiftyone/prettier-config": "*"
+    lodash: ^4.17.21
+    prettier: 2.2.1
+    typescript: 4.2.4
+    typescript-plugin-css-modules: ^3.4.0
+    vite: 2.4.2
   languageName: unknown
   linkType: soft
 
@@ -3011,20 +3023,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"color-name@npm:^1.0.0, color-name@npm:~1.1.4":
+"color-name@npm:~1.1.4":
   version: 1.1.4
   resolution: "color-name@npm:1.1.4"
   checksum: 3e1c9a4dee12eada307436f61614dd11fe300469db2b83f80c8b7a7cd8a1015f0f18dd13403f018927b249003777ff60baba4a03c65f12e6bddc0dfd9642021f
-  languageName: node
-  linkType: hard
-
-"color-string@npm:^1.5.5":
-  version: 1.5.5
-  resolution: "color-string@npm:1.5.5"
-  dependencies:
-    color-name: ^1.0.0
-    simple-swizzle: ^0.2.2
-  checksum: 3d7799f70d389214757c83bdc27380081dbeee18f90148b883ff7e86e9a599c68ccb8a956b7175e761dcd98d1061fdc58ca89ca4b1f6ca20f8ce05cc8c4e564a
   languageName: node
   linkType: hard
 
@@ -4539,13 +4541,6 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"is-arrayish@npm:^0.3.1":
-  version: 0.3.2
-  resolution: "is-arrayish@npm:0.3.2"
-  checksum: 0687b6b8f2443a45116ce25d8b11979591af625bd8a7515f5d8de2fcb80979655bc9d1cbbd2146c34f2728a234d1ea81d397e06f1ae3feb02c8f6df16766a4a0
-  languageName: node
-  linkType: hard
-
 "is-binary-path@npm:~2.1.0":
   version: 2.1.0
   resolution: "is-binary-path@npm:2.1.0"
@@ -5097,7 +5092,7 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"lodash@npm:^4.17.10, lodash@npm:^4.17.11, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:^4.17.4":
+"lodash@npm:^4.17.10, lodash@npm:^4.17.11, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:^4.17.21, lodash@npm:^4.17.4":
   version: 4.17.21
   resolution: "lodash@npm:4.17.21"
   checksum: 4983720b9abca930a4a46f18db163d7dad8dd00dbed6db0cc7b499b33b717cce69f80928b27bbb1ff2cbd3b19d251ee90669a8b5ea466072ca81c2ebe91e7468
@@ -6257,9 +6252,9 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"recoil@npm:^0.3.1":
-  version: 0.3.1
-  resolution: "recoil@npm:0.3.1"
+"recoil@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "recoil@npm:0.4.1"
   dependencies:
     hamt_plus: 1.0.2
   peerDependencies:
@@ -6269,7 +6264,7 @@ fsevents@~2.3.2:
       optional: true
     react-native:
       optional: true
-  checksum: 6cc0ee6320f66e3e26bf119fd03c83455389e138ee53411c03290c6fdbcd2282248c00ab4308181983fb3258f30448e0254e52b4b04c54c7da3e697893c63596
+  checksum: 99e157d803b6423d24816f34debe5a1c9d7b8e0978e2bb6f85570b9a4e758b70a99c962196c49e9d35493c91699eee1b9b462294e05a9784b70b2420c5227e46
   languageName: node
   linkType: hard
 
@@ -6682,15 +6677,6 @@ fsevents@~2.3.2:
   version: 3.0.3
   resolution: "signal-exit@npm:3.0.3"
   checksum: f8f3fec95c8d1f9ad7e3cce07e1195f84e7a85cdcb4e825e8a2b76aa5406a039083d2bc9662b3cf40e6948262f41277047d20e6fbd58c77edced0b18fab647d8
-  languageName: node
-  linkType: hard
-
-"simple-swizzle@npm:^0.2.2":
-  version: 0.2.2
-  resolution: "simple-swizzle@npm:0.2.2"
-  dependencies:
-    is-arrayish: ^0.3.1
-  checksum: a5a2c1c86cea94f42ab843508e7c68b5bbfd15acb08056d600ac2e9c7f7c41bc417e71160ea3034a5411d3cce186c801f7a56badfb3a854906ce163120318875
   languageName: node
   linkType: hard
 

@@ -1,12 +1,12 @@
 {
-  "name": "@fiftyone/flashlight",
-  "version": "0.2.0",
+  "name": "@fiftyone/utilities",
+  "version": "0.1.0",
   "author": "Voxel51, Inc.",
-  "description": "Justified, scrubbable, and virtualized looker grid",
-  "homepage": "https://github.com/voxel51/fiftyone/app/packages/flashlight",
+  "description": "Generic JavaScript utilities for the FiftyOne monorepo",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/utilities",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/voxel51/fiftyone"
+    "url": "https://github.com/voxel51/fiftyone/"
   },
   "main": "./src/index.ts",
   "scripts": {
@@ -18,14 +18,14 @@
     "dist",
     "README.md"
   ],
-  "dependencies": {
-    "@fiftyone/looker": "*"
-  },
   "devDependencies": {
     "@fiftyone/prettier-config": "*",
     "prettier": "2.2.1",
     "typescript": "4.2.4",
     "typescript-plugin-css-modules": "^3.4.0",
     "vite": "2.4.2"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21"
   }
 }
