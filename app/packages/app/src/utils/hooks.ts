@@ -1,11 +1,10 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
-import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { ColorTheme } from "../shared/colors";
 import socket, { appContext, handleId, isColab } from "../shared/connection";

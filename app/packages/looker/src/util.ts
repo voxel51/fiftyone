@@ -403,8 +403,23 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (): Worker => {
-  return new LookerWorker();
+export const createWorker = (listeners?: {
+  [key: string]: ((worker: Worker, args: any) => void)[];
+}): Worker => {
+  const worker = new LookerWorker();
+
+  if (!listeners) {
+    return worker;
+  }
+
+  worker.addEventListener("message", ({ data: { method, ...args } }) => {
+    if (!(method in listeners)) {
+      return;
+    }
+
+    listeners[method].forEach((callback) => callback(worker, args));
+  });
+  return worker;
 };
 
 export const removeFromBuffers = (
@@ -495,3 +510,55 @@ export const getMimeType = (sample: any) => {
     "image/jpg"
   );
 };
+
+export const formatDateTime = (timeStamp: number, timeZone: string): string => {
+  const twoDigit = "2-digit";
+  const MS = 1000;
+  const S = 60 * MS;
+  const M = 60 * S;
+  const H = 24 * M;
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone,
+    year: "numeric",
+    day: twoDigit,
+    month: twoDigit,
+    hour: twoDigit,
+    minute: twoDigit,
+    second: twoDigit,
+  };
+
+  if (!(timeStamp % S)) {
+    delete options.second;
+  }
+
+  if (!(timeStamp % M)) {
+    delete options.minute;
+  }
+
+  if (!(timeStamp % H)) {
+    delete options.hour;
+  }
+
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-");
+};
+
+export const formatDate = (timeStamp: number): string => {
+  const twoDigit = "2-digit";
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "UTC",
+    year: "numeric",
+    day: twoDigit,
+    month: twoDigit,
+  };
+
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-");
+};
+
+export const isFloatArray = (arr) =>
+  arr instanceof Float32Array || arr instanceof Float64Array;

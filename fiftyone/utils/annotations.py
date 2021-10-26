@@ -10,15 +10,12 @@ from copy import deepcopy
 import getpass
 import logging
 import os
-import warnings
 
 from bson import ObjectId
 
 import eta.core.annotations as etaa
-import eta.core.frames as etaf
 import eta.core.image as etai
 import eta.core.utils as etau
-import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foag
@@ -117,8 +114,9 @@ def annotate(
             specified. All new label fields must have a class list provided via
             one of the supported methods. For existing label fields, if classes
             are not provided by this argument nor ``label_schema``, they are
-            parsed from :meth:`fiftyone.core.dataset.Dataset.classes` or
-            :meth:`fiftyone.core.dataset.Dataset.default_classes`
+            parsed from
+            :meth:`fiftyone.core.collections.SampleCollection.get_classes` if
+            possible, or else the observed labels on your dataset are used
         attributes (True): specifies the label attributes of each label
             field to include (other than their ``label``, which is always
             included) in the annotation export. Can be any of the
@@ -326,7 +324,12 @@ def _build_label_schema(
     allow_spatial_edits,
 ):
     if label_schema is None and label_field is None:
-        raise ValueError("Either `label_schema` or `label_field` is required")
+        if backend.requires_label_schema:
+            raise ValueError(
+                "Either `label_schema` or `label_field` is required"
+            )
+
+        return {None: {}}, samples
 
     if label_schema is None:
         label_schema = _init_label_schema(
@@ -741,11 +744,9 @@ def _get_classes(
             % label_field
         )
 
-    if label_field in samples.classes:
-        return samples.classes[label_field]
-
-    if samples.default_classes:
-        return samples.default_classes
+    classes = samples.get_classes(label_field)
+    if classes:
+        return classes
 
     _, label_path = samples._get_label_field_path(label_field, "label")
     return samples._dataset.distinct(label_path)
@@ -944,15 +945,14 @@ def load_annotations(
     annotations = results.backend.download_annotations(results)
 
     for label_field, label_info in label_schema.items():
-        label_type = label_info["type"]
+        label_type = label_info.get("type", None)
         global_attrs, class_attrs = _parse_attributes(label_info)
         allow_additions = label_info.get("allow_additions", True)
-
-        expected_type = _RETURN_TYPES_MAP[label_type]
+        expected_type = _RETURN_TYPES_MAP.get(label_type, None)
 
         anno_dict = annotations.get(label_field, {})
 
-        if expected_type not in anno_dict:
+        if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
 
         for anno_type, annos in anno_dict.items():
@@ -1202,6 +1202,7 @@ def _merge_labels(
     if label_info is None:
         label_info = {}
 
+    existing_field = label_info.get("existing_field", False)
     only_keyframes = label_info.get("only_keyframes", False)
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
@@ -1220,6 +1221,10 @@ def _merge_labels(
     is_video = samples.media_type == fom.VIDEO
 
     if is_video and label_type in _TRACKABLE_TYPES:
+        if not existing_field:
+            # Always include keyframe info when importing new video tracks
+            only_keyframes = True
+
         _update_tracks(samples, label_field, anno_dict, only_keyframes)
 
     id_map = results.id_map.get(label_field, {})
@@ -1231,35 +1236,79 @@ def _merge_labels(
         field = label_field
         added_id_map = defaultdict(list)
 
+    # Record existing label IDs
     existing_ids = set()
-    for sample_labels in id_map.values():
+    for sample_id, sample_labels in id_map.items():
         if is_video:
-            for frame_labels in sample_labels.values():
-                existing_ids.update(_to_list(frame_labels))
+            for frame_id, frame_labels in sample_labels.items():
+                for label_id in _to_list(frame_labels):
+                    existing_ids.add((sample_id, frame_id, label_id))
         else:
-            existing_ids.update(_to_list(sample_labels))
+            for label_id in _to_list(sample_labels):
+                existing_ids.add((sample_id, label_id))
 
-    existing_ids.discard(None)
-
+    # Record annotation label IDs
     anno_ids = set()
-    for sample in anno_dict.values():
+    anno_id_counts = defaultdict(int)
+    for sample_id, sample_labels in anno_dict.items():
         if is_video:
-            for frame in sample.values():
-                anno_ids.update(frame.keys())
+            for frame_id, frame_labels in sample_labels.items():
+                for label_id in frame_labels.keys():
+                    anno_ids.add((sample_id, frame_id, label_id))
+                    anno_id_counts[label_id] += 1
         else:
-            anno_ids.update(sample.keys())
+            for label_id in sample_labels.keys():
+                anno_ids.add((sample_id, label_id))
+                anno_id_counts[label_id] += 1
 
+    # Determine whether labels should be added, merged, or deleted
     delete_ids = existing_ids - anno_ids
     new_ids = anno_ids - existing_ids
     merge_ids = anno_ids - new_ids
 
-    if delete_ids and allow_deletions:
-        samples._dataset.delete_labels(ids=delete_ids, fields=label_field)
-
-    sample_ids = list(anno_dict.keys())
-    view = samples._dataset.select(sample_ids).select_fields(label_field)
+    #
+    # Manually prevent duplicate label IDs from being imported by regnerating
+    # any newly added IDs that are duplicates.
+    #
+    # Duplicate IDs can happen when copying annotations or splitting/merging
+    # video track annotations in backends such as CVAT that don't provide good
+    # safeguards against modifying label IDs, which should be immutable.
+    #
+    dup_ids = set(_id for _id, count in anno_id_counts.items() if count > 1)
+    if dup_ids:
+        if is_video:
+            for sample_id, frame_id, label_id in list(new_ids):
+                if label_id in dup_ids:
+                    # Regenerate duplicate label ID
+                    frame_labels = anno_dict[sample_id][frame_id]
+                    label = frame_labels.pop(label_id)
+                    label._id = ObjectId()
+                    new_label_id = str(label._id)
+                    frame_labels[new_label_id] = label
+                    new_ids.discard((sample_id, frame_id, label_id))
+                    new_ids.add((sample_id, frame_id, new_label_id))
+        else:
+            for sample_id, label_id in list(new_ids):
+                if label_id in dup_ids:
+                    # Regenerate duplicate label ID
+                    sample_labels = anno_dict[sample_id]
+                    label = sample_labels.pop(label_id)
+                    label._id = ObjectId()
+                    new_label_id = str(label._id)
+                    sample_labels[new_label_id] = label
+                    new_ids.discard((sample_id, label_id))
+                    new_ids.add((sample_id, new_label_id))
 
     logger.info("Loading labels for field '%s'...", label_field)
+
+    # Delete labels that were deleted in the annotation task
+    if delete_ids and allow_deletions:
+        _del_ids = [key[-1] for key in delete_ids]
+        samples._dataset.delete_labels(ids=_del_ids, fields=label_field)
+
+    # Add/merge labels from the annotation task
+    sample_ids = list(anno_dict.keys())
+    view = samples._dataset.select(sample_ids).select_fields(label_field)
     for sample in view.iter_samples(progress=True):
         sample_id = sample.id
         sample_annos = anno_dict[sample_id]
@@ -1271,7 +1320,8 @@ def _merge_labels(
 
         for image in images:
             if is_video:
-                image_annos = sample_annos.get(image.id, None)
+                frame_id = image.id
+                image_annos = sample_annos.get(frame_id, None)
                 if not image_annos:
                     continue
             else:
@@ -1288,17 +1338,17 @@ def _merge_labels(
                     )
 
                     if is_video:
-                        added_id_map[sample_id][image.id].extend(label_ids)
+                        added_id_map[sample_id][frame_id].extend(label_ids)
                     else:
                         added_id_map[sample_id].extend(label_ids)
                 elif image_annos:
-                    anno_id, anno_label = next(iter(image_annos.items()))
+                    label_id, anno_label = next(iter(image_annos.items()))
                     image[field] = anno_label
 
                     if is_video:
-                        added_id_map[sample_id][image.id] = anno_id
+                        added_id_map[sample_id][frame_id] = label_id
                     else:
-                        added_id_map[sample_id] = anno_id
+                        added_id_map[sample_id] = label_id
             else:
                 if is_list:
                     labels = image_label[list_field]
@@ -1307,8 +1357,14 @@ def _merge_labels(
 
                 # Merge labels that existed before and after annotation
                 for label in labels:
-                    if label.id in merge_ids:
-                        anno_label = image_annos[label.id]
+                    label_id = label.id
+                    if is_video:
+                        key = (sample_id, frame_id, label_id)
+                    else:
+                        key = (sample_id, label_id)
+
+                    if key in merge_ids:
+                        anno_label = image_annos[label_id]
 
                         _merge_label(
                             label,
@@ -1322,16 +1378,21 @@ def _merge_labels(
 
                 # Add new labels to label list fields
                 if is_list and allow_additions:
-                    for anno_id, anno_label in image_annos.items():
-                        if anno_id not in new_ids:
+                    for label_id, anno_label in image_annos.items():
+                        if is_video:
+                            key = (sample_id, frame_id, label_id)
+                        else:
+                            key = (sample_id, label_id)
+
+                        if key not in new_ids:
                             continue
 
                         labels.append(anno_label)
 
                         if is_video:
-                            added_id_map[sample_id][image.id].append(anno_id)
+                            added_id_map[sample_id][frame_id].append(label_id)
                         else:
-                            added_id_map[sample_id].append(anno_id)
+                            added_id_map[sample_id].append(label_id)
 
         sample.save()
 
@@ -1450,14 +1511,26 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
                 if _label_id in existing_map:
                     _existing_index = existing_map[_label_id]
                     if _existing_index not in _seen_indexes:
-                        index_map[(_id, label.index)] = _existing_index
                         _seen_indexes.add(_existing_index)
+
+                        _index = index_map.get((_id, label.index), None)
+                        if _index is not None:
+                            # We found two existing trajectories that have been
+                            # merged. Use the smallest index
+                            _existing_index = min(_index, _existing_index)
+
+                        index_map[(_id, label.index)] = _existing_index
 
     # Perform necessary transformations
     for _id, sample_annos in anno_dict.items():
         for _frame_id, frame_annos in sample_annos.items():
-            for _label_id in list(frame_annos.keys()):  # list b/c we'll edit
+            for _label_id in list(frame_annos.keys()):  # list b/c we may edit
                 label = frame_annos[_label_id]
+
+                # If the annotation task did not consider keyframes, then never
+                # import `keyframe` attributes into FiftyOne
+                if not only_keyframes and hasattr(label, "keyframe"):
+                    delattr(label, "keyframe")
 
                 # Don't remap non-trajectories
                 if label.index is None:
@@ -1472,16 +1545,21 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
 
                 label.index = _index
 
-                # If only keyframes were uploaded and this label coincides with
-                # an existing observation of its track, inherit the label ID
-                # from the existing observation so that the labels can be
-                # merged
-                if only_keyframes:
-                    _existing_id = id_map.get((_id, _frame_id, _index), None)
-                    if _existing_id is not None:
-                        label._id = ObjectId(_existing_id)
-                        del frame_annos[_label_id]
-                        frame_annos[_existing_id] = label
+                #
+                # If this label coincides with an existing observation of its
+                # track, inherit the label ID from the existing observation.
+                #
+                # This is required to properly import interpolated frames of
+                # keyframe-only annotation runs, and it is also helpful to
+                # mitigate any issues such as label ID duplication along a
+                # track, which can happen in annotation backends like CVAT that
+                # don't provide a good way to manage immutable label IDs
+                #
+                _existing_id = id_map.get((_id, _frame_id, _index), None)
+                if _existing_id is not None:
+                    label._id = ObjectId(_existing_id)
+                    del frame_annos[_label_id]
+                    frame_annos[_existing_id] = label
 
 
 class AnnotationBackendConfig(foa.AnnotationMethodConfig):
@@ -1606,6 +1684,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         existing video track annotations.
         """
         raise NotImplementedError("subclass must implement supports_keyframes")
+
+    @property
+    def requires_label_schema(self):
+        """Whether this backend requires a pre-defined label schema for its
+        annotation runs.
+        """
+        return True
 
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name

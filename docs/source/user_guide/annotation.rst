@@ -406,11 +406,18 @@ you will provide it to methods like
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
-.. note::
+.. warning::
 
-    Calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    will upload the source media files to the annotation backend.
+    FiftyOne assumes that all labels in an annotation run can fit in memory.
+
+    If you are annotating very large scale video datasets with dense frame
+    labels, you may violate this assumption. Instead, consider breaking the
+    work into multiple smaller annotation runs that each contain limited
+    subsets of the samples you wish to annotate.
+
+    You can use :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
+    to get a sense for the total size of the labels in a dataset as a rule of
+    thumb to estimate the size of a candidate annotation run.
 
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
@@ -464,9 +471,9 @@ more details:
     `label_field` or all fields in `label_schema` without classes specified.
     All new label fields must have a class list provided via one of the
     supported methods. For existing label fields, if classes are not provided
-    by this argument nor `label_schema`, they are parsed from
-    :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
-    :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+    by this argument nor `label_schema`, they are retrieved from
+    :meth:`Dataset.get_classes() <fiftyone.core.dataset.Dataset.get_classes>`
+    if possible, or else the observed labels on your dataset are used
 -   **attributes** (*True*): specifies the label attributes of each label field
     to include (other than their `label`, which is always included) in the
     annotation export. Can be any of the following:
@@ -637,7 +644,7 @@ FiftyOne can infer the appropriate values to use:
     lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
     properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list.
+    observed labels on your dataset will be used to construct a classes list
 -   **mask_targets**: if omitted for a semantic segmentation field, the mask
     targets from the
     :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or

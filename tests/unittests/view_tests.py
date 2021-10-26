@@ -6,6 +6,7 @@ FiftyOne view-related unit tests.
 |
 """
 from copy import deepcopy
+from datetime import date, datetime, timedelta
 import math
 
 import unittest
@@ -444,7 +445,6 @@ class ViewExpressionTests(unittest.TestCase):
 
     @drop_datasets
     def test_array(self):
-        dataset_name = self.test_array.__name__
         dataset = fo.Dataset()
 
         dataset.add_samples(
@@ -496,7 +496,9 @@ class ViewExpressionTests(unittest.TestCase):
     @drop_datasets
     def test_str(self):
         special_chars = r"[]{}()*+-?.,\\^$|#"
+
         self.dataset = fo.Dataset()
+
         self.dataset.add_samples(
             [
                 fo.Sample(filepath="test1.jpg", test="test1.jpg"),
@@ -582,6 +584,80 @@ class ViewExpressionTests(unittest.TestCase):
             ),
             1,
         )
+
+    @drop_datasets
+    def test_dates(self):
+        dataset = fo.Dataset()
+
+        date1 = date(2021, 8, 24)
+        date2 = date(2021, 8, 25)
+        date3 = date(2021, 8, 26)
+
+        query_date = datetime(2021, 8, 25, 1, 0, 0)
+        query_delta = timedelta(hours=2)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", date=date1),
+                fo.Sample(filepath="image2.png", date=date2),
+                fo.Sample(filepath="image3.png", date=date3),
+            ]
+        )
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        dates = dataset.values("date")
+        self.assertListEqual(dates, [date1, date2, date3])
+
+        min_date, max_date = dataset.bounds("date")
+        self.assertEqual(min_date, date1)
+        self.assertEqual(max_date, date3)
+
+        view = dataset.match(F("date") > query_date)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date3)
+
+        view = dataset.match(abs(F("date") - query_date) < query_delta)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date2)
+
+    @drop_datasets
+    def test_datetimes(self):
+        dataset = fo.Dataset()
+
+        date1 = datetime(2021, 8, 24, 1, 0, 0)
+        date2 = datetime(2021, 8, 24, 2, 0, 0)
+        date3 = datetime(2021, 8, 24, 3, 0, 0)
+
+        query_date = datetime(2021, 8, 24, 2, 1, 0)
+        query_delta = timedelta(minutes=30)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.png", date=date1),
+                fo.Sample(filepath="image2.png", date=date2),
+                fo.Sample(filepath="image3.png", date=date3),
+            ]
+        )
+
+        fo.config.timezone = None
+        dataset.reload()
+
+        dates = dataset.values("date")
+        self.assertListEqual(dates, [date1, date2, date3])
+
+        min_date, max_date = dataset.bounds("date")
+        self.assertEqual(min_date, date1)
+        self.assertEqual(max_date, date3)
+
+        view = dataset.match(F("date") > query_date)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date3)
+
+        view = dataset.match(abs(F("date") - query_date) < query_delta)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().date, date2)
 
 
 class SliceTests(unittest.TestCase):
@@ -1403,6 +1479,26 @@ class ViewStageTests(unittest.TestCase):
         view = dataset.match_labels(tags="good", filter=F("confidence") < 0.95)
         self.assertEqual(len(view), 1)
 
+        # Test `bool=False`
+
+        view1 = dataset.match_labels(tags="bad")
+        view2 = dataset.match_labels(tags="bad", bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
+
+        view1 = dataset.match_labels(filter=F("confidence") > 0.8)
+        view2 = dataset.match_labels(filter=F("confidence") > 0.8, bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
+
     def test_match_labels_video(self):
         sample1 = fo.Sample(filepath="video1.mp4")
         sample1.frames[1] = fo.Frame(
@@ -1460,6 +1556,26 @@ class ViewStageTests(unittest.TestCase):
 
         view = dataset.match_labels(tags="bad", filter=F("confidence") < 0.5)
         self.assertEqual(len(view), 1)
+
+        # Test `bool=False`
+
+        view1 = dataset.match_labels(tags="bad")
+        view2 = dataset.match_labels(tags="bad", bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
+
+        view1 = dataset.match_labels(filter=F("label") == "friend")
+        view2 = dataset.match_labels(filter=F("label") == "friend", bool=False)
+
+        self.assertEqual(len(dataset), len(view1) + len(view2))
+        self.assertSetEqual(
+            set(dataset.values("id")),
+            set(view1.values("id") + view2.values("id")),
+        )
 
     def test_match_tags(self):
         self.sample1.tags.append("test")
