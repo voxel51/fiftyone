@@ -9,7 +9,7 @@ export namespace State {
   export interface Config {
     colorPool: string[];
     colorscale: string;
-    gridZoom: string;
+    gridZoom: number;
     loopVideos: string;
     notebookHeight: number;
     showConfidence: boolean;
@@ -75,19 +75,24 @@ export namespace State {
 
   export interface Filter {}
 
-  export interface Stage {}
+  export interface Filters {
+    [key: string]: Filter;
+  }
+
+  export interface Stage {
+    _cls: string;
+    kwargs: [string, object][];
+  }
 
   export interface Description {
-    activeHandler: string | null;
+    activeHandle: string | null;
     colorscale: RGB[];
     close: boolean;
     config: Config;
     connected: boolean;
     datasets: string[];
     dataset?: Dataset;
-    filters: {
-      [path: string]: Filter;
-    };
+    filters: Filters;
     refresh: boolean;
     selected: string[];
     selectedLabels: string[];

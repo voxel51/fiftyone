@@ -13,6 +13,7 @@ import Header from "../components/Header";
 import NotificationHub from "../components/NotificationHub";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { State } from "../recoil/types";
 import { useClearModal } from "../recoil/utils";
 import socket, { handleId, isNotebook } from "../shared/connection";
 
@@ -34,8 +35,8 @@ const useStateUpdate = () => {
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
-      console.log(state);
-      set(atoms.stateDescription, toCamelCase(state));
+      console.log(toCamelCase(state));
+      set(atoms.stateDescription, toCamelCase(state) as State.Description);
       set(selectors.anyTagging, false);
       set(patching, false);
       set(similaritySorting, false);

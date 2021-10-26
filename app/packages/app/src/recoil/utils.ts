@@ -1,12 +1,15 @@
-import { selector, useRecoilCallback } from "recoil";
+import { selector, SetRecoilState, useRecoilCallback } from "recoil";
+
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { toSnakeCase } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
+import { State } from "./types";
+import socket, { http } from "../shared/connection";
+import { packageMessage } from "../utils/socket";
 
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { http } from "../shared/connection";
-
-type LookerTypes = typeof FrameLooker & typeof ImageLooker & typeof VideoLooker;
+type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
 export const getSampleSrc = (filepath: string, id: string) => {
   return `${http}/filepath/${encodeURI(filepath)}?id=${id}`;
@@ -49,4 +52,9 @@ export const useClearModal = () => {
     },
     []
   );
+};
+
+export const setState = (set: SetRecoilState, state: State.Description) => {
+  set(atoms.stateDescription, state);
+  socket.send(packageMessage("update", { state: toSnakeCase(state) }));
 };
