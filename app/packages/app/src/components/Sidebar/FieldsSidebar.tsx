@@ -1,47 +1,19 @@
 import React, { MouseEventHandler, useEffect, useState } from "react";
 import styled from "styled-components";
-import {
-  useRecoilValue,
-  useRecoilState,
-  useRecoilCallback,
-  RecoilState,
-  RecoilValueReadOnly,
-} from "recoil";
-import {
-  BarChart,
-  BurstMode,
-  Check,
-  Close,
-  FilterList,
-  Help,
-  LocalOffer,
-  Note,
-  PhotoLibrary,
-  VideoLibrary,
-  Visibility,
-} from "@material-ui/icons";
+import { useRecoilValue, useRecoilState } from "recoil";
+import { Check, Close, LocalOffer, Note, Visibility } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 import numeral from "numeral";
 
-import CellHeader from "./CellHeader";
-import DropdownCell from "./DropdownCell";
-import * as filtering from "./Filters/filtered";
+import CellHeader from "../CellHeader";
+import DropdownCell from "../DropdownCell";
 import CheckboxGrid from "./CheckboxGroup";
 import { Entry } from "./CheckboxGroup";
-import * as atoms from "../recoil/atoms";
-import * as fieldAtoms from "./Filters/utils";
-import * as selectors from "../recoil/selectors";
-import {
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  FILTERABLE_TYPES,
-  FRAME_SUPPORT_FIELD,
-} from "../utils/labels";
-import { useTheme } from "../utils/hooks";
-import { PillButton } from "./utils";
-import { formatDateTime, prettify } from "../utils/generic";
-import * as filterAtoms from "./Filters/atoms";
-import { DATE_TIME } from "@fiftyone/looker/src/constants";
+import * as fieldAtoms from "../Filters/utils";
+import * as selectors from "../../recoil/selectors";
+import { useTheme } from "../../utils/hooks";
+import { PillButton } from "../utils";
+import * as filterAtoms from "../Filters/atoms";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -429,255 +401,6 @@ const LabelTagsCell = ({ modal }: TagsCellProps) => {
   );
 };
 
-type LabelsCellProps = {
-  modal: boolean;
-  frames: boolean;
-};
-
-const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
-  const key = frames ? "frame" : "sample";
-  const labels = useRecoilValue(selectors.labelNames(key));
-  const [activeLabels, setActiveLabels] = useRecoilState(
-    fieldAtoms.activeLabels({ modal, frames })
-  );
-  const video = useRecoilValue(selectors.isVideoDataset);
-  const types = useRecoilValue(selectors.labelTypesMap);
-
-  const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCountAtom, count] = [
-    filterAtoms.filteredLabelCounts({ key, modal }),
-    useRecoilValue(filterAtoms.labelCounts({ key, modal })),
-  ];
-
-  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
-  const theme = useTheme();
-
-  return (
-    <Cell
-      label={frames ? "Frame labels" : "Labels"}
-      icon={
-        frames ? <BurstMode /> : video ? <VideoLibrary /> : <PhotoLibrary />
-      }
-      pills={useClearFiltersPill(
-        frames
-          ? filtering.numFilteredFrameLabels(modal)
-          : filtering.numFilteredLabels(modal),
-        frames
-          ? filtering.filteredFrameLabels(modal)
-          : filtering.filteredLabels(modal)
-      )}
-      sort={false}
-      entries={labels.map((name) => {
-        const path = frames ? "frames." + name : name;
-        return {
-          name,
-          disabled: false,
-          hideCheckbox: false,
-          hasDropdown: FILTERABLE_TYPES.includes(types[path]),
-          selected: activeLabels.includes(path),
-          color: colorByLabel ? theme.brand : colorMap(path),
-          title: name,
-          path: path,
-          type: "labels",
-          modal,
-          count: count ? count[path] : null,
-          subCountAtom,
-          labelType: types[path],
-          canFilter: true,
-        };
-      })}
-      onSelect={({ name, selected }) => {
-        if (frames) {
-          name = "frames." + name;
-        }
-        setActiveLabels(
-          selected
-            ? [name, ...activeLabels]
-            : activeLabels.filter((t) => t !== name)
-        );
-      }}
-      handleClear={(e) => {
-        e.stopPropagation();
-        setActiveLabels([]);
-      }}
-      modal={modal}
-      title={frames ? "Frame label fields" : "Label fields"}
-    />
-  );
-};
-
-const useClearFiltersPill = (
-  numFilteredAtom: RecoilValueReadOnly<number>,
-  filteredAtom: RecoilState<string[]>
-) => {
-  const theme = useTheme();
-  const clear = useRecoilCallback(
-    ({ set }) => async () => {
-      set(filteredAtom, []);
-    },
-    [filteredAtom]
-  );
-
-  const numFiltered = useRecoilValue(numFilteredAtom);
-
-  return numFiltered > 0
-    ? [
-        <PillButton
-          key="clear-match"
-          highlight={false}
-          icon={<FilterList />}
-          text={numeral(numFiltered).format("0,0")}
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            clear();
-          }}
-          title={"Clear filters"}
-          open={false}
-          style={{
-            marginLeft: "0.25rem",
-            height: "1.5rem",
-            fontSize: "0.8rem",
-            lineHeight: "1rem",
-            color: theme.font,
-          }}
-        />,
-      ]
-    : null;
-};
-
-type OthersCellProps = {
-  modal: boolean;
-};
-
-const OthersCell = ({ modal }: OthersCellProps) => {
-  const scalars = useRecoilValue(selectors.primitiveNames("sample"));
-  const [activeScalars, setActiveScalars] = useRecoilState(
-    fieldAtoms.activeScalars(modal)
-  );
-  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
-  const theme = useTheme();
-  const dbFields = useRecoilValue(selectors.primitivesDbMap("sample"));
-
-  const colorMap = useRecoilValue(selectors.colorMap(modal));
-  const [subCountAtom, count] = [
-    filterAtoms.filteredScalarCounts(modal),
-    useRecoilValue(filterAtoms.scalarCounts(modal)),
-  ];
-  const types = useRecoilValue(selectors.primitivesMap("sample"));
-  const timeZone = useRecoilValue(selectors.timeZone);
-  const subTypes = useRecoilValue(selectors.primitiveSubfields("sample"));
-  const dates = [DATE_TIME_FIELD, DATE_FIELD];
-
-  return (
-    <Cell
-      label="Other fields"
-      icon={<BarChart />}
-      pills={
-        modal
-          ? null
-          : useClearFiltersPill(
-              filtering.numFilteredScalars(modal),
-              filtering.filteredScalars(modal)
-            )
-      }
-      sort={false}
-      entries={scalars
-        .filter((name) => !(["filepath", "id"].includes(name) && modal))
-        .map((name) => {
-          let value = modal ? count[dbFields[name]] : null;
-
-          if (
-            value &&
-            (dates.includes(types[name]) || dates.includes(subTypes[name]))
-          ) {
-            value = formatDateTime(
-              value.datetime,
-              types[name] === DATE_FIELD || subTypes[name] === DATE_TIME_FIELD
-                ? "UTC"
-                : timeZone
-            );
-          }
-
-          return {
-            name,
-            disabled: false,
-            hideCheckbox: modal,
-            hasDropdown: !modal || Array.isArray(value),
-            selected: activeScalars.includes(name),
-            color: colorByLabel ? theme.brand : colorMap(name),
-            title:
-              modal &&
-              (!Array.isArray(value) || types[name] === FRAME_SUPPORT_FIELD)
-                ? prettify(value, false)
-                : name,
-            value:
-              modal &&
-              (!Array.isArray(value) || types[name] === FRAME_SUPPORT_FIELD)
-                ? prettify(value, false)
-                : null,
-            path: name,
-            count:
-              count === null
-                ? null
-                : modal &&
-                  Array.isArray(value) &&
-                  types[name] !== FRAME_SUPPORT_FIELD
-                ? value.length
-                : count[name],
-            type: "values",
-            modal,
-            subCountAtom,
-            disableList: modal,
-            canFilter: !modal || Array.isArray(value),
-          };
-        })}
-      onSelect={
-        !modal
-          ? ({ name, selected }) => {
-              setActiveScalars(
-                selected
-                  ? [name, ...activeScalars]
-                  : activeScalars.filter((t) => t !== name)
-              );
-            }
-          : null
-      }
-      handleClear={(e) => {
-        e.stopPropagation();
-        setActiveScalars([]);
-      }}
-      modal={modal}
-      title={"Other fields"}
-    />
-  );
-};
-
-type UnsupportedCellProps = {
-  modal: boolean;
-};
-
-const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
-  const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
-  return unsupported.length ? (
-    <Cell
-      label={"Unsupported fields"}
-      icon={<Help />}
-      entries={unsupported.map((e) => ({
-        name: e,
-        path: e,
-        title: e,
-        data: null,
-        disabled: true,
-        hideCheckbox: true,
-        selected: false,
-      }))}
-      title={"Unsupported fields"}
-      modal={modal}
-    />
-  ) : null;
-};
-
 const ButtonDiv = animated(styled.div`
   cursor: pointer;
   margin-left: 0;
@@ -761,10 +484,6 @@ const FieldsSidebar = React.forwardRef(
       <Container ref={ref} style={{ ...style, ...moreStyles }}>
         <SampleTagsCell modal={modal} />
         <LabelTagsCell modal={modal} />
-        <LabelsCell modal={modal} frames={false} />
-        {isVideo && <LabelsCell modal={modal} frames={true} />}
-        <OthersCell modal={modal} />
-        <UnsupportedCell modal={modal} />
       </Container>
     );
   }

@@ -1,31 +1,20 @@
 import React, { Suspense, useState } from "react";
 import styled from "styled-components";
-import {
-  Checkbox,
-  FormControlLabel,
-  CircularProgress,
-} from "@material-ui/core";
+import { CircularProgress } from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
-import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
-import { isBooleanField } from "./Filters/BooleanFieldFilter.state";
+import { isBooleanField } from "../Filters/BooleanFieldFilter.state";
 import {
   isNumericField,
   isSupportField,
-} from "./Filters/NumericFieldFilter.state";
-import { isStringField } from "./Filters/StringFieldFilter.state";
+} from "../Filters/NumericFieldFilter.state";
+import { isStringField } from "../Filters/StringFieldFilter.state";
 
-import { labelTypeIsFilterable } from "../utils/labels";
-
-import LabelFieldFilter from "./Filters/LabelFieldFilter";
-import NumericFieldFilter from "./Filters/NumericFieldFilter";
-import StringFieldFilter from "./Filters/StringFieldFilter";
-import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
-import { useTheme } from "../utils/hooks";
-import { genSort, prettify } from "../utils/generic";
-import { sortFilterResults } from "../recoil/atoms";
+import { useTheme } from "../../utils/hooks";
+import { genSort, prettify } from "../../utils/generic";
+import { sortFilterResults } from "../../recoil/atoms";
 
 const Body = styled.div`
   vertical-align: middle;
@@ -199,26 +188,6 @@ const CheckboxText = ({
   );
 };
 
-export type Entry = {
-  name: string;
-  selected: boolean;
-  color?: string;
-  disabled: boolean;
-  labelType?: string;
-  path: string;
-  hasDropdown?: boolean;
-  hideCheckbox?: boolean;
-  title: string;
-  count?: number;
-  value?: string | number | any;
-  subCountAtom: RecoilValueReadOnly<{ [key: string]: number }>;
-  canFilter?: boolean;
-  type: string;
-  icon?: any;
-  key?: string;
-  disableList?: boolean;
-};
-
 type EntryProps = {
   entry: Entry;
   modal: boolean;
@@ -335,18 +304,6 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
           />
         }
       />
-      {isNumeric && (
-        <NumericFieldFilter expanded={expanded} entry={entry} modal={modal} />
-      )}
-      {isString && (
-        <StringFieldFilter expanded={expanded} entry={entry} modal={modal} />
-      )}
-      {isBoolean && (
-        <BooleanFieldFilter expanded={expanded} entry={entry} modal={modal} />
-      )}
-      {entry.labelType && labelTypeIsFilterable(entry.labelType) ? (
-        <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
-      ) : null}
     </CheckboxContainer>
   );
 });
@@ -354,7 +311,7 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
 const withSort = (modal: boolean) => {
   const { count, asc } = useRecoilValue(sortFilterResults(modal));
 
-  return (entries: Entry[]): Entry[] => {
+  return (entries) => {
     return entries.sort((aa, bb) => {
       let a = [aa.name, aa.count];
       let b = [bb.name, bb.count];
@@ -377,34 +334,20 @@ const withSort = (modal: boolean) => {
   };
 };
 
-type CheckboxGroupProps = {
-  entries: Entry[];
-  onCheck: (entry: Entry) => void;
-  modal: boolean;
-  sort?: boolean;
-};
+const CheckboxGroup = React.memo(({ entries, onCheck, modal, sort = true }) => {
+  const sorter = withSort(modal);
 
-const CheckboxGroup = React.memo(
-  ({ entries, onCheck, modal, sort = true }: CheckboxGroupProps) => {
-    const sorter = withSort(modal);
-
-    if (sort) {
-      entries = sorter(entries);
-    }
-
-    return (
-      <Body>
-        {entries.map((entry) => (
-          <Entry
-            key={entry.name}
-            entry={entry}
-            onCheck={onCheck}
-            modal={modal}
-          />
-        ))}
-      </Body>
-    );
+  if (sort) {
+    entries = sorter(entries);
   }
-);
+
+  return (
+    <Body>
+      {entries.map((entry) => (
+        <Entry key={entry.name} entry={entry} onCheck={onCheck} modal={modal} />
+      ))}
+    </Body>
+  );
+});
 
 export default CheckboxGroup;

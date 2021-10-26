@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import Actions from "./Actions";
-import FieldsSidebar from "./FieldsSidebar";
+import FieldsSidebar from "./Sidebar/FieldsSidebar";
 import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";

@@ -8,7 +8,7 @@ import * as selectors from "../../recoil/selectors";
 import Checkbox from "../Common/Checkbox";
 import { PopoutSectionTitle, TabOption } from "../utils";
 
-import { Button } from "../FieldsSidebar";
+import { Button } from "../Sidebar/FieldsSidebar";
 import Popout from "./Popout";
 import { Slider } from "../Filters/RangeSlider";
 import { useTheme } from "../../utils/hooks";

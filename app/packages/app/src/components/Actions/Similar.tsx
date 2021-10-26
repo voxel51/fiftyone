@@ -12,7 +12,7 @@ import {
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import Input from "../Common/Input";
-import { Button } from "../FieldsSidebar";
+import { Button } from "../Sidebar/FieldsSidebar";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { PopoutSectionTitle } from "../utils";

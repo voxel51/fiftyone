@@ -24,7 +24,7 @@ import {
   SwitchDiv,
   SwitcherDiv,
 } from "./utils";
-import { Button } from "../FieldsSidebar";
+import { Button } from "../Sidebar/FieldsSidebar";
 import * as fieldAtoms from "../Filters/utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";

@@ -10,7 +10,7 @@ import {
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
 import Checkbox from "../Common/Checkbox";
-import { Button } from "../FieldsSidebar";
+import { Button } from "../Sidebar/FieldsSidebar";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
