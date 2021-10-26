@@ -515,7 +515,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         )
 
 
-class ImageMultilabelClassificationDatasetTests(ImageDatasetTests):
+class ImageClassificationsDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [
             fo.Sample(

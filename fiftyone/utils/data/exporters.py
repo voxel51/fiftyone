@@ -1946,7 +1946,6 @@ class FiftyOneImageClassificationDatasetExporter(
             -   ``True``: always include a (possibly empty) attributes dict
             -   ``None``: include attributes only if they exist
             -   a name or iterable of names of specific attributes to include
-
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -2119,7 +2118,10 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
     def export_sample(self, image_or_path, classification, metadata=None):
         is_image_path = etau.is_str(image_or_path)
 
-        _label = _parse_classifications(classification)
+        _label = _parse_classifications(
+            classification, include_confidence=False, include_attributes=False
+        )
+
         if _label is None:
             _label = "_unlabeled"
 
@@ -2214,7 +2216,10 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         etau.ensure_dir(self.export_dir)
 
     def export_sample(self, video_path, classification, _, metadata=None):
-        _label = _parse_classifications(classification)
+        _label = _parse_classifications(
+            classification, include_confidence=False, include_attributes=False
+        )
+
         if _label is None:
             _label = "_unlabeled"
 
