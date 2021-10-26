@@ -20,6 +20,106 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
+def add_yolo_labels(sample_collection, label_field, labels_path, classes):
+    """Adds the given YOLO-formatted labels to the collection.
+
+    Each YOLO txt file should be a space-delimited file whose rows define
+    objects in the following format::
+
+        <target> <x-center> <y-center> <width> <height>
+
+    where ``target`` is the zero-based integer index of the object class label
+    from ``classes`` and the bounding box coordinates are expressed as relative
+    coordinates in ``[0, 1] x [0, 1]``.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_field: the label field in which to store the labels. The field
+            will be created if necessary
+        labels_path: the YOLO-formatted labels to load. This can be any of the
+            following:
+
+            -   a dict mapping either image filenames or absolute filepaths to
+                YOLO TXT filepaths. The image filenames/filepaths should match
+                those in ``sample_collection``, in any order
+            -   a list of YOLO TXT filepaths corresponding 1-1 to the samples
+                in ``sample_collection``
+            -   a directory containing YOLO TXT files whose filenames (less
+                extension) correspond to image filenames in
+                ``sample_collection``, in any order
+        classes: the list of class label strings
+    """
+    if isinstance(labels_path, (list, tuple)):
+        # Explicit list of labels files
+        labels = [load_yolo_annotations(p, classes) for p in labels_path]
+        sample_collection.set_values(label_field, labels)
+        return
+
+    if etau.is_str(labels_path):
+        # Directory of label files matching image filenames (less extension)
+        txt_map = {
+            os.path.splitext(p)[0]: os.path.join(labels_path, p)
+            for p in etau.list_files(labels_path, recursive=True)
+        }
+        match_type = "uuid"
+    elif isinstance(labels_path, dict):
+        # Dictionary mapping filename or filepath to label paths
+        txt_map = labels_path
+        if not txt_map:
+            return
+
+        if os.path.isabs(next(iter(txt_map.keys()))):
+            match_type = "filepath"
+        else:
+            match_type = "basename"
+    else:
+        raise ValueError("Unsupported `labels_path` provided")
+
+    if not txt_map:
+        return
+
+    filepaths, ids = sample_collection.values(["filepath", "id"])
+
+    if match_type == "uuid":
+        # Match basename, no extension
+        id_map = {
+            os.path.splitext(os.path.basename(k))[0]: v
+            for k, v in zip(filepaths, ids)
+        }
+    elif match_type == "basename":
+        # Match basename
+        id_map = {os.path.basename(k): v for k, v in zip(filepaths, ids)}
+    else:
+        # Match entire filepath
+        id_map = {k: v for k, v in zip(filepaths, ids)}
+
+    matched_ids = []
+    matched_paths = []
+    bad_paths = []
+    for key, txt_path in txt_map.items():
+        _id = id_map.get(key, None)
+        if _id is not None:
+            matched_ids.append(_id)
+            matched_paths.append(txt_path)
+        else:
+            bad_paths.append(txt_path)
+
+    if bad_paths:
+        mtype = "filepaths" if match_type == "filepath" else "filenames"
+        logger.warning(
+            "Ignoring %d label files (eg '%s') that do not match %s in the "
+            "sample collection",
+            len(bad_paths),
+            bad_paths[0],
+            mtype,
+        )
+
+    view = sample_collection.select(matched_ids, ordered=True)
+    labels = [load_yolo_annotations(p, classes) for p in matched_paths]
+    view.set_values(label_field, labels)
+
+
 class YOLOv4DatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
