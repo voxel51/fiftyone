@@ -20,7 +20,7 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def add_yolo_labels(sample_collection, label_field, labels_path, classes):
+def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
     """Adds the given YOLO-formatted labels to the collection.
 
     Each YOLO txt file should be a space-delimited file whose rows define
@@ -48,8 +48,18 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes):
             -   a directory containing YOLO TXT files whose filenames (less
                 extension) correspond to image filenames in
                 ``sample_collection``, in any order
-        classes: the list of class label strings
+        classes (None): the list of class label strings. If not provided, these
+            must be available from
+            :meth:`fiftyone.core.collections.SampleCollection.get_classes`
     """
+    if classes is None:
+        classes = sample_collection.get_classes(label_field)
+
+    if not classes:
+        raise ValueError(
+            "You must provide `classes` in order to load YOLO labels"
+        )
+
     if isinstance(labels_path, (list, tuple)):
         # Explicit list of labels files
         labels = [load_yolo_annotations(p, classes) for p in labels_path]
