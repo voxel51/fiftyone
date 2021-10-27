@@ -24,8 +24,6 @@ import {
   VideoLooker,
   zoomAspectRatio,
 } from "@fiftyone/looker";
-import { activeFields } from "./Filters/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
@@ -85,13 +83,11 @@ const flashlightLookerOptions = selector({
   get: ({ get }) => {
     return {
       coloring: get(selectors.coloring(false)),
-      filter: get(labelFilters(false)),
-      activePaths: get(activeFields),
+      filter: () => true,
+      activePaths: [],
       zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
-      fieldsMap: get(selectors.primitivesDbMap("sample")),
-      frameFieldsMap: get(selectors.primitivesDbMap("frame")),
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,

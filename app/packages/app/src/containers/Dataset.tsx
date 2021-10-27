@@ -15,8 +15,8 @@ import {
   useTheme,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
+import * as schemaAtoms from "../recoil/schema";
 import { useClearModal } from "../recoil/utils";
-import { activeFields } from "../components/Filters/utils";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
@@ -36,7 +36,7 @@ const Body = styled.div`
 
 const useResetPaths = () => {
   const dataset = useRecoilValue(selectors.datasetName);
-  const resetPaths = useResetRecoilState(activeFields);
+  const resetPaths = useResetRecoilState(schemaAtoms.activeFields(false));
   useEffect(() => {
     resetPaths();
   }, [dataset]);

@@ -750,7 +750,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.select(sample_id)
         result = await get_app_statistics(view, filters)
-        message = {"type": "modal_statistics", "stats": result, "uuid": uuid}
+        message = {"type": "modal_statistics", "data": result, "uuid": uuid}
         _write_message(message, app=True, only=caller)
 
     @staticmethod
@@ -983,15 +983,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             else []
         )
 
-        message = {
-            "type": "statistics",
-            "stats": result,
-            "view": view,
-            "filters": filters,
-            "extended": extended,
-        }
-
-        _write_message(message, app=True, only=only)
+        _write_message(
+            {
+                "type": "statistics",
+                "data": result,
+                "view": view,
+                "filters": filters,
+                "extended": extended,
+            },
+            app=True,
+            only=only,
+        )
 
     @classmethod
     async def on_count_values(
@@ -1023,13 +1025,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             foa.CountValues(path, _first=limit, _asc=asc, _sort_by=sort_by)
         )
 
-        message = {
-            "type": "count_values",
-            "count": count,
-            "results": first,
-            "uuid": uuid,
-        }
-        _write_message(message, app=True, only=self)
+        _write_message(
+            {
+                "type": "count_values",
+                "count": count,
+                "results": first,
+                "uuid": uuid,
+            },
+            app=True,
+            only=self,
+        )
 
     @classmethod
     async def on_distributions(cls, self, group):

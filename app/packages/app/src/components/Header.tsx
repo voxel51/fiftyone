@@ -22,6 +22,7 @@ import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import ExternalLink from "./ExternalLink";
 import { Slack } from "../icons";
+import * as aggregationAtoms from "../recoil/aggregations";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
@@ -487,8 +488,10 @@ const DatasetSelector = () => {
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
   const connected = useRecoilValue(atoms.connected);
-  const resetStats = useResetRecoilState(atoms.datasetStatsRaw);
-  const resetExtStats = useResetRecoilState(atoms.extendedDatasetStatsRaw);
+  const resetStats = useResetRecoilState(aggregationAtoms.datasetStatsRaw);
+  const resetExtStats = useResetRecoilState(
+    aggregationAtoms.extendedDatasetStatsRaw
+  );
 
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;

@@ -47,8 +47,7 @@ async def get_app_statistics(view, filters):
     Returns:
         a `dict` mapping field paths to aggregation `dict`s
     """
-    # @todo optmizie by removing unnecessary extended view aggregations, e.g. Bounds
-    aggregations = {"": foa.Count()}
+    aggregations = {"": {foa.Count.__name__: foa.Count()}}
     for path, field in view.get_field_schema().items():
         aggregations.update(_build_field_aggregations(path, field, filters))
 
@@ -58,12 +57,12 @@ async def get_app_statistics(view, filters):
                 _build_field_aggregations("frames." + path, field, filters)
             )
 
-    ordered = [agg for path in aggregations.values() for agg in path]
+    ordered = [agg for path in aggregations.values() for agg in path.values()]
     results = await view._async_aggregate(ordered)
     convert(results)
 
     for aggregation, result in zip(ordered, results):
-        aggregations[aggregation.field_name][
+        aggregations[aggregation.field_name or ""][
             aggregation.__class__.__name__
         ] = result
 
@@ -86,7 +85,7 @@ def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
 
     aggregations = {
         path: {
-            aggregations.__class__.__name__: aggregation
+            aggregation.__class__.__name__: aggregation
             for aggregation in aggregations
         }
     }

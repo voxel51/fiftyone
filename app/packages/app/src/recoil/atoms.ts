@@ -1,5 +1,6 @@
-import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 import { atom, atomFamily } from "recoil";
+
+import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
 
@@ -68,23 +69,6 @@ export const teamsSubmitted = atom({
 export const activePlot = atom({
   key: "activePlot",
   default: "labels",
-});
-
-export const datasetStatsRaw = atom({
-  key: "datasetStatsRaw",
-  default: {
-    view: null,
-    stats: [],
-  },
-});
-
-export const extendedDatasetStatsRaw = atom({
-  key: "extendedDatasetStatsRaw",
-  default: {
-    view: null,
-    stats: [],
-    filters: null,
-  },
 });
 
 export const loading = atom({

@@ -35,7 +35,6 @@ const useStateUpdate = () => {
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
-      console.log(toCamelCase(state));
       set(atoms.stateDescription, toCamelCase(state) as State.Description);
       set(selectors.anyTagging, false);
       set(patching, false);

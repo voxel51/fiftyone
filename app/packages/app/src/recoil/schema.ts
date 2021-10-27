@@ -1,5 +1,6 @@
-import { selectorFamily } from "recoil";
-import { RESERVED_FIELDS } from "../utils/labels";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
+
+import { RESERVED_FIELDS, VALID_LABEL_TYPES } from "../utils/labels";
 
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
@@ -13,8 +14,8 @@ const schemaReduce = (
   return schema;
 };
 
-export const schema = selectorFamily<State.Schema, State.SPACE>({
-  key: "schema",
+export const fieldSchema = selectorFamily<State.Schema, State.SPACE>({
+  key: "fieldSchema",
   get: (space) => ({ get }) => {
     const state = get(atoms.stateDescription);
 
@@ -56,4 +57,38 @@ export const schema = selectorFamily<State.Schema, State.SPACE>({
     });
     return fields;
   },
+});
+
+export const labelFieldNames = selectorFamily<string[], State.SPACE>({
+  key: "labelFieldNames",
+  get: (space) => ({ get }) => {
+    const schema = get(fieldSchema(space));
+
+    return Object.entries(schema)
+      .filter(([name, field]) => {
+        if (!field.embeddedDocType) {
+          return false;
+        }
+
+        return VALID_LABEL_TYPES.includes(
+          field.embeddedDocType.split(".").slice(-1)[0]
+        );
+      })
+      .map(([name]) => name)
+      .sort();
+  },
+});
+
+export const labelPaths = selector<string[]>({
+  key: "labelPaths",
+  get: ({ get }) => {
+    const sampleLabels = get(labelFieldNames(State.SPACE.SAMPLE));
+    const frameLabels = get(labelFieldNames(State.SPACE.FRAME));
+    return sampleLabels.concat(frameLabels.map((l) => "frames." + l));
+  },
+});
+
+export const activeFields = atomFamily<string[], boolean>({
+  key: "activeFields",
+  default: labelPaths,
 });

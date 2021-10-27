@@ -13,7 +13,6 @@ import { getMimeType } from "../utils/generic";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getSampleSrc, lookerType } from "../recoil/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
 
 const TagBlock = styled.div`
   margin: 0;
@@ -314,13 +313,13 @@ const reverse = (obj) =>
 const lookerOptions = selector({
   key: "lookerOptions",
   get: ({ get }) => {
-    const showConfidence = get(selectors.appConfig).show_confidence;
-    const showIndex = get(selectors.appConfig).show_index;
-    const showLabel = get(selectors.appConfig).show_label;
-    const showTooltip = get(selectors.appConfig).show_tooltip;
-    const useFrameNumber = get(selectors.appConfig).use_frame_number;
+    const showConfidence = get(selectors.appConfig).showConfidence;
+    const showIndex = get(selectors.appConfig).showIndex;
+    const showLabel = get(selectors.appConfig).showLabel;
+    const showTooltip = get(selectors.appConfig).showTooltip;
+    const useFrameNumber = get(selectors.appConfig).useFrameNumber;
     const video = get(selectors.isVideoDataset)
-      ? { loop: get(selectors.appConfig).loop_videos }
+      ? { loop: get(selectors.appConfig).loopVideos }
       : {};
     const zoom = get(selectors.isPatchesView)
       ? get(atoms.cropToContent(true))
@@ -334,12 +333,10 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      filter: get(labelFilters(true)),
+      filter: () => true,
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
-      fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
-      frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
       timeZone: get(selectors.timeZone),
       coloring: get(selectors.coloring(true)),
       alpha: get(atoms.alpha(true)),

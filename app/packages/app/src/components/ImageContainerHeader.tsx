@@ -3,7 +3,6 @@ import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
-import DropdownHandle from "./DropdownHandle";
 import Actions from "./Actions";
 import * as selectors from "../recoil/selectors";
 import { gridZoomRange } from "./Flashlight";
@@ -22,10 +21,6 @@ const Wrapper = styled.div`
   margin-bottom: 0.5rem;
   flex-shrink: 0;
   padding: 0 1rem;
-
-  ${DropdownHandle.Body} {
-    width: 264px;
-  }
 `;
 
 const SamplesHeader = styled.div`
@@ -83,12 +78,6 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   }
   return (
     <Wrapper>
-      <DropdownHandle
-        label="Filters"
-        expanded={showSidebar}
-        onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
-        style={{ width: 256, padding: "0.25rem 0.5rem" }}
-      />
       <SamplesHeader>
         <Actions modal={false} />
         <RightContainer>
@@ -116,7 +105,6 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
                 color={theme.brand}
                 showBounds={false}
                 persistValue={false}
-                style={{ padding: 0 }}
               />
             </div>
             <div

@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import Actions from "./Actions";
-import FieldsSidebar from "./Sidebar/FieldsSidebar";
+import FieldsSidebar from "./Sidebar/Sidebar";
 import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
@@ -12,7 +12,6 @@ import { useMessageHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
-import { samples } from "./Flashlight";
 
 const Container = styled.div`
   position: relative;

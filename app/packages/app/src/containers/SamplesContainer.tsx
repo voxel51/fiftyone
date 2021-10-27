@@ -2,7 +2,7 @@ import React from "react";
 import { useRecoilState } from "recoil";
 import styled from "styled-components";
 
-import FieldsSidebar from "../components/Sidebar/FieldsSidebar";
+import FieldsSidebar from "../components/Sidebar/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
 import ViewBar from "../components/ViewBar/ViewBar";
