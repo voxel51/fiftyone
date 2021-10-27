@@ -2,123 +2,174 @@ import { atom, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import { request } from "../utils/socket";
+import { viewsAreEqual } from "../utils/view";
 
 import * as atoms from "./atoms";
+import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
+import * as viewAtoms from "./view";
 import { State } from "./types";
+import { modalFilters } from "./filters";
 
-export const aggregationsRaw = atom<{
+type Bounds = [number | null, number | null];
+type Count = number;
+type None = number;
+type CountValues = [number, [string, number][]];
+
+type BaseAggregations = {
+  Count: Count;
+  None: None;
+};
+
+type CategoricalAggregations = {
+  CountValues: CountValues;
+} & BaseAggregations;
+
+type NumericAggregations = {
+  Bounds: Bounds;
+} & BaseAggregations;
+
+type Aggregations = CategoricalAggregations | NumericAggregations;
+
+type AggregationsData = {
+  [path: string]: Aggregations;
+};
+
+type AggregationsResult = {
   view: State.Stage[];
-}>({
+  data: AggregationsData;
+};
+
+export const addNoneCounts = (
+  data: AggregationsData,
+  video: boolean = false
+) => {
+  let count = data[""].Count;
+  const frameCount = data?.frames?.Count;
+  let check = true;
+
+  for (let path in data) {
+    let parent = path.includes(".")
+      ? path.split(".").slice(0, -1).join(".")
+      : path;
+
+    if (video && path.startsWith("frames.")) {
+      count = frameCount;
+      path = path.slice("frames.".length);
+      let parent = path.includes(".")
+        ? path.split(".").slice(0, -1).join(".")
+        : path;
+
+      check = path.includes(".");
+      path = "frames." + path;
+      parent = "frames." + parent;
+    }
+
+    if (path === parent) {
+      data[path].None = count - data[path].Count;
+    } else if (check && path.includes(".") && data[parent] && data[path]) {
+      data[path].None = data[parent].Count - data[path].Count;
+    }
+  }
+};
+
+export const aggregationsRaw = atom<AggregationsResult>({
   key: "aggregationsRaw",
   default: {
     view: null,
-    stats: [],
+    data: {},
   },
 });
 
-export const extendedAggregationsRaw = atom({
+export const aggregations = selector<AggregationsData>({
+  key: "aggregations",
+  get: ({ get }) => {
+    const { data, view } = get(aggregationsRaw);
+    if (!view) {
+      return null;
+    }
+    if (viewsAreEqual(view, get(viewAtoms.view))) {
+      return data;
+    }
+    return null;
+  },
+});
+
+type ExtendedAggregationsResult = {
+  filters: State.Filters;
+} & AggregationsResult;
+
+export const extendedAggregationsRaw = atom<ExtendedAggregationsResult>({
   key: "extendedAggregationsStatsRaw",
   default: {
     view: null,
-    stats: [],
+    data: {},
     filters: null,
   },
 });
 
-const modalAggregationsRaw = selector({
-  key: "modalAggregationsRaw",
-  get: async ({ get }) => {
-    const id = uuid();
-    const data = await request({
-      type: "modal_statistics",
-      uuid: id,
-      args: {
-        sample_id: get(atoms.modal).sample._id,
-      },
-    });
-
-    return data.stats;
-  },
-});
-
-export const modalAggregations = selector({
+const modalAggregations = selector<AggregationsData>({
   key: "modalAggregations",
-  get: ({ get }) => get(modalAggregationsRaw),
-});
-
-const extendedModalAggregationsRaw = selector({
-  key: "extendedModalAggregationsRaw",
   get: async ({ get }) => {
     const id = uuid();
-    const data = await request({
+    const { data } = await request({
       type: "modal_statistics",
       uuid: id,
       args: {
         sample_id: get(atoms.modal).sample._id,
-        filters: get(modalFilterStages),
       },
     });
 
-    return data.stats;
+    addNoneCounts(data, get(selectors.isVideoDataset));
+
+    return data;
   },
 });
 
-export const extendedModalStats = selector({
-  key: "extendedModalStats",
-  get: ({ get }) => get(extendedModalAggregationsRaw),
-});
+const extendedModalAggregations = selector<ExtendedAggregationsResult>({
+  key: "extendedModalAggregations",
+  get: async ({ get }) => {
+    const id = uuid();
+    const { data } = await request({
+      type: "modal_statistics",
+      uuid: id,
+      args: {
+        sample_id: get(atoms.modal).sample._id,
+        filters: get(modalFilters),
+      },
+    });
 
-export const noneFieldCounts = selectorFamily<
-  { [key: string]: number },
-  boolean
->({
-  key: "noneFieldCounts",
-  get: (modal) => ({ get }) => {
-    const raw = get(modal ? modalAggregations : aggregationsRaw);
-    const video = get(selectors.isVideoDataset);
+    addNoneCounts(data, get(selectors.isVideoDataset));
 
-    const currentView = get(selectors.view);
-    if (!raw.view) {
-      return {};
-    }
-    if (!viewsAreEqual(raw.view, currentView)) {
-      return {};
-    }
-
-    return computeNoneCounts(raw.stats, video);
+    return data;
   },
 });
 
-export const noneFilteredFieldCounts = selectorFamily<
-  { [key: string]: number },
-  boolean
->({
-  key: "noneFilteredFieldCounts",
-  get: (modal) => ({ get }) => {
-    const raw = get(modal ? aggregationsRaw : atoms.extendedDatasetStatsRaw);
-    const video = get(selectors.isVideoDataset);
+const normalizeFilters = (filters) => {
+  const names = Object.keys(filters).sort();
+  const list = names.map((n) => filters[n]);
+  return JSON.stringify([names, list]);
+};
 
-    const currentView = get(selectors.view);
-    if (!raw.view) {
-      return {};
-    }
-    if (!viewsAreEqual(raw.view, currentView)) {
-      return {};
-    }
+export const filtersAreEqual = (filtersOne, filtersTwo) => {
+  return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
+};
 
-    const currentFilters = get(
-      modal ? modalFilterStages : selectors.filterStages
-    );
-    if (!selectors.filtersAreEqual(raw.filters, currentFilters)) {
-      return {};
+export const extendedAggregations = selector({
+  key: "extendedAggregations",
+  get: ({ get }) => {
+    const { view, filters, data } = get(extendedAggregationsRaw);
+    if (!view) {
+      return null;
     }
-
-    if (Object.entries(currentFilters).length === 0) {
-      return noneFieldCounts(modal);
+    if (!viewsAreEqual(view, get(viewAtoms.view))) {
+      return null;
+    }
+    if (!filtersAreEqual(filters, get(filterAtoms.filters))) {
+      return null;
     }
 
-    return computeNoneCounts(raw.stats, video);
+    return data;
   },
 });
 
@@ -128,7 +179,7 @@ export const noneCount = selectorFamily<
 >({
   key: "noneCount",
   get: ({ path, modal }) => ({ get }) => {
-    return get(noneFieldCounts(modal))[path];
+    return get(modal)[path];
   },
 });
 
@@ -474,7 +525,7 @@ export const labelCount = selectorFamily<number | null, boolean>({
 export const tagNames = selectorFamily<string[], boolean>({
   key: "tagNames",
   get: (modal) => ({ get }) => {
-    return (get(modal ? modalStats : selectors.datasetStats) ?? []).reduce(
+    return (get(modal ? m4 : selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
           return cur.result[1].map(([v]) => v).sort();

@@ -9,6 +9,7 @@ import ExternalLink from "../ExternalLink";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 import * as selectors from "../../recoil/selectors";
+import * as schemaAtoms from "../../recoil/schema";
 import { http } from "../../shared/connection";
 import { useOutsideClick } from "../../utils/hooks";
 
@@ -82,7 +83,7 @@ const viewBarKeyMap = {
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(selectors.view);
-  const fieldPaths = useRecoilValue(selectors.fieldPaths);
+  const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths);
 
   useEffect(() => {
     send({

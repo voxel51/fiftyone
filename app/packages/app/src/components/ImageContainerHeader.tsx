@@ -60,8 +60,8 @@ const SliderContainer = styled.div`
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
+  const filteredCount = useRecoilValue(aggregations.count({ extended: true }));
   const element = useRecoilValue(selectors.elementNames);
-  const filteredCount = useRecoilValue(selectors.filteredCount);
   const setGridZoom = useSetRecoilState(selectors.gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();

@@ -59,6 +59,17 @@ export const fieldSchema = selectorFamily<State.Schema, State.SPACE>({
   },
 });
 
+export const fieldPaths = selector<string[]>({
+  key: "fieldPaths",
+  get: ({ get }) => {
+    const sampleLabels = get(fieldSchema(State.SPACE.SAMPLE));
+    const frameLabels = get(fieldSchema(State.SPACE.FRAME));
+    return Object.keys(sampleLabels)
+      .concat(Object.keys(frameLabels).map((l) => "frames." + l))
+      .sort();
+  },
+});
+
 export const labelFieldNames = selectorFamily<string[], State.SPACE>({
   key: "labelFieldNames",
   get: (space) => ({ get }) => {
@@ -84,7 +95,7 @@ export const labelPaths = selector<string[]>({
   get: ({ get }) => {
     const sampleLabels = get(labelFieldNames(State.SPACE.SAMPLE));
     const frameLabels = get(labelFieldNames(State.SPACE.FRAME));
-    return sampleLabels.concat(frameLabels.map((l) => "frames." + l));
+    return sampleLabels.concat(frameLabels.map((l) => "frames." + l)).sort();
   },
 });
 
