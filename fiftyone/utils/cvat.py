@@ -3409,7 +3409,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_tracks.extend(_tracks)
 
             # We must do this here because `cvat_schema` may be altered the
-            # first time shapes are create
+            # first time shapes are created
             if project_id is None and project_name is not None:
                 project_id = self.create_project(project_name, cvat_schema)
                 project_ids.append(project_id)
