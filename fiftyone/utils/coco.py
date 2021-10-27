@@ -44,7 +44,7 @@ def add_coco_labels(
     label_field,
     labels_or_path,
     label_type="detections",
-    coco_id_field="coco_id",
+    coco_id_field=None,
     classes=None,
     extra_attrs=True,
     use_polylines=False,
@@ -52,8 +52,12 @@ def add_coco_labels(
 ):
     """Adds the given COCO labels to the collection.
 
-    The ``labels_or_path`` argument can be either a list of COCO annotations in
-    the format below, or the path to a JSON file containing such data on disk.
+    The ``labels_or_path`` argument can be any of the following:
+
+    -   a list of COCO annotations in the format below
+    -   the path to a JSON file containing a list of COCO annotations
+    -   the path to a JSON file whose ``"annotations"`` key contains a list of
+        COCO annotations
 
     When ``label_type="detections"``, the labels should have format::
 
@@ -124,8 +128,16 @@ def add_coco_labels(
             containing such data on disk
         label_type ("detections"): the type of labels to load. Supported values
             are ``("detections", "segmentations", "keypoints")``
-        coco_id_field ("coco_id"): the field of ``sample_collection``
-            containing the COCO IDs for the samples
+        coco_id_field (None): this parameter determines how to map the
+            predictions onto samples in ``sample_collection``. The supported
+            values are:
+
+            -   ``None`` (default): in this case, the ``image_id`` of the
+                predictions are assumed to be the 1-based positional indexes of
+                samples in ``sample_collection``
+            -   the name of a field of ``sample_collection`` containing the
+                COCO IDs for the samples that correspond to the ``image_id`` of
+                the predictions
         classes (None): the list of class label strings. If not provided, these
             must be available from
             :meth:`fiftyone.core.collections.SampleCollection.get_classes`
@@ -151,6 +163,8 @@ def add_coco_labels(
 
     if etau.is_str(labels_or_path):
         labels = etas.load_json(labels_or_path)
+        if isinstance(labels, dict):
+            labels = labels["annotations"]
     else:
         labels = labels_or_path
 
@@ -159,49 +173,52 @@ def add_coco_labels(
         coco_obj = COCOObject.from_anno_dict(d, extra_attrs=extra_attrs)
         coco_objects_map[coco_obj.image_id].append(coco_obj)
 
-    id_map = {
-        k: v for k, v in zip(*sample_collection.values([coco_id_field, "id"]))
-    }
+    if coco_id_field is not None:
+        # Use `coco_id_field` as key to match predictions with samples
+        _coco_ids, _ids = sample_collection.values([coco_id_field, "id"])
+        id_map = {k: v for k, v in zip(_coco_ids, _ids)}
 
-    coco_ids = sorted(coco_objects_map.keys())
+        coco_ids = sorted(coco_objects_map.keys())
+        bad_ids = set(coco_ids) - set(id_map.keys())
+        if bad_ids:
+            coco_ids = [_id for _id in coco_ids if _id not in bad_ids]
+            logger.warning(
+                "Ignoring %d labels with nonexistent COCO IDs (eg %s)",
+                len(bad_ids),
+                bad_ids[0],
+            )
 
-    bad_ids = set(coco_ids) - set(id_map.keys())
-    if bad_ids:
-        coco_ids = [_id for _id in coco_ids if _id not in bad_ids]
-        logger.warning(
-            "Ignoring labels with %d nonexistent COCO IDs: %s",
-            len(bad_ids),
-            sorted(bad_ids),
-        )
+        sample_ids = [id_map[coco_id] for coco_id in coco_ids]
+        view = sample_collection.select(sample_ids, ordered=True)
+        coco_objects = [coco_objects_map[coco_id] for coco_id in coco_ids]
+    else:
+        # Assume `image_id` is 1-based sample position
+        view = sample_collection
+        coco_objects = [coco_objects_map[i] for i in range(1, len(view) + 1)]
 
-    view = sample_collection.select(
-        [id_map[coco_id] for coco_id in coco_ids], ordered=True
-    )
     view.compute_metadata()
-
     widths, heights = view.values(["metadata.width", "metadata.height"])
 
     labels = []
-    for coco_id, width, height in zip(coco_ids, widths, heights):
-        coco_objects = coco_objects_map[coco_id]
+    for _coco_objects, width, height in zip(coco_objects, widths, heights):
         frame_size = (width, height)
 
         if label_type == "detections":
             _labels = _coco_objects_to_detections(
-                coco_objects, frame_size, classes, None, False
+                _coco_objects, frame_size, classes, None, False
             )
         elif label_type == "segmentations":
             if use_polylines:
                 _labels = _coco_objects_to_polylines(
-                    coco_objects, frame_size, classes, None, tolerance
+                    _coco_objects, frame_size, classes, None, tolerance
                 )
             else:
                 _labels = _coco_objects_to_detections(
-                    coco_objects, frame_size, classes, None, True
+                    _coco_objects, frame_size, classes, None, True
                 )
         elif label_type == "keypoints":
             _labels = _coco_objects_to_keypoints(
-                coco_objects, frame_size, classes
+                _coco_objects, frame_size, classes
             )
         else:
             raise ValueError(
