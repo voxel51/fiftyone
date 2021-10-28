@@ -7,6 +7,7 @@ import { viewsAreEqual } from "../utils/view";
 import * as atoms from "./atoms";
 import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
+import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { State } from "./types";
 import { modalFilters } from "./filters";
@@ -126,7 +127,7 @@ const modalAggregations = selector<AggregationsData>({
   },
 });
 
-const extendedModalAggregations = selector<ExtendedAggregationsResult>({
+const extendedModalAggregations = selector<AggregationsData>({
   key: "extendedModalAggregations",
   get: async ({ get }) => {
     const id = uuid();
@@ -175,108 +176,68 @@ export const extendedAggregations = selector({
 
 export const noneCount = selectorFamily<
   number,
-  { path: string; modal: boolean }
+  { path: string; modal: boolean; extended: boolean }
 >({
   key: "noneCount",
-  get: ({ path, modal }) => ({ get }) => {
-    return get(modal)[path];
+  get: ({ extended, path, modal }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
+
+    return get(atom)[path].None;
   },
 });
 
 export const labelTagCounts = selectorFamily<
   { [key: string]: number },
-  boolean
+  { modal: boolean; extended: boolean }
 >({
   key: "labelTagCounts",
-  get: (modal) => ({ get }) => {
-    const stats = get(modal ? modalStats : selectors.datasetStats);
-    const paths = get(selectors.labelTagsPaths);
-
+  get: ({ modal, extended }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
+    const data = get(atom);
+    const paths = get(schemaAtoms.labelPaths).map((path) => `${path}.tags`);
     const result = {};
 
-    stats &&
-      stats.forEach((s) => {
-        if (paths.includes(s.name)) {
-          Object.entries(s.result).forEach(([k, v]) => {
-            if (!(k in result)) {
-              result[k] = v;
-            } else {
-              result[k] += v;
-            }
-          });
+    for (const path of paths) {
+      const pathData = data[path] as CategoricalAggregations;
+      for (const [tag, count] of Object.entries(pathData.CountValues)) {
+        if (!result[tag]) {
+          result[tag] = 0;
         }
-      });
 
-    return result;
-  },
-});
+        result[tag] += count;
+      }
+    }
 
-export const filteredLabelTagCounts = selectorFamily<
-  { [key: string]: number },
-  boolean
->({
-  key: "filteredLabelTagCounts",
-  get: (modal) => ({ get }) => {
-    const stats = get(
-      modal ? extendedModalStats : selectors.extendedDatasetStats
-    );
-    const paths = get(selectors.labelTagsPaths);
-
-    const result = {};
-
-    stats &&
-      stats.forEach((s) => {
-        if (paths.includes(s.name)) {
-          Object.entries(s.result).forEach(([k, v]) => {
-            if (!(k in result)) {
-              result[k] = v;
-            } else {
-              result[k] += v;
-            }
-          });
-        }
-      });
     return result;
   },
 });
 
 export const sampleTagCounts = selectorFamily<
   { [key: string]: number },
-  boolean
+  { modal: boolean; extended: boolean }
 >({
   key: "sampleTagCounts",
-  get: (modal) => ({ get }) => {
-    const stats = get(modal ? modalStats : selectors.datasetStats);
-
-    return stats
-      ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
-            return Object.fromEntries(cur.result[1]);
-          }
-          return acc;
-        }, {})
-      : {};
-  },
-});
-
-export const filteredSampleTagCounts = selectorFamily<
-  { [key: string]: number },
-  boolean
->({
-  key: "filteredSampleTagCounts",
-  get: (modal) => ({ get }) => {
-    const stats = get(
-      modal ? extendedModalStats : selectors.extendedDatasetStats
-    );
-
-    return stats
-      ? stats.reduce((acc, cur) => {
-          if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
-            return Object.fromEntries(cur.result[1]);
-          }
-          return acc;
-        }, {})
-      : {};
+  get: ({ modal, extended }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
+    const data = get(atom);
   },
 });
 

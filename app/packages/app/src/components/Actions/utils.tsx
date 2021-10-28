@@ -4,9 +4,9 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
-import * as filterAtoms from "../Filters/atoms";
 import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
+import * as filterAtoms from "../../recoil/filters";
+import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
 import { request } from "../../utils/socket";
 
@@ -88,7 +88,7 @@ export const tagStatistics = selectorFamily<
   get: ({ modal, labels }) => async ({ get }) => {
     get(atoms.stateDescription);
     get(atoms.selectedSamples);
-    const activeLabels = get(activeLabelPaths(false));
+    const activeLabels = get(schemaAtoms.activeLabelFields(modal));
 
     const id = uuid();
     const { count, tags } = await request<{
@@ -100,9 +100,7 @@ export const tagStatistics = selectorFamily<
       args: {
         active_labels: activeLabels,
         sample_id: modal ? get(atoms.modal).sample._id : null,
-        filters: modal
-          ? get(filterAtoms.modalFilterStages)
-          : get(selectors.filterStages),
+        filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
         labels,
       },
     });

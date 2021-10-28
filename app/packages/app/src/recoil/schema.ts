@@ -1,10 +1,15 @@
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
 
-import { RESERVED_FIELDS, VALID_LABEL_TYPES } from "../utils/labels";
+import {
+  LABEL_LIST,
+  RESERVED_FIELDS,
+  VALID_LABEL_TYPES,
+  VALID_LIST_TYPES,
+} from "../utils/labels";
 
 import * as atoms from "./atoms";
-import * as selectors from "./selectors";
 import { State } from "./types";
+import * as viewAtoms from "./view";
 
 const schemaReduce = (
   schema: State.Schema,
@@ -28,7 +33,7 @@ export const fieldSchema = selectorFamily<State.Schema, State.SPACE>({
       : state.dataset.sampleFields
     ).reduce(schemaReduce, {});
 
-    const view = get(selectors.view);
+    const view = get(viewAtoms.view);
     view.forEach(({ _cls, kwargs }) => {
       if (_cls === "fiftyone.core.stages.SelectFields") {
         const supplied = kwargs[0][1] ? kwargs[0][1] : [];
@@ -70,36 +75,78 @@ export const fieldPaths = selector<string[]>({
   },
 });
 
-export const labelFieldNames = selectorFamily<string[], State.SPACE>({
-  key: "labelFieldNames",
-  get: (space) => ({ get }) => {
-    const schema = get(fieldSchema(space));
+export const field = selectorFamily<State.Field, string>({
+  key: "field",
+  get: (path) => ({ get }) => {
+    if (path.startsWith("frames.")) {
+      const framePath = path.slice("frames.".length);
 
-    return Object.entries(schema)
-      .filter(([name, field]) => {
-        if (!field.embeddedDocType) {
-          return false;
+      let field: State.Field = null;
+      let schema = get(fieldSchema(State.SPACE.FRAME));
+      for (const name in framePath.split(".")) {
+        field = schema[name];
+        if (!field) {
+          break;
         }
 
-        return VALID_LABEL_TYPES.includes(
-          field.embeddedDocType.split(".").slice(-1)[0]
-        );
-      })
-      .map(([name]) => name)
-      .sort();
+        schema = field.fields;
+      }
+
+      if (field) {
+        return field;
+      }
+    }
+
+    let field: State.Field = null;
+    let schema = get(fieldSchema(State.SPACE.SAMPLE));
+    for (const name in path.split(".")) {
+      field = schema[name];
+      schema = field.fields;
+    }
+
+    return field;
+  },
+});
+
+export const labelFields = selector<string[]>({
+  key: "labelFieldNames",
+  get: ({ get }) => {
+    const paths = get(fieldPaths);
+
+    return paths.filter((path) =>
+      VALID_LABEL_TYPES.includes(get(field(path)).embeddedDocType)
+    );
   },
 });
 
 export const labelPaths = selector<string[]>({
   key: "labelPaths",
   get: ({ get }) => {
-    const sampleLabels = get(labelFieldNames(State.SPACE.SAMPLE));
-    const frameLabels = get(labelFieldNames(State.SPACE.FRAME));
-    return sampleLabels.concat(frameLabels.map((l) => "frames." + l)).sort();
+    const fields = get(labelFields);
+    return fields.map((path) => {
+      const labelField = get(field(path));
+
+      const typePath = labelField.embeddedDocType.split(".");
+      const type = typePath[typePath.length - 1];
+
+      if (type in LABEL_LIST) {
+        return `${path}.${LABEL_LIST[type]}`;
+      }
+
+      return path;
+    });
   },
 });
 
 export const activeFields = atomFamily<string[], boolean>({
   key: "activeFields",
-  default: labelPaths,
+  default: labelFields,
+});
+
+export const activeLabelFields = selectorFamily<string[], boolean>({
+  key: "activeLabelFields",
+  get: (modal) => ({ get }) => {
+    const active = new Set(get(activeFields(modal)));
+    return get(labelFields).filter((field) => active.has(field));
+  },
 });

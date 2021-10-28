@@ -6,7 +6,6 @@ import { getColor } from "@fiftyone/looker/src/color";
 import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
-import { viewsAreEqual } from "../utils/view";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
