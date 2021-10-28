@@ -5,10 +5,7 @@ import {
   SetRecoilState,
 } from "recoil";
 
-import * as selectors from "../../recoil/selectors";
-import { BOOLEAN_FIELD, VALID_LIST_FIELDS } from "../../utils/labels";
-import { Value } from "./types";
-import { filterStage, FilterParams } from "./atoms";
+import * as filterAtoms from "../../recoil/filters";
 
 interface BooleanFilter {
   false: boolean;
@@ -27,7 +24,7 @@ const getFilter = (
     true: false,
     false: false,
     none: false,
-    ...get(filterStage({ modal, path })),
+    ...get(filterAtoms.filter({ modal, path })),
   };
 };
 
@@ -47,9 +44,9 @@ const setFilter = (
     [key]: value,
   };
   if (meetsDefault(filter)) {
-    set(filterStage({ modal, path }), null);
+    set(filterAtoms.filter({ modal, path }), null);
   } else {
-    set(filterStage({ modal, path }), filter);
+    set(filterAtoms.filter({ modal, path }), filter);
   }
 };
 
@@ -140,18 +137,5 @@ export const selectedValuesAtom = selectorFamily<
     if (newTrue !== currentTrue) {
       set(trueA, newTrue);
     }
-  },
-});
-
-export const isBooleanField = selectorFamily<boolean, string>({
-  key: "isBooleanField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
-
-    if (VALID_LIST_FIELDS.includes(map[name])) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
-    }
-
-    return map[name] === BOOLEAN_FIELD;
   },
 });

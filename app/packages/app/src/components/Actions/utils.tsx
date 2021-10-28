@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
+import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
@@ -63,8 +64,12 @@ export const useHighlightHover = (disabled, override = null, color = null) => {
 export const allTags = selector<{ sample: string[]; label: string[] } | null>({
   key: "tagAggs",
   get: async ({ get }) => {
-    const labels = get(filterAtoms.labelTagCounts(false));
-    const sample = get(filterAtoms.sampleTagCounts(false));
+    const labels = get(
+      aggregationAtoms.labelTagCounts({ modal: false, extended: false })
+    );
+    const sample = get(
+      aggregationAtoms.sampleTagCounts({ modal: false, extended: false })
+    );
 
     if (!labels || !sample) {
       return null;

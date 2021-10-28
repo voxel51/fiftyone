@@ -1,10 +1,9 @@
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 
 import {
   LABEL_LIST,
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
-  VALID_LIST_TYPES,
 } from "../utils/labels";
 
 import * as atoms from "./atoms";
@@ -138,6 +137,22 @@ export const labelPaths = selector<string[]>({
   },
 });
 
+export const labelPath = selectorFamily<string, string>({
+  key: "labelPath",
+  get: (path) => ({ get }) => {
+    const labelField = get(field(path));
+
+    const typePath = labelField.embeddedDocType.split(".");
+    const type = typePath[typePath.length - 1];
+
+    if (type in LABEL_LIST) {
+      return `${path}.${LABEL_LIST[type]}`;
+    }
+
+    return path;
+  },
+});
+
 export const activeFields = atomFamily<string[], boolean>({
   key: "activeFields",
   default: labelFields,
@@ -148,5 +163,47 @@ export const activeLabelFields = selectorFamily<string[], boolean>({
   get: (modal) => ({ get }) => {
     const active = new Set(get(activeFields(modal)));
     return get(labelFields).filter((field) => active.has(field));
+  },
+});
+
+export const activeLabelPaths = selectorFamily<string[], boolean>({
+  key: "activeLabelPaths",
+  get: (modal) => ({ get }) => {
+    const active = new Set(get(activeFields(modal)));
+    return get(labelFields)
+      .filter((field) => active.has(field))
+      .map((field) => get(labelPath(field)));
+  },
+});
+
+export const meetsType = selectorFamily<
+  boolean,
+  {
+    path: string;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
+  key: "meetsType",
+  get: ({ path, ftype, embeddedDocType }) => ({ get }) => {
+    const fieldValue = get(field(path));
+
+    if (!Array.isArray(ftype)) {
+      ftype = [ftype];
+    }
+
+    if (!Array.isArray(embeddedDocType)) {
+      embeddedDocType = [embeddedDocType];
+    }
+
+    if (
+      ftype.some((f) => fieldValue.ftype === f || fieldValue.subfield === f)
+    ) {
+      return embeddedDocType.some(
+        (doc) => fieldValue.embeddedDocType === doc || !doc
+      );
+    }
+
+    return false;
   },
 });

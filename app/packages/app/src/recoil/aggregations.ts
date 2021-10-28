@@ -11,8 +11,12 @@ import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { State } from "./types";
 import { modalFilters } from "./filters";
+import { DATE_FIELD, DATE_TIME_FIELD } from "../utils/labels";
 
-type Bounds = [number | null, number | null];
+type Bounds = [
+  number | null | { datetime: number },
+  number | null | { datetime: number }
+];
 type Count = number;
 type None = number;
 type CountValues = [number, [string, number][]];
@@ -237,278 +241,100 @@ export const sampleTagCounts = selectorFamily<
       : extended
       ? extendedAggregations
       : aggregations;
-    const data = get(atom);
+    const data = get(atom).tags as CategoricalAggregations;
+    return Object.fromEntries(data.CountValues[1]);
   },
 });
 
-export const catchLabelCount = (
-  names: string[],
-  prefix: string,
-  cur: { name: string; _CLS: string; result: number },
-  acc: { [key: string]: number },
-  types?: { [key: string]: string }
-): void => {
-  if (!cur.name) {
-    return;
-  }
-
-  const fieldName = cur.name.slice(prefix.length).split(".")[0];
-
-  let key = cur.name;
-  if (types && LABEL_LISTS.includes(types[prefix + fieldName])) {
-    key = prefix + `${fieldName}.${LABEL_LIST[types[prefix + fieldName]]}`;
-  } else if (types && cur.name !== prefix + fieldName) {
-    return;
-  }
-
-  if (
-    names.includes(fieldName) &&
-    key === cur.name &&
-    cur._CLS === AGGS.COUNT
-  ) {
-    acc[prefix + fieldName] = cur.result;
-  }
-};
-
-export const labelCounts = selectorFamily<
-  { [key: string]: number },
-  { key: "frame" | "sample"; modal: boolean }
+export const fieldAtom = selectorFamily<
+  { count: number; results: [string | boolean | null, number][] },
+  { path: string; modal: boolean; extended: boolean }
 >({
-  key: "labelCounts",
-  get: ({ key, modal }) => ({ get }) => {
-    const names = get(selectors.labelNames(key));
-    const prefix = key === "sample" ? "" : "frames.";
-    const stats = get(modal ? modalStats : selectors.datasetStats);
-    const labelTypesMap = get(selectors.labelTypesMap);
-    if (stats === null) {
-      return null;
-    }
-
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc, labelTypesMap);
-      return acc;
-    }, {});
-  },
-});
-
-export const filteredLabelCounts = selectorFamily<
-  { [key: string]: number },
-  { key: "frame" | "sample"; modal: boolean }
->({
-  key: "filteredLabelCounts",
-  get: ({ key, modal }) => ({ get }) => {
-    const names = get(selectors.labelNames(key));
-    const prefix = key === "sample" ? "" : "frames.";
-    const stats = get(
-      modal ? extendedModalStats : selectors.extendedDatasetStats
-    );
-    const labelTypesMap = get(selectors.labelTypesMap);
-
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, prefix, cur, acc, labelTypesMap);
-      return acc;
-    }, {});
-  },
-});
-
-export const scalarCounts = selectorFamily<
-  { [key: string]: number | string | null },
-  boolean
->({
-  key: "scalarCounts",
-  get: (modal) => ({ get }) => {
-    if (modal) {
-      return get(atoms.modal).sample;
-    }
-
-    const names = get(selectors.primitiveNames("sample"));
-    const stats = get(selectors.datasetStats);
-    if (stats === null) {
-      return null;
-    }
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, "", cur, acc);
-      return acc;
-    }, {});
-  },
-});
-
-export const filteredScalarCounts = selectorFamily<
-  { [key: string]: number | string | null } | null,
-  boolean
->({
-  key: "filteredScalarCounts",
-  get: (modal) => ({ get }) => {
-    if (modal) {
-      return null;
-    }
-
-    const names = get(selectors.primitiveNames("sample"));
-    const stats = get(selectors.extendedDatasetStats);
-    if (stats === null) {
-      return null;
-    }
-
-    return stats.reduce((acc, cur) => {
-      catchLabelCount(names, "", cur, acc);
-      return acc;
-    }, {});
-  },
-});
-
-export const countsAtom = selectorFamily<
-  { count: number; results: [Value, number][] },
-  { path: string; modal: boolean; filtered: boolean }
->({
-  key: "categoricalFieldCounts",
-  get: ({ filtered, path, modal }) => ({ get }) => {
-    const none = get(
-      filtered ? noneFilteredFieldCounts(modal) : noneFieldCounts(modal)
-    )[path];
-
-    const primitive = get(selectors.primitiveNames("sample"));
-
-    if (modal && primitive.includes(path)) {
-      const result = get(atoms.modal).sample[path];
-
-      if (!Array.isArray(result)) {
-        return { count: 0, results: [] };
-      }
-
-      const count = result.length;
-
-      return {
-        count,
-        results: Array.from(
-          result
-            .reduce((acc, cur) => {
-              if (!acc.has(cur)) {
-                acc.set(cur, 0);
-              }
-
-              acc.set(cur, acc.get(cur) + 1);
-
-              return acc;
-            }, new Map())
-            .entries()
-        ),
-      };
-    }
-
+  key: "fieldCounts",
+  get: ({ extended, path, modal }) => ({ get }) => {
     const atom = modal
-      ? filtered
-        ? extendedModalStats
-        : modalStats
-      : filtered
-      ? selectors.extendedDatasetStats
-      : selectors.datasetStats;
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
 
-    const value = get(atom);
-    if (!value && filtered) {
-      return null;
-    }
+    const data = get(atom)[path] as CategoricalAggregations;
 
-    const data = (value ?? []).reduce(
-      (acc, cur) => {
-        if (cur.name === path && cur._CLS === AGGS.COUNT_VALUES) {
-          return {
-            count: cur.result[0],
-            results: cur.result[1],
-          };
-        }
-        return acc;
-      },
-      { count: 0, results: [] }
-    );
-
-    if (none && none > 0) {
-      data.count = data.count + 1;
-      data.results = [...data.results, [null, none]];
-    }
-
-    return data;
-  },
-});
-
-export const subCountValueAtom = selectorFamily<
-  number | null,
-  { path: string; modal: boolean; value: Value }
->({
-  key: "categoricalFieldSubCountsValues",
-  get: ({ path, modal, value }) => ({ get }) => {
-    if (!get(hasFilters(modal))) {
-      return null;
-    }
-    const counts = get(countsAtom({ path, modal, filtered: true }));
-
-    if (!counts) {
-      return null;
-    }
-    const result = counts.results.filter(([v]) => v === value);
-
-    if (result.length) {
-      return result[0][1];
-    }
-
-    return 0;
+    return {
+      count: data.Count + data.None,
+      results: [...data.CountValues[1], [null, data.None]],
+    };
   },
 });
 
 export const labelCount = selectorFamily<number | null, boolean>({
   key: "labelCount",
   get: (modal) => ({ get }) => {
-    const atom = get(hasFilters(modal)) ? filteredLabelCounts : labelCounts;
+    const atom = get(filterAtoms.hasFilters(modal))
+      ? modal
+        ? extendedModalAggregations
+        : extendedAggregations
+      : modal
+      ? modalAggregations
+      : aggregations;
 
     let sum = 0;
-    let counts = get(atom({ modal, key: "sample" }));
-    counts &&
-      get(activeLabels({ modal, frames: false })).forEach((path) => {
-        if (path in counts) {
-          sum += counts[path];
-        }
-      });
+    const data = get(atom);
 
-    counts = get(atom({ modal, key: "frame" }));
-    counts &&
-      get(activeLabels({ modal, frames: true })).forEach((path) => {
-        if (path in counts) {
-          sum += counts[path];
-        }
-      });
+    for (const label of get(schemaAtoms.activeLabelPaths(modal))) {
+      sum += data[label].Count;
+    }
 
     return sum;
   },
 });
 
-export const tagNames = selectorFamily<string[], boolean>({
-  key: "tagNames",
-  get: (modal) => ({ get }) => {
-    return (get(modal ? m4 : selectors.datasetStats) ?? []).reduce(
-      (acc, cur) => {
-        if (cur.name === "tags" && cur._CLS === AGGS.COUNT_VALUES) {
-          return cur.result[1].map(([v]) => v).sort();
-        }
-        return acc;
-      },
-      []
-    );
+export const count = selectorFamily<
+  number,
+  { extended: boolean; path: string; modal: boolean }
+>({
+  key: "count",
+  get: ({ extended, modal, path }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
+
+    return get(atom)[path].Count;
   },
 });
 
-export const labelTagNames = selectorFamily<string[], boolean>({
-  key: "labelTagNames",
-  get: (modal) => ({ get }) => {
-    const paths = get(selectors.labelTagsPaths);
-    const result = new Set<string>();
-    (get(modal ? modalStats : selectors.datasetStats) ?? []).forEach((s) => {
-      if (paths.includes(s.name)) {
-        Object.keys(s.result).forEach((t) => result.add(t));
-      }
-    });
+export const bounds = selectorFamily<
+  Bounds,
+  { extended: boolean; path: string; modal: boolean }
+>({
+  key: "bounds",
+  get: ({ extended, modal, path }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
 
-    return Array.from(result).sort();
+    const data = get(atom)[path] as NumericAggregations;
+    const isDateOrDateTime = get(
+      schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
+    );
+
+    if (isDateOrDateTime) {
+      const bounds = data.Bounds.map((bound) =>
+        bound && typeof bound !== "number" ? (bound.datetime as number) : bound
+      ) as Bounds;
+      return bounds;
+    }
+
+    return data.Bounds;
   },
 });

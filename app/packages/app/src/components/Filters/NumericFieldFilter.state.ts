@@ -5,80 +5,9 @@ import {
   SetRecoilState,
 } from "recoil";
 
-import * as selectors from "../../recoil/selectors";
+import * as aggregationAtoms from "../../recoil/aggregations";
+import * as filterAtoms from "../../recoil/filters";
 import { Range } from "./RangeSlider";
-import {
-  AGGS,
-  LIST_FIELD,
-  FRAME_SUPPORT_FIELD,
-  VALID_LIST_FIELDS,
-  VALID_NUMERIC_TYPES,
-  INT_FIELD,
-  DATE_TIME_FIELD,
-  DATE_FIELD,
-} from "../../utils/labels";
-import { filterStage } from "./atoms";
-
-export const isDateTimeField = selectorFamily<boolean, string>({
-  key: "isDateTimeField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
-
-    if (map[name] === LIST_FIELD) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
-    }
-
-    return DATE_TIME_FIELD === map[name];
-  },
-});
-
-export const isDateField = selectorFamily<boolean, string>({
-  key: "isDateField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
-
-    if (map[name] === LIST_FIELD) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
-    }
-
-    return DATE_FIELD === map[name];
-  },
-});
-
-export const isNumericField = selectorFamily<boolean, string>({
-  key: "isNumericField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
-
-    if (VALID_LIST_FIELDS.includes(map[name])) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
-    }
-
-    return VALID_NUMERIC_TYPES.includes(map[name]);
-  },
-});
-
-export const isSupportField = selectorFamily<boolean, string>({
-  key: "isSupportField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
-
-    return FRAME_SUPPORT_FIELD === map[name];
-  },
-});
-
-export const isIntField = selectorFamily<boolean, string>({
-  key: "isIntField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
-
-    if (VALID_LIST_FIELDS.includes(map[name])) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
-    }
-
-    return [FRAME_SUPPORT_FIELD, INT_FIELD].includes(map[name]);
-  },
-});
 
 type NumericFilter = {
   range: Range;
@@ -99,7 +28,7 @@ const getFilter = (
       range: bounds,
       none: true,
     },
-    ...get(filterStage({ modal, path })),
+    ...get(filterAtoms.filter({ modal, path })),
   };
   if (!meetsDefault({ ...result, none: true }, bounds)) {
     return { ...result, none: false };
@@ -134,9 +63,9 @@ const setFilter = (
   }
 
   if (meetsDefault(check, bounds)) {
-    set(filterStage({ modal, path }), null);
+    set(filterAtoms.filter({ modal, path }), null);
   } else {
-    set(filterStage({ modal, path }), { ...filter, none: false });
+    set(filterAtoms.filter({ modal, path }), { ...filter, none: false });
   }
 };
 
@@ -149,23 +78,9 @@ export const boundsAtom = selectorFamily<
 >({
   key: "numericFieldBounds",
   get: ({ path, defaultRange }) => ({ get }) => {
-    const isDateOrDateTime =
-      get(isDateTimeField(path)) || get(isDateField(path));
-
-    let bounds = (get(selectors.datasetStats) ?? []).reduce(
-      (acc, cur) => {
-        if (cur.name !== path || cur._CLS !== AGGS.BOUNDS) {
-          return acc;
-        }
-
-        if (isDateOrDateTime) {
-          return cur.result.map((v) => (v ? v.datetime : v));
-        }
-
-        return cur.result;
-      },
-      [null, null]
-    );
+    let bounds = get(
+      aggregationAtoms.bounds({ path, extended: false, modal: false })
+    ) as Range;
 
     if (bounds.every((b) => b === null)) {
       return bounds;

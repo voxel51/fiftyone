@@ -16,6 +16,12 @@ import {
 import styled from "styled-components";
 import { useSpring } from "react-spring";
 
+import * as aggregationAtoms from "../../recoil/aggregations";
+import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
+import * as schemaAtoms from "../../recoil/schema";
+import * as viewAtoms from "../../recoil/view";
+
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import {
@@ -25,14 +31,10 @@ import {
   SwitcherDiv,
 } from "./utils";
 import { Button } from "../Sidebar/Sidebar";
-import * as fieldAtoms from "../Filters/utils";
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import { PopoutSectionTitle } from "../utils";
-import * as filterAtoms from "../Filters/atoms";
 import { VideoLooker } from "@fiftyone/looker";
 
 const IconDiv = styled.div`
@@ -115,7 +117,7 @@ const Section = ({
   labels,
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -356,7 +358,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
   return useRecoilCallback(
     ({ snapshot }) => async ({ changes }) => {
       const activeLabels = (
-        await snapshot.getPromise(fieldAtoms.activeLabelPaths(modal))
+        await snapshot.getPromise(schemaAtoms.activeLabelFields(modal))
       ).filter((l) => !(l.startsWith("tags.") || l.startsWith("_label_tags.")));
       if (modal) {
         socket.send(
@@ -392,7 +394,7 @@ const usePlaceHolder = (
   modal: boolean,
   labels: boolean,
   elementNames: { plural: string; singular: string }
-): (() => [number, string]) => {
+) => {
   return () => {
     const selection = useRecoilValue(
       modal ? selectors.selectedLabelIds : atoms.selectedSamples
@@ -402,18 +404,22 @@ const usePlaceHolder = (
       const labelCount =
         selection > 0
           ? selection
-          : useRecoilValue(filterAtoms.labelCount(modal));
+          : useRecoilValue(aggregationAtoms.labelCount(modal));
       return [labelCount, labelsModalPlaceholder(selection, labelCount)];
     } else if (modal) {
       return [1, samplePlaceholder(elementNames)];
     } else {
-      const totalSamples = useRecoilValue(selectors.totalCount);
-      const filteredSamples = useRecoilValue(selectors.filteredCount);
+      const totalSamples = useRecoilValue(
+        aggregationAtoms.count({ path: "", extended: false, modal: false })
+      );
+      const filteredSamples = useRecoilValue(
+        aggregationAtoms.count({ path: "", extended: true, modal: false })
+      );
       const count = filteredSamples ?? totalSamples;
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
       const labelCount = selection
         ? selectedLabelCount
-        : useRecoilValue(filterAtoms.labelCount(modal));
+        : useRecoilValue(aggregationAtoms.labelCount(modal));
       if (labels) {
         return [
           labelCount,
@@ -438,7 +444,7 @@ type TaggerProps = {
 
 const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
     borderBottomColor: labels ? theme.backgroundDark : theme.brand,

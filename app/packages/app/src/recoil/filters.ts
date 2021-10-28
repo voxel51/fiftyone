@@ -30,11 +30,11 @@ export const filters = selector<State.Filters>({
   },
 });
 
-export const filterStage = selectorFamily<
+export const filter = selectorFamily<
   State.Filter,
   { path: string; modal: boolean }
 >({
-  key: "filterStage",
+  key: "filter",
   get: ({ path, modal }) => ({ get }) =>
     get(modal ? modalFilters : filters)?.[path] ?? {},
   set: ({ path, modal }) => ({ get, set }, filter) => {
@@ -47,6 +47,12 @@ export const filterStage = selectorFamily<
     }
     set(atom, newFilters);
   },
+});
+
+export const hasFilters = selectorFamily<boolean, boolean>({
+  key: "hasFilters",
+  get: (modal) => ({ get }) =>
+    Object.keys(get(modal ? modalFilters : filters)).length > 0,
 });
 
 export const matchedTags = selectorFamily<
@@ -77,5 +83,17 @@ export const matchedTags = selectorFamily<
       delete stages["tags"];
     }
     set(atom, stages);
+  },
+});
+
+export const fieldIsFiltered = selectorFamily<
+  boolean,
+  { path: string; modal?: boolean }
+>({
+  key: "stringFieldIsFiltered",
+  get: ({ path, modal }) => ({ get }) => {
+    const atom = modal ? modalFilters : filters;
+
+    return Boolean(get(atom)[path]);
   },
 });

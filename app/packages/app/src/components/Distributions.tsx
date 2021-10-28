@@ -1,6 +1,6 @@
 import React, { useState, useRef, PureComponent, useEffect } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { selectorFamily, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
@@ -14,8 +14,9 @@ import {
   prettify,
 } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import * as viewAtoms from "../recoil/view";
+import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
-import { filterStages } from "./Filters/atoms";
 import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
 import {
   isDateField,
@@ -195,8 +196,8 @@ const DistributionsContainer = styled.div`
 `;
 
 const Distributions = ({ group }: { group: string }) => {
-  const view = useRecoilValue(selectors.view);
-  const filters = useRecoilValue(filterStages);
+  const view = useRecoilValue(viewAtoms.view);
+  const filters = useRecoilValue(filterAtoms.filters);
   const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(selectors.refresh);

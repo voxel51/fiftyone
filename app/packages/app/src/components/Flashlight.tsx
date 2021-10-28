@@ -16,7 +16,6 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
-
 import {
   FrameLooker,
   freeVideos,
@@ -24,8 +23,11 @@ import {
   VideoLooker,
   zoomAspectRatio,
 } from "@fiftyone/looker";
+
 import * as atoms from "../recoil/atoms";
+import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
+import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";

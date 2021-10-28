@@ -5,28 +5,9 @@ import {
   SetRecoilState,
 } from "recoil";
 
-import * as selectors from "../../recoil/selectors";
-import {
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  VALID_LIST_FIELDS,
-} from "../../utils/labels";
-import { filterStage, FilterParams } from "./atoms";
+import * as filterAtoms from "../../recoil/filters";
 
 export const LIST_LIMIT = 200;
-
-export const isStringField = selectorFamily<boolean, string>({
-  key: "isStringField",
-  get: (name) => ({ get }) => {
-    let map = get(selectors.primitivesMap("sample"));
-
-    if (VALID_LIST_FIELDS.includes(map[name])) {
-      map = get(selectors.primitivesSubfieldMap("sample"));
-    }
-
-    return [OBJECT_ID_FIELD, STRING_FIELD].includes(map[name]);
-  },
-});
 
 interface StringFilter {
   values: string[];
@@ -66,9 +47,9 @@ const setFilter = (
     filter.exclude = false;
   }
   if (meetsDefault(filter)) {
-    set(filterStage({ modal, path }), null);
+    set(filterAtoms.filter({ modal, path }), null);
   } else {
-    set(filterStage({ modal, path }), filter);
+    set(filterAtoms.filter({ modal, path }), filter);
   }
 };
 
@@ -84,17 +65,4 @@ export const excludeAtom = selectorFamily<boolean, FilterParams>({
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).exclude,
   set: ({ modal, path }) => ({ get, set }, value) =>
     setFilter(get, set, modal, path, "exclude", value),
-});
-
-export const fieldIsFiltered = selectorFamily<
-  boolean,
-  { path: string; modal?: boolean }
->({
-  key: "stringFieldIsFiltered",
-  get: ({ path, modal }) => ({ get }) => {
-    return (
-      get(selectedValuesAtom({ modal, path })).length > 0 ||
-      excludeAtom({ modal, path })
-    );
-  },
 });

@@ -31,7 +31,7 @@ import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import Similar, { similaritySorting } from "./Similar";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { hasFilters } from "../Filters/atoms";
+import { hasFilters } from "../../recoil/filters";
 
 const Loading = () => {
   const theme = useTheme();
@@ -318,7 +318,6 @@ type ActionsRowProps = {
 
 const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
-  const isClips = useRecoilValue(selectors.isClipsView);
   const style = modal
     ? {
         overflowX: "auto",

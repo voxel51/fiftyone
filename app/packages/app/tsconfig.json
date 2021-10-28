@@ -10,5 +10,9 @@
         "types": ["vite/client"]
     },
     "include": ["index.ts"],
-    "references": [{ "path": "../looker" }, { "path": "../flashlight" }]
+    "references": [
+        { "path": "../looker" },
+        { "path": "../flashlight" },
+        { "path": "../utilities" }
+    ]
 }
