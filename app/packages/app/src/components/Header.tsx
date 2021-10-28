@@ -486,7 +486,6 @@ const TeamsForm = () => {
 const DatasetSelector = () => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const datasets = useRecoilValue(selectors.datasets);
-  console.log(datasets);
   const [state, send] = useMachine(selectorMachine);
   const connected = useRecoilValue(atoms.connected);
   const resetStats = useResetRecoilState(aggregationAtoms.aggregationsRaw);

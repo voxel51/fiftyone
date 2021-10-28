@@ -18,10 +18,8 @@ import * as viewAtoms from "../recoil/view";
 import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
-import {
-  isDateField,
-  isDateTimeField,
-} from "./Filters/NumericFieldFilter.state";
+import { meetsType } from "../recoil/schema";
+import { DATE_FIELD, DATE_TIME_FIELD } from "../utils/labels";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -83,8 +81,10 @@ const Distribution = ({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
-  const isDateTime = useRecoilValue(isDateTimeField(name));
-  const isDate = useRecoilValue(isDateField(name));
+  const isDateTime = useRecoilValue(
+    meetsType({ path: name, ftype: DATE_TIME_FIELD })
+  );
+  const isDate = useRecoilValue(meetsType({ path: name, ftype: DATE_FIELD }));
   const timeZone = useRecoilValue(selectors.timeZone);
   const ticksSetting =
     ticks === 0

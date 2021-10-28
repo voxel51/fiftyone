@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "react-spring";
 
-import Popout from "./Popout";
-import { ActionOption } from "./Common";
-import { SwitcherDiv, SwitchDiv } from "./utils";
 import * as atoms from "../../recoil/atoms";
+import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
+import * as viewAtoms from "../../recoil/view";
+import socket from "../../shared/connection";
 import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
@@ -14,13 +14,16 @@ import {
   PATCHES_FIELDS,
 } from "../../utils/labels";
 import { useTheme } from "../../utils/hooks";
-import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
   CLIPS_VIEWS,
 } from "../../utils/links";
+
+import Popout from "./Popout";
+import { ActionOption } from "./Common";
+import { SwitcherDiv, SwitchDiv } from "./utils";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -30,24 +33,30 @@ export const patching = atom<boolean>({
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
   get: ({ get }) => {
-    const paths = get(selectors.labelPaths);
-    const types = get(selectors.labelTypesMap);
-    return paths.filter((p) => PATCHES_FIELDS.includes(types[p]));
+    const paths = get(schemaAtoms.labelPaths);
+    return paths.filter((p) =>
+      get(schemaAtoms.meetsType({ path: p, ftype: PATCHES_FIELDS }))
+    );
   },
 });
 
 export const clipsFields = selector<string[]>({
   key: "clipsFields",
   get: ({ get }) => {
-    const paths = get(selectors.labelPaths);
+    const paths = get(schemaAtoms.labelPaths);
     const types = get(selectors.labelTypesMap);
     const pschema = get(selectors.primitivesSchema("sample"));
 
     return [
       ...paths.filter((p) =>
-        p.startsWith("frames.")
-          ? CLIPS_FRAME_FIELDS.includes(types[p])
-          : CLIPS_SAMPLE_FIELDS.includes(types[p])
+        get(
+          schemaAtoms.meetsType({
+            path: p,
+            ftype: p.startsWith("frames.")
+              ? CLIPS_FRAME_FIELDS
+              : CLIPS_SAMPLE_FIELDS,
+          })
+        )
       ),
       ...Object.entries(pschema)
         .filter(
@@ -231,8 +240,8 @@ const Patcher = ({ bounds, close }: PatcherProps) => {
   const theme = useTheme();
   const isVideo =
     useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(selectors.isRootView);
-  const isClips = useRecoilValue(selectors.isClipsView);
+    useRecoilValue(viewAtoms.isRootView);
+  const isClips = useRecoilValue(viewAtoms.isClipsView);
   const [labels, setLabels] = useState(true);
 
   const labelProps = useSpring({

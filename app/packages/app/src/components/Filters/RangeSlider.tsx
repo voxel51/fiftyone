@@ -21,7 +21,6 @@ import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "../../utils/hooks";
-import { isDateTimeField } from "./NumericFieldFilter.state";
 import { FRAME_SUPPORT_FIELD } from "@fiftyone/looker/src/constants";
 
 const SliderContainer = styled.div`

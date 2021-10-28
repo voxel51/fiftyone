@@ -1,14 +1,17 @@
 import React from "react";
+import { CircularProgress } from "@material-ui/core";
 import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
-import Actions from "./Actions";
+import * as aggregationAtoms from "../recoil/aggregations";
 import * as selectors from "../recoil/selectors";
-import { gridZoomRange } from "./Flashlight";
+import * as viewAtoms from "../recoil/view";
 import { useTheme } from "./../utils/hooks";
+
+import Actions from "./Actions";
+import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Filters/RangeSlider";
-import { CircularProgress } from "@material-ui/core";
 
 type Props = {
   showSidebar: boolean;
@@ -59,9 +62,13 @@ const SliderContainer = styled.div`
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
-  const totalCount = useRecoilValue(selectors.totalCount);
-  const filteredCount = useRecoilValue(aggregations.count({ extended: true }));
-  const element = useRecoilValue(selectors.elementNames);
+  const totalCount = useRecoilValue(
+    aggregationAtoms.count({ path: "", extended: false, modal: false })
+  );
+  const filteredCount = useRecoilValue(
+    aggregationAtoms.count({ path: "", modal: false, extended: true })
+  );
+  const element = useRecoilValue(viewAtoms.elementNames);
   const setGridZoom = useSetRecoilState(selectors.gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();

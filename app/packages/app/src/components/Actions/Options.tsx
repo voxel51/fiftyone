@@ -3,7 +3,7 @@ import React from "react";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
+import * as viewAtoms from "../../recoil/view";
 
 import Checkbox from "../Common/Checkbox";
 import { PopoutSectionTitle, TabOption } from "../utils";
@@ -138,7 +138,7 @@ const SortFilterResults = ({ modal }) => {
 };
 
 const Patches = ({ modal }) => {
-  const isPatches = useRecoilValue(selectors.isPatchesView);
+  const isPatches = useRecoilValue(viewAtoms.isPatchesView);
   const [crop, setCrop] = useRecoilState(atoms.cropToContent(modal));
 
   if (!isPatches) {

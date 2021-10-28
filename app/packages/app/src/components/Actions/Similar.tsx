@@ -9,20 +9,24 @@ import {
   useRecoilValue,
 } from "recoil";
 
-import Popout from "./Popout";
-import { ActionOption } from "./Common";
-import Input from "../Common/Input";
-import { Button } from "../Sidebar/Sidebar";
 import * as atoms from "../../recoil/atoms";
+import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
-import { PopoutSectionTitle } from "../utils";
-import Checkbox from "../Common/Checkbox";
-import RadioGroup from "../Common/RadioGroup";
-import { useTheme } from "../../utils/hooks";
+import * as viewAtoms from "../../recoil/view";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
+import { useTheme } from "../../utils/hooks";
+
+import Checkbox from "../Common/Checkbox";
+import Input from "../Common/Input";
+import RadioGroup from "../Common/RadioGroup";
 import { samples } from "../Flashlight";
+import { Button } from "../Sidebar/Sidebar";
+import { PopoutSectionTitle } from "../utils";
+
+import { ActionOption } from "./Common";
+import Popout from "./Popout";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
@@ -44,7 +48,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
     );
   }
   const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
-  const isPatches = await snapshot.getPromise(selectors.isPatchesView);
+  const isPatches = await snapshot.getPromise(viewAtoms.isPatchesView);
   const modal = await snapshot.getPromise(atoms.modal);
 
   if (isPatches) {
@@ -116,13 +120,13 @@ const searchBrainKeyValue = atom<string>({
 const availableSimilarityKeys = selectorFamily<string[], boolean>({
   key: "availableSimilarityKeys",
   get: (modal) => ({ get }) => {
-    const isPatches = get(selectors.isPatchesView);
+    const isPatches = get(viewAtoms.isPatchesView);
     const keys = get(selectors.similarityKeys);
     if (!isPatches && !modal) {
       return keys.samples;
     } else if (!modal) {
       return keys.patches.reduce((acc, [key, field]) => {
-        if (get(selectors.labelPaths).includes(field)) {
+        if (get(schemaAtoms.labelPaths).includes(field)) {
           acc = [...acc, key];
         }
         return acc;
@@ -193,7 +197,7 @@ const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
 const sortType = selectorFamily<string, boolean>({
   key: "sortBySimilarityType",
   get: (modal) => ({ get }) => {
-    const isRoot = get(selectors.isRootView);
+    const isRoot = get(viewAtoms.isRootView);
     if (modal) {
       return "labels";
     } else if (isRoot) {

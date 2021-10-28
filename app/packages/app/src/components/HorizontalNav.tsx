@@ -1,20 +1,21 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-import styled from "styled-components";
+import { capitalize } from "@material-ui/core";
 import {
   Assessment,
   DragHandle,
   Fullscreen,
   FullscreenExit,
 } from "@material-ui/icons";
+import { useRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
+
+import * as atoms from "../recoil/atoms";
+import * as viewAtoms from "../recoil/view";
 
 import { PillButton } from "./utils";
 import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
 import { Resizable } from "re-resizable";
-import { capitalize } from "@material-ui/core";
 
 export type Props = {
   entries: string[];
@@ -104,7 +105,7 @@ const HorizontalNav = ({ entries }: Props) => {
   const closedHeight = 64;
 
   const height = expanded ? openedHeight : closedHeight;
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
 
   return (
     <Container

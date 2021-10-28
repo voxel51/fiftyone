@@ -1,17 +1,20 @@
 import React, { MutableRefObject, useLayoutEffect } from "react";
 import { RecoilValueReadOnly, useRecoilCallback, useRecoilValue } from "recoil";
 
-import Popout from "./Popout";
-import { ActionOption } from "./Common";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import * as viewAtoms from "../../recoil/view";
 import socket from "../../shared/connection";
-import { packageMessage } from "../../utils/socket";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler } from "../../utils/hooks";
+import { packageMessage } from "../../utils/socket";
+
+import { ActionOption } from "./Common";
+import Popout from "./Popout";
 
 const useGridActions = (close: () => void) => {
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
   const clearSelection = useRecoilCallback(
     ({ set }) => async () => {
       set(atoms.selectedSamples, new Set());
@@ -135,7 +138,7 @@ const useModalActions = (
   const visibleSampleLabels = lookerRef.current.getCurrentSampleLabels();
   const isVideo =
     useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(selectors.isRootView);
+    useRecoilValue(viewAtoms.isRootView);
   const visibleFrameLabels =
     lookerRef.current instanceof VideoLooker
       ? lookerRef.current.getCurrentFrameLabels()
@@ -147,7 +150,7 @@ const useModalActions = (
       callback();
     }, []);
   };
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
 
   const hasVisibleUnselected = hasSetDiff(
     toIds(visibleSampleLabels),
