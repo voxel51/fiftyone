@@ -965,6 +965,7 @@ class SampleCollection(object):
         self,
         field_name,
         values,
+        key_field=None,
         skip_none=False,
         expand_schema=True,
         _allow_missing=False,
@@ -1063,13 +1064,24 @@ class SampleCollection(object):
                 collection. When setting frame fields, each element should be
                 an iterable of values, one for each frame of the sample. If
                 ``field_name`` contains array fields, the corresponding entries
-                of ``values`` must be arrays of the same lengths
+                of ``values`` must be arrays of the same lengths. This can also
+                be a dict mapping keys to values (each value as described
+                previously), in which case the keys are used to match samples
+                by their ``key_field``
+            key_field (None): a key field to use when choosing which samples to
+                update in non-sequential order. Only applicable when ``values``
+                is a dict
             skip_none (False): whether to treat None data in ``values`` as
                 missing data that should not be set
             expand_schema (True): whether to dynamically add new sample/frame
                 fields encountered to the dataset schema. If False, an error is
                 raised if the root ``field_name`` does not exist
         """
+        if isinstance(values, dict) and key_field is None:
+            raise ValueError(
+                "You must provide a `key_field` when `values` is a dict"
+            )
+
         if expand_schema:
             self._expand_schema_from_values(field_name, values)
 
@@ -1117,12 +1129,23 @@ class SampleCollection(object):
                 warnings.warn(msg)
 
                 fcn = lambda l: l[list_field]
-                level = 1 + is_frame_field
-                list_values = _transform_values(values, fcn, level=level)
+                lvl = 1 + is_frame_field
+
+                if isinstance(values, dict):
+                    list_values = {
+                        k: v
+                        for k, v in zip(
+                            values.keys(),
+                            _transform_values(values.values(), fcn, level=lvl),
+                        )
+                    }
+                else:
+                    list_values = _transform_values(values, fcn, level=lvl)
 
                 return self.set_values(
                     path,
                     list_values,
+                    key_field=key_field,
                     skip_none=skip_none,
                     expand_schema=expand_schema,
                     _allow_missing=_allow_missing,
@@ -1136,6 +1159,11 @@ class SampleCollection(object):
             and isinstance(self, fov.DatasetView)
         ):
             list_fields = sorted(set(list_fields + [field_name]))
+
+        # Map keys to IDs
+        if isinstance(values, dict):
+            id_map = {k: v for k, v in zip(self.values([key_field, "_id"]))}
+            values = {id_map[k]: v for k, v in values.items()}
 
         if is_frame_field:
             self._set_frame_values(
@@ -1157,6 +1185,9 @@ class SampleCollection(object):
     def _expand_schema_from_values(self, field_name, values):
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
+
+        if isinstance(values, dict):
+            values = values.values()
 
         if is_frame_field:
             schema = self._dataset.get_frame_field_schema(include_private=True)
@@ -1264,7 +1295,7 @@ class SampleCollection(object):
 
         if list_fields:
             list_field = list_fields[0]
-            elem_ids = self.values(self._FRAMES_PREFIX + list_field + "._id")
+            elem_ids = self.values("frames." + list_field + "._id")
             elem_ids = list(itertools.chain.from_iterable(elem_ids))
 
             self._set_list_values_by_id(
