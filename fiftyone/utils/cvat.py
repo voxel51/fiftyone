@@ -5264,7 +5264,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # The shapes in the last frame in the track must be set to "outside"
         last_shape = shapes[-1]
-        if last_shape["frame"] < frame_count - 1:
+        if last_shape["frame"] < frame_count:
             new_shape = deepcopy(last_shape)
             new_shape["frame"] += 1
             new_shape["outside"] = True
