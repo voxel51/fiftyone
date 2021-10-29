@@ -1401,7 +1401,7 @@ def _merge_labels(
                         added_id_map[sample_id][frame_id] = label_id
                     else:
                         added_id_map[sample_id] = label_id
-            else:
+            elif image_label is not None:
                 if is_list:
                     labels = image_label[list_field]
                 else:
