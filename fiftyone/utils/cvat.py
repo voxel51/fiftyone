@@ -3422,9 +3422,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             assign_scalar_attrs,
             occluded_attrs,
             _,
-        ) = self._get_cvat_schema(
-            label_schema=label_schema, project_id=project_id
-        )
+        ) = self._get_cvat_schema(label_schema, project_id=project_id)
 
         # When adding to an existing project, its label schema is inherited, so
         # we need to store the updated one
@@ -3532,18 +3530,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
+
         _, project_id = self._parse_project_details(
             results.config.project_name, results.config.project_id
         )
+
+        if results.project_ids:
+            # This task created the project, so we know that `label_schema` is
+            # already complete and we don't need `project_id` to help us here
+            project_id = None
 
         (
             _,
             assigned_scalar_attrs,
             occluded_attrs,
             label_field_classes,
-        ) = self._get_cvat_schema(
-            label_schema=label_schema, project_id=project_id
-        )
+        ) = self._get_cvat_schema(label_schema, project_id=project_id)
 
         labels_task_map_rev = defaultdict(list)
         for lf, tasks in labels_task_map.items():
@@ -3706,7 +3708,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return project_name, project_id
 
-    def _get_cvat_schema(self, label_schema, project_id):
+    def _get_cvat_schema(self, label_schema, project_id=None):
         if project_id is not None:
             return self._convert_cvat_schema(label_schema, project_id)
 
