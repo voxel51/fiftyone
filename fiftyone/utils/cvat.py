@@ -2504,9 +2504,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             created CVAT task. If a project with this name is found, it will be
             used, otherwise a new project with this name is created. By
             default, no project is used
-        project_id (None): an optional integer id of an existing CVAT project to
-            which to upload the annotation tasks. By default, no project is
-            used
+        project_id (None): an optional ID of an existing CVAT project to which
+            to upload the annotation tasks. By default, no project is used
     """
 
     def __init__(
@@ -3076,9 +3075,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         _id = self._get_value_from_search(
             search_url_fcn, name, result_name, "id"
         )
+
         if _id is not None:
             id_map[name] = _id
-            return _id
+
+        return _id
 
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.
@@ -3121,13 +3122,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def get_project_name(self, project_id):
-        """Retrieves the CVAT project name for the given project id.
+        """Retrieves the CVAT project name for the given project ID.
 
         Args:
-            project_id: the id of the project
+            project_id: the ID of the project
 
         Returns:
-            the project name, or None if no project with the given id was found
+            the project name, or None if no project with the given ID was found
         """
         id_map = {i: n for n, i in self._project_id_map.items()}
         project_name = id_map.get(project_id)
@@ -3396,24 +3397,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         config = backend.config
         label_schema = config.label_schema
-        project_name = config.project_name
-        _project_id = config.project_id
-        project_id = None
-        project_ids = []
-
-        project_name, existing_project_id = self._parse_project_name_id(
-            project_name, _project_id
+        project_name, project_id = self._parse_project_details(
+            config.project_name, config.project_id
         )
 
-        if existing_project_id is None:
-            if label_schema is None:
-                raise ValueError(
-                    "Either `label_field`, `label_schema`, `project_name`, or `project_id` must be provided"
-                )
-        elif label_schema != {None: {}}:
-            label_schema = self._ensure_one_field_per_type(label_schema)
+        # When using an existing project, we cannot support multiple label
+        # fields of the same type, since it would not be clear which field
+        # labels should be downloaded into
+        if project_id is not None:
+            self._ensure_one_field_per_type(label_schema)
 
         id_map = {}
+        project_ids = []
         task_ids = []
         job_ids = {}
         frame_id_map = {}
@@ -3428,9 +3423,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             occluded_attrs,
             _,
         ) = self._get_cvat_schema(
-            label_schema=label_schema, project_id=existing_project_id,
+            label_schema=label_schema, project_id=project_id
         )
-        if existing_project_id:
+
+        # When adding to an existing project, its label schema is inherited, so
+        # we need to store the updated one
+        if project_id is not None:
             config.label_schema = label_schema
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
@@ -3450,11 +3448,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if label_field not in labels_task_map:
                     labels_task_map[label_field] = []
 
-                is_existing_field = label_info.get("existing_field", False)
-
-                if is_existing_field:
-                    only_keyframes = label_info.get("only_keyframes", False)
+                if label_info.get("existing_field", False):
                     label_type = label_info["type"]
+                    only_keyframes = label_info.get("only_keyframes", False)
+
                     self._update_shapes_tags_tracks(
                         _tags,
                         _shapes,
@@ -3474,16 +3471,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_shapes.extend(_shapes)
                 anno_tracks.extend(_tracks)
 
-            if project_id is None:
-                if existing_project_id is not None:
-                    project_id = existing_project_id
-                else:
-                    if project_name is not None:
-                        created_project_id = self.create_project(
-                            project_name, cvat_schema
-                        )
-                        project_id = created_project_id
-                        project_ids = [project_id]
+            # We must do this here because `cvat_schema` may be altered the
+            # first time shapes are created
+            if project_id is None and project_name is not None:
+                project_id = self.create_project(project_name, cvat_schema)
+                project_ids.append(project_id)
 
             task_name = (
                 "FiftyOne_%s"
@@ -3536,26 +3528,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the annotations dict
         """
         label_schema = results.config.label_schema
-        project_name = results.config.project_name
-        _project_id = results.config.project_id
         id_map = results.id_map
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
-
-        _, existing_project_id = self._parse_project_name_id(
-            project_name, _project_id
+        _, project_id = self._parse_project_details(
+            results.config.project_name, results.config.project_id
         )
-
-        if existing_project_id is None:
-            if label_schema is None:
-                raise ValueError(
-                    "Either `label_field`, `label_schema`, `project_name`, or `project_id` must be provided"
-                )
-        elif label_schema != {None: {}}:
-            label_schema = self._ensure_one_field_per_type(
-                label_schema, verbose=False
-            )
 
         (
             _,
@@ -3563,7 +3542,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             occluded_attrs,
             label_field_classes,
         ) = self._get_cvat_schema(
-            label_schema=label_schema, project_id=existing_project_id,
+            label_schema=label_schema, project_id=project_id
         )
 
         labels_task_map_rev = defaultdict(list)
@@ -3599,6 +3578,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_types = self._get_return_label_types(
                 label_schema, label_fields
             )
+
             for lf_ind, label_field in enumerate(label_fields):
                 label_info = label_schema[label_field]
                 label_type = label_info.get("type", None)
@@ -3625,10 +3605,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 is_last_field = lf_ind == len(label_fields) - 1
                 ignore_types = self._get_ignored_types(
-                    existing_project_id,
-                    label_types,
-                    label_type,
-                    is_last_field,
+                    project_id, label_types, label_type, is_last_field
                 )
 
                 tag_results = self._parse_shapes_tags(
@@ -3712,65 +3689,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return annotations
 
-    def get_existing_project_labels(self, project_id):
-        """Get CVAT labels schema from an existing project
-        Args:
-            project_id: the id of the project
-
-        Returns:
-            the labels dictionary downloaded from the CVAT project
-        """
+    def _get_project_labels(self, project_id):
         if self.get_project_name(project_id) is None:
-            raise ValueError("Project '%s' not found", project_id)
+            raise ValueError("Project '%s' not found" % project_id)
 
         return self.get(self.project_url(project_id)).json()["labels"]
 
-    def _parse_project_name_id(self, project_name, project_id):
-        if project_id:
-            if project_name:
-                logger.warning(
-                    "Found `project_id` and `project_name` arguments. Ignoring `project_name`..."
-                )
+    def _parse_project_details(self, project_name, project_id):
+        if project_id is not None:
             project_name = self.get_project_name(project_id)
             if not project_name:
-                raise ValueError("Project '%d' not found", project_id)
+                raise ValueError("Project '%d' not found" % project_id)
 
-        elif project_name:
+        elif project_name is not None:
             project_id = self.get_project_id(project_name)
 
         return project_name, project_id
 
-    def _update_project_config(self, project_id, config):
-        project_name = config.project_name
-        label_schema = config.label_schema
-        if project_name is not None:
-            logger.warning(
-                "Ignoring `project_name` parameter, uploading to project id: `%d`",
-                project_id,
-            )
-            config.project_name = None
-
-        if len(label_schema) > 1:
-            label_field = list(label_schema.keys())[0]
-            logger.warning(
-                "When uploading to an existing project, only one label field "
-                "can be specified. Uploading field `%s` to project `%d`, "
-                "ignoring the rest",
-                label_field,
-                project_id,
-            )
-            config.label_schema = {label_field: label_schema[label_field]}
-
-        return config
-
     def _get_cvat_schema(self, label_schema, project_id):
-        if project_id is None:
-            return self._build_cvat_schema(label_schema)
-        else:
-            return self._convert_cvat_schema(project_id, label_schema)
+        if project_id is not None:
+            return self._convert_cvat_schema(label_schema, project_id)
 
-    def _convert_cvat_schema(self, project_id, label_schema):
-        labels = self.get_existing_project_labels(project_id)
+        return self._build_cvat_schema(label_schema)
+
+    def _convert_cvat_schema(self, label_schema, project_id):
+        labels = self._get_project_labels(project_id)
+
         cvat_schema = {}
         labels_to_update = []
         occluded_attrs = {}
@@ -3798,6 +3742,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     values = attr["values"]
                     if default_value:
                         label_attrs[attr_name]["default"] = default_value
+
                     if values and values[0] != "":
                         label_attrs[attr_name]["values"] = values
 
@@ -3819,6 +3764,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if label_type is not None:
                     label_schema[label_field]["attributes"] = {}
                     label_schema[label_field]["classes"] = classes_and_attrs
+
                 assign_scalar_attrs[label_field] = None
 
             label_field_classes[label_field] = deepcopy(class_names)
@@ -3837,7 +3783,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         labels_patch = {"labels": []}
         for label in labels:
             label["attributes"].append(
-                {"name": "label_id", "input_type": "text", "mutable": True,}
+                {"name": "label_id", "input_type": "text", "mutable": True}
             )
             labels_patch["labels"].append(label)
 
@@ -3845,23 +3791,26 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def _ensure_one_field_per_type(self, label_schema, verbose=True):
         _seen_label_types = []
-        _label_schema = {}
-        for lf, lf_info in label_schema.items():
-            label_type = lf_info["type"]
+        for label_field in list(label_schema.keys()):  # list b/c we may edit
+            if label_field is None:
+                continue
+
+            label_type = label_schema[label_field]["type"]
             if label_type == "scalar":
-                _seen_type = "classifications"
+                _label_type = "classifications"
             else:
-                _seen_type = foua._RETURN_TYPES_MAP[label_type]
-            if _seen_type not in _seen_label_types:
-                _seen_label_types.append(_seen_type)
-                _label_schema[lf] = lf_info
+                _label_type = foua._RETURN_TYPES_MAP[label_type]
+
+            if _label_type not in _seen_label_types:
+                _seen_label_types.append(_label_type)
             elif verbose:
+                label_schema.pop(label_field)
                 logger.warning(
-                    "A field with label type `%s` is already being annotated. Ignoring field `%s`...",
-                    _seen_type,
-                    lf,
+                    "A field with label type '%s' is already being annotated. "
+                    "Ignoring field '%s'...",
+                    _label_type,
+                    label_field,
                 )
-        return _label_schema
 
     def _get_batch_size(self, samples):
         if samples.media_type == fom.VIDEO:
@@ -4060,17 +4009,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_type = label_schema[label_field].get("type", None)
             if label_type:
                 label_types.append(foua._RETURN_TYPES_MAP[label_type])
+
         return label_types
 
     def _get_ignored_types(
-        self, existing_project_id, label_types, label_type, is_last_field
+        self, project_id, label_types, label_type, is_last_field
     ):
-        """Used when uploading multiple fields to an existing project.
-        Each field must have a different type, but can have the same class
-        names. When loading annotations, if a field exists for a found label
-        type, that label will not be loaded with any other fields.
+        """When uploading multiple fields to an existing project, each field
+        must have a different type but can have overlapping class names.
+        Therefore, when loading annotations, if a field exists for a found
+        label type, that label will not be loaded with any other fields.
         """
-        if not existing_project_id or len(label_types) < 2:
+        if not project_id or len(label_types) < 2:
             # Not relevant unless uploading to a project and there are multiple
             # types of labels
             return []
@@ -5314,6 +5264,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if attr_name in attr_map:
                     attr["spec_id"] = attr_map[attr_name]
                     attrs.append(attr)
+
             obj["attributes"] = attrs
 
         return shapes_or_tags
@@ -5331,6 +5282,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if attr_name in attr_map:
                         attr["spec_id"] = attr_map[attr_name]
                         attrs.append(attr)
+
                 shape["attributes"] = attrs
 
             attrs = []

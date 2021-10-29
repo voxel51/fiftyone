@@ -195,12 +195,20 @@ def annotate(
     )
     config.label_schema = label_schema
 
-    # Don't allow overwriting an existing run with same `anno_key`
-    anno_backend.register_run(samples, anno_key, overwrite=False)
-
     results = anno_backend.upload_annotations(
         samples, launch_editor=launch_editor
     )
+
+    #
+    # Don't allow overwriting an existing run with same `anno_key`, since we
+    # need the existing run in order to perform workflows like automatically
+    # cleaning up the backend's tasks
+    #
+    # Also, note that we register the run after uploading the annotations,
+    # since it is possible that the annotation backend may update the label
+    # schema (eg when uploading to an existing project)
+    #
+    anno_backend.register_run(samples, anno_key, overwrite=False)
 
     anno_backend.save_run_results(samples, anno_key, results)
 
