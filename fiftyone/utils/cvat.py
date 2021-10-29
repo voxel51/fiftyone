@@ -1132,15 +1132,17 @@ class CVATImageAnno(object):
     def _to_attributes(self):
         attributes = {a.name: a.value for a in self.attributes}
 
-        if self.occluded is not None:
-            attributes["occluded"] = self.occluded
+        if self.occluded == 1:
+            attributes["occluded"] = True
 
         return attributes
 
     @staticmethod
     def _parse_attributes(label):
         attrs = dict(label.iter_attributes())
-        occluded = attrs.pop("occluded", None)
+
+        occluded = _to_int_bool(attrs.pop("occluded", None))
+
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
@@ -1151,12 +1153,18 @@ class CVATImageAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        occluded = _parse_value(d.get("@occluded", None))
+        occluded = _from_int_bool(d.get("@occluded", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
+                if name == "label_id":
+                    # We assume that this is a `label_id` exported from an
+                    # CVAT annotation run created by our annotation API, which
+                    # should be ignored since we're not using the API here
+                    continue
+
                 value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
@@ -1608,24 +1616,28 @@ class CVATTrack(object):
         # Only one of these will actually contain labels
 
         for frame_number, box in self.boxes.items():
-            detection = box.to_detection(frame_size)
-            detection.index = self.id
-            labels[frame_number + 1] = detection
+            if box.outside != 1:
+                detection = box.to_detection(frame_size)
+                detection.index = self.id
+                labels[frame_number + 1] = detection
 
         for frame_number, polygon in self.polygons.items():
-            polyline = polygon.to_polyline(frame_size)
-            polyline.index = self.id
-            labels[frame_number + 1] = polyline
+            if polygon.outside != 1:
+                polyline = polygon.to_polyline(frame_size)
+                polyline.index = self.id
+                labels[frame_number + 1] = polyline
 
         for frame_number, polyline in self.polylines.items():
-            polyline = polyline.to_polyline(frame_size)
-            polyline.index = self.id
-            labels[frame_number + 1] = polyline
+            if polyline.outside != 1:
+                polyline = polyline.to_polyline(frame_size)
+                polyline.index = self.id
+                labels[frame_number + 1] = polyline
 
         for frame_number, points in self.points.items():
-            keypoint = points.to_keypoint(frame_size)
-            keypoint.index = self.id
-            labels[frame_number + 1] = keypoint
+            if points.outside != 1:
+                keypoint = points.to_keypoint(frame_size)
+                keypoint.index = self.id
+                labels[frame_number + 1] = keypoint
 
         return labels
 
@@ -1672,6 +1684,14 @@ class CVATTrack(object):
             elif _label is not None:
                 msg = "Ignoring unsupported label type '%s'" % _label.__class__
                 warnings.warn(msg)
+
+        # CVAT uses `outside=1` to mark the end of track segments, while
+        # FiftyOne implicitly represents this by missing labels. So, we need to
+        # convert to CVAT format here
+        cls._add_outside_shapes(boxes)
+        cls._add_outside_shapes(polygons)
+        cls._add_outside_shapes(polylines)
+        cls._add_outside_shapes(points)
 
         return cls(
             id,
@@ -1732,12 +1752,39 @@ class CVATTrack(object):
             points=points,
         )
 
+    @staticmethod
+    def _add_outside_shapes(shapes):
+        if not shapes:
+            return
+
+        use_keyframes = any(s.keyframe for s in shapes.values())
+
+        def _make_outside_shape(shape):
+            shape = deepcopy(shape)
+            shape.outside = 1
+            if use_keyframes:
+                shape.keyframe = 1
+
+            return shape
+
+        # Add "outside" shapes to represent gaps of >= 1 frame in tracks
+        fns = sorted(shapes.keys())
+        last_fn = fns[0]
+        for fn in fns:
+            if fn > last_fn + 1:
+                shapes[last_fn + 1] = _make_outside_shape(shapes[last_fn])
+
+            last_fn = fn
+
+        # Always add an "outside" shape to the end of each track
+        shapes[last_fn + 1] = _make_outside_shape(shapes[last_fn])
+
 
 class CVATVideoAnno(object):
     """Mixin for annotations in CVAT video format.
 
     Args:
-        outside (None): whether the object is truncated by the frame edge
+        outside (None): whether the object is outside (invisible)
         occluded (None): whether the object is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -1754,23 +1801,25 @@ class CVATVideoAnno(object):
     def _to_attributes(self):
         attributes = {a.name: a.value for a in self.attributes}
 
-        if self.outside is not None:
-            attributes["outside"] = self.outside
+        # We don't include `outside` here because shapes marked as `outside`
+        # are completely omitted
 
-        if self.occluded is not None:
-            attributes["occluded"] = self.occluded
+        if self.occluded == 1:
+            attributes["occluded"] = True
 
-        if self.keyframe is not None:
-            attributes["keyframe"] = self.keyframe
+        if self.keyframe == 1:
+            attributes["keyframe"] = True
 
         return attributes
 
     @staticmethod
     def _parse_attributes(label):
         attrs = dict(label.iter_attributes())
-        occluded = attrs.pop("occluded", None)
-        outside = attrs.pop("outside", None)
-        keyframe = attrs.pop("keyframe", None)
+
+        outside = 0  # any FiftyOne label is implicitly not `outside`
+        occluded = _to_int_bool(attrs.pop("occluded", None))
+        keyframe = _to_int_bool(attrs.pop("keyframe", None))
+
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
@@ -1781,14 +1830,20 @@ class CVATVideoAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        outside = _parse_value(d.get("@outside", None))
-        occluded = _parse_value(d.get("@occluded", None))
-        keyframe = _parse_value(d.get("@keyframe", None))
+        outside = _from_int_bool(d.get("@outside", None))
+        occluded = _from_int_bool(d.get("@occluded", None))
+        keyframe = _from_int_bool(d.get("@keyframe", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
+                if name == "label_id":
+                    # We assume that this is a `label_id` exported from an
+                    # CVAT annotation run created by our annotation API, which
+                    # should be ignored since we're not using the API here
+                    continue
+
                 value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
@@ -1805,7 +1860,7 @@ class CVATVideoBox(CVATVideoAnno):
         ytl: the top-left y-coordinate of the box, in pixels
         xbr: the bottom-right x-coordinate of the box, in pixels
         ybr: the bottom-right y-coordinate of the box, in pixels
-        outside (None): whether the object is truncated by the frame edge
+        outside (None): whether the object is outside (invisible)
         occluded (None): whether the object is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -1947,7 +2002,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         label: the polygon label string
         points: a list of ``(x, y)`` pixel coordinates defining the vertices of
             the polygon
-        outside (None): whether the polygon is truncated by the frame edge
+        outside (None): whether the polygon is outside (invisible)
         occluded (None): whether the polygon is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -2062,7 +2117,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         label: the polyline label string
         points: a list of ``(x, y)`` pixel coordinates defining the vertices of
             the polyline
-        outside (None): whether the polyline is truncated by the frame edge
+        outside (None): whether the polyline is outside (invisible)
         occluded (None): whether the polyline is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -2178,7 +2233,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         frame: the 0-based frame number
         label: the keypoints label string
         points: a list of ``(x, y)`` pixel coordinates defining the keypoints
-        outside (None): whether the keypoints are truncated by the frame edge
+        outside (None): whether the keypoints is outside (invisible)
         occluded (None): whether the keypoints are occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -3105,7 +3160,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         Args:
             name: a name for the project
-            schema (None): the label schema to use for the created project 
+            schema (None): the label schema to use for the created project
 
         Returns:
             the ID of the created project in CVAT
@@ -5150,7 +5205,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # The shapes in the last frame in the track must be set to "outside"
         last_shape = shapes[-1]
-        if last_shape["frame"] < frame_count - 1:
+        if last_shape["frame"] < frame_count:
             new_shape = deepcopy(last_shape)
             new_shape["frame"] += 1
             new_shape["outside"] = True
@@ -5727,6 +5782,19 @@ def _stringify_value(value):
         return "false"
 
     return str(value)
+
+
+def _to_int_bool(value):
+    return int(bool(value))
+
+
+def _from_int_bool(value):
+    try:
+        return bool(int(value))
+    except:
+        pass
+
+    return None
 
 
 def _parse_value(value):
