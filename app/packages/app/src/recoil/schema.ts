@@ -103,7 +103,7 @@ export const field = selectorFamily<State.Field, string>({
 });
 
 export const labelFields = selector<string[]>({
-  key: "labelFieldNames",
+  key: "labelFields",
   get: ({ get }) => {
     const paths = get(fieldPaths);
 
@@ -151,6 +151,50 @@ export const labelPath = selectorFamily<string, string>({
 export const activeFields = atomFamily<string[], boolean>({
   key: "activeFields",
   default: labelFields,
+});
+
+export const activeTags = selectorFamily<string[], boolean>({
+  key: "activeTags",
+  get: (modal) => ({ get }) => {
+    return get(activeFields(modal))
+      .filter((t) => t.startsWith("tags."))
+      .map((t) => t.slice(5));
+  },
+  set: (modal) => ({ get, set }, value) => {
+    if (Array.isArray(value)) {
+      const tags = value.map((v) => "tags." + v);
+      const prevActiveTags = get(activeTags(modal));
+      let active = get(activeFields(modal)).filter((v) =>
+        v.startsWith("tags.") ? tags.includes(v) : true
+      );
+      if (tags.length && prevActiveTags.length < tags.length) {
+        active = [tags[0], ...active.filter((v) => v !== tags[0])];
+      }
+      set(activeFields(modal), active);
+    }
+  },
+});
+
+export const activeLabelTags = selectorFamily<string[], boolean>({
+  key: "activeLabelTags",
+  get: (modal) => ({ get }) => {
+    return get(activeFields(modal))
+      .filter((t) => t.startsWith("_label_tags."))
+      .map((t) => t.slice("_label_tags.".length));
+  },
+  set: (modal) => ({ get, set }, value) => {
+    if (Array.isArray(value)) {
+      const tags = value.map((v) => "_label_tags." + v);
+      const prevActiveTags = get(activeLabelTags(modal));
+      let active = get(activeFields(modal)).filter((v) =>
+        v.startsWith("_label_tags.") ? tags.includes(v) : true
+      );
+      if (tags.length && prevActiveTags.length < tags.length) {
+        active = [tags[0], ...active.filter((v) => v !== tags[0])];
+      }
+      set(activeFields(modal), active);
+    }
+  },
 });
 
 export const activeLabelFields = selectorFamily<string[], boolean>({

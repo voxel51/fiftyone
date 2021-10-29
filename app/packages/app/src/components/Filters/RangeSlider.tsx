@@ -16,7 +16,7 @@ import {
   DATE_TIME_FIELD,
   FRAME_NUMBER_FIELD,
   INT_FIELD,
-} from "../../utils/labels";
+} from "../../recoil/constants";
 import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";

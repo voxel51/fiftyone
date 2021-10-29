@@ -334,6 +334,29 @@ export const count = selectorFamily<
   },
 });
 
+export const counts = selectorFamily<
+  { [key: string]: number },
+  { extended: boolean; path: string; modal: boolean }
+>({
+  key: "counts",
+  get: ({ extended, modal, path }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
+
+    const data = get(atom);
+    return data
+      ? Object.fromEntries(
+          (data[path] as CategoricalAggregations).CountValues[1]
+        )
+      : null;
+  },
+});
+
 export const cumulativeValues = selectorFamily<
   string[],
   {
@@ -345,18 +368,37 @@ export const cumulativeValues = selectorFamily<
   }
 >({
   key: "cumulativeValues",
-  get: ({ extended, path, modal, ftype, embeddedDocType }) => ({ get }) => {
+  get: ({ extended, path: key, modal, ftype, embeddedDocType }) => ({
+    get,
+  }) => {
     const paths = [];
 
-    const schema = get(schemaAtoms.fieldPaths);
-    for (const path of schema) {
+    const recurceFields = (path) => {
       const field = get(schemaAtoms.field(path));
       if (schemaAtoms.meetsType({ path, ftype, embeddedDocType })) {
         paths.push(path);
       }
-    }
+      if (field.fields) {
+        Object.keys(field.fields).forEach((name) =>
+          recurceFields(`${path}.${name}`)
+        );
+      }
+    };
 
-    return paths;
+    const schema = get(schemaAtoms.fieldPaths);
+    for (const path of schema) recurceFields(path);
+
+    return Array.from(
+      new Set<string>(
+        paths.reduce(
+          (result, path) => [
+            ...result,
+            get(values({ extended, modal, path: `${path}.${key}` })),
+          ],
+          []
+        )
+      )
+    ).sort();
   },
 });
 

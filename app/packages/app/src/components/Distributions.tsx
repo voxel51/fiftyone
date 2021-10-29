@@ -19,7 +19,7 @@ import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
 import { meetsType } from "../recoil/schema";
-import { DATE_FIELD, DATE_TIME_FIELD } from "../utils/labels";
+import { DATE_FIELD, DATE_TIME_FIELD } from "../recoil/constants";
 
 const Container = styled.div`
   ${scrollbarStyles}
