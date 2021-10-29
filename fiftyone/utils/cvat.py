@@ -3401,6 +3401,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             config.project_name, config.project_id
         )
 
+        # When using an existing project, we cannot support multiple label
+        # fields of the same type, since it would not be clear which field
+        # labels should be downloaded into
         if project_id is not None:
             self._ensure_one_field_per_type(label_schema)
 
@@ -3422,6 +3425,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ) = self._get_cvat_schema(
             label_schema=label_schema, project_id=project_id
         )
+
+        # When adding to an existing project, its label schema is inherited, so
+        # we need to store the updated one
+        if project_id is not None:
+            config.label_schema = label_schema
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
             samples_batch = samples[offset : (offset + batch_size)]
@@ -4001,15 +4009,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_type = label_schema[label_field].get("type", None)
             if label_type:
                 label_types.append(foua._RETURN_TYPES_MAP[label_type])
+
         return label_types
 
     def _get_ignored_types(
         self, project_id, label_types, label_type, is_last_field
     ):
-        """Used when uploading multiple fields to an existing project.
-        Each field must have a different type, but can have the same class
-        names. When loading annotations, if a field exists for a found label
-        type, that label will not be loaded with any other fields.
+        """When uploading multiple fields to an existing project, each field
+        must have a different type but can have overlapping class names.
+        Therefore, when loading annotations, if a field exists for a found
+        label type, that label will not be loaded with any other fields.
         """
         if not project_id or len(label_types) < 2:
             # Not relevant unless uploading to a project and there are multiple
