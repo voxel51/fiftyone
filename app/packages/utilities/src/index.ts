@@ -4,7 +4,9 @@ export const toCamelCase = (obj: object): object =>
   _.transform(obj, (acc, value, key, target) => {
     const camelKey = _.isArray(target) ? key : _.camelCase(key);
 
-    acc[camelKey] = _.isObject(value) ? toCamelCase(value) : value;
+    acc[
+      `${typeof key === "string" && key.startsWith("_") ? "_" : ""}${camelKey}`
+    ] = _.isObject(value) ? toCamelCase(value) : value;
   });
 
 export const toSnakeCase = (obj: object): object =>

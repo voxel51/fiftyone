@@ -10,6 +10,7 @@ import * as viewAtoms from "../recoil/view";
 import { useTheme } from "./../utils/hooks";
 
 import Actions from "./Actions";
+import DropdownHandle from "./DropdownHandle";
 import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Filters/RangeSlider";
 
@@ -85,6 +86,12 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   }
   return (
     <Wrapper>
+      <DropdownHandle
+        label="Filters"
+        expanded={showSidebar}
+        onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
+        style={{ width: 256, padding: "0.25rem 0.5rem" }}
+      />
       <SamplesHeader>
         <Actions modal={false} />
         <RightContainer>
@@ -112,6 +119,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
                 color={theme.brand}
                 showBounds={false}
                 persistValue={false}
+                style={{ padding: 0 }}
               />
             </div>
             <div

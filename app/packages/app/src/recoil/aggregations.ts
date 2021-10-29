@@ -305,7 +305,8 @@ export const count = selectorFamily<
       ? extendedAggregations
       : aggregations;
 
-    return get(atom)[path].Count;
+    const data = get(atom);
+    return data ? data[path]?.Count : null;
   },
 });
 

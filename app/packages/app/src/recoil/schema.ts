@@ -98,7 +98,7 @@ export const field = selectorFamily<State.Field, string>({
 
     let field: State.Field = null;
     let schema = get(fieldSchema(State.SPACE.SAMPLE));
-    for (const name in path.split(".")) {
+    for (const name of path.split(".")) {
       field = schema[name];
       schema = field.fields;
     }

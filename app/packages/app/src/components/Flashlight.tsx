@@ -28,7 +28,12 @@ import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import * as viewAtoms from "../recoil/view";
-import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
+import {
+  getSampleSrc,
+  lookerType,
+  setModal,
+  useClearModal,
+} from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
@@ -87,7 +92,7 @@ const flashlightLookerOptions = selector({
       coloring: get(selectors.coloring(false)),
       filter: () => true,
       activePaths: [],
-      zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
+      zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       timeZone: get(selectors.timeZone),
@@ -154,7 +159,7 @@ const useThumbnailClick = (
           index: clickedIndex,
           getIndex,
         });
-        set(labelFilters(true), {});
+        setModal(snapshot, set);
       };
 
       const addRange = () => {
@@ -270,7 +275,7 @@ export default React.memo(() => {
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
-  const isClips = useRecoilValue(selectors.isClipsView);
+  const isClips = useRecoilValue(viewAtoms.isClipsView);
   lookerGeneratorRef.current = ({
     sample,
     dimensions,
@@ -308,9 +313,9 @@ export default React.memo(() => {
   const flashlight = useRef<Flashlight<number>>();
   const cropToContent = useRecoilValue(atoms.cropToContent(false));
 
-  const filters = useRecoilValue(selectors.filterStages);
+  const filters = useRecoilValue(filterAtoms.filters);
   const datasetName = useRecoilValue(selectors.datasetName);
-  const view = useRecoilValue(selectors.view);
+  const view = useRecoilValue(viewAtoms.view);
   const refresh = useRecoilValue(selectors.refresh);
 
   const selected = useRecoilValue(atoms.selectedSamples);

@@ -1,7 +1,9 @@
 import {
   GetRecoilValue,
+  RecoilState,
   selector,
   SetRecoilState,
+  Snapshot,
   useRecoilCallback,
 } from "recoil";
 
@@ -27,8 +29,8 @@ export const getSampleSrc = (filepath: string, id: string) => {
 export const lookerType = selector<(mimetype: string) => LookerTypes>({
   key: "lookerType",
   get: ({ get }) => {
-    const isFrame = get(selectors.isFramesView);
-    const isPatch = get(selectors.isPatchesView);
+    const isFrame = get(viewAtoms.isFramesView);
+    const isPatch = get(viewAtoms.isPatchesView);
 
     return (mimetype) => {
       const video = mimetype.startsWith("video/");
@@ -68,18 +70,28 @@ export const setState = (set: SetRecoilState, state: State.Description) => {
   socket.send(packageMessage("update", { state: toSnakeCase(state) }));
 };
 
-export const modalState = selector<null>({
-  key: "modalState",
-  get: () => null,
-  set: ({ get, set }) => setModal(get, set),
-});
+export const setModal = async (
+  snapshot: Snapshot,
+  set: <T>(
+    recoilVal: RecoilState<T>,
+    valOrUpdater: T | ((currVal: T) => T)
+  ) => void
+) => {
+  const data = [
+    [filterAtoms.modalFilters, filterAtoms.filters],
+    [atoms.colorByLabel(true), atoms.colorByLabel(false)],
+    [schemaAtoms.activeFields(true), schemaAtoms.activeFields(false)],
+    [atoms.cropToContent(true), atoms.cropToContent(false)],
+    [atoms.colorSeed(true), atoms.colorSeed(false)],
+    [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
+    [atoms.alpha(true), atoms.alpha(false)],
+  ];
 
-const setModal = (get: GetRecoilValue, set: SetRecoilState) => {
-  set(filterAtoms.modalFilters, get(filterAtoms.filters));
-  set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
-  set(schemaAtoms.activeFields(true), get(schemaAtoms.activeFields(true)));
-  set(atoms.cropToContent(true), get(atoms.cropToContent(false)));
-  set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
-  set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
-  set(atoms.alpha(true), get(atoms.alpha(false)));
+  const results = Promise.all(
+    data.map(([_, get]) => snapshot.getPromise(get as RecoilState<any>))
+  );
+
+  for (const i in results) {
+    set(data[i][0], results[i]);
+  }
 };

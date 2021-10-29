@@ -11,6 +11,7 @@ import { similaritySorting } from "../components/Actions/Similar";
 import { savingFilters } from "../components/Actions/ActionsRow";
 import Header from "../components/Header";
 import NotificationHub from "../components/NotificationHub";
+import * as aggregationAtoms from "../recoil/aggregations";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
@@ -54,9 +55,10 @@ const useStateUpdate = () => {
 
 const useStatisticsUpdate = () => {
   return useRecoilCallback(
-    ({ set }) => async ({ stats, view, extended, filters }) => {
-      extended && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
-      !extended && set(atoms.datasetStatsRaw, { stats, view });
+    ({ set }) => async ({ data, view, extended, filters }) => {
+      extended &&
+        set(aggregationAtoms.extendedAggregationsRaw, { data, view, filters });
+      !extended && set(aggregationAtoms.aggregationsRaw, { data, view });
     },
     []
   );
