@@ -969,6 +969,7 @@ class SampleCollection(object):
         skip_none=False,
         expand_schema=True,
         _allow_missing=False,
+        _sample_ids=None,
     ):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -1014,6 +1015,14 @@ class SampleCollection(object):
         used to efficiently extract the values of a field or embedded field of
         all samples in a collection as lists of values in the same structure
         expected by this method.
+
+        When ``values`` is a dict, then this function is an efficient
+        implementation of the following loop::
+
+            for key, value in values.items():
+                sample = sample_collection.one(F(key_field) == key)
+                sample.embedded.field.name = value
+                sample.save()
 
         .. note::
 
@@ -1061,13 +1070,13 @@ class SampleCollection(object):
         Args:
             field_name: a field or ``embedded.field.name``
             values: an iterable of values, one for each sample in the
-                collection. When setting frame fields, each element should be
-                an iterable of values, one for each frame of the sample. If
-                ``field_name`` contains array fields, the corresponding entries
-                of ``values`` must be arrays of the same lengths. This can also
-                be a dict mapping keys to values (each value as described
-                previously), in which case the keys are used to match samples
-                by their ``key_field``
+                collection. When setting frame fields, each element should
+                itself be an iterable of values, one for each frame of the
+                sample. If ``field_name`` contains array fields, the elements
+                of ``values`` must be arrays of the same lengths. This argument
+                can also be a dict mapping keys to values (each value as
+                described previously), in which case the keys are used to match
+                samples by their ``key_field``
             key_field (None): a key field to use when choosing which samples to
                 update in non-sequential order. Only applicable when ``values``
                 is a dict
@@ -1077,10 +1086,13 @@ class SampleCollection(object):
                 fields encountered to the dataset schema. If False, an error is
                 raised if the root ``field_name`` does not exist
         """
-        if isinstance(values, dict) and key_field is None:
-            raise ValueError(
-                "You must provide a `key_field` when `values` is a dict"
-            )
+        if isinstance(values, dict):
+            if key_field is None:
+                raise ValueError(
+                    "You must provide a `key_field` when `values` is a dict"
+                )
+
+            _sample_ids, values = _parse_values_dict(self, key_field, values)
 
         if expand_schema:
             self._expand_schema_from_values(field_name, values)
@@ -1129,18 +1141,8 @@ class SampleCollection(object):
                 warnings.warn(msg)
 
                 fcn = lambda l: l[list_field]
-                lvl = 1 + is_frame_field
-
-                if isinstance(values, dict):
-                    list_values = {
-                        k: v
-                        for k, v in zip(
-                            values.keys(),
-                            _transform_values(values.values(), fcn, level=lvl),
-                        )
-                    }
-                else:
-                    list_values = _transform_values(values, fcn, level=lvl)
+                level = 1 + is_frame_field
+                list_values = _transform_values(values, fcn, level=level)
 
                 return self.set_values(
                     path,
@@ -1149,6 +1151,7 @@ class SampleCollection(object):
                     skip_none=skip_none,
                     expand_schema=expand_schema,
                     _allow_missing=_allow_missing,
+                    _sample_ids=_sample_ids,
                 )
 
         # If we're directly updating a document list field of a dataset view,
@@ -1160,16 +1163,12 @@ class SampleCollection(object):
         ):
             list_fields = sorted(set(list_fields + [field_name]))
 
-        # Map keys to IDs
-        if isinstance(values, dict):
-            id_map = {k: v for k, v in zip(self.values([key_field, "_id"]))}
-            values = {id_map[k]: v for k, v in values.items()}
-
         if is_frame_field:
             self._set_frame_values(
                 field_name,
                 values,
                 list_fields,
+                sample_ids=_sample_ids,
                 to_mongo=to_mongo,
                 skip_none=skip_none,
             )
@@ -1178,6 +1177,7 @@ class SampleCollection(object):
                 field_name,
                 values,
                 list_fields,
+                sample_ids=_sample_ids,
                 to_mongo=to_mongo,
                 skip_none=skip_none,
             )
@@ -1185,9 +1185,6 @@ class SampleCollection(object):
     def _expand_schema_from_values(self, field_name, values):
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
-
-        if isinstance(values, dict):
-            values = values.values()
 
         if is_frame_field:
             schema = self._dataset.get_frame_field_schema(include_private=True)
@@ -1249,18 +1246,29 @@ class SampleCollection(object):
             self._dataset._add_implied_sample_field(field_name, value)
 
     def _set_sample_values(
-        self, field_name, values, list_fields, to_mongo=None, skip_none=False
+        self,
+        field_name,
+        values,
+        list_fields,
+        sample_ids=None,
+        to_mongo=None,
+        skip_none=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
             )
 
-        sample_ids = self.values("_id")
-
         if list_fields:
             list_field = list_fields[0]
-            elem_ids = self.values(list_field + "._id")
+            elem_id_field = list_field + "._id"
+
+            if sample_ids is not None:
+                view = self.select(sample_ids, ordered=True)
+                sample_ids = [ObjectId(_id) for _id in sample_ids]
+                elem_ids = view.values(elem_id_field)
+            else:
+                sample_ids, elem_ids = view.values(["_id", elem_id_field])
 
             self._set_list_values_by_id(
                 field_name,
@@ -1272,6 +1280,11 @@ class SampleCollection(object):
                 skip_none=skip_none,
             )
         else:
+            if sample_ids is not None:
+                sample_ids = [ObjectId(_id) for _id in sample_ids]
+            else:
+                sample_ids = self.values("_id")
+
             self._set_values(
                 field_name,
                 sample_ids,
@@ -1281,22 +1294,32 @@ class SampleCollection(object):
             )
 
     def _set_frame_values(
-        self, field_name, values, list_fields, to_mongo=None, skip_none=False
+        self,
+        field_name,
+        values,
+        list_fields,
+        sample_ids=None,
+        to_mongo=None,
+        skip_none=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
             )
 
-        frame_ids = self.values("frames._id")
-        frame_ids = list(itertools.chain.from_iterable(frame_ids))
-
-        values = list(itertools.chain.from_iterable(values))
+        if sample_ids is not None:
+            view = self.select(sample_ids, ordered=True)
+        else:
+            view = self
 
         if list_fields:
             list_field = list_fields[0]
-            elem_ids = self.values("frames." + list_field + "._id")
-            elem_ids = list(itertools.chain.from_iterable(elem_ids))
+            elem_id_field = "frames." + list_field + "._id"
+            frame_ids, elem_ids = view.values(["frames._id", elem_id_field])
+
+            frame_ids = itertools.chain.from_iterable(frame_ids)
+            elem_ids = itertools.chain.from_iterable(elem_ids)
+            values = itertools.chain.from_iterable(values)
 
             self._set_list_values_by_id(
                 field_name,
@@ -1309,6 +1332,11 @@ class SampleCollection(object):
                 frames=True,
             )
         else:
+            frame_ids = view.values("frames._id")
+
+            frame_ids = itertools.chain.from_iterable(frame_ids)
+            values = itertools.chain.from_iterable(values)
+
             self._set_values(
                 field_name,
                 frame_ids,
@@ -7399,6 +7427,42 @@ def _get_matching_label_field(label_schema, label_type_or_types):
         )
 
     return valid_fields[0]
+
+
+def _parse_values_dict(sample_collection, key_field, values):
+    _key_field = key_field
+    (
+        key_field,
+        is_frame_field,
+        list_fields,
+        other_list_fields,
+        _,
+    ) = sample_collection._parse_field_name(key_field)
+
+    field_type = sample_collection._get_field_type(key_field)
+
+    if is_frame_field:
+        raise ValueError(
+            "Invalid key field '%s'; keys cannot be frame fields" % _key_field
+        )
+
+    if list_fields or other_list_fields:
+        raise ValueError(
+            "Invalid key field '%s'; keys cannot be list fields" % _key_field
+        )
+
+    if isinstance(field_type, fof.ObjectIdField):
+        keys = [ObjectId(k) for k in keys]
+
+    pipeline = [{"$match": {key_field: {"$in": list(values.keys())}}}]
+    view = sample_collection.mongo(pipeline)
+
+    id_map = {k: v for k, v in zip(view.values([key_field, "id"]))}
+
+    sample_ids = [id_map[k] for k in values.keys()]
+    values = values.values()
+
+    return sample_ids, values
 
 
 def _parse_field_name(
