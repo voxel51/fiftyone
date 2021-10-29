@@ -278,14 +278,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
               Fields
               <span className="push-right" />
             </h2>
-            <FieldsSidebar
-              modal={true}
-              style={{
-                overflowY: "auto",
-                overflowX: "hidden",
-                height: "auto",
-              }}
-            />
+            <FieldsSidebar modal={true} />
           </Suspense>
         </div>
       </div>

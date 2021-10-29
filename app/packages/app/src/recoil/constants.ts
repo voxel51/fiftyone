@@ -99,6 +99,10 @@ export const LABEL_LIST = {
   TemporalDetections: "detections",
 };
 
+export const LABEL_DOC_TYPES = VALID_LABEL_TYPES.filter(
+  (label) => !LABEL_LISTS.includes(label)
+);
+
 export const AGGS = {
   BOUNDS: "Bounds",
   COUNT: "Count",
@@ -109,6 +113,8 @@ export const AGGS = {
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 export const DATE_FIELD = "fiftyone.core.fields.DateField";
 export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
+export const EMBEDDED_DOCUMENT_FIELD =
+  "fiftyone.core.fields.EmbeddedDocumentField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
 export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
 export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";

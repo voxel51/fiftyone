@@ -78,12 +78,12 @@ type FieldsSidebarProps = {
   modal: boolean;
 };
 
-const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
+const FieldsSidebar = ({ modal }: FieldsSidebarProps) => {
   return (
     <>
       <SampleTagsCell modal={modal} />
     </>
   );
-});
+};
 
 export default FieldsSidebar;

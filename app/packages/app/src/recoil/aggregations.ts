@@ -1,4 +1,4 @@
-import { atom, selector, selectorFamily } from "recoil";
+import { atom, GetRecoilValue, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import { request } from "../utils/socket";
@@ -357,6 +357,55 @@ export const counts = selectorFamily<
   },
 });
 
+const gatherPaths = (
+  get: GetRecoilValue,
+  ftype: string | string[],
+  embeddedDocType?: string | string[]
+) => {
+  const paths = [];
+
+  const recurceFields = (path) => {
+    const field = get(schemaAtoms.field(path));
+    if (schemaAtoms.meetsType({ path, ftype, embeddedDocType })) {
+      paths.push(path);
+    }
+    if (field.fields) {
+      Object.keys(field.fields).forEach((name) =>
+        recurceFields(`${path}.${name}`)
+      );
+    }
+  };
+
+  const schema = get(schemaAtoms.fieldPaths);
+  for (const path of schema) recurceFields(path);
+
+  return paths;
+};
+
+export const cumulativeCounts = selectorFamily<
+  { [key: string]: number },
+  {
+    extended: boolean;
+    path: string;
+    modal: boolean;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
+  key: "cumulativeCounts",
+  get: ({ extended, path: key, modal, ftype, embeddedDocType }) => ({ get }) =>
+    gatherPaths(get, ftype, embeddedDocType).reduce((result, path) => {
+      const data = get(values({ extended, modal, path: `${path}.${key}` }));
+      for (const value of data) {
+        if (!result[value]) {
+          result[value] = 0;
+        }
+
+        result[value] += data[value];
+      }
+    }, {}),
+});
+
 export const cumulativeValues = selectorFamily<
   string[],
   {
@@ -371,26 +420,9 @@ export const cumulativeValues = selectorFamily<
   get: ({ extended, path: key, modal, ftype, embeddedDocType }) => ({
     get,
   }) => {
-    const paths = [];
-
-    const recurceFields = (path) => {
-      const field = get(schemaAtoms.field(path));
-      if (schemaAtoms.meetsType({ path, ftype, embeddedDocType })) {
-        paths.push(path);
-      }
-      if (field.fields) {
-        Object.keys(field.fields).forEach((name) =>
-          recurceFields(`${path}.${name}`)
-        );
-      }
-    };
-
-    const schema = get(schemaAtoms.fieldPaths);
-    for (const path of schema) recurceFields(path);
-
     return Array.from(
       new Set<string>(
-        paths.reduce(
+        gatherPaths(get, ftype, embeddedDocType).reduce(
           (result, path) => [
             ...result,
             get(values({ extended, modal, path: `${path}.${key}` })),
