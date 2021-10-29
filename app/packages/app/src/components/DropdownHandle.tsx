@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { CSSProperties, ReactNode } from "react";
 import styled from "styled-components";
 import { Add, ExpandLess, ExpandMore, Remove } from "@material-ui/icons";
 
@@ -7,7 +7,7 @@ const Body = styled.div`
   box-sizing: border-box;
   border: 2px solid ${({ theme }) => theme.border};
   background-color: ${({ theme }) => theme.background};
-  cursor: ${({ clickable }) => (clickable ? "pointer" : undefined)};
+  cursor: pointer;
   font-weight: bold;
   user-select: none;
   border-radius: 3px;
@@ -24,27 +24,29 @@ const Body = styled.div`
 `;
 
 type Props = {
-  label: string;
   expanded: boolean;
   onClick: () => void;
-  icon: (expanded: boolean) => ReactNode;
+  icon?: (expanded: boolean) => ReactNode;
+  style?: CSSProperties;
+  children?: ReactNode;
 };
 
 export const ArrowButton = (expanded) =>
   expanded ? <ExpandLess /> : <ExpandMore />;
+
 export const PlusMinusButton = (expanded) => (expanded ? <Remove /> : <Add />);
 
 const DropdownHandle = ({
-  label,
+  children,
   expanded,
   onClick,
   icon = ArrowButton,
   ...rest
 }: Props) => {
   return (
-    <Body icon={icon(expanded)} onClick={onClick} {...rest}>
-      <span className="icon">{icon}</span>
-      {label}
+    <Body onClick={onClick} {...rest}>
+      <span className="icon">{icon(expanded)}</span>
+      {children}
     </Body>
   );
 };

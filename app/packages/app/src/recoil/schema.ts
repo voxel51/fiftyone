@@ -1,12 +1,7 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 
-import {
-  LABEL_LIST,
-  RESERVED_FIELDS,
-  VALID_LABEL_TYPES,
-} from "../utils/labels";
-
 import * as atoms from "./atoms";
+import { LABEL_LIST, RESERVED_FIELDS, VALID_LABEL_TYPES } from "./constants";
 import { State } from "./types";
 import * as viewAtoms from "./view";
 

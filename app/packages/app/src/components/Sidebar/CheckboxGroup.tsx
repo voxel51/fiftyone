@@ -5,13 +5,6 @@ import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
-import { isBooleanField } from "../Filters/BooleanFieldFilter.state";
-import {
-  isNumericField,
-  isSupportField,
-} from "../Filters/NumericFieldFilter.state";
-import { isStringField } from "../Filters/StringFieldFilter.state";
-
 import { useTheme } from "../../utils/hooks";
 import { genSort, prettify } from "../../utils/generic";
 import { sortFilterResults } from "../../recoil/atoms";
@@ -214,9 +207,6 @@ const Entry = React.memo(({ entry, onCheck, modal }: EntryProps) => {
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
-  const isBoolean = useRecoilValue(isBooleanField(path));
-  const isNumeric = useRecoilValue(isNumericField(path));
-  const isString = useRecoilValue(isStringField(path));
   const fieldFiltered =
     useRecoilValue(fieldIsFiltered({ path, modal })) &&
     canFilter &&

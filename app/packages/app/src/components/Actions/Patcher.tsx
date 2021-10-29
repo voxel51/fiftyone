@@ -12,7 +12,7 @@ import {
   CLIPS_SAMPLE_FIELDS,
   FRAME_SUPPORT_FIELD,
   PATCHES_FIELDS,
-} from "../../utils/labels";
+} from "../../recoil/constants";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import {
@@ -42,31 +42,19 @@ export const patchesFields = selector<string[]>({
 
 export const clipsFields = selector<string[]>({
   key: "clipsFields",
-  get: ({ get }) => {
-    const paths = get(schemaAtoms.labelPaths);
-    const types = get(selectors.labelTypesMap);
-    const pschema = get(selectors.primitivesSchema("sample"));
-
-    return [
-      ...paths.filter((p) =>
+  get: ({ get }) =>
+    get(schemaAtoms.fieldPaths)
+      .filter((path) =>
         get(
           schemaAtoms.meetsType({
-            path: p,
-            ftype: p.startsWith("frames.")
+            path,
+            ftype: path.startsWith("frames.")
               ? CLIPS_FRAME_FIELDS
               : CLIPS_SAMPLE_FIELDS,
           })
         )
-      ),
-      ...Object.entries(pschema)
-        .filter(
-          ([_, s]) =>
-            s.ftype === FRAME_SUPPORT_FIELD ||
-            s.subfield === FRAME_SUPPORT_FIELD
-        )
-        .map(([p]) => p),
-    ].sort();
-  },
+      )
+      .sort(),
 });
 
 const evaluationKeys = selector<string[]>({

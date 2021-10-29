@@ -1667,6 +1667,7 @@ __metadata:
     "@fiftyone/flashlight": "*"
     "@fiftyone/looker": "*"
     "@fiftyone/prettier-config": "*"
+    "@fiftyone/utilities": "*"
     "@material-ui/core": 4.11.4
     "@material-ui/icons": ^4.9.1
     "@types/mime": ^2.0.3
@@ -1760,7 +1761,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/utilities@workspace:packages/utilities":
+"@fiftyone/utilities@*, @fiftyone/utilities@workspace:packages/utilities":
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:

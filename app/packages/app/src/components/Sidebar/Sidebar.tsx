@@ -1,10 +1,41 @@
 import React, { useState } from "react";
-import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
+import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 
+import DropdownHandle, { PlusMinusButton } from "../DropdownHandle";
+
+import * as aggregationAtoms from "../../recoil/aggregations";
+import * as viewAtoms from "../../recoil/view";
 import { useTheme } from "../../utils/hooks";
 
-const SampleTagsCell = ({ modal }) => {};
+const FieldHeader = styled(DropdownHandle)`
+  border-radius: 0;
+  border-width: 0 0 1px 0;
+  padding: 0.5em 0 0.5em 0;
+  width: 100%;
+  text-transform: uppercase;
+`;
+
+const SampleTagsCell = ({ modal }) => {
+  const [expanded, setExpanded] = useState(true);
+  const { singular } = useRecoilValue(viewAtoms.elementNames);
+  const r = useRecoilValue(aggregationAtoms.tag);
+  const title = `${singular} tags`;
+
+  return (
+    <>
+      <FieldHeader
+        title={title}
+        icon={PlusMinusButton}
+        onClick={() => setExpanded(!expanded)}
+        expanded={expanded}
+      >
+        {title}
+      </FieldHeader>
+    </>
+  );
+};
 
 const ButtonDiv = animated(styled.div`
   cursor: pointer;
@@ -79,7 +110,11 @@ type FieldsSidebarProps = {
 };
 
 const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
-  return <div>Hello</div>;
+  return (
+    <>
+      <SampleTagsCell modal={modal} />
+    </>
+  );
 });
 
 export default FieldsSidebar;

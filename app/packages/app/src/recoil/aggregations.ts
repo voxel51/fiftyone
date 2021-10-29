@@ -5,13 +5,13 @@ import { request } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 
 import * as atoms from "./atoms";
+import { DATE_FIELD, DATE_TIME_FIELD } from "./constants";
 import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
 import { State } from "./types";
 import { modalFilters } from "./filters";
-import { DATE_FIELD, DATE_TIME_FIELD } from "../utils/labels";
 
 type Bounds = [
   number | null | { datetime: number },
@@ -290,6 +290,30 @@ export const labelCount = selectorFamily<number | null, boolean>({
     return sum;
   },
 });
+export const values = selectorFamily<
+  string[],
+  { extended: boolean; path: string; modal: boolean }
+>({
+  key: "values",
+  get: ({ extended, path, modal }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
+
+    const data = get(atom);
+
+    if (data) {
+      const agg = data[path] as CategoricalAggregations;
+      return agg.CountValues[1].map(([value]) => value).sort();
+    }
+
+    return null;
+  },
+});
 
 export const count = selectorFamily<
   number,
@@ -307,6 +331,32 @@ export const count = selectorFamily<
 
     const data = get(atom);
     return data ? data[path]?.Count : null;
+  },
+});
+
+export const cumulativeValues = selectorFamily<
+  string[],
+  {
+    extended: boolean;
+    path: string;
+    modal: boolean;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
+  key: "cumulativeValues",
+  get: ({ extended, path, modal, ftype, embeddedDocType }) => ({ get }) => {
+    const paths = [];
+
+    const schema = get(schemaAtoms.fieldPaths);
+    for (const path of schema) {
+      const field = get(schemaAtoms.field(path));
+      if (schemaAtoms.meetsType({ path, ftype, embeddedDocType })) {
+        paths.push(path);
+      }
+    }
+
+    return paths;
   },
 });
 

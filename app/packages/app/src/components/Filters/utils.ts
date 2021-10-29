@@ -1,5 +1,3 @@
-import { selectorFamily } from "recoil";
-
 const NONSTRING_VALUES: any[] = [false, true, null];
 const STRING_VALUES = ["False", "True", "None"];
 
