@@ -330,6 +330,27 @@ export const count = selectorFamily<
       : aggregations;
 
     const data = get(atom);
+    if (!data) {
+      return null;
+    }
+
+    if (data[path]) {
+      return data[path]?.Count;
+    }
+
+    const split = path.split(".");
+
+    if (split.length < 2) {
+      throw new Error(`invalid path ${path}`);
+    }
+
+    const parent = split.slice(0, split.length - 1).join(".");
+    if (data[parent]) {
+      return get(counts({ extended, path: parent, modal }))[
+        split[split.length - 1]
+      ];
+    }
+
     return data ? data[path]?.Count : null;
   },
 });
@@ -364,20 +385,20 @@ const gatherPaths = (
 ) => {
   const paths = [];
 
-  const recurceFields = (path) => {
+  const recurseFields = (path) => {
     const field = get(schemaAtoms.field(path));
     if (schemaAtoms.meetsType({ path, ftype, embeddedDocType })) {
       paths.push(path);
     }
     if (field.fields) {
       Object.keys(field.fields).forEach((name) =>
-        recurceFields(`${path}.${name}`)
+        recurseFields(`${path}.${name}`)
       );
     }
   };
 
   const schema = get(schemaAtoms.fieldPaths);
-  for (const path of schema) recurceFields(path);
+  for (const path of schema) recurseFields(path);
 
   return paths;
 };

@@ -153,6 +153,23 @@ export const activeFields = atomFamily<string[], boolean>({
   default: labelFields,
 });
 
+export const activeField = selectorFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
+  key: "activeField",
+  get: ({ modal, path }) => ({ get }) =>
+    get(activeFields(modal)).includes(path),
+
+  set: ({ modal, path }) => ({ get, set }, active) => {
+    const fields = get(activeFields(modal));
+    set(
+      activeFields(modal),
+      active ? [path, ...fields] : fields.filter((field) => field !== path)
+    );
+  },
+});
+
 export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
   get: (modal) => ({ get }) => {

@@ -3,7 +3,7 @@ import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { useTheme } from "../../utils/hooks";
-
+import LabelTagsCell from "./LabelTags";
 import SampleTagsCell from "./SampleTags";
 
 const ButtonDiv = animated(styled.div`
@@ -82,6 +82,8 @@ const FieldsSidebar = ({ modal }: FieldsSidebarProps) => {
   return (
     <>
       <SampleTagsCell modal={modal} />
+      <LabelTagsCell modal={modal} />
+      <LabelsCell modal={modal} space={} />
     </>
   );
 };
