@@ -660,6 +660,72 @@ disk in the above format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageClassificationDataset
 
+You can also perform labels-only exports in this format. If the filenames of
+the images of your dataset are unique, then you can simply provide the
+`labels_path` parameter instead of `export_dir` when calling
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
+labels JSON will be populated using the basenames of the exported samples'
+image filepaths as keys. You can also include the `data_path` parameter to
+specify a common prefix to strip from each image's filepath, in which case you
+must explicitly pass `export_media=False` to declare that you would only like
+to export labels.
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/labels.json"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels using the basename of each image as keys
+        dataset_or_view.export(
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+        # Export labels using the relative path of each image with respect to
+        # the given `data_path` as keys
+        dataset_or_view.export(
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            data_path="/common/image/dir",
+            labels_path=labels_path,
+            label_field=label_field,
+            export_media=False,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/labels.json
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels using the basename of each image as keys
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
+        # Export labels using the relative path of each image with respect to
+        # the given `data_path` as keys
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs \
+                data_path="/common/images/dir" \
+                labels_path=$LABELS_PATH \
+                export_media=False
+
 .. _ImageClassificationDirectoryTree-export:
 
 ImageClassificationDirectoryTree
@@ -1246,6 +1312,45 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.COCODetectionDataset
 
+You can also perform labels-only exports of COCO-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/coco-labels.json"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.COCODetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/coco-labels.json
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
 .. _VOCDetectionDataset-export:
 
 VOCDetectionDataset
@@ -1367,6 +1472,45 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.VOCDetectionDataset
 
+You can also perform labels-only exports of VOC-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/voc-labels"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.VOCDetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/voc-labels
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labaels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.VOCDetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
 .. _KITTIDetectionDataset-export:
 
 KITTIDetectionDataset
@@ -1478,6 +1622,45 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.KITTIDetectionDataset
 
+You can also perform labels-only exports of KITTI-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/kitti-labels"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.KITTIDetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/kitti-labels
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.KITTIDetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
 .. _YOLOv4Dataset-export:
 
 YOLOv4Dataset
@@ -1577,6 +1760,45 @@ follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.YOLOv4Dataset
+
+You can also perform labels-only exports of YOLO-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/yolo-labels"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.YOLOv4Dataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/yolo-labels
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.YOLOv4Dataset \
+            --kwargs labels_path=$LABELS_PATH
 
 .. _YOLOv5Dataset-export:
 
@@ -1690,6 +1912,45 @@ follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.YOLOv5Dataset
+
+You can also perform labels-only exports of YOLO-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/yolo-labels"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.YOLOv5Dataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/yolo-labels
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.YOLOv5Dataset \
+            --kwargs labels_path=$LABELS_PATH
 
 .. _TFObjectDetectionDataset-export:
 

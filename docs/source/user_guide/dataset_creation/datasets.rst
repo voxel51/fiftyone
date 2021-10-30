@@ -1282,6 +1282,67 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
+If you have an existing dataset and corresponding model predictions stored in
+COCO format, then you can use
+:func:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` to conveniently
+add the labels to the dataset.
+
+The example below demonstrates a round-trip export and then re-import of both
+images-and-labels and labels-only data in COCO format:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.coco as fouc
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    classes = dataset.distinct("predictions.detections.label")
+
+    # Export images and ground truth labels to disk
+    dataset.export(
+        export_dir="/tmp/coco",
+        dataset_type=fo.types.COCODetectionDataset,
+        classes=classes,
+        label_field="ground_truth",
+    )
+
+    # Export predictions
+    dataset.export(
+        dataset_type=fo.types.COCODetectionDataset,
+        labels_path="/tmp/coco/predictions.json",
+        classes=classes,
+        label_field="predictions",
+    )
+
+    # Now load ground truth labels into a new dataset
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir="/tmp/coco",
+        dataset_type=fo.types.COCODetectionDataset,
+        label_field="ground_truth",
+    )
+
+    # And add model predictions
+    fouc.add_coco_labels(
+        dataset2,
+        "predictions",
+        "/tmp/coco/predictions.json",
+        classes=classes,
+    )
+
+    # Verify that ground truth and predictions were imported as expected
+    print(dataset.count("ground_truth.detections"))
+    print(dataset2.count("ground_truth.detections"))
+    print(dataset.count("predictions.detections"))
+    print(dataset2.count("predictions.detections"))
+
+.. note::
+
+    See :func:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` for a
+    complete description of the available syntaxes for loading COCO-formatted
+    predictions to an existing dataset.
+
 .. _VOCDetectionDataset-import:
 
 VOCDetectionDataset
@@ -1686,6 +1747,67 @@ format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.YOLOv4Dataset
 
+If you have an existing dataset and corresponding model predictions stored in
+YOLO format, then you can use
+:func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` to conveniently
+add the labels to the dataset.
+
+The example below demonstrates a round-trip export and then re-import of both
+images-and-labels and labels-only data in YOLO format:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.yolo as fouy
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    classes = dataset.distinct("predictions.detections.label")
+
+    # Export images and ground truth labels to disk
+    dataset.export(
+        export_dir="/tmp/yolov4",
+        dataset_type=fo.types.YOLOv4Dataset,
+        classes=classes,
+        label_field="ground_truth",
+    )
+
+    # Export predictions
+    dataset.export(
+        dataset_type=fo.types.YOLOv4Dataset,
+        labels_path="/tmp/yolov4/predictions",
+        classes=classes,
+        label_field="predictions",
+    )
+
+    # Now load ground truth labels into a new dataset
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir="/tmp/yolov4",
+        dataset_type=fo.types.YOLOv4Dataset,
+        label_field="ground_truth",
+    )
+
+    # And add model predictions
+    fouy.add_yolo_labels(
+        dataset2,
+        "predictions",
+        "/tmp/yolov4/predictions",
+        classes=classes,
+    )
+
+    # Verify that ground truth and predictions were imported as expected
+    print(dataset.count("ground_truth.detections"))
+    print(dataset2.count("ground_truth.detections"))
+    print(dataset.count("predictions.detections"))
+    print(dataset2.count("predictions.detections"))
+
+.. note::
+
+    See :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` for a
+    complete description of the available syntaxes for loading YOLO-formatted
+    predictions to an existing dataset.
+
 .. _YOLOv5Dataset-import:
 
 YOLOv5Dataset
@@ -1821,6 +1943,72 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.YOLOv5Dataset
+
+If you have an existing dataset and corresponding model predictions stored in
+YOLO format, then you can use
+:func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` to conveniently
+add the labels to the dataset.
+
+The example below demonstrates a round-trip export and then re-import of both
+images-and-labels and labels-only data in YOLO format:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.yolo as fouy
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    classes = dataset.distinct("predictions.detections.label")
+
+    # YOLOv5 format supports splits, so let's grab only the `validation` split
+    view = dataset.match_tags("validation")
+
+    # Export images and ground truth labels to disk
+    view.export(
+        export_dir="/tmp/yolov5",
+        dataset_type=fo.types.YOLOv5Dataset,
+        split="validation",
+        classes=classes,
+        label_field="ground_truth",
+    )
+
+    # Export predictions
+    view.export(
+        dataset_type=fo.types.YOLOv5Dataset,
+        labels_path="/tmp/yolov5/predictions/validation",
+        classes=classes,
+        label_field="predictions",
+    )
+
+    # Now load ground truth labels into a new dataset
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir="/tmp/yolov5",
+        dataset_type=fo.types.YOLOv5Dataset,
+        split="validation",
+        label_field="ground_truth",
+    )
+
+    # And add model predictions
+    fouy.add_yolo_labels(
+        dataset2,
+        "predictions",
+        "/tmp/yolov5/predictions/validation",
+        classes=classes,
+    )
+
+    # Verify that ground truth and predictions were imported as expected
+    print(view.count("ground_truth.detections"))
+    print(dataset2.count("ground_truth.detections"))
+    print(view.count("predictions.detections"))
+    print(dataset2.count("predictions.detections"))
+
+.. note::
+
+    See :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` for a
+    complete description of the available syntaxes for loading YOLO-formatted
+    predictions to an existing dataset.
 
 .. _TFObjectDetectionDataset-import:
 
