@@ -669,7 +669,7 @@ class YOLOv4DatasetExporter(
             out_labels_path = os.path.join(self.labels_path, uuid + ".txt")
         else:
             # Put labels in the same directory as images
-            out_labels_path = os.path.splitext(out_image_path)[0] + ".txt"
+            out_labels_path = os.path.join(self.data_path, uuid + ".txt")
 
         self._writer.write(
             detections,

@@ -2744,7 +2744,6 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
             -   ``True`` (default): copy all media files into the output
                 directory
-            -   ``False``: don't export media
             -   ``"move"``: move all media files into the output directory
             -   ``"symlink"``: create symlinks to the media files in the output
                 directory
@@ -2800,7 +2799,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self._media_exporter = ImageExporter(
             self.export_media,
             export_path=self._data_dir,
-            supported_modes=(True, False, "move", "symlink"),
+            supported_modes=(True, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
         )
@@ -2859,7 +2858,6 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
 
             -   ``True`` (default): copy all media files into the output
                 directory
-            -   ``False``: don't export media
             -   ``"move"``: move all media files into the output directory
             -   ``"symlink"``: create symlinks to the media files in the output
                 directory
@@ -2909,7 +2907,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         self._media_exporter = VideoExporter(
             self.export_media,
             export_path=self._data_dir,
-            supported_modes=(True, False, "move", "symlink"),
+            supported_modes=(True, "move", "symlink"),
             ignore_exts=True,
         )
         self._media_exporter.setup()
