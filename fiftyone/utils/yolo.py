@@ -575,7 +575,7 @@ class YOLOv4DatasetExporter(
         )
 
         labels_path = self._parse_labels_path(
-            export_dir=export_dir, labels_path=labels_path, default=None
+            export_dir=export_dir, labels_path=labels_path, default="data/"
         )
 
         objects_path = self._parse_labels_path(
@@ -631,9 +631,10 @@ class YOLOv4DatasetExporter(
 
         self._parse_classes()
 
+        export_path = self.data_path if self.export_media != False else None
         self._media_exporter = foud.ImageExporter(
             self.export_media,
-            export_path=self.data_path,
+            export_path=export_path,
             supported_modes=(True, False, "move", "symlink"),
             default_ext=self.image_format,
             ignore_exts=True,
@@ -664,12 +665,7 @@ class YOLOv4DatasetExporter(
         if detections is None:
             return
 
-        if self.labels_path is not None:
-            # Labels directory was manually specified
-            out_labels_path = os.path.join(self.labels_path, uuid + ".txt")
-        else:
-            # Put labels in the same directory as images
-            out_labels_path = os.path.join(self.data_path, uuid + ".txt")
+        out_labels_path = os.path.join(self.labels_path, uuid + ".txt")
 
         self._writer.write(
             detections,
