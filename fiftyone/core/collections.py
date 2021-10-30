@@ -5907,6 +5907,7 @@ class SampleCollection(object):
         allow_additions=True,
         allow_deletions=True,
         allow_label_edits=True,
+        allow_index_edits=True,
         allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
@@ -5999,10 +6000,14 @@ class SampleCollection(object):
                 applicable when editing existing label fields
             allow_label_edits (True): whether to allow the ``label`` attribute
                 of existing labels to be modified. Only applicable when editing
-                existing label fields
+                existing fields with ``label`` attributes
+            allow_index_edits (True): whether to allow the ``index`` attribute
+                of existing video tracks to be modified. Only applicable when
+                editing existing frame fields with ``index`` attributes
             allow_spatial_edits (True): whether to allow edits to the spatial
-                properties (bounding boxes, vertices, keypoints, etc) of
-                labels. Only applicable when editing existing label fields
+                properties (bounding boxes, vertices, keypoints, masks, etc) of
+                labels. Only applicable when editing existing spatial label
+                fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -6028,6 +6033,7 @@ class SampleCollection(object):
             allow_additions=allow_additions,
             allow_deletions=allow_deletions,
             allow_label_edits=allow_label_edits,
+            allow_index_edits=allow_index_edits,
             allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,
