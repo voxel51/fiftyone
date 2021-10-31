@@ -71,9 +71,15 @@ export const addNoneCounts = (
     }
 
     if (path === parent) {
-      data[path].None = count - data[path].Count;
+      data[path] = {
+        None: count - data[path].Count,
+        ...data[path],
+      };
     } else if (check && path.includes(".") && data[parent] && data[path]) {
-      data[path].None = data[parent].Count - data[path].Count;
+      data[path] = {
+        None: data[parent].Count - data[path].Count,
+        ...data[path],
+      };
     }
   }
 };
@@ -89,11 +95,13 @@ export const aggregationsRaw = atom<AggregationsResult>({
 export const aggregations = selector<AggregationsData>({
   key: "aggregations",
   get: ({ get }) => {
-    const { data, view } = get(aggregationsRaw);
+    let { data, view } = get(aggregationsRaw);
     if (!view) {
       return null;
     }
     if (viewsAreEqual(view, get(viewAtoms.view))) {
+      data = { ...data };
+      data && addNoneCounts(data);
       return data;
     }
     return null;
@@ -108,8 +116,42 @@ export const extendedAggregationsRaw = atom<ExtendedAggregationsResult>({
   key: "extendedAggregationsStatsRaw",
   default: {
     view: null,
-    data: {},
+    data: null,
     filters: null,
+  },
+});
+
+const normalizeFilters = (filters) => {
+  const names = Object.keys(filters).sort();
+  const list = names.map((n) => filters[n]);
+  return JSON.stringify([names, list]);
+};
+
+export const filtersAreEqual = (filtersOne, filtersTwo) => {
+  return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
+};
+
+export const extendedAggregations = selector({
+  key: "extendedAggregations",
+  get: ({ get }) => {
+    let { view, filters, data } = get(extendedAggregationsRaw);
+    if (!view) {
+      return null;
+    }
+    if (!viewsAreEqual(view, get(viewAtoms.view))) {
+      return null;
+    }
+    if (!filtersAreEqual(filters, get(filterAtoms.filters))) {
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    data = { ...data };
+    addNoneCounts(data);
+    return data;
   },
 });
 
@@ -125,7 +167,7 @@ const modalAggregations = selector<AggregationsData>({
       },
     });
 
-    addNoneCounts(data, get(selectors.isVideoDataset));
+    data && addNoneCounts(data, get(selectors.isVideoDataset));
 
     return data;
   },
@@ -144,35 +186,7 @@ const extendedModalAggregations = selector<AggregationsData>({
       },
     });
 
-    addNoneCounts(data, get(selectors.isVideoDataset));
-
-    return data;
-  },
-});
-
-const normalizeFilters = (filters) => {
-  const names = Object.keys(filters).sort();
-  const list = names.map((n) => filters[n]);
-  return JSON.stringify([names, list]);
-};
-
-export const filtersAreEqual = (filtersOne, filtersTwo) => {
-  return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
-};
-
-export const extendedAggregations = selector({
-  key: "extendedAggregations",
-  get: ({ get }) => {
-    const { view, filters, data } = get(extendedAggregationsRaw);
-    if (!view) {
-      return null;
-    }
-    if (!viewsAreEqual(view, get(viewAtoms.view))) {
-      return null;
-    }
-    if (!filtersAreEqual(filters, get(filterAtoms.filters))) {
-      return null;
-    }
+    data && addNoneCounts(data, get(selectors.isVideoDataset));
 
     return data;
   },

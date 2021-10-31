@@ -1,27 +1,20 @@
 import React, { useLayoutEffect, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Check, Note, Visibility } from "@material-ui/icons";
+import { Check, Visibility } from "@material-ui/icons";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
-import { useTheme } from "../../utils/hooks";
 
-import { PlusMinusButton } from "../DropdownHandle";
-import { PillButton } from "../utils";
-
-import { FieldHeader } from "./utils";
+import { FieldHeader, MatchEye, usePills } from "./utils";
+import { PathEntry } from "./Entries";
 
 const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
-  const theme = useTheme();
   const [expanded, setExpanded] = useState(true);
   const { singular } = useRecoilValue(viewAtoms.elementNames);
   const tags = useRecoilValue(
     aggregationAtoms.values({ extended: false, modal, path: "tags" })
-  );
-  const counts = useRecoilValue(
-    aggregationAtoms.counts({ extended: false, path: "tags", modal })
   );
   const title = `${singular} tags`;
 
@@ -43,58 +36,58 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
     newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
   }, [matchedTags, allTags]);
 
+  const pills = usePills(
+    [
+      {
+        icon: Check,
+        title: "Clear displayed",
+        onClick: () => setActiveTags([]),
+        active: activeTags,
+      },
+      {
+        icon: Visibility,
+        title: "Clear matched",
+        active: [...matchedTags],
+        onClick: () => setMatchedTags(new Set()),
+      },
+    ].filter(({ active }) => active.length > 0)
+  );
+
   return (
     <>
       <FieldHeader
         title={title}
-        icon={PlusMinusButton}
         onClick={() => setExpanded(!expanded)}
         expanded={expanded}
       >
-        <Note style={{ marginRight: "0.5rem" }} />
-        {title}
-        {activeTags.length > 0 && (
-          <PillButton
-            onClick={() => setActiveTags([])}
-            highlight={false}
-            open={false}
-            icon={<Check />}
-            title={"Clear displayed"}
-            text={`${activeTags.length}`}
-            style={{
-              height: "1.5rem",
-              fontSize: "0.8rem",
-              lineHeight: "1rem",
-              color: theme.font,
-            }}
-          />
-        )}
-        {matchedTags.size > 0 && (
-          <PillButton
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setMatchedTags(new Set());
-            }}
-            highlight={false}
-            open={false}
-            icon={<Visibility />}
-            title={"Clear matching"}
-            text={`${matchedTags.size}`}
-            style={{
-              height: "1.5rem",
-              fontSize: "0.8rem",
-              lineHeight: "1rem",
-              color: theme.font,
-            }}
-          />
-        )}
+        <span>{title}</span>
+        {...pills}
       </FieldHeader>
       {expanded &&
         tags &&
-        tags.map((tag) => {
-          return <div>{tag}</div>;
-        })}
+        tags.map((tag) => (
+          <PathEntry
+            path={`tags.${tag}`}
+            modal={modal}
+            name={tag}
+            disabled={false}
+          >
+            <MatchEye
+              matched={matchedTags}
+              elementsName={"samples"}
+              name={tag}
+              onClick={() => {
+                const newMatch = new Set(matchedTags);
+                if (matchedTags.has(tag)) {
+                  newMatch.delete(tag);
+                } else {
+                  newMatch.add(tag);
+                }
+                setMatchedTags(newMatch);
+              }}
+            />
+          </PathEntry>
+        ))}
     </>
   );
 });

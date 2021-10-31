@@ -23,7 +23,7 @@ const Body = styled.div`
   }
 `;
 
-type Props = {
+export type DropdownHandleProps = {
   expanded: boolean;
   onClick: () => void;
   icon?: (expanded: boolean) => ReactNode;
@@ -42,7 +42,7 @@ const DropdownHandle = ({
   onClick,
   icon = ArrowButton,
   ...rest
-}: Props) => {
+}: DropdownHandleProps) => {
   return (
     <Body onClick={onClick} {...rest}>
       <span className="icon">{icon(expanded)}</span>

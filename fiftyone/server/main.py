@@ -970,7 +970,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only (None): a client to restrict the message to
         """
         base_view = view
-        result = {}
+        result = None
         if view is not None and (not extended or filters):
             if extended:
                 view = get_extended_view(view, filters)

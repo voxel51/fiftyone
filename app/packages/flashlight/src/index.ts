@@ -165,7 +165,7 @@ export default class Flashlight<K> {
     this.get();
   }
 
-  updateOptions(options: Optional<Options>, newWidth: boolean) {
+  updateOptions(options: Optional<Options>, newWidth?: boolean) {
     const retile = Object.entries(options).some(
       ([k, v]) => this.state.options[k] != v
     );

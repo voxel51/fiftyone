@@ -26,11 +26,11 @@ def build_label_tag_aggregations(view: foc.SampleCollection):
     """
     counts = []
     tags = []
-    for field_name, field in view.get_field_schema().values():
+    for field_name, field in view.get_field_schema().items():
         _add_to_label_tags_aggregations(field_name, field, counts, tags)
 
     if view.media_type == fom.VIDEO:
-        for field_name, field in view.get_frame_field_schema().values():
+        for field_name, field in view.get_frame_field_schema().items():
             _add_to_label_tags_aggregations(field_name, field, counts, tags)
 
     return counts, tags

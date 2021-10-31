@@ -26,6 +26,7 @@ import {
 
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
+import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as viewAtoms from "../recoil/view";
 import {
@@ -312,6 +313,7 @@ export default React.memo(() => {
   const [error, setError] = useState<Error>(null);
   const flashlight = useRef<Flashlight<number>>();
   const cropToContent = useRecoilValue(atoms.cropToContent(false));
+  const active = useRecoilValue(schemaAtoms.activeFields(false));
 
   const filters = useRecoilValue(filterAtoms.filters);
   const datasetName = useRecoilValue(selectors.datasetName);
@@ -466,6 +468,7 @@ export default React.memo(() => {
         const looker = lookers.get(sampleId);
         looker &&
           looker.updateOptions({
+            activePaths: active,
             ...lookerOptions,
             selected: selected.has(sampleId),
             inSelectionMode: selected.size > 0,

@@ -83,7 +83,6 @@ const FieldsSidebar = ({ modal }: FieldsSidebarProps) => {
     <>
       <SampleTagsCell modal={modal} />
       <LabelTagsCell modal={modal} />
-      <LabelsCell modal={modal} space={} />
     </>
   );
 };
