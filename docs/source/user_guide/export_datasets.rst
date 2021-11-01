@@ -666,9 +666,9 @@ the images of your dataset are unique, then you can simply provide the
 :meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
 labels JSON will be populated using the basenames of the exported samples'
 image filepaths as keys. You can also include the `data_path` parameter to
-specify a common prefix to strip from each image's filepath, in which case you
-must explicitly pass `export_media=False` to declare that you would only like
-to export labels.
+specify a common prefix to strip from each image's filepath to generate keys,
+in which case you must explicitly pass `export_media=False` to declare that you
+would only like to export labels.
 
 .. tabs::
 
@@ -713,14 +713,14 @@ to export labels.
         # Export labels using the basename of each image as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
-            --type fiftyone.types.COCODetectionDataset \
+            --type fiftyone.types.FiftyOneImageClassificationDataset \
             --kwargs labels_path=$LABELS_PATH
 
         # Export labels using the relative path of each image with respect to
         # the given `data_path` as keys
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
-            --type fiftyone.types.COCODetectionDataset \
+            --type fiftyone.types.FiftyOneImageClassificationDataset \
             --kwargs \
                 data_path="/common/images/dir" \
                 labels_path=$LABELS_PATH \
@@ -1062,6 +1062,72 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageDetectionDataset
 
+You can also perform labels-only exports in this format. If the filenames of
+the images of your dataset are unique, then you can simply provide the
+`labels_path` parameter instead of `export_dir` when calling
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
+labels JSON will be populated using the basenames of the exported samples'
+image filepaths as keys. You can also include the `data_path` parameter to
+specify a common prefix to strip from each image's filepath to generate keys,
+in which case you must explicitly pass `export_media=False` to declare that you
+would only like to export labels.
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/labels.json"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels using the basename of each image as keys
+        dataset_or_view.export(
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+        # Export labels using the relative path of each image with respect to
+        # the given `data_path` as keys
+        dataset_or_view.export(
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            data_path="/common/image/dir",
+            labels_path=labels_path,
+            label_field=label_field,
+            export_media=False,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/labels.json
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels using the basename of each image as keys
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneImageDetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
+        # Export labels using the relative path of each image with respect to
+        # the given `data_path` as keys
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneImageDetectionDataset \
+            --kwargs \
+                data_path="/common/images/dir" \
+                labels_path=$LABELS_PATH \
+                export_media=False
+
 .. _FiftyOneTemporalDetectionDataset-export:
 
 FiftyOneTemporalDetectionDataset
@@ -1178,6 +1244,72 @@ disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneTemporalDetectionDataset
+
+You can also perform labels-only exports in this format. If the filenames of
+the images of your dataset are unique, then you can simply provide the
+`labels_path` parameter instead of `export_dir` when calling
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` and the
+labels JSON will be populated using the basenames of the exported samples'
+image filepaths as keys. You can also include the `data_path` parameter to
+specify a common prefix to strip from each image's filepath to generate keys,
+in which case you must explicitly pass `export_media=False` to declare that you
+would only like to export labels.
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/labels.json"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels using the basename of each image as keys
+        dataset_or_view.export(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+        # Export labels using the relative path of each image with respect to
+        # the given `data_path` as keys
+        dataset_or_view.export(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            data_path="/common/image/dir",
+            labels_path=labels_path,
+            label_field=label_field,
+            export_media=False,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/labels.json
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels using the basename of each image as keys
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneTemporalDetectionDataset \
+            --kwargs labels_path=$LABELS_PATH
+
+        # Export labels using the relative path of each image with respect to
+        # the given `data_path` as keys
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneTemporalDetectionDataset \
+            --kwargs \
+                data_path="/common/images/dir" \
+                labels_path=$LABELS_PATH \
+                export_media=False
 
 .. _COCODetectionDataset-export:
 
@@ -2088,6 +2220,10 @@ Datasets of this type are exported in the following format:
 
 where `labels/` contains the semantic segmentations stored as images.
 
+By default, the masks will be stored as PNG images, but you can customize this
+by pasing the optional `mask_format` parameter. The masks will be stored as 8
+bit images if they contain at most 256 classes, otherise 16 bits will be used.
+
 Unlabeled images have no corresponding file in `labels/`.
 
 .. note::
@@ -2135,6 +2271,45 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.ImageSegmentationDirectory
+
+You can also export only the segmentation masks by providing the `labels_path`
+parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/segmentation-masks"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/segmentation-masks
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageSegmentationDirectory \
+            --kwargs labels_path=$LABELS_PATH
 
 .. _CVATImageDataset-export:
 
@@ -2297,6 +2472,45 @@ as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.CVATImageDataset
 
+You can also perform labels-only exports of CVAT-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/cvat-labels.xml"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.CVATImageDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/cvat-labels.xml
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.CVATImageDataset \
+            --kwargs labels_path=$LABELS_PATH
+
 .. _CVATVideoDataset-export:
 
 CVATVideoDataset
@@ -2435,7 +2649,7 @@ as follows:
         import fiftyone as fo
 
         export_dir = "/path/for/cvat-video-dataset"
-        label_field = "ground_truth"  # for example
+        label_field = "frames.ground_truth"  # for example
 
         # The Dataset or DatasetView to export
         dataset_or_view = fo.Dataset(...)
@@ -2453,13 +2667,52 @@ as follows:
 
         NAME=my-dataset
         EXPORT_DIR=/path/for/cvat-video-dataset
-        LABEL_FIELD=ground_truth  # for example
+        LABEL_FIELD=frames.ground_truth  # for example
 
         # Export the dataset
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.CVATVideoDataset
+
+You can also perform labels-only exports of CVAT-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/cvat-labels"
+        label_field = "frames.ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.CVATVideoDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/cvat-labels
+        LABEL_FIELD=frames.ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.CVATVideoDataset \
+            --kwargs labels_path=$LABELS_PATH
 
 .. _FiftyOneImageLabelsDataset-export:
 
@@ -2813,6 +3066,45 @@ follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.BDDDataset
 
+You can also perform labels-only exports of BDD-formatted labels by providing
+the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/bdd-labels.json"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.BDDDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/bdd-labels.json
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.BDDDataset \
+            --kwargs labels_path=$LABELS_PATH
+
 .. _GeoJSONDataset-export:
 
 GeoJSONDataset
@@ -2926,6 +3218,45 @@ follows:
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.GeoJSONDataset
 
+You can also perform labels-only exports of GeoJSON-formatted labels by
+providing the `labels_path` parameter instead of `export_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        labels_path = "/path/for/geo-labels.json"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export labels
+        dataset_or_view.export(
+            dataset_type=fo.types.GeoJSONDataset,
+            labels_path=labels_path,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        LABELS_PATH=/path/for/geo-labels.json
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export labels
+        fiftyone datasets export $NAME \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.GeoJSONDataset \
+            --kwargs labels_path=$LABELS_PATH
+
 .. _FiftyOneDataset-export:
 
 FiftyOneDataset
@@ -3004,6 +3335,70 @@ You can export a FiftyOne dataset to disk in the above format as follows:
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.FiftyOneDataset
+
+You can also export datasets in this this format without copying the source
+media files by including `export_media=False` in your call to
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`. By
+default, the absolute filepath of each image will be included in the export;
+however, if you want to re-import this dataset on a different machine with the
+source media files stored in a different root directory, you can include the
+optional `rel_dir` parameter to specify a common prefix to strip from each
+image's filepath, and then provide the new `rel_dir` when
+:ref:`importing the dataset <FiftyOneDataset-import>`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/fiftyone-dataset"
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset without copying the media files
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            export_media=False,
+        )
+
+        # Export the dataset without media, including only the relative path of
+        # each image with respect to the given `rel_dir` so that the dataset
+        # can be imported with a different `rel_dir` prepended later
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            export_media=False,
+            rel_dir="/common/image/dir",
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/fiftyone-dataset
+
+        # Export the dataset without copying the media files
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type fiftyone.types.FiftyOneDataset \
+            --kwargs export_media=False
+
+        # Export the dataset without media, including only the relative path of
+        # each image with respect to the given `rel_dir` so that the dataset
+        # can be imported with a different `rel_dir` prepended later
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type fiftyone.types.FiftyOneDataset \
+            --kwargs \
+                export_media=False \
+                rel_dir="/common/image/dir"
 
 .. _custom-dataset-exporter:
 
