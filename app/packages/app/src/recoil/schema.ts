@@ -1,4 +1,4 @@
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { atomFamily, selectorFamily } from "recoil";
 
 import * as atoms from "./atoms";
 import { LABEL_LIST, RESERVED_FIELDS, VALID_LABEL_TYPES } from "./constants";
@@ -58,14 +58,29 @@ export const fieldSchema = selectorFamily<State.Schema, State.SPACE>({
   },
 });
 
-export const fieldPaths = selector<string[]>({
+export const fieldPaths = selectorFamily<string[], { space?: State.SPACE }>({
   key: "fieldPaths",
-  get: ({ get }) => {
-    const sampleLabels = get(fieldSchema(State.SPACE.SAMPLE));
-    const frameLabels = get(fieldSchema(State.SPACE.FRAME));
-    return Object.keys(sampleLabels)
-      .concat(Object.keys(frameLabels).map((l) => "frames." + l))
+  get: ({ space }) => ({ get }) => {
+    const sampleLabels = Object.keys(
+      get(fieldSchema(State.SPACE.SAMPLE))
+    ).sort();
+    const frameLabels = Object.keys(get(fieldSchema(State.SPACE.FRAME)))
+      .map((l) => "frames." + l)
       .sort();
+
+    if (space === State.SPACE.SAMPLE) {
+      return sampleLabels;
+    }
+
+    if (space === State.SPACE.FRAME) {
+      return frameLabels;
+    }
+
+    if (!space) {
+      return sampleLabels.concat(frameLabels).sort();
+    }
+
+    throw new Error("invalid parameters");
   },
 });
 
@@ -102,10 +117,10 @@ export const field = selectorFamily<State.Field, string>({
   },
 });
 
-export const labelFields = selector<string[]>({
+export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
-  get: ({ get }) => {
-    const paths = get(fieldPaths);
+  get: (params) => ({ get }) => {
+    const paths = get(fieldPaths(params));
 
     return paths.filter((path) =>
       VALID_LABEL_TYPES.includes(get(field(path)).embeddedDocType)
@@ -113,10 +128,10 @@ export const labelFields = selector<string[]>({
   },
 });
 
-export const labelPaths = selector<string[]>({
+export const labelPaths = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelPaths",
-  get: ({ get }) => {
-    const fields = get(labelFields);
+  get: (params) => ({ get }) => {
+    const fields = get(labelFields(params));
     return fields.map((path) => {
       const labelField = get(field(path));
 
@@ -148,9 +163,12 @@ export const labelPath = selectorFamily<string, string>({
   },
 });
 
-export const activeFields = atomFamily<string[], boolean>({
+export const activeFields = atomFamily<
+  string[],
+  { modal: boolean; space?: State.SPACE }
+>({
   key: "activeFields",
-  default: labelFields,
+  default: ({ modal, space }) => labelFields({ space }),
 });
 
 export const activeField = selectorFamily<
@@ -159,12 +177,12 @@ export const activeField = selectorFamily<
 >({
   key: "activeField",
   get: ({ modal, path }) => ({ get }) =>
-    get(activeFields(modal)).includes(path),
+    get(activeFields({ modal })).includes(path),
 
   set: ({ modal, path }) => ({ get, set }, active) => {
-    const fields = get(activeFields(modal));
+    const fields = get(activeFields({ modal }));
     set(
-      activeFields(modal),
+      activeFields({ modal }),
       active ? [path, ...fields] : fields.filter((field) => field !== path)
     );
   },
@@ -173,7 +191,7 @@ export const activeField = selectorFamily<
 export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
   get: (modal) => ({ get }) => {
-    return get(activeFields(modal))
+    return get(activeFields({ modal }))
       .filter((t) => t.startsWith("tags."))
       .map((t) => t.slice(5));
   },
@@ -181,13 +199,13 @@ export const activeTags = selectorFamily<string[], boolean>({
     if (Array.isArray(value)) {
       const tags = value.map((v) => "tags." + v);
       const prevActiveTags = get(activeTags(modal));
-      let active = get(activeFields(modal)).filter((v) =>
+      let active = get(activeFields({ modal })).filter((v) =>
         v.startsWith("tags.") ? tags.includes(v) : true
       );
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
-      set(activeFields(modal), active);
+      set(activeFields({ modal }), active);
     }
   },
 });
@@ -195,7 +213,7 @@ export const activeTags = selectorFamily<string[], boolean>({
 export const activeLabelTags = selectorFamily<string[], boolean>({
   key: "activeLabelTags",
   get: (modal) => ({ get }) => {
-    return get(activeFields(modal))
+    return get(activeFields({ modal }))
       .filter((t) => t.startsWith("_label_tags."))
       .map((t) => t.slice("_label_tags.".length));
   },
@@ -203,30 +221,36 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
     if (Array.isArray(value)) {
       const tags = value.map((v) => "_label_tags." + v);
       const prevActiveTags = get(activeLabelTags(modal));
-      let active = get(activeFields(modal)).filter((v) =>
+      let active = get(activeFields({ modal })).filter((v) =>
         v.startsWith("_label_tags.") ? tags.includes(v) : true
       );
       if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
-      set(activeFields(modal), active);
+      set(activeFields({ modal }), active);
     }
   },
 });
 
-export const activeLabelFields = selectorFamily<string[], boolean>({
+export const activeLabelFields = selectorFamily<
+  string[],
+  { modal: boolean; space: State.SPACE }
+>({
   key: "activeLabelFields",
-  get: (modal) => ({ get }) => {
-    const active = new Set(get(activeFields(modal)));
-    return get(labelFields).filter((field) => active.has(field));
+  get: ({ modal, space }) => ({ get }) => {
+    const active = new Set(get(activeFields({ modal, space })));
+    return get(labelFields({ space })).filter((field) => active.has(field));
   },
 });
 
-export const activeLabelPaths = selectorFamily<string[], boolean>({
+export const activeLabelPaths = selectorFamily<
+  string[],
+  { modal: boolean; space: State.SPACE }
+>({
   key: "activeLabelPaths",
-  get: (modal) => ({ get }) => {
-    const active = new Set(get(activeFields(modal)));
-    return get(labelFields)
+  get: ({ modal, space }) => ({ get }) => {
+    const active = new Set(get(activeFields({ modal, space })));
+    return get(labelFields({}))
       .filter((field) => active.has(field))
       .map((field) => get(labelPath(field)));
   },

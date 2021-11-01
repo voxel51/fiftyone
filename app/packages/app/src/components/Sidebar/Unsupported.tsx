@@ -66,9 +66,7 @@ const UnsupportedCell = () => {
       >
         <span>{"unsupported fields"}</span>
       </FieldHeader>
-      {unsupported.map((path) => (
-        <TextEntry text={path} />
-      ))}
+      {expanded && unsupported.map((path) => <TextEntry text={path} />)}
     </>
   );
 };

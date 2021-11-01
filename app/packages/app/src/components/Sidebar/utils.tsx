@@ -13,6 +13,7 @@ const FieldHeaderStyled = styled(DropdownHandle)`
   border-radius: 0;
   border-width: 0 0 1px 0;
   padding: 0.25rem;
+  margin-bottom: 6px;
   width: 100%;
   text-transform: uppercase;
   display: flex;

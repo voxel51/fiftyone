@@ -224,7 +224,7 @@ export const labelTagCounts = selectorFamily<
       ? extendedAggregations
       : aggregations;
     const data = get(atom);
-    const paths = get(schemaAtoms.labelPaths).map((path) => `${path}.tags`);
+    const paths = get(schemaAtoms.labelPaths({})).map((path) => `${path}.tags`);
     const result = {};
 
     for (const path of paths) {
@@ -419,7 +419,7 @@ const gatherPaths = (
     }
   };
 
-  const schema = get(schemaAtoms.fieldPaths);
+  const schema = get(schemaAtoms.fieldPaths({}));
   for (const path of schema) recurseFields(path);
   return paths;
 };

@@ -5,7 +5,8 @@ import styled from "styled-components";
 import { useTheme } from "../../utils/hooks";
 import LabelTagsCell from "./LabelTags";
 import SampleTagsCell from "./SampleTags";
-import Unsupported from "./Unsupported";
+import SampleLabelsCell from "./SampleLabels";
+import UnsupportedCell from "./Unsupported";
 
 const ButtonDiv = animated(styled.div`
   cursor: pointer;
@@ -84,7 +85,8 @@ const FieldsSidebar = ({ modal }: FieldsSidebarProps) => {
     <>
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
-      {!modal && <Unsupported />}
+      <SampleLabelsCell key={"sample-labels"} modal={modal} />
+      {!modal && <UnsupportedCell />}
     </>
   );
 };
