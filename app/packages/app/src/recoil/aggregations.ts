@@ -341,12 +341,6 @@ export const count = selectorFamily<
 >({
   key: "count",
   get: (params) => ({ get }) => {
-    if (params.ftype) {
-      console.log(params);
-      const path = params.path.split(".");
-      return 0;
-    }
-
     const { extended, modal, path } = params;
 
     const atom = modal
