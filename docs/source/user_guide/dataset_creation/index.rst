@@ -334,6 +334,206 @@ visualizing them :ref:`in the App <fiftyone-app>`:
         # View a directory of videos in the App
         fiftyone app view --videos-dir '/path/to/videos'
 
+
+.. _loading-model-predictions
+
+Loading model predictions
+-------------------------
+
+
+Once you have loaded your dataset and ground truth labels, you can easily 
+add model predictions to take advantage of FiftyOne's 
+:ref:`evaluation capabilities <evaluating-models>`.
+
+
+.. tabs::
+
+  .. group-tab:: YOLO
+
+    If you have model predictions stored in
+    YOLO format, then you can use
+    :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` to conveniently
+    add the labels to the dataset.
+    
+    The example below demonstrates a round-trip export and then re-import of both
+    images-and-labels and labels-only data in YOLO format:
+    
+    .. code-block:: python
+        :linenos:
+    
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        import fiftyone.utils.yolo as fouy
+    
+        dataset = foz.load_zoo_dataset("quickstart")
+        classes = dataset.distinct("predictions.detections.label")
+    
+        # Export images and ground truth labels to disk
+        dataset.export(
+            export_dir="/tmp/yolov4",
+            dataset_type=fo.types.YOLOv4Dataset,
+            classes=classes,
+            label_field="ground_truth",
+        )
+    
+        # Export predictions
+        dataset.export(
+            dataset_type=fo.types.YOLOv4Dataset,
+            labels_path="/tmp/yolov4/predictions",
+            classes=classes,
+            label_field="predictions",
+        )
+    
+        # Now load ground truth labels into a new dataset
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir="/tmp/yolov4",
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field="ground_truth",
+        )
+    
+        # And add model predictions
+        fouy.add_yolo_labels(
+            dataset2,
+            "predictions",
+            "/tmp/yolov4/predictions",
+            classes=classes,
+        )
+    
+        # Verify that ground truth and predictions were imported as expected
+        print(dataset.count("ground_truth.detections"))
+        print(dataset2.count("ground_truth.detections"))
+        print(dataset.count("predictions.detections"))
+        print(dataset2.count("predictions.detections"))
+    
+    .. note::
+    
+        See :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` for a
+        complete description of the available syntaxes for loading YOLO-formatted
+        predictions to an existing dataset.
+
+  .. group-tab:: COCO
+
+    If you have model predictions stored in
+    COCO format, then you can use
+    :func:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` to conveniently
+    add the labels to the dataset.
+    
+    The example below demonstrates a round-trip export and then re-import of both
+    images-and-labels and labels-only data in COCO format:
+    
+    .. code-block:: python
+        :linenos:
+    
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        import fiftyone.utils.coco as fouc
+    
+        dataset = foz.load_zoo_dataset("quickstart")
+        classes = dataset.distinct("predictions.detections.label")
+    
+        # Export images and ground truth labels to disk
+        dataset.export(
+            export_dir="/tmp/coco",
+            dataset_type=fo.types.COCODetectionDataset,
+            classes=classes,
+            label_field="ground_truth",
+        )
+    
+        # Export predictions
+        dataset.export(
+            dataset_type=fo.types.COCODetectionDataset,
+            labels_path="/tmp/coco/predictions.json",
+            classes=classes,
+            label_field="predictions",
+        )
+    
+        # Now load ground truth labels into a new dataset
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir="/tmp/coco",
+            dataset_type=fo.types.COCODetectionDataset,
+            label_field="ground_truth",
+        )
+    
+        # And add model predictions
+        fouc.add_coco_labels(
+            dataset2,
+            "predictions",
+            "/tmp/coco/predictions.json",
+            classes=classes,
+        )
+    
+        # Verify that ground truth and predictions were imported as expected
+        print(dataset.count("ground_truth.detections"))
+        print(dataset2.count("ground_truth.detections"))
+        print(dataset.count("predictions.detections"))
+        print(dataset2.count("predictions.detections"))
+    
+    .. note::
+    
+        See :func:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` for a
+        complete description of the available syntaxes for loading COCO-formatted
+        predictions to an existing dataset.
+
+
+  .. group-tab:: Other formats
+
+    For model predictions stored in other formats, they can always be 
+    :ref:`loaded iteratively <loading-custom-datasets>`
+    through a simple Python loop over your dataset.
+
+    This example shows how to add object detection predictions to a dataset.
+    You can see all supported :ref:`label types here <using-labels>`. 
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        
+        # Ex: your custom predictions format
+        predictions = {
+            "/path/to/images/000001.jpg": [
+                {"bbox": ..., "label": ..., "score": ...},
+                ...
+            ],
+            ...
+        }
+        
+        # Add predictions to your samples 
+        for sample in dataset:
+            filepath = sample.filepath
+
+            # Convert predictions to FiftyOne format
+            detections = []
+            for obj in predictions[filepath]:
+                label = obj["label"]
+                confidence = obj["score"]
+        
+                # Bounding box coordinates should be relative values
+                # in [0, 1] in the following format:
+                # [top-left-x, top-left-y, width, height]
+                bounding_box = obj["bbox"]
+        
+                detections.append(
+                    fo.Detection(
+                        label=label,
+                        bounding_box=bounding_box,
+                        confidence=confidence,
+                    )
+                )
+        
+            # Store detections in a field name of your choice
+            sample["predictions"] = fo.Detections(detections=detections)
+
+            sample.save()
+        
+       
+    .. note::
+    
+        If you are in need of a model to run on your dataset, check out the 
+        :ref:`FiftyOne Model Zoo <model-zoo>` or the
+        :ref:`PyTorch Lightning Flash integration <lightning-flash>`.
+
+
 Need data?
 ----------
 
