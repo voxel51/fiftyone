@@ -8,7 +8,7 @@ import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
 
 import { FieldHeader, MatchEye, usePills } from "./utils";
-import { PathEntry } from "./Entries";
+import { PathEntry, TextEntry } from "./Entries";
 
 const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
   const [expanded, setExpanded] = useState(true);
@@ -65,28 +65,33 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
       </FieldHeader>
       {expanded &&
         tags &&
-        tags.map((tag) => (
-          <PathEntry
-            path={`tags.${tag}`}
-            modal={modal}
-            name={tag}
-            disabled={false}
-          >
-            <MatchEye
-              matched={matchedTags}
-              elementsName={"samples"}
+        (tags.length ? (
+          tags.map((tag) => (
+            <PathEntry
+              path={`tags.${tag}`}
+              modal={modal}
               name={tag}
-              onClick={() => {
-                const newMatch = new Set(matchedTags);
-                if (matchedTags.has(tag)) {
-                  newMatch.delete(tag);
-                } else {
-                  newMatch.add(tag);
-                }
-                setMatchedTags(newMatch);
-              }}
-            />
-          </PathEntry>
+              disabled={false}
+              key={tag}
+            >
+              <MatchEye
+                matched={matchedTags}
+                elementsName={"samples"}
+                name={tag}
+                onClick={() => {
+                  const newMatch = new Set(matchedTags);
+                  if (matchedTags.has(tag)) {
+                    newMatch.delete(tag);
+                  } else {
+                    newMatch.add(tag);
+                  }
+                  setMatchedTags(newMatch);
+                }}
+              />
+            </PathEntry>
+          ))
+        ) : (
+          <TextEntry text={`No ${singular} tags`} />
         ))}
     </>
   );

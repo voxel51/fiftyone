@@ -325,16 +325,30 @@ export const values = selectorFamily<
       return agg.CountValues[1].map(([value]) => value).sort();
     }
 
-    return null;
+    return [];
   },
 });
 
 export const count = selectorFamily<
   number,
-  { extended: boolean; path: string; modal: boolean }
+  {
+    extended: boolean;
+    path: string;
+    modal: boolean;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
 >({
   key: "count",
-  get: ({ extended, modal, path }) => ({ get }) => {
+  get: (params) => ({ get }) => {
+    if (params.ftype) {
+      console.log(params);
+      const path = params.path.split(".");
+      return 0;
+    }
+
+    const { extended, modal, path } = params;
+
     const atom = modal
       ? extended
         ? extendedModalAggregations
@@ -401,7 +415,7 @@ const gatherPaths = (
 
   const recurseFields = (path) => {
     const field = get(schemaAtoms.field(path));
-    if (schemaAtoms.meetsType({ path, ftype, embeddedDocType })) {
+    if (get(schemaAtoms.meetsType({ path, ftype, embeddedDocType }))) {
       paths.push(path);
     }
     if (field.fields) {
@@ -413,7 +427,6 @@ const gatherPaths = (
 
   const schema = get(schemaAtoms.fieldPaths);
   for (const path of schema) recurseFields(path);
-
   return paths;
 };
 
@@ -460,7 +473,7 @@ export const cumulativeValues = selectorFamily<
         gatherPaths(get, ftype, embeddedDocType).reduce(
           (result, path) => [
             ...result,
-            get(values({ extended, modal, path: `${path}.${key}` })),
+            ...get(values({ extended, modal, path: `${path}.${key}` })),
           ],
           []
         )

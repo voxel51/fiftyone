@@ -95,11 +95,6 @@ def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
             field = field.field
 
         for subfield_name, subfield in field.get_field_schema().items():
-            if subfield_name == "tags" and issubclass(
-                field.document_type, fol.Label
-            ):
-                continue
-
             aggregations.update(
                 _build_field_aggregations(
                     ".".join([path, subfield_name]), subfield, filters

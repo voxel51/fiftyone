@@ -66,7 +66,7 @@ export const Button = ({
       onMouseLeave={() => setHover(false)}
       title={title ?? text}
     >
-      <OptionText style={{ fontWeight: "bold", width: "100%" }}>
+      <OptionText key={"button"} style={{ fontWeight: "bold", width: "100%" }}>
         {text}
       </OptionText>
       {children}
@@ -81,8 +81,8 @@ type FieldsSidebarProps = {
 const FieldsSidebar = ({ modal }: FieldsSidebarProps) => {
   return (
     <>
-      <SampleTagsCell modal={modal} />
-      <LabelTagsCell modal={modal} />
+      <SampleTagsCell key={"sample-tags"} modal={modal} />
+      <LabelTagsCell key={"label-tags"} modal={modal} />
     </>
   );
 };

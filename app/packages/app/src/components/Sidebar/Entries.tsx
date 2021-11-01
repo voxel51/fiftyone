@@ -18,12 +18,21 @@ import { colorMap } from "../../recoil/selectors";
 const EntryCounts = ({
   path,
   modal,
+  ftype,
+  embeddedDocType,
 }: {
   path: string;
   modal: boolean;
-  ftype: string | string[];
-  embeddedDocType: string | string[];
+  ftype?: string | string[];
+  embeddedDocType?: string | string[];
 }) => {
+  console.log({
+    extended: false,
+    path,
+    modal,
+    ftype,
+    embeddedDocType,
+  });
   const theme = useTheme();
   const count = useRecoilValue(
     aggregationAtoms.count({
@@ -60,28 +69,6 @@ const EntryCounts = ({
   return <span>{count.toLocaleString()}</span>;
 };
 
-type PathValueProps = {
-  path: string;
-  value: string;
-};
-
-const PathValueEntry = ({ path, value }: PathValueProps) => {
-  return (
-    <div>
-      {path}
-      {value}
-    </div>
-  );
-};
-
-type PathEntryProps = {
-  name?: string;
-  path: string;
-  modal: boolean;
-  disabled: boolean;
-  children?: ReactNode;
-};
-
 const Container = animated(styled.div`
   position: relative;
   overflow: visible;
@@ -98,8 +85,52 @@ const Container = animated(styled.div`
   }
 `);
 
+type PathValueProps = {
+  path: string;
+  value: string;
+};
+
+const PathValueEntry = ({ path, value }: PathValueProps) => {
+  return (
+    <div>
+      {path}
+      {value}
+    </div>
+  );
+};
+
+export const TextEntry = ({ text }: { text: string }) => {
+  const theme = useTheme();
+  return (
+    <Container
+      style={{ color: theme.fontDarkest, background: theme.backgroundLight }}
+      title={text}
+    >
+      <span>{text}</span>
+    </Container>
+  );
+};
+
+type PathEntryProps = {
+  name?: string;
+  path: string;
+  modal: boolean;
+  disabled: boolean;
+  children?: ReactNode;
+  ftype?: string | string[];
+  embeddedDocType?: string | string[];
+};
+
 export const PathEntry = React.memo(
-  ({ children, disabled, modal, path, name }: PathEntryProps) => {
+  ({
+    children,
+    disabled,
+    modal,
+    path,
+    name,
+    ftype,
+    embeddedDocType,
+  }: PathEntryProps) => {
     if (!name) {
       name = path;
     }
@@ -136,7 +167,14 @@ export const PathEntry = React.memo(
           />
         )}
         <span style={{ flexGrow: 1 }}>{name}</span>
-        {<EntryCounts path={path} modal={modal} />}
+        {
+          <EntryCounts
+            path={path}
+            modal={modal}
+            ftype={ftype}
+            embeddedDocType={embeddedDocType}
+          />
+        }
         {children}
       </Container>
     );

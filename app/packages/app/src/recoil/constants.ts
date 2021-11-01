@@ -163,3 +163,13 @@ export const RESERVED_DETECTION_FIELDS = [
   "mask",
   "target",
 ];
+
+export const LABELS_PATH = "fiftyone.core.labels";
+
+export const withPath = (path, types: string | string[]) => {
+  if (!Array.isArray(types)) {
+    types = [types];
+  }
+
+  return types.map((type) => [path, type].join("."));
+};

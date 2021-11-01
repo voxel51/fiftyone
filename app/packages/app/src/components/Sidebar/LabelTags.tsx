@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Check, Visibility } from "@material-ui/icons";
 
@@ -8,26 +8,38 @@ import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
 
 import { FieldHeader, MatchEye, usePills } from "./utils";
-import { PathEntry } from "./Entries";
+import { PathEntry, TextEntry } from "./Entries";
 import {
   EMBEDDED_DOCUMENT_FIELD,
+  LABELS_PATH,
   LABEL_DOC_TYPES,
+  withPath,
 } from "../../recoil/constants";
 
 const LabelTagsCell = React.memo(({ modal }: { modal: boolean }) => {
   const [expanded, setExpanded] = useState(true);
-  const tags = useRecoilValue(
-    aggregationAtoms.values({ extended: false, modal, path: "tags" })
+  const embeddedDocType = useMemo(
+    () => withPath(LABELS_PATH, LABEL_DOC_TYPES),
+    []
   );
-  const title = `label tags`;
+  const tags = useRecoilValue(
+    aggregationAtoms.cumulativeValues({
+      extended: false,
+      modal,
+      path: "tags",
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType,
+    })
+  );
 
+  const title = `label tags`;
   const allTags = useRecoilValue(
     aggregationAtoms.cumulativeValues({
       extended: false,
       modal: false,
       path: "tags",
       ftype: EMBEDDED_DOCUMENT_FIELD,
-      embeddedDocType: LABEL_DOC_TYPES,
+      embeddedDocType,
     })
   );
   const [activeTags, setActiveTags] = useRecoilState(
@@ -74,28 +86,35 @@ const LabelTagsCell = React.memo(({ modal }: { modal: boolean }) => {
       </FieldHeader>
       {expanded &&
         tags &&
-        tags.map((tag) => (
-          <PathEntry
-            path={`_label_tags.${tag}`}
-            modal={modal}
-            name={tag}
-            disabled={false}
-          >
-            <MatchEye
-              matched={matchedTags}
-              elementsName={"samples"}
+        (tags.length ? (
+          tags.map((tag) => (
+            <PathEntry
+              path={tag}
+              modal={modal}
+              ftype={EMBEDDED_DOCUMENT_FIELD}
+              embeddedDocType={embeddedDocType}
               name={tag}
-              onClick={() => {
-                const newMatch = new Set(matchedTags);
-                if (matchedTags.has(tag)) {
-                  newMatch.delete(tag);
-                } else {
-                  newMatch.add(tag);
-                }
-                setMatchedTags(newMatch);
-              }}
-            />
-          </PathEntry>
+              disabled={false}
+              key={tag}
+            >
+              <MatchEye
+                matched={matchedTags}
+                elementsName={"samples"}
+                name={tag}
+                onClick={() => {
+                  const newMatch = new Set(matchedTags);
+                  if (matchedTags.has(tag)) {
+                    newMatch.delete(tag);
+                  } else {
+                    newMatch.add(tag);
+                  }
+                  setMatchedTags(newMatch);
+                }}
+              />
+            </PathEntry>
+          ))
+        ) : (
+          <TextEntry text={"No label tags"} />
         ))}
     </>
   );
