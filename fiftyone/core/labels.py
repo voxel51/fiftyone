@@ -37,11 +37,8 @@ no_default = _NoDefault()
 class Label(DynamicEmbeddedDocument):
     """Base class for labels.
 
-    Label instances represent a logical collection of labels associated with a
-    sample in a dataset. Label instances may represent concrete tasks such as
-    image classification (:class:`Classification`) or image object detection
-    (:class:`Detections`), or they may represent higher-level constructs such
-    as a collection of labels for a particular sample (:class:`ImageLabels`).
+    Label instances represent a logical collection of data associated with a
+    particular task for a sample or frame in a dataset.
     """
 
     meta = {"allow_inheritance": True}
@@ -124,6 +121,7 @@ class Label(DynamicEmbeddedDocument):
             )
 
 
+# @todo remove this in favor of dynamic-only attributes
 class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
 
@@ -140,6 +138,7 @@ class Attribute(DynamicEmbeddedDocument):
     value = fof.Field()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class BooleanAttribute(Attribute):
     """A boolean attribute.
 
@@ -150,6 +149,7 @@ class BooleanAttribute(Attribute):
     value = fof.BooleanField()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class CategoricalAttribute(Attribute):
     """A categorical attribute.
 
@@ -164,6 +164,7 @@ class CategoricalAttribute(Attribute):
     logits = fof.VectorField()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class NumericAttribute(Attribute):
     """A numeric attribute.
 
@@ -174,6 +175,7 @@ class NumericAttribute(Attribute):
     value = fof.FloatField()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class ListAttribute(Attribute):
     """A list attribute.
 
@@ -342,6 +344,20 @@ class _HasLabelList(object):
     """
 
     _LABEL_LIST_FIELD = None
+
+
+class Regression(_HasID, Label):
+    """A regression value.
+
+    Args:
+        value (None): the regression value
+        confidence (None): a confidence in ``[0, 1]`` for the regression
+    """
+
+    meta = {"allow_inheritance": True}
+
+    value = fof.FloatField()
+    confidence = fof.FloatField()
 
 
 class Classification(_HasID, Label):

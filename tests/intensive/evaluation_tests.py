@@ -35,6 +35,90 @@ _NUM_CLASSES = len(_ANIMALS)
 _MISSING = "-"
 
 
+def test_evaluate_regressions():
+    dataset = foz.load_zoo_dataset("quickstart").select_fields().clone()
+
+    for idx, sample in enumerate(dataset, 1):
+        ytrue = random.random() * idx
+        ypred = ytrue + np.random.randn() * np.sqrt(ytrue)
+        confidence = random.random()
+        sample["ground_truth"] = fo.Regression(value=ytrue)
+        sample["predictions"] = fo.Regression(
+            value=ypred, confidence=confidence
+        )
+        sample["weather"] = random.choice(["sunny", "cloudy", "rainy"])
+        sample.save()
+
+    #
+    # Simple regression
+    #
+
+    results = dataset.evaluate_regressions(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    results.print_metrics()
+
+    print(dataset.bounds("eval"))
+
+    plot = results.plot_results(
+        labels="weather", sizes="predictions.confidence"
+    )
+    plot.show()
+
+    input("Press enter to continue...")
+
+    #
+    # Cleanup
+    #
+
+    dataset.delete_evaluations()
+
+
+def test_evaluate_regressions_frames():
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+
+    for sample in dataset:
+        for frame_number, frame in sample.frames.items():
+            ytrue = random.random() * frame_number
+            ypred = ytrue + np.random.randn() * np.sqrt(ytrue)
+            confidence = random.random()
+            frame["ground_truth"] = fo.Regression(value=ytrue)
+            frame["predictions"] = fo.Regression(
+                value=ypred, confidence=confidence
+            )
+            frame["weather"] = random.choice(["sunny", "cloudy", "rainy"])
+            frame.save()
+
+        sample.save()
+
+    #
+    # Simple regression
+    #
+
+    results = dataset.evaluate_regressions(
+        "frames.predictions", gt_field="frames.ground_truth", eval_key="eval"
+    )
+
+    results.print_metrics()
+
+    print(dataset.bounds("eval"))
+    print(dataset.bounds("frames.eval"))
+
+    plot = results.plot_results(
+        labels="frames.weather", sizes="frames.predictions.confidence"
+    )
+    plot.show()
+
+    input("Press enter to continue...")
+
+    #
+    # Cleanup
+    #
+
+    dataset.delete_evaluations()
+
+
 def test_evaluate_classifications():
     dataset = foz.load_zoo_dataset("imagenet-sample").clone()
     logits_classes = dataset.default_classes

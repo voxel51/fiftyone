@@ -1653,6 +1653,65 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
+    def evaluate_regressions(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        missing=None,
+        method="simple",
+        **kwargs,
+    ):
+        """Evaluates the regression predictions in this collection with respect
+        to the specified ground truth values.
+
+        You can customize the evaluation method by passing additional
+        parameters for the method's config class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.regression.SimpleEvaluationConfig`
+
+        If an ``eval_key`` is specified, then this method will record some
+        statistics on each sample:
+
+        -   When evaluating sample-level fields, an ``eval_key`` field will be
+            populated on each sample recording the error of that sample's
+            prediction.
+
+        -   When evaluating frame-level fields, an ``eval_key`` field will be
+            populated on each frame recording the error of that frame's
+            prediction. In addition, an ``eval_key`` field will be populated on
+            each sample that records the average error of the frame predictions
+            of the sample.
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Regression` instances
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Regression` instances
+            eval_key (None): a string key to use to refer to this evaluation
+            missing (None): a missing value. Any None-valued regressions are
+                given this value for results purposes
+            method ("simple"): a string specifying the evaluation method to use.
+                Supported values are ``("simple")``
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
+                being used
+
+        Returns:
+            a :class:`fiftyone.utils.eval.regression.RegressionResults`
+        """
+        return foue.evaluate_regressions(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            missing=missing,
+            method=method,
+            **kwargs,
+        )
+
     def evaluate_classifications(
         self,
         pred_field,
@@ -5907,6 +5966,7 @@ class SampleCollection(object):
         allow_additions=True,
         allow_deletions=True,
         allow_label_edits=True,
+        allow_index_edits=True,
         allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
@@ -5999,10 +6059,14 @@ class SampleCollection(object):
                 applicable when editing existing label fields
             allow_label_edits (True): whether to allow the ``label`` attribute
                 of existing labels to be modified. Only applicable when editing
-                existing label fields
+                existing fields with ``label`` attributes
+            allow_index_edits (True): whether to allow the ``index`` attribute
+                of existing video tracks to be modified. Only applicable when
+                editing existing frame fields with ``index`` attributes
             allow_spatial_edits (True): whether to allow edits to the spatial
-                properties (bounding boxes, vertices, keypoints, etc) of
-                labels. Only applicable when editing existing label fields
+                properties (bounding boxes, vertices, keypoints, masks, etc) of
+                labels. Only applicable when editing existing spatial label
+                fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -6028,6 +6092,7 @@ class SampleCollection(object):
             allow_additions=allow_additions,
             allow_deletions=allow_deletions,
             allow_label_edits=allow_label_edits,
+            allow_index_edits=allow_index_edits,
             allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,

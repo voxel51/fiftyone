@@ -192,6 +192,14 @@ const KeypointInfo = ({ detail }) => {
   );
 };
 
+const RegressionInfo = ({ detail }) => {
+  return (
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <AttrInfo label={detail.label} />
+    </AttrBlock>
+  );
+};
+
 const SegmentationInfo = ({ detail }) => {
   const targetValue = useTarget(detail.field, detail.target);
 
@@ -234,6 +242,7 @@ const OVERLAY_INFO = {
   Heatmap: HeatmapInfo,
   Keypoint: KeypointInfo,
   Polyline: PolylineInfo,
+  Regression: RegressionInfo,
   Segmentation: SegmentationInfo,
 };
 
