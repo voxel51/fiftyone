@@ -5,12 +5,17 @@ export const VALID_OBJECT_TYPES = [
   "Keypoints",
   "Polyline",
   "Polylines",
+];
+
+export const REGRESSION = "Regression";
+export const HEATMAP = "Heatmap";
+export const VALID_CLASS_TYPES = [
+  "Classification",
+  "Classifications",
+  "Regression",
   "TemporalDetection",
   "TemporalDetections",
 ];
-
-export const HEATMAP = "Heatmap";
-export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
 export const VALID_MASK_TYPES = ["Heatmap", "Segmentation"];
 export const VALID_LIST_TYPES = [
   "Classifications",
@@ -62,6 +67,7 @@ export const FILTERABLE_TYPES = [
   "Keypoint",
   "Polylines",
   "Polyline",
+  "Regression",
   "TemporalDetection",
   "TemporalDetections",
 ];
@@ -75,6 +81,7 @@ export const CONFIDENCE_LABELS = [
   "Keypoints",
   "Polyline",
   "Polylines",
+  "Regression",
   "TemporalDetection",
   "TemporalDetections",
 ];

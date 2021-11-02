@@ -296,6 +296,12 @@ class DatasetStatistics(object):
                         [foa.Bounds(support_path), foa.Count(support_path)]
                     )
 
+                if _has_value(field):
+                    value_path = "%s.value" % path
+                    aggregations.extend(
+                        [foa.Bounds(value_path), foa.Count(value_path),]
+                    )
+
             elif _meets_type(
                 field,
                 (
@@ -334,18 +340,6 @@ def _get_categorical_aggregation(path, filters):
     return foa.CountValues(path, _first=200, _include=include)
 
 
-def _meets_type(field, t):
-    return isinstance(field, t) or (
-        isinstance(field, fof.ListField) and isinstance(field.field, t)
-    )
-
-
-def _is_label(field):
-    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
-        field.document_type, fol.Label
-    )
-
-
 def _has_confidence(field):
     ltype = (
         fol._LABEL_LIST_TO_SINGLE_MAP[field.document_type]
@@ -371,3 +365,19 @@ def _has_support(field):
         else field.document_type
     )
     return hasattr(ltype, "support")
+
+
+def _has_value(field):
+    return field.document_type == fol.Regression
+
+
+def _is_label(field):
+    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, fol.Label
+    )
+
+
+def _meets_type(field, t):
+    return isinstance(field, t) or (
+        isinstance(field, fof.ListField) and isinstance(field.field, t)
+    )
