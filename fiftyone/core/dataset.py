@@ -4993,9 +4993,13 @@ def _clone_runs(dst_dataset, src_doc):
     for anno_key, run_doc in src_doc.annotation_runs.items():
         _run_doc = deepcopy(run_doc)
         dst_doc.annotation_runs[anno_key] = _run_doc
-        results = foan.AnnotationMethod.load_run_results(dst_dataset, anno_key)
+        results = foan.AnnotationMethod.load_run_results(
+            dst_dataset, anno_key, cache=False
+        )
         _run_doc.results = None
-        foan.AnnotationMethod.save_run_results(dst_dataset, anno_key, results)
+        foan.AnnotationMethod.save_run_results(
+            dst_dataset, anno_key, results, cache=False
+        )
 
     #
     # Clone brain results
@@ -5008,9 +5012,13 @@ def _clone_runs(dst_dataset, src_doc):
     for brain_key, run_doc in src_doc.brain_methods.items():
         _run_doc = deepcopy(run_doc)
         dst_doc.brain_methods[brain_key] = _run_doc
-        results = fob.BrainMethod.load_run_results(dst_dataset, brain_key)
+        results = fob.BrainMethod.load_run_results(
+            dst_dataset, brain_key, cache=False
+        )
         _run_doc.results = None
-        fob.BrainMethod.save_run_results(dst_dataset, brain_key, results)
+        fob.BrainMethod.save_run_results(
+            dst_dataset, brain_key, results, cache=False
+        )
 
     #
     # Clone evaluation results
@@ -5023,9 +5031,13 @@ def _clone_runs(dst_dataset, src_doc):
     for eval_key, run_doc in src_doc.evaluations.items():
         _run_doc = deepcopy(run_doc)
         dst_doc.evaluations[eval_key] = _run_doc
-        results = foe.EvaluationMethod.load_run_results(dst_dataset, eval_key)
+        results = foe.EvaluationMethod.load_run_results(
+            dst_dataset, eval_key, cache=False
+        )
         _run_doc.results = None
-        foe.EvaluationMethod.save_run_results(dst_dataset, eval_key, results)
+        foe.EvaluationMethod.save_run_results(
+            dst_dataset, eval_key, results, cache=False
+        )
 
     dst_doc.save()
 

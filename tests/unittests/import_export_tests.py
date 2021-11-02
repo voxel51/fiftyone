@@ -1644,6 +1644,35 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset2.count("predictions.detections"),
         )
 
+        # Test import/export of run results
+
+        dataset.clone_sample_field("predictions", "ground_truth")
+
+        view = dataset.limit(2)
+        view.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="test"
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_evaluations())
+        self.assertTrue("test" in dataset2.list_evaluations())
+
+        view2 = dataset2.load_evaluation_view("test")
+        self.assertEqual(len(view), len(view2))
+
+        info = dataset.get_evaluation_info("test")
+        info2 = dataset2.get_evaluation_info("test")
+        self.assertEqual(info.key, info2.key)
+
 
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):

@@ -1647,8 +1647,11 @@ def _import_run_results(dataset, run_dir, run_cls, keys=None):
     for key in keys:
         json_path = os.path.join(run_dir, key + ".json")
         if os.path.exists(json_path):
-            results = fors.RunResults.from_json(json_path, dataset)
-            run_cls.save_run_results(dataset, key, results)
+            view = run_cls.load_run_view(dataset, key)
+            run_info = run_cls.get_run_info(dataset, key)
+            config = run_info.config
+            results = fors.RunResults.from_json(json_path, view, config)
+            run_cls.save_run_results(dataset, key, results, cache=False)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):

@@ -385,7 +385,9 @@ class Run(Configurable):
         dataset._doc.save()
 
     @classmethod
-    def save_run_results(cls, samples, key, run_results, overwrite=True):
+    def save_run_results(
+        cls, samples, key, run_results, overwrite=True, cache=True
+    ):
         """Saves the run results on the collection.
 
         Args:
@@ -394,6 +396,7 @@ class Run(Configurable):
             run_results: a :class:`RunResults`, or None
             overwrite (True): whether to overwrite an existing result with the
                 same key
+            cache (True): whether to cache the results on the collection
         """
         if key is None:
             return
@@ -420,18 +423,20 @@ class Run(Configurable):
             run_doc.results.put(results_bytes, content_type="application/json")
 
         # Cache the results for future use in this session
-        results_cache = getattr(dataset, cls._results_cache_field())
-        results_cache[key] = run_results
+        if cache:
+            results_cache = getattr(dataset, cls._results_cache_field())
+            results_cache[key] = run_results
 
         dataset._doc.save()
 
     @classmethod
-    def load_run_results(cls, samples, key):
+    def load_run_results(cls, samples, key, cache=True):
         """Loads the :class:`RunResults` for the given key on the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
+            cache (True): whether to cache the results on the collection
 
         Returns:
             a :class:`RunResults`, or None if the run did not save results
@@ -479,7 +484,8 @@ class Run(Configurable):
             ) from e
 
         # Cache the results for future use in this session
-        results_cache[key] = run_results
+        if cache:
+            results_cache[key] = run_results
 
         return run_results
 
