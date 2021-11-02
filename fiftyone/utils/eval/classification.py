@@ -650,12 +650,6 @@ class BinaryClassificationResults(ClassificationResults):
             _to_binary_scores(ypred, confs, self._pos_label)
         )
 
-    def _get_labels(self, classes, *args, **kwargs):
-        if classes is not None:
-            return classes
-
-        return self.classes
-
     def average_precision(self, average="micro"):
         """Computes the average precision for the results via
         :func:`sklearn:sklearn.metrics.average_precision_score`.
@@ -739,6 +733,12 @@ class BinaryClassificationResults(ClassificationResults):
         return fop.plot_roc_curve(
             fpr, tpr, roc_auc=roc_auc, backend=backend, **kwargs
         )
+
+    def _parse_classes(self, classes):
+        if classes is not None:
+            return np.asarray(classes)
+
+        return self.classes
 
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
