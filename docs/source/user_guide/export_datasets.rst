@@ -987,6 +987,14 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.TFImageClassificationDataset
 
+.. note::
+
+    You can provide the `tf_records_path` argument instead of `export_dir` in
+    the examples above to directly specify the path to the TFRecord(s) to
+    write. See
+    :class:`TFImageClassificationDatasetExporter <fiftyone.utils.tf.TFImageClassificationDatasetExporter>`
+    for details.
+
 .. _FiftyOneImageDetectionDataset-export:
 
 FiftyOneImageDetectionDataset
@@ -2067,80 +2075,53 @@ Unlabeled images have no corresponding TXT file in `labels/`.
 You can export a FiftyOne dataset as a YOLOv5 dataset in the above format as
 follows:
 
-.. tabs::
+.. code-block:: python
+    :linenos:
 
-  .. group-tab:: Python
+    import fiftyone as fo
 
-    .. code-block:: python
-        :linenos:
+    export_dir = "/path/for/yolov5-dataset"
+    label_field = "ground_truth"  # for example
 
-        import fiftyone as fo
+    # All splits must use the same classes list
+    classes = ["list", "of", "classes"]
 
-        export_dir = "/path/for/yolov5-dataset"
-        label_field = "ground_truth"  # for example
+    # The splits to export
+    splits = ["train", "test", "validation"]
 
-        # The Dataset or DatasetView to export
-        dataset_or_view = fo.Dataset(...)
+    # The Dataset or DatasetView to export
+    dataset_or_view = fo.Dataset(...)
 
-        # Export the dataset
-        dataset_or_view.export(
+    # Export the splits
+    for split in splits:
+        dataset_or_view.match_tags(split).export(
             export_dir=export_dir,
             dataset_type=fo.types.YOLOv5Dataset,
             label_field=label_field,
+            split=split,
+            classes=classes,
         )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        EXPORT_DIR=/path/for/yolov5-dataset
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export the dataset
-        fiftyone datasets export $NAME \
-            --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.YOLOv5Dataset
 
 You can also perform labels-only exports of YOLO-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:
+q
+.. code-block:: python
+    :linenos:
 
-.. tabs::
+    import fiftyone as fo
 
-  .. group-tab:: Python
+    labels_path = "/path/for/yolo-labels"
+    label_field = "ground_truth"  # for example
 
-    .. code-block:: python
-        :linenos:
+    # The Dataset or DatasetView to export
+    dataset_or_view = fo.Dataset(...)
 
-        import fiftyone as fo
-
-        labels_path = "/path/for/yolo-labels"
-        label_field = "ground_truth"  # for example
-
-        # The Dataset or DatasetView to export
-        dataset_or_view = fo.Dataset(...)
-
-        # Export labels
-        dataset_or_view.export(
-            dataset_type=fo.types.YOLOv5Dataset,
-            labels_path=labels_path,
-            label_field=label_field,
-        )
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        LABELS_PATH=/path/for/yolo-labels
-        LABEL_FIELD=ground_truth  # for example
-
-        # Export labels
-        fiftyone datasets export $NAME \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.YOLOv5Dataset \
-            --kwargs labels_path=$LABELS_PATH
+    # Export labels
+    dataset_or_view.export(
+        dataset_type=fo.types.YOLOv5Dataset,
+        labels_path=labels_path,
+        label_field=label_field,
+    )
 
 .. _TFObjectDetectionDataset-export:
 
@@ -2252,6 +2233,14 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.TFObjectDetectionDataset
+
+.. note::
+
+    You can provide the `tf_records_path` argument instead of `export_dir` in
+    the examples above to directly specify the path to the TFRecord(s) to
+    write. See
+    :class:`TFObjectDetectionDatasetExporter <fiftyone.utils.tf.TFObjectDetectionDatasetExporter>`
+    for details.
 
 .. _ImageSegmentationDirectory-export:
 
