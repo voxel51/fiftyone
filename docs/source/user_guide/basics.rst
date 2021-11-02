@@ -289,6 +289,7 @@ or model predictions.
 
 FiftyOne provides a |Label| subclass for many common tasks:
 
+- :ref:`Regression <regression>`: a regression value
 - :ref:`Classification <classification>`: a classification label
 - :ref:`Classifications <multilabel-classification>`: a list of classifications
   (typically for multilabel tasks)

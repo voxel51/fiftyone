@@ -553,7 +553,7 @@ FiftyOneImageClassificationDataset
 
 The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
 type represents a labeled dataset consisting of images and their associated
-classification labels stored in a simple JSON format.
+classification label(s) stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -566,7 +566,8 @@ Datasets of this type are exported in the following format:
             ...
         labels.json
 
-where `labels.json` is a JSON file in the following format:
+In the simplest case, `labels.json` will be a JSON file in the following
+format:
 
 .. code-block:: text
 
@@ -589,9 +590,10 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
-Alternatively, if you include the `include_confidence=True` parameter when
-exporting datasets of this type, the `labels.json` file will contain
-predictions with associated confidences in the following format:
+If you wish to export classifications with associated confidences and/or
+additional  attributes, you can use the `include_confidence` and
+`include_attributes` parameters to include this information in the export.
+In this case, `labels.json` will have the following format:
 
 .. code-block:: text
 
@@ -604,15 +606,45 @@ predictions with associated confidences in the following format:
         "labels": {
             "<uuid1>": {
                 "label": <target>,
-                "confidence": <optional-confidence>
+                "confidence": <optional-confidence>,
+                "attributes": {
+                    <optional-name>: <optional-value>,
+                    ...
+                }
             },
             "<uuid2>": {
                 "label": <target>,
-                "confidence": <optional-confidence>
+                "confidence": <optional-confidence>,
+                "attributes": {
+                    <optional-name>: <optional-value>,
+                    ...
+                }
             },
             ...
         }
     }
+
+You can also export multilabel classification fields, in which case
+`labels.json` will have the following format:
+
+.. code-block:: text
+
+    {
+        "classes": [
+            "<labelA>",
+            "<labelB>",
+            ...
+        ],
+        "labels": {
+            "<uuid1>": [<target1>, <target2>, ...],
+            "<uuid2>": [<target1>, <target2>, ...],
+            ...
+        }
+    }
+
+where the target values in `labels` may be class strings, class IDs, or dicts
+in the format described above defining class labels, confidences, and optional
+attributes, depending on how you configured the export.
 
 .. note::
 
@@ -1016,6 +1048,11 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
+By default, confidences and any additional dynamic attributes of your
+detections will be automatically included in the export. However, you can
+provide the optional `include_confidence` and `include_attributes` parameters
+to customize this behavior.
+
 .. note::
 
     See :class:`FiftyOneImageDetectionDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageDetectionDatasetExporter>`
@@ -1163,12 +1200,20 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 ...
             ],
@@ -1176,12 +1221,20 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
             ],
             ...
@@ -1198,6 +1251,11 @@ mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled videos is `None`.
+
+By default, confidences and any additional dynamic attributes of your
+detections will be automatically included in the export. However, you can
+provide the optional `include_confidence` and `include_attributes` parameters
+to customize this behavior.
 
 .. note::
 

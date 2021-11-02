@@ -428,7 +428,7 @@ FiftyOneImageClassificationDataset
 
 The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
 type represents a labeled dataset consisting of images and their associated
-classification labels stored in a simple JSON format.
+classification label(s) stored in a simple JSON format.
 
 Datasets of this type are read in the following format:
 
@@ -441,7 +441,7 @@ Datasets of this type are read in the following format:
             ...
         labels.json
 
-where `labels.json` is a JSON file in the following format:
+In the simplest case, `labels.json` can be a JSON file in the following format:
 
 .. code-block:: text
 
@@ -464,8 +464,12 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None` (or missing).
 
+The UUIDs can also be relative paths like `path/to/uuid`, in which case the
+images in `data/` should be arranged in nested subfolders with the
+corresponding names.
+
 Alternatively, `labels.json` can contain predictions with associated
-confidences in the following format:
+confidences and additional attributes in the following format:
 
 .. code-block:: text
 
@@ -478,19 +482,45 @@ confidences in the following format:
         "labels": {
             "<uuid1>": {
                 "label": <target>,
-                "confidence": <optional-confidence>
+                "confidence": <optional-confidence>,
+                "attributes": {
+                    <optional-name>: <optional-value>,
+                    ...
+                }
             },
             "<uuid2>": {
                 "label": <target>,
-                "confidence": <optional-confidence>
+                "confidence": <optional-confidence>,
+                "attributes": {
+                    <optional-name>: <optional-value>,
+                    ...
+                }
             },
             ...
         }
     }
 
-The UUIDs can also be relative paths like `path/to/uuid`, in which case the
-images in `data/` should be arranged in nested subfolders with the
-corresponding names.
+You can also load multilabel classifications in this format by storing lists
+of targets in `labels.json`:
+
+.. code-block:: text
+
+    {
+        "classes": [
+            "<labelA>",
+            "<labelB>",
+            ...
+        ],
+        "labels": {
+            "<uuid1>": [<target1>, <target2>, ...],
+            "<uuid2>": [<target1>, <target2>, ...],
+            ...
+        }
+    }
+
+where the target values in `labels` can be class strings, class IDs, or dicts
+in the format described above defining class labels, confidences, and optional
+attributes.
 
 .. note::
 
@@ -1113,12 +1143,20 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 ...
             ],
@@ -1126,12 +1164,20 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
             ],
             ...
@@ -4451,6 +4497,9 @@ should implement is determined by the type of dataset that you are importing.
 
                 -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                     importer is guaranteed to return labels of this type
+                -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                    this case, the importer can produce a single label field of any of
+                    these types
                 -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                     In this case, the importer will return label dictionaries with keys
                     and value-types specified by this dictionary. Not all keys need be
@@ -4831,6 +4880,9 @@ should implement is determined by the type of dataset that you are importing.
 
                 -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                     importer is guaranteed to return sample-level labels of this type
+                -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                    this case, the importer can produce a single sample-level label
+                    field of any of these types
                 -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                     In this case, the importer will return sample-level label
                     dictionaries with keys and value-types specified by this
@@ -4850,6 +4902,9 @@ should implement is determined by the type of dataset that you are importing.
 
                 -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                     importer is guaranteed to return frame labels of this type
+                -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                    this case, the importer can produce a single frame label field of
+                    any of these types
                 -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                     In this case, the importer will return frame label dictionaries
                     with keys and value-types specified by this dictionary. Not all

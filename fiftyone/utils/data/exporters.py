@@ -1875,8 +1875,8 @@ class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
 class FiftyOneImageClassificationDatasetExporter(
     LabeledImageDatasetExporter, ExportPathsMixin
 ):
-    """Exporter that writes an image classification dataset to disk in
-    FiftyOne's default format.
+    """Exporter that writes an image classification dataset to disk in a simple
+    JSON format.
 
     See :ref:`this page <FiftyOneImageClassificationDataset-export>` for format
     details.
@@ -1933,8 +1933,19 @@ class FiftyOneImageClassificationDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
-        include_confidence (False): whether to include the confidence of each
-            classifications in the exported labels
+        include_confidence (False): whether to include classification
+            confidences in the export. The supported values are:
+
+            -   ``False`` (default): do not include confidences
+            -   ``True``: always include confidences
+            -   ``None``: include confidences only if they exist
+        include_attributes (False): whether to include dynamic attributes of
+            the classifications in the export. Supported values are:
+
+            -   ``False`` (default): do not include attributes
+            -   ``True``: always include a (possibly empty) attributes dict
+            -   ``None``: include attributes only if they exist
+            -   a name or iterable of names of specific attributes to include
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
@@ -1952,6 +1963,7 @@ class FiftyOneImageClassificationDatasetExporter(
         labels_path=None,
         export_media=None,
         include_confidence=False,
+        include_attributes=False,
         classes=None,
         image_format=None,
         pretty_print=False,
@@ -1975,6 +1987,7 @@ class FiftyOneImageClassificationDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.include_confidence = include_confidence
+        self.include_attributes = include_attributes
         self.classes = classes
         self.image_format = image_format
         self.pretty_print = pretty_print
@@ -1989,7 +2002,7 @@ class FiftyOneImageClassificationDatasetExporter(
 
     @property
     def label_cls(self):
-        return fol.Classification
+        return (fol.Classification, fol.Classifications)
 
     def setup(self):
         self._labels_dict = {}
@@ -2015,12 +2028,13 @@ class FiftyOneImageClassificationDatasetExporter(
                 self.classes = sample_collection.info["classes"]
                 self._parse_classes()
 
-    def export_sample(self, image_or_path, classification, metadata=None):
+    def export_sample(self, image_or_path, label, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
-        self._labels_dict[uuid] = _parse_classification(
-            classification,
+        self._labels_dict[uuid] = _parse_classifications(
+            label,
             labels_map_rev=self._labels_map_rev,
             include_confidence=self.include_confidence,
+            include_attributes=self.include_attributes,
         )
 
     def close(self, *args):
@@ -2104,7 +2118,10 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
     def export_sample(self, image_or_path, classification, metadata=None):
         is_image_path = etau.is_str(image_or_path)
 
-        _label = _parse_classification(classification)
+        _label = _parse_classifications(
+            classification, include_confidence=False, include_attributes=False
+        )
+
         if _label is None:
             _label = "_unlabeled"
 
@@ -2199,7 +2216,10 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         etau.ensure_dir(self.export_dir)
 
     def export_sample(self, video_path, classification, _, metadata=None):
-        _label = _parse_classification(classification)
+        _label = _parse_classifications(
+            classification, include_confidence=False, include_attributes=False
+        )
+
         if _label is None:
             _label = "_unlabeled"
 
@@ -2227,8 +2247,8 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
 class FiftyOneImageDetectionDatasetExporter(
     LabeledImageDatasetExporter, ExportPathsMixin
 ):
-    """Exporter that writes an image detection dataset to disk in FiftyOne's
-    default format.
+    """Exporter that writes an image detection dataset to disk in a simple JSON
+    format.
 
     See :ref:`this page <FiftyOneImageDetectionDataset-export>` for format
     details.
@@ -2288,6 +2308,19 @@ class FiftyOneImageDetectionDatasetExporter(
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
+        include_confidence (None): whether to include detection confidences in
+            the export. The supported values are:
+
+            -   ``None`` (default): include confidences only if they exist
+            -   ``True``: always include confidences
+            -   ``False``: do not include confidences
+        include_attributes (None): whether to include dynamic attributes of the
+            detections in the export. Supported values are:
+
+            -   ``None`` (default): include attributes only if they exist
+            -   ``True``: always include a (possibly empty) attributes dict
+            -   ``False``: do not include attributes
+            -   a name or iterable of names of specific attributes to include
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -2302,6 +2335,8 @@ class FiftyOneImageDetectionDatasetExporter(
         labels_path=None,
         export_media=None,
         classes=None,
+        include_confidence=None,
+        include_attributes=None,
         image_format=None,
         pretty_print=False,
     ):
@@ -2324,6 +2359,8 @@ class FiftyOneImageDetectionDatasetExporter(
         self.labels_path = labels_path
         self.export_media = export_media
         self.classes = classes
+        self.include_confidence = include_confidence
+        self.include_attributes = include_attributes
         self.image_format = image_format
         self.pretty_print = pretty_print
 
@@ -2366,7 +2403,10 @@ class FiftyOneImageDetectionDatasetExporter(
     def export_sample(self, image_or_path, detections, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
         self._labels_dict[uuid] = _parse_detections(
-            detections, labels_map_rev=self._labels_map_rev
+            detections,
+            labels_map_rev=self._labels_map_rev,
+            include_confidence=self.include_confidence,
+            include_attributes=self.include_attributes,
         )
 
     def close(self, *args):
@@ -2387,8 +2427,8 @@ class FiftyOneImageDetectionDatasetExporter(
 class FiftyOneTemporalDetectionDatasetExporter(
     LabeledVideoDatasetExporter, ExportPathsMixin
 ):
-    """Exporter that writes a temporal video detection dataset to disk in
-    FiftyOne's default format.
+    """Exporter that writes a temporal video detection dataset to disk in a
+    simple JSON format.
 
     See :ref:`this page <FiftyOneTemporalDetectionDataset-export>` for format
     details.
@@ -2449,6 +2489,19 @@ class FiftyOneTemporalDetectionDatasetExporter(
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
+        include_confidence (None): whether to include detection confidences in
+            the export. The supported values are:
+
+            -   ``None`` (default): include confidences only if they exist
+            -   ``True``: always include confidences
+            -   ``False``: do not include confidences
+        include_attributes (None): whether to include dynamic attributes of the
+            detections in the export. Supported values are:
+
+            -   ``None`` (default): include attributes only if they exist
+            -   ``True``: always include a (possibly empty) attributes dict
+            -   ``False``: do not include attributes
+            -   a name or iterable of names of specific attributes to include
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
@@ -2461,6 +2514,8 @@ class FiftyOneTemporalDetectionDatasetExporter(
         export_media=None,
         use_timestamps=False,
         classes=None,
+        include_confidence=None,
+        include_attributes=None,
         pretty_print=False,
     ):
         data_path, export_media = self._parse_data_path(
@@ -2483,6 +2538,8 @@ class FiftyOneTemporalDetectionDatasetExporter(
         self.export_media = export_media
         self.use_timestamps = use_timestamps
         self.classes = classes
+        self.include_confidence = include_confidence
+        self.include_attributes = include_attributes
         self.pretty_print = pretty_print
 
         self._labels_dict = None
@@ -2526,9 +2583,11 @@ class FiftyOneTemporalDetectionDatasetExporter(
         _, uuid = self._media_exporter.export(video_path)
         self._labels_dict[uuid] = _parse_temporal_detections(
             temporal_detections,
-            use_timestamps=self.use_timestamps,
             labels_map_rev=self._labels_map_rev,
             metadata=metadata,
+            use_timestamps=self.use_timestamps,
+            include_confidence=self.include_confidence,
+            include_attributes=self.include_attributes,
         )
 
     def close(self, *args):
@@ -2935,39 +2994,65 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         self._media_exporter.close()
 
 
-def _parse_classification(
-    classification, labels_map_rev=None, include_confidence=False
+def _parse_classifications(
+    label,
+    labels_map_rev=None,
+    include_confidence=False,
+    include_attributes=None,
 ):
-    if classification is None:
+    if label is None:
         return None
 
-    label = classification.label
+    is_list = isinstance(label, fol.Classifications)
 
-    if labels_map_rev is not None:
-        if label not in labels_map_rev:
-            msg = (
-                "Ignoring classification with label '%s' not in provided "
-                "classes" % label
+    if is_list:
+        classifications = label.classifications
+    else:
+        classifications = [label]
+
+    labels = []
+    for classification in classifications:
+        _label = classification.label
+
+        if labels_map_rev is not None:
+            if _label not in labels_map_rev:
+                msg = (
+                    "Ignoring classification with label '%s' not in provided "
+                    "classes" % _label
+                )
+                warnings.warn(msg)
+                continue
+
+            _label = labels_map_rev[_label]
+
+        if include_confidence != False or include_attributes != False:
+            _label = {"label": _label}
+
+            _parse_attributes(
+                _label,
+                classification,
+                include_confidence=include_confidence,
+                include_attributes=include_attributes,
             )
-            warnings.warn(msg)
-            return None
 
-        label = labels_map_rev[label]
+        labels.append(_label)
 
-    if include_confidence:
-        label = {
-            "label": label,
-            "confidence": classification.confidence,
-        }
+    if not labels:
+        return None
 
-    return label
+    if is_list:
+        return labels
+
+    return labels[0]
 
 
 def _parse_temporal_detections(
     temporal_detections,
-    use_timestamps=False,
     labels_map_rev=None,
     metadata=None,
+    use_timestamps=False,
+    include_confidence=None,
+    include_attributes=None,
 ):
     if temporal_detections is None:
         return None
@@ -3010,19 +3095,28 @@ def _parse_temporal_detections(
         else:
             label_dict["support"] = detection.support
 
-        if detection.confidence is not None:
-            label_dict["confidence"] = detection.confidence
+        _parse_attributes(
+            label_dict,
+            detection,
+            include_confidence=include_confidence,
+            include_attributes=include_attributes,
+        )
 
         labels.append(label_dict)
 
     return labels
 
 
-def _parse_detections(detections, labels_map_rev=None):
+def _parse_detections(
+    detections,
+    labels_map_rev=None,
+    include_confidence=None,
+    include_attributes=None,
+):
     if detections is None:
         return None
 
-    _detections = []
+    labels = []
     for detection in detections.detections:
         label = detection.label
 
@@ -3037,20 +3131,47 @@ def _parse_detections(detections, labels_map_rev=None):
 
             label = labels_map_rev[label]
 
-        _detection = {
+        label_dict = {
             "label": label,
             "bounding_box": detection.bounding_box,
         }
-        if detection.confidence is not None:
-            _detection["confidence"] = detection.confidence
 
-        attributes = dict(detection.iter_attributes())
+        _parse_attributes(
+            label_dict,
+            detection,
+            include_confidence=include_confidence,
+            include_attributes=include_attributes,
+        )
+
+        labels.append(label_dict)
+
+    return labels
+
+
+def _parse_attributes(
+    label_dict, label, include_confidence=None, include_attributes=None
+):
+    if include_confidence == True:
+        label_dict["confidence"] = label.confidence
+    elif include_confidence is None and label.confidence is not None:
+        label_dict["confidence"] = label.confidence
+
+    if include_attributes == True:
+        label_dict["attributes"] = dict(label.iter_attributes())
+    elif include_attributes is None:
+        attributes = dict(label.iter_attributes())
         if attributes:
-            _detection["attributes"] = attributes
-
-        _detections.append(_detection)
-
-    return _detections
+            label_dict["attributes"] = attributes
+    elif isinstance(include_attributes, str):
+        name = include_attributes
+        label_dict["attributes"] = {
+            name: label.get_attribute_value(name, None)
+        }
+    elif etau.is_container(include_attributes):
+        label_dict["attributes"] = {
+            name: label.get_attribute_value(name, None)
+            for name in include_attributes
+        }
 
 
 def _to_labels_map_rev(classes):
