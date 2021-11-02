@@ -18,7 +18,8 @@ import fiftyone.utils.coco as fouc
 import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
-import fiftyone.utils.kitti as fouk
+import fiftyone.utils.kinetics as fouk
+import fiftyone.utils.kitti as foukt
 import fiftyone.utils.lfw as foul
 import fiftyone.utils.openimages as fouo
 import fiftyone.utils.ucf101 as fouu
@@ -960,6 +961,151 @@ class ImageNetSampleDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class Kinetics700Dataset(FiftyOneDataset):
+    """Kinetics is a collection of large-scale, high-quality datasets of URL
+    links of up to 650,000 video clips that cover 400/600/700 human action
+    classes, depending on the dataset version. The videos include human-object
+    interactions such as playing instruments, as well as human-human
+    interactions such as shaking hands and hugging. Each action class has at
+    least 400/600/700 video clips. Each clip is human annotated with a single
+    action class and lasts around 10 seconds.
+
+    This version contains videos and action classifications for the 700 class
+    version of the dataset.
+    
+    Full split stats:
+    
+    -   Train split:  videos
+    -   Test split:  videos
+    -   Validation split:  videos
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the ``max_duration``,
+        ``classes``, and ``max_samples`` parameters
+    
+    Example usage::
+       
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "" and ""
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700",
+            split="validation",
+            classes=[],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+    Dataset size
+
+    Source 
+        https://deepmind.com/research/open-source/kinetics
+
+    Args:
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the `max_duration` will be downloaded. By
+            default, all videos are downloaded
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded.
+            By default, all matching samples are loaded
+    """
+
+    def __init__(
+        self,
+        classes=None,
+        max_duration=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.classes = classes
+        self.max_duration = max_duration
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "kinetics-700"
+
+    @property
+    def tags(self):
+        return (
+            "video",
+            "classification",
+            "action-recognition",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes = fouk.download_kinetics_split(
+            dataset_dir,
+            split,
+            classes=self.classes,
+            max_duration=self.max_duration,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            version="700",
+        )
+
+        dataset_type = fot.VideoClassificationDirectoryTree()
+
+        return dataset_type, num_samples, classes
+
+
 class KITTIDataset(FiftyOneDataset):
     """KITTI contains a suite of vision tasks built using an autonomous
     driving platform.
@@ -1006,7 +1152,7 @@ class KITTIDataset(FiftyOneDataset):
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         split_dir = os.path.join(scratch_dir, split)
         if not os.path.isdir(split_dir):
-            fouk.download_kitti_detection_dataset(
+            foukt.download_kitti_detection_dataset(
                 scratch_dir, overwrite=False, cleanup=False
             )
 
@@ -1014,7 +1160,7 @@ class KITTIDataset(FiftyOneDataset):
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.KITTIDetectionDataset()
-        importer = fouk.KITTIDetectionDatasetImporter
+        importer = foukt.KITTIDetectionDatasetImporter
         num_samples = importer._get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
