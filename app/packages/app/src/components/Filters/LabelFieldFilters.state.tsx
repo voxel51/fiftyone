@@ -43,7 +43,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     for (const field of labels) {
       if (primitives.includes(field)) {
         if (get(numericField.isNumericField(field))) {
-          const [range, none, inf, ninf, nan, exclude] = [
+          let [range, none, inf, ninf, nan, exclude] = [
             get(numericField.rangeAtom({ modal, path: field })),
             get(numericField.otherAtom({ modal, path: field, key: "none" })),
             get(numericField.otherAtom({ modal, path: field, key: "inf" })),
@@ -51,6 +51,14 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
             get(numericField.otherAtom({ modal, path: field, key: "nan" })),
             get(numericField.excludeAtom({ modal, path: field })),
           ];
+
+          if (exclude) {
+            none = !none;
+            inf = !inf;
+            ninf = !ninf;
+            nan = !nan;
+          }
+
           filters[field] = (value) => {
             const inRange = exclude
               ? range[0] - 0.005 > value || value > range[1] + 0.005

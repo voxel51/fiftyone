@@ -1149,12 +1149,25 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             aggs, fields = _count_values(filter, view)
 
-            hist_aggs, hist_fields, ticks = await _numeric_histograms(
-                view, view.get_field_schema()
-            )
+            (
+                hist_aggs,
+                hist_fields,
+                ticks,
+                nonfinites,
+            ) = await _numeric_histograms(view, view.get_field_schema())
             aggs.extend(hist_aggs)
             fields.extend(hist_fields)
             results = await _gather_results(aggs, fields, view, ticks)
+            for result, nonfinites in zip(
+                results[-len(hist_aggs) :], nonfinites
+            ):
+                data = result["data"]
+                if data and data[-1]["key"] == "None":
+                    data[-1]["count"] -= sum(
+                        map(lambda v: v["count"], nonfinites)
+                    )
+
+                data.extend(nonfinites)
 
         results = sorted(results, key=lambda i: i["name"])
         _write_message(
@@ -1366,7 +1379,9 @@ def _count_values(f, view):
 
 
 def _numeric_bounds(paths):
-    return [foa.Bounds(path) for path in paths]
+    return [
+        foa.Bounds(path, safe=True, _count_nonfinites=True) for path in paths
+    ]
 
 
 async def _numeric_histograms(view, schema, prefix=""):
@@ -1385,7 +1400,11 @@ async def _numeric_histograms(view, schema, prefix=""):
     bounds = await view._async_aggregate(aggs)
     aggregations = []
     ticks = []
-    for range_, field, path in zip(bounds, fields, paths):
+    nonfinites = []
+    for result, field, path in zip(bounds, fields, paths):
+        range_ = result.pop("bounds")
+        result = [{"key": k, "count": v} for k, v in result.items() if v > 0]
+        nonfinites.append(result)
         bins = _DEFAULT_NUM_HISTOGRAM_BINS
         num_ticks = None
         if range_[0] == range_[1]:
@@ -1410,7 +1429,7 @@ async def _numeric_histograms(view, schema, prefix=""):
         ticks.append(num_ticks)
         aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))
 
-    return aggregations, fields, ticks
+    return aggregations, fields, ticks, nonfinites
 
 
 class FileHandler(tornado.web.StaticFileHandler):

@@ -145,7 +145,7 @@ export const NamedRangeSlider = React.memo(
                 forceColor={true}
               />
             ))}
-          {isFiltered && others.length > 0 && hasBounds && hasDefaultRange && (
+          {isFiltered && others.length > 0 && hasBounds && (
             <ExcludeOption
               excludeAtom={filterAtoms.excludeAtom(rest)}
               valueName={""}
