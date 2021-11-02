@@ -427,11 +427,14 @@ details:
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
     applicable when editing existing label fields
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute of
-    existing labels to be modified. Only applicable when editing existing label
-    fields
+    existing labels to be modified. Only applicable when editing existing
+    fields with `label` attributes
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute
+    of existing video tracks to be modified. Only applicable when editing
+    existing frame fields with `index` attributes
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
-    applicable when editing existing label fields
+    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
+    Only applicable when editing existing spatial label fields
 
 |br|
 In addition, the following CVAT-specific parameters from
@@ -704,6 +707,8 @@ following flags to
 -   **allow_deletions** (*True*): whether to allow labels to be deleted
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute to
     be modified
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute of
+    video tracks to be modified
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
     properties (bounding boxes, vertices, keypoints, etc) of labels
 
@@ -1212,9 +1217,9 @@ can be used to annotate new classes and/or attributes:
 Restricting label edits
 -----------------------
 
-You can use the `allow_additions`, `allow_deletions`, `allow_label_edits`, and
-`allow_spatial_edits` parameters to configure whether certain types of edits
-are allowed in your annotation run. See
+You can use the `allow_additions`, `allow_deletions`, `allow_label_edits`,
+`allow_index_edits`, and `allow_spatial_edits` parameters to configure whether
+certain types of edits are allowed in your annotation run. See
 :ref:`this section <cvat-restricting-edits>` for more information about the
 available options.
 

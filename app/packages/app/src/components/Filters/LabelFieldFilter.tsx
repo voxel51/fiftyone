@@ -9,6 +9,7 @@ import {
   CONFIDENCE_LABELS,
   FLOAT_FIELD,
   FRAME_SUPPORT_FIELD,
+  REGRESSION,
   SUPPORT_LABELS,
 } from "../../utils/labels";
 import { useExpand } from "./hooks";
@@ -82,25 +83,28 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const cPath = `${path}.confidence`;
   const lPath = `${path}.label`;
   const sPath = `${path}.support`;
+  const vPath = `${path}.value`;
 
   return (
     <animated.div style={{ ...props }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           {modal && <HiddenLabelFilter entry={entry} />}
-          <CategoricalFilter
-            color={entry.color}
-            name={"Labels"}
-            valueName={"label"}
-            selectedValuesAtom={stringField.selectedValuesAtom({
-              modal,
-              path: lPath,
-            })}
-            countsAtom={countsAtom({ modal, path: lPath, filtered: false })}
-            excludeAtom={stringField.excludeAtom({ modal, path: lPath })}
-            modal={modal}
-            path={lPath}
-          />
+          {entry.labelType !== REGRESSION && (
+            <CategoricalFilter
+              color={entry.color}
+              name={"Labels"}
+              valueName={"label"}
+              selectedValuesAtom={stringField.selectedValuesAtom({
+                modal,
+                path: lPath,
+              })}
+              countsAtom={countsAtom({ modal, path: lPath, filtered: false })}
+              excludeAtom={stringField.excludeAtom({ modal, path: lPath })}
+              modal={modal}
+              path={lPath}
+            />
+          )}
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
               color={entry.color}
@@ -119,6 +123,25 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 modal,
                 path: cPath,
                 defaultRange: [0, 1],
+              })}
+              fieldType={FLOAT_FIELD}
+            />
+          )}
+          {entry.labelType === REGRESSION && (
+            <NamedRangeSlider
+              color={entry.color}
+              name={"Value"}
+              noneAtom={numericField.noneAtom({
+                modal,
+                path: vPath,
+              })}
+              noneCountAtom={noneCount({ path: vPath, modal })}
+              boundsAtom={numericField.boundsAtom({
+                path: vPath,
+              })}
+              valueAtom={numericField.rangeAtom({
+                modal,
+                path: vPath,
               })}
               fieldType={FLOAT_FIELD}
             />

@@ -37,6 +37,7 @@
 .. |ViewField| replace:: :class:`ViewField <fiftyone.core.expressions.ViewField>`
 
 .. |Label| replace:: :class:`Label <fiftyone.core.labels.Label>`
+.. |Regression| replace:: :class:`Regression <fiftyone.core.labels.Regression>`
 .. |Classification| replace:: :class:`Classification <fiftyone.core.labels.Classification>`
 .. |Classifications| replace:: :class:`Classifications <fiftyone.core.labels.Classifications>`
 .. |Detection| replace:: :class:`Detection <fiftyone.core.labels.Detection>`
@@ -104,6 +105,7 @@
 .. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
 .. |BrainResults| replace:: :class:`BrainResults <fiftyone.core.brain.BrainResults>`
 
+.. |RegressionResults| replace:: :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`
 .. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
 .. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.eval.classification.BinaryClassificationResults>`
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
