@@ -10,7 +10,7 @@ variety of :ref:`common formats <supported-import-formats>`, and it can be
 easily extended to import datasets in
 :ref:`custom formats <custom-dataset-importer>`.
 
-.. note:
+.. note::
 
     If your data is in a custom format,
     :ref:`writing a simple loop <loading-custom-datasets>` is the easiest way
@@ -48,7 +48,7 @@ that you're loading.
         # The type of the dataset being imported
         dataset_type = fo.types.COCODetectionDataset  # for example
 
-        # Import the dataset!
+        # Import the dataset
         dataset = fo.Dataset.from_dir(
             dataset_dir=dataset_dir,
             dataset_type=dataset_type,
@@ -78,7 +78,10 @@ that you're loading.
 
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing to
-    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`. For
+    example, all importers should support optional `max_samples`, `shuffle`,
+    and `seed` parameters, which provide support for importing a small subset
+    of a potentially large dataset:
 
     .. code-block:: python
         :linenos:
@@ -88,6 +91,7 @@ that you're loading.
             ...,
             max_samples=10,
             shuffle=True,
+            seed=51,
         )
 
   .. group-tab:: CLI
@@ -112,7 +116,7 @@ that you're loading.
         # Any subclass of `fiftyone.types.Dataset` is supported
         TYPE=fiftyone.types.COCODetectionDataset  # for example
 
-        # Import the dataset!
+        # Import the dataset
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
     Alternatively, when importing labeled datasets in formats such as
@@ -139,7 +143,10 @@ that you're loading.
 
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing via the
-    :ref:`kwargs option <cli-fiftyone-datasets-create>`:
+    :ref:`kwargs option <cli-fiftyone-datasets-create>`. For example, all
+    importers should support optional `max_samples`, `shuffle`, and `seed`
+    parameters, which provide support for importing a small subset of a
+    potentially large dataset:
 
     .. code-block:: shell
 
@@ -148,7 +155,8 @@ that you're loading.
             --name $NAME --dataset-dir $DATASET_DIR --type $TYPE \
             --kwargs \
                 max_samples=10 \
-                shuffle=True
+                shuffle=True \
+                seed=51
 
 .. _supported-import-formats:
 
@@ -549,6 +557,47 @@ in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageClassificationDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.FiftyOneImageClassificationDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _ImageClassificationDirectoryTree-import:
 
@@ -988,6 +1037,47 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageDetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.FiftyOneImageDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 .. _FiftyOneTemporalDetectionDataset-import:
 
 FiftyOneTemporalDetectionDataset
@@ -1128,6 +1218,47 @@ the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneTemporalDetectionDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.FiftyOneTemporalDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _COCODetectionDataset-import:
 
@@ -1282,13 +1413,53 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/coco-labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.COCODetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/coco-labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 If you have an existing dataset and corresponding model predictions stored in
 COCO format, then you can use
 :func:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` to conveniently
-add the labels to the dataset.
-
-The example below demonstrates a round-trip export and then re-import of both
-images-and-labels and labels-only data in COCO format:
+add the labels to the dataset. The example below demonstrates a round-trip
+export and then re-import of both images-and-labels and labels-only data in
+COCO format:
 
 .. code-block:: python
     :linenos:
@@ -1487,6 +1658,47 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VOCDetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/voc-labels"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.VOCDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/voc-labels
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.VOCDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 .. _KITTIDetectionDataset-import:
 
 KITTIDetectionDataset
@@ -1621,6 +1833,47 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/kitti-labels"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.KITTIDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/kitti-labels
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.KITTIDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 .. _YOLOv4Dataset-import:
 
 YOLOv4Dataset
@@ -1746,6 +1999,51 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.YOLOv4Dataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/yolo-labels"
+        classes = ["list", "of", "classes"]
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            classes=classes,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/yolo-labels
+        OBJECTS_PATH=/path/to/obj.names
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.YOLOv4Dataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH \
+                objects_path=$OBJECTS_PATH
 
 If you have an existing dataset and corresponding model predictions stored in
 YOLO format, then you can use
@@ -2251,6 +2549,47 @@ the above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageSegmentationDirectory
 
+You can also independently specify the locations of the masks and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/masks"
+
+        # Import dataset by explicitly providing paths to the source media and masks
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/masks
+
+        # Import dataset by explicitly providing paths to the source media and masks
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.ImageSegmentationDirectory \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 .. _CVATImageDataset-import:
 
 CVATImageDataset
@@ -2431,6 +2770,47 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/cvat-labels.xml"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.CVATImageDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/cvat-labels.xml
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.CVATImageDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _CVATVideoDataset-import:
 
@@ -2618,6 +2998,47 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATVideoDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/cvat-labels"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.CVATVideoDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/cvat-labels
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.CVATVideoDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _FiftyOneImageLabelsDataset-import:
 
@@ -3031,6 +3452,52 @@ as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/bdd-labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.BDDDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/bdd-labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.BDDDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
+.. note::
+
+    If the `name` key of your labels contains absolute paths to the source
+    media, then you can omit `data_path` parameter from the example above.
+
 .. _DICOMDataset-import:
 
 DICOMDataset
@@ -3326,6 +3793,52 @@ format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.GeoJSONDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/geo-labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.GeoJSONDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/geo-labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.GeoJSONDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
+.. note::
+
+    If the `filename` key of your labels contains absolute paths to the source
+    media, then you can omit the `data_path` parameter from the example above.
+
 .. _GeoTIFFDataset-import:
 
 GeoTIFFDataset
@@ -3574,6 +4087,54 @@ follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneDataset
 
+If you performed a :ref:`FiftyOneDataset export <FiftyOneDataset-export>`
+using the `rel_dir` parameter to strip a common prefix from the media filepaths
+in the dataset, then simply include the `rel_dir` parameter when importing back
+into FiftyOne to prepend the appropriate prefix to each media path:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/fiftyone-dataset"
+
+        # Import dataset, prepending `rel_dir` to each media path
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            rel_dir="/common/images/dir",
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/fiftyone-dataset
+
+        # Import dataset, prepending `rel_dir` to each media path
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.FiftyOneDataset \
+            --kwargs rel_dir=/common/images/dir
+
+.. note::
+
+    Exporting in :ref:`FiftyOneDataset format <FiftyOneDataset-export>` using
+    the `export_media=False` and `rel_dir` parameters is a convenient way to
+    transfer datasets between work environments, since this enables you to
+    store the media files wherever you wish in each environment and then simply
+    provide the appropriate `rel_dir` value as shown above when importing the
+    dataset into FiftyOne in a new environment.
+
 .. _custom-dataset-importer:
 
 Custom formats
@@ -3599,7 +4160,7 @@ a dataset from disk in your custom format using the following recipe:
     # Create an instance of your custom dataset importer
     importer = CustomDatasetImporter(...)
 
-    # Import the dataset!
+    # Import the dataset
     dataset = fo.Dataset.from_importer(importer)
 
 You can also define a custom |DatasetType| type, which enables you to import
@@ -3615,7 +4176,7 @@ method:
     # The `fiftyone.types.Dataset` subclass for your custom dataset
     dataset_type = CustomDataset
 
-    # Import the dataset!
+    # Import the dataset
     dataset = fo.Dataset.from_dir(dataset_type=dataset_type, ...)
 
 .. _writing-a-custom-dataset-importer:

@@ -45,7 +45,7 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         # Any subclass of `fiftyone.types.Dataset` is supported
         dataset_type = fo.types.COCODetectionDataset  # for example
 
-        # Export the dataset!
+        # Export the dataset
         dataset_or_view.export(
             export_dir=export_dir,
             dataset_type=dataset_type,
@@ -112,7 +112,7 @@ a |DatasetView| into any format of your choice via the basic recipe below.
         # Any subclass of `fiftyone.types.Dataset` is supported
         TYPE=fiftyone.types.COCODetectionDataset  # for example
 
-        # Export the dataset!
+        # Export the dataset
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --type $TYPE \
@@ -696,7 +696,7 @@ would only like to export labels.
         # the given `data_path` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneImageClassificationDataset,
-            data_path="/common/image/dir",
+            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
             export_media=False,
@@ -1098,7 +1098,7 @@ would only like to export labels.
         # the given `data_path` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneImageDetectionDataset,
-            data_path="/common/image/dir",
+            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
             export_media=False,
@@ -1124,7 +1124,7 @@ would only like to export labels.
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageDetectionDataset \
             --kwargs \
-                data_path="/common/images/dir" \
+                data_path=/common/images/dir \
                 labels_path=$LABELS_PATH \
                 export_media=False
 
@@ -1281,7 +1281,7 @@ would only like to export labels.
         # the given `data_path` as keys
         dataset_or_view.export(
             dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
-            data_path="/common/image/dir",
+            data_path="/common/images/dir",
             labels_path=labels_path,
             label_field=label_field,
             export_media=False,
@@ -1307,7 +1307,7 @@ would only like to export labels.
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneTemporalDetectionDataset \
             --kwargs \
-                data_path="/common/images/dir" \
+                data_path=/common/images/dir \
                 labels_path=$LABELS_PATH \
                 export_media=False
 
@@ -3374,7 +3374,7 @@ image's filepath, and then provide the new `rel_dir` when
             export_dir=export_dir,
             dataset_type=fo.types.FiftyOneDataset,
             export_media=False,
-            rel_dir="/common/image/dir",
+            rel_dir="/common/images/dir",
         )
 
   .. group-tab:: CLI
@@ -3398,7 +3398,17 @@ image's filepath, and then provide the new `rel_dir` when
             --type fiftyone.types.FiftyOneDataset \
             --kwargs \
                 export_media=False \
-                rel_dir="/common/image/dir"
+                rel_dir="/common/images/dir"
+
+.. note::
+
+    Exporting in FiftyOneDataset format as shown above using the
+    `export_media=False` and `rel_dir` parameters is a convenient way to
+    transfer datasets between work environments, since this enables you to
+    store the media files wherever you wish in each environment and then simply
+    provide the appropriate `rel_dir` value when
+    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
+    new environment.
 
 .. _custom-dataset-exporter:
 
@@ -3440,7 +3450,7 @@ datasets in your custom format using the following recipe:
     # The Dataset or DatasetView to export
     dataset_or_view = fo.Dataset(...)
 
-    # Export the dataset!
+    # Export the dataset
     dataset_or_view.export(dataset_type=dataset_type, ...)
 
 .. _writing-a-custom-dataset-exporter:
