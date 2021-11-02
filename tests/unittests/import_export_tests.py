@@ -515,6 +515,91 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         )
 
 
+class ImageClassificationsDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="cat", confidence=0.9)
+                    ]
+                ),
+            ),
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="dog", confidence=0.95)
+                    ]
+                ),
+            ),
+            fo.Sample(filepath=self._new_image()),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_fiftyone_image_classification_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.classifications"),
+            dataset2.count("predictions.classifications"),
+        )
+
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            label_field="predictions",
+        )
+
+        confs = dataset.values(
+            "predictions.classifications.confidence",
+            missing_value=-1,
+            unwind=True,
+        )
+        confs2 = dataset2.values(
+            "predictions.classifications.confidence",
+            missing_value=-1,
+            unwind=True,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertTrue(np.allclose(sorted(confs), sorted(confs2)))
+
+
 class ImageDetectionDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [
@@ -1558,6 +1643,35 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+
+        # Test import/export of run results
+
+        dataset.clone_sample_field("predictions", "ground_truth")
+
+        view = dataset.limit(2)
+        view.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="test"
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertTrue("test" in dataset.list_evaluations())
+        self.assertTrue("test" in dataset2.list_evaluations())
+
+        view2 = dataset2.load_evaluation_view("test")
+        self.assertEqual(len(view), len(view2))
+
+        info = dataset.get_evaluation_info("test")
+        info2 = dataset2.get_evaluation_info("test")
+        self.assertEqual(info.key, info2.key)
 
 
 class VideoDatasetTests(unittest.TestCase):

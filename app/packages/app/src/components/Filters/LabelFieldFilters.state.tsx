@@ -120,8 +120,20 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
 
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
+      const vPath = `${path}.value`;
 
-      let [cRange, cNone, cInf, cNinf, cNan, cExclude, lValues, lExclude] = [
+      let [
+        cRange,
+        cNone,
+        cInf,
+        cNinf,
+        cNan,
+        cExclude,
+        lValues,
+        lExclude,
+        vRange,
+        vNone,
+      ] = [
         get(
           numericField.rangeAtom({ modal, path: cPath, defaultRange: [0, 1] })
         ),
@@ -166,6 +178,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         ),
         get(stringField.selectedValuesAtom({ modal, path: lPath })),
         get(stringField.excludeAtom({ modal, path: lPath })),
+        get(numericField.rangeAtom({ modal, path: vPath })),
+        get(numericField.noneAtom({ modal, path: vPath })),
       ];
 
       if (cExclude) {
@@ -200,6 +214,10 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
           matchedTags.size == 0 ||
           (s.tags && s.tags.some((t) => matchedTags.has(t)));
 
+        const inValueRange =
+          vRange[0] - 0.005 <= s.value && s.value <= vRange[1] + 0.005;
+        const noValue = vNone && s.value === undefined;
+
         return (
           (inRange ||
             noConfidence ||
@@ -207,7 +225,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
             (cInf && s.confidence === "inf") ||
             (cNinf && s.confidence === "-inf")) &&
           (included || lValues.length === 0) &&
-          meetsTags
+          meetsTags &&
+          (inValueRange || noValue)
         );
       };
     }
@@ -254,6 +273,7 @@ export const fieldIsFiltered = selectorFamily<
     path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
+    const vPath = `${path}.value`;
     const hasHiddenLabels = modal
       ? get(selectors.hiddenFieldLabels(path.split(".")[0])).length > 0
       : false;
@@ -267,6 +287,12 @@ export const fieldIsFiltered = selectorFamily<
         })
       ) ||
       get(stringField.fieldIsFiltered({ ...isArgs, path: lPath })) ||
+      get(
+        numericField.fieldIsFiltered({
+          ...isArgs,
+          path: vPath,
+        })
+      ) ||
       hasHiddenLabels
     );
   },
