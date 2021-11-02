@@ -453,9 +453,8 @@ class TFRecordsLabeledImageDatasetImporter(
     in-memory and written to the provided ``images_dir`` during import.
 
     Args:
-        dataset_dir (None): the dataset directory
-        images_dir (None): the directory in which the images will be written.
-            If not provided, the images will be unpacked into ``dataset_dir``
+        dataset_dir (None): the dataset directory. If omitted,
+            ``tf_records_path`` must be provided
         tf_records_path (None): an optional parameter that enables explicit
             control over the location of the TF records. Can be any of the
             following:
@@ -468,6 +467,8 @@ class TFRecordsLabeledImageDatasetImporter(
                 records
 
             If None, the parameter will default to ``*record*``
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
         max_samples (None): a maximum number of samples to import. By default,
@@ -477,11 +478,16 @@ class TFRecordsLabeledImageDatasetImporter(
     def __init__(
         self,
         dataset_dir=None,
-        images_dir=None,
         tf_records_path=None,
+        images_dir=None,
         image_format=None,
         max_samples=None,
     ):
+        if dataset_dir is None and tf_records_path is None:
+            raise ValueError(
+                "Either `dataset_dir` or `tf_records_path` must be provided"
+            )
+
         tf_records_path = self._parse_labels_path(
             dataset_dir=dataset_dir,
             labels_path=tf_records_path,
@@ -555,9 +561,8 @@ class TFImageClassificationDatasetImporter(
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
-        images_dir (None): the directory in which the images will be written.
-            If not provided, the images will be unpacked into ``dataset_dir``
+        dataset_dir (None): the dataset directory. If omitted,
+            ``tf_records_path`` must be provided
         tf_records_path (None): an optional parameter that enables explicit
             control over the location of the TF records. Can be any of the
             following:
@@ -570,6 +575,8 @@ class TFImageClassificationDatasetImporter(
                 records
 
             If None, the parameter will default to ``*record*``
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
         max_samples (None): a maximum number of samples to import. By default,
@@ -595,9 +602,8 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
-        images_dir (None): the directory in which the images will be written.
-            If not provided, the images will be unpacked into ``dataset_dir``
+        dataset_dir (None): the dataset directory. If omitted,
+            ``tf_records_path`` must be provided
         tf_records_path (None): an optional parameter that enables explicit
             control over the location of the TF records. Can be any of the
             following:
@@ -610,6 +616,8 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
                 records
 
             If None, the parameter will default to ``*record*``
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
         max_samples (None): a maximum number of samples to import. By default,

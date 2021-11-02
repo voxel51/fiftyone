@@ -138,7 +138,8 @@ class YOLOv4DatasetImporter(
     See :ref:`this page <YOLOv4Dataset-import>` for format details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -205,6 +206,12 @@ class YOLOv4DatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/"
         )
@@ -351,7 +358,8 @@ class YOLOv5DatasetImporter(
     See :ref:`this page <YOLOv5Dataset-import>` for format details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``yaml_path``
+            must be provided
         yaml_path (None): an optional parameter that enables explicit control
             over the location of the dataset YAML file. Can be any of the
             following:
@@ -380,6 +388,11 @@ class YOLOv5DatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and yaml_path is None:
+            raise ValueError(
+                "Either `dataset_dir` or `yaml_path` must be provided"
+            )
+
         yaml_path = self._parse_labels_path(
             dataset_dir=dataset_dir,
             labels_path=yaml_path,

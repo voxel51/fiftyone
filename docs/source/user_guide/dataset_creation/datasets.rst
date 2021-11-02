@@ -2239,61 +2239,32 @@ subfolders of parallelly organized images and labels.
 You can create a FiftyOne dataset from a YOLOv5 dataset stored in the above
 format as follows:
 
-.. tabs::
+.. code-block:: python
+    :linenos:
 
-  .. group-tab:: Python
+    import fiftyone as fo
 
-    .. code-block:: python
-        :linenos:
+    name = "my-dataset"
+    dataset_dir = "/path/to/yolov5-dataset"
 
-        import fiftyone as fo
+    # The splits to load
+    splits = ["train", "val"]
 
-        name = "my-dataset"
-        dataset_dir = "/path/to/yolov5-dataset"
-
-        # Create the dataset
-        dataset = fo.Dataset.from_dir(
+    # Load the dataset, using tags to mark the samples in each split
+    dataset = fo.Dataset(name)
+    for split in splits:
+        dataset.add_dir(
             dataset_dir=dataset_dir,
             dataset_type=fo.types.YOLOv5Dataset,
-            name=name,
-        )
+            split=split,
+            tags=split,
+    )
 
-        # View summary info about the dataset
-        print(dataset)
+    # View summary info about the dataset
+    print(dataset)
 
-        # Print the first few samples in the dataset
-        print(dataset.head())
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        NAME=my-dataset
-        DATASET_DIR=/path/to/yolov5-dataset
-
-        # Create the dataset
-        fiftyone datasets create \
-            --name $NAME \
-            --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.YOLOv5Dataset
-
-        # View summary info about the dataset
-        fiftyone datasets info $NAME
-
-        # Print the first few samples in the dataset
-        fiftyone datasets head $NAME
-
-    To view a YOLOv5 dataset stored in the above format in the FiftyOne App
-    without creating a persistent FiftyOne dataset, you can execute:
-
-    .. code-block:: shell
-
-        DATASET_DIR=/path/to/yolov5-dataset
-
-        # View the dataset in the App
-        fiftyone app view \
-            --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.YOLOv5Dataset
+    # Print the first few samples in the dataset
+    print(dataset.head())
 
 If you have an existing dataset and corresponding model predictions stored in
 YOLO format, then you can use
