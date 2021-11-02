@@ -28,10 +28,6 @@ const BorderDiv = styled.div`
 const AttrBlock = styled.div`
   padding: 0.1rem 0 0 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-row-gap: 0.1rem;
-  grid-column-gap: 0.5rem;
 `;
 
 const TooltipDiv = animated(styled(ContentDiv)`
