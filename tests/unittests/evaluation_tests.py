@@ -15,6 +15,195 @@ import fiftyone as fo
 from decorators import drop_datasets
 
 
+class RegressionTests(unittest.TestCase):
+    def _make_regression_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="image1.jpg")
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            ground_truth=fo.Regression(value=1.0),
+            predictions=None,
+        )
+        sample3 = fo.Sample(
+            filepath="image3.jpg",
+            ground_truth=None,
+            predictions=fo.Regression(value=1.0, confidence=0.9),
+        )
+        sample4 = fo.Sample(
+            filepath="image4.jpg",
+            ground_truth=fo.Regression(value=2.0),
+            predictions=fo.Regression(value=1.9, confidence=0.9),
+        )
+        sample5 = fo.Sample(
+            filepath="image5.jpg",
+            ground_truth=fo.Regression(value=2.8),
+            predictions=fo.Regression(value=3.0, confidence=0.9),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3, sample4, sample5])
+
+        return dataset
+
+    @drop_datasets
+    def test_evaluate_regressions_simple(self):
+        dataset = self._make_regression_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.print_metrics()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.print_metrics()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 2)
+
+        actual = dataset.values("eval")
+        expected = [None, None, None, 0.01, 0.04]
+
+        for a, e in zip(actual, expected):
+            if e is None:
+                self.assertIsNone(a)
+            else:
+                self.assertAlmostEqual(a, e)
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval", dataset.get_field_schema())
+
+
+class VideoRegressionTests(unittest.TestCase):
+    def _make_video_regression_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+        sample3 = fo.Sample(filepath="video3.mp4")
+        sample3.frames[1] = fo.Frame(
+            ground_truth=fo.Regression(value=1.0), predictions=None,
+        )
+        sample3.frames[2] = fo.Frame(
+            ground_truth=None,
+            predictions=fo.Regression(value=1.0, confidence=0.9),
+        )
+        sample4 = fo.Sample(filepath="video4.mp4")
+        sample4.frames[1] = fo.Frame(
+            ground_truth=fo.Regression(value=2.0),
+            predictions=fo.Regression(value=1.9, confidence=0.9),
+        )
+        sample4.frames[2] = fo.Frame(
+            ground_truth=fo.Regression(value=2.8),
+            predictions=fo.Regression(value=3.0, confidence=0.9),
+        )
+
+        dataset.add_samples([sample1, sample2, sample3, sample4])
+
+        return dataset
+
+    @drop_datasets
+    def test_evaluate_video_regressions_simple(self):
+        dataset = self._make_video_regression_dataset()
+
+        #
+        # Test empty view
+        #
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_regressions(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.print_metrics()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        #
+        # Test evaluation (including missing data)
+        #
+
+        results = dataset.evaluate_regressions(
+            "frames.predictions",
+            gt_field="frames.ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        dataset.load_evaluation_view("eval")
+        dataset.get_evaluation_info("eval")
+
+        results.print_metrics()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 2)
+
+        actual = dataset.values("eval")
+        expected = [None, None, None, 0.025]
+
+        for a, e in zip(actual, expected):
+            if e is None:
+                self.assertIsNone(a)
+            else:
+                self.assertAlmostEqual(a, e)
+
+        actual = dataset.values("frames.eval", unwind=True)
+        expected = [None, None, None, 0.01, 0.04]
+
+        for a, e in zip(actual, expected):
+            if e is None:
+                self.assertIsNone(a)
+            else:
+                self.assertAlmostEqual(a, e)
+
+        dataset.delete_evaluation("eval")
+
+        self.assertNotIn("eval", dataset.list_evaluations())
+        self.assertNotIn("eval", dataset.get_field_schema())
+        self.assertNotIn("eval", dataset.get_frame_field_schema())
+
+
 class ClassificationTests(unittest.TestCase):
     def _make_classification_dataset(self):
         dataset = fo.Dataset()

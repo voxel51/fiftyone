@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-import
+import sklearn.linear_model as skl
 import sklearn.metrics.pairwise as skp
 import sklearn.metrics as skm
 
@@ -26,6 +27,7 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 from .base import InteractivePlot
@@ -123,8 +125,141 @@ def plot_confusion_matrix(
     return fig
 
 
+def plot_regressions(
+    ytrue,
+    ypred,
+    samples=None,
+    ids=None,
+    labels=None,
+    sizes=None,
+    classes=None,
+    gt_field=None,
+    pred_field=None,
+    best_fit_label=None,
+    marker_size=None,
+    cmap=None,
+    ax=None,
+    figsize=None,
+    style="seaborn-ticks",
+    **kwargs,
+):
+    """Plots the given regression results.
+
+    Args:
+        ytrue: an array of ground truth values
+        ypred: an array of predicted values
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        ids (None): an array of sample or frame IDs corresponding to the
+            regressions. If not provided but ``samples`` are provided, the
+            appropriate IDs will be extracted from the samples
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric or string values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
+        best_fit_label (None): a custom legend label for the best fit line
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        cmap (None): a colormap recognized by ``matplotlib``
+        ax (None): an optional matplotlib axis to plot in
+        figsize (None): an optional ``(width, height)`` for the figure, in
+            inches
+        style ("seaborn-ticks"): a style to use for the plot
+        **kwargs: optional keyword arguments for matplotlib's ``scatter()``
+
+    Returns:
+        a matplotlib figure
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+
+    points = np.stack([ytrue, ypred], axis=-1)
+
+    points, labels, sizes, _, inds, _ = _parse_scatter_inputs(
+        points, labels, sizes, classes
+    )
+
+    if ids is not None and inds is not None:
+        ids = np.asarray(ids)[inds]
+
+    ytrue = points[:, 0]
+    ypred = points[:, 1]
+
+    if best_fit_label is None:
+        r2_score = skm.r2_score(ytrue, ypred, sample_weight=None)
+        best_fit_label = "r^2: %0.3f" % r2_score
+
+    model = skl.LinearRegression()
+    model.fit(ytrue[:, np.newaxis], ypred)
+
+    xline = np.array([ytrue.min(), ytrue.max()])
+    yline = model.predict(xline[:, np.newaxis])
+
+    xlabel = gt_field if gt_field is not None else "Ground truth"
+    ylabel = pred_field if pred_field is not None else "Predictions"
+
+    with plt.style.context(style):
+        ax.plot(xline, yline, color="k", label=best_fit_label)
+        ax.set(xlabel=xlabel, ylabel=ylabel)
+        ax.legend()
+        ax.axis("equal")
+
+    if (
+        samples is not None
+        and gt_field is not None
+        and samples._is_frame_field(gt_field)
+    ):
+        link_field = "frames"
+    else:
+        link_field = None
+
+    return scatterplot(
+        points,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
+        marker_size=marker_size,
+        cmap=cmap,
+        ax=ax,
+        ax_equal=True,
+        figsize=figsize,
+        style=style,
+        **kwargs,
+    )
+
+
 def plot_pr_curve(
-    precision, recall, label=None, ax=None, figsize=None, **kwargs
+    precision,
+    recall,
+    label=None,
+    ax=None,
+    figsize=None,
+    style="seaborn-ticks",
+    **kwargs,
 ):
     """Plots a precision-recall (PR) curve.
 
@@ -135,13 +270,17 @@ def plot_pr_curve(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
+        style ("seaborn-ticks"): a style to use for the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
         a matplotlib figure
     """
-    display = skm.PrecisionRecallDisplay(precision=precision, recall=recall)
-    display.plot(ax=ax, label=label, **kwargs)
+    with plt.style.context(style):
+        display = skm.PrecisionRecallDisplay(
+            precision=precision, recall=recall
+        )
+        display.plot(ax=ax, label=label, **kwargs)
 
     if figsize is not None:
         display.figure_.set_size_inches(*figsize)
@@ -150,7 +289,13 @@ def plot_pr_curve(
 
 
 def plot_pr_curves(
-    precisions, recall, classes, ax=None, figsize=None, **kwargs
+    precisions,
+    recall,
+    classes,
+    ax=None,
+    figsize=None,
+    style="seaborn-ticks",
+    **kwargs,
 ):
     """Plots a set of per-class precision-recall (PR) curves.
 
@@ -162,6 +307,7 @@ def plot_pr_curves(
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
+        style ("seaborn-ticks"): a style to use for the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
@@ -171,16 +317,17 @@ def plot_pr_curves(
     avg_precisions = np.mean(precisions, axis=1)
     inds = np.argsort(-avg_precisions)  # negative for descending order
 
-    for idx in inds:
-        precision = precisions[idx]
-        _class = classes[idx]
-        avg_precision = avg_precisions[idx]
-        label = "AP = %.2f, class = %s" % (avg_precision, _class)
-        display = skm.PrecisionRecallDisplay(
-            precision=precision, recall=recall
-        )
-        display.plot(ax=ax, label=label, **kwargs)
-        ax = display.ax_
+    with plt.style.context(style):
+        for idx in inds:
+            precision = precisions[idx]
+            _class = classes[idx]
+            avg_precision = avg_precisions[idx]
+            label = "AP = %.2f, class = %s" % (avg_precision, _class)
+            display = skm.PrecisionRecallDisplay(
+                precision=precision, recall=recall
+            )
+            display.plot(ax=ax, label=label, **kwargs)
+            ax = display.ax_
 
     if ax is None:
         ax = plt.gca()
@@ -191,7 +338,15 @@ def plot_pr_curves(
     return ax.figure
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, ax=None, figsize=None, **kwargs):
+def plot_roc_curve(
+    fpr,
+    tpr,
+    roc_auc=None,
+    ax=None,
+    figsize=None,
+    style="seaborn-ticks",
+    **kwargs,
+):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
@@ -201,13 +356,15 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, ax=None, figsize=None, **kwargs):
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
+        style ("seaborn-ticks"): a style to use for the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
         a matplotlib figure
     """
-    display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
-    display.plot(ax=ax, **kwargs)
+    with plt.style.context(style):
+        display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
+        display.plot(ax=ax, **kwargs)
 
     if figsize is not None:
         display.figure_.set_size_inches(*figsize)
@@ -218,6 +375,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, ax=None, figsize=None, **kwargs):
 def scatterplot(
     points,
     samples=None,
+    ids=None,
     link_field=None,
     labels=None,
     sizes=None,
@@ -249,13 +407,16 @@ def scatterplot(
         points: a ``num_points x num_dims`` array of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        ids (None): an array of IDs corresponding to the points. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
             ``points``. Can be any of the following:
 
             -   None, if the points correspond to samples
+            -   ``"frames"``, if the points correspond to frames
             -   the name of a :class:`fiftyone.core.labels.Label` field, if the
                 points correspond to the labels in this field
-
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -266,9 +427,8 @@ def scatterplot(
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
             -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+                refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -279,9 +439,8 @@ def scatterplot(
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
             -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+                refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         marker_size (None): the marker size to use. If ``sizes`` are provided,
@@ -312,8 +471,9 @@ def scatterplot(
     labels = _get_data_for_points(points, samples, labels, "labels")
     sizes = _get_data_for_points(points, samples, sizes, "sizes")
 
-    ids = None
-    if samples is not None:
+    if ids is not None:
+        ids = np.asarray(ids)
+    elif samples is not None:
         if num_dims != 2:
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
@@ -334,7 +494,7 @@ def scatterplot(
             **kwargs,
         )
 
-        if num_dims != 2:
+        if samples is None or num_dims != 2:
             fig = collection.axes.figure
             plt.tight_layout()
             return fig
@@ -342,14 +502,18 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        if link_field is not None:
-            link_type = "labels"
-            selection_mode = "patches"
-            init_patches_fcn = lambda view: view.to_patches(link_field)
-        else:
+        if link_field is None:
             link_type = "samples"
             selection_mode = None
             init_patches_fcn = None
+        elif link_field == "frames" and samples.media_type == fom.VIDEO:
+            link_type = "frames"
+            selection_mode = None
+            init_patches_fcn = None
+        else:
+            link_type = "labels"
+            selection_mode = "patches"
+            init_patches_fcn = lambda view: view.to_patches(link_field)
 
         return InteractiveCollection(
             collection,
@@ -396,13 +560,17 @@ def _unwind_values(values):
 
 
 def _get_ids_for_points(points, samples, link_field=None):
-    if link_field is not None:
-        ids = samples._get_label_ids(fields=link_field)
-    else:
+    if link_field is None:
         ids = samples.values("id")
+        ptype = "sample"
+    elif link_field == "frames" and samples.media_type == fom.VIDEO:
+        ids = samples.values("frames.id", unwind=True)
+        ptype = "frame"
+    else:
+        ids = samples._get_label_ids(fields=link_field)
+        ptype = "label"
 
     if len(ids) != len(points):
-        ptype = "label" if link_field is not None else "sample"
         raise ValueError(
             "Number of %s IDs (%d) does not match number of points "
             "(%d). You may have missing data/labels that you need to omit "
@@ -416,6 +584,7 @@ def _get_ids_for_points(points, samples, link_field=None):
 def location_scatterplot(
     locations=None,
     samples=None,
+    ids=None,
     labels=None,
     sizes=None,
     classes=None,
@@ -457,9 +626,11 @@ def location_scatterplot(
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
-
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        ids (None): an array of IDs corresponding to the locations. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -469,7 +640,6 @@ def location_scatterplot(
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -479,7 +649,6 @@ def location_scatterplot(
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
-
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         map_type ("satellite"): the map type to render. Supported values are
@@ -532,6 +701,7 @@ def location_scatterplot(
     return scatterplot(
         locations,
         samples=samples,
+        ids=ids,
         labels=labels,
         sizes=sizes,
         classes=classes,
