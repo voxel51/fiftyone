@@ -515,6 +515,91 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         )
 
 
+class ImageClassificationsDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="cat", confidence=0.9)
+                    ]
+                ),
+            ),
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="dog", confidence=0.95)
+                    ]
+                ),
+            ),
+            fo.Sample(filepath=self._new_image()),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @drop_datasets
+    def test_fiftyone_image_classification_dataset(self):
+        dataset = self._make_dataset()
+
+        # Standard format
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            label_field="predictions",
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.classifications"),
+            dataset2.count("predictions.classifications"),
+        )
+
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            label_field="predictions",
+        )
+
+        confs = dataset.values(
+            "predictions.classifications.confidence",
+            missing_value=-1,
+            unwind=True,
+        )
+        confs2 = dataset2.values(
+            "predictions.classifications.confidence",
+            missing_value=-1,
+            unwind=True,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+
+        # sorting is necessary because sample order is arbitrary
+        self.assertTrue(np.allclose(sorted(confs), sorted(confs2)))
+
+
 class ImageDetectionDatasetTests(ImageDatasetTests):
     def _make_dataset(self):
         samples = [
