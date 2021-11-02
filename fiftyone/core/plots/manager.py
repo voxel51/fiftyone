@@ -510,7 +510,7 @@ class PlotManager(object):
                 self._current_sample_ids = current_view.values("id")
 
         if self.has_frame_links:
-            # Is samples are selected in the App, only record their frame IDs
+            # If samples are selected in the App, only record their frame IDs
             # Otherwise, record all frame IDs in the view
             if session.selected:
                 _view = current_view.select(session.selected)
