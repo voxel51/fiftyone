@@ -406,11 +406,18 @@ you will provide it to methods like
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
-.. note::
+.. warning::
 
-    Calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    will upload the source media files to the annotation backend.
+    FiftyOne assumes that all labels in an annotation run can fit in memory.
+
+    If you are annotating very large scale video datasets with dense frame
+    labels, you may violate this assumption. Instead, consider breaking the
+    work into multiple smaller annotation runs that each contain limited
+    subsets of the samples you wish to annotate.
+
+    You can use :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
+    to get a sense for the total size of the labels in a dataset as a rule of
+    thumb to estimate the size of a candidate annotation run.
 
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
@@ -483,11 +490,14 @@ more details:
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
     applicable when editing existing label fields
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute of
-    existing labels to be modified. Only applicable when editing existing label
-    fields
+    existing labels to be modified. Only applicable when editing existing
+    fields with `label` attributes
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute
+    of existing video tracks to be modified. Only applicable when editing
+    existing frame fields with `index` attributes
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
-    applicable when editing existing label fields
+    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
+    Only applicable when editing existing spatial label fields
 
 |br|
 In addition, each annotation backend can typically be configured in a variety
@@ -730,6 +740,8 @@ following flags to
 -   **allow_deletions** (*True*): whether to allow labels to be deleted
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute to
     be modified
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute of
+    video tracks to be modified
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
     properties (bounding boxes, vertices, keypoints, etc) of labels
 
