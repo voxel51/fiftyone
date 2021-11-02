@@ -182,6 +182,9 @@ class YOLOv4DatasetImporter(
             If None, the parameter will default to ``obj.names``
         classes (None): the list of possible class labels. This does not need
             to be provided if ``objects_path`` contains the class labels
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -197,6 +200,7 @@ class YOLOv4DatasetImporter(
         images_path=None,
         objects_path=None,
         classes=None,
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -233,6 +237,7 @@ class YOLOv4DatasetImporter(
         self.images_path = images_path
         self.objects_path = objects_path
         self.classes = classes
+        self.include_all_data = include_all_data
 
         self._info = None
         self._classes = None
@@ -324,6 +329,9 @@ class YOLOv4DatasetImporter(
         info = {}
         if classes is not None:
             info["classes"] = classes
+
+        if not self.include_all_data:
+            image_paths = labels_paths_map.keys()
 
         self._info = info
         self._classes = classes
