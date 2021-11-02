@@ -11,6 +11,7 @@ from collections import defaultdict
 import csv
 import logging
 import multiprocessing
+import multiprocessing.dummy
 import os
 import random
 import warnings
@@ -27,6 +28,7 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
 
 
@@ -1580,23 +1582,22 @@ def _download_masks_if_necessary(image_ids, dataset_dir, split, download=True):
 def _download_images_if_necessary(
     image_ids, split, dataset_dir, num_workers=None, download=True
 ):
-    if num_workers is None or num_workers < 1:
-        num_workers = multiprocessing.cpu_count()
-
     data_dir = os.path.join(dataset_dir, "data")
     etau.ensure_dir(data_dir)
 
+    urls = {}
     inputs = []
     num_existing = 0
     for image_id in image_ids:
         filepath = os.path.join(data_dir, image_id + ".jpg")
         obj = split + "/" + image_id + ".jpg"  # AWS path, always use "/"
         if not os.path.isfile(filepath):
-            inputs.append((filepath, obj))
+            url = "s3://%s/%s" % (_BUCKET_NAME, obj)
+            urls[url] = filepath
         else:
             num_existing += 1
 
-    num_images = len(inputs)
+    num_images = len(urls)
 
     if num_images == 0:
         if download:
@@ -1616,34 +1617,9 @@ def _download_images_if_necessary(
     else:
         logger.info("Downloading %d images", num_images)
 
-    if num_workers == 1:
-        s3_client = boto3.client(
-            "s3",
-            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-        )
-        with fou.ProgressBar(iters_str="images") as pb:
-            for filepath, obj in pb(inputs):
-                s3_client.download_file(_BUCKET_NAME, obj, filepath)
-    else:
-        with fou.ProgressBar(total=num_images, iters_str="images") as pb:
-            with multiprocessing.Pool(num_workers, _initialize_worker) as pool:
-                for _ in pool.imap_unordered(_do_s3_download, inputs):
-                    pb.update()
+    foua.download_from_s3(urls, num_workers=num_workers)
 
     return num_images
-
-
-def _initialize_worker():
-    global s3_client
-    s3_client = boto3.client(
-        "s3",
-        config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-    )
-
-
-def _do_s3_download(args):
-    filepath, obj = args
-    s3_client.download_file(_BUCKET_NAME, obj, filepath)
 
 
 def _verify_version(version):
