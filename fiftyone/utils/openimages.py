@@ -10,14 +10,10 @@ dataset.
 from collections import defaultdict
 import csv
 import logging
-import multiprocessing
-import multiprocessing.dummy
 import os
 import random
 import warnings
 
-import boto3
-import botocore
 import pandas as pd
 
 import eta.core.image as etai
@@ -27,7 +23,6 @@ import eta.core.web as etaw
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
 
@@ -1586,7 +1581,6 @@ def _download_images_if_necessary(
     etau.ensure_dir(data_dir)
 
     urls = {}
-    inputs = []
     num_existing = 0
     for image_id in image_ids:
         filepath = os.path.join(data_dir, image_id + ".jpg")
