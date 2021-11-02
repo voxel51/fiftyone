@@ -2104,7 +2104,7 @@ follows:
 
 You can also perform labels-only exports of YOLO-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:
-q
+
 .. code-block:: python
     :linenos:
 

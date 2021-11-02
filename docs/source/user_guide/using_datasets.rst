@@ -841,15 +841,15 @@ that you can use to perform batch queries and edits to sample tags:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart").clone()
-
     print(dataset.count_sample_tags())  # {'validation': 200}
 
+    # Tag samples in a view
     test_view = dataset.limit(100)
     test_view.untag_samples("validation")
     test_view.tag_samples("test")
-
     print(dataset.count_sample_tags())  # {'validation': 100, 'test': 100}
 
+    # Create a view containing samples with a specific tag
     validation_view = dataset.match_tags("validation")
     print(len(validation_view))  # 100
 
