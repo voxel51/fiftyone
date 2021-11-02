@@ -31,7 +31,7 @@
         "react-hotkeys": "^2.0.0",
         "react-input-autosize": "^3.0.0",
         "react-is": "^17.0.1",
-        "react-spring": "8.0.1",
+        "react-spring": "^9.2.1",
         "react-use-gesture": "^9.0.0",
         "react-use-measure": "^2.0.1",
         "react-uuid": "^1.0.2",

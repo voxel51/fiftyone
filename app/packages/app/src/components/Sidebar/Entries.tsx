@@ -15,6 +15,12 @@ import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
 import { colorMap } from "../../recoil/selectors";
 
+type GroupEntry = {
+  name: string;
+};
+
+const GroupEntry = ({ name }) => {};
+
 const EntryCounts = ({
   path,
   modal,

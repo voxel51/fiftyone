@@ -81,7 +81,6 @@ const useClose = () => {
     ({ reset, set }) => async () => {
       clearModal();
       set(atoms.connected, false);
-
       reset(atoms.stateDescription);
     },
     []
