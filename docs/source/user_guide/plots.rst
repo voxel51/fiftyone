@@ -479,6 +479,87 @@ notebook:
    :alt: location-scatterplot-interactive
    :align: center
 
+.. _regression-plots:
+
+Regression plots
+________________
+
+When you use evaluation methods such as
+:meth:`evaluate_regressions() <fiftyone.core.collections.SampleCollection.evaluate_regressions>`
+to evaluate model predictions, the regression plots that you can generate by
+calling the :meth:`plot_results() <fiftyone.utils.eval.regression.RegressionResults.plot_results>`
+method are responsive plots that can be attached to App instances to
+interactively explore specific cases of your model's performance.
+
+.. note::
+
+    See :ref:`this page <evaluating-regressions>` for an in-depth guide to using
+    FiftyOne to evaluate regression models.
+
+The example below demonstrates using an interactive regression plot to explore
+the results of some fake regression data on the
+:ref:`quickstart <dataset-zoo-quickstart>` dataset.
+
+In this setup, you can lasso scatter points to select the corresponding samples
+in the App.
+
+Likewise, whenever you modify the Session's view, either in the App or by
+programmatically setting
+:meth:`session.view <fiftyone.core.session.Session.view>`, the regression plot
+is automatically updated to select the scatter points that are included in the
+current view.
+
+Each block in the example code below denotes a separate cell in a Jupyter
+notebook:
+
+.. code-block:: python
+    :linenos:
+
+    import random
+    import numpy as np
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart").select_fields().clone()
+
+    # Populate some fake regression + weather data
+    for idx, sample in enumerate(dataset, 1):
+        ytrue = random.random() * idx
+        ypred = ytrue + np.random.randn() * np.sqrt(ytrue)
+        confidence = random.random()
+        sample["ground_truth"] = fo.Regression(value=ytrue)
+        sample["predictions"] = fo.Regression(value=ypred, confidence=confidence)
+        sample["weather"] = random.choice(["sunny", "cloudy", "rainy"])
+        sample.save()
+
+    # Evaluate the predictions in the `predictions` field with respect to the
+    # values in the `ground_truth` field
+    results = dataset.evaluate_regressions(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+    )
+
+    # Launch the App to explore
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Plot a scatterplot of the results colored by `weather` and scaled by
+    # `confidence`
+    plot = results.plot_results(labels="weather", sizes="predictions.confidence")
+    plot.show()
+
+    # Connect to session
+    session.plots.attach(plot)
+
+.. image:: /images/plots/regression-evaluation.gif
+   :alt: regression-evaluation
+   :align: center
+
 .. _confusion-matrix-plots:
 
 Confusion matrices

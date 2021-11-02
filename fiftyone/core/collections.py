@@ -1653,6 +1653,65 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
+    def evaluate_regressions(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        missing=None,
+        method="simple",
+        **kwargs,
+    ):
+        """Evaluates the regression predictions in this collection with respect
+        to the specified ground truth values.
+
+        You can customize the evaluation method by passing additional
+        parameters for the method's config class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.regression.SimpleEvaluationConfig`
+
+        If an ``eval_key`` is specified, then this method will record some
+        statistics on each sample:
+
+        -   When evaluating sample-level fields, an ``eval_key`` field will be
+            populated on each sample recording the error of that sample's
+            prediction.
+
+        -   When evaluating frame-level fields, an ``eval_key`` field will be
+            populated on each frame recording the error of that frame's
+            prediction. In addition, an ``eval_key`` field will be populated on
+            each sample that records the average error of the frame predictions
+            of the sample.
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Regression` instances
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Regression` instances
+            eval_key (None): a string key to use to refer to this evaluation
+            missing (None): a missing value. Any None-valued regressions are
+                given this value for results purposes
+            method ("simple"): a string specifying the evaluation method to use.
+                Supported values are ``("simple")``
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
+                being used
+
+        Returns:
+            a :class:`fiftyone.utils.eval.regression.RegressionResults`
+        """
+        return foue.evaluate_regressions(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            missing=missing,
+            method=method,
+            **kwargs,
+        )
+
     def evaluate_classifications(
         self,
         pred_field,
@@ -2426,7 +2485,7 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def exists(self, field, bool=True):
+    def exists(self, field, bool=None):
         """Returns a view containing the samples in the collection that have
         (or do not have) a non-``None`` value for the given field or embedded
         field.
@@ -2484,8 +2543,8 @@ class SampleCollection(object):
 
         Args:
             field: the field name or ``embedded.field.name``
-            bool (True): whether to check if the field exists (True) or does
-                not exist (False)
+            bool (None): whether to check if the field exists (None or True) or
+                does not exist (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -3630,13 +3689,16 @@ class SampleCollection(object):
 
     @view_stage
     def match_labels(
-        self, labels=None, ids=None, tags=None, filter=None, fields=None
+        self,
+        labels=None,
+        ids=None,
+        tags=None,
+        filter=None,
+        fields=None,
+        bool=None,
     ):
-        """Selects the samples from the collection that contain the specified
-        labels.
-
-        The returned view will only contain samples that have at least one
-        label that matches the specified selection criteria.
+        """Selects the samples from the collection that contain (or do not
+        contain) at least one label that matches the specified criteria.
 
         Note that, unlike :meth:`select_labels` and :meth:`filter_labels`, this
         stage will not filter the labels themselves; it only selects the
@@ -3656,6 +3718,10 @@ class SampleCollection(object):
         -   Provide the ``filter`` argument to match labels based on a boolean
             :class:`fiftyone.core.expressions.ViewExpression` that is applied
             to each individual :class:`fiftyone.core.labels.Label` element
+
+        -   Pass ``bool=False`` to negate the operation and instead match
+            samples that *do not* contain at least one label matching the
+            specified criteria
 
         If multiple criteria are specified, labels must match all of them in
         order to trigger a sample match.
@@ -3747,18 +3813,26 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Detections`, the filter is applied
                 to the list elements, not the root field
             fields (None): a field or iterable of fields from which to select
+            bool (None): whether to match samples that have (None or True) or
+                do not have (False) at least one label that matches the
+                specified criteria
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
             fos.MatchLabels(
-                labels=labels, ids=ids, tags=tags, filter=filter, fields=fields
+                labels=labels,
+                ids=ids,
+                tags=tags,
+                filter=filter,
+                fields=fields,
+                bool=bool,
             )
         )
 
     @view_stage
-    def match_tags(self, tags, bool=True):
+    def match_tags(self, tags, bool=None):
         """Returns a view containing the samples in the collection that have
         (or do not have) any of the given tag(s).
 
@@ -3809,8 +3883,8 @@ class SampleCollection(object):
 
         Args:
             tags: the tag or iterable of tags to match
-            bool (True): whether to match samples that have (True) or do not
-                have (False) the given tags
+            bool (None): whether to match samples that have (None or True) or
+                do not have (False) the given tags
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5918,6 +5992,7 @@ class SampleCollection(object):
         allow_additions=True,
         allow_deletions=True,
         allow_label_edits=True,
+        allow_index_edits=True,
         allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
@@ -6010,10 +6085,14 @@ class SampleCollection(object):
                 applicable when editing existing label fields
             allow_label_edits (True): whether to allow the ``label`` attribute
                 of existing labels to be modified. Only applicable when editing
-                existing label fields
+                existing fields with ``label`` attributes
+            allow_index_edits (True): whether to allow the ``index`` attribute
+                of existing video tracks to be modified. Only applicable when
+                editing existing frame fields with ``index`` attributes
             allow_spatial_edits (True): whether to allow edits to the spatial
-                properties (bounding boxes, vertices, keypoints, etc) of
-                labels. Only applicable when editing existing label fields
+                properties (bounding boxes, vertices, keypoints, masks, etc) of
+                labels. Only applicable when editing existing spatial label
+                fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -6039,6 +6118,7 @@ class SampleCollection(object):
             allow_additions=allow_additions,
             allow_deletions=allow_deletions,
             allow_label_edits=allow_label_edits,
+            allow_index_edits=allow_index_edits,
             allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,

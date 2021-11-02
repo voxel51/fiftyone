@@ -31,6 +31,7 @@ export const KEYPOINT = "Keypoint";
 export const KEYPOINTS = "Keypoints";
 export const POLYLINE = "Polyline";
 export const POLYLINES = "Polylines";
+export const REGRESSION = "Regression";
 export const SEGMENTATION = "Segmentation";
 export const TEMPORAL_DETECTION = "TemporalDetection";
 export const TEMPORAL_DETECTIONS = "TemporalDetections";
@@ -45,11 +46,16 @@ export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 
-export const MOMENT_CLASSIFICATIONS = [CLASSIFICATION, CLASSIFICATIONS];
+export const MOMENT_CLASSIFICATIONS = [
+  CLASSIFICATION,
+  CLASSIFICATIONS,
+  REGRESSION,
+];
 
 export const LABEL_TAGS_CLASSES = [
   CLASSIFICATION,
   CLASSIFICATIONS,
+  REGRESSION,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
 ];
@@ -75,6 +81,7 @@ export const LABELS = {
   [POLYLINE]: POLYLINE,
   [POLYLINES]: POLYLINES,
   [SEGMENTATION]: SEGMENTATION,
+  [REGRESSION]: REGRESSION,
   [TEMPORAL_DETECTION]: TEMPORAL_DETECTION,
   [TEMPORAL_DETECTIONS]: TEMPORAL_DETECTIONS,
 };

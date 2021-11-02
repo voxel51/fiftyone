@@ -16,6 +16,8 @@ from PIL import ImageColor
 import plotly.colors as pc
 import plotly.express as px
 import plotly.graph_objects as go
+import sklearn.linear_model as skl
+import sklearn.metrics as skm
 
 import eta.core.utils as etau
 
@@ -23,6 +25,7 @@ import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 from .base import Plot, InteractivePlot, ResponsivePlot
@@ -37,6 +40,7 @@ _DEFAULT_LAYOUT = dict(
 
 _DEFAULT_LINE_COLOR = "#FF6D04"
 _DEFAULT_CONTINUOUS_COLORSCALE = "viridis"
+_MAX_LABEL_TRACES = 25
 
 
 def plot_confusion_matrix(
@@ -215,7 +219,178 @@ def _plot_confusion_matrix_interactive(
     return plot
 
 
-def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
+def plot_regressions(
+    ytrue,
+    ypred,
+    samples=None,
+    ids=None,
+    labels=None,
+    sizes=None,
+    classes=None,
+    gt_field=None,
+    pred_field=None,
+    figure=None,
+    best_fit_label=None,
+    marker_size=None,
+    labels_title=None,
+    sizes_title=None,
+    show_colorbar_title=None,
+    **kwargs,
+):
+    """Plots the given regression results.
+
+    If IDs are provided and you are working in a notebook environment with the
+    default plotly backend, this method returns an :class:`InteractiveScatter`
+    plot that you can attach to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected points in
+    the plot.
+
+    Args:
+        ytrue: an array of ground truth values
+        ypred: an array of predicted values
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were generated. Only used by the "plotly"
+            backend when IDs are provided
+        ids (None): an array of IDs corresponding to the regressions
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric or string values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings. If provided, the
+            element order of this list also controls the z-order and legend
+            order of multitrace plots (first class is rendered first, and thus
+            on the bottom, and appears first in the legend)
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
+        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
+            to which to add the plot
+        best_fit_label (None): a custom legend label for the best fit line
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        labels_title (None): a title string to use for ``labels`` in the
+            tooltip and the colorbar title. By default, if ``labels`` is a
+            field name, this name will be used, otherwise the colorbar will not
+            have a title and the tooltip will use "label"
+        sizes_title (None): a title string to use for ``sizes`` in the tooltip.
+            By default, if ``sizes`` is a field name, this name will be used,
+            otherwise the tooltip will use "size"
+        show_colorbar_title (None): whether to show the colorbar title. By
+            default, a title will be shown only if a value was pasesd to
+            ``labels_title`` or an appropriate default can be inferred from
+            the ``labels`` parameter
+        **kwargs: optional keyword arguments for
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
+
+    Returns:
+        one of the following:
+
+        -   a :class:`InteractiveScatter`, if IDs are provided
+        -   a :class:`PlotlyNotebookPlot`, if no IDs are provided but you are
+            working in a Jupyter notebook
+        -   a plotly figure, otherwise
+    """
+    if (
+        samples is not None
+        and gt_field is not None
+        and samples._is_frame_field(gt_field)
+    ):
+        link_field = "frames"
+    else:
+        link_field = None
+
+    points = np.stack([ytrue, ypred], axis=-1)
+
+    labels_title, sizes_title, _ = _parse_titles(
+        labels, labels_title, sizes, sizes_title, None
+    )
+
+    (
+        points,
+        ids,
+        labels,
+        sizes,
+        _,
+        classes,
+        categorical,
+    ) = _parse_scatter_inputs(
+        points, samples, ids, link_field, labels, sizes, None, classes
+    )
+
+    ytrue = points[:, 0]
+    ypred = points[:, 1]
+
+    if best_fit_label is None:
+        r2_score = skm.r2_score(ytrue, ypred, sample_weight=None)
+        best_fit_label = "r^2: %0.3f" % r2_score
+
+    model = skl.LinearRegression()
+    model.fit(ytrue[:, np.newaxis], ypred)
+
+    xline = np.array([ytrue.min(), ytrue.max()])
+    yline = model.predict(xline[:, np.newaxis])
+
+    xlabel = gt_field if gt_field is not None else "Ground truth"
+    ylabel = pred_field if pred_field is not None else "Predictions"
+
+    if figure is None:
+        figure = go.Figure()
+
+    best_fit = go.Scatter(
+        x=xline, y=yline, mode="lines", line_color="black", name=best_fit_label
+    )
+
+    figure.add_trace(best_fit)
+    figure.update_layout(xaxis_title=xlabel, yaxis_title=ylabel)
+
+    if labels is not None and (
+        not categorical or len(classes) > _MAX_LABEL_TRACES
+    ):
+        # Move legend so it doesn't interfere with colorbar
+        figure.update_layout(
+            legend=dict(y=0.99, x=0.01, yanchor="top", xanchor="left")
+        )
+
+    return scatterplot(
+        points,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        labels=labels,
+        sizes=sizes,
+        figure=figure,
+        marker_size=marker_size,
+        trace_title="regressions",
+        labels_title=labels_title,
+        sizes_title=sizes_title,
+        show_colorbar_title=show_colorbar_title,
+        axis_equal=True,
+        **kwargs,
+    )
+
+
+def plot_pr_curve(
+    precision, recall, label=None, style="area", figure=None, **kwargs
+):
     """Plots a precision-recall (PR) curve.
 
     Args:
@@ -224,6 +399,8 @@ def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
+        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
+            to which to add the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
@@ -234,21 +411,23 @@ def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
             notebook
         -   a plotly figure, otherwise
     """
-    if style == "line":
-        plot = px.line
-    else:
-        if style != "area":
-            msg = "Unsupported style '%s'; using 'area' instead" % style
-            warnings.warn(msg)
+    if style not in ("line", "area"):
+        msg = "Unsupported style '%s'; using 'area' instead" % style
+        warnings.warn(msg)
+        style = "area"
 
-        plot = px.area
+    if figure is None:
+        figure = go.Figure()
 
-    figure = plot(x=recall, y=precision)
-    figure.update_traces(line_color=_DEFAULT_LINE_COLOR)
+    params = {"mode": "lines", "line_color": _DEFAULT_LINE_COLOR}
+    if style == "area":
+        params["fill"] = "tozeroy"
+
+    figure.add_trace(go.Scatter(x=recall, y=precision, **params))
 
     # Add 50/50 line
     figure.add_shape(
-        type="line", line=dict(dash="dash"), x0=0, x1=1, y0=1, y1=0
+        type="line", x0=0, x1=1, y0=1, y1=0, line=dict(dash="dash")
     )
 
     if label is not None:
@@ -272,7 +451,7 @@ def plot_pr_curve(precision, recall, label=None, style="area", **kwargs):
     return figure
 
 
-def plot_pr_curves(precisions, recall, classes, **kwargs):
+def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -280,6 +459,8 @@ def plot_pr_curves(precisions, recall, classes, **kwargs):
             precision values
         recall: an array of recall values
         classes: the list of classes
+        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
+            to which to add the plots
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
@@ -290,7 +471,8 @@ def plot_pr_curves(precisions, recall, classes, **kwargs):
             notebook
         -   a plotly figure, otherwise
     """
-    figure = go.Figure()
+    if figure is None:
+        figure = go.Figure()
 
     # Add 50/50 line
     figure.add_shape(
@@ -347,7 +529,9 @@ def plot_pr_curves(precisions, recall, classes, **kwargs):
     return figure
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", **kwargs):
+def plot_roc_curve(
+    fpr, tpr, roc_auc=None, style="area", figure=None, **kwargs
+):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
@@ -356,6 +540,8 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", **kwargs):
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
+        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
+            to which to add the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
@@ -366,17 +552,19 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", **kwargs):
             notebook
         -   a plotly figure, otherwise
     """
-    if style == "line":
-        plot = px.line
-    else:
-        if style != "area":
-            msg = "Unsupported style '%s'; using 'area' instead" % style
-            warnings.warn(msg)
+    if style not in ("line", "area"):
+        msg = "Unsupported style '%s'; using 'area' instead" % style
+        warnings.warn(msg)
+        style = "area"
 
-        plot = px.area
+    if figure is None:
+        figure = go.Figure()
 
-    figure = plot(x=fpr, y=tpr)
-    figure.update_traces(line_color=_DEFAULT_LINE_COLOR)
+    params = {"mode": "lines", "line_color": _DEFAULT_LINE_COLOR}
+    if style == "area":
+        params["fill"] = "tozeroy"
+
+    figure.add_trace(go.Scatter(x=fpr, y=tpr, **params))
 
     # Add 50/50 line
     figure.add_shape(
@@ -409,13 +597,16 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, style="area", **kwargs):
 def scatterplot(
     points,
     samples=None,
+    ids=None,
     link_field=None,
     labels=None,
     sizes=None,
     edges=None,
     classes=None,
+    figure=None,
     multi_trace=None,
     marker_size=None,
+    trace_title=None,
     labels_title=None,
     sizes_title=None,
     edges_title=None,
@@ -441,13 +632,16 @@ def scatterplot(
         points: a ``num_points x num_dims`` array of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        ids (None): an array of IDs corresponding to the points. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
             ``points``. Can be any of the following:
 
             -   None, if the points correspond to samples
+            -   ``"frames"``, if the points correspond to frames
             -   the name of a :class:`fiftyone.core.labels.Label` field, if the
                 points correspond to the labels in this field
-
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -458,9 +652,8 @@ def scatterplot(
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
             -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+                refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -471,9 +664,8 @@ def scatterplot(
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
             -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+                refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         edges (None): an optional ``num_edges x 2`` array of row indices into
             ``points`` defining undirected edges between points to render as a
             separate trace on the scatterplot
@@ -482,11 +674,15 @@ def scatterplot(
             element order of this list also controls the z-order and legend
             order of multitrace plots (first class is rendered first, and thus
             on the bottom, and appears first in the legend)
+        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
+            to which to add the plot
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        trace_title (None): a name for the scatter trace. Only applicable when
+            plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -532,12 +728,12 @@ def scatterplot(
         classes,
         categorical,
     ) = _parse_scatter_inputs(
-        points, samples, link_field, labels, sizes, edges, classes
+        points, samples, ids, link_field, labels, sizes, edges, classes
     )
 
     if categorical:
         if multi_trace is None:
-            multi_trace = len(classes) <= 25
+            multi_trace = len(classes) <= _MAX_LABEL_TRACES
 
         if multi_trace:
             figure = _plot_scatter_categorical(
@@ -547,6 +743,7 @@ def scatterplot(
                 sizes,
                 edges,
                 ids,
+                figure,
                 marker_size,
                 labels_title,
                 sizes_title,
@@ -562,7 +759,9 @@ def scatterplot(
                 sizes,
                 edges,
                 ids,
+                figure,
                 marker_size,
+                trace_title,
                 labels_title,
                 sizes_title,
                 edges_title,
@@ -576,7 +775,9 @@ def scatterplot(
             sizes,
             edges,
             ids,
+            figure,
             marker_size,
+            trace_title,
             labels_title,
             sizes_title,
             edges_title,
@@ -603,14 +804,18 @@ def scatterplot(
 
         return figure
 
-    if link_field is not None:
-        link_type = "labels"
-        selection_mode = "patches"
-        init_patches_fcn = lambda view: view.to_patches(link_field)
-    else:
+    if link_field is None:
         link_type = "samples"
         selection_mode = None
         init_patches_fcn = None
+    elif link_field == "frames" and samples.media_type == fom.VIDEO:
+        link_type = "frames"
+        selection_mode = None
+        init_patches_fcn = None
+    else:
+        link_type = "labels"
+        selection_mode = "patches"
+        init_patches_fcn = lambda view: view.to_patches(link_field)
 
     return InteractiveScatter(
         figure,
@@ -646,15 +851,14 @@ def _parse_titles(
 
 
 def _parse_scatter_inputs(
-    points, samples, link_field, labels, sizes, edges, classes
+    points, samples, ids, link_field, labels, sizes, edges, classes
 ):
     num_dims = points.shape[1]
 
     labels = _get_data_for_points(points, samples, labels, "labels")
     sizes = _get_data_for_points(points, samples, sizes, "sizes")
 
-    ids = None
-    if samples is not None:
+    if ids is None and samples is not None:
         if num_dims != 2:
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
@@ -697,13 +901,17 @@ def _unwind_values(values):
 
 
 def _get_ids_for_points(points, samples, link_field=None):
-    if link_field is not None:
-        ids = samples._get_label_ids(fields=link_field)
-    else:
+    if link_field is None:
         ids = samples.values("id")
+        ptype = "sample"
+    elif link_field == "frames" and samples.media_type == fom.VIDEO:
+        ids = samples.values("frames.id", unwind=True)
+        ptype = "frame"
+    else:
+        ids = samples._get_label_ids(fields=link_field)
+        ptype = "label"
 
     if len(ids) != len(points):
-        ptype = "label" if link_field is not None else "sample"
         raise ValueError(
             "Number of %s IDs (%d) does not match number of points "
             "(%d). You may have missing data/labels that you need to omit "
@@ -711,7 +919,7 @@ def _get_ids_for_points(points, samples, link_field=None):
             % (ptype, len(ids), len(points))
         )
 
-    return ids
+    return np.array(ids)
 
 
 def _parse_data(points, ids, labels, sizes, edges, classes):
@@ -757,14 +965,17 @@ def _parse_data(points, ids, labels, sizes, edges, classes):
 def location_scatterplot(
     locations=None,
     samples=None,
+    ids=None,
     labels=None,
     sizes=None,
     edges=None,
     classes=None,
     style=None,
     radius=None,
+    figure=None,
     multi_trace=None,
     marker_size=None,
+    trace_title=None,
     labels_title=None,
     sizes_title=None,
     edges_title=None,
@@ -797,9 +1008,11 @@ def location_scatterplot(
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
-
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        ids (None): an array of IDs corresponding to the locations. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -809,7 +1022,6 @@ def location_scatterplot(
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -819,7 +1031,6 @@ def location_scatterplot(
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
-
         edges (None): an optional ``num_edges x 2`` array of row indices into
             ``locations`` defining undirected edges between points to render as
             a separate trace on the scatterplot
@@ -833,11 +1044,15 @@ def location_scatterplot(
         radius (None): the radius of influence of each lat/lon point. Only
             applicable when ``style`` is "density". Larger values will make
             density plots smoother and less detailed
+        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
+            to which to add the plot
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        trace_title (None): a name for the scatter trace. Only applicable when
+            plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -877,7 +1092,7 @@ def location_scatterplot(
         classes,
         categorical,
     ) = _parse_scatter_inputs(
-        locations, samples, None, labels, sizes, edges, classes
+        locations, samples, ids, None, labels, sizes, edges, classes
     )
 
     if style not in (None, "scatter", "density"):
@@ -886,7 +1101,7 @@ def location_scatterplot(
 
     if categorical:
         if multi_trace is None:
-            multi_trace = len(classes) <= 25
+            multi_trace = len(classes) <= _MAX_LABEL_TRACES
 
         if multi_trace:
             figure = _plot_scatter_mapbox_categorical(
@@ -896,6 +1111,7 @@ def location_scatterplot(
                 sizes,
                 edges,
                 ids,
+                figure,
                 marker_size,
                 labels_title,
                 sizes_title,
@@ -910,7 +1126,9 @@ def location_scatterplot(
                 sizes,
                 edges,
                 ids,
+                figure,
                 marker_size,
+                trace_title,
                 labels_title,
                 sizes_title,
                 edges_title,
@@ -926,6 +1144,8 @@ def location_scatterplot(
             sizes,
             ids,
             radius,
+            figure,
+            trace_title,
             labels_title,
             sizes_title,
             colorbar_title,
@@ -937,7 +1157,9 @@ def location_scatterplot(
             sizes,
             edges,
             ids,
+            figure,
             marker_size,
+            trace_title,
             labels_title,
             sizes_title,
             edges_title,
@@ -1758,6 +1980,7 @@ def _plot_scatter_categorical(
     sizes,
     edges,
     ids,
+    figure,
     marker_size,
     labels_title,
     sizes_title,
@@ -1842,7 +2065,10 @@ def _plot_scatter_categorical(
         scatter = _make_edges_scatter(points, edges, edges_title)
         traces.insert(0, scatter)
 
-    figure = go.Figure(traces)
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_traces(traces)
 
     figure.update_layout(
         legend_title_text=colorbar_title, legend_itemsizing="constant"
@@ -1861,7 +2087,9 @@ def _plot_scatter_categorical_single_trace(
     sizes,
     edges,
     ids,
+    figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -1927,6 +2155,7 @@ def _plot_scatter_categorical_single_trace(
         mode="markers",
         marker=marker,
         text=labels,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -1943,7 +2172,10 @@ def _plot_scatter_categorical_single_trace(
         scatter = _make_edges_scatter(points, edges, edges_title)
         traces.insert(0, scatter)
 
-    figure = go.Figure(traces)
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_traces(traces)
 
     if axis_equal:
         figure.update_layout(yaxis_scaleanchor="x")
@@ -1959,7 +2191,9 @@ def _plot_scatter_numeric(
     sizes,
     edges,
     ids,
+    figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -2017,6 +2251,7 @@ def _plot_scatter_numeric(
         customdata=ids,
         mode="markers",
         marker=marker,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -2033,7 +2268,10 @@ def _plot_scatter_numeric(
         scatter = _make_edges_scatter(points, edges, edges_title)
         traces.insert(0, scatter)
 
-    figure = go.Figure(traces)
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_traces(traces)
 
     if axis_equal:
         figure.update_layout(yaxis_scaleanchor="x")
@@ -2050,6 +2288,7 @@ def _plot_scatter_mapbox_categorical(
     sizes,
     edges,
     ids,
+    figure,
     marker_size,
     labels_title,
     sizes_title,
@@ -2115,7 +2354,10 @@ def _plot_scatter_mapbox_categorical(
         scatter = _make_edges_scatter_mapbox(coords, edges, edges_title)
         traces.insert(0, scatter)
 
-    figure = go.Figure(traces)
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_traces(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -2135,7 +2377,9 @@ def _plot_scatter_mapbox_categorical_single_trace(
     sizes,
     edges,
     ids,
+    figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -2198,6 +2442,7 @@ def _plot_scatter_mapbox_categorical_single_trace(
         mode="markers",
         marker=marker,
         text=labels,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -2207,7 +2452,10 @@ def _plot_scatter_mapbox_categorical_single_trace(
         scatter = _make_edges_scatter_mapbox(coords, edges, edges_title)
         traces.insert(0, scatter)
 
-    figure = go.Figure(traces)
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_traces(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -2224,7 +2472,9 @@ def _plot_scatter_mapbox_numeric(
     sizes,
     edges,
     ids,
+    figure,
     marker_size,
+    trace_title,
     labels_title,
     sizes_title,
     edges_title,
@@ -2278,6 +2528,7 @@ def _plot_scatter_mapbox_numeric(
         customdata=ids,
         mode="markers",
         marker=marker,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
@@ -2287,7 +2538,10 @@ def _plot_scatter_mapbox_numeric(
         scatter = _make_edges_scatter_mapbox(coords, edges, edges_title)
         traces.insert(0, scatter)
 
-    figure = go.Figure(traces)
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_traces(traces)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
@@ -2304,6 +2558,8 @@ def _plot_scatter_mapbox_density(
     sizes,
     ids,
     radius,
+    figure,
+    trace_title,
     labels_title,
     sizes_title,
     colorbar_title,
@@ -2347,10 +2603,14 @@ def _plot_scatter_mapbox_density(
         radius=radius,
         customdata=ids,
         colorscale=_DEFAULT_CONTINUOUS_COLORSCALE,
+        name=trace_title,
         hovertemplate=hovertemplate,
     )
 
-    figure = go.Figure(density)
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_trace(density)
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
