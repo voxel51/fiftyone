@@ -935,6 +935,13 @@ as a directory of TFRecords in the above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFImageClassificationDataset
 
+.. note::
+
+    You can provide the `tf_records_path` argument instead of `dataset_dir` in
+    the examples above to directly specify the path to the TFRecord(s) to load.
+    See :class:`TFImageClassificationDatasetImporter <fiftyone.utils.tf.TFImageClassificationDatasetImporter>`
+    for details.
+
 .. _FiftyOneImageDetectionDataset-import:
 
 FiftyOneImageDetectionDataset
@@ -2497,6 +2504,13 @@ directory of TFRecords in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFObjectDetectionDataset
+
+.. note::
+
+    You can provide the `tf_records_path` argument instead of `dataset_dir` in
+    the examples above to directly specify the path to the TFRecord(s) to load.
+    See :class:`TFObjectDetectionDatasetImporter <fiftyone.utils.tf.TFObjectDetectionDatasetImporter>`
+    for details.
 
 .. _ImageSegmentationDirectory-import:
 

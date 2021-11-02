@@ -339,8 +339,8 @@ visualizing them :ref:`in the App <fiftyone-app>`:
 Model predictions
 -----------------
 
-Once you have loaded your dataset and ground truth labels, you can easily add
-model predictions to take advantage of FiftyOne's
+Once you've created a dataset and ground truth labels, you can easily add model
+predictions to take advantage of FiftyOne's
 :ref:`evaluation capabilities <evaluating-models>`.
 
 .. tabs::
