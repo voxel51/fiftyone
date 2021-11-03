@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
-import { useSpring } from "react-spring";
+import { useSpring } from "@react-spring/web";
 
 import * as atoms from "../../recoil/atoms";
 import * as schemaAtoms from "../../recoil/schema";
@@ -10,7 +10,6 @@ import socket from "../../shared/connection";
 import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
-  FRAME_SUPPORT_FIELD,
   PATCHES_FIELDS,
 } from "../../recoil/constants";
 import { useTheme } from "../../utils/hooks";
@@ -33,7 +32,7 @@ export const patching = atom<boolean>({
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
   get: ({ get }) => {
-    const paths = get(schemaAtoms.labelPaths);
+    const paths = get(schemaAtoms.labelPaths({}));
     return paths.filter((p) =>
       get(schemaAtoms.meetsType({ path: p, ftype: PATCHES_FIELDS }))
     );
@@ -43,7 +42,7 @@ export const patchesFields = selector<string[]>({
 export const clipsFields = selector<string[]>({
   key: "clipsFields",
   get: ({ get }) =>
-    get(schemaAtoms.fieldPaths)
+    get(schemaAtoms.fieldPaths({}))
       .filter((path) =>
         get(
           schemaAtoms.meetsType({

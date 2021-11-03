@@ -48,27 +48,3 @@ const unsupportedFields = selector<string[]>({
     return paths.sort();
   },
 });
-
-const UnsupportedCell = () => {
-  const [expanded, setExpanded] = useState(false);
-  const unsupported = useRecoilValue(unsupportedFields);
-
-  if (!unsupported.length) {
-    return null;
-  }
-
-  return (
-    <>
-      <FieldHeader
-        title={"Unsupported fields"}
-        onClick={() => setExpanded(!expanded)}
-        expanded={expanded}
-      >
-        <span>{"unsupported fields"}</span>
-      </FieldHeader>
-      {expanded && unsupported.map((path) => <TextEntry text={path} />)}
-    </>
-  );
-};
-
-export default React.memo(UnsupportedCell);

@@ -5,9 +5,8 @@ import { Check, Visibility } from "@material-ui/icons";
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
-import * as viewAtoms from "../../recoil/view";
 
-import { FieldHeader, MatchEye, usePills } from "./utils";
+import { MatchEye, usePills } from "./utils";
 import { PathEntry, TextEntry } from "./Entries";
 import {
   EMBEDDED_DOCUMENT_FIELD,
@@ -15,6 +14,7 @@ import {
   LABEL_DOC_TYPES,
   withPath,
 } from "../../recoil/constants";
+import { GroupHeader } from "./Sidebar";
 
 const LabelTagsCell = React.memo(({ modal }: { modal: boolean }) => {
   const [expanded, setExpanded] = useState(true);
@@ -76,14 +76,14 @@ const LabelTagsCell = React.memo(({ modal }: { modal: boolean }) => {
 
   return (
     <>
-      <FieldHeader
+      <GroupHeader
         title={title}
         onClick={() => setExpanded(!expanded)}
         expanded={expanded}
       >
         <span>{title}</span>
         {...pills}
-      </FieldHeader>
+      </GroupHeader>
       {expanded &&
         tags &&
         (tags.length ? (

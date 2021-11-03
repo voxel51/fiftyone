@@ -11,7 +11,7 @@ import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { v4 as uuid } from "uuid";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 import { ThemeContext } from "styled-components";
 import { Close, Group } from "@material-ui/icons";
 import { GitHub, MenuBook } from "@material-ui/icons";

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { animated, useTransition } from "react-spring";
+import { animated, useTransition } from "@react-spring/web";
 import styled, { ThemeContext } from "styled-components";
 import { Close } from "@material-ui/icons";
 
@@ -103,13 +103,6 @@ const COLOR = {
   "Dataset Created": "font", // Not supported, for storybook only at the moment
 };
 
-type Notification = {
-  id?: number;
-  kind: string;
-  message: string;
-  items: string[];
-};
-
 const NotificationHub = ({
   config = { tension: 125, friction: 20, precision: 0.1 },
   children,
@@ -118,7 +111,8 @@ const NotificationHub = ({
   const [refMap] = useState(() => new WeakMap());
   const [cancelMap] = useState(() => new WeakMap());
   const [items, setItems] = useState([]);
-  const transitions = useTransition(items, (item) => item.key, {
+  const transitions = useTransition(items, {
+    keys: ({ key }) => key,
     from: { opacity: 0, height: 0, life: "100%" },
     enter: (item) => async (next) => {
       await next({ opacity: 1, height: refMap.get(item).offsetHeight });
@@ -158,7 +152,7 @@ const NotificationHub = ({
 
   return (
     <Container>
-      {transitions.map(({ key, item, props: { life, ...style } }) => (
+      {transitions(({ key, item, props: { life, ...style } }) => (
         <Message key={key} style={style}>
           <Content ref={(ref) => ref && refMap.set(item, ref)}>
             {true ? <Life style={{ right: life }} /> : null}

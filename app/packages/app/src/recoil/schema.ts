@@ -1,7 +1,13 @@
 import { atomFamily, selectorFamily } from "recoil";
 
 import * as atoms from "./atoms";
-import { LABEL_LIST, RESERVED_FIELDS, VALID_LABEL_TYPES } from "./constants";
+import {
+  LABELS_PATH,
+  LABEL_LIST,
+  RESERVED_FIELDS,
+  VALID_LABEL_TYPES,
+  withPath,
+} from "./constants";
 import { State } from "./types";
 import * as viewAtoms from "./view";
 
@@ -121,9 +127,10 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get: (params) => ({ get }) => {
     const paths = get(fieldPaths(params));
+    const types = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
     return paths.filter((path) =>
-      VALID_LABEL_TYPES.includes(get(field(path)).embeddedDocType)
+      types.includes(get(field(path)).embeddedDocType)
     );
   },
 });

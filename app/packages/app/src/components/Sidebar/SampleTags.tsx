@@ -7,8 +7,9 @@ import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
 
-import { FieldHeader, MatchEye, usePills } from "./utils";
+import { MatchEye, usePills } from "./utils";
 import { PathEntry, TextEntry } from "./Entries";
+import { GroupHeader } from "./Sidebar";
 
 const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
   const [expanded, setExpanded] = useState(true);
@@ -55,14 +56,14 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
 
   return (
     <>
-      <FieldHeader
+      <GroupHeader
         title={title}
         onClick={() => setExpanded(!expanded)}
         expanded={expanded}
       >
         <span>{title}</span>
         {...pills}
-      </FieldHeader>
+      </GroupHeader>
       {expanded &&
         tags &&
         (tags.length ? (

@@ -1,12 +1,65 @@
-import React, { useState } from "react";
-import { animated, useSpring } from "react-spring";
+import React, { useRef, useState } from "react";
+import { atomFamily, selectorFamily, useRecoilState } from "recoil";
+import { animated, config, useSprings, useSpring } from "@react-spring/web";
 import styled from "styled-components";
+import { clamp } from "lodash";
+import { useDrag } from "@use-gesture/react";
+
+import { move } from "@fiftyone/utilities";
 
 import { useTheme } from "../../utils/hooks";
+import * as schemaAtoms from "../../recoil/schema";
+import { State } from "../../recoil/types";
 import LabelTagsCell from "./LabelTags";
 import SampleTagsCell from "./SampleTags";
-import SampleLabelsCell from "./SampleLabels";
-import UnsupportedCell from "./Unsupported";
+import DropdownHandle, {
+  DropdownHandleProps,
+  PlusMinusButton,
+} from "../DropdownHandle";
+import { Close } from "@material-ui/icons";
+
+const GroupHeaderStyled = styled(DropdownHandle)`
+  border-radius: 0;
+  border-width: 0 0 1px 0;
+  padding: 0.25rem;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  vertical-align: middle;
+`;
+
+type GroupHeaderProps = {
+  pills?: JSX.Element[];
+  title: string;
+  icon?: JSX.Element;
+  onDelete?: () => void;
+} & DropdownHandleProps;
+
+export const GroupHeader = ({
+  title,
+  icon,
+  pills,
+  onDelete,
+  ...rest
+}: GroupHeaderProps) => {
+  return (
+    <GroupHeaderStyled title={title} icon={PlusMinusButton} {...rest}>
+      {onDelete && (
+        <Close
+          onClick={(event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            onDelete();
+          }}
+        />
+      )}
+      {icon}
+      <span style={{ flexGrow: 1 }}>{title}</span>
+      {...pills}
+    </GroupHeaderStyled>
+  );
+};
 
 const ButtonDiv = animated(styled.div`
   cursor: pointer;
@@ -42,6 +95,78 @@ export const OptionText = ({ style, children }) => {
   );
 };
 
+type SidebarEntry = {
+  editable: boolean;
+  group;
+  name: string;
+  paths: string[];
+};
+
+type SidebarGroups = [string, string[]][];
+
+const prioritySort = (
+  groups: { [key: string]: string[] },
+  priorities: string[]
+): SidebarGroups => {
+  return Object.entries(groups).sort(
+    ([a], [b]) => priorities.indexOf(a) - priorities.indexOf(b)
+  );
+};
+
+const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
+  key: "defaultSidebarGroups",
+  get: (modal) => ({ get }) => {
+    const frameLabels = get(
+      schemaAtoms.labelFields({ space: State.SPACE.FRAME })
+    );
+
+    const groups = {
+      labels: get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })),
+    };
+
+    if (frameLabels.length) {
+      groups["frame labels"] = frameLabels;
+    }
+
+    return prioritySort(groups, ["labels", "frame labels"]);
+  },
+});
+
+const defaultSidebarGroupNames = selectorFamily<string[], boolean>({
+  key: "defaultSidebarGroupNames",
+  get: (modal) => ({ get }) =>
+    get(defaultSidebarGroups(modal)).map(([name]) => name),
+});
+
+const sidebarGroups = atomFamily<SidebarGroups, boolean>({
+  key: "sidebarGroups",
+  default: defaultSidebarGroups,
+});
+
+const fn = (
+  order: number[],
+  active = false,
+  originalIndex = 0,
+  curIndex = 0,
+  y = 0
+) => (index: number) =>
+  active && index === originalIndex
+    ? {
+        y: curIndex * 100 + y,
+        scale: 1.1,
+        zIndex: 1,
+        shadow: 15,
+        immediate: (key: string) => key === "zIndex",
+        config: (key: string) => (key === "y" ? config.stiff : config.default),
+      }
+    : {
+        y: order.indexOf(index) * 100,
+        scale: 1,
+        zIndex: 0,
+        shadow: 1,
+        immediate: false,
+      };
+
 export const Button = ({
   onClick,
   text,
@@ -76,19 +201,85 @@ export const Button = ({
   );
 };
 
-type FieldsSidebarProps = {
-  modal: boolean;
-};
+const InteractiveSideBar = ({
+  groups,
+  onChange,
+}: {
+  groups: SidebarGroups;
+  onChange: (groups: SidebarGroups) => void;
+}) => {
+  const entries = groups
+    .map(([groupName, names]) => [
+      { name: groupName, group: true },
+      ...names.map((name) => ({ name, group: false })),
+    ])
+    .flat();
 
-const FieldsSidebar = ({ modal }: FieldsSidebarProps) => {
+  const order = useRef(entries.flatMap((_, index) => index));
+  const [springs, api] = useSprings(order.current.length, fn(order.current));
+  const bind = useDrag(({ args: [originalIndex], active, movement: [, y] }) => {
+    const curIndex = order.current.indexOf(originalIndex);
+    const curRow = clamp(
+      Math.round((curIndex * 100 + y) / 100),
+      0,
+      entries.length - 1
+    );
+    const newOrder = move(order.current, curIndex, curRow);
+    api.start(fn(newOrder, active, originalIndex, curIndex, y));
+    if (!active) {
+      order.current = newOrder;
+      onChange(
+        newOrder.reduce((result, i) => {
+          if (entries[i].group) {
+            return [...result, [entries[i].name, []]];
+          }
+
+          result[result.length - 1][1] = [
+            ...result[result.length - 1][1],
+            entries[i].name,
+          ];
+
+          return result;
+        }, [])
+      );
+    }
+  });
+
   return (
     <>
-      <SampleTagsCell key={"sample-tags"} modal={modal} />
-      <LabelTagsCell key={"label-tags"} modal={modal} />
-      <SampleLabelsCell key={"sample-labels"} modal={modal} />
-      {!modal && <UnsupportedCell />}
+      {springs.map(({ zIndex, shadow, y, scale }, i) => (
+        <animated.div
+          {...bind(i)}
+          key={i}
+          style={{
+            zIndex,
+            boxShadow: shadow.to(
+              (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+            ),
+            y,
+            scale,
+          }}
+          children={entries[i].name}
+        />
+      ))}
     </>
   );
 };
 
-export default FieldsSidebar;
+export type SidebarProps = {
+  modal: boolean;
+};
+
+const Sidebar = React.memo(({ modal }: SidebarProps) => {
+  const [interactiveGroups, setGroups] = useRecoilState(sidebarGroups(modal));
+
+  return (
+    <>
+      <SampleTagsCell key={"sample-tags"} modal={modal} />
+      <LabelTagsCell key={"label-tags"} modal={modal} />
+      <InteractiveSideBar groups={interactiveGroups} onChange={setGroups} />
+    </>
+  );
+});
+
+export default Sidebar;

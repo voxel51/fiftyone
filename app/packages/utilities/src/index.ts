@@ -16,7 +16,11 @@ export const toSnakeCase = (obj: object): object =>
     acc[snakeKey] = _.isObject(value) ? toSnakeCase(value) : value;
   });
 
-export const move = (array, moveIndex, toIndex) => {
+export const move = <T>(
+  array: Array<T>,
+  moveIndex: number,
+  toIndex: number
+): Array<T> => {
   const item = array[moveIndex];
   const length = array.length;
   const diff = moveIndex - toIndex;

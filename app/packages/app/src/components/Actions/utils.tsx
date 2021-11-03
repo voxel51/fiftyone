@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { selector, selectorFamily } from "recoil";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 

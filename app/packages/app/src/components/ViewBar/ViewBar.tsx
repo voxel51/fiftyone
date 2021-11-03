@@ -5,7 +5,6 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
-import * as selectors from "../../recoil/selectors";
 import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
 import { http } from "../../shared/connection";
@@ -85,7 +84,7 @@ const viewBarKeyMap = {
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(viewAtoms.view);
-  const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths);
+  const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths({}));
 
   useEffect(() => {
     send({

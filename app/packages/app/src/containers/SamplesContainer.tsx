@@ -14,7 +14,6 @@ const SidebarContainer = styled.div`
   display: block;
   height: 100%;
   width 286px;
-  padding-left: 1rem;
   overflow: visible;
 `;
 
@@ -27,6 +26,10 @@ const SidebarColumn = styled.div`
     ${({ theme }) => theme.background};
 
   ${scrollbarStyles}
+
+  & > * {
+    margin-left: 1rem;
+  }
 `;
 
 const ContentColumn = styled.div`

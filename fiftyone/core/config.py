@@ -286,18 +286,6 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
-        self.sidebar_frame_filter_groups = self.parse_dict(
-            d,
-            "sidebar_frame_filter_groups",
-            env_var="FIFTYONE_APP_SIDEBAR_FRAME_FILTER_GROUPS",
-            default=None,
-        )
-        self.sidebar_sample_filter_groups = self.parse_dict(
-            d,
-            "sidebar_sample_filter_groups",
-            env_var="FIFTYONE_APP_SIDEBAR_SAMPLE_FILTER_GROUPS",
-            default=None,
-        )
         self.use_frame_number = self.parse_bool(
             d,
             "use_frame_number",

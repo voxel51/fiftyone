@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { Checkbox as MaterialCheckbox } from "@material-ui/core";
-import { animated } from "react-spring";
+import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
 import { useHighlightHover } from "../Actions/utils";

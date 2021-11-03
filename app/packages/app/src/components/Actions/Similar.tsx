@@ -126,7 +126,7 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
       return keys.samples;
     } else if (!modal) {
       return keys.patches.reduce((acc, [key, field]) => {
-        if (get(schemaAtoms.labelPaths).includes(field)) {
+        if (get(schemaAtoms.labelPaths({})).includes(field)) {
           acc = [...acc, key];
         }
         return acc;

@@ -14,7 +14,7 @@ import {
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-import { useSpring } from "react-spring";
+import { useSpring } from "@react-spring/web";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as atoms from "../../recoil/atoms";

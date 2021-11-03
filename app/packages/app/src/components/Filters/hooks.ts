@@ -1,4 +1,4 @@
-import { useSpring } from "react-spring";
+import { useSpring } from "@react-spring/web";
 import useMeasure from "react-use-measure";
 
 interface ExpandStyle {

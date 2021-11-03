@@ -15,7 +15,7 @@ const Body = styled.div`
     float: right;
     order: 1;
   }
-  width: 100%;
+
   padding: 0.5rem;
   svg {
     font-size: 1.25em;

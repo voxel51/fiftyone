@@ -1,12 +1,8 @@
-import React, { ReactNode, useState } from "react";
-import { animated, useSpring } from "react-spring";
+import React, { ReactNode } from "react";
+import { animated, useSpring } from "@react-spring/web";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import {
-  Checkbox,
-  CircularProgress,
-  FormControlLabel,
-} from "@material-ui/core";
+import { Checkbox, CircularProgress } from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
@@ -32,13 +28,6 @@ const EntryCounts = ({
   ftype?: string | string[];
   embeddedDocType?: string | string[];
 }) => {
-  console.log({
-    extended: false,
-    path,
-    modal,
-    ftype,
-    embeddedDocType,
-  });
   const theme = useTheme();
   const count = useRecoilValue(
     aggregationAtoms.count({

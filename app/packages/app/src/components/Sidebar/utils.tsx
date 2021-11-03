@@ -3,44 +3,7 @@ import React, { ReactNode } from "react";
 import styled from "styled-components";
 import { useTheme } from "../../utils/hooks";
 
-import DropdownHandle, {
-  DropdownHandleProps,
-  PlusMinusButton,
-} from "../DropdownHandle";
 import { PillButton } from "../utils";
-
-const FieldHeaderStyled = styled(DropdownHandle)`
-  border-radius: 0;
-  border-width: 0 0 1px 0;
-  padding: 0.25rem;
-  margin-bottom: 6px;
-  width: 100%;
-  text-transform: uppercase;
-  display: flex;
-  justify-content: space-between;
-  vertical-align: middle;
-`;
-
-type FieldHeaderProps = {
-  pills?: JSX.Element[];
-  title: string;
-  icon?: JSX.Element;
-} & DropdownHandleProps;
-
-export const FieldHeader = ({
-  title,
-  icon,
-  pills,
-  ...rest
-}: FieldHeaderProps) => {
-  return (
-    <FieldHeaderStyled title={title} icon={PlusMinusButton} {...rest}>
-      {icon}
-      <span style={{ flexGrow: 1 }}>{title}</span>
-      {...pills}
-    </FieldHeaderStyled>
-  );
-};
 
 export type PillEntry = {
   onClick: () => void;

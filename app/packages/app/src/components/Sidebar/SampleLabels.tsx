@@ -8,7 +8,7 @@ import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
 
-import { FieldHeader, MatchEye, usePills } from "./utils";
+import { FieldHeader, usePills } from "./utils";
 import { PathEntry, TextEntry } from "./Entries";
 
 const SampleLabelsCell = React.memo(({ modal }: { modal: boolean }) => {
@@ -17,7 +17,7 @@ const SampleLabelsCell = React.memo(({ modal }: { modal: boolean }) => {
   const paths = useRecoilValue(
     schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })
   );
-  const title = `${singular} tags`;
+  const title = `${singular} labels`;
   const [activeTags, setActiveTags] = useRecoilState(
     schemaAtoms.activeTags(modal)
   );
