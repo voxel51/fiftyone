@@ -1,4 +1,4 @@
-import { selector, selectorFamily } from "recoil";
+import { selectorFamily } from "recoil";
 
 import * as utils from "./utils";
 import * as booleanField from "./BooleanFieldFilter.state";
@@ -7,11 +7,7 @@ import * as stringField from "./StringFieldFilter.state";
 import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "./atoms";
 import * as selectors from "../../recoil/selectors";
-import {
-  LABEL_LIST,
-  RESERVED_FIELDS,
-  VALID_LIST_TYPES,
-} from "../../utils/labels";
+import { LABEL_LIST, VALID_LIST_TYPES } from "../../utils/labels";
 
 interface Label {
   confidence?: number;
@@ -133,6 +129,10 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         lExclude,
         vRange,
         vNone,
+        vInf,
+        vNinf,
+        vNan,
+        vExclude,
       ] = [
         get(
           numericField.rangeAtom({ modal, path: cPath, defaultRange: [0, 1] })
@@ -179,7 +179,40 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         get(stringField.selectedValuesAtom({ modal, path: lPath })),
         get(stringField.excludeAtom({ modal, path: lPath })),
         get(numericField.rangeAtom({ modal, path: vPath })),
-        get(numericField.noneAtom({ modal, path: vPath })),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "none",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "inf",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "ninf",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "nan",
+          })
+        ),
+        get(
+          numericField.excludeAtom({
+            modal,
+            path: vPath,
+          })
+        ),
       ];
 
       if (cExclude) {
@@ -187,6 +220,13 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         cInf = !cInf;
         cNinf = !cNinf;
         cNan = !cNan;
+      }
+
+      if (vExclude) {
+        vNone = !vNone;
+        vInf = !vInf;
+        vNinf = !vNinf;
+        vNan = !vNan;
       }
 
       const matchedTags = get(filterAtoms.matchedTags({ key: "label", modal }));
@@ -214,8 +254,9 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
           matchedTags.size == 0 ||
           (s.tags && s.tags.some((t) => matchedTags.has(t)));
 
-        const inValueRange =
-          vRange[0] - 0.005 <= s.value && s.value <= vRange[1] + 0.005;
+        const inValueRange = vExclude
+          ? vRange[0] - 0.005 > s.value || s.value > vRange[1] + 0.005
+          : vRange[0] - 0.005 <= s.value && s.value <= vRange[1] + 0.005;
         const noValue = vNone && s.value === undefined;
 
         return (
@@ -226,7 +267,11 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
             (cNinf && s.confidence === "-inf")) &&
           (included || lValues.length === 0) &&
           meetsTags &&
-          (inValueRange || noValue)
+          (inValueRange ||
+            noValue ||
+            (vNan && s.value === "nan") ||
+            (vInf && s.value === "inf") ||
+            (vNinf && s.value === "-inf"))
         );
       };
     }
