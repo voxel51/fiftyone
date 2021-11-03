@@ -3621,7 +3621,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
-                    server_id_map,
+                    server_id_map["tags"],
                     class_map,
                     attr_id_map,
                     frames,
@@ -3638,7 +3638,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
-                    server_id_map,
+                    server_id_map["shapes"],
                     class_map,
                     attr_id_map,
                     frames,
@@ -3664,7 +3664,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frame_id_map[task_id],
                         label_type,
                         _id_map,
-                        server_id_map,
+                        server_id_map["tracks"],
                         class_map,
                         attr_id_map,
                         frames,
@@ -3955,7 +3955,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # Create mapping from CVAT server ID to FiftyOne ObjectId for each
         # label
         server_id_map = {}
-        dup_ids = []
         types = ["shapes", "tags", "tracks"]
         label_id_map = {}
         for class_id, class_attr_map in attr_id_map.items():
@@ -3966,25 +3965,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         for anno_type, anno_list in anno_resp.items():
             if anno_type not in types:
                 continue
-
+            type_id_map = {}
             for anno in anno_list:
                 server_id = anno["id"]
                 class_id = anno["label_id"]
                 for attr in anno["attributes"]:
                     if attr["spec_id"] == label_id_map[class_id]:
-                        value = attr["value"]
-                        if server_id in server_id_map:
-                            logger.warning(
-                                "Found duplicate server_id `%d` for label ids "
-                                "`%s` and `%s`"
-                                % (server_id, value, server_id_map[server_id])
-                            )
-                            dup_ids.append(server_id)
-                        else:
-                            server_id_map[server_id] = value
+                        type_id_map[server_id] = attr["value"]
 
-        for dup_id in dup_ids:
-            server_id_map.pop(dup_id)
+            server_id_map[anno_type] = type_id_map
 
         return server_id_map
 
