@@ -13,9 +13,11 @@ import numpy as np
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
+from .utils import compute_ious
 
 
 logger = logging.getLogger(__name__)
@@ -203,6 +205,45 @@ def evaluate_detections(
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
+
+
+def compute_max_ious(
+    sample_collection, label_field, attr_name="max_iou", **kwargs
+):
+    """Populates an attribute on each label in the given spatial label field
+    that records the max IoU between the object and another object in the same
+    sample/frame.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_field: a label field of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+        attr_name ("max_iou"): the name of the label attribute to populate
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.utils.eval.utils.compute_iou`
+    """
+    fov.validate_collection_label_fields(
+        sample_collection, label_field, (fol.Detections, fol.Polylines)
+    )
+
+    _, labels_path = sample_collection._get_label_field_path(label_field)
+    _, iou_path = sample_collection._get_label_field_path(
+        label_field, attr_name
+    )
+
+    max_ious = []
+    with fou.ProgressBar(total=len(sample_collection)) as pb:
+        for labels in pb(sample_collection.values(labels_path)):
+            if len(labels) >= 2:
+                all_ious = compute_ious(labels, labels, **kwargs)
+                np.fill_diagonal(all_ious, 0)  # exclude self
+                max_ious.append(list(all_ious.max(axis=1)))
+            else:
+                max_ious.append([0] * len(labels))
+
+    sample_collection.set_values(iou_path, max_ious)
 
 
 class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
