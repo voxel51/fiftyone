@@ -2848,7 +2848,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
-            d.get("server_id_map", {}),
+            d.get("server_id_map", {"tags": {}, "shapes": {}, "tracks": {}}),
             d.get("project_ids", []),
             d["task_ids"],
             job_ids,
@@ -3622,7 +3622,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
-                    server_id_map["tags"],
+                    server_id_map.get("tags", {}),
                     class_map,
                     attr_id_map,
                     frames,
@@ -3639,7 +3639,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
-                    server_id_map["shapes"],
+                    server_id_map.get("shapes", {}),
                     class_map,
                     attr_id_map,
                     frames,
@@ -3665,7 +3665,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frame_id_map[task_id],
                         label_type,
                         _id_map,
-                        server_id_map["tracks"],
+                        server_id_map.get("tracks", {}),
                         class_map,
                         attr_id_map,
                         frames,
@@ -3955,8 +3955,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _create_server_id_map(self, anno_resp, attr_id_map):
         # Create mapping from CVAT server ID to FiftyOne ObjectId for each
         # label
-        server_id_map = {}
-        types = ["shapes", "tags", "tracks"]
+        server_id_map = {"tags": {}, "shapes": {}, "tracks": {}}
         label_id_map = {}
         for class_id, class_attr_map in attr_id_map.items():
             for attr_name, attr_id in class_attr_map.items():
@@ -3964,17 +3963,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_id_map[class_id] = attr_id
 
         for anno_type, anno_list in anno_resp.items():
-            if anno_type not in types:
+            if anno_type not in server_id_map:
                 continue
-            type_id_map = {}
             for anno in anno_list:
                 server_id = anno["id"]
                 class_id = anno["label_id"]
                 for attr in anno["attributes"]:
                     if attr["spec_id"] == label_id_map[class_id]:
-                        type_id_map[server_id] = attr["value"]
-
-            server_id_map[anno_type] = type_id_map
+                        server_id_map[anno_type][server_id] = attr["value"]
 
         return server_id_map
 
