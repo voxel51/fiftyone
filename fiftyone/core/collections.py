@@ -1078,8 +1078,7 @@ class SampleCollection(object):
                 described previously), in which case the keys are used to match
                 samples by their ``key_field``
             key_field (None): a key field to use when choosing which samples to
-                update in non-sequential order. Only applicable when ``values``
-                is a dict
+                update when ``values`` is a dict
             skip_none (False): whether to treat None data in ``values`` as
                 missing data that should not be set
             expand_schema (True): whether to dynamically add new sample/frame
@@ -7522,9 +7521,23 @@ def _parse_values_dict(sample_collection, key_field, values):
     pipeline = [{"$match": {key_field: {"$in": list(values.keys())}}}]
     view = sample_collection.mongo(pipeline)
 
-    id_map = {k: v for k, v in zip(view.values([key_field, "id"]))}
+    id_map = {k: v for k, v in zip(*view.values([key_field, "id"]))}
 
-    sample_ids = [id_map[k] for k in values.keys()]
+    sample_ids = []
+    bad_keys = []
+    for key in values.keys():
+        sample_id = id_map.get(key, None)
+        if sample_id is not None:
+            sample_ids.append(sample_id)
+        else:
+            bad_keys.append(key)
+
+    if bad_keys:
+        raise ValueError(
+            "Found %d keys (eg: %s) that do not match the '%s' field of any "
+            "samples" % (len(bad_keys), bad_keys[0], key_field)
+        )
+
     values = values.values()
 
     return sample_ids, values
