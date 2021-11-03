@@ -2847,7 +2847,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
-            d["server_id_map"],
+            d.get("server_id_map", {}),
             d.get("project_ids", []),
             d["task_ids"],
             job_ids,
@@ -3947,11 +3947,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             num_uploaded_tags = len(anno_resp["tags"])
             num_uploaded_tracks = len(anno_resp["tracks"])
 
-        server_id_map = self._map_cvat_server_id(anno_resp, attr_id_map)
+        server_id_map = self._create_server_id_map(anno_resp, attr_id_map)
 
         return server_id_map
 
-    def _map_cvat_server_id(self, anno_resp, attr_id_map):
+    def _create_server_id_map(self, anno_resp, attr_id_map):
         # Create mapping from CVAT server ID to FiftyOne ObjectId for each
         # label
         server_id_map = {}
