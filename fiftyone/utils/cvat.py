@@ -16,7 +16,6 @@ import warnings
 import webbrowser
 
 from bson import ObjectId
-from bson.errors import InvalidId
 import jinja2
 import numpy as np
 import requests
@@ -2848,7 +2847,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
-            d.get("server_id_map", {"tags": {}, "shapes": {}, "tracks": {}}),
+            d.get("server_id_map", {}),
             d.get("project_ids", []),
             d["task_ids"],
             job_ids,
@@ -3948,29 +3947,29 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             num_uploaded_tags = len(anno_resp["tags"])
             num_uploaded_tracks = len(anno_resp["tracks"])
 
-        server_id_map = self._create_server_id_map(anno_resp, attr_id_map)
-
-        return server_id_map
+        return self._create_server_id_map(anno_resp, attr_id_map)
 
     def _create_server_id_map(self, anno_resp, attr_id_map):
-        # Create mapping from CVAT server ID to FiftyOne ObjectId for each
-        # label
-        server_id_map = {"tags": {}, "shapes": {}, "tracks": {}}
         label_id_map = {}
         for class_id, class_attr_map in attr_id_map.items():
             for attr_name, attr_id in class_attr_map.items():
                 if attr_name == "label_id":
                     label_id_map[class_id] = attr_id
 
+        server_id_map = {}
         for anno_type, anno_list in anno_resp.items():
-            if anno_type not in server_id_map:
+            if anno_type not in ("tags", "shapes", "tracks"):
                 continue
+
+            id_map = {}
             for anno in anno_list:
                 server_id = anno["id"]
-                class_id = anno["label_id"]
+                label_attr_id = label_id_map[anno["label_id"]]
                 for attr in anno["attributes"]:
-                    if attr["spec_id"] == label_id_map[class_id]:
-                        server_id_map[anno_type][server_id] = attr["value"]
+                    if attr["spec_id"] == label_attr_id:
+                        id_map[server_id] = attr["value"]
+
+            server_id_map[anno_type] = id_map
 
         return server_id_map
 
@@ -5367,8 +5366,7 @@ class CVATLabel(object):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
-        server_id_map: a dictionary mapping the server ID of every label to the
-            FiftyOne label ID
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         attributes (None): an optional list of additional attributes
     """
 
@@ -5407,18 +5405,19 @@ class CVATLabel(object):
 
         # Parse label ID
         label_id = self.attributes.pop("label_id", None)
+
         if label_id is not None:
-            self._attempt_assign_id(label_id)
+            self._set_id(label_id)
 
         if self._id is None:
             label_id = server_id_map.get(server_id, None)
             if label_id is not None:
-                self._attempt_assign_id(label_id)
+                self._set_id(label_id)
 
-    def _attempt_assign_id(self, label_id):
+    def _set_id(self, label_id):
         try:
             self._id = ObjectId(label_id)
-        except InvalidId:
+        except:
             pass
 
     def _set_attributes(self, label):
@@ -5441,8 +5440,7 @@ class CVATShape(CVATLabel):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
-        server_id_map: a dictionary mapping the server ID of every label to the
-            FiftyOne label ID
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         metadata: a dictionary containing the width and height of the frame
         index (None): the tracking index of the shape
         immutable_attrs (None): immutable attributes inherited by this shape
@@ -5597,8 +5595,7 @@ class CVATTag(CVATLabel):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
-        server_id_map: a dictionary mapping the server ID of every label to the
-            FiftyOne label ID
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         attributes (None): an optional list of additional attributes
     """
 
