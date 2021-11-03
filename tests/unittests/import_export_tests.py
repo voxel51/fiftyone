@@ -1023,6 +1023,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset_dir=export_dir,
             dataset_type=fo.types.YOLOv4Dataset,
             label_field="predictions",
+            include_all_data=True,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -1030,6 +1031,31 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+
+        # Labels-only
+
+        data_path = os.path.dirname(dataset.first().filepath)
+        labels_path = os.path.join(self._new_dir(), "labels/")
+
+        dataset.export(
+            dataset_type=fo.types.YOLOv4Dataset, labels_path=labels_path,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field="predictions",
+            include_all_data=True,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+        for sample in dataset2:
+            self.assertTrue(os.path.isfile(sample.filepath))
 
     @drop_datasets
     def test_yolov5_dataset(self):
