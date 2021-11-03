@@ -240,13 +240,13 @@ def compute_max_ious(
     with fou.ProgressBar(total=len(all_labels)) as pb:
         for labels in pb(all_labels):
             if labels is None:
-                max_ious.append(None)
+                sample_ious = None
             elif is_frame_field:
                 sample_ious = [_compute_max_ious(l, **kwargs) for l in labels]
-                max_ious.append(sample_ious)
             else:
                 sample_ious = _compute_max_ious(labels, **kwargs)
-                max_ious.append(sample_ious)
+
+            max_ious.append(sample_ious)
 
     sample_collection.set_values(iou_path, max_ious)
 
