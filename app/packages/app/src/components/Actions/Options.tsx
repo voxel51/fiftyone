@@ -8,7 +8,7 @@ import * as viewAtoms from "../../recoil/view";
 import Checkbox from "../Common/Checkbox";
 import { PopoutSectionTitle, TabOption } from "../utils";
 
-import { Button } from "../Sidebar/Sidebar";
+import { Button } from "../utils";
 import Popout from "./Popout";
 import { Slider } from "../Filters/RangeSlider";
 import { useTheme } from "../../utils/hooks";

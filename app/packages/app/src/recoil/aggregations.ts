@@ -297,7 +297,7 @@ export const labelCount = selectorFamily<number | null, boolean>({
     let sum = 0;
     const data = get(atom);
 
-    for (const label of get(schemaAtoms.activeLabelPaths(modal))) {
+    for (const label of get(schemaAtoms.activeLabelPaths({ modal }))) {
       sum += data[label].Count;
     }
 
@@ -335,7 +335,7 @@ export const count = selectorFamily<
     extended: boolean;
     path: string;
     modal: boolean;
-    ftype: string | string[];
+    ftype?: string | string[];
     embeddedDocType?: string | string[];
   }
 >({

@@ -98,13 +98,11 @@ export const field = selectorFamily<State.Field, string>({
 
       let field: State.Field = null;
       let schema = get(fieldSchema(State.SPACE.FRAME));
-      for (const name in framePath.split(".")) {
-        field = schema[name];
-        if (!field) {
-          break;
+      for (const name of framePath.split(".")) {
+        if (schema[name]) {
+          field = schema[name];
+          schema = field.fields;
         }
-
-        schema = field.fields;
       }
 
       if (field) {
@@ -115,8 +113,10 @@ export const field = selectorFamily<State.Field, string>({
     let field: State.Field = null;
     let schema = get(fieldSchema(State.SPACE.SAMPLE));
     for (const name of path.split(".")) {
-      field = schema[name];
-      schema = field.fields;
+      if (schema[name]) {
+        field = schema[name];
+        schema = field.fields;
+      }
     }
 
     return field;
@@ -241,7 +241,7 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
 
 export const activeLabelFields = selectorFamily<
   string[],
-  { modal: boolean; space: State.SPACE }
+  { modal: boolean; space?: State.SPACE }
 >({
   key: "activeLabelFields",
   get: ({ modal, space }) => ({ get }) => {
@@ -252,7 +252,7 @@ export const activeLabelFields = selectorFamily<
 
 export const activeLabelPaths = selectorFamily<
   string[],
-  { modal: boolean; space: State.SPACE }
+  { modal: boolean; space?: State.SPACE }
 >({
   key: "activeLabelPaths",
   get: ({ modal, space }) => ({ get }) => {

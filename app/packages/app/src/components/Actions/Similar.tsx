@@ -22,7 +22,7 @@ import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import RadioGroup from "../Common/RadioGroup";
 import { samples } from "../Flashlight";
-import { Button } from "../Sidebar/Sidebar";
+import { Button } from "../utils";
 import { PopoutSectionTitle } from "../utils";
 
 import { ActionOption } from "./Common";

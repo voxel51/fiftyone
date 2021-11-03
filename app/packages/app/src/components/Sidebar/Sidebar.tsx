@@ -67,12 +67,18 @@ export const GroupHeader = ({
   );
 };
 
-const groupShown = atomFamily<boolean, { path: string; modal: boolean }>({
+const groupShown = atomFamily<boolean, { name: string; modal: boolean }>({
   key: "sidebarGroupShown",
   default: true,
 });
 
-const InteractiveGroupEntry = ({ name }: { name: string; modal: boolean }) => {
+const InteractiveGroupEntry = ({
+  name,
+  modal,
+}: {
+  name: string;
+  modal: boolean;
+}) => {
   const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
 
   return (
@@ -87,11 +93,13 @@ const InteractiveGroupEntry = ({ name }: { name: string; modal: boolean }) => {
 const InteractivePathEntry = ({
   modal,
   path,
+  group,
 }: {
   modal: boolean;
   path: string;
+  group: string;
 }) => {
-  const shown = useRecoilValue(groupShown({ path, modal }));
+  const shown = useRecoilValue(groupShown({ name: group, modal }));
 
   if (!shown) {
     return null;
@@ -266,31 +274,42 @@ const InteractiveSideBar = ({
       );
     }
   });
+  let groupName = null;
 
   return (
     <InteractiveSideBarContainer ref={() => !attached && setAttached(true)}>
-      {springs.map(({ zIndex, shadow, y, scale }, i) => (
-        <animated.div
-          {...bind(i)}
-          ref={(node) => (refs.current[i] = node)}
-          key={i}
-          style={{
-            zIndex,
-            boxShadow: shadow.to(
-              (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
-            ),
-            y,
-            scale,
-          }}
-          children={
-            entries[i].group ? (
-              <InteractiveGroupEntry name={entries[i].name} />
-            ) : (
-              <InteractivePathEntry modal={modal} path={entries[i].name} />
-            )
-          }
-        />
-      ))}
+      {springs.map(({ zIndex, shadow, y, scale }, i) => {
+        if (entries[i].group) {
+          groupName = entries[i].name;
+        }
+
+        return (
+          <animated.div
+            {...bind(i)}
+            ref={(node) => (refs.current[i] = node)}
+            key={i}
+            style={{
+              zIndex,
+              boxShadow: shadow.to(
+                (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+              ),
+              y,
+              scale,
+            }}
+            children={
+              entries[i].group ? (
+                <InteractiveGroupEntry name={groupName} modal={modal} />
+              ) : (
+                <InteractivePathEntry
+                  modal={modal}
+                  path={entries[i].name}
+                  group={groupName}
+                />
+              )
+            }
+          />
+        );
+      })}
     </InteractiveSideBarContainer>
   );
 };

@@ -19,25 +19,6 @@ export const VerticalSpacer = styled.div`
     opaque ? theme.background : undefined};
 `;
 
-export const Button = styled.button`
-  display: flex;
-  align-items: center;
-  background-color: ${({ theme }) => theme.button};
-  color: ${({ theme }) => theme.font};
-  border: 1px solid ${({ theme }) => theme.buttonBorder};
-  border-radius: 1px;
-  margin: 0 3px;
-  padding: 3px 10px;
-  font-weight: bold;
-  cursor: pointer;
-
-  svg.MuiSvgIcon-root {
-    font-size: 1.25em;
-    margin-left: -3px;
-    margin-right: 3px;
-  }
-`;
-
 export const ModalWrapper = styled.div`
   position: fixed;
   top: 0;
@@ -282,5 +263,73 @@ export const TabOption = ({ active, options, color }: TabOptionProps) => {
         </Tab>
       ))}
     </TabOptionDiv>
+  );
+};
+
+const ButtonDiv = animated(styled.div`
+  cursor: pointer;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 2.5px 0.5rem;
+  border-radius: 3px;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+`);
+
+const OptionTextDiv = animated(styled.div`
+  padding-right: 0.25rem;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  color: inherit;
+  line-height: 1.7;
+  & > span {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+`);
+
+export const OptionText = ({ style, children }) => {
+  return (
+    <OptionTextDiv style={style}>
+      <span>{children}</span>
+    </OptionTextDiv>
+  );
+};
+
+export const Button = ({
+  onClick,
+  text,
+  children = null,
+  style,
+  color = null,
+  title = null,
+}) => {
+  const theme = useTheme();
+  const [hover, setHover] = useState(false);
+  color = color ?? theme.brand;
+  const props = useSpring({
+    backgroundColor: hover ? color : theme.background,
+    color: hover ? theme.font : theme.fontDark,
+    config: {
+      duration: 150,
+    },
+  });
+  return (
+    <ButtonDiv
+      style={{ ...props, userSelect: "none", ...style }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={title ?? text}
+    >
+      <OptionText key={"button"} style={{ fontWeight: "bold", width: "100%" }}>
+        {text}
+      </OptionText>
+      {children}
+    </ButtonDiv>
   );
 };

@@ -30,7 +30,7 @@ import {
   SwitchDiv,
   SwitcherDiv,
 } from "./utils";
-import { Button } from "../Sidebar/Sidebar";
+import { Button } from "../utils";
 import socket from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
