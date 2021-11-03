@@ -809,6 +809,15 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
     def label_cls(self):
         return fol.Detections
 
+    def log_collection(self, sample_collection):
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+
     def _make_example_generator(self):
         return TFObjectDetectionExampleGenerator(classes=self.classes)
 
