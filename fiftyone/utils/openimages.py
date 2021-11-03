@@ -25,6 +25,7 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
@@ -205,7 +206,7 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
             "detections": fol.Detections,
             "segmentations": fol.Detections,
             "relationships": fol.Detections,
-            "open_images_id": str,
+            "open_images_id": fof.StringField,
         }
 
         if self._has_scalar_labels:
