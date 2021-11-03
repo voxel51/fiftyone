@@ -23,6 +23,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -491,15 +492,27 @@ def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
                 label_type,
             )
 
-    elif (
-        isinstance(dataset_exporter, LabeledImageDatasetExporter)
-        and dataset_exporter.label_cls is fol.Classification
-    ):
+    elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
+        label_cls = dataset_exporter.label_cls
+
+        if isinstance(label_cls, dict):
+            export_types = list(label_cls.values())
+        elif isinstance(label_cls, (list, tuple)):
+            export_types = list(label_cls)
+        else:
+            export_types = [label_cls]
+
         try:
             label_type = samples._get_label_field_type(label_field)
-            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
         except:
-            pass
+            label_type = None
+
+        if (
+            label_type is not None
+            and not issubclass(label_type, tuple(export_types))
+            and fol.Classification in export_types
+        ):
+            found_patches = issubclass(label_type, fol._PATCHES_FIELDS)
 
         if found_patches:
             logger.info(
@@ -551,17 +564,29 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
                 FiftyOneUnlabeledVideoSampleParser, kwargs
             )
 
-    elif (
-        isinstance(dataset_exporter, LabeledVideoDatasetExporter)
-        and dataset_exporter.label_cls is fol.Classification
-    ):
+    elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
+        label_cls = dataset_exporter.label_cls
+
+        if isinstance(label_cls, dict):
+            export_types = list(label_cls.values())
+        elif isinstance(label_cls, (list, tuple)):
+            export_types = list(label_cls)
+        else:
+            export_types = [label_cls]
+
         try:
             label_type = samples._get_label_field_type(label_field)
+        except:
+            label_type = None
+
+        if (
+            label_type is not None
+            and not issubclass(label_type, export_types)
+            and fol.Classification in export_types
+        ):
             found_clips = issubclass(
                 label_type, (fol.TemporalDetection, fol.TemporalDetections)
             )
-        except:
-            pass
 
         if found_clips:
             logger.info(
@@ -580,13 +605,18 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
 
 
 def _make_label_coercion_functions(
-    label_field_or_dict, sample_collection, dataset_exporter, frames=False
+    label_field_or_dict,
+    sample_collection,
+    dataset_exporter,
+    frames=False,
+    validate=True,
 ):
     if frames:
         label_cls = dataset_exporter.frame_labels_cls
     else:
         label_cls = dataset_exporter.label_cls
 
+    # Exporter doesn't declare types, so we cannot do anything
     if label_cls is None:
         return None
 
@@ -606,23 +636,20 @@ def _make_label_coercion_functions(
 
     coerce_fcn_dict = {}
     for label_field in label_fields:
-        if frames:
-            field = sample_collection._FRAMES_PREFIX + label_field
+        field_type = sample_collection._get_field_type(
+            label_field, is_frame_field=frames
+        )
+
+        if isinstance(field_type, fof.EmbeddedDocumentField):
+            label_type = field_type.document_type
         else:
-            field = label_field
+            label_type = type(field_type)
 
-        try:
-            label_type = sample_collection._get_label_field_type(field)
-        except:
-            continue
-
+        # Natively supported types
         if any(issubclass(label_type, t) for t in export_types):
             continue
 
-        #
         # Single label -> list coercion
-        #
-
         for export_type in export_types:
             single_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(export_type, None)
             if single_type is not None and issubclass(label_type, single_type):
@@ -642,10 +669,7 @@ def _make_label_coercion_functions(
         if label_field in coerce_fcn_dict:
             continue
 
-        #
         # `Classification` -> `Detections` coercion
-        #
-
         if (
             issubclass(label_type, fol.Classification)
             and fol.Detections in export_types
@@ -660,6 +684,21 @@ def _make_label_coercion_functions(
             )
 
             coerce_fcn_dict[label_field] = _classification_to_detections
+
+        # Invalid field type found
+        if validate:
+            ftype = "Frame field" if frames else "Field"
+            raise ValueError(
+                "%s '%s' of type %s is not supported by exporter type %s, "
+                "which only supports %s"
+                % (
+                    ftype,
+                    label_field,
+                    label_type,
+                    type(dataset_exporter),
+                    export_types,
+                )
+            )
 
     if not coerce_fcn_dict:
         return None
