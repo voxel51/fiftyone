@@ -3957,10 +3957,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         server_id_map = {}
         dup_ids = []
         types = ["shapes", "tags", "tracks"]
-        attr_id_map_rev = {}
+        label_id_map = {}
         for class_id, class_attr_map in attr_id_map.items():
-            class_attr_map_rev = {i: n for n, i in class_attr_map.items()}
-            attr_id_map_rev[class_id] = class_attr_map_rev
+            for attr_name, attr_id in class_attr_map.items():
+                if attr_name == "label_id":
+                    label_id_map[class_id] = attr_id
 
         for anno_type, anno_list in anno_resp.items():
             if anno_type not in types:
@@ -3970,10 +3971,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 server_id = anno["id"]
                 class_id = anno["label_id"]
                 for attr in anno["attributes"]:
-                    spec_id = attr["spec_id"]
-                    value = attr["value"]
-                    attr_name = attr_id_map_rev[class_id][spec_id]
-                    if attr_name == "label_id":
+                    if attr["spec_id"] == label_id_map[class_id]:
+                        value = attr["value"]
                         if server_id in server_id_map:
                             logger.warning(
                                 "Found duplicate server_id `%d` for label ids "
