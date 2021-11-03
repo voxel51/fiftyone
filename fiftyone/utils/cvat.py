@@ -5410,14 +5410,18 @@ class CVATLabel(object):
 
         # Parse label ID
         label_id = self.attributes.pop("label_id", None)
-        if label_id is None:
-            label_id = server_id_map.get(server_id, None)
-
         if label_id is not None:
-            try:
-                self._id = ObjectId(label_id)
-            except:
-                pass
+            self._attempt_assign_id(label_id)
+
+        if self._id is None:
+            label_id = server_id_map.get(server_id, None)
+            self._attempt_assign_id(label_id)
+
+    def _attempt_assign_id(self, label_id):
+        try:
+            self._id = ObjectId(label_id)
+        except:
+            pass
 
     def _set_attributes(self, label):
         if self._id is not None:
