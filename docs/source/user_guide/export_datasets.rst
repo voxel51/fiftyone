@@ -343,6 +343,82 @@ their appropriately typed labels.
         frame_labels_field="detections",
     )
 
+.. _export-class-lists:
+
+Class lists
+-----------
+
+Certain labeled image/video export formats such as
+:ref:`COCO <COCODetectionDataset-export>` or
+:ref:`YOLO <YOLOv5Dataset-export>` store an explicit list of classes for the
+label field being exported.
+
+In such cases, all exporters providing by FiftyOne use the following strategy
+to retrieve the class list when exporting a given `label_field`:
+
+1.  If the exporter provides a parameter like `classes` that allows for
+    manually specifying the classes, this list is used
+2.  If the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` dict of the
+    sample collection contains `label_field`, this class list is used
+3.  If the collection's
+    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+    attribute is non-empty, this class list is used
+4.  If the collection's :meth:`info <fiftyone.core.dataset.Dataset.info>` dict
+    contains a class list under the `classes` key, this list is used
+
+.. note::
+
+    See :ref:`this section <storing-classes>` for more information about
+    storing class lists on FiftyOne datasets.
+
+If no explicit class list is available via the above methods, the observed
+classes in the collection being exported are used, which may be a subset of the
+classes in the parent dataset when exporting a dataset view.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    # Load 10 samples containing cats and dogs (among other objects)
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        classes=["cat", "dog"],
+        shuffle=True,
+        max_samples=10,
+    )
+
+    # Loading zoo datasets generally populates the `default_classes` attribute
+    print(len(dataset.default_classes))  # 91
+
+    # Create a view that only contains cats and dogs
+    view = dataset.filter_labels("ground_truth", F("label").is_in(["cat", "dog"]))
+
+    # By default, `default_classes` will be used to populate the COCO categories
+    view.export(
+        labels_path="/tmp/coco1.json",
+        dataset_type=fo.types.COCODetectionDataset,
+    )
+
+    # But, since we're only interested in exporting cats and dogs, we can override
+    # this by manually providing the `classes` argument
+    view.export(
+        labels_path="/tmp/coco2.json",
+        dataset_type=fo.types.COCODetectionDataset,
+        classes=["cat", "dog"],
+    )
+
+    # Equivalently, we can clear `default_classes` first so that the observed
+    # labels (only cats and dogs in this case) will be included
+    dataset.default_classes = None
+    view.export(
+        labels_path="/tmp/coco3.json",
+        dataset_type=fo.types.COCODetectionDataset,
+    )
+
 .. _supported-export-formats:
 
 Supported formats
@@ -451,7 +527,7 @@ Datasets of this type are exported in the following format:
 
     See :class:`ImageDirectoryExporter <fiftyone.utils.data.exporters.ImageDirectoryExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export the images in a FiftyOne dataset as a directory of images on
@@ -509,7 +585,7 @@ Datasets of this type are exported in the following format:
 
     See :class:`VideoDirectoryExporter <fiftyone.utils.data.exporters.VideoDirectoryExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export the videos in a FiftyOne dataset as a directory of videos on
@@ -551,6 +627,11 @@ disk as follows:
 FiftyOneImageClassificationDataset
 ----------------------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Classification|, |Classifications|
+
 The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
 type represents a labeled dataset consisting of images and their associated
 classification label(s) stored in a simple JSON format.
@@ -584,9 +665,10 @@ format:
         }
     }
 
-If the `classes` field is provided, the `target` values are class IDs that are
-mapped to class label strings via `classes[target]`. If no `classes` field is
-provided, then the `target` values directly store the label strings.
+If the `classes` field is included in the JSON, the `target` values are class
+IDs that are mapped to class label strings via `classes[target]`. If no
+`classes` are included, then the `target` values directly store the label
+strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
@@ -650,7 +732,7 @@ attributes, depending on how you configured the export.
 
     See :class:`FiftyOneImageClassificationDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageClassificationDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as an image classification dataset stored on
@@ -691,6 +773,14 @@ disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageClassificationDataset
+
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
 
 You can also perform labels-only exports in this format. If the filenames of
 the images of your dataset are unique, then you can simply provide the
@@ -763,6 +853,11 @@ would only like to export labels.
 ImageClassificationDirectoryTree
 --------------------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Classification|
+
 The :class:`fiftyone.types.ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`
 type represents a directory tree whose subfolders define an image
 classification dataset.
@@ -788,7 +883,7 @@ Unlabeled images are stored in a subdirectory named `_unlabeled`.
 
     See :class:`ImageClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.ImageClassificationDirectoryTreeExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as an image classification directory tree
@@ -835,6 +930,11 @@ stored on disk in the above format as follows:
 VideoClassificationDirectoryTree
 --------------------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Classification|
+
 The :class:`fiftyone.types.VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
 type represents a directory tree whose subfolders define a video classification
 dataset.
@@ -860,7 +960,7 @@ Unlabeled videos are stored in a subdirectory named `_unlabeled`.
 
     See :class:`VideoClassificationDirectoryTreeExporter <fiftyone.utils.data.exporters.VideoClassificationDirectoryTreeExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a video classification directory tree
@@ -907,6 +1007,11 @@ stored on disk in the above format as follows:
 TFImageClassificationDataset
 ----------------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Classification|
+
 The :class:`fiftyone.types.TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
 type represents a labeled dataset consisting of images and their associated
 classification labels stored as
@@ -945,7 +1050,7 @@ For unlabeled samples, the TFRecords do not contain `label` features.
 
     See :class:`TFImageClassificationDatasetExporter <fiftyone.utils.tf.TFImageClassificationDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
@@ -1000,6 +1105,11 @@ format as follows:
 FiftyOneImageDetectionDataset
 -----------------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
+
 The :class:`fiftyone.types.FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
 object detections stored in a simple JSON format.
@@ -1050,9 +1160,10 @@ where `labels.json` is a JSON file in the following format:
 and where the bounding box coordinates are expressed as relative values in
 `[0, 1] x [0, 1]`.
 
-If the `classes` field is provided, the `target` values are class IDs that are
-mapped to class label strings via `classes[target]`. If no `classes` field is
-provided, then the `target` values directly store the label strings.
+If the `classes` field is included in the JSON, the `target` values are class
+IDs that are mapped to class label strings via `classes[target]`. If no
+`classes` are included, then the `target` values directly store the label
+strings.
 
 The target value in `labels` for unlabeled images is `None`.
 
@@ -1065,7 +1176,7 @@ to customize this behavior.
 
     See :class:`FiftyOneImageDetectionDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageDetectionDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as an image detection dataset in the above
@@ -1106,6 +1217,14 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageDetectionDataset
+
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
 
 You can also perform labels-only exports in this format. If the filenames of
 the images of your dataset are unique, then you can simply provide the
@@ -1177,6 +1296,11 @@ would only like to export labels.
 
 FiftyOneTemporalDetectionDataset
 --------------------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |TemporalDetections|
 
 The :class:`fiftyone.types.FiftyOneTemporalDetectionDataset <fiftyone.types.dataset_types.FiftyOneTemporalDetectionDataset>`
 type represents a labeled dataset consisting of videos and their associated
@@ -1254,9 +1378,10 @@ numbers of the detections, but you can pass the `use_timestamps=True` key
 during export to instead populate the `timestamps` keys with the
 `[start, stop]` timestamps of the detections, in seconds.
 
-If the `classes` field is provided, the `target` values are class IDs that are
-mapped to class label strings via `classes[target]`. If no `classes` field is
-provided, then the `target` values directly store the label strings.
+If the `classes` field is included in the JSON, the `target` values are class
+IDs that are mapped to class label strings via `classes[target]`. If no
+`classes` are included, then the `target` values directly store the label
+strings.
 
 The target value in `labels` for unlabeled videos is `None`.
 
@@ -1269,7 +1394,7 @@ to customize this behavior.
 
     See :class:`FiftyOneTemporalDetectionDatasetExporter <fiftyone.utils.data.exporters.FiftyOneTemporalDetectionDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a temporal detection dataset stored on
@@ -1310,6 +1435,14 @@ disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneTemporalDetectionDataset
+
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
 
 You can also perform labels-only exports in this format. If the filenames of
 the images of your dataset are unique, then you can simply provide the
@@ -1382,6 +1515,11 @@ would only like to export labels.
 COCODetectionDataset
 --------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|, |Polylines|
+
 The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
 object detections saved in
@@ -1417,9 +1555,7 @@ where `labels.json` is a JSON file in the following format:
             {
                 "id": 2,
                 "name": "cat",
-                "supercategory": "animal",
-                "keypoints": ["nose", "head", ...],
-                "skeleton": [[12, 14], [14, 16], ...]
+                "supercategory": "animal"
             },
             ...
         ],
@@ -1441,8 +1577,6 @@ where `labels.json` is a JSON file in the following format:
                 "category_id": 2,
                 "bbox": [260, 177, 231, 199],
                 "segmentation": [...],
-                "keypoints": [224, 226, 2, ...],
-                "num_keypoints": 10,
                 "score": 0.95,
                 "area": 45969,
                 "iscrowd": 0
@@ -1452,7 +1586,8 @@ where `labels.json` is a JSON file in the following format:
     }
 
 See `this page <https://cocodataset.org/#format-data>`_ for a full
-specification of the `segmentation` field.
+specification of the `segmentation` field, which will only be included if you
+export |Detections| with instance masks populated or |Polylines|.
 
 For unlabeled datasets, `labels.json` does not contain an `annotations` field.
 
@@ -1468,7 +1603,7 @@ corresponding images, which can be any of the following:
 
     See :class:`COCODetectionDatasetExporter <fiftyone.utils.coco.COCODetectionDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a COCO detection dataset in the above
@@ -1509,6 +1644,14 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.COCODetectionDataset
+
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
 
 You can also perform labels-only exports of COCO-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:
@@ -1553,6 +1696,11 @@ the `labels_path` parameter instead of `export_dir`:
 
 VOCDetectionDataset
 -------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
 
 The :class:`fiftyone.types.VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -1628,7 +1776,7 @@ Unlabeled images have no corresponding file in `labels/`.
 
     See :class:`VOCDetectionDatasetExporter <fiftyone.utils.voc.VOCDetectionDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a VOC detection dataset in the above
@@ -1714,6 +1862,11 @@ the `labels_path` parameter instead of `export_dir`:
 KITTIDetectionDataset
 ---------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
+
 The :class:`fiftyone.types.KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
 object detections saved in
@@ -1778,7 +1931,7 @@ Unlabeled images have no corresponding file in `labels/`.
 
     See :class:`KITTIDetectionDatasetExporter <fiftyone.utils.kitti.KITTIDetectionDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a KITTI detection dataset in the above
@@ -1864,6 +2017,11 @@ the `labels_path` parameter instead of `export_dir`:
 YOLOv4Dataset
 -------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
+
 The :class:`fiftyone.types.YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>`
 type represents a labeled dataset consisting of images and their associated
 object detections saved in
@@ -1917,7 +2075,7 @@ Unlabeled images have no corresponding TXT file in `data/`.
 
     See :class:`YOLOv4DatasetExporter <fiftyone.utils.yolo.YOLOv4DatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a YOLOv4 dataset in the above format as
@@ -1958,6 +2116,14 @@ follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.YOLOv4Dataset
+
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
 
 You can also perform labels-only exports of YOLO-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:
@@ -2002,6 +2168,11 @@ the `labels_path` parameter instead of `export_dir`:
 
 YOLOv5Dataset
 -------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
 
 The :class:`fiftyone.types.YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -2069,7 +2240,7 @@ Unlabeled images have no corresponding TXT file in `labels/`.
 
     See :class:`YOLOv5DatasetExporter <fiftyone.utils.yolo.YOLOv5DatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a YOLOv5 dataset in the above format as
@@ -2104,6 +2275,14 @@ follows:
             classes=classes,
         )
 
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
+
 You can also perform labels-only exports of YOLO-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:
 
@@ -2129,6 +2308,11 @@ the `labels_path` parameter instead of `export_dir`:
 
 TFObjectDetectionDataset
 ------------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|
 
 The :class:`fiftyone.types.TFObjectDetectionDataset <fiftyone.types.dataset_types.TFObjectDetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -2194,7 +2378,7 @@ The TFRecords for unlabeled samples do not contain `image/object/*` features.
 
     See :class:`TFObjectDetectionDatasetExporter <fiftyone.utils.tf.TFObjectDetectionDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
@@ -2244,10 +2428,23 @@ format as follows:
     :class:`TFObjectDetectionDatasetExporter <fiftyone.utils.tf.TFObjectDetectionDatasetExporter>`
     for details.
 
+.. note::
+
+    You can pass the optional `classes` parameter to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>` to
+    explicitly define the class list to use in the exported labels. Otherwise,
+    the strategy outlined in :ref:`this section <export-class-lists>` will be
+    used to populate the class list.
+
 .. _ImageSegmentationDirectory-export:
 
 ImageSegmentationDirectory
 --------------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Segmentation|, |Detections|, |Polylines|
 
 The :class:`fiftyone.types.ImageSegmentationDirectory <fiftyone.types.dataset_types.ImageSegmentationDirectory>`
 type represents a labeled dataset consisting of images and their associated
@@ -2279,7 +2476,7 @@ Unlabeled images have no corresponding file in `labels/`.
 
     See :class:`ImageSegmentationDirectoryExporter <fiftyone.utils.data.exporters.ImageSegmentationDirectoryExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as an image segmentation dataset in the above
@@ -2364,6 +2561,11 @@ parameter instead of `export_dir`:
 
 CVATImageDataset
 ----------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|, |Polylines|, |Keypoints|
 
 The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -2479,7 +2681,7 @@ of the corresponding images, which can be any of the following:
 
     See :class:`CVATImageDatasetExporter <fiftyone.utils.cvat.CVATImageDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a CVAT image dataset in the above format
@@ -2564,6 +2766,11 @@ the `labels_path` parameter instead of `export_dir`:
 
 CVATVideoDataset
 ----------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Detections|, |Polylines|, |Keypoints|
 
 The :class:`fiftyone.types.CVATVideoDataset <fiftyone.types.dataset_types.CVATVideoDataset>`
 type represents a labeled dataset consisting of videos and their associated
@@ -2682,7 +2889,7 @@ Unlabeled videos have no corresponding file in `labels/`.
 
     See :class:`CVATVideoDatasetExporter <fiftyone.utils.cvat.CVATVideoDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a CVAT video dataset in the above format
@@ -2768,6 +2975,11 @@ the `labels_path` parameter instead of `export_dir`:
 FiftyOneImageLabelsDataset
 --------------------------
 
+.. admonition:: Supported label types
+    :class: note
+
+    |Classifications|, |Detections|, |Polylines|, |Keypoints|
+
 The :class:`fiftyone.types.FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>`
 type represents a labeled dataset consisting of images and their associated
 multitask predictions stored in
@@ -2817,7 +3029,7 @@ For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
     See :class:`FiftyOneImageLabelsDatasetExporter <fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as an image labels dataset in the above
@@ -2863,6 +3075,11 @@ format as follows:
 
 FiftyOneVideoLabelsDataset
 --------------------------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Classifications|, |Detections|, |TemporalDetections|, |Polylines|, |Keypoints|
 
 The :class:`fiftyone.types.FiftyOneVideoLabelsDataset <fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset>`
 type represents a labeled dataset consisting of videos and their associated
@@ -2913,7 +3130,7 @@ For unlabeled videos, an empty `eta.core.video.VideoLabels` file is stored.
 
     See :class:`FiftyOneVideoLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneVideoLabelsDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a video labels dataset in the above format
@@ -2959,6 +3176,11 @@ as follows:
 
 BDDDataset
 ----------
+
+.. admonition:: Supported label types
+    :class: note
+
+    |Classifications|, |Detections|, |Polylines|
 
 The :class:`fiftyone.types.BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -3073,7 +3295,7 @@ corresponding images, which can be any of the following:
 
     See :class:`BDDDatasetExporter <fiftyone.utils.bdd.BDDDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a BDD dataset in the above format as
@@ -3229,7 +3451,7 @@ each sample.
 
     See :class:`GeoJSONDatasetExporter <fiftyone.utils.geojson.GeoJSONDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset as a GeoJSON dataset in the above format as
@@ -3348,7 +3570,7 @@ representation of the frame labels for each video in the dataset.
 
     See :class:`FiftyOneDatasetExporter <fiftyone.utils.data.exporters.FiftyOneDatasetExporter>`
     for parameters that can be passed to methods like
-    :meth:`SampleCollection.export() <fiftyone.core.collections.SampleCollection.export>`
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
 
 You can export a FiftyOne dataset to disk in the above format as follows:
