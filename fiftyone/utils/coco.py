@@ -25,6 +25,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -505,8 +506,8 @@ class COCODetectionDatasetImporter(
             "detections": fol.Detections,
             "segmentations": seg_type,
             "keypoints": fol.Keypoints,
-            "coco_id": int,
-            "license": int,
+            "coco_id": fof.IntField,
+            "license": fof.IntField,
         }
 
         if self._has_scalar_labels:
@@ -644,9 +645,9 @@ class COCODetectionDatasetExporter(
             this list will be extracted when :meth:`log_collection` is called,
             if possible
         info (None): a dict of info as returned by
-            :meth:`load_coco_detection_annotations`. If not provided, this info
-            will be extracted when :meth:`log_collection` is called, if
-            possible
+            :meth:`load_coco_detection_annotations` to include in the exported
+            JSON. If not provided, this info will be extracted when
+            :meth:`log_collection` is called, if possible
         extra_attrs (True): whether to include extra object attributes in the
             exported labels. Supported values are:
 
@@ -717,7 +718,7 @@ class COCODetectionDatasetExporter(
 
     @property
     def label_cls(self):
-        return fol.Detections
+        return (fol.Detections, fol.Polylines)
 
     def setup(self):
         self._image_id = 0
@@ -751,7 +752,7 @@ class COCODetectionDatasetExporter(
         if self.info is None:
             self.info = sample_collection.info
 
-    def export_sample(self, image_or_path, detections, metadata=None):
+    def export_sample(self, image_or_path, label, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
 
         if metadata is None:
@@ -769,32 +770,42 @@ class COCODetectionDatasetExporter(
             }
         )
 
-        if detections is None:
+        if label is None:
             return
 
         self._has_labels = True
 
-        for detection in detections.detections:
-            label = detection.label
+        if isinstance(label, fol.Detections):
+            labels = label.detections
+        elif isinstance(label, fol.Polylines):
+            labels = label.polylines
+        else:
+            raise ValueError(
+                "Unsupported label type %s. The supported types are %s"
+                % (type(label), self.label_cls)
+            )
+
+        for label in labels:
+            _label = label.label
 
             if self._labels_map_rev is not None:
-                if label not in self._labels_map_rev:
+                if _label not in self._labels_map_rev:
                     msg = (
-                        "Ignoring detection with label '%s' not in provided "
-                        "classes" % label
+                        "Ignoring object with label '%s' not in provided "
+                        "classes" % _label
                     )
                     warnings.warn(msg)
                     continue
 
-                category_id = self._labels_map_rev[label]
+                category_id = self._labels_map_rev[_label]
             else:
-                category_id = label  # will be converted to int later
+                category_id = _label  # will be converted to int later
 
             self._anno_id += 1
-            self._classes.add(label)
+            self._classes.add(_label)
 
-            obj = COCOObject.from_detection(
-                detection,
+            obj = COCOObject.from_label(
+                label,
                 metadata,
                 category_id=category_id,
                 extra_attrs=self.extra_attrs,
@@ -804,16 +815,17 @@ class COCODetectionDatasetExporter(
             )
             obj.id = self._anno_id
             obj.image_id = self._image_id
+
             self._annotations.append(obj.to_anno_dict())
 
     def close(self, *args):
-        if self.classes is None:
+        if self.classes is not None:
+            classes = self.classes
+        else:
             classes = sorted(self._classes)
             labels_map_rev = _to_labels_map_rev(classes)
             for anno in self._annotations:
                 anno["category_id"] = labels_map_rev[anno["category_id"]]
-        else:
-            classes = self.classes
 
         date_created = datetime.now().replace(microsecond=0).isoformat()
         info = {
@@ -826,13 +838,20 @@ class COCODetectionDatasetExporter(
         }
 
         licenses = self.info.get("licenses", [])
-        categories = self.info.get("categories", None)
 
-        if categories is None:
-            categories = [
-                {"id": i, "name": l, "supercategory": None}
-                for i, l in enumerate(classes)
-            ]
+        supercategory_map = {
+            c["name"]: c.get("supercategory", None)
+            for c in self.info.get("categories", [])
+        }
+
+        categories = [
+            {
+                "id": i,
+                "name": l,
+                "supercategory": supercategory_map.get(l, None),
+            }
+            for i, l in enumerate(classes)
+        ]
 
         labels = {
             "info": info,
@@ -854,7 +873,7 @@ class COCODetectionDatasetExporter(
 
 
 class COCOObject(object):
-    """An object in COCO detection format.
+    """An object in COCO format.
 
     Args:
         id (None): the ID of the annotation
@@ -866,7 +885,7 @@ class COCOObject(object):
         keypoints (None): the keypoints data for the object
         score (None): a confidence score for the object
         area (None): the area of the bounding box, in pixels
-        iscrowd (None): whether the detection is a crowd
+        iscrowd (None): whether the object is a crowd
         **attributes: additional custom attributes
     """
 
@@ -996,11 +1015,12 @@ class COCOObject(object):
         x, y, w, h = self.bbox
         bounding_box = [x / width, y / height, w / width, h / height]
 
-        mask = None
         if load_segmentation and self.segmentation is not None:
             mask = _coco_segmentation_to_mask(
                 self.segmentation, self.bbox, frame_size
             )
+        else:
+            mask = None
 
         return fol.Detection(
             label=label,
@@ -1047,86 +1067,6 @@ class COCOObject(object):
         return d
 
     @classmethod
-    def from_detection(
-        cls,
-        detection,
-        metadata,
-        category_id=None,
-        keypoint=None,
-        extra_attrs=True,
-        iscrowd="iscrowd",
-        num_decimals=None,
-        tolerance=None,
-    ):
-        """Creates a :class:`COCOObject` from a
-        :class:`fiftyone.core.labels.Detection`.
-
-        Args:
-            detection: a :class:`fiftyone.core.labels.Detection`
-            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
-                image
-            category_id (None): the category ID for the object
-            keypoint (None): an optional :class:`fiftyone.core.labels.Keypoint`
-                containing keypoints to include for the object
-            extra_attrs (True): whether to include extra attributes from the
-                object. Supported values are:
-
-                -   ``True``: include all extra attributes found
-                -   ``False``: do not include extra attributes
-                -   a name or list of names of specific attributes to include
-            iscrowd ("iscrowd"): the name of the crowd attribute (used if
-                present)
-            num_decimals (None): an optional number of decimal places at which
-                to round bounding box pixel coordinates. By default, no
-                rounding is done
-            tolerance (None): a tolerance, in pixels, when generating
-                approximate polylines for instance masks. Typical values are
-                1-3 pixels
-
-        Returns:
-            a :class:`COCOObject`
-        """
-        width = metadata.width
-        height = metadata.height
-        x, y, w, h = detection.bounding_box
-
-        bbox = [x * width, y * height, w * width, h * height]
-
-        if num_decimals is not None:
-            bbox = [round(p, num_decimals) for p in bbox]
-
-        area = bbox[2] * bbox[3]
-
-        _iscrowd = detection.get_attribute_value(iscrowd, None)
-        if _iscrowd is not None:
-            _iscrowd = int(_iscrowd)
-
-        frame_size = (width, height)
-
-        segmentation = _make_coco_segmentation(
-            detection, frame_size, _iscrowd, tolerance
-        )
-
-        keypoints = _make_coco_keypoints(keypoint, frame_size)
-
-        attributes = _get_attributes(detection, extra_attrs)
-        attributes.pop("iscrowd", None)
-        attributes.pop("area", None)
-
-        return cls(
-            id=None,
-            image_id=None,
-            category_id=category_id,
-            bbox=bbox,
-            segmentation=segmentation,
-            keypoints=keypoints,
-            score=detection.confidence,
-            area=area,
-            iscrowd=_iscrowd,
-            **attributes,
-        )
-
-    @classmethod
     def from_anno_dict(cls, d, extra_attrs=True):
         """Creates a :class:`COCOObject` from a COCO annotation dict.
 
@@ -1167,6 +1107,107 @@ class COCOObject(object):
             score=d.get("score", None),
             area=d.get("area", None),
             iscrowd=d.get("iscrowd", None),
+            **attributes,
+        )
+
+    @classmethod
+    def from_label(
+        cls,
+        label,
+        metadata,
+        category_id=None,
+        keypoint=None,
+        extra_attrs=True,
+        iscrowd="iscrowd",
+        num_decimals=None,
+        tolerance=None,
+    ):
+        """Creates a :class:`COCOObject` from a compatible
+        :class:`fiftyone.core.labels.Label`.
+
+        Args:
+            label: a :class:`fiftyone.core.labels.Detection` or a
+                :class:`fiftyone.core.labels.Polyline`
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
+                image
+            category_id (None): the category ID for the object
+            keypoint (None): an optional :class:`fiftyone.core.labels.Keypoint`
+                containing keypoints to include for the object
+            extra_attrs (True): whether to include extra attributes from the
+                object. Supported values are:
+
+                -   ``True``: include all extra attributes found
+                -   ``False``: do not include extra attributes
+                -   a name or list of names of specific attributes to include
+            iscrowd ("iscrowd"): the name of the crowd attribute (used if
+                present)
+            num_decimals (None): an optional number of decimal places at which
+                to round bounding box pixel coordinates. By default, no
+                rounding is done
+            tolerance (None): a tolerance, in pixels, when generating
+                approximate polylines for instance masks. Typical values are
+                1-3 pixels
+
+        Returns:
+            a :class:`COCOObject`
+        """
+        width = metadata.width
+        height = metadata.height
+        frame_size = (width, height)
+
+        if isinstance(label, fol.Detection):
+            x, y, w, h = label.bounding_box
+            bbox = [x * width, y * height, w * width, h * height]
+
+            if label.mask is not None:
+                segmentation = _instance_to_coco_segmentation(
+                    label, frame_size, iscrowd=iscrowd, tolerance=tolerance
+                )
+            else:
+                segmentation = None
+        elif isinstance(label, fol.Polyline):
+            points = np.concatenate(label.points, axis=0)
+            x, y = points.min(axis=0)
+            xmax, ymax = points.max(axis=0)
+            w, h = xmax - x, ymax - y
+            bbox = [x * width, y * height, w * width, h * height]
+
+            segmentation = _polyline_to_coco_segmentation(
+                label, frame_size, iscrowd=iscrowd
+            )
+        else:
+            raise ValueError("Unsupported label type %s" % type(label))
+
+        if num_decimals is not None:
+            bbox = [round(p, num_decimals) for p in bbox]
+
+        confidence = label.confidence
+
+        area = bbox[2] * bbox[3]
+
+        if keypoint is not None:
+            keypoints = _make_coco_keypoints(keypoint, frame_size)
+        else:
+            keypoints = None
+
+        _iscrowd = label.get_attribute_value(iscrowd, None)
+        if _iscrowd is not None:
+            _iscrowd = int(_iscrowd)
+
+        attributes = _get_attributes(label, extra_attrs)
+        attributes.pop(iscrowd, None)
+        attributes.pop("area", None)
+
+        return cls(
+            id=None,
+            image_id=None,
+            category_id=category_id,
+            bbox=bbox,
+            segmentation=segmentation,
+            keypoints=keypoints,
+            score=confidence,
+            area=area,
+            iscrowd=_iscrowd,
             **attributes,
         )
 
@@ -2051,9 +2092,6 @@ def _pairwise(x):
 
 
 def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
-    if segmentation is None:
-        return None
-
     x, y, w, h = bbox
     width, height = frame_size
 
@@ -2077,10 +2115,23 @@ def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
     ]
 
 
-def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
-    if detection.mask is None:
-        return None
+def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
+    if polyline.get_attribute_value(iscrowd, None):
+        seg = polyline.to_segmentation(frame_size=frame_size, target=1)
+        return _mask_to_rle(seg.mask)
 
+    width, height = frame_size
+    polygons = []
+    for points in polyline.points:
+        polygon = [(int(x * width), int(y * height)) for x, y in points]
+        polygons.append(polygon)
+
+    return polygon
+
+
+def _instance_to_coco_segmentation(
+    detection, frame_size, iscrowd="iscrowd", tolerance=None
+):
     dobj = foue.to_detected_object(detection)
 
     try:
@@ -2092,16 +2143,13 @@ def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
         width, height = frame_size
         mask = np.zeros((height, width), dtype=bool)
 
-    if iscrowd:
+    if detection.get_attribute_value(iscrowd, None):
         return _mask_to_rle(mask)
 
     return _mask_to_polygons(mask, tolerance)
 
 
 def _make_coco_keypoints(keypoint, frame_size):
-    if keypoint is None:
-        return None
-
     width, height = frame_size
 
     # @todo true COCO format would set v = 1/2 based on whether the keypoints
