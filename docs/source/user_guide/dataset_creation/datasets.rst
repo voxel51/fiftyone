@@ -4034,20 +4034,24 @@ Datasets of this type are read in the following format:
             <filename1>.<ext>
             <filename2>.<ext>
             ...
-        evaluations/
-            <eval_key1>.json
-            <eval_key2>.json
+        annotations/
+            <anno_key1>.json
+            <anno_key2>.json
             ...
         brain/
             <brain_key1>.json
             <brain_key2>.json
             ...
+        evaluations/
+            <eval_key1>.json
+            <eval_key2>.json
+            ...
 
 where `metadata.json` is a JSON file containing metadata associated with the
 dataset, `samples.json` is a JSON file containing a serialized representation
-of the samples in the dataset, `evaluations/` contains any serialized
-|EvaluationResults| for the dataset, and `brain/` contains any serialized
-|BrainResults| for the dataset.
+of the samples in the dataset, `annotations/` contains any serialized
+|AnnotationResults|, `brain/` contains any serialized |BrainResults|, and
+`evaluations/` contains any serialized |EvaluationResults|.
 
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.

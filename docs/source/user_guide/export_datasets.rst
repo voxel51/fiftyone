@@ -353,7 +353,7 @@ Certain labeled image/video export formats such as
 :ref:`YOLO <YOLOv5Dataset-export>` store an explicit list of classes for the
 label field being exported.
 
-In such cases, all exporters providing by FiftyOne use the following strategy
+In such cases, all exporters provided by FiftyOne use the following strategy
 to retrieve the class list when exporting a given `label_field`:
 
 1.  If the exporter provides a parameter like `classes` that allows for
@@ -366,14 +366,14 @@ to retrieve the class list when exporting a given `label_field`:
 4.  If the collection's :meth:`info <fiftyone.core.dataset.Dataset.info>` dict
     contains a class list under the `classes` key, this list is used
 
+If no explicit class list is available via the above methods, the observed
+classes in the collection being exported are used, which may be a subset of the
+classes in the parent dataset when exporting a view.
+
 .. note::
 
     See :ref:`this section <storing-classes>` for more information about
     storing class lists on FiftyOne datasets.
-
-If no explicit class list is available via the above methods, the observed
-classes in the collection being exported are used, which may be a subset of the
-classes in the parent dataset when exporting a dataset view.
 
 .. code-block:: python
     :linenos:
@@ -412,7 +412,7 @@ classes in the parent dataset when exporting a dataset view.
     )
 
     # Equivalently, we can clear `default_classes` first so that the observed
-    # labels (only cats and dogs in this case) will be included
+    # labels (only cats and dogs in this case) will be used
     dataset.default_classes = None
     view.export(
         labels_path="/tmp/coco3.json",
@@ -3027,7 +3027,7 @@ For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
 .. note::
 
-    See :class:`FiftyOneImageLabelsDatasetExporter <fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetExporter>`
+    See :class:`FiftyOneImageLabelsDatasetExporter <fiftyone.utils.data.exporters.FiftyOneImageLabelsDatasetExporter>`
     for parameters that can be passed to methods like
     :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
     to customize the export of datasets of this type.
@@ -3548,20 +3548,24 @@ Datasets of this type are exported in the following format:
             <filename1>.<ext>
             <filename2>.<ext>
             ...
-        evaluations/
-            <eval_key1>.json
-            <eval_key2>.json
+        annotations/
+            <anno_key1>.json
+            <anno_key2>.json
             ...
         brain/
             <brain_key1>.json
             <brain_key2>.json
             ...
+        evaluations/
+            <eval_key1>.json
+            <eval_key2>.json
+            ...
 
 where `metadata.json` is a JSON file containing metadata associated with the
 dataset, `samples.json` is a JSON file containing a serialized representation
-of the samples in the dataset, `evaluations/` contains any serialized
-|EvaluationResults| for the dataset, and `brain/` contains any serialized
-|BrainResults| for the dataset.
+of the samples in the dataset, `annotations/` contains any serialized
+|AnnotationResults|, `brain/` contains any serialized |BrainResults|, and
+`evaluations/` contains any serialized |EvaluationResults|.
 
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.
@@ -3609,9 +3613,10 @@ You can export a FiftyOne dataset to disk in the above format as follows:
 
 You can also export datasets in this this format without copying the source
 media files by including `export_media=False` in your call to
-:meth:`export() <fiftyone.core.collections.SampleCollection.export>`. By
-default, the absolute filepath of each image will be included in the export;
-however, if you want to re-import this dataset on a different machine with the
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>`.
+
+By default, the absolute filepath of each image will be included in the export.
+However, if you want to re-import this dataset on a different machine with the
 source media files stored in a different root directory, you can include the
 optional `rel_dir` parameter to specify a common prefix to strip from each
 image's filepath, and then provide the new `rel_dir` when
@@ -3673,13 +3678,14 @@ image's filepath, and then provide the new `rel_dir` when
 
 .. note::
 
-    Exporting in FiftyOneDataset format as shown above using the
-    `export_media=False` and `rel_dir` parameters is a convenient way to
-    transfer datasets between work environments, since this enables you to
-    store the media files wherever you wish in each environment and then simply
-    provide the appropriate `rel_dir` value when
-    :ref:`importing <FiftyOneDataset-import>` the dataset into FiftyOne in a
-    new environment.
+    Exporting in
+    :class:`fiftyone.types.FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
+    format as shown above using the `export_media=False` and `rel_dir`
+    parameters is a convenient way to transfer datasets between work
+    environments, since this enables you to store the media files wherever you
+    wish in each environment and then simply provide the appropriate `rel_dir`
+    value when :ref:`importing <FiftyOneDataset-import>` the dataset into
+    FiftyOne in a new environment.
 
 .. _custom-dataset-exporter:
 
