@@ -16,6 +16,7 @@ import warnings
 import webbrowser
 
 from bson import ObjectId
+from bson.errors import InvalidId
 import jinja2
 import numpy as np
 import requests
@@ -5421,7 +5422,7 @@ class CVATLabel(object):
     def _attempt_assign_id(self, label_id):
         try:
             self._id = ObjectId(label_id)
-        except:
+        except InvalidId:
             pass
 
     def _set_attributes(self, label):
