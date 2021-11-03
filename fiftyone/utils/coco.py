@@ -2123,10 +2123,14 @@ def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
     width, height = frame_size
     polygons = []
     for points in polyline.points:
-        polygon = [(int(x * width), int(y * height)) for x, y in points]
+        polygon = []
+        for x, y in points:
+            polygon.append(int(x * width))
+            polygon.append(int(y * height))
+
         polygons.append(polygon)
 
-    return polygon
+    return polygons
 
 
 def _instance_to_coco_segmentation(
