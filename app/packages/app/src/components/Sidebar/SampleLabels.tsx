@@ -12,7 +12,6 @@ import { FieldHeader, usePills } from "./utils";
 import { PathEntry, TextEntry } from "./Entries";
 
 const SampleLabelsCell = React.memo(({ modal }: { modal: boolean }) => {
-  const [expanded, setExpanded] = useState(true);
   const { singular } = useRecoilValue(viewAtoms.elementNames);
   const paths = useRecoilValue(
     schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })

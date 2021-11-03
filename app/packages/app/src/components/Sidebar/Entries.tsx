@@ -3,19 +3,12 @@ import { animated, useSpring } from "@react-spring/web";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { Checkbox, CircularProgress } from "@material-ui/core";
-import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
 import { colorMap } from "../../recoil/selectors";
-
-type GroupEntry = {
-  name: string;
-};
-
-const GroupEntry = ({ name }) => {};
 
 const EntryCounts = ({
   path,

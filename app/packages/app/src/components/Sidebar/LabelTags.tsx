@@ -78,44 +78,45 @@ const LabelTagsCell = React.memo(({ modal }: { modal: boolean }) => {
     <>
       <GroupHeader
         title={title}
-        onClick={() => setExpanded(!expanded)}
         expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
       >
         <span>{title}</span>
         {...pills}
       </GroupHeader>
-      {expanded &&
-        tags &&
-        (tags.length ? (
-          tags.map((tag) => (
-            <PathEntry
-              path={tag}
-              modal={modal}
-              ftype={EMBEDDED_DOCUMENT_FIELD}
-              embeddedDocType={embeddedDocType}
-              name={tag}
-              disabled={false}
-              key={tag}
-            >
-              <MatchEye
-                matched={matchedTags}
-                elementsName={"samples"}
+      {expanded
+        ? tags &&
+          (tags.length ? (
+            tags.map((tag) => (
+              <PathEntry
+                path={tag}
+                modal={modal}
+                ftype={EMBEDDED_DOCUMENT_FIELD}
+                embeddedDocType={embeddedDocType}
                 name={tag}
-                onClick={() => {
-                  const newMatch = new Set(matchedTags);
-                  if (matchedTags.has(tag)) {
-                    newMatch.delete(tag);
-                  } else {
-                    newMatch.add(tag);
-                  }
-                  setMatchedTags(newMatch);
-                }}
-              />
-            </PathEntry>
+                disabled={false}
+                key={tag}
+              >
+                <MatchEye
+                  matched={matchedTags}
+                  elementsName={"samples"}
+                  name={tag}
+                  onClick={() => {
+                    const newMatch = new Set(matchedTags);
+                    if (matchedTags.has(tag)) {
+                      newMatch.delete(tag);
+                    } else {
+                      newMatch.add(tag);
+                    }
+                    setMatchedTags(newMatch);
+                  }}
+                />
+              </PathEntry>
+            ))
+          ) : (
+            <TextEntry text={"No label tags"} />
           ))
-        ) : (
-          <TextEntry text={"No label tags"} />
-        ))}
+        : null}
     </>
   );
 });

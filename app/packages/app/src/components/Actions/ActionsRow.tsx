@@ -1,6 +1,5 @@
 import React, {
   MutableRefObject,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { MouseEventHandler, useState } from "react";
 import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -38,7 +38,7 @@ const Loading = React.memo(
     onClick = null,
   }: {
     text?: string;
-    onClick?: (e: MouseEvent) => void;
+    onClick?: MouseEventHandler;
   }) => {
     const [resetOrbit, setResetOrbit] = useState(false);
     const props = useSpring({
@@ -50,11 +50,6 @@ const Loading = React.memo(
         duration: 3000,
       },
     });
-    const rest = onClick
-      ? {
-          onClick,
-        }
-      : {};
     return (
       <Container>
         <div
@@ -63,7 +58,7 @@ const Loading = React.memo(
             width: "100%",
             cursor: onClick ? "pointer" : "default",
           }}
-          {...rest}
+          onClick={onClick}
         >
           <LogoImg style={props} src={Logo} />
           {text && <Text>{text}</Text>}

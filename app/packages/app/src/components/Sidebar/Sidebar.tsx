@@ -1,13 +1,17 @@
 import React, { useRef, useState } from "react";
-import { atomFamily, selectorFamily, useRecoilState } from "recoil";
-import { animated, config, useSprings, useSpring } from "@react-spring/web";
+import {
+  atomFamily,
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
+import { animated, config, useSprings } from "@react-spring/web";
 import styled from "styled-components";
 import { clamp } from "lodash";
 import { useDrag } from "@use-gesture/react";
 
 import { move } from "@fiftyone/utilities";
 
-import { useTheme } from "../../utils/hooks";
 import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
 import LabelTagsCell from "./LabelTags";
@@ -17,6 +21,7 @@ import DropdownHandle, {
   PlusMinusButton,
 } from "../DropdownHandle";
 import { Close } from "@material-ui/icons";
+import { PathEntry } from "./Entries";
 
 const GroupHeaderStyled = styled(DropdownHandle)`
   border-radius: 0;
@@ -27,6 +32,7 @@ const GroupHeaderStyled = styled(DropdownHandle)`
   display: flex;
   justify-content: space-between;
   vertical-align: middle;
+  color: ${({ theme }) => theme.fontDark};
 `;
 
 type GroupHeaderProps = {
@@ -61,38 +67,37 @@ export const GroupHeader = ({
   );
 };
 
-const ButtonDiv = animated(styled.div`
-  cursor: pointer;
-  margin-left: 0;
-  margin-right: 0;
-  padding: 2.5px 0.5rem;
-  border-radius: 3px;
-  display: flex;
-  justify-content: space-between;
-  margin-top: 3px;
-`);
+const groupShown = atomFamily<boolean, { path: string; modal: boolean }>({
+  key: "sidebarGroupShown",
+  default: true,
+});
 
-const OptionTextDiv = animated(styled.div`
-  padding-right: 0.25rem;
-  display: flex;
-  justify-content: center;
-  align-content: center;
-  flex-direction: column;
-  color: inherit;
-  line-height: 1.7;
-  & > span {
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-  }
-`);
+const InteractiveGroupEntry = ({ name }: { name: string; modal: boolean }) => {
+  const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
 
-export const OptionText = ({ style, children }) => {
   return (
-    <OptionTextDiv style={style}>
-      <span>{children}</span>
-    </OptionTextDiv>
+    <GroupHeader
+      title={name}
+      expanded={expanded}
+      onClick={() => setExpanded(!expanded)}
+    />
   );
+};
+
+const InteractivePathEntry = ({
+  modal,
+  path,
+}: {
+  modal: boolean;
+  path: string;
+}) => {
+  const shown = useRecoilValue(groupShown({ path, modal }));
+
+  if (!shown) {
+    return null;
+  }
+
+  return <PathEntry modal={modal} path={path} disabled={false} />;
 };
 
 type SidebarEntry = {
@@ -143,70 +148,74 @@ const sidebarGroups = atomFamily<SidebarGroups, boolean>({
   default: defaultSidebarGroups,
 });
 
-const fn = (
+const positionEntry = (
   order: number[],
+  elements: HTMLDivElement[],
+  index: number,
+  y: number
+) =>
+  order
+    .slice(0, index)
+    .reduce(
+      (y, index) =>
+        elements[index]
+          ? y + elements[index].getBoundingClientRect().height
+          : y,
+      y
+    );
+
+const fn = (
+  entries: { name: string; group: boolean }[],
+  order: number[],
+  elements: HTMLDivElement[],
   active = false,
   originalIndex = 0,
   curIndex = 0,
   y = 0
-) => (index: number) =>
-  active && index === originalIndex
-    ? {
-        y: curIndex * 100 + y,
-        scale: 1.1,
-        zIndex: 1,
-        shadow: 15,
-        immediate: (key: string) => key === "zIndex",
-        config: (key: string) => (key === "y" ? config.stiff : config.default),
-      }
-    : {
-        y: order.indexOf(index) * 100,
-        scale: 1,
-        zIndex: 0,
-        shadow: 1,
-        immediate: false,
-      };
+) => (index: number) => {
+  if (active && index === originalIndex) {
+    if (entries[order[curIndex]].group) {
+    }
 
-export const Button = ({
-  onClick,
-  text,
-  children = null,
-  style,
-  color = null,
-  title = null,
-}) => {
-  const theme = useTheme();
-  const [hover, setHover] = useState(false);
-  color = color ?? theme.brand;
-  const props = useSpring({
-    backgroundColor: hover ? color : theme.background,
-    color: hover ? theme.font : theme.fontDark,
-    config: {
-      duration: 150,
-    },
-  });
-  return (
-    <ButtonDiv
-      style={{ ...props, userSelect: "none", ...style }}
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      title={title ?? text}
-    >
-      <OptionText key={"button"} style={{ fontWeight: "bold", width: "100%" }}>
-        {text}
-      </OptionText>
-      {children}
-    </ButtonDiv>
-  );
+    return {
+      y: positionEntry(order, elements, curIndex, y),
+      zIndex: 1,
+      immediate: (key: string) => key === "zIndex",
+      config: (key: string) => (key === "y" ? config.stiff : config.default),
+    };
+  }
+
+  return {
+    y: positionEntry(order, elements, order.indexOf(index), 0),
+    scale: 1,
+    zIndex: 0,
+    shadow: 0,
+    immediate: false,
+  };
 };
+
+const InteractiveSideBarContainer = styled.div`
+  position: relative;
+  height: auto;
+  overflow: visible;
+
+  & > div {
+    position: absolute;
+    transform-origin: 50% 50% 0px;
+    touch-action: none;
+    width: 100%;
+    margin: 3px;
+  }
+`;
 
 const InteractiveSideBar = ({
   groups,
+  modal,
   onChange,
 }: {
   groups: SidebarGroups;
   onChange: (groups: SidebarGroups) => void;
+  modal: boolean;
 }) => {
   const entries = groups
     .map(([groupName, names]) => [
@@ -214,30 +223,43 @@ const InteractiveSideBar = ({
       ...names.map((name) => ({ name, group: false })),
     ])
     .flat();
-
-  const order = useRef(entries.flatMap((_, index) => index));
-  const [springs, api] = useSprings(order.current.length, fn(order.current));
+  const [attached, setAttached] = useState(false);
+  const order = useRef(entries.map((_, index) => index));
+  const refs = useRef<HTMLDivElement[]>(entries.map(() => null));
+  const [springs, api] = useSprings(
+    order.current.length,
+    fn(entries, order.current, refs.current),
+    [attached]
+  );
   const bind = useDrag(({ args: [originalIndex], active, movement: [, y] }) => {
     const curIndex = order.current.indexOf(originalIndex);
-    const curRow = clamp(
-      Math.round((curIndex * 100 + y) / 100),
-      0,
-      entries.length - 1
-    );
+    const curRow = clamp(0, 0, entries.length - 1);
     const newOrder = move(order.current, curIndex, curRow);
-    api.start(fn(newOrder, active, originalIndex, curIndex, y));
+
+    api.start(
+      fn(
+        entries,
+        entries[newOrder[0]].group ? newOrder : order.current,
+        refs.current,
+        active,
+        originalIndex,
+        curIndex,
+        y
+      )
+    );
     if (!active) {
-      order.current = newOrder;
+      if (entries[newOrder[0]].group) {
+        order.current = newOrder;
+      }
       onChange(
-        newOrder.reduce((result, i) => {
+        order.current.reduce((result, i) => {
           if (entries[i].group) {
             return [...result, [entries[i].name, []]];
           }
 
-          result[result.length - 1][1] = [
-            ...result[result.length - 1][1],
-            entries[i].name,
-          ];
+          const num = result.length;
+
+          result[num - 1][1] = [...result[num - 1][1], entries[i].name];
 
           return result;
         }, [])
@@ -246,10 +268,11 @@ const InteractiveSideBar = ({
   });
 
   return (
-    <>
+    <InteractiveSideBarContainer ref={() => !attached && setAttached(true)}>
       {springs.map(({ zIndex, shadow, y, scale }, i) => (
         <animated.div
           {...bind(i)}
+          ref={(node) => (refs.current[i] = node)}
           key={i}
           style={{
             zIndex,
@@ -259,10 +282,16 @@ const InteractiveSideBar = ({
             y,
             scale,
           }}
-          children={entries[i].name}
+          children={
+            entries[i].group ? (
+              <InteractiveGroupEntry name={entries[i].name} />
+            ) : (
+              <InteractivePathEntry modal={modal} path={entries[i].name} />
+            )
+          }
         />
       ))}
-    </>
+    </InteractiveSideBarContainer>
   );
 };
 
@@ -277,7 +306,11 @@ const Sidebar = React.memo(({ modal }: SidebarProps) => {
     <>
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
-      <InteractiveSideBar groups={interactiveGroups} onChange={setGroups} />
+      <InteractiveSideBar
+        groups={interactiveGroups}
+        onChange={setGroups}
+        modal={modal}
+      />
     </>
   );
 });

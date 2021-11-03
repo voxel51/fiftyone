@@ -44,7 +44,14 @@ const DropdownHandle = ({
   ...rest
 }: DropdownHandleProps) => {
   return (
-    <Body onClick={onClick} {...rest}>
+    <Body
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      {...rest}
+    >
       <span className="icon">{icon(expanded)}</span>
       {children}
     </Body>
