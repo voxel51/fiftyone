@@ -5415,7 +5415,8 @@ class CVATLabel(object):
 
         if self._id is None:
             label_id = server_id_map.get(server_id, None)
-            self._attempt_assign_id(label_id)
+            if label_id is not None:
+                self._attempt_assign_id(label_id)
 
     def _attempt_assign_id(self, label_id):
         try:
