@@ -277,7 +277,7 @@ def export_samples(
             num_samples = len(samples)
         else:
             label_fcn = _make_label_coercion_functions(
-                label_field, sample_collection, dataset_exporter
+                label_field, samples, dataset_exporter
             )
             sample_parser = FiftyOneLabeledImageSampleParser(
                 label_field, label_fcn=label_fcn, compute_metadata=True,
@@ -305,13 +305,10 @@ def export_samples(
             dataset_exporter.export_media = "move"
 
         label_fcn = _make_label_coercion_functions(
-            label_field, sample_collection, dataset_exporter
+            label_field, samples, dataset_exporter
         )
         frame_labels_fcn = _make_label_coercion_functions(
-            frame_labels_field,
-            sample_collection,
-            dataset_exporter,
-            frames=True,
+            frame_labels_field, samples, dataset_exporter, frames=True,
         )
         sample_parser = FiftyOneLabeledVideoSampleParser(
             label_field=label_field,
@@ -581,7 +578,7 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
 
         if (
             label_type is not None
-            and not issubclass(label_type, export_types)
+            and not issubclass(label_type, tuple(export_types))
             and fol.Classification in export_types
         ):
             found_clips = issubclass(
@@ -636,6 +633,9 @@ def _make_label_coercion_functions(
 
     coerce_fcn_dict = {}
     for label_field in label_fields:
+        if label_field is None:
+            continue
+
         field_type = sample_collection._get_field_type(
             label_field, is_frame_field=frames
         )
@@ -684,8 +684,9 @@ def _make_label_coercion_functions(
             )
 
             coerce_fcn_dict[label_field] = _classification_to_detections
+            continue
 
-        # Invalid field type found
+        # Handle invalid field types
         if validate:
             ftype = "Frame field" if frames else "Field"
             raise ValueError(
