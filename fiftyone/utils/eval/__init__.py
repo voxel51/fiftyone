@@ -14,6 +14,10 @@ from .detection import (
     evaluate_detections,
     DetectionResults,
 )
+from .regression import (
+    evaluate_regressions,
+    RegressionResults,
+)
 from .segmentation import (
     evaluate_segmentations,
     SegmentationResults,

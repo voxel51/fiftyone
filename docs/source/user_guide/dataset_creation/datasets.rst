@@ -10,7 +10,7 @@ variety of :ref:`common formats <supported-import-formats>`, and it can be
 easily extended to import datasets in
 :ref:`custom formats <custom-dataset-importer>`.
 
-.. note:
+.. note::
 
     If your data is in a custom format,
     :ref:`writing a simple loop <loading-custom-datasets>` is the easiest way
@@ -48,7 +48,7 @@ that you're loading.
         # The type of the dataset being imported
         dataset_type = fo.types.COCODetectionDataset  # for example
 
-        # Import the dataset!
+        # Import the dataset
         dataset = fo.Dataset.from_dir(
             dataset_dir=dataset_dir,
             dataset_type=dataset_type,
@@ -78,7 +78,10 @@ that you're loading.
 
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing to
-    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`. For
+    example, all importers should support optional `max_samples`, `shuffle`,
+    and `seed` parameters, which provide support for importing a small subset
+    of a potentially large dataset:
 
     .. code-block:: python
         :linenos:
@@ -88,6 +91,7 @@ that you're loading.
             ...,
             max_samples=10,
             shuffle=True,
+            seed=51,
         )
 
   .. group-tab:: CLI
@@ -112,7 +116,7 @@ that you're loading.
         # Any subclass of `fiftyone.types.Dataset` is supported
         TYPE=fiftyone.types.COCODetectionDataset  # for example
 
-        # Import the dataset!
+        # Import the dataset
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
     Alternatively, when importing labeled datasets in formats such as
@@ -139,7 +143,10 @@ that you're loading.
 
     In general, you can pass any parameter for the |DatasetImporter| of the
     format you're importing via the
-    :ref:`kwargs option <cli-fiftyone-datasets-create>`:
+    :ref:`kwargs option <cli-fiftyone-datasets-create>`. For example, all
+    importers should support optional `max_samples`, `shuffle`, and `seed`
+    parameters, which provide support for importing a small subset of a
+    potentially large dataset:
 
     .. code-block:: shell
 
@@ -148,7 +155,8 @@ that you're loading.
             --name $NAME --dataset-dir $DATASET_DIR --type $TYPE \
             --kwargs \
                 max_samples=10 \
-                shuffle=True
+                shuffle=True \
+                seed=51
 
 .. _supported-import-formats:
 
@@ -420,7 +428,7 @@ FiftyOneImageClassificationDataset
 
 The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
 type represents a labeled dataset consisting of images and their associated
-classification labels stored in a simple JSON format.
+classification label(s) stored in a simple JSON format.
 
 Datasets of this type are read in the following format:
 
@@ -433,7 +441,7 @@ Datasets of this type are read in the following format:
             ...
         labels.json
 
-where `labels.json` is a JSON file in the following format:
+In the simplest case, `labels.json` can be a JSON file in the following format:
 
 .. code-block:: text
 
@@ -456,8 +464,12 @@ provided, then the `target` values directly store the label strings.
 
 The target value in `labels` for unlabeled images is `None` (or missing).
 
+The UUIDs can also be relative paths like `path/to/uuid`, in which case the
+images in `data/` should be arranged in nested subfolders with the
+corresponding names.
+
 Alternatively, `labels.json` can contain predictions with associated
-confidences in the following format:
+confidences and additional attributes in the following format:
 
 .. code-block:: text
 
@@ -470,19 +482,45 @@ confidences in the following format:
         "labels": {
             "<uuid1>": {
                 "label": <target>,
-                "confidence": <optional-confidence>
+                "confidence": <optional-confidence>,
+                "attributes": {
+                    <optional-name>: <optional-value>,
+                    ...
+                }
             },
             "<uuid2>": {
                 "label": <target>,
-                "confidence": <optional-confidence>
+                "confidence": <optional-confidence>,
+                "attributes": {
+                    <optional-name>: <optional-value>,
+                    ...
+                }
             },
             ...
         }
     }
 
-The UUIDs can also be relative paths like `path/to/uuid`, in which case the
-images in `data/` should be arranged in nested subfolders with the
-corresponding names.
+You can also load multilabel classifications in this format by storing lists
+of targets in `labels.json`:
+
+.. code-block:: text
+
+    {
+        "classes": [
+            "<labelA>",
+            "<labelB>",
+            ...
+        ],
+        "labels": {
+            "<uuid1>": [<target1>, <target2>, ...],
+            "<uuid2>": [<target1>, <target2>, ...],
+            ...
+        }
+    }
+
+where the target values in `labels` can be class strings, class IDs, or dicts
+in the format described above defining class labels, confidences, and optional
+attributes.
 
 .. note::
 
@@ -549,6 +587,47 @@ in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageClassificationDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.FiftyOneImageClassificationDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _ImageClassificationDirectoryTree-import:
 
@@ -856,6 +935,13 @@ as a directory of TFRecords in the above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFImageClassificationDataset
 
+.. note::
+
+    You can provide the `tf_records_path` argument instead of `dataset_dir` in
+    the examples above to directly specify the path to the TFRecord(s) to load.
+    See :class:`TFImageClassificationDatasetImporter <fiftyone.utils.tf.TFImageClassificationDatasetImporter>`
+    for details.
+
 .. _FiftyOneImageDetectionDataset-import:
 
 FiftyOneImageDetectionDataset
@@ -988,6 +1074,47 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageDetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.FiftyOneImageDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 .. _FiftyOneTemporalDetectionDataset-import:
 
 FiftyOneTemporalDetectionDataset
@@ -1023,12 +1150,20 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 {
                     "label": <target>,
                     "support": [<first-frame>, <last-frame>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 ...
             ],
@@ -1036,12 +1171,20 @@ where `labels.json` is a JSON file in the following format:
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 {
                     "label": <target>,
                     "timestamps": [<start-timestamp>, <stop-timestamp>],
-                    "confidence": <optional-confidence>
+                    "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
             ],
             ...
@@ -1128,6 +1271,47 @@ the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneTemporalDetectionDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.FiftyOneTemporalDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _COCODetectionDataset-import:
 
@@ -1282,6 +1466,107 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/coco-labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.COCODetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/coco-labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.COCODetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
+If you have an existing dataset and corresponding model predictions stored in
+COCO format, then you can use
+:func:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` to conveniently
+add the labels to the dataset. The example below demonstrates a round-trip
+export and then re-import of both images-and-labels and labels-only data in
+COCO format:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.coco as fouc
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    classes = dataset.distinct("predictions.detections.label")
+
+    # Export images and ground truth labels to disk
+    dataset.export(
+        export_dir="/tmp/coco",
+        dataset_type=fo.types.COCODetectionDataset,
+        classes=classes,
+        label_field="ground_truth",
+    )
+
+    # Export predictions
+    dataset.export(
+        dataset_type=fo.types.COCODetectionDataset,
+        labels_path="/tmp/coco/predictions.json",
+        classes=classes,
+        label_field="predictions",
+    )
+
+    # Now load ground truth labels into a new dataset
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir="/tmp/coco",
+        dataset_type=fo.types.COCODetectionDataset,
+        label_field="ground_truth",
+    )
+
+    # And add model predictions
+    fouc.add_coco_labels(
+        dataset2,
+        "predictions",
+        "/tmp/coco/predictions.json",
+        classes=classes,
+    )
+
+    # Verify that ground truth and predictions were imported as expected
+    print(dataset.count("ground_truth.detections"))
+    print(dataset2.count("ground_truth.detections"))
+    print(dataset.count("predictions.detections"))
+    print(dataset2.count("predictions.detections"))
+
+.. note::
+
+    See :func:`add_coco_labels() <fiftyone.utils.coco.add_coco_labels>` for a
+    complete description of the available syntaxes for loading COCO-formatted
+    predictions to an existing dataset.
+
 .. _VOCDetectionDataset-import:
 
 VOCDetectionDataset
@@ -1426,6 +1711,47 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VOCDetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/voc-labels"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.VOCDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/voc-labels
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.VOCDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 .. _KITTIDetectionDataset-import:
 
 KITTIDetectionDataset
@@ -1560,6 +1886,47 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/kitti-labels"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.KITTIDetectionDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/kitti-labels
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.KITTIDetectionDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
 .. _YOLOv4Dataset-import:
 
 YOLOv4Dataset
@@ -1686,6 +2053,112 @@ format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.YOLOv4Dataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/yolo-labels"
+        classes = ["list", "of", "classes"]
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            classes=classes,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/yolo-labels
+        OBJECTS_PATH=/path/to/obj.names
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.YOLOv4Dataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH \
+                objects_path=$OBJECTS_PATH
+
+If you have an existing dataset and corresponding model predictions stored in
+YOLO format, then you can use
+:func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` to conveniently
+add the labels to the dataset.
+
+The example below demonstrates a round-trip export and then re-import of both
+images-and-labels and labels-only data in YOLO format:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.yolo as fouy
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    classes = dataset.distinct("predictions.detections.label")
+
+    # Export images and ground truth labels to disk
+    dataset.export(
+        export_dir="/tmp/yolov4",
+        dataset_type=fo.types.YOLOv4Dataset,
+        classes=classes,
+        label_field="ground_truth",
+    )
+
+    # Export predictions
+    dataset.export(
+        dataset_type=fo.types.YOLOv4Dataset,
+        labels_path="/tmp/yolov4/predictions",
+        classes=classes,
+        label_field="predictions",
+    )
+
+    # Now load ground truth labels into a new dataset
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir="/tmp/yolov4",
+        dataset_type=fo.types.YOLOv4Dataset,
+        label_field="ground_truth",
+    )
+
+    # And add model predictions
+    fouy.add_yolo_labels(
+        dataset2,
+        "predictions",
+        "/tmp/yolov4/predictions",
+        classes=classes,
+    )
+
+    # Verify that ground truth and predictions were imported as expected
+    print(dataset.count("ground_truth.detections"))
+    print(dataset2.count("ground_truth.detections"))
+    print(dataset.count("predictions.detections"))
+    print(dataset2.count("predictions.detections"))
+
+.. note::
+
+    See :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` for a
+    complete description of the available syntaxes for loading YOLO-formatted
+    predictions to an existing dataset.
+
 .. _YOLOv5Dataset-import:
 
 YOLOv5Dataset
@@ -1766,61 +2239,98 @@ subfolders of parallelly organized images and labels.
 You can create a FiftyOne dataset from a YOLOv5 dataset stored in the above
 format as follows:
 
-.. tabs::
+.. code-block:: python
+    :linenos:
 
-  .. group-tab:: Python
+    import fiftyone as fo
 
-    .. code-block:: python
-        :linenos:
+    name = "my-dataset"
+    dataset_dir = "/path/to/yolov5-dataset"
 
-        import fiftyone as fo
+    # The splits to load
+    splits = ["train", "val"]
 
-        name = "my-dataset"
-        dataset_dir = "/path/to/yolov5-dataset"
-
-        # Create the dataset
-        dataset = fo.Dataset.from_dir(
+    # Load the dataset, using tags to mark the samples in each split
+    dataset = fo.Dataset(name)
+    for split in splits:
+        dataset.add_dir(
             dataset_dir=dataset_dir,
             dataset_type=fo.types.YOLOv5Dataset,
-            name=name,
-        )
+            split=split,
+            tags=split,
+    )
 
-        # View summary info about the dataset
-        print(dataset)
+    # View summary info about the dataset
+    print(dataset)
 
-        # Print the first few samples in the dataset
-        print(dataset.head())
+    # Print the first few samples in the dataset
+    print(dataset.head())
 
-  .. group-tab:: CLI
+If you have an existing dataset and corresponding model predictions stored in
+YOLO format, then you can use
+:func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` to conveniently
+add the labels to the dataset.
 
-    .. code-block:: shell
+The example below demonstrates a round-trip export and then re-import of both
+images-and-labels and labels-only data in YOLO format:
 
-        NAME=my-dataset
-        DATASET_DIR=/path/to/yolov5-dataset
+.. code-block:: python
+    :linenos:
 
-        # Create the dataset
-        fiftyone datasets create \
-            --name $NAME \
-            --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.YOLOv5Dataset
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.yolo as fouy
 
-        # View summary info about the dataset
-        fiftyone datasets info $NAME
+    dataset = foz.load_zoo_dataset("quickstart")
+    classes = dataset.distinct("predictions.detections.label")
 
-        # Print the first few samples in the dataset
-        fiftyone datasets head $NAME
+    # YOLOv5 format supports splits, so let's grab only the `validation` split
+    view = dataset.match_tags("validation")
 
-    To view a YOLOv5 dataset stored in the above format in the FiftyOne App
-    without creating a persistent FiftyOne dataset, you can execute:
+    # Export images and ground truth labels to disk
+    view.export(
+        export_dir="/tmp/yolov5",
+        dataset_type=fo.types.YOLOv5Dataset,
+        split="validation",
+        classes=classes,
+        label_field="ground_truth",
+    )
 
-    .. code-block:: shell
+    # Export predictions
+    view.export(
+        dataset_type=fo.types.YOLOv5Dataset,
+        labels_path="/tmp/yolov5/predictions/validation",
+        classes=classes,
+        label_field="predictions",
+    )
 
-        DATASET_DIR=/path/to/yolov5-dataset
+    # Now load ground truth labels into a new dataset
+    dataset2 = fo.Dataset.from_dir(
+        dataset_dir="/tmp/yolov5",
+        dataset_type=fo.types.YOLOv5Dataset,
+        split="validation",
+        label_field="ground_truth",
+    )
 
-        # View the dataset in the App
-        fiftyone app view \
-            --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.YOLOv5Dataset
+    # And add model predictions
+    fouy.add_yolo_labels(
+        dataset2,
+        "predictions",
+        "/tmp/yolov5/predictions/validation",
+        classes=classes,
+    )
+
+    # Verify that ground truth and predictions were imported as expected
+    print(view.count("ground_truth.detections"))
+    print(dataset2.count("ground_truth.detections"))
+    print(view.count("predictions.detections"))
+    print(dataset2.count("predictions.detections"))
+
+.. note::
+
+    See :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>` for a
+    complete description of the available syntaxes for loading YOLO-formatted
+    predictions to an existing dataset.
 
 .. _TFObjectDetectionDataset-import:
 
@@ -1966,6 +2476,13 @@ directory of TFRecords in the above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFObjectDetectionDataset
 
+.. note::
+
+    You can provide the `tf_records_path` argument instead of `dataset_dir` in
+    the examples above to directly specify the path to the TFRecord(s) to load.
+    See :class:`TFObjectDetectionDatasetImporter <fiftyone.utils.tf.TFObjectDetectionDatasetImporter>`
+    for details.
+
 .. _ImageSegmentationDirectory-import:
 
 ImageSegmentationDirectory
@@ -2062,6 +2579,47 @@ the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageSegmentationDirectory
+
+You can also independently specify the locations of the masks and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/masks"
+
+        # Import dataset by explicitly providing paths to the source media and masks
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.ImageSegmentationDirectory,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/masks
+
+        # Import dataset by explicitly providing paths to the source media and masks
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.ImageSegmentationDirectory \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _CVATImageDataset-import:
 
@@ -2243,6 +2801,47 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/cvat-labels.xml"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.CVATImageDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/cvat-labels.xml
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.CVATImageDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _CVATVideoDataset-import:
 
@@ -2430,6 +3029,47 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATVideoDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/cvat-labels"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.CVATVideoDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/cvat-labels
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.CVATVideoDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
 
 .. _FiftyOneImageLabelsDataset-import:
 
@@ -2843,6 +3483,52 @@ as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/bdd-labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.BDDDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/bdd-labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.BDDDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
+.. note::
+
+    If the `name` key of your labels contains absolute paths to the source
+    media, then you can omit `data_path` parameter from the example above.
+
 .. _DICOMDataset-import:
 
 DICOMDataset
@@ -3138,6 +3824,52 @@ format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.GeoJSONDataset
 
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/geo-labels.json"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.GeoJSONDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/geo-labels.json
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.GeoJSONDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
+.. note::
+
+    If the `filename` key of your labels contains absolute paths to the source
+    media, then you can omit the `data_path` parameter from the example above.
+
 .. _GeoTIFFDataset-import:
 
 GeoTIFFDataset
@@ -3302,20 +4034,24 @@ Datasets of this type are read in the following format:
             <filename1>.<ext>
             <filename2>.<ext>
             ...
-        evaluations/
-            <eval_key1>.json
-            <eval_key2>.json
+        annotations/
+            <anno_key1>.json
+            <anno_key2>.json
             ...
         brain/
             <brain_key1>.json
             <brain_key2>.json
             ...
+        evaluations/
+            <eval_key1>.json
+            <eval_key2>.json
+            ...
 
 where `metadata.json` is a JSON file containing metadata associated with the
 dataset, `samples.json` is a JSON file containing a serialized representation
-of the samples in the dataset, `evaluations/` contains any serialized
-|EvaluationResults| for the dataset, and `brain/` contains any serialized
-|BrainResults| for the dataset.
+of the samples in the dataset, `annotations/` contains any serialized
+|AnnotationResults|, `brain/` contains any serialized |BrainResults|, and
+`evaluations/` contains any serialized |EvaluationResults|.
 
 Video datasets have an additional `frames.json` file that contains a serialized
 representation of the frame labels for each video in the dataset.
@@ -3386,6 +4122,54 @@ follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneDataset
 
+If you performed a :ref:`FiftyOneDataset export <FiftyOneDataset-export>`
+using the `rel_dir` parameter to strip a common prefix from the media filepaths
+in the dataset, then simply include the `rel_dir` parameter when importing back
+into FiftyOne to prepend the appropriate prefix to each media path:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/fiftyone-dataset"
+
+        # Import dataset, prepending `rel_dir` to each media path
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            rel_dir="/common/images/dir",
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/fiftyone-dataset
+
+        # Import dataset, prepending `rel_dir` to each media path
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.FiftyOneDataset \
+            --kwargs rel_dir=/common/images/dir
+
+.. note::
+
+    Exporting in :ref:`FiftyOneDataset format <FiftyOneDataset-export>` using
+    the `export_media=False` and `rel_dir` parameters is a convenient way to
+    transfer datasets between work environments, since this enables you to
+    store the media files wherever you wish in each environment and then simply
+    provide the appropriate `rel_dir` value as shown above when importing the
+    dataset into FiftyOne in a new environment.
+
 .. _custom-dataset-importer:
 
 Custom formats
@@ -3411,7 +4195,7 @@ a dataset from disk in your custom format using the following recipe:
     # Create an instance of your custom dataset importer
     importer = CustomDatasetImporter(...)
 
-    # Import the dataset!
+    # Import the dataset
     dataset = fo.Dataset.from_importer(importer)
 
 You can also define a custom |DatasetType| type, which enables you to import
@@ -3427,7 +4211,7 @@ method:
     # The `fiftyone.types.Dataset` subclass for your custom dataset
     dataset_type = CustomDataset
 
-    # Import the dataset!
+    # Import the dataset
     dataset = fo.Dataset.from_dir(dataset_type=dataset_type, ...)
 
 .. _writing-a-custom-dataset-importer:
@@ -3702,6 +4486,9 @@ should implement is determined by the type of dataset that you are importing.
 
                 -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                     importer is guaranteed to return labels of this type
+                -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                    this case, the importer can produce a single label field of any of
+                    these types
                 -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                     In this case, the importer will return label dictionaries with keys
                     and value-types specified by this dictionary. Not all keys need be
@@ -4082,6 +4869,9 @@ should implement is determined by the type of dataset that you are importing.
 
                 -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                     importer is guaranteed to return sample-level labels of this type
+                -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                    this case, the importer can produce a single sample-level label
+                    field of any of these types
                 -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                     In this case, the importer will return sample-level label
                     dictionaries with keys and value-types specified by this
@@ -4101,6 +4891,9 @@ should implement is determined by the type of dataset that you are importing.
 
                 -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                     importer is guaranteed to return frame labels of this type
+                -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                    this case, the importer can produce a single frame label field of
+                    any of these types
                 -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                     In this case, the importer will return frame label dictionaries
                     with keys and value-types specified by this dictionary. Not all

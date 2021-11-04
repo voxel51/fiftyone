@@ -1,4 +1,4 @@
-import { selector, selectorFamily } from "recoil";
+import { selectorFamily } from "recoil";
 
 import * as utils from "./utils";
 import * as booleanField from "./BooleanFieldFilter.state";
@@ -7,11 +7,7 @@ import * as stringField from "./StringFieldFilter.state";
 import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "./atoms";
 import * as selectors from "../../recoil/selectors";
-import {
-  LABEL_LIST,
-  RESERVED_FIELDS,
-  VALID_LIST_TYPES,
-} from "../../utils/labels";
+import { LABEL_LIST, VALID_LIST_TYPES } from "../../utils/labels";
 
 interface Label {
   confidence?: number;
@@ -43,15 +39,34 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     for (const field of labels) {
       if (primitives.includes(field)) {
         if (get(numericField.isNumericField(field))) {
-          const [range, none] = [
+          let [range, none, inf, ninf, nan, exclude] = [
             get(numericField.rangeAtom({ modal, path: field })),
-            get(numericField.noneAtom({ modal, path: field })),
+            get(numericField.otherAtom({ modal, path: field, key: "none" })),
+            get(numericField.otherAtom({ modal, path: field, key: "inf" })),
+            get(numericField.otherAtom({ modal, path: field, key: "ninf" })),
+            get(numericField.otherAtom({ modal, path: field, key: "nan" })),
+            get(numericField.excludeAtom({ modal, path: field })),
           ];
+
+          if (exclude) {
+            none = !none;
+            inf = !inf;
+            ninf = !ninf;
+            nan = !nan;
+          }
+
           filters[field] = (value) => {
-            const inRange =
-              range[0] - 0.005 <= value && value <= range[1] + 0.005;
+            const inRange = exclude
+              ? range[0] - 0.005 > value || value > range[1] + 0.005
+              : range[0] - 0.005 <= value && value <= range[1] + 0.005;
             const noNone = none && value === undefined;
-            return inRange || noNone;
+            return (
+              inRange ||
+              noNone ||
+              (inf && value === "inf") ||
+              (nan && value === "nan") ||
+              (ninf && value === "-inf")
+            );
           };
         } else if (get(stringField.isStringField(field))) {
           const [values, exclude] = [
@@ -101,17 +116,118 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
 
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
+      const vPath = `${path}.value`;
 
-      const [cRange, cNone, lValues, lExclude] = [
+      let [
+        cRange,
+        cNone,
+        cInf,
+        cNinf,
+        cNan,
+        cExclude,
+        lValues,
+        lExclude,
+        vRange,
+        vNone,
+        vInf,
+        vNinf,
+        vNan,
+        vExclude,
+      ] = [
         get(
           numericField.rangeAtom({ modal, path: cPath, defaultRange: [0, 1] })
         ),
         get(
-          numericField.noneAtom({ modal, path: cPath, defaultRange: [0, 1] })
+          numericField.otherAtom({
+            modal,
+            path: cPath,
+            defaultRange: [0, 1],
+            key: "none",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: cPath,
+            defaultRange: [0, 1],
+            key: "inf",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: cPath,
+            defaultRange: [0, 1],
+            key: "ninf",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: cPath,
+            defaultRange: [0, 1],
+            key: "nan",
+          })
+        ),
+        get(
+          numericField.excludeAtom({
+            modal,
+            path: cPath,
+            defaultRange: [0, 1],
+          })
         ),
         get(stringField.selectedValuesAtom({ modal, path: lPath })),
         get(stringField.excludeAtom({ modal, path: lPath })),
+        get(numericField.rangeAtom({ modal, path: vPath })),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "none",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "inf",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "ninf",
+          })
+        ),
+        get(
+          numericField.otherAtom({
+            modal,
+            path: vPath,
+            key: "nan",
+          })
+        ),
+        get(
+          numericField.excludeAtom({
+            modal,
+            path: vPath,
+          })
+        ),
       ];
+
+      if (cExclude) {
+        cNone = !cNone;
+        cInf = !cInf;
+        cNinf = !cNinf;
+        cNan = !cNan;
+      }
+
+      if (vExclude) {
+        vNone = !vNone;
+        vInf = !vInf;
+        vNinf = !vNinf;
+        vNan = !vNan;
+      }
 
       const matchedTags = get(filterAtoms.matchedTags({ key: "label", modal }));
 
@@ -119,9 +235,11 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         if (hiddenLabels && hiddenLabels[s.id ?? s._id]) {
           return false;
         }
-        const inRange =
-          cRange[0] - 0.005 <= s.confidence &&
-          s.confidence <= cRange[1] + 0.005;
+
+        const inRange = cExclude
+          ? cRange[0] - 0.005 > s.confidence || s.confidence > cRange[1] + 0.005
+          : cRange[0] - 0.005 <= s.confidence &&
+            s.confidence <= cRange[1] + 0.005;
         const noConfidence = cNone && s.confidence === undefined;
         let label = s.label ? s.label : s.value;
         if (label === undefined) {
@@ -136,10 +254,24 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
           matchedTags.size == 0 ||
           (s.tags && s.tags.some((t) => matchedTags.has(t)));
 
+        const inValueRange = vExclude
+          ? vRange[0] - 0.005 > s.value || s.value > vRange[1] + 0.005
+          : vRange[0] - 0.005 <= s.value && s.value <= vRange[1] + 0.005;
+        const noValue = vNone && s.value === undefined;
+
         return (
-          (inRange || noConfidence) &&
+          (inRange ||
+            noConfidence ||
+            (cNan && s.confidence === "nan") ||
+            (cInf && s.confidence === "inf") ||
+            (cNinf && s.confidence === "-inf")) &&
           (included || lValues.length === 0) &&
-          meetsTags
+          meetsTags &&
+          (inValueRange ||
+            noValue ||
+            (vNan && s.value === "nan") ||
+            (vInf && s.value === "inf") ||
+            (vNinf && s.value === "-inf"))
         );
       };
     }
@@ -186,6 +318,7 @@ export const fieldIsFiltered = selectorFamily<
     path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
+    const vPath = `${path}.value`;
     const hasHiddenLabels = modal
       ? get(selectors.hiddenFieldLabels(path.split(".")[0])).length > 0
       : false;
@@ -199,6 +332,12 @@ export const fieldIsFiltered = selectorFamily<
         })
       ) ||
       get(stringField.fieldIsFiltered({ ...isArgs, path: lPath })) ||
+      get(
+        numericField.fieldIsFiltered({
+          ...isArgs,
+          path: vPath,
+        })
+      ) ||
       hasHiddenLabels
     );
   },
