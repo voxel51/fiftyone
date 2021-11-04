@@ -561,9 +561,12 @@ def _transform_videos(
                 # that all frames exist
                 if not force_reencode and os.path.exists(outpath % 1):
                     continue
-
             elif reencode:
-                outpath = os.path.splitext(inpath)[0] + ".mp4"
+                root, ext = os.path.splitext(inpath)
+                if ext.lower() != ".mp4":
+                    outpath = root + ".mp4"
+                else:
+                    outpath = inpath
             else:
                 outpath = inpath
 
@@ -660,11 +663,10 @@ def _transform_video(
             kwargs["out_opts"] = []
 
     should_reencode = (
-        fps is not None
+        force_reencode
+        or fps is not None
         or size is not None
-        or reencode
-        or in_ext != out_ext
-        or force_reencode
+        or in_ext.lower() != out_ext.lower()
     )
 
     if (inpath == outpath) and should_reencode:
@@ -681,7 +683,6 @@ def _transform_video(
     elif should_reencode:
         with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
             ffmpeg.run(inpath, outpath, verbose=verbose)
-
     elif diff_path:
         etau.copy_file(inpath, outpath)
 

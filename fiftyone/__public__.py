@@ -79,6 +79,7 @@ from .core.labels import (
     CategoricalAttribute,
     NumericAttribute,
     ListAttribute,
+    Regression,
     Classification,
     Classifications,
     Detection,
