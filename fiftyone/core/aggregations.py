@@ -7,7 +7,7 @@ Aggregations.
 """
 from collections import defaultdict, OrderedDict
 from copy import deepcopy
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 import numpy as np
 
@@ -37,9 +37,11 @@ class Aggregation(object):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
-    def __init__(self, field_or_expr, expr=None):
+    def __init__(self, field_or_expr, expr=None, safe=False):
         if field_or_expr is not None and not etau.is_str(field_or_expr):
             if expr is not None:
                 raise ValueError(
@@ -54,6 +56,7 @@ class Aggregation(object):
 
         self._field_name = field_name
         self._expr = expr
+        self._safe = safe
 
     @property
     def field_name(self):
@@ -64,6 +67,13 @@ class Aggregation(object):
     def expr(self):
         """The expression being computed, if any."""
         return self._expr
+
+    @property
+    def safe(self):
+        """Whether nan/inf values will be ignored when dealing with floating
+        point values.
+        """
+        return self._safe
 
     @property
     def _has_big_result(self):
@@ -223,11 +233,16 @@ class Bounds(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
-    def __init__(self, field_or_expr, expr=None):
-        super().__init__(field_or_expr, expr=expr)
+    def __init__(
+        self, field_or_expr, expr=None, safe=False, _count_nonfinites=False
+    ):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
         self._field_type = None
+        self._count_nonfinites = _count_nonfinites
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -250,13 +265,24 @@ class Bounds(Aggregation):
 
         if self._field_type is not None:
             p = self._field_type.to_python
-            return p(bounds[0]), p(bounds[1])
+            bounds = p(bounds[0]), p(bounds[1])
+
+        if self._count_nonfinites:
+            return {
+                "bounds": bounds,
+                "inf": d["inf"],
+                "-inf": d["-inf"],
+                "nan": d["nan"],
+            }
 
         return bounds
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe and not self._count_nonfinites,
         )
 
         self._field_type = field_type
@@ -266,15 +292,32 @@ class Bounds(Aggregation):
         else:
             value = "$" + path
 
+        if self._safe and self._count_nonfinites:
+            safe_value = _to_safe_expr(F(value), self._field_type).to_mongo()
+        else:
+            safe_value = value
+
         pipeline.append(
             {
                 "$group": {
                     "_id": None,
-                    "min": {"$min": value},
-                    "max": {"$max": value},
+                    "min": {"$min": safe_value},
+                    "max": {"$max": safe_value},
                 }
             }
         )
+
+        if self._count_nonfinites:
+            for nonfinite in (float("inf"), -float("inf"), float("nan")):
+                pipeline[-1]["$group"][str(nonfinite)] = {
+                    "$sum": {
+                        "$cond": {
+                            "if": {"$eq": [value, nonfinite]},
+                            "then": 1,
+                            "else": 0,
+                        }
+                    }
+                }
 
         return pipeline
 
@@ -367,10 +410,12 @@ class Count(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
-    def __init__(self, field_or_expr=None, expr=None):
-        super().__init__(field_or_expr, expr=expr)
+    def __init__(self, field_or_expr=None, expr=None, safe=False):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -396,7 +441,10 @@ class Count(Aggregation):
             return [{"$count": "count"}]
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
@@ -491,18 +539,21 @@ class CountValues(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to treat nan/inf values as None when dealing with
+            floating point values
     """
 
     def __init__(
         self,
         field_or_expr,
         expr=None,
+        safe=False,
         _first=None,
         _sort_by="count",
         _asc=True,
         _include=None,
     ):
-        super().__init__(field_or_expr, expr=expr)
+        super().__init__(field_or_expr, expr=expr, safe=safe)
         self._first = _first
         self._sort_by = _sort_by
         self._order = 1 if _asc else -1
@@ -548,7 +599,10 @@ class CountValues(Aggregation):
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         self._field_type = field_type
@@ -677,10 +731,12 @@ class Distinct(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
-    def __init__(self, field_or_expr, expr=None):
-        super().__init__(field_or_expr, expr=expr)
+    def __init__(self, field_or_expr, expr=None, safe=False):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
         self._field_type = None
 
     def default_result(self):
@@ -710,7 +766,10 @@ class Distinct(Aggregation):
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         self._field_type = field_type
@@ -956,7 +1015,9 @@ class HistogramValues(Aggregation):
             self._num_bins = bins
 
     def _compute_bin_edges(self, sample_collection):
-        bounds = sample_collection.bounds(self._field_name, expr=self._expr)
+        bounds = sample_collection.bounds(
+            self._field_name, expr=self._expr, safe=True
+        )
 
         if any(b is None for b in bounds):
             bounds = [-1, -1]
@@ -1080,6 +1141,8 @@ class Mean(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
     def default_result(self):
@@ -1103,7 +1166,10 @@ class Mean(Aggregation):
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if id_to_str:
@@ -1385,12 +1451,14 @@ class Std(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
         sample (False): whether to compute the sample standard deviation rather
             than the population standard deviation
     """
 
-    def __init__(self, field_or_expr, expr=None, sample=False):
-        super().__init__(field_or_expr, expr=expr)
+    def __init__(self, field_or_expr, expr=None, safe=False, sample=False):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
         self._sample = sample
 
     def default_result(self):
@@ -1414,7 +1482,10 @@ class Std(Aggregation):
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if id_to_str:
@@ -1498,6 +1569,8 @@ class Sum(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
     def default_result(self):
@@ -1521,7 +1594,10 @@ class Sum(Aggregation):
 
     def to_mongo(self, sample_collection):
         path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if id_to_str:
@@ -1820,7 +1896,12 @@ def _extract_list_values(subfield, expr):
 
 
 def _parse_field_and_expr(
-    sample_collection, field_name, expr=None, unwind=True, allow_missing=False,
+    sample_collection,
+    field_name,
+    expr=None,
+    safe=False,
+    unwind=True,
+    allow_missing=False,
 ):
     # unwind can be {True, False, -1}
     auto_unwind = unwind != False
@@ -1835,6 +1916,15 @@ def _parse_field_and_expr(
 
     if field_name is None:
         field_name, expr = _extract_prefix_from_expr(expr)
+
+    found_expr = expr is not None
+
+    field_type = _get_field_type(
+        sample_collection, field_name, unwind=auto_unwind
+    )
+
+    if safe:
+        expr = _to_safe_expr(expr, field_type)
 
     if expr is not None:
         if field_name is None:
@@ -1867,14 +1957,12 @@ def _parse_field_and_expr(
         allow_missing=allow_missing,
     )
 
-    if expr is not None:
-        id_to_str = False  # we have no way of knowing what type expr outputs
+    if found_expr:
+        # We have no way of knowing what type `expr` outputs...
+        id_to_str = False
+        field_type = None
 
-    if expr is None and not id_to_str:
-        field_type = _get_field_type(
-            sample_collection, field_name, unwind=auto_unwind
-        )
-    else:
+    if id_to_str or type(field_type) in fof._PRIMITIVE_FIELDS:
         field_type = None
 
     if keep_top_level:
@@ -1919,6 +2007,26 @@ def _parse_field_and_expr(
         pipeline.append({"$unwind": "$" + list_field})
 
     return path, pipeline, other_list_fields, id_to_str, field_type
+
+
+def _to_safe_expr(expr, field_type):
+    if (
+        expr is None
+        and field_type is not None
+        and not isinstance(field_type, fof.FloatField)
+    ):
+        return None
+
+    to_finite = (
+        F()
+        .is_in([float("nan"), float("inf"), -float("inf")])
+        .if_else(None, F())
+    )
+
+    if expr is None:
+        return to_finite
+
+    return expr.apply(to_finite)
 
 
 def _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields):
@@ -2055,9 +2163,7 @@ def _get_field_type(sample_collection, field_name, unwind=True):
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
-    field_type = sample_collection._get_field_type(
-        field_name, ignore_primitives=True
-    )
+    field_type = sample_collection._get_field_type(field_name)
 
     if unwind:
         while isinstance(field_type, fof.ListField):
