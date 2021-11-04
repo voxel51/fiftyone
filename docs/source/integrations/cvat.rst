@@ -788,11 +788,11 @@ provide support for these settings natively.
     **IMPORTANT**: When uploading existing labels to CVAT, the `id` of the
     labels in FiftyOne are stored in a `label_id` attribute of the CVAT shapes.
     If a `label_id` is modified in CVAT, then FiftyOne may not be able to merge
-    the annotation with its existing |Label| instance; in such cases, it must
-    instead delete the existing label and create a new |Label| with the shape's
-    contents. In such cases, if `allow_additions` and/or `allow_deletions` were
-    set to `False` on the annotation schema, this can result in CVAT edits
-    being rejected. See :ref:`this section <cvat-limitations>` for details.
+    the annotation with its existing |Label| instance; it must instead delete
+    the existing label and create a new |Label| with the shape's contents. In
+    such cases, if `allow_additions` and/or `allow_deletions` were set to
+    `False` on the annotation schema, this can result in CVAT edits being
+    rejected. See :ref:`this section <cvat-limitations>` for details.
 
 .. _cvat-labeling-videos:
 
@@ -884,8 +884,9 @@ shapes:
 -   FiftyOne also maintains a mapping between |Label| IDs and the internal
     CVAT shape IDs that are created when the CVAT tasks are created. If, during
     download, a CVAT shape whose `label_id` has been deleted or otherwise
-    modified and doesn't match an existing label ID **but** has a recognized
-    CVAT ID is encountered, this shape will be merged into the existing |Label|
+    modified and doesn't match an existing label ID *but does have* a
+    recognized CVAT ID is encountered, this shape will be merged into the
+    existing |Label|
 
 Unfortunately,
 `CVAT does not guarantee <https://github.com/openvinotoolkit/cvat/issues/893#issuecomment-578020576>`_
