@@ -490,11 +490,14 @@ more details:
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
     applicable when editing existing label fields
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute of
-    existing labels to be modified. Only applicable when editing existing label
-    fields
+    existing labels to be modified. Only applicable when editing existing
+    fields with `label` attributes
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute
+    of existing video tracks to be modified. Only applicable when editing
+    existing frame fields with `index` attributes
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
-    applicable when editing existing label fields
+    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
+    Only applicable when editing existing spatial label fields
 
 |br|
 In addition, each annotation backend can typically be configured in a variety
@@ -737,6 +740,8 @@ following flags to
 -   **allow_deletions** (*True*): whether to allow labels to be deleted
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute to
     be modified
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute of
+    video tracks to be modified
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
     properties (bounding boxes, vertices, keypoints, etc) of labels
 

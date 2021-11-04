@@ -370,6 +370,24 @@ class Run(Configurable):
         dataset_doc.save()
 
     @classmethod
+    def update_run_config(cls, samples, key, config):
+        """Updates the :class:`RunConfig` for the given run on the collection.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+            config: a :class:`RunConfig`
+        """
+        if key is None:
+            return
+
+        dataset = samples._root_dataset
+        run_docs = getattr(dataset._doc, cls._runs_field())
+        run_doc = run_docs[key]
+        run_doc.config = deepcopy(config.serialize())
+        dataset._doc.save()
+
+    @classmethod
     def save_run_results(cls, samples, key, run_results, overwrite=True):
         """Saves the run results on the collection.
 
