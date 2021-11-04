@@ -45,7 +45,7 @@ workflows.
     :tags: Basics,Dataset-Curation
 
 .. customcarditem::
-    :header: Removing duplicate labels
+    :header: Removing duplicate annotations from a dataset
     :description: Check out some common workflows for finding and removing duplicate annotations from your FiftyOne datasets.
     :link: remove_duplicate_annos.html
     :image: ../_static/images/recipes/remove_duplicate_annos.png
