@@ -18,6 +18,8 @@ export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 20;
 export const DATE_TIME = "DateTime";
 
+export const NONFINITES = new Set(["-inf", "inf", "nan"]);
+
 export const CLASSIFICATION = "Classification";
 export const CLASSIFICATIONS = "Classifications";
 export const DETECTION = "Detection";

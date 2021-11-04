@@ -3,7 +3,7 @@
  */
 
 import { getColor } from "../color";
-import { BaseState, Coordinates } from "../state";
+import { BaseState, Coordinates, NONFINITE } from "../state";
 import { sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -38,7 +38,7 @@ export interface SelectData {
 
 export interface RegularLabel extends BaseLabel {
   label?: string;
-  confidence?: number;
+  confidence?: number | NONFINITE;
 }
 
 export interface SelectData {

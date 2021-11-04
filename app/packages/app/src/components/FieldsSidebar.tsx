@@ -41,7 +41,6 @@ import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
 import { formatDateTime, prettify } from "../utils/generic";
 import * as filterAtoms from "./Filters/atoms";
-import { DATE_TIME } from "@fiftyone/looker/src/constants";
 
 const Container = styled.div`
   .MuiCheckbox-root {

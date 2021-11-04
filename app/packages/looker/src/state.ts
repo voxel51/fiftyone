@@ -242,6 +242,8 @@ export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
 
+export type NONFINITE = "-inf" | "inf" | "nan";
+
 export type StateUpdate<State extends BaseState> = (
   stateOrUpdater:
     | Optional<State>
