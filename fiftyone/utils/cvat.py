@@ -2677,6 +2677,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         samples,
         config,
         id_map,
+        server_id_map,
         project_ids,
         task_ids,
         job_ids,
@@ -2686,6 +2687,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
     ):
         super().__init__(samples, config, id_map, backend=backend)
 
+        self.server_id_map = server_id_map
         self.project_ids = project_ids
         self.task_ids = task_ids
         self.job_ids = job_ids
@@ -2859,6 +2861,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
+            d.get("server_id_map", {}),
             d.get("project_ids", []),
             d["task_ids"],
             job_ids,
@@ -3508,7 +3511,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for label_field in label_schema.keys():
                 labels_task_map[label_field].append(task_id)
 
-            self._upload_annotations(
+            server_id_map = self._upload_annotations(
                 anno_shapes,
                 anno_tags,
                 anno_tracks,
@@ -3521,6 +3524,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             samples,
             config,
             id_map,
+            server_id_map,
             project_ids,
             task_ids,
             job_ids,
@@ -3541,6 +3545,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         label_schema = results.config.label_schema
         id_map = results.id_map
+        server_id_map = results.server_id_map
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
@@ -3630,6 +3635,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
+                    server_id_map.get("tags", {}),
                     class_map,
                     attr_id_map,
                     frames,
@@ -3646,6 +3652,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
+                    server_id_map.get("shapes", {}),
                     class_map,
                     attr_id_map,
                     frames,
@@ -3671,6 +3678,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frame_id_map[task_id],
                         label_type,
                         _id_map,
+                        server_id_map.get("tracks", {}),
                         class_map,
                         attr_id_map,
                         frames,
@@ -3953,6 +3961,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             num_uploaded_tags = len(anno_resp["tags"])
             num_uploaded_tracks = len(anno_resp["tracks"])
 
+        return self._create_server_id_map(anno_resp, attr_id_map)
+
+    def _create_server_id_map(self, anno_resp, attr_id_map):
+        label_id_map = {}
+        for class_id, class_attr_map in attr_id_map.items():
+            for attr_name, attr_id in class_attr_map.items():
+                if attr_name == "label_id":
+                    label_id_map[class_id] = attr_id
+
+        server_id_map = {}
+        for anno_type, anno_list in anno_resp.items():
+            if anno_type not in ("tags", "shapes", "tracks"):
+                continue
+
+            id_map = {}
+            for anno in anno_list:
+                server_id = anno["id"]
+                label_attr_id = label_id_map[anno["label_id"]]
+                for attr in anno["attributes"]:
+                    if attr["spec_id"] == label_attr_id:
+                        id_map[server_id] = attr["value"]
+
+            server_id_map[anno_type] = id_map
+
+        return server_id_map
+
     def _update_shapes_tags_tracks(
         self,
         tags,
@@ -4126,6 +4160,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map,
         label_type,
         id_map,
+        server_id_map,
         class_map,
         attr_id_map,
         frames,
@@ -4163,6 +4198,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frame_id_map,
                 label_type,
                 id_map,
+                server_id_map,
                 class_map,
                 attr_id_map,
                 frames,
@@ -4189,6 +4225,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map,
                     label_type,
                     id_map,
+                    server_id_map,
                     class_map,
                     attr_id_map,
                     frames,
@@ -4210,6 +4247,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map,
         expected_label_type,
         id_map,
+        server_id_map,
         class_map,
         attr_id_map,
         frames,
@@ -4251,6 +4289,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno,
                 class_map,
                 attr_id_map,
+                server_id_map,
                 metadata,
                 index=track_index,
                 immutable_attrs=immutable_attrs,
@@ -4330,7 +4369,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label = class_map[anno["label_id"]]
             else:
                 label_type = "classifications"
-                cvat_tag = CVATTag(anno, class_map, attr_id_map)
+                cvat_tag = CVATTag(anno, class_map, attr_id_map, server_id_map)
                 label = cvat_tag.to_classification()
 
         if label is None or label_type in ignore_types:
@@ -5341,11 +5380,20 @@ class CVATLabel(object):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         attributes (None): an optional list of additional attributes
     """
 
-    def __init__(self, label_dict, class_map, attr_id_map, attributes=None):
+    def __init__(
+        self,
+        label_dict,
+        class_map,
+        attr_id_map,
+        server_id_map,
+        attributes=None,
+    ):
         cvat_id = label_dict["label_id"]
+        server_id = label_dict["id"]
         attrs = label_dict["attributes"]
 
         if attributes is not None:
@@ -5371,11 +5419,20 @@ class CVATLabel(object):
 
         # Parse label ID
         label_id = self.attributes.pop("label_id", None)
+
         if label_id is not None:
-            try:
-                self._id = ObjectId(label_id)
-            except:
-                pass
+            self._set_id(label_id)
+
+        if self._id is None:
+            label_id = server_id_map.get(server_id, None)
+            if label_id is not None:
+                self._set_id(label_id)
+
+    def _set_id(self, label_id):
+        try:
+            self._id = ObjectId(label_id)
+        except:
+            pass
 
     def _set_attributes(self, label):
         if self._id is not None:
@@ -5397,6 +5454,7 @@ class CVATShape(CVATLabel):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         metadata: a dictionary containing the width and height of the frame
         index (None): the tracking index of the shape
         immutable_attrs (None): immutable attributes inherited by this shape
@@ -5410,13 +5468,18 @@ class CVATShape(CVATLabel):
         label_dict,
         class_map,
         attr_id_map,
+        server_id_map,
         metadata,
         index=None,
         immutable_attrs=None,
         occluded_attrs=None,
     ):
         super().__init__(
-            label_dict, class_map, attr_id_map, attributes=immutable_attrs
+            label_dict,
+            class_map,
+            attr_id_map,
+            server_id_map,
+            attributes=immutable_attrs,
         )
 
         self.frame_size = (metadata["width"], metadata["height"])
@@ -5546,6 +5609,7 @@ class CVATTag(CVATLabel):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         attributes (None): an optional list of additional attributes
     """
 
