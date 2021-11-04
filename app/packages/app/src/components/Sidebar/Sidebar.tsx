@@ -1,6 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   atomFamily,
+  DefaultValue,
   selectorFamily,
   useRecoilState,
   useRecoilValue,
@@ -109,10 +110,8 @@ const InteractivePathEntry = ({
 };
 
 type SidebarEntry = {
-  editable: boolean;
-  group;
+  group: boolean;
   name: string;
-  paths: string[];
 };
 
 type SidebarGroups = [string, string[]][];
@@ -141,7 +140,7 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
       groups["frame labels"] = frameLabels;
     }
 
-    return prioritySort(groups, ["labels", "frame labels"]);
+    return prioritySort(groups, ["metadata", "labels", "frame labels"]);
   },
 });
 
@@ -156,21 +155,63 @@ const sidebarGroups = atomFamily<SidebarGroups, boolean>({
   default: defaultSidebarGroups,
 });
 
+const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
+  key: "sidebarEntries",
+  get: (modal) => ({ get }) => {
+    let shown = null;
+    return get(sidebarGroups(modal))
+      .map(([groupName, names]) => [
+        { name: groupName, group: true },
+        ...names.map((name) => ({ name, group: false })),
+      ])
+      .flat()
+      .filter(({ name, group }) => {
+        if (group) {
+          shown = get(groupShown({ modal, name }));
+        }
+
+        return group || shown;
+      });
+  },
+  set: (modal) => ({ get, set }, value) => {
+    if (value instanceof DefaultValue) {
+      set(sidebarGroups(modal), get(defaultSidebarGroups(modal)));
+      return;
+    }
+
+    const currentGroups = Object.fromEntries(get(sidebarGroups(modal)));
+
+    set(
+      sidebarGroups(modal),
+      value.reduce((result, entry) => {
+        if (entry.group) {
+          const shown = get(groupShown({ modal, name: entry.name }));
+          return [
+            ...result,
+            [entry.name, shown ? [] : currentGroups[entry.name]],
+          ];
+        }
+
+        const num = result.length;
+
+        result[num - 1][1] = [...result[num - 1][1], entry.name];
+        return result;
+      }, [])
+    );
+  },
+});
+
 const positionEntry = (
   order: number[],
   elements: HTMLDivElement[],
   index: number,
   y: number
 ) =>
-  order
-    .slice(0, index)
-    .reduce(
-      (y, index) =>
-        elements[index]
-          ? y + elements[index].getBoundingClientRect().height
-          : y,
-      y
-    );
+  order.slice(0, index).reduce((y, index) => {
+    return elements[index]
+      ? y + elements[index].getBoundingClientRect().height
+      : y;
+  }, y);
 
 const fn = (
   entries: { name: string; group: boolean }[],
@@ -180,29 +221,42 @@ const fn = (
   originalIndex = 0,
   curIndex = 0,
   y = 0
-) => (index: number) => {
-  if (active && index === originalIndex) {
-    if (entries[order[curIndex]].group) {
+) => {
+  const groups = {};
+  let currentGroup = null;
+  for (const { group, name } of entries) {
+    if (group) {
+      groups[name] = new Set();
+      currentGroup = groups[name];
+      continue;
+    }
+
+    currentGroup.add(name);
+  }
+
+  return (index: number) => {
+    const member = active && index === originalIndex;
+
+    if (member) {
+      return {
+        y: positionEntry(order, elements, curIndex, y),
+        zIndex: 1,
+        immediate: (key: string) => key === "zIndex",
+        config: (key: string) => (key === "y" ? config.stiff : config.default),
+      };
     }
 
     return {
-      y: positionEntry(order, elements, curIndex, y),
-      zIndex: 1,
-      immediate: (key: string) => key === "zIndex",
-      config: (key: string) => (key === "y" ? config.stiff : config.default),
+      y: positionEntry(order, elements, order.indexOf(index), 0),
+      scale: 1,
+      zIndex: 0,
+      shadow: 0,
+      immediate: false,
     };
-  }
-
-  return {
-    y: positionEntry(order, elements, order.indexOf(index), 0),
-    scale: 1,
-    zIndex: 0,
-    shadow: 0,
-    immediate: false,
   };
 };
 
-const InteractiveSideBarContainer = styled.div`
+const InteractiveSidebarContainer = styled.div`
   position: relative;
   height: auto;
   overflow: visible;
@@ -216,32 +270,47 @@ const InteractiveSideBarContainer = styled.div`
   }
 `;
 
-const InteractiveSideBar = ({
-  groups,
-  modal,
-  onChange,
-}: {
-  groups: SidebarGroups;
-  onChange: (groups: SidebarGroups) => void;
-  modal: boolean;
-}) => {
-  const entries = groups
-    .map(([groupName, names]) => [
-      { name: groupName, group: true },
-      ...names.map((name) => ({ name, group: false })),
-    ])
-    .flat();
+const getY = (el?: HTMLElement) => {
+  return el ? el.getBoundingClientRect().y : 0;
+};
+
+const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const [attached, setAttached] = useState(false);
-  const order = useRef(entries.map((_, index) => index));
+  const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
+  const order = useRef<number[]>(entries.map((_, index) => index));
   const refs = useRef<HTMLDivElement[]>(entries.map(() => null));
+
+  useEffect(() => {
+    order.current = entries.map((_, index) => index);
+    refs.current = entries.map(() => null);
+  }, [entries]);
+
   const [springs, api] = useSprings(
-    order.current.length,
+    entries.length,
     fn(entries, order.current, refs.current),
-    [attached]
+    [entries]
   );
+
+  useEffect(() => {
+    attached && api.start(fn(entries, order.current, refs.current));
+  }, [attached]);
+
   const bind = useDrag(({ args: [originalIndex], active, movement: [, y] }) => {
     const curIndex = order.current.indexOf(originalIndex);
-    const curRow = clamp(0, 0, entries.length - 1);
+    const top = getY(refs.current[originalIndex]);
+
+    const curRow = clamp(
+      order.current
+        .map((oi, i) => ({
+          y: getY(refs.current[oi]),
+          i,
+          oi,
+        }))
+        .filter(({ oi }) => oi !== originalIndex)
+        .sort((a, b) => Math.abs(b.y - top) - Math.abs(a.y - top))[0].i,
+      0,
+      entries.length - 1
+    );
     const newOrder = move(order.current, curIndex, curRow);
 
     api.start(
@@ -256,28 +325,14 @@ const InteractiveSideBar = ({
       )
     );
     if (!active) {
-      if (entries[newOrder[0]].group) {
-        order.current = newOrder;
-      }
-      onChange(
-        order.current.reduce((result, i) => {
-          if (entries[i].group) {
-            return [...result, [entries[i].name, []]];
-          }
-
-          const num = result.length;
-
-          result[num - 1][1] = [...result[num - 1][1], entries[i].name];
-
-          return result;
-        }, [])
-      );
+      order.current = entries[newOrder[0]].group ? newOrder : order.current;
+      setEntries(order.current.map((i) => entries[i]));
     }
   });
   let groupName = null;
 
   return (
-    <InteractiveSideBarContainer ref={() => !attached && setAttached(true)}>
+    <InteractiveSidebarContainer ref={() => !attached && setAttached(true)}>
       {springs.map(({ zIndex, shadow, y, scale }, i) => {
         if (entries[i].group) {
           groupName = entries[i].name;
@@ -310,7 +365,7 @@ const InteractiveSideBar = ({
           />
         );
       })}
-    </InteractiveSideBarContainer>
+    </InteractiveSidebarContainer>
   );
 };
 
@@ -319,17 +374,11 @@ export type SidebarProps = {
 };
 
 const Sidebar = React.memo(({ modal }: SidebarProps) => {
-  const [interactiveGroups, setGroups] = useRecoilState(sidebarGroups(modal));
-
   return (
     <>
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
-      <InteractiveSideBar
-        groups={interactiveGroups}
-        onChange={setGroups}
-        modal={modal}
-      />
+      <InteractiveSidebar modal={modal} />
     </>
   );
 });
