@@ -3,7 +3,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { NamedRangeSlider } from "./RangeSlider";
+import { NamedRangeSlider } from "./NumericFieldFilter";
 import CategoricalFilter from "./CategoricalFilter";
 import {
   CONFIDENCE_LABELS,
@@ -16,9 +16,8 @@ import { useExpand } from "./hooks";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import * as numericField from "./NumericFieldFilter.state";
 import * as stringField from "./StringFieldFilter.state";
-import { countsAtom, noneCount } from "./atoms";
+import { countsAtom } from "./atoms";
 
 const FilterHeader = styled.div`
   display: flex;
@@ -107,23 +106,11 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
           )}
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
+              modal={modal}
               color={entry.color}
               name={"Confidence"}
-              noneAtom={numericField.noneAtom({
-                modal,
-                path: cPath,
-                defaultRange: [0, 1],
-              })}
-              noneCountAtom={noneCount({ path: cPath, modal })}
-              boundsAtom={numericField.boundsAtom({
-                path: cPath,
-                defaultRange: [0, 1],
-              })}
-              valueAtom={numericField.rangeAtom({
-                modal,
-                path: cPath,
-                defaultRange: [0, 1],
-              })}
+              path={cPath}
+              defaultRange={[0, 1]}
               fieldType={FLOAT_FIELD}
             />
           )}
@@ -148,20 +135,10 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
           )}
           {SUPPORT_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
+              modal={modal}
               color={entry.color}
               name={"Support"}
-              noneAtom={numericField.noneAtom({
-                modal,
-                path: sPath,
-              })}
-              noneCountAtom={noneCount({ path: sPath, modal })}
-              boundsAtom={numericField.boundsAtom({
-                path: sPath,
-              })}
-              valueAtom={numericField.rangeAtom({
-                modal,
-                path: sPath,
-              })}
+              path={sPath}
               fieldType={FRAME_SUPPORT_FIELD}
             />
           )}

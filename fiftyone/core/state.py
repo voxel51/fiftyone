@@ -7,8 +7,6 @@ Defines the shared state between the FiftyOne App and backend.
 """
 import logging
 
-from mongoengine.base import document
-
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -269,7 +267,11 @@ class DatasetStatistics(object):
                     confidence_path = "%s.confidence" % path
                     aggregations.extend(
                         [
-                            foa.Bounds(confidence_path),
+                            foa.Bounds(
+                                confidence_path,
+                                safe=True,
+                                _count_nonfinites=True,
+                            ),
                             foa.Count(confidence_path),
                         ]
                     )
@@ -293,7 +295,7 @@ class DatasetStatistics(object):
                 if _has_support(field):
                     support_path = "%s.support" % path
                     aggregations.extend(
-                        [foa.Bounds(support_path), foa.Count(support_path)]
+                        [foa.Bounds(support_path), foa.Count(support_path),]
                     )
 
                 if _has_value(field):
@@ -311,7 +313,14 @@ class DatasetStatistics(object):
                     fof.IntField,
                 ),
             ):
-                aggregations.append(foa.Bounds(field_name))
+                has_nonfinites = _meets_type(field, fof.FloatField)
+                aggregations.append(
+                    foa.Bounds(
+                        field_name,
+                        safe=has_nonfinites,
+                        _count_nonfinites=has_nonfinites,
+                    )
+                )
             elif _meets_type(field, fof.BooleanField):
                 aggregations.append(foa.CountValues(field_name, _first=3))
             elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):

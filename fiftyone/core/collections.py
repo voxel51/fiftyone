@@ -4819,7 +4819,7 @@ class SampleCollection(object):
         return list(aggregation.all)
 
     @aggregation
-    def bounds(self, field_or_expr, expr=None):
+    def bounds(self, field_or_expr, expr=None, safe=False):
         """Computes the bounds of a numeric field of the collection.
 
         ``None``-valued fields are ignored.
@@ -4889,15 +4889,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the ``(min, max)`` bounds
         """
-        make = lambda field_or_expr: foa.Bounds(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Bounds(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def count(self, field_or_expr=None, expr=None):
+    def count(self, field_or_expr=None, expr=None, safe=False):
         """Counts the number of field values in the collection.
 
         ``None``-valued fields are ignored.
@@ -4984,15 +4988,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the count
         """
-        make = lambda field_or_expr: foa.Count(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Count(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def count_values(self, field_or_expr, expr=None):
+    def count_values(self, field_or_expr, expr=None, safe=False):
         """Counts the occurrences of field values in the collection.
 
         This aggregation is typically applied to *countable* field types (or
@@ -5074,15 +5082,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to treat nan/inf values as None when dealing
+                with floating point values
 
         Returns:
             a dict mapping values to counts
         """
-        make = lambda field_or_expr: foa.CountValues(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.CountValues(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def distinct(self, field_or_expr, expr=None):
+    def distinct(self, field_or_expr, expr=None, safe=False):
         """Computes the distinct values of a field in the collection.
 
         ``None``-valued fields are ignored.
@@ -5166,11 +5178,15 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             a sorted list of distinct values
         """
-        make = lambda field_or_expr: foa.Distinct(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Distinct(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
@@ -5288,7 +5304,7 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def mean(self, field_or_expr, expr=None):
+    def mean(self, field_or_expr, expr=None, safe=False):
         """Computes the arithmetic mean of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -5358,15 +5374,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the mean
         """
-        make = lambda field_or_expr: foa.Mean(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Mean(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def std(self, field_or_expr, expr=None, sample=False):
+    def std(self, field_or_expr, expr=None, safe=False, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
 
@@ -5437,6 +5457,8 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
             sample (False): whether to compute the sample standard deviation rather
                 than the population standard deviation
 
@@ -5444,12 +5466,12 @@ class SampleCollection(object):
             the standard deviation
         """
         make = lambda field_or_expr: foa.Std(
-            field_or_expr, expr=expr, sample=sample
+            field_or_expr, expr=expr, safe=safe, sample=sample
         )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def sum(self, field_or_expr, expr=None):
+    def sum(self, field_or_expr, expr=None, safe=False):
         """Computes the sum of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -5519,11 +5541,15 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the sum
         """
-        make = lambda field_or_expr: foa.Sum(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Sum(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
