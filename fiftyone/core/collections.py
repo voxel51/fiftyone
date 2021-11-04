@@ -1653,6 +1653,65 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
+    def evaluate_regressions(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        missing=None,
+        method="simple",
+        **kwargs,
+    ):
+        """Evaluates the regression predictions in this collection with respect
+        to the specified ground truth values.
+
+        You can customize the evaluation method by passing additional
+        parameters for the method's config class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.regression.SimpleEvaluationConfig`
+
+        If an ``eval_key`` is specified, then this method will record some
+        statistics on each sample:
+
+        -   When evaluating sample-level fields, an ``eval_key`` field will be
+            populated on each sample recording the error of that sample's
+            prediction.
+
+        -   When evaluating frame-level fields, an ``eval_key`` field will be
+            populated on each frame recording the error of that frame's
+            prediction. In addition, an ``eval_key`` field will be populated on
+            each sample that records the average error of the frame predictions
+            of the sample.
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Regression` instances
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Regression` instances
+            eval_key (None): a string key to use to refer to this evaluation
+            missing (None): a missing value. Any None-valued regressions are
+                given this value for results purposes
+            method ("simple"): a string specifying the evaluation method to use.
+                Supported values are ``("simple")``
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
+                being used
+
+        Returns:
+            a :class:`fiftyone.utils.eval.regression.RegressionResults`
+        """
+        return foue.evaluate_regressions(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            missing=missing,
+            method=method,
+            **kwargs,
+        )
+
     def evaluate_classifications(
         self,
         pred_field,
@@ -4760,7 +4819,7 @@ class SampleCollection(object):
         return list(aggregation.all)
 
     @aggregation
-    def bounds(self, field_or_expr, expr=None):
+    def bounds(self, field_or_expr, expr=None, safe=False):
         """Computes the bounds of a numeric field of the collection.
 
         ``None``-valued fields are ignored.
@@ -4830,15 +4889,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the ``(min, max)`` bounds
         """
-        make = lambda field_or_expr: foa.Bounds(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Bounds(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def count(self, field_or_expr=None, expr=None):
+    def count(self, field_or_expr=None, expr=None, safe=False):
         """Counts the number of field values in the collection.
 
         ``None``-valued fields are ignored.
@@ -4925,15 +4988,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the count
         """
-        make = lambda field_or_expr: foa.Count(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Count(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def count_values(self, field_or_expr, expr=None):
+    def count_values(self, field_or_expr, expr=None, safe=False):
         """Counts the occurrences of field values in the collection.
 
         This aggregation is typically applied to *countable* field types (or
@@ -5015,15 +5082,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to treat nan/inf values as None when dealing
+                with floating point values
 
         Returns:
             a dict mapping values to counts
         """
-        make = lambda field_or_expr: foa.CountValues(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.CountValues(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def distinct(self, field_or_expr, expr=None):
+    def distinct(self, field_or_expr, expr=None, safe=False):
         """Computes the distinct values of a field in the collection.
 
         ``None``-valued fields are ignored.
@@ -5107,11 +5178,15 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             a sorted list of distinct values
         """
-        make = lambda field_or_expr: foa.Distinct(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Distinct(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
@@ -5229,7 +5304,7 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def mean(self, field_or_expr, expr=None):
+    def mean(self, field_or_expr, expr=None, safe=False):
         """Computes the arithmetic mean of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -5299,15 +5374,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the mean
         """
-        make = lambda field_or_expr: foa.Mean(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Mean(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def std(self, field_or_expr, expr=None, sample=False):
+    def std(self, field_or_expr, expr=None, safe=False, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
 
@@ -5378,6 +5457,8 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
             sample (False): whether to compute the sample standard deviation rather
                 than the population standard deviation
 
@@ -5385,12 +5466,12 @@ class SampleCollection(object):
             the standard deviation
         """
         make = lambda field_or_expr: foa.Std(
-            field_or_expr, expr=expr, sample=sample
+            field_or_expr, expr=expr, safe=safe, sample=sample
         )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def sum(self, field_or_expr, expr=None):
+    def sum(self, field_or_expr, expr=None, safe=False):
         """Computes the sum of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -5460,11 +5541,15 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the sum
         """
-        make = lambda field_or_expr: foa.Sum(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Sum(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
@@ -5907,6 +5992,7 @@ class SampleCollection(object):
         allow_additions=True,
         allow_deletions=True,
         allow_label_edits=True,
+        allow_index_edits=True,
         allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
@@ -6000,10 +6086,14 @@ class SampleCollection(object):
                 applicable when editing existing label fields
             allow_label_edits (True): whether to allow the ``label`` attribute
                 of existing labels to be modified. Only applicable when editing
-                existing label fields
+                existing fields with ``label`` attributes
+            allow_index_edits (True): whether to allow the ``index`` attribute
+                of existing video tracks to be modified. Only applicable when
+                editing existing frame fields with ``index`` attributes
             allow_spatial_edits (True): whether to allow edits to the spatial
-                properties (bounding boxes, vertices, keypoints, etc) of
-                labels. Only applicable when editing existing label fields
+                properties (bounding boxes, vertices, keypoints, masks, etc) of
+                labels. Only applicable when editing existing spatial label
+                fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -6029,6 +6119,7 @@ class SampleCollection(object):
             allow_additions=allow_additions,
             allow_deletions=allow_deletions,
             allow_label_edits=allow_label_edits,
+            allow_index_edits=allow_index_edits,
             allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,
