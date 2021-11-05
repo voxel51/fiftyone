@@ -6,8 +6,8 @@ Remote media caching.
 |
 """
 from collections import OrderedDict
-from enum import Enum
 import logging
+import multiprocessing
 from multiprocessing.pool import ThreadPool
 import os
 import urllib.parse as urlparse
@@ -70,7 +70,74 @@ def download_media(sample_collection, overwrite=False, skip_failures=True):
         media_cache.get_local_paths(filepaths, skip_failures=skip_failures)
 
 
-class FileSystem(Enum):
+def upload_media(
+    sample_collection,
+    remote_dir,
+    rel_dir=None,
+    overwrite=True,
+    num_workers=None,
+    skip_failures=True,
+):
+    """Uploads the source media files for the samples in the collection to the
+    given remote directory.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        remote_dir: an S3 or GCS "folder" into which to upload
+        rel_dir (None): an optional relative directory to strip from each
+            filepath when constructing the corresponding remote path. Providing
+            a ``rel_dir`` enables writing nested subfolders within
+            ``remote_dir`` matching the structure of the input collection's
+            media. By default, the files are written directly to
+        overwrite (True): whether to overwrite (True) or skip (False) existing
+            remote files
+        num_workers (None): the number of threads to use. By default,
+            ``multiprocessing.cpu_count()`` is used
+        skip_failures (True): whether to gracefully continue without raising an
+            error if an upload fails
+    """
+    fs = _get_file_system(remote_dir)
+    if fs == FileSystem.S3:
+        client = S3StorageClient()
+    elif fs == FileSystem.GCS:
+        client = GoogleCloudStorageClient()
+    else:
+        raise ValueError(
+            "Cannot upload media to '%s'; unsupported file system '%s'"
+            % (remote_dir, fs)
+        )
+
+    filepaths = sample_collection.values("filepath")
+
+    remote_paths = []
+    for filepath in filepaths:
+        if rel_dir is not None:
+            rel_path = os.path.relpath(filepath, rel_dir)
+        else:
+            rel_path = os.path.basename(filepath)
+
+        remote_paths.append(os.path.join(remote_dir, rel_path))
+
+    if overwrite:
+        existing_files = set(
+            client.list_files_in_folder(remote_dir, recursive=True)
+        )
+    else:
+        existing_files = set()
+
+    tasks = []
+    for filepath, remote_path in zip(filepaths, remote_paths):
+        if remote_path not in existing_files:
+            tasks.append((client, filepath, remote_path, skip_failures))
+
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    _upload_media(tasks, num_workers)
+
+
+class FileSystem(object):
     """Enumeration of the available file systems."""
 
     HTTP = "http"
@@ -177,8 +244,8 @@ class MediaCache(object):
         return {
             "cache_dir": self.cache_dir,
             "cache_size": self.cache_size,
-            "current_size": self.current_size,
             "cache_size_str": self.cache_size_str,
+            "current_size": self.current_size,
             "current_size_str": self.current_size_str,
             "current_count": self.current_count,
             "load_factor": self.load_factor,
@@ -266,7 +333,7 @@ class MediaCache(object):
         for filepath, checksum in checksums.items():
             result = self._cache.get(filepath, None)
             if result is not None:
-                local_path, success, cached_checksum, size_bytes = result
+                local_path, success, cached_checksum, _ = result
                 client = None
             else:
                 local_path, _, client = self._get_local_path(filepath)
@@ -375,9 +442,8 @@ class MediaCache(object):
         # We always pop and re-insert so that oldest files are deleted first
         result = self._cache.pop(filepath, None)
         if result is not None:
-            local_path = result[0]
+            local_path, success, _, _ = result
 
-            success = result[1]
             if success:
                 exists = os.path.isfile(local_path)
             else:
@@ -385,8 +451,13 @@ class MediaCache(object):
                 # place, report that the file exists to avoid retried downloads
                 exists = True
 
+            if exists:
+                client = None
+            else:
+                client = self._get_client(fs)
+
             self._cache[filepath] = result
-            return local_path, exists, None
+            return local_path, exists, client
 
         client = self._get_client(fs)
         local_path = os.path.join(
@@ -471,6 +542,31 @@ def _delete_file(local_path):
         pass
 
 
+def _upload_media(tasks, num_workers):
+    logger.info("Uploading media files...")
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                _do_upload_media(task)
+    else:
+        with fou.ProgressBar(total=len(tasks)) as pb:
+            with ThreadPool(processes=num_workers) as pool:
+                for _ in pb(pool.imap_unordered(_do_upload_media, tasks)):
+                    pass
+
+
+def _do_upload_media(arg):
+    client, local_path, remote_path, skip_failures = arg
+
+    try:
+        client.upload(local_path, remote_path)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        logger.warning(e)
+
+
 def _download_media(tasks, num_workers):
     logger.info("Downloading media files...")
     if not num_workers or num_workers <= 1:
@@ -482,25 +578,6 @@ def _download_media(tasks, num_workers):
             with ThreadPool(processes=num_workers) as pool:
                 for _ in pb(pool.imap_unordered(_do_download_media, tasks)):
                     pass
-
-
-def _get_checksums(tasks, num_workers):
-    checksums = {}
-
-    logger.info("Getting checksums...")
-    if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
-            for task in pb(tasks):
-                filepath, checksum = _do_get_checksum(task)
-                checksums[filepath] = checksum
-    else:
-        with fou.ProgressBar(total=len(tasks)) as pb:
-            with ThreadPool(processes=num_workers) as pool:
-                results = pool.imap_unordered(_do_get_checksum, tasks)
-                for filepath, checksum in pb(results):
-                    checksums[filepath] = checksum
-
-    return checksums
 
 
 def _do_download_media(arg):
@@ -523,6 +600,25 @@ def _do_download_media(arg):
         checksum = None
 
     media_cache._add_cache(remote_path, local_path, success, checksum)
+
+
+def _get_checksums(tasks, num_workers):
+    checksums = {}
+
+    logger.info("Getting checksums...")
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                filepath, checksum = _do_get_checksum(task)
+                checksums[filepath] = checksum
+    else:
+        with fou.ProgressBar(total=len(tasks)) as pb:
+            with ThreadPool(processes=num_workers) as pool:
+                results = pool.imap_unordered(_do_get_checksum, tasks)
+                for filepath, checksum in pb(results):
+                    checksums[filepath] = checksum
+
+    return checksums
 
 
 def _do_get_checksum(arg):

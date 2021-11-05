@@ -457,7 +457,7 @@ class MediaCacheConfig(EnvConfig):
     def _set_defaults(self):
         if self.cache_dir is None:
             self.cache_dir = os.path.join(
-                os.path.expanduser("~"), "fiftyone", "cache"
+                os.path.expanduser("~"), "fiftyone", "__cache__"
             )
 
         if self.num_workers is None:
