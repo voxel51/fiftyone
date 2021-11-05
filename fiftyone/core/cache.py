@@ -483,7 +483,10 @@ class MediaCache(object):
                 self._current_size += result[-1]
 
     def _add_cache(self, filepath, local_path, success, checksum):
-        size_bytes = os.path.getsize(local_path)
+        if success:
+            size_bytes = os.path.getsize(local_path)
+        else:
+            size_bytes = 0
 
         while self._current_size + size_bytes > self.cache_size:
             if not self._pop_oldest():
@@ -559,12 +562,12 @@ def _upload_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_upload_media(task)
     else:
-        with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
-            with ThreadPool(processes=num_workers) as pool:
-                with fou.ProgressBar(total=len(tasks)) as pb:
-                    results = pool.imap_unordered(_do_upload_media, tasks)
-                    for _ in pb(results):
-                        pass
+        # with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
+        with ThreadPool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                results = pool.imap_unordered(_do_upload_media, tasks)
+                for _ in pb(results):
+                    pass
 
 
 def _do_upload_media(arg):
@@ -586,12 +589,12 @@ def _download_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_download_media(task)
     else:
-        with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
-            with ThreadPool(processes=num_workers) as pool:
-                with fou.ProgressBar(total=len(tasks)) as pb:
-                    results = pool.imap_unordered(_do_download_media, tasks)
-                    for _ in pb(results):
-                        pass
+        # with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
+        with ThreadPool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                results = pool.imap_unordered(_do_download_media, tasks)
+                for _ in pb(results):
+                    pass
 
 
 def _do_download_media(arg):
@@ -626,12 +629,12 @@ def _get_checksums(tasks, num_workers):
                 filepath, checksum = _do_get_checksum(task)
                 checksums[filepath] = checksum
     else:
-        with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
-            with ThreadPool(processes=num_workers) as pool:
-                with fou.ProgressBar(total=len(tasks)) as pb:
-                    results = pool.imap_unordered(_do_get_checksum, tasks)
-                    for filepath, checksum in pb(results):
-                        checksums[filepath] = checksum
+        # with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
+        with ThreadPool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                results = pool.imap_unordered(_do_get_checksum, tasks)
+                for filepath, checksum in pb(results):
+                    checksums[filepath] = checksum
 
     return checksums
 
