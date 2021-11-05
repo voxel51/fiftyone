@@ -11,11 +11,9 @@ const Body = styled.div`
   font-weight: bold;
   user-select: none;
   border-radius: 3px;
-  .icon {
-    float: right;
-    order: 1;
-  }
 
+  display: flex;
+  justify-content: space-between;
   padding: 0.5rem;
   svg {
     font-size: 1.25em;
@@ -52,8 +50,8 @@ const DropdownHandle = ({
       }}
       {...rest}
     >
-      <span className="icon">{icon(expanded)}</span>
       {children}
+      <span className="icon">{icon(expanded)}</span>
     </Body>
   );
 };

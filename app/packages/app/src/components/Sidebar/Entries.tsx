@@ -64,7 +64,6 @@ const Container = animated(styled.div`
   font-weight: bold;
   display: flex;
   justify-content: space-between;
-  margin: 3px 0;
   padding: 3px;
   border-radius: 2px;
 
@@ -95,6 +94,17 @@ export const TextEntry = ({ text }: { text: string }) => {
       title={text}
     >
       <span>{text}</span>
+    </Container>
+  );
+};
+
+export const Entry = ({ children }: { children: ReactNode }) => {
+  const theme = useTheme();
+  return (
+    <Container
+      style={{ color: theme.fontDarkest, background: theme.backgroundLight }}
+    >
+      {children}
     </Container>
   );
 };

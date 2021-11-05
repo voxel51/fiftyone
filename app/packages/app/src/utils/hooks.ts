@@ -11,7 +11,7 @@ import socket, { appContext, handleId, isColab } from "../shared/connection";
 import { packageMessage } from "./socket";
 import gaConfig from "../constants/ga";
 
-export const useEventHandler = (target, eventType, handler) => {
+export const useEventHandler = (targets, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
   const handlerRef = useRef(handler);
   useEffect(() => {
@@ -19,15 +19,19 @@ export const useEventHandler = (target, eventType, handler) => {
   });
 
   useEffect(() => {
-    if (!target) {
-      return;
-    }
+    if (!targets) return;
+
+    if (!Array.isArray(targets)) targets = [targets];
+
     const wrapper = (e) => handlerRef.current(e);
-    target.addEventListener(eventType, wrapper);
+    for (const target of targets)
+      target && target.addEventListener(eventType, wrapper);
+
     return () => {
-      target.removeEventListener(eventType, wrapper);
+      for (const target of targets)
+        target && target.removeEventListener(eventType, wrapper);
     };
-  }, [target, eventType]);
+  }, [targets, eventType]);
 };
 
 export const useMessageHandler = (type, handler) => {
