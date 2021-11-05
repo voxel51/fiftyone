@@ -242,8 +242,6 @@ const positionEntry = (
       cache[index] = true;
     }
 
-    !cache[index] && console.log(elements[index], entry);
-
     return cache[index];
   };
 
@@ -359,6 +357,10 @@ const AddGroup = ({
   );
 };
 
+const getY = (el: HTMLElement) => {
+  return el ? el.getBoundingClientRect().y : 0;
+};
+
 const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
   const order = useRef<number[]>(entries.map((_, index) => index));
@@ -366,6 +368,8 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const down = useRef<number>(null);
   const lastLength = useRef<number>(0);
   const start = useRef<number>(0);
+  const entriesRef = useRef<SidebarEntry[]>();
+  entriesRef.current = entries;
 
   order.current = entries.map((_, index) => index);
   refs.current = entries
@@ -380,18 +384,48 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
 
   const observer = useRef(
     new ResizeObserver(() => {
-      api.start(fn(entries, order.current, refs.current));
+      api.start(fn(entriesRef.current, order.current, refs.current));
     })
   );
 
-  useEventHandler(refs.current, "mousedown", (event) => {
-    down.current = event.target.dataset.index;
+  useEventHandler(refs.current, "mousedown", (event: MouseEvent) => {
+    down.current = parseInt(event.currentTarget.dataset.index, 10);
+    start.current = event.clientY;
   });
   useEventHandler(refs.current, "mouseup", () => (down.current = null));
-  useEventHandler(refs.current, "mousemove", () => {
+  useEventHandler(document.body, "mousemove", (event) => {
     if (down.current == null) {
       return;
     }
+
+    const entry = entriesRef.current[down.current];
+    if (entry.kind !== EntryKind.PATH) {
+      return;
+    }
+
+    const delta = event.clientY - start.current;
+    const orderIndex = order.current.indexOf(down.current);
+    const top = getY(refs.current[down.current]);
+
+    const sorted = order.current
+      .map((oi, i) => ({
+        y: getY(refs.current[oi]),
+        i,
+        oi,
+      }))
+      .filter(({ oi }) => oi !== down.current)
+      .sort((a, b) => Math.abs(b.y - top) - Math.abs(a.y - top));
+    const curRow = clamp(
+      sorted.length ? sorted[0].i : 0,
+      0,
+      entries.length - 1
+    );
+    const newOrder = move(order.current, orderIndex, curRow);
+
+    console.log("EE");
+    api.start(
+      fn(entries, newOrder, refs.current, true, down.current, orderIndex, delta)
+    );
   });
 
   const newLength = entries.filter(
