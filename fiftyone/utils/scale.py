@@ -210,11 +210,11 @@ def import_from_scale(
             if sample.metadata is None:
                 if is_video:
                     sample.metadata = fom.VideoMetadata.build_for(
-                        sample.filepath
+                        sample.local_path
                     )
                 else:
                     sample.metadata = fom.ImageMetadata.build_for(
-                        sample.filepath
+                        sample.local_path
                     )
 
             if is_video:

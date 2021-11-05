@@ -1416,19 +1416,35 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
-    def download_media(self, skip_failures=True):
+    def download_media(self, overwrite=False, skip_failures=True):
         """Downloads the source media files for all samples in the collection.
 
-        This method is only applicable to datasets whose source media files are
-        stored in remote (e.g., cloud) storage.
+        This method is only applicable to datasets that contain at least one
+        media file that is stored remotely.
 
-        Any existing files are not re-downloaded.
+        Any existing files are not re-downloaded, unless ``overwrite == True``.
 
         Args:
+            overwrite (False): whether to re-download media whose checksums no
+                longer match
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
         """
-        foc.download_media(self, skip_failures=skip_failures)
+        foc.download_media(
+            self, overwrite=overwrite, skip_failures=skip_failures
+        )
+
+    def get_local_paths(self):
+        """Returns a list of local paths to the media files in this collection.
+
+        This method is only applicable to datasets that contain at least one
+        media file that is stored remotely.
+
+        Returns:
+            a list of local filepaths
+        """
+        filepaths = self.values("filepath")
+        return foc.media_cache.get_local_paths(filepaths)
 
     def apply_model(
         self,

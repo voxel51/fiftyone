@@ -47,22 +47,27 @@ def init_media_cache(config):
     media_cache = MediaCache(config)
 
 
-def download_media(sample_collection, skip_failures=True):
+def download_media(sample_collection, overwrite=False, skip_failures=True):
     """Downloads the source media files for all samples in the collection.
 
-    This method is only applicable to datasets whose source media files are
-    stored in remote (e.g., cloud) storage.
+    This method is only applicable to datasets that contain at least one media
+    file that is stored remotely.
 
-    Any existing files are not re-downloaded.
+    Any existing files are not re-downloaded, unless ``overwrite == True``.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
+        overwrite (False): whether to re-download media whose checksums no
+            longer match
         skip_failures (True): whether to gracefully continue without
             raising an error if a remote file cannot be downloaded
     """
     filepaths = sample_collection.values("filepath")
-    media_cache.get_local_paths(filepaths, skip_failures=skip_failures)
+    if overwrite:
+        media_cache.update(filepaths=filepaths, skip_failures=skip_failures)
+    else:
+        media_cache.get_local_paths(filepaths, skip_failures=skip_failures)
 
 
 class FileSystem(Enum):
@@ -197,10 +202,8 @@ class MediaCache(object):
         if exists:
             return local_path
 
-        task = (client, filepath, local_path, skip_failures)
-        _, checksum = _do_download_media(task)
-
-        self._update_cache(filepath, local_path, checksum)
+        task = (client, filepath, local_path, skip_failures, False, False)
+        _do_download_media(task)
 
         return local_path
 
@@ -223,14 +226,11 @@ class MediaCache(object):
             local_path, exists, client = self._get_local_path(filepath)
             local_paths.append(local_path)
             if not exists:
-                tasks.append((client, filepath, local_path, skip_failures))
+                task = (client, filepath, local_path, skip_failures, False)
+                tasks.append(task)
 
         if tasks:
-            checksums = _download_media(tasks, self.num_workers)
-
-            for _, filepath, local_path, _ in tasks:
-                checksum = checksums[filepath]
-                self._update_cache(filepath, local_path, checksum)
+            _download_media(tasks, self.num_workers)
 
         return local_paths
 
@@ -238,8 +238,8 @@ class MediaCache(object):
         """Re-downloads any cached files whose checksum no longer matches their
         remote source.
 
-        The cached versions of any remote files that have been deleted are
-        deleted from the cache.
+        Any remote files that have been deleted are also deleted from the
+        cache.
 
         Args:
             filepaths (None): an optional list of remote files to check for
@@ -249,8 +249,6 @@ class MediaCache(object):
         """
         if filepaths is None:
             filepaths = self._cache.keys()
-        else:
-            filepaths = [f for f in filepaths if f in self._cache]
 
         tasks = []
         for filepath in filepaths:
@@ -266,24 +264,39 @@ class MediaCache(object):
 
         tasks = []
         for filepath, checksum in checksums.items():
-            local_path, cached_checksum, _ = self._cache[filepath][1]
-            if not checksum:
-                # Assume file was deleted from remote
-                os.remove(local_path)
-            elif cached_checksum != checksum:
-                # Must re-download
-                client = self._get_client(_get_file_system(filepath))
-                tasks.append((client, filepath, local_path, skip_failures))
+            result = self._cache.get(filepath, None)
+            if result is not None:
+                local_path, success, cached_checksum, size_bytes = result
+                client = None
+            else:
+                local_path, _, client = self._get_local_path(filepath)
+                cached_checksum = None
+                success = True
+
+            if success and checksum is None:
+                # We were previously able to download the file but now failed
+                # to retrieve its checksum, assume the file was deleted
+                self._pop_cache(filepath)
+            elif cached_checksum != checksum or not checksum:
+                #
+                # Any of the following things may have happened
+                #   - The checksum changed
+                #   - The remote download failed previously
+                #   - The remote client doesn't support checksums
+                #
+                # In all cases, we need to re-download now
+                #
+                if client is None:
+                    client = self._get_client(_get_file_system(filepath))
+
+                task = (client, filepath, local_path, skip_failures, True)
+                tasks.append(task)
 
         if tasks:
-            checksums = _download_media(tasks, self.num_workers)
-
-            for _, filepath, local_path, _ in tasks:
-                checksum = checksums[filepath]
-                self._update_cache(filepath, local_path, checksum)
+            _download_media(tasks, self.num_workers)
 
     def clear(self):
-        """Clears the media cache."""
+        """Clears the cache."""
         etau.delete_dir(self.cache_dir)
         self._cache = OrderedDict()
         self._current_size = 0
@@ -292,6 +305,23 @@ class MediaCache(object):
         """Writes a manifest for the current cache to disk."""
         if self._cache:
             _write_manifest(self._cache, self.cache_manifest_path)
+
+    def sync(self, save=True):
+        """Syncs the cache with the contents of the cache manifest on disk.
+
+        Args:
+            save (True): whether to write the merged cache to disk
+        """
+        try:
+            cache, _ = _read_manifest(self.cache_manifest_path)
+        except:
+            cache = {}
+
+        if cache:
+            self._merge_cache(cache)
+
+        if save:
+            self.save()
 
     def _init(self):
         manifest_path = self.cache_manifest_path
@@ -314,43 +344,6 @@ class MediaCache(object):
         self._cache = cache
         self._current_size = total_size
 
-    def _update_cache(self, filepath, local_path, checksum):
-        size_bytes = os.path.getsize(local_path)
-
-        while self._current_size + size_bytes > self.cache_size:
-            try:
-                _, (del_path, del_size) = self._cache.popitem(last=False)
-            except KeyError:
-                break
-
-            self._current_size -= del_size
-
-            try:
-                os.remove(del_path)
-            except FileNotFoundError:
-                pass
-
-        self._current_size += size_bytes
-        self._cache[filepath] = (local_path, checksum, size_bytes)
-
-    def _get_local_path(self, filepath):
-        fs = _get_file_system(filepath)
-
-        if fs == FileSystem.LOCAL:
-            return filepath, True, None
-
-        result = self._cache.pop(filepath, None)
-        if result is not None:
-            self._cache[filepath] = result
-            return result[0], True, None
-
-        client = self._get_client(fs)
-        local_path = os.path.join(
-            self.cache_dir, fs, client.get_local_path(filepath)
-        )
-
-        return local_path, False, client
-
     def _get_client(self, fs):
         if fs == FileSystem.HTTP:
             if self._http_client is None:
@@ -372,6 +365,76 @@ class MediaCache(object):
 
         return None
 
+    def _get_local_path(self, filepath):
+        fs = _get_file_system(filepath)
+
+        if fs == FileSystem.LOCAL:
+            return filepath, True, None
+
+        # Retrieve local path from cache if possible
+        # We always pop and re-insert so that oldest files are deleted first
+        result = self._cache.pop(filepath, None)
+        if result is not None:
+            local_path = result[0]
+
+            success = result[1]
+            if success:
+                exists = os.path.isfile(local_path)
+            else:
+                # If we were unable to download the remote file in the first
+                # place, report that the file exists to avoid retried downloads
+                exists = True
+
+            self._cache[filepath] = result
+            return local_path, exists, None
+
+        client = self._get_client(fs)
+        local_path = os.path.join(
+            self.cache_dir, fs, client.get_local_path(filepath)
+        )
+
+        return local_path, False, client
+
+    def _merge_cache(self, cache):
+        for filepath, result in cache.items():
+            if filepath not in self._cache:
+                self._cache[filepath] = result
+                self._current_size += result[-1]
+
+    def _add_cache(self, filepath, local_path, success, checksum):
+        size_bytes = os.path.getsize(local_path)
+
+        while self._current_size + size_bytes > self.cache_size:
+            if not self._pop_oldest():
+                break
+
+        if checksum is None:
+            checksum = ""
+
+        self._current_size += size_bytes
+        self._cache[filepath] = (local_path, success, checksum, size_bytes)
+
+    def _pop_cache(self, filepath):
+        result = self._cache.pop(filepath, None)
+        if result is None:
+            return
+
+        local_path, _, _, size_bytes = result
+
+        self._current_size -= size_bytes
+        _delete_file(local_path)
+
+    def _pop_oldest(self):
+        try:
+            _, (del_path, _, _, del_size) = self._cache.popitem(last=False)
+        except KeyError:
+            return False
+
+        self._current_size -= del_size
+        _delete_file(del_path)
+
+        return True
+
 
 def _read_manifest(manifest_path):
     cache = OrderedDict()
@@ -379,9 +442,16 @@ def _read_manifest(manifest_path):
 
     with open(manifest_path, "r") as f:
         for line in f.read().splitlines():
-            filepath, local_path, checksum, size_bytes_str = line.split(",")
+            (
+                filepath,
+                local_path,
+                success_str,
+                checksum,
+                size_bytes_str,
+            ) = line.split(",")
+            success = success_str == "True"
             size_bytes = int(size_bytes_str)
-            cache[filepath] = (local_path, checksum, size_bytes)
+            cache[filepath] = (local_path, success, checksum, size_bytes)
             total_size += size_bytes
 
     return cache, total_size
@@ -390,27 +460,28 @@ def _read_manifest(manifest_path):
 def _write_manifest(cache, manifest_path):
     etau.ensure_basedir(manifest_path)
     with open(manifest_path, "w") as f:
-        for fp, (lp, cs, sb) in cache.items():
-            f.write("%s,%s,%s,%d\n" % (fp, lp, cs, sb))
+        for fp, (lp, ss, cs, sb) in cache.items():
+            f.write("%s,%s,%s,%s,%d\n" % (fp, lp, ss, cs, sb))
+
+
+def _delete_file(local_path):
+    try:
+        os.remove(local_path)
+    except FileNotFoundError:
+        pass
 
 
 def _download_media(tasks, num_workers):
-    checksums = {}
-
     logger.info("Downloading media files...")
     if not num_workers or num_workers <= 1:
         with fou.ProgressBar() as pb:
             for task in pb(tasks):
-                filepath, checksum = _do_download_media(task)
-                checksums[filepath] = checksum
+                _do_download_media(task)
     else:
         with fou.ProgressBar(total=len(tasks)) as pb:
             with ThreadPool(processes=num_workers) as pool:
-                results = pool.imap_unordered(_do_download_media, tasks)
-                for filepath, checksum in pb(results):
-                    checksums[filepath] = checksum
-
-    return checksums
+                for _ in pb(pool.imap_unordered(_do_download_media, tasks)):
+                    pass
 
 
 def _get_checksums(tasks, num_workers):
@@ -433,28 +504,38 @@ def _get_checksums(tasks, num_workers):
 
 
 def _do_download_media(arg):
-    client, remote_path, local_path, skip_failures = arg
+    client, remote_path, local_path, skip_failures, force = arg
 
-    try:
-        client.download(remote_path, local_path)
-    except Exception as e:
-        if not skip_failures:
-            raise
+    if force or not os.path.isfile(local_path):
+        try:
+            client.download(remote_path, local_path)
+            success = True
+        except Exception as e:
+            if not skip_failures:
+                raise
 
-        logger.warning(e)
+            logger.warning(e)
+            success = False
 
-    return _do_get_checksum((client, remote_path))
+    if success:
+        _, checksum = _do_get_checksum((client, remote_path))
+    else:
+        checksum = None
+
+    media_cache._add_cache(remote_path, local_path, success, checksum)
 
 
 def _do_get_checksum(arg):
     client, remote_path = arg
 
-    try:
-        metadata = client.get_file_metadata(remote_path)
-    except:
-        metadata = {}
-
-    checksum = metadata.get("checksum", "")
+    if hasattr(client, "get_file_metadata"):
+        try:
+            metadata = client.get_file_metadata(remote_path)
+            checksum = metadata["checksum"]
+        except:
+            checksum = None
+    else:
+        checksum = ""
 
     return remote_path, checksum
 

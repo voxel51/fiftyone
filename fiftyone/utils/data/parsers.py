@@ -1479,18 +1479,18 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return etai.read(self.current_sample.filepath)
+        return etai.read(self.current_sample.local_path)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)
-        return self.current_sample.filepath
+        return self.current_sample.local_path
 
     def get_image_metadata(self):
         fov.validate_image_sample(self.current_sample)
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.ImageMetadata.build_for(
-                self.current_sample.filepath
+                self.current_sample.local_path
             )
 
         return metadata
@@ -1532,18 +1532,18 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return etai.read(self.current_sample.filepath)
+        return etai.read(self.current_sample.local_path)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)
-        return self.current_sample.filepath
+        return self.current_sample.local_path
 
     def get_image_metadata(self):
         fov.validate_image_sample(self.current_sample)
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.ImageMetadata.build_for(
-                self.current_sample.filepath
+                self.current_sample.local_path
             )
 
         return metadata
@@ -1606,7 +1606,7 @@ class ExtractClipsMixin(object):
         self._curr_clip_path = None
 
     def _get_clip_path(self, sample):
-        video_path = sample.filepath
+        video_path = sample.local_path
         basename, ext = os.path.splitext(os.path.basename(video_path))
 
         if self.export_media:
@@ -1691,7 +1691,7 @@ class FiftyOneUnlabeledVideoSampleParser(
         if isinstance(self.current_sample, foc.ClipView):
             return self._get_clip_path(self.current_sample)
 
-        return self.current_sample.filepath
+        return self.current_sample.local_path
 
     def get_video_metadata(self):
         if isinstance(self.current_sample, foc.ClipView):
@@ -1700,7 +1700,7 @@ class FiftyOneUnlabeledVideoSampleParser(
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.VideoMetadata.build_for(
-                self.current_sample.filepath
+                self.current_sample.local_path
             )
 
         return metadata
@@ -1785,7 +1785,7 @@ class FiftyOneLabeledVideoSampleParser(
         if isinstance(self.current_sample, foc.ClipView):
             return self._get_clip_path(self.current_sample)
 
-        return self.current_sample.filepath
+        return self.current_sample.local_path
 
     def get_video_metadata(self):
         if isinstance(self.current_sample, foc.ClipView):
@@ -1794,7 +1794,7 @@ class FiftyOneLabeledVideoSampleParser(
         metadata = self.current_sample.metadata
         if metadata is None and self.compute_metadata:
             metadata = fom.VideoMetadata.build_for(
-                self.current_sample.filepath
+                self.current_sample.local_path
             )
 
         return metadata

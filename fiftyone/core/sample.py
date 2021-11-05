@@ -84,10 +84,10 @@ class _SampleMixin(object):
 
     @property
     def local_path(self):
-        """The local path to the media.
+        """The local path to the sample's media.
 
         Accessing this property will cause remote files to be downloaded to
-        FiftyOne's local media cache, if necessary.
+        FiftyOne's local cache, if necessary.
         """
         return foc.media_cache.get_local_path(self.filepath)
 

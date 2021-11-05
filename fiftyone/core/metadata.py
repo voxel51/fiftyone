@@ -15,6 +15,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
+import fiftyone.core.cache as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -151,7 +152,7 @@ def compute_sample_metadata(sample, skip_failures=False):
             an error if metadata cannot be computed
     """
     sample.metadata = _compute_sample_metadata(
-        sample.filepath, sample.media_type, skip_failures=skip_failures
+        sample.local_path, sample.media_type, skip_failures=skip_failures
     )
     if sample._in_db:
         sample.save()
@@ -205,6 +206,8 @@ def _compute_metadata(sample_collection, overwrite=False):
     if num_samples == 0:
         return
 
+    sample_collection.download_media()
+
     logger.info("Computing %s metadata...", sample_collection.media_type)
     with fou.ProgressBar(total=num_samples) as pb:
         for sample in pb(sample_collection.select_fields()):
@@ -216,9 +219,11 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
         sample_collection = sample_collection.exists("metadata", False)
 
     ids, filepaths = sample_collection.values(["id", "filepath"])
+    local_paths = foc.media_cache.get_local_paths(filepaths)
+
     media_types = itertools.repeat(sample_collection.media_type)
 
-    inputs = list(zip(ids, filepaths, media_types))
+    inputs = list(zip(ids, local_paths, media_types))
     num_samples = len(inputs)
 
     if num_samples == 0:

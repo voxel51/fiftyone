@@ -2115,7 +2115,7 @@ def draw_labeled_images(samples, output_dir, label_fields=None, config=None):
     outpaths = []
     for sample in samples.iter_samples(progress=True):
         outpath = filename_maker.get_output_path(
-            sample.filepath, output_ext=output_ext
+            sample.local_path, output_ext=output_ext
         )
         draw_labeled_image(
             sample, outpath, label_fields=label_fields, config=config
@@ -2141,7 +2141,7 @@ def draw_labeled_image(sample, outpath, label_fields=None, config=None):
         config = DrawConfig.default()
 
     fov.validate_image_sample(sample)
-    img = etai.read(sample.filepath)
+    img = etai.read(sample.local_path)
 
     image_labels = _to_image_labels(sample, label_fields=label_fields)
 
@@ -2183,12 +2183,12 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     for idx, sample in enumerate(samples, 1):
         if is_clips:
             logger.info("Drawing labels for clip %d/%d", idx, num_videos)
-            base, ext = os.path.splitext(sample.filepath)
+            base, ext = os.path.splitext(sample.local_path)
             first, last = sample.support
             inpath = "%s-clip-%d-%d%s" % (base, first, last, ext)
         else:
             logger.info("Drawing labels for video %d/%d", idx, num_videos)
-            inpath = sample.filepath
+            inpath = sample.local_path
 
         outpath = filename_maker.get_output_path(inpath, output_ext=output_ext)
         draw_labeled_video(
@@ -2214,7 +2214,7 @@ def draw_labeled_video(sample, outpath, label_fields=None, config=None):
     if config is None:
         config = DrawConfig.default()
 
-    video_path = sample.filepath
+    video_path = sample.local_path
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
     if isinstance(sample, foc.ClipView):
