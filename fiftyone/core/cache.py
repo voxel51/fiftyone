@@ -47,24 +47,22 @@ def init_media_cache(config):
     media_cache = MediaCache(config)
 
 
-def download_media(sample_collection, overwrite=False, skip_failures=True):
+def download_media(sample_collection, update=False, skip_failures=True):
     """Downloads the source media files for all samples in the collection.
 
-    This method is only applicable to datasets that contain at least one media
-    file that is stored remotely.
-
-    Any existing files are not re-downloaded, unless ``overwrite == True``.
+    Any existing files are not re-downloaded, unless ``update == True`` and
+    their checksums no longer match.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        overwrite (False): whether to re-download media whose checksums no
-            longer match
+        update (False): whether to re-download media whose checksums no longer
+            match
         skip_failures (True): whether to gracefully continue without
             raising an error if a remote file cannot be downloaded
     """
     filepaths = sample_collection.values("filepath")
-    if overwrite:
+    if update:
         media_cache.update(filepaths=filepaths, skip_failures=skip_failures)
     else:
         media_cache.get_local_paths(filepaths, skip_failures=skip_failures)
@@ -78,8 +76,8 @@ def upload_media(
     num_workers=None,
     skip_failures=True,
 ):
-    """Uploads the source media files for the samples in the collection to the
-    given remote directory.
+    """Uploads the source media files for the given collection to the given
+    remote directory.
 
     Args:
         sample_collection: a
