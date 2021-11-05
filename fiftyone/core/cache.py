@@ -72,6 +72,7 @@ def upload_media(
     sample_collection,
     remote_dir,
     rel_dir=None,
+    update_filepaths=False,
     overwrite=True,
     num_workers=None,
     skip_failures=True,
@@ -88,12 +89,17 @@ def upload_media(
             a ``rel_dir`` enables writing nested subfolders within
             ``remote_dir`` matching the structure of the input collection's
             media. By default, the files are written directly to
+        update_filepaths (False): whether to update the ``filepath`` of each
+            sample in the collection to its remote path
         overwrite (True): whether to overwrite (True) or skip (False) existing
             remote files
         num_workers (None): the number of threads to use. By default,
             ``multiprocessing.cpu_count()`` is used
         skip_failures (True): whether to gracefully continue without raising an
             error if an upload fails
+
+    Returns:
+        the list of remote paths
     """
     fs = _get_file_system(remote_dir)
     if fs == FileSystem.S3:
@@ -132,7 +138,13 @@ def upload_media(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    _upload_media(tasks, num_workers)
+    if tasks:
+        _upload_media(tasks, num_workers)
+
+    if update_filepaths:
+        sample_collection.set_values("filepath", remote_paths)
+
+    return remote_paths
 
 
 class FileSystem(object):
@@ -547,10 +559,12 @@ def _upload_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_upload_media(task)
     else:
-        with fou.ProgressBar(total=len(tasks)) as pb:
+        with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
             with ThreadPool(processes=num_workers) as pool:
-                for _ in pb(pool.imap_unordered(_do_upload_media, tasks)):
-                    pass
+                with fou.ProgressBar(total=len(tasks)) as pb:
+                    results = pool.imap_unordered(_do_upload_media, tasks)
+                    for _ in pb(results):
+                        pass
 
 
 def _do_upload_media(arg):
@@ -572,10 +586,12 @@ def _download_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_download_media(task)
     else:
-        with fou.ProgressBar(total=len(tasks)) as pb:
+        with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
             with ThreadPool(processes=num_workers) as pool:
-                for _ in pb(pool.imap_unordered(_do_download_media, tasks)):
-                    pass
+                with fou.ProgressBar(total=len(tasks)) as pb:
+                    results = pool.imap_unordered(_do_download_media, tasks)
+                    for _ in pb(results):
+                        pass
 
 
 def _do_download_media(arg):
@@ -610,11 +626,12 @@ def _get_checksums(tasks, num_workers):
                 filepath, checksum = _do_get_checksum(task)
                 checksums[filepath] = checksum
     else:
-        with fou.ProgressBar(total=len(tasks)) as pb:
+        with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
             with ThreadPool(processes=num_workers) as pool:
-                results = pool.imap_unordered(_do_get_checksum, tasks)
-                for filepath, checksum in pb(results):
-                    checksums[filepath] = checksum
+                with fou.ProgressBar(total=len(tasks)) as pb:
+                    results = pool.imap_unordered(_do_get_checksum, tasks)
+                    for filepath, checksum in pb(results):
+                        checksums[filepath] = checksum
 
     return checksums
 
