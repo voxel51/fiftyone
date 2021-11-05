@@ -118,11 +118,11 @@ def upload_media(
         remote_paths.append(os.path.join(remote_dir, rel_path))
 
     if overwrite:
+        existing_files = set()
+    else:
         existing_files = set(
             client.list_files_in_folder(remote_dir, recursive=True)
         )
-    else:
-        existing_files = set()
 
     tasks = []
     for filepath, remote_path in zip(filepaths, remote_paths):
@@ -234,7 +234,7 @@ class MediaCache(object):
         return self.config.num_workers
 
     def stats(self):
-        """Returns stats about the media cache.
+        """Returns stats about the cache.
 
         Returns:
             a stats dict
@@ -252,7 +252,7 @@ class MediaCache(object):
     def get_local_path(self, filepath, skip_failures=True):
         """Retrieves the local path for the given media file.
 
-        Remote files are downloaded to the local media cache, if necessary.
+        Remote files are downloaded to the local cache, if necessary.
 
         Args:
             filepath: a filepath
@@ -275,7 +275,7 @@ class MediaCache(object):
     def get_local_paths(self, filepaths, skip_failures=True):
         """Retrieves the local paths for the given media files.
 
-        Remote files are downloaded to the local media cache, if necessary.
+        Remote files are downloaded to the local cache, if necessary.
 
         Args:
             filepaths: a list of filepaths
