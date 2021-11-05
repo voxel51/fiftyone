@@ -122,7 +122,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     )
 
     def __init__(self, **kwargs):
-        filepath = os.path.abspath(os.path.expanduser(kwargs["filepath"]))
+        filepath = fomm.normalize_filepath(kwargs["filepath"])
 
         kwargs["id"] = kwargs.get("id", None)
         kwargs["filepath"] = filepath

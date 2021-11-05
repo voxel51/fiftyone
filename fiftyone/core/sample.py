@@ -7,6 +7,7 @@ Dataset samples.
 """
 import os
 
+import fiftyone.core.cache as foc
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
@@ -80,6 +81,15 @@ class _SampleMixin(object):
     def media_type(self):
         """The media type of the sample."""
         return self._media_type
+
+    @property
+    def local_path(self):
+        """The local path to the media.
+
+        Accessing this property will cause remote files to be downloaded to
+        FiftyOne's local media cache, if necessary.
+        """
+        return foc.media_cache.get_local_path(self.filepath)
 
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -328,7 +338,7 @@ class _SampleMixin(object):
         if field_name != "filepath":
             return
 
-        value = os.path.abspath(os.path.expanduser(value))
+        value = fomm.normalize_filepath(value)
 
         new_media_type = fomm.get_media_type(value)
         if self.media_type != new_media_type:

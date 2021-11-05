@@ -24,6 +24,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
+import fiftyone.core.cache as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
@@ -1414,6 +1415,20 @@ class SampleCollection(object):
             num_workers=num_workers,
             skip_failures=skip_failures,
         )
+
+    def download_media(self, skip_failures=True):
+        """Downloads the source media files for all samples in the collection.
+
+        This method is only applicable to datasets whose source media files are
+        stored in remote (e.g., cloud) storage.
+
+        Any existing files are not re-downloaded.
+
+        Args:
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+        """
+        foc.download_media(self, skip_failures=skip_failures)
 
     def apply_model(
         self,

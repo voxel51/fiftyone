@@ -30,6 +30,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
+from fiftyone.core.cache import media_cache
 import fiftyone.constants as foc
 import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
@@ -275,9 +276,10 @@ class PageHandler(tornado.web.RequestHandler):
 
         for r in results:
             filepath = r["sample"]["filepath"]
+            local_path = media_cache.get_local_path(filepath)
             if filepath not in metadata:
                 metadata[filepath] = fosu.read_metadata(
-                    filepath, r["sample"].get("metadata", None)
+                    local_path, r["sample"].get("metadata", None)
                 )
 
             r.update(metadata[filepath])
@@ -1464,13 +1466,16 @@ class MediaHandler(FileHandler):
                 return None
 
             absolute_path = os.path.join(absolute_path, self.default_filename)
-        if not os.path.exists(absolute_path):
+
+        local_path = media_cache.get_local_path(absolute_path)
+
+        if not os.path.exists(local_path):
             raise HTTPError(404)
 
-        if not os.path.isfile(absolute_path):
+        if not os.path.isfile(local_path):
             raise HTTPError(403, "%s is not a file", self.path)
 
-        return absolute_path
+        return local_path
 
 
 class Application(tornado.web.Application):

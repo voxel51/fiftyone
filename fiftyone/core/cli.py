@@ -79,6 +79,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "quickstart", QuickstartCommand)
         _register_command(subparsers, "annotation", AnnotationCommand)
         _register_command(subparsers, "app", AppCommand)
+        _register_command(subparsers, "cache", CacheCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
@@ -957,6 +958,73 @@ class AnnotationConfigCommand(Command):
                 print(etas.json_to_str(field))
         else:
             print(fo.annotation_config)
+
+
+class CacheCommand(Command):
+    """Tools for working with the FiftyOne media cache."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "config", CacheConfigCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class CacheConfigCommand(Command):
+    """Tools for working with your FiftyOne media cache config.
+
+    Examples::
+
+        # Print your entire media cache config
+        fiftyone cache config
+
+        # Print a specific media cache config field
+        fiftyone cache config <field>
+
+        # Print the location of your media cache config on disk (if one exists)
+        fiftyone cache config --locate
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field",
+            nargs="?",
+            metavar="FIELD",
+            help="a media cache config field to print",
+        )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your media cache config on disk",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.locate:
+            media_cache_config_path = focg.locate_media_cache_config()
+            if os.path.isfile(media_cache_config_path):
+                print(media_cache_config_path)
+            else:
+                print(
+                    "No media cache config file found at '%s'"
+                    % media_cache_config_path
+                )
+
+            return
+
+        if args.field:
+            field = getattr(fo.media_cache_config, args.field)
+            if etau.is_str(field):
+                print(field)
+            else:
+                print(etas.json_to_str(field))
+        else:
+            print(fo.media_cache_config)
 
 
 class AppCommand(Command):

@@ -6,10 +6,12 @@ Sample media utilities.
 |
 """
 import multiprocessing
+import os
 
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.cache as foc
 import fiftyone.core.utils as fou
 
 
@@ -18,6 +20,25 @@ import fiftyone.core.utils as fou
 VIDEO = "video"
 IMAGE = "image"
 MEDIA_TYPES = {IMAGE, VIDEO}
+
+
+def normalize_filepath(filepath):
+    """Normalizes the given filepath.
+
+    Local paths are converted to absolute paths via
+    ``os.path.abspath(os.path.expanduser(filepath))``, while remote paths are
+    returned unchanged.
+
+    Args:
+        filepath: a filepath
+
+    Returns:
+        the normalized filepath
+    """
+    if foc.is_local_path(filepath):
+        return os.path.abspath(os.path.expanduser(filepath))
+
+    return filepath
 
 
 def get_media_type(filepath):
