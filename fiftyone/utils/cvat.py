@@ -3949,6 +3949,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         num_uploaded_shapes = 0
         num_uploaded_tags = 0
         num_uploaded_tracks = 0
+        anno_resp = {}
         while (
             num_uploaded_shapes != num_shapes
             or num_uploaded_tags != num_tags
