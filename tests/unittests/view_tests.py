@@ -698,6 +698,20 @@ class SetValuesTests(unittest.TestCase):
             ]
         )
 
+    def test_set_values_dict(self):
+        values = {1: "1", 3: "3"}
+        self.dataset.set_values("str_field", values, key_field="int_field")
+        view = self.dataset.exists("str_field")
+        values2 = {
+            k: v for k, v in zip(*view.values(["int_field", "str_field"]))
+        }
+        self.assertDictEqual(values, values2)
+
+        # Non-existent keys should raise an error
+        values[0] = "0"
+        with self.assertRaises(ValueError):
+            self.dataset.set_values("str_field", values, key_field="int_field")
+
     def test_set_values_dataset(self):
         n = len(self.dataset)
 
