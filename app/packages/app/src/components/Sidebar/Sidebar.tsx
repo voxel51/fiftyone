@@ -1,4 +1,5 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { Close } from "@material-ui/icons";
 import {
   atomFamily,
   DefaultValue,
@@ -20,8 +21,7 @@ import DropdownHandle, {
   DropdownHandleProps,
   PlusMinusButton,
 } from "../DropdownHandle";
-import { Close, IndeterminateCheckBoxSharp } from "@material-ui/icons";
-import { Entry, PathEntry as PathEntryComponent, TextEntry } from "./Entries";
+import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
 
 const GroupHeaderStyled = styled(DropdownHandle)`
@@ -221,9 +221,22 @@ const positionEntry = (
   order: number[],
   elements: HTMLDivElement[],
   index: number,
-  y: number
+  y: number,
+  emptyGroups: Set<string>
 ) => {
   const cache = {};
+  let group = null;
+  const hidden = entries.map((entry, i) => {
+    if (entry.kind === EntryKind.GROUP) {
+      group = entry.name;
+    }
+
+    if (entry.kind === EntryKind.EMPTY) {
+      return !emptyGroups.has(group);
+    }
+
+    return false;
+  });
 
   const isShown = (index) => {
     const entry = entries[index];
@@ -237,7 +250,7 @@ const positionEntry = (
     } else if (entry.kind === EntryKind.PATH) {
       cache[index] = entry.shown;
     } else if (entry.kind === EntryKind.EMPTY) {
-      cache[index] = entry.shown;
+      cache[index] = entry.shown && !hidden[index];
     } else {
       cache[index] = true;
     }
@@ -252,34 +265,79 @@ const positionEntry = (
         : y;
     }, y),
     left: isShown(order[index]) ? "unset" : -3000,
-    immediate: true,
   };
 };
 
 const fn = (
   entries: SidebarEntry[],
-  order: number[],
+  currentOrder: number[],
+  newOrder: number[],
   elements: HTMLDivElement[],
-  active = false,
-  originalIndex = 0,
-  curIndex = 0,
-  y = 0
+  activeIndex = null,
+  delta = 0,
+  commit = false
 ) => {
-  return (index: number) => {
-    const member = active && index === originalIndex;
+  const isMember = (index: number) => {
+    if (activeIndex === null) {
+      return false;
+    }
 
-    if (member) {
+    const entry = entries[activeIndex];
+    if (entry.kind !== EntryKind.GROUP) {
+      return index === activeIndex;
+    }
+
+    let group = null;
+    let searchIndex = 0;
+    for (const entry of entries) {
+      if (searchIndex > index) break;
+
+      if (entry.kind === EntryKind.GROUP) group = entry.name;
+      searchIndex++;
+    }
+
+    return entry.name === group;
+  };
+
+  const groups = entries.filter(
+    (entry) => entry.kind === EntryKind.GROUP
+  ) as GroupEntry[];
+  const emptyGroups = new Set(groups.map(({ name }: GroupEntry) => name));
+  let currentGroup = null;
+  for (const index of newOrder) {
+    const entry = entries[index];
+    if (entry.kind === EntryKind.GROUP) currentGroup = entry.name;
+    else if (entry.kind === EntryKind.PATH && emptyGroups.has(currentGroup))
+      emptyGroups.delete(currentGroup);
+  }
+
+  return (index: number) => {
+    if (isMember(index)) {
       return {
-        ...positionEntry(entries, order, elements, curIndex, y),
+        ...positionEntry(
+          entries,
+          commit ? newOrder : currentOrder,
+          elements,
+          commit ? newOrder.indexOf(index) : currentOrder.indexOf(index),
+          commit ? 0 : delta,
+          emptyGroups
+        ),
         zIndex: 1,
-        immediate: (key: string) => key === "zIndex",
-        config: (key: string) => (key === "y" ? config.stiff : config.default),
+        immediate: !commit,
       };
     }
 
     return {
-      ...positionEntry(entries, order, elements, order.indexOf(index), 0),
+      ...positionEntry(
+        entries,
+        newOrder,
+        elements,
+        newOrder.indexOf(index),
+        0,
+        emptyGroups
+      ),
       zIndex: 0,
+      immediate: false,
     };
   };
 };
@@ -361,6 +419,41 @@ const getY = (el: HTMLElement) => {
   return el ? el.getBoundingClientRect().y : 0;
 };
 
+const getHeight = (el: HTMLDivElement) => {
+  return el ? el.getBoundingClientRect().height : 0;
+};
+
+const getCurrentIndex = (
+  activeIndex: number,
+  order: number[],
+  entries: SidebarEntry[],
+  elements: HTMLDivElement[],
+  y: number
+): number => {
+  const top = getY(elements[order[0]]);
+
+  const tops = order
+    .map((i) => ({ height: getHeight(elements[i]) + 3, i }))
+    .reduce((tops, { height, i }) => {
+      const add = tops.length ? tops[tops.length - 1].top : top;
+      return [...tops, { top: add + height, i }];
+    }, []);
+
+  y += tops.filter(({ i }) => i === activeIndex)[0].top;
+  const sorted = tops
+    .map(({ i, top }) => ({ delta: Math.abs(top - y), i }))
+    .sort((a, b) => {
+      return a.delta - b.delta;
+    });
+
+  let winner = sorted[0].i;
+  if (entries[activeIndex].kind === EntryKind.PATH) {
+    winner = Math.max(1, winner);
+  }
+
+  return Math.min(winner, entries.length - 2);
+};
+
 const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
   const order = useRef<number[]>(entries.map((_, index) => index));
@@ -378,64 +471,86 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
 
   const [springs, api] = useSprings(
     entries.length,
-    fn(entries, order.current, refs.current),
+    fn(entries, order.current, order.current, refs.current),
     [entries]
   );
 
-  const observer = useRef(
-    new ResizeObserver(() => {
-      api.start(fn(entriesRef.current, order.current, refs.current));
-    })
-  );
+  const getNewOrder = (event: MouseEvent) => {
+    const delta = event.clientY - start.current;
+    const orderIndex = order.current.indexOf(down.current);
+
+    return move(
+      order.current,
+      orderIndex,
+      getCurrentIndex(
+        down.current,
+        order.current,
+        entriesRef.current,
+        refs.current,
+        delta
+      )
+    );
+  };
 
   useEventHandler(refs.current, "mousedown", (event: MouseEvent) => {
     down.current = parseInt(event.currentTarget.dataset.index, 10);
     start.current = event.clientY;
   });
-  useEventHandler(refs.current, "mouseup", () => (down.current = null));
-  useEventHandler(document.body, "mousemove", (event) => {
-    if (down.current == null) {
-      return;
-    }
+
+  useEventHandler(document.body, "mouseup", (event) => {
+    if (down.current == null) return;
 
     const entry = entriesRef.current[down.current];
-    if (entry.kind !== EntryKind.PATH) {
-      return;
-    }
+    if (entry.kind !== EntryKind.PATH) return;
 
-    const delta = event.clientY - start.current;
-    const orderIndex = order.current.indexOf(down.current);
-    const top = getY(refs.current[down.current]);
-
-    const sorted = order.current
-      .map((oi, i) => ({
-        y: getY(refs.current[oi]),
-        i,
-        oi,
-      }))
-      .filter(({ oi }) => oi !== down.current)
-      .sort((a, b) => Math.abs(b.y - top) - Math.abs(a.y - top));
-    const curRow = clamp(
-      sorted.length ? sorted[0].i : 0,
-      0,
-      entries.length - 1
-    );
-    const newOrder = move(order.current, orderIndex, curRow);
-
-    console.log("EE");
+    const newOrder = getNewOrder(event);
     api.start(
-      fn(entries, newOrder, refs.current, true, down.current, orderIndex, delta)
+      fn(
+        entries,
+        order.current,
+        newOrder,
+        refs.current,
+        down.current,
+        event.clientY - start.current,
+        true
+      )
+    );
+    order.current = newOrder;
+    down.current = null;
+    start.current = null;
+  });
+
+  useEventHandler(document.body, "mousemove", (event) => {
+    if (down.current == null) return;
+
+    const entry = entriesRef.current[down.current];
+    if (entry.kind !== EntryKind.PATH) return;
+
+    api.start(
+      fn(
+        entries,
+        order.current,
+        getNewOrder(event),
+        refs.current,
+        down.current,
+        event.clientY - start.current
+      )
     );
   });
 
-  const newLength = entries.filter(
-    (entry) => entry.shown === undefined || entry.shown
-  ).length;
+  const newLength = entries.filter((entry) => {
+    if (entry.kind === EntryKind.PATH) return entry.shown;
+
+    if (entry.kind === EntryKind.EMPTY) return entry.shown;
+
+    return true;
+  }).length;
   const resize =
     refs.current.some((e) => e === null) || newLength !== lastLength.current;
 
   useLayoutEffect(() => {
-    resize && api.start(fn(entries, order.current, refs.current));
+    resize &&
+      api.start(fn(entries, order.current, order.current, refs.current));
   }, [resize]);
   lastLength.current = newLength;
 
@@ -452,11 +567,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
         return (
           <animated.div
             data-index={i}
-            ref={(node) => {
-              node && observer.current.observe(node);
-              !node && observer.current.unobserve(refs.current[i]);
-              refs.current[i] = node;
-            }}
+            ref={(node) => (refs.current[i] = node)}
             key={i}
             style={{
               zIndex,

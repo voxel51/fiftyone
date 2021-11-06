@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useRef } from "react";
 import { animated, useSpring } from "@react-spring/web";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -135,6 +135,7 @@ export const PathEntry = React.memo(
     const [active, setActive] = useRecoilState(
       schemaAtoms.activeField({ modal, path })
     );
+    const canCommit = useRef(false);
     const color = useRecoilValue(colorMap(modal))(path);
     const theme = useTheme();
     const fieldIsFiltered = useRecoilValue(
@@ -147,7 +148,12 @@ export const PathEntry = React.memo(
     });
 
     return (
-      <Container onClick={() => setActive(!active)} style={containerProps}>
+      <Container
+        onMouseDown={() => (canCommit.current = true)}
+        onMouseMove={() => (canCommit.current = false)}
+        onMouseUp={() => canCommit.current && setActive(!active)}
+        style={containerProps}
+      >
         {!disabled && (
           <Checkbox
             disableRipple={true}
