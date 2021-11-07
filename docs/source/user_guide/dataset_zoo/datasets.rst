@@ -18,6 +18,8 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | Dataset name                                                       | Tags                                                                      |
     +====================================================================+===========================================================================+
+    | :ref:`Balanced Faces In the Wild <dataset-zoo-bfw>`                | image, fair-ai, classification, facial-recognition, soft-biometrics, bias |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`BDD100K <dataset-zoo-bdd100k>`                               | image, multilabel, automotive, manual                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Caltech-101 <dataset-zoo-caltech101>`                        | image, classification                                                     |
@@ -62,6 +64,90 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`VOC-2012 <dataset-zoo-voc-2012>`                             | image, detection                                                          |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+
+.. _dataset-zoo-bfw:
+
+Balanced Faces in the Wild
+-------------------------
+Balanced Faces in the Wild (BFW) is a public benchmark for fair face
+verification, also known as pair matching: fair in the data being evenly
+distributed across race and gender.
+
+The dataset contains 20,000 facial images sampled from the VGG2 dataset
+(original source: https://github.com/ox-vgg/vgg_face2). Specifically, there
+are 4 race subgroups (i.e., Asian (A), Black (B), Indian (I), and White (W)), each with 2
+genders (i.e., Female (F) and Male (M)): a total of 8 subgroups. There are precisely
+100 subjects per subgroup (i.e., 800 subjects in total); each subject is
+represented by 25 face samples (i.e., can ple split as 2,500 faces per
+subgroup, 5,000 faces per race, 10,000 faces per gender, or just 20,000
+faces in total). Subject identities are represented as nominal values (i.e., s0000-s0799),
+which is the name of the subdirectory containing the face samples.
+
+Evaluation is done using 5-folds, each with an equal distribution of
+samples per subgroup, and all disjoint in subject identity (i.e., face
+samples for an individual are assigned the sample fold-id).
+
+Faces detected using an MTCNN detector, aligned via an affine
+transformation setting eye locations to predefined coordinates, and cropped
+(112 x 108).
+
+======  =====
+  ID     Type
+======  =====
+0-99    BM
+100-199 IF
+200-299 WF
+300-399 BF
+400-499 AF
+500-599 AM
+600-699 IM
+700-799 WM
+======  =====
+
+Robinson, Joseph P., Gennady Livitz, Yann Henon, Can Qin, Yun Fu, and Samson Timoner.
+"Face recognition: too bias, or not too bias? " In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition Workshops, pp. 0-1. 2020.
+
+Robinson, Joseph P., Can Qin, Yann Henon, Samson Timoner, and Yun Fu. "Balancing Biases and Preserving
+Privacy on Balanced Faces in the Wild." In CoRR arXiv:2103.09118, (2021).
+
+**Details**
+
+-   Dataset name: ``bfw``
+-   Dataset source: https://github.com/visionjo/facerec-bias-bfw
+-   Dataset size: 173.00 MB
+-   Tags: ``image, fair-ai, classification, facial-recognition, soft-biometrics, bias``
+-   Supported splits: ``N/A (5-fold)``
+-   ZooDataset class:
+    :class:`BalancedFacesInTheWildDataset <fiftyone.zoo.datasets.base.BalancedFacesInTheWildDataset>`
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("bfw")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load bfw
+
+        fiftyone app launch bfw
+
+.. image:: /images/dataset_zoo/bfw_view.png
+   :alt: bfw
+   :align: center
 
 .. _dataset-zoo-bdd100k:
 
