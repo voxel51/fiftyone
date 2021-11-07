@@ -34,6 +34,90 @@ class FiftyOneDataset(fozd.ZooDataset):
     pass
 
 
+class BalancedFacesInTheWildDataset(FiftyOneDataset):
+    """Balanced Faces in the Wild (BFW) is a public benchmark for fair face
+    verification, also known as pair matching: fair in the data being evenly
+    distributed across race and gender.
+
+    The dataset contains 20,000 facial images sampled from the VGG2 dataset
+    (original source: https://github.com/ox-vgg/vgg_face2). Specifically, there
+    are 4 race subgroups (i.e., Asian, Black, Indian, and White), each with 2
+    genders (i.e., Female and Male): a total of 8 subgroups. There are precisely
+    100 subjects per subgroup (i.e., 800 subjects in total); each subject is
+    represented by 25 face samples (i.e., can ple split as 2,500 faces per
+    subgroup, 5,000 faces per race, 10,000 faces per gender, or just 20,000
+    faces in total). Subject identities are represented as nominal values (i.e.,
+    s0000-s0800), which is the name of the subdirectory containing the face
+    samples.
+
+    Evaluation is done using 5-folds, each with an equal distribution of
+    samples per subgroup, and all disjoint in subject identity (i.e., face
+    samples for an individual are assigned the sample fold-id).
+
+    Faces detected using an MTCNN detector, aligned via an affine
+    transformation setting eye locations to predefined coordinates, and cropped
+    (112 x 108).
+
+    Coming soon are the original facial images and the output detections of the
+    MTCNN.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("bfw")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        173.00 MB
+
+    Source
+        https://github.com/visionjo/facerec-bias-bfw
+    """
+
+    @property
+    def name(self):
+        return "bfw"
+
+    @property
+    def tags(self):
+        return (
+            "image",
+            "fair-ai",
+            "classification",
+            "facial-recognition",
+            "soft-biometrics",
+            "bias",
+        )
+
+    @property
+    def supported_splits(self):
+        pass
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # BFW is distributed as a single download that contains a folder `dataset_dir` per subject,
+        # with all faces stored in subdirectories (i.e., s0000-s0799 for the 800 subjects).
+        #
+        dataset_dir = os.path.dirname(dataset_dir)
+        split_dir = dataset_dir
+        if not os.path.exists(split_dir):
+            foul.download_lfw_dataset(
+                dataset_dir, scratch_dir=scratch_dir, cleanup=False
+            )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.ImageClassificationDirectoryTree()
+        importer = foud.ImageClassificationDirectoryTreeImporter
+        classes = sorted(importer._get_classes(dataset_dir))
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class BDD100KDataset(FiftyOneDataset):
     """The Berkeley Deep Drive (BDD) dataset is one of the largest and most
     diverse video datasets for autonomous vehicles.
@@ -1528,6 +1612,7 @@ class UCF101Dataset(FiftyOneDataset):
 
 AVAILABLE_DATASETS = {
     "bdd100k": BDD100KDataset,
+    "bfw": BalancedFacesInTheWildDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,
     "cityscapes": CityscapesDataset,
