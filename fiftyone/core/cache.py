@@ -374,7 +374,9 @@ class MediaCache(object):
 
     def clear(self):
         """Clears the cache."""
-        etau.delete_dir(self.cache_dir)
+        if os.path.isdir(self.cache_dir):
+            etau.delete_dir(self.cache_dir)
+
         self._cache = OrderedDict()
         self._current_size = 0
 
@@ -424,19 +426,31 @@ class MediaCache(object):
     def _get_client(self, fs):
         if fs == FileSystem.HTTP:
             if self._http_client is None:
-                self._http_client = HTTPStorageClient()
+                kwargs = {}
+                if self.num_workers is not None and self.num_workers > 10:
+                    kwargs["max_pool_connections"] = self.num_workers
+
+                self._http_client = HTTPStorageClient(**kwargs)
 
             return self._http_client
 
         if fs == FileSystem.S3:
             if self._s3_client is None:
-                self._s3_client = S3StorageClient()
+                kwargs = {}
+                if self.num_workers is not None and self.num_workers > 10:
+                    kwargs["max_pool_connections"] = self.num_workers
+
+                self._s3_client = S3StorageClient(**kwargs)
 
             return self._s3_client
 
         if fs == FileSystem.GCS:
             if self._gcs_client is None:
-                self._gcs_client = GoogleCloudStorageClient()
+                kwargs = {}
+                if self.num_workers is not None and self.num_workers > 10:
+                    kwargs["max_pool_connections"] = self.num_workers
+
+                self._gcs_client = GoogleCloudStorageClient(**kwargs)
 
             return self._gcs_client
 
@@ -562,7 +576,8 @@ def _upload_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_upload_media(task)
     else:
-        # with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
+        # urllib3_logger = logging.getLogger("urllib3")
+        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with ThreadPool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_upload_media, tasks)
@@ -589,7 +604,8 @@ def _download_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_download_media(task)
     else:
-        # with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
+        # urllib3_logger = logging.getLogger("urllib3")
+        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with ThreadPool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_download_media, tasks)
@@ -629,7 +645,8 @@ def _get_checksums(tasks, num_workers):
                 filepath, checksum = _do_get_checksum(task)
                 checksums[filepath] = checksum
     else:
-        # with fou.SetAttributes(logging.getLogger(), level=logging.ERROR):
+        # urllib3_logger = logging.getLogger("urllib3")
+        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with ThreadPool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_get_checksum, tasks)
