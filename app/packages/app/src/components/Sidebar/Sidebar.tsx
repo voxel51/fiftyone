@@ -216,9 +216,8 @@ const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
 });
 
 const positionEntry = (
-  entries: SidebarEntry[],
-  order: number[],
-  elements: HTMLDivElement[],
+  order: string[],
+  items: InteractiveItems,
   index: number,
   y: number,
   emptyGroups: Set<string>
@@ -423,30 +422,29 @@ const getHeight = (el: HTMLDivElement) => {
 };
 
 const getCurrentIndex = (
-  activeIndex: number,
-  order: number[],
-  entries: SidebarEntry[],
-  elements: HTMLDivElement[],
+  activeKey: string,
+  items: InteractiveItems,
+  order: string[],
   y: number
 ): number => {
-  const top = getY(elements[order[0]]);
+  const top = getY(items[order[0]].el);
 
   const tops = order
-    .map((i) => ({ height: getHeight(elements[i]) + 3, i }))
-    .reduce((tops, { height, i }) => {
+    .map((key) => ({ height: getHeight(items[key].el) + 3, key }))
+    .reduce((tops, { height, key }) => {
       const add = tops.length ? tops[tops.length - 1].top : top;
-      return [...tops, { top: add + height, i }];
+      return [...tops, { top: add + height, key }];
     }, []);
 
-  y += tops.filter(({ i }) => i === activeIndex)[0].top;
+  y += tops.filter(({ key }) => key === activeKey)[0].top;
   const sorted = tops
-    .map(({ i, top }) => ({ delta: Math.abs(top - y), i }))
+    .map(({ key, top }) => ({ delta: Math.abs(top - y), key }))
     .sort((a, b) => {
       return a.delta - b.delta;
     });
 
-  let winner = sorted[0].i;
-  if (entries[activeIndex].kind === EntryKind.PATH) {
+  let winner = sorted[0].key;
+  if (items[activeKey].entry.kind === EntryKind.PATH) {
     winner = Math.max(1, winner);
   }
 
@@ -473,6 +471,7 @@ type InteractiveItems = {
   [key: string]: {
     el: HTMLDivElement;
     spring: Controller;
+    entry: SidebarEntry;
   };
 };
 
@@ -495,6 +494,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       items.current[key] = {
         el: null,
         spring: new Controller(),
+        entry,
       };
     }
   }
