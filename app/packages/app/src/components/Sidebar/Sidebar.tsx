@@ -7,9 +7,8 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { animated, config, useSprings } from "@react-spring/web";
+import { animated, Controller } from "@react-spring/web";
 import styled from "styled-components";
-import { clamp } from "lodash";
 
 import { move } from "@fiftyone/utilities";
 
@@ -103,6 +102,7 @@ enum EntryKind {
 interface EmptyEntry {
   kind: EntryKind.EMPTY;
   shown: boolean;
+  group: string;
 }
 
 interface TailEntry {
@@ -176,6 +176,7 @@ const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
           if (paths.length) {
             return [
               group,
+              { kind: EntryKind.EMPTY, shown, group: groupName } as EmptyEntry,
               ...paths.map<PathEntry>((path) => ({
                 path,
                 kind: EntryKind.PATH,
@@ -183,8 +184,6 @@ const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
               })),
             ];
           }
-
-          return [group, { kind: EntryKind.EMPTY, shown } as EmptyEntry];
         })
         .flat(),
       { kind: EntryKind.TAIL } as TailEntry,
@@ -401,7 +400,7 @@ const AddGroup = ({
         maxLength={140}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" && value.length) {
             if (!currentGroups.includes(value)) {
               onSubmit(value);
               setValue("");
@@ -454,26 +453,51 @@ const getCurrentIndex = (
   return Math.min(winner, entries.length - 2);
 };
 
+const getEntryKey = (entry: SidebarEntry) => {
+  if (entry.kind === EntryKind.GROUP) {
+    return JSON.stringify([entry.name]);
+  }
+
+  if (entry.kind === EntryKind.PATH) {
+    return JSON.stringify(["", entry.path]);
+  }
+
+  if (entry.kind === EntryKind.EMPTY) {
+    return JSON.stringify([entry.group, ""]);
+  }
+
+  return "tail";
+};
+
+type InteractiveItems = {
+  [key: string]: {
+    el: HTMLDivElement;
+    spring: Controller;
+  };
+};
+
 const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
-  const order = useRef<number[]>(entries.map((_, index) => index));
-  const refs = useRef<HTMLDivElement[]>(entries.map(() => null));
-  const down = useRef<number>(null);
-  const lastLength = useRef<number>(0);
+  const order = useRef<string[]>(entries.map((entry) => getEntryKey(entry)));
+  const down = useRef<string>(null);
   const start = useRef<number>(0);
-  const entriesRef = useRef<SidebarEntry[]>();
-  entriesRef.current = entries;
+  const items = useRef<InteractiveItems>({});
 
-  order.current = entries.map((_, index) => index);
-  refs.current = entries
-    .map((_, index) => index)
-    .map((_, i) => refs.current[i] || null);
+  let group = null;
+  for (const entry of entries) {
+    if (entry.kind === EntryKind.GROUP) {
+      group = entry.name;
+    }
 
-  const [springs, api] = useSprings(
-    entries.length,
-    fn(entries, order.current, order.current, refs.current),
-    [entries]
-  );
+    const key = getEntryKey(entry);
+
+    if (!(key in items)) {
+      items.current[key] = {
+        el: null,
+        spring: new Controller(),
+      };
+    }
+  }
 
   const getNewOrder = (event: MouseEvent) => {
     const delta = event.clientY - start.current;
@@ -501,7 +525,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     if (down.current == null) return;
 
     const entry = entriesRef.current[down.current];
-    if (entry.kind !== EntryKind.PATH) return;
+    if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
 
     const newOrder = getNewOrder(event);
     api.start(
@@ -516,6 +540,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       )
     );
     order.current = newOrder;
+    setEntries(order.current.map((i) => entries[i]));
     down.current = null;
     start.current = null;
   });
@@ -524,7 +549,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     if (down.current == null) return;
 
     const entry = entriesRef.current[down.current];
-    if (entry.kind !== EntryKind.PATH) return;
+    if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
 
     api.start(
       fn(
@@ -538,42 +563,20 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     );
   });
 
-  const newLength = entries.filter((entry) => {
-    if (entry.kind === EntryKind.PATH) return entry.shown;
-
-    if (entry.kind === EntryKind.EMPTY) return entry.shown;
-
-    return true;
-  }).length;
-  const resize =
-    refs.current.some((e) => e === null) || newLength !== lastLength.current;
-
-  useLayoutEffect(() => {
-    resize &&
-      api.start(fn(entries, order.current, order.current, refs.current));
-  }, [resize]);
-  lastLength.current = newLength;
-
-  let groupName = null;
-
   return (
     <InteractiveSidebarContainer>
-      {springs.map(({ zIndex, y, left }, i) => {
-        const entry = entries[i];
+      {entries.map((entry) => {
         if (entry.kind === EntryKind.GROUP) {
-          groupName = entry.name;
+          group = entry.name;
         }
+        const key = getEntryKey(entry);
 
         return (
           <animated.div
-            data-index={i}
-            ref={(node) => (refs.current[i] = node)}
-            key={i}
-            style={{
-              zIndex,
-              y,
-              left,
-            }}
+            data-key={key}
+            ref={(node) => (items.current[key].el = node)}
+            key={key}
+            style={items.current[key].spring.get()}
             children={
               entry.kind === EntryKind.TAIL ? (
                 <AddGroup
@@ -588,14 +591,14 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
                   modal={modal}
                 />
               ) : entry.kind === EntryKind.GROUP ? (
-                <InteractiveGroupEntry name={groupName} modal={modal} />
+                <InteractiveGroupEntry name={group} modal={modal} />
               ) : entry.kind == EntryKind.EMPTY ? (
                 <TextEntry text={"No fields"} />
               ) : (
                 <InteractivePathEntry
                   modal={modal}
                   path={entry.path}
-                  group={groupName}
+                  group={group}
                 />
               )
             }
@@ -615,7 +618,6 @@ const Sidebar = React.memo(({ modal }: SidebarProps) => {
     <>
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
-      <InteractiveSidebar modal={modal} />
     </>
   );
 });
