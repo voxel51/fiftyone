@@ -15,6 +15,7 @@ import urllib.parse as urlparse
 import eta.core.storage as etas
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.utils as fou
 
 
@@ -102,15 +103,14 @@ def upload_media(
         the list of remote paths
     """
     fs = _get_file_system(remote_dir)
-    if fs == FileSystem.S3:
-        client = S3StorageClient()
-    elif fs == FileSystem.GCS:
-        client = GoogleCloudStorageClient()
-    else:
+
+    if fs not in (FileSystem.S3, FileSystem.GCS):
         raise ValueError(
             "Cannot upload media to '%s'; unsupported file system '%s'"
             % (remote_dir, fs)
         )
+
+    client = _make_client(fs, num_workers=num_workers)
 
     filepaths = sample_collection.values("filepath")
 
@@ -424,35 +424,29 @@ class MediaCache(object):
         self._current_size = total_size
 
     def _get_client(self, fs):
-        if fs == FileSystem.HTTP:
-            if self._http_client is None:
-                kwargs = {}
-                if self.num_workers is not None and self.num_workers > 10:
-                    kwargs["max_pool_connections"] = self.num_workers
-
-                self._http_client = HTTPStorageClient(**kwargs)
-
-            return self._http_client
-
         if fs == FileSystem.S3:
             if self._s3_client is None:
-                kwargs = {}
-                if self.num_workers is not None and self.num_workers > 10:
-                    kwargs["max_pool_connections"] = self.num_workers
-
-                self._s3_client = S3StorageClient(**kwargs)
+                self._s3_client = _make_client(
+                    fs, num_workers=self.num_workers
+                )
 
             return self._s3_client
 
         if fs == FileSystem.GCS:
             if self._gcs_client is None:
-                kwargs = {}
-                if self.num_workers is not None and self.num_workers > 10:
-                    kwargs["max_pool_connections"] = self.num_workers
-
-                self._gcs_client = GoogleCloudStorageClient(**kwargs)
+                self._gcs_client = _make_client(
+                    fs, num_workers=self.num_workers
+                )
 
             return self._gcs_client
+
+        if fs == FileSystem.HTTP:
+            if self._http_client is None:
+                self._http_client = _make_client(
+                    fs, num_workers=self.num_workers
+                )
+
+            return self._http_client
 
         return None
 
@@ -682,3 +676,39 @@ def _get_file_system(path):
         return FileSystem.S3
 
     return FileSystem.LOCAL
+
+
+def _make_client(fs, num_workers=None):
+    if fs == FileSystem.S3:
+        profile = fo.media_cache_config.aws_profile
+        credentials_path = fo.media_cache_config.aws_config_file
+        credentials, _ = S3StorageClient.load_credentials(
+            credentials_path=credentials_path, profile=profile
+        )
+
+        kwargs = {}
+        if num_workers is not None and num_workers > 10:
+            kwargs["max_pool_connections"] = num_workers
+
+        return S3StorageClient(credentials=credentials, **kwargs)
+
+    if fs == FileSystem.GCS:
+        credentials_path = fo.media_cache_config.google_application_credentials
+        credentials, _ = GoogleCloudStorageClient.load_credentials(
+            credentials_path=credentials_path
+        )
+
+        kwargs = {}
+        if num_workers is not None and num_workers > 10:
+            kwargs["max_pool_connections"] = num_workers
+
+        return GoogleCloudStorageClient(credentials=credentials, **kwargs)
+
+    if fs == FileSystem.HTTP:
+        kwargs = {}
+        if num_workers is not None and num_workers > 10:
+            kwargs["max_pool_connections"] = num_workers
+
+        return HTTPStorageClient(**kwargs)
+
+    raise ValueError("Unsupported file system '%s'" % fs)

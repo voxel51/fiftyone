@@ -451,6 +451,18 @@ class MediaCacheConfig(EnvConfig):
             env_var="FIFTYONE_MEDIA_CACHE_NUM_WORKERS",
             default=None,
         )
+        self.aws_config_file = self.parse_string(
+            d, "aws_config_file", env_var="AWS_CONFIG_FILE", default=None,
+        )
+        self.aws_profile = self.parse_string(
+            d, "aws_profile", env_var="AWS_PROFILE", default=None,
+        )
+        self.google_application_credentials = self.parse_string(
+            d,
+            "google_application_credentials",
+            env_var="GOOGLE_APPLICATION_CREDENTIALS",
+            default=None,
+        )
 
         self._set_defaults()
 
