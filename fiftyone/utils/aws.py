@@ -38,7 +38,7 @@ def download_from_s3(
           When `urls` is a list, then the `download_dir` argument is required
           and all objects will be downloaded into that directory
 
-        * A dictionary mapping the paths of objects ont-to-one to files on disk
+        * A dictionary mapping the paths of objects to files on disk
           to store each object::
 
             urls = {

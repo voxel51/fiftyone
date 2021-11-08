@@ -961,6 +961,122 @@ class ImageNetSampleDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class Kinetics400Dataset(FiftyOneDataset):
+    """"""
+
+    def __init__(
+        self,
+        classes=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.classes = classes
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "kinetics-400"
+
+    @property
+    def tags(self):
+        return (
+            "video",
+            "classification",
+            "action-recognition",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        num_samples, classes, downloaded = fouk.download_kinetics_split(
+            dataset_dir,
+            split,
+            classes=self.classes,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            scratch_dir=scratch_dir,
+            version="400",
+        )
+
+        if not downloaded:
+            num_samples = None
+
+        dataset_type = fot.KineticsDataset()
+
+        return dataset_type, num_samples, classes
+
+
+class Kinetics600Dataset(FiftyOneDataset):
+    """"""
+
+    def __init__(
+        self,
+        classes=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.classes = classes
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "kinetics-600"
+
+    @property
+    def tags(self):
+        return (
+            "video",
+            "classification",
+            "action-recognition",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        num_samples, classes, downloaded = fouk.download_kinetics_split(
+            dataset_dir,
+            split,
+            classes=self.classes,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            scratch_dir=scratch_dir,
+            version="600",
+        )
+
+        if not downloaded:
+            num_samples = None
+
+        dataset_type = fot.KineticsDataset()
+
+        return dataset_type, num_samples, classes
+
+
 class Kinetics700Dataset(FiftyOneDataset):
     """Kinetics is a collection of large-scale, high-quality datasets of URL
     links of up to 650,000 video clips that cover 400/600/700 human action
@@ -981,8 +1097,8 @@ class Kinetics700Dataset(FiftyOneDataset):
 
     Partial downloads:
 
-    -   You can specify subsets of data to download via the ``max_duration``,
-        ``classes``, and ``max_samples`` parameters
+    -   You can specify subsets of data to download via the 
+        ``classes`` and ``max_samples`` parameters
     
     Example usage::
        
@@ -1037,9 +1153,6 @@ class Kinetics700Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        max_duration (None): only videos with a duration in seconds that is
-            less than or equal to the `max_duration` will be downloaded. By
-            default, all videos are downloaded
         num_workers (None): the number of processes to use when downloading
             individual images. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -1055,14 +1168,12 @@ class Kinetics700Dataset(FiftyOneDataset):
     def __init__(
         self,
         classes=None,
-        max_duration=None,
         num_workers=None,
         shuffle=None,
         seed=None,
         max_samples=None,
     ):
         self.classes = classes
-        self.max_duration = max_duration
         self.num_workers = num_workers
         self.shuffle = shuffle
         self.seed = seed
@@ -1088,20 +1199,81 @@ class Kinetics700Dataset(FiftyOneDataset):
     def supports_partial_downloads(self):
         return True
 
-    def _download_and_prepare(self, dataset_dir, _, split):
-        num_samples, classes = fouk.download_kinetics_split(
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        num_samples, classes, downloaded = fouk.download_kinetics_split(
             dataset_dir,
             split,
             classes=self.classes,
-            max_duration=self.max_duration,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
             seed=self.seed,
             max_samples=self.max_samples,
+            scratch_dir=scratch_dir,
             version="700",
         )
 
-        dataset_type = fot.VideoClassificationDirectoryTree()
+        if not downloaded:
+            num_samples = None
+
+        dataset_type = fot.KineticsDataset()
+
+        return dataset_type, num_samples, classes
+
+
+class Kinetics7002020Dataset(FiftyOneDataset):
+    """"""
+
+    def __init__(
+        self,
+        classes=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.classes = classes
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "kinetics-700-2020"
+
+    @property
+    def tags(self):
+        return (
+            "video",
+            "classification",
+            "action-recognition",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        num_samples, classes, downloaded = fouk.download_kinetics_split(
+            dataset_dir,
+            split,
+            classes=self.classes,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            scratch_dir=scratch_dir,
+            version="700-2020",
+        )
+
+        if not downloaded:
+            num_samples = None
+
+        dataset_type = fot.KineticsDataset()
 
         return dataset_type, num_samples, classes
 
@@ -1681,6 +1853,10 @@ AVAILABLE_DATASETS = {
     "coco-2017": COCO2017Dataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
+    "kinetics-400": Kinetics400Dataset,
+    "kinetics-600": Kinetics600Dataset,
+    "kinetics-700": Kinetics700Dataset,
+    "kinetics-700-2020": Kinetics7002020Dataset,
     "kitti": KITTIDataset,
     "lfw": LabeledFacesInTheWildDataset,
     "open-images-v6": OpenImagesV6Dataset,
