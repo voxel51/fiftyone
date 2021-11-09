@@ -10,8 +10,6 @@ import {
 import { animated, Controller } from "@react-spring/web";
 import styled from "styled-components";
 
-import { move } from "@fiftyone/utilities";
-
 import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
 import LabelTagsCell from "./LabelTags";
@@ -20,8 +18,9 @@ import DropdownHandle, {
   DropdownHandleProps,
   PlusMinusButton,
 } from "../DropdownHandle";
-import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
+import { Entry, PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
+import { move } from "@fiftyone/utilities";
 
 const GroupHeaderStyled = styled(DropdownHandle)`
   border-radius: 0;
@@ -173,17 +172,19 @@ const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
           const group: GroupEntry = { name: groupName, kind: EntryKind.GROUP };
           const shown = get(groupShown({ name: groupName, modal }));
 
-          if (paths.length) {
-            return [
-              group,
-              { kind: EntryKind.EMPTY, shown, group: groupName } as EmptyEntry,
-              ...paths.map<PathEntry>((path) => ({
-                path,
-                kind: EntryKind.PATH,
-                shown,
-              })),
-            ];
-          }
+          return [
+            group,
+            {
+              kind: EntryKind.EMPTY,
+              shown: paths.length === 0 && shown,
+              group: groupName,
+            } as EmptyEntry,
+            ...paths.map<PathEntry>((path) => ({
+              path,
+              kind: EntryKind.PATH,
+              shown,
+            })),
+          ];
         })
         .flat(),
       { kind: EntryKind.TAIL } as TailEntry,
@@ -215,129 +216,46 @@ const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
   },
 });
 
-const positionEntry = (
-  order: string[],
-  items: InteractiveItems,
-  index: number,
-  y: number,
-  emptyGroups: Set<string>
-) => {
-  const cache = {};
-  let group = null;
-  const hidden = entries.map((entry, i) => {
-    if (entry.kind === EntryKind.GROUP) {
-      group = entry.name;
-    }
-
-    if (entry.kind === EntryKind.EMPTY) {
-      return !emptyGroups.has(group);
-    }
-
-    return false;
-  });
-
-  const isShown = (index) => {
-    const entry = entries[index];
-
-    if (index in cache) {
-      return cache[index];
-    }
-
-    if (!elements[index]) {
-      cache[index] = false;
-    } else if (entry.kind === EntryKind.PATH) {
-      cache[index] = entry.shown;
-    } else if (entry.kind === EntryKind.EMPTY) {
-      cache[index] = entry.shown && !hidden[index];
-    } else {
-      cache[index] = true;
-    }
-
-    return cache[index];
-  };
-
-  return {
-    y: order.slice(0, index).reduce((y, index) => {
-      return isShown(index)
-        ? y + elements[index].getBoundingClientRect().height + 3
-        : y;
-    }, y),
-    left: isShown(order[index]) ? "unset" : -3000,
-  };
-};
-
 const fn = (
-  entries: SidebarEntry[],
-  currentOrder: number[],
-  newOrder: number[],
-  elements: HTMLDivElement[],
-  activeIndex = null,
-  delta = 0,
-  commit = false
+  items: InteractiveItems,
+  currentOrder: string[],
+  newOrder: string[],
+  activeKey: string = null,
+  delta = 0
 ) => {
-  const isMember = (index: number) => {
-    if (activeIndex === null) {
-      return false;
+  const results = {};
+  let y = 0;
+
+  let groupActive = false;
+  for (const key of newOrder) {
+    const { entry, el } = items[key];
+    if (entry.kind === EntryKind.GROUP) {
+      groupActive = key === activeKey;
     }
 
-    const entry = entries[activeIndex];
-    if (entry.kind !== EntryKind.GROUP) {
-      return index === activeIndex;
+    const dragging = activeKey === key || groupActive;
+
+    let shown = true;
+
+    if (entry.kind === EntryKind.PATH) {
+      shown = entry.shown;
+    } else if (entry.kind === EntryKind.EMPTY) {
+      shown = entry.shown;
     }
 
-    let group = null;
-    let searchIndex = 0;
-    for (const entry of entries) {
-      if (searchIndex > index) break;
+    results[key] = {
+      y,
+      immediate: dragging || activeKey === null,
+      zIndex: dragging ? 1 : 0,
+      left: shown ? "unset" : -3000,
+    };
 
-      if (entry.kind === EntryKind.GROUP) group = entry.name;
-      searchIndex++;
+    if (shown) {
+      y += getHeight(el) + 3;
     }
-
-    return entry.name === group;
-  };
-
-  const groups = entries.filter(
-    (entry) => entry.kind === EntryKind.GROUP
-  ) as GroupEntry[];
-  const emptyGroups = new Set(groups.map(({ name }: GroupEntry) => name));
-  let currentGroup = null;
-  for (const index of newOrder) {
-    const entry = entries[index];
-    if (entry.kind === EntryKind.GROUP) currentGroup = entry.name;
-    else if (entry.kind === EntryKind.PATH && emptyGroups.has(currentGroup))
-      emptyGroups.delete(currentGroup);
   }
 
-  return (index: number) => {
-    if (isMember(index)) {
-      return {
-        ...positionEntry(
-          entries,
-          commit ? newOrder : currentOrder,
-          elements,
-          commit ? newOrder.indexOf(index) : currentOrder.indexOf(index),
-          commit ? 0 : delta,
-          emptyGroups
-        ),
-        zIndex: 1,
-        immediate: !commit,
-      };
-    }
-
-    return {
-      ...positionEntry(
-        entries,
-        newOrder,
-        elements,
-        newOrder.indexOf(index),
-        0,
-        emptyGroups
-      ),
-      zIndex: 0,
-      immediate: false,
-    };
-  };
+  return results;
 };
 
 const InteractiveSidebarContainer = styled.div`
@@ -437,18 +355,31 @@ const getCurrentIndex = (
     }, []);
 
   y += tops.filter(({ key }) => key === activeKey)[0].top;
+
+  let groupKey = null;
+  const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
   const sorted = tops
     .map(({ key, top }) => ({ delta: Math.abs(top - y), key }))
-    .sort((a, b) => {
-      return a.delta - b.delta;
-    });
+    .filter(({ key }) => {
+      const { entry } = items[key];
+      if (isGroup) {
+        return activeKey !== key && entry.kind === EntryKind.GROUP;
+      }
 
-  let winner = sorted[0].key;
+      if (entry.kind === EntryKind.GROUP) {
+        groupKey = key;
+      }
+
+      return groupKey !== activeKey && key !== activeKey;
+    })
+    .sort((a, b) => a.delta - b.delta);
+
+  let winner = order.indexOf(sorted[0].key);
   if (items[activeKey].entry.kind === EntryKind.PATH) {
     winner = Math.max(1, winner);
   }
 
-  return Math.min(winner, entries.length - 2);
+  return Math.min(winner, order.length - 2);
 };
 
 const getEntryKey = (entry: SidebarEntry) => {
@@ -470,19 +401,20 @@ const getEntryKey = (entry: SidebarEntry) => {
 type InteractiveItems = {
   [key: string]: {
     el: HTMLDivElement;
-    spring: Controller;
+    controller: Controller;
     entry: SidebarEntry;
   };
 };
 
 const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
-  const order = useRef<string[]>(entries.map((entry) => getEntryKey(entry)));
+  const order = useRef<string[]>([]);
   const down = useRef<string>(null);
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
 
   let group = null;
+  order.current = entries.map((entry) => getEntryKey(entry));
   for (const entry of entries) {
     if (entry.kind === EntryKind.GROUP) {
       group = entry.name;
@@ -493,54 +425,72 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     if (!(key in items)) {
       items.current[key] = {
         el: null,
-        spring: new Controller(),
+        controller: new Controller({ y: 0, zIndex: 0 }),
         entry,
       };
     }
   }
 
-  const getNewOrder = (event: MouseEvent) => {
+  const getNewOrder = (event: MouseEvent): string[] => {
     const delta = event.clientY - start.current;
-    const orderIndex = order.current.indexOf(down.current);
-
-    return move(
+    const current = getCurrentIndex(
+      down.current,
+      items.current,
       order.current,
-      orderIndex,
-      getCurrentIndex(
-        down.current,
-        order.current,
-        entriesRef.current,
-        refs.current,
-        delta
-      )
+      delta
     );
+    const entry = items[down.current].entry;
+
+    if (entry.kind === EntryKind.PATH) {
+      return move(order.current, order.current.indexOf(down.current), current);
+    }
+
+    const newOrder = [];
+    for (let i = 0; i < current; i++) {
+      newOrder.push(order.current[i]);
+    }
+
+    newOrder.push(down.current);
+    let post = order.current.indexOf(down.current) + 1;
+    let postEntry = items[order.current[post]].entry;
+    while (![EntryKind.GROUP, EntryKind.TAIL].includes(postEntry.kind)) {
+      newOrder.push(order.current[post]);
+      post++;
+      postEntry = items[order.current[post]].entry;
+    }
+
+    return [...newOrder, ...order.current.slice(post)];
   };
 
-  useEventHandler(refs.current, "mousedown", (event: MouseEvent) => {
-    down.current = parseInt(event.currentTarget.dataset.index, 10);
-    start.current = event.clientY;
-  });
+  useEventHandler(
+    Object.values(items.current).map(({ el }) => el),
+    "mousedown",
+    (event: MouseEvent) => {
+      down.current = event.currentTarget.dataset.key;
+      start.current = event.clientY;
+    }
+  );
 
   useEventHandler(document.body, "mouseup", (event) => {
     if (down.current == null) return;
 
-    const entry = entriesRef.current[down.current];
+    const entry = items[down.current].entry;
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
 
     const newOrder = getNewOrder(event);
-    api.start(
-      fn(
-        entries,
-        order.current,
-        newOrder,
-        refs.current,
-        down.current,
-        event.clientY - start.current,
-        true
-      )
+    const delta = event.clientY - start.current;
+    const results = fn(
+      items.current,
+      order.current,
+      newOrder,
+      down.current,
+      delta
     );
-    order.current = newOrder;
-    setEntries(order.current.map((i) => entries[i]));
+
+    for (const key of order.current) {
+      items[key].controller.start(results[key]);
+    }
+    setEntries(order.current.map((key) => items[key].entry));
     down.current = null;
     start.current = null;
   });
@@ -548,20 +498,27 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   useEventHandler(document.body, "mousemove", (event) => {
     if (down.current == null) return;
 
-    const entry = entriesRef.current[down.current];
+    const entry = items.current[down.current].entry;
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
 
-    api.start(
-      fn(
-        entries,
-        order.current,
-        getNewOrder(event),
-        refs.current,
-        down.current,
-        event.clientY - start.current
-      )
+    const newOrder = getNewOrder(event);
+    const delta = event.clientY - start.current;
+    const results = fn(
+      items.current,
+      order.current,
+      newOrder,
+      down.current,
+      delta
     );
+
+    for (const key of order.current) items[key].controller.start(results[key]);
   });
+
+  useLayoutEffect(() => {
+    const results = fn(items.current, order.current, order.current);
+    for (const key of order.current)
+      items.current[key].controller.start(results[key]);
+  }, [entries]);
 
   return (
     <InteractiveSidebarContainer>
@@ -576,7 +533,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
             data-key={key}
             ref={(node) => (items.current[key].el = node)}
             key={key}
-            style={items.current[key].spring.get()}
+            style={items.current[key].controller.springs}
             children={
               entry.kind === EntryKind.TAIL ? (
                 <AddGroup
@@ -586,6 +543,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
                       kind: EntryKind.GROUP,
                       name,
                     });
+
                     setEntries(newEntries);
                   }}
                   modal={modal}
@@ -618,6 +576,7 @@ const Sidebar = React.memo(({ modal }: SidebarProps) => {
     <>
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
+      <InteractiveSidebar key={"interactive"} modal={modal} />
     </>
   );
 });
