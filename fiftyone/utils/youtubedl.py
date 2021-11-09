@@ -13,6 +13,7 @@ import multiprocessing.dummy
 import os
 
 import eta.core.utils as etau
+import eta.core.video as etav
 
 import fiftyone.core.utils as fou
 
@@ -29,7 +30,12 @@ logger = logging.getLogger(__name__)
 
 
 def download_from_youtube(
-    urls, download_dir=None, max_videos=None, num_workers=None, ext=None,
+    urls,
+    download_dir=None,
+    clip_segments=None,
+    max_videos=None,
+    num_workers=None,
+    ext=None,
 ):
     """
     Attempts to download a list of video urls from YouTube.
@@ -37,7 +43,7 @@ def download_from_youtube(
 
         * A list of YouTube video urls::
 
-            urls = ["https://www.youtube.com/watch?v=-0URMJE8_PA", ...]
+            urls = ["https://www.youtube.com/watch?v=-0URMJE8_PB", ...]
 
           When `urls` is a list, then the `download_dir` argument is required
           and all videos will be downloaded into that directory
@@ -45,9 +51,21 @@ def download_from_youtube(
         * A dictionary mapping the video urls to files on disk in which to store that video::
 
             urls = {
-                "https://www.youtube.com/watch?v=-0URMJE8_PA": "/path/to/local/file1.ext",
+                "https://www.youtube.com/watch?v=-0URMJE8_PB": "/path/to/local/file1.ext",
                 ...
             }
+
+    The corresponding `clip_segments` argument can then contain a list oftuples of ints
+    or floats used to download segment clips of each video. A value of `None`
+    can indicate either downloading the entire video, downloading from the
+    start or downloading to the end of the video::
+
+        clip_segments = [
+            (10, 25),
+            (11.1, 20.2),
+            None,
+            (None, 8.3),
+        ]
 
     Args:
         urls: either a list of video urls, or a dict
@@ -55,6 +73,8 @@ def download_from_youtube(
             the `download_dir` argument is required
         download_dir (None): the output directory used to store the downloaded
             videos. This is only used if `urls` is a list
+        clip_segments (None): a list of int or float tuples indicating start
+            and end times in seconds for downloading segments of videos
         max_videos (None): the maximum number of videos to download from the
             given ``urls``. By default, all ``urls`` will be downloaded
         num_workers (None): the number of processes to use when downloading
@@ -70,7 +90,7 @@ def download_from_youtube(
             errors
     """
     num_workers = _parse_num_workers(num_workers)
-    tasks = _build_tasks_list(urls, download_dir, ext)
+    tasks = _build_tasks_list(urls, clip_segments, download_dir, ext)
 
     if max_videos is None:
         max_videos = len(tasks)
@@ -101,7 +121,7 @@ def _parse_num_workers(num_workers):
     return num_workers
 
 
-def _build_tasks_list(urls, download_dir, ext):
+def _build_tasks_list(urls, clip_segments, download_dir, ext):
     if isinstance(urls, list):
         if download_dir is None:
             raise ValueError(
@@ -112,12 +132,24 @@ def _build_tasks_list(urls, download_dir, ext):
         etau.ensure_dir(download_dir)
 
     num_videos = len(urls)
+
+    if clip_segments is None:
+        clip_segments = [None] * num_videos
+
+    if len(clip_segments) != num_videos:
+        raise ValueError(
+            "Found %d `clip_segments` and %d `urls`, but the lengths of these "
+            "iterables must match" % (len(clip_segments), num_videos)
+        )
+
     ext_list = _parse_list_arg(ext, num_videos)
     urls_list = _parse_list_arg(list(urls.keys()), num_videos)
     paths_list = _parse_list_arg(list(urls.values()), num_videos)
     download_dir_list = [download_dir] * num_videos
 
-    return zip(urls_list, paths_list, download_dir_list, ext_list)
+    return list(
+        zip(urls_list, paths_list, clip_segments, download_dir_list, ext_list)
+    )
 
 
 def _parse_list_arg(arg, list_len):
@@ -170,7 +202,7 @@ def _multi_thread_download(tasks, max_videos, num_workers):
     return downloaded, errors
 
 
-def _build_ydl_opts(ext, video_path, download_dir):
+def _build_ydl_opts(ext, video_path, clip_segment, download_dir):
     ytdl_logger = logging.getLogger("ytdl-ignore")
     ytdl_logger.disabled = True
     ydl_opts = {
@@ -196,20 +228,40 @@ def _build_ydl_opts(ext, video_path, download_dir):
         )
 
     if _ext:
-        ydl_opts["format"] = "bestvideo[ext=%s]" % _ext
+        ydl_opts["format"] = _ext
 
     ydl_opts["outtmpl"] = output_path
 
-    return ydl_opts
+    return ydl_opts, output_path
 
 
 def _do_download(args):
-    url, video_path, download_dir, ext = args
-    ydl_opts = _build_ydl_opts(ext, video_path, download_dir)
+    url, video_path, clip_segment, download_dir, ext = args
+    ydl_opts, output_path = _build_ydl_opts(
+        ext, video_path, clip_segment, download_dir
+    )
 
     try:
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+        if clip_segment in [None, [None, None], [0, None]]:
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+        else:
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=False)
+                _url = info_dict.get("url", None)
+                if _url is None:
+                    _url = info_dict["requested_formats"][0]["url"]
+
+                _id = info_dict.get("id", None)
+                _title = info_dict.get("title", _id)
+                _ext = info_dict.get("ext", ext)
+
+                output_path = output_path.replace(
+                    "%(title)s", _title.replace("/", "")
+                )
+                output_path = output_path.replace("%(ext)s", _ext)
+
+                _download_ffmpeg(_url, output_path, clip_segment)
 
         return True, url, None
 
@@ -218,3 +270,51 @@ def _do_download(args):
             # pylint: disable=no-member
             return False, url, str(e.exc_info[1])
         return False, url, "other"
+
+
+def _download_ffmpeg(url, output_path, clip_segment):
+    # download 5 seconds before and after clip to ensure nearest keyframes are
+    # captured
+    keyframe_buffer = 5
+
+    start_time, end_time = clip_segment
+    if start_time is None:
+        start_time = 0
+
+    start_time_buffer = max(0, start_time - keyframe_buffer)
+
+    in_opts = []
+    out_opts = []
+    if start_time_buffer:
+        in_opts.extend(["-ss", str(start_time_buffer)])
+
+    if end_time:
+        end_time_buffer = end_time + keyframe_buffer
+        dur = end_time_buffer - start_time_buffer
+        out_opts.extend(["-t", str(dur)])
+
+    ext = os.path.splitext(output_path)[1].lstrip(".")
+    if ext == "mp4":
+        out_opts.extend(["-c:v", "libx264", "-c:a", "copy"])
+    else:
+        out_opts.extend(["-c:v", "copy", "-c:a", "copy"])
+    out_opts.extend(["-f", ext])
+
+    tmp_output = output_path + ".part"
+
+    ffmpeg_download = etav.FFmpeg(in_opts=in_opts, out_opts=out_opts)
+    ffmpeg_download.run(url, tmp_output)
+
+    in_opts_cut = []
+    out_opts_cut = []
+    start_time_diff = start_time - start_time_buffer
+    if start_time_diff:
+        in_opts_cut.extend(["-ss", str(start_time_diff)])
+
+    if end_time:
+        dur = end_time - start_time
+        out_opts_cut.extend(["-t", str(dur)])
+
+    ffmpeg_cut = etav.FFmpeg(in_opts=in_opts_cut, out_opts=out_opts_cut)
+    ffmpeg_cut.run(tmp_output, output_path)
+    os.remove(tmp_output)

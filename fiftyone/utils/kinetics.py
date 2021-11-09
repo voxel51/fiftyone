@@ -229,24 +229,28 @@ class KineticsDatasetManager(object):
             if num_remaining <= 0:
                 return
 
-        urls = self._get_all_matching_urls(
+        urls, clip_segments = self._get_all_matching_urls(
             classes, retry_errors=config.retry_errors
         )
 
         if config.shuffle:
             if config.seed is not None:
                 random.seed(config.seed)
-            _urls = list(urls.items())
-            random.shuffle(_urls)
+            _urls_segs = list(zip(list(urls.items()), clip_segments))
+            random.shuffle(_urls_segs)
+            _urls, _clip_segments = zip(*_urls_segs)
             urls = dict(_urls)
+            clip_segments = list(_clip_segments)
 
         logger.info("Downloading %d videos from YouTube..." % num_remaining)
         _, errors = fouy.download_from_youtube(
             urls=urls,
+            clip_segments=clip_segments,
             max_videos=num_remaining,
             num_workers=config.num_workers,
         )
 
+        self.info.cleanup_partial_downloads()
         self._merge_and_write_errors(errors)
 
     def _get_matching_samples(self, classes):
@@ -260,6 +264,7 @@ class KineticsDatasetManager(object):
         # Create a dict mapping url to destination filepath for every sample
         # that matches a specified class
         urls = {}
+        clip_segments = []
         previous_errors = set(self.info.prev_errors.keys())
         for c in classes:
             remaining_ids = self._get_remaining_ids(c)
@@ -275,8 +280,9 @@ class KineticsDatasetManager(object):
                 url = self.info.url_from_id(_id)
                 filepath = os.path.join(class_dir, filename)
                 urls[url] = filepath
+                clip_segments.append(self.info.segment_from_id(_id))
 
-        return urls
+        return urls, clip_segments
 
     def _get_remaining_ids(self, c):
         sample_ids = self.info.class_sample_ids(c)
@@ -421,6 +427,7 @@ class KineticsDatasetInfo(object):
         self.kinetics_dir = os.path.abspath(kinetics_dir)
         self.scratch_dir = os.path.abspath(scratch_dir)
         self.split = split
+        self.cleanup_partial_downloads()
 
         self.raw_annotations = self._get_raw_annotations()
 
@@ -501,6 +508,10 @@ class KineticsDatasetInfo(object):
         video_info = self.raw_annotations[video_id]
         seg_start, seg_end = video_info["annotations"]["segment"]
         return "%s_%06d_%06d.mp4" % (video_id, seg_start, seg_end)
+
+    def segment_from_id(self, video_id):
+        video_info = self.raw_annotations[video_id]
+        return video_info["annotations"]["segment"]
 
     def url_from_id(self, video_id):
         video_info = self.raw_annotations[video_id]
