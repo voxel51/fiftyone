@@ -181,6 +181,7 @@ def _build_ydl_opts(ext, video_path, download_dir):
     if video_path:
         output_path = video_path
         _ext = os.path.splitext(os.path.basename(video_path))[1]
+        _ext = _ext.lstrip(".")
 
     else:
         if ext is not None:

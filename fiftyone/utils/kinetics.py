@@ -240,6 +240,7 @@ class KineticsDatasetManager(object):
             random.shuffle(_urls)
             urls = dict(_urls)
 
+        logger.info("Downloading %d videos from YouTube..." % num_remaining)
         _, errors = fouy.download_from_youtube(
             urls=urls,
             max_videos=num_remaining,
