@@ -1271,7 +1271,7 @@ class SampleCollection(object):
                 sample_ids = [ObjectId(_id) for _id in sample_ids]
                 elem_ids = view.values(elem_id_field)
             else:
-                sample_ids, elem_ids = view.values(["_id", elem_id_field])
+                sample_ids, elem_ids = self.values(["_id", elem_id_field])
 
             self._set_list_values_by_id(
                 field_name,
