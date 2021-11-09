@@ -274,9 +274,11 @@ class PageHandler(tornado.web.RequestHandler):
         results = [{"sample": s} for s in samples]
         metadata = {}
 
-        for r in results:
+        filepaths = [r["sample"]["filepath"] for r in results]
+        local_paths = media_cache.get_local_paths(filepaths)
+
+        for r, local_path in zip(results, local_paths):
             filepath = r["sample"]["filepath"]
-            local_path = media_cache.get_local_path(filepath)
             if filepath not in metadata:
                 metadata[filepath] = fosu.read_metadata(
                     local_path, r["sample"].get("metadata", None)
@@ -1454,10 +1456,13 @@ class FileHandler(tornado.web.StaticFileHandler):
 class MediaHandler(FileHandler):
     @classmethod
     def get_absolute_path(cls, root, path):
-        if os.name != "nt":
-            path = os.path.join("/", path)
+        return media_cache.get_local_path(path)
 
-        return path
+    """
+    #https://www.tornadoweb.org/en/branch3.1/web.html#tornado.web.StaticFileHandler.get_absolute_path
+    @classmethod
+    def get_content(abspath, start=None, end=None):
+    """
 
     def validate_absolute_path(self, root, absolute_path):
         if os.path.isdir(absolute_path) and self.default_filename is not None:
@@ -1467,15 +1472,13 @@ class MediaHandler(FileHandler):
 
             absolute_path = os.path.join(absolute_path, self.default_filename)
 
-        local_path = media_cache.get_local_path(absolute_path)
-
-        if not os.path.exists(local_path):
+        if not os.path.exists(absolute_path):
             raise HTTPError(404)
 
-        if not os.path.isfile(local_path):
+        if not os.path.isfile(absolute_path):
             raise HTTPError(403, "%s is not a file", self.path)
 
-        return local_path
+        return absolute_path
 
 
 class Application(tornado.web.Application):

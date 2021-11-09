@@ -299,12 +299,14 @@ class MediaCache(object):
         """
         local_paths = []
         tasks = []
+        seen = set()
         for filepath in filepaths:
             local_path, exists, client = self._get_local_path(filepath)
             local_paths.append(local_path)
-            if not exists:
+            if not exists and filepath not in seen:
                 task = (client, filepath, local_path, skip_failures, False)
                 tasks.append(task)
+                seen.add(filepath)
 
         if tasks:
             _download_media(tasks, self.num_workers)
@@ -328,11 +330,13 @@ class MediaCache(object):
             filepaths = self._cache.keys()
 
         tasks = []
+        seen = set()
         for filepath in filepaths:
             fs = _get_file_system(filepath)
-            if fs != FileSystem.LOCAL:
+            if fs != FileSystem.LOCAL and filepath not in seen:
                 client = self._get_client(fs)
                 tasks.append((client, filepath))
+                seen.add(filepath)
 
         if not tasks:
             return
