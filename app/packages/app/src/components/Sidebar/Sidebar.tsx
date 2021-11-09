@@ -223,10 +223,32 @@ const fn = (
   activeKey: string = null,
   delta = 0
 ) => {
-  const results = {};
-  let y = 0;
-
   let groupActive = false;
+  const currentY = {};
+  let y = 0;
+  for (const key of currentOrder) {
+    const { entry, el } = items[key];
+    if (entry.kind === EntryKind.GROUP) {
+      groupActive = key === activeKey;
+    }
+    let shown = true;
+
+    if (entry.kind === EntryKind.PATH) {
+      shown = entry.shown;
+    } else if (entry.kind === EntryKind.EMPTY) {
+      shown = entry.shown;
+    }
+
+    currentY[key] = y;
+
+    if (shown) {
+      y += getHeight(el) + 3;
+    }
+  }
+
+  const results = {};
+  y = 0;
+
   for (const key of newOrder) {
     const { entry, el } = items[key];
     if (entry.kind === EntryKind.GROUP) {
@@ -244,7 +266,7 @@ const fn = (
     }
 
     results[key] = {
-      y,
+      y: dragging ? currentY[key] + delta : y,
       immediate: dragging || activeKey === null,
       zIndex: dragging ? 1 : 0,
       left: shown ? "unset" : -3000,
@@ -439,7 +461,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       order.current,
       delta
     );
-    const entry = items[down.current].entry;
+    const entry = items.current[down.current].entry;
 
     if (entry.kind === EntryKind.PATH) {
       return move(order.current, order.current.indexOf(down.current), current);
@@ -462,19 +484,10 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     return [...newOrder, ...order.current.slice(post)];
   };
 
-  useEventHandler(
-    Object.values(items.current).map(({ el }) => el),
-    "mousedown",
-    (event: MouseEvent) => {
-      down.current = event.currentTarget.dataset.key;
-      start.current = event.clientY;
-    }
-  );
-
   useEventHandler(document.body, "mouseup", (event) => {
     if (down.current == null) return;
 
-    const entry = items[down.current].entry;
+    const entry = items.current[down.current].entry;
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
 
     const newOrder = getNewOrder(event);
@@ -488,9 +501,10 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     );
 
     for (const key of order.current) {
-      items[key].controller.start(results[key]);
+      items.current[key].controller.start(results[key]);
     }
-    setEntries(order.current.map((key) => items[key].entry));
+    order.current = newOrder;
+    setEntries(order.current.map((key) => items.current[key].entry));
     down.current = null;
     start.current = null;
   });
@@ -510,8 +524,8 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       down.current,
       delta
     );
-
-    for (const key of order.current) items[key].controller.start(results[key]);
+    for (const key of order.current)
+      items.current[key].controller.start(results[key]);
   });
 
   useLayoutEffect(() => {
@@ -531,7 +545,15 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
         return (
           <animated.div
             data-key={key}
-            ref={(node) => (items.current[key].el = node)}
+            ref={(node) => {
+              items.current[key].el = node;
+              if (node) {
+                node.addEventListener("mousedown", (event) => {
+                  down.current = event.currentTarget.dataset.key;
+                  start.current = event.clientY;
+                });
+              }
+            }}
             key={key}
             style={items.current[key].controller.springs}
             children={
