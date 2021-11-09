@@ -392,6 +392,8 @@ class KineticsDownloadConfig(object):
         retry_errors=False,
     ):
         self.split = split
+        if isinstance(classes, str):
+            classes = [classes]
         self.classes = classes
         self.num_workers = num_workers
         self.shuffle = shuffle
