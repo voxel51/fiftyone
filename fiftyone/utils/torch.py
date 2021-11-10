@@ -114,12 +114,11 @@ class TorchImageModelConfig(foc.Config):
         image_min_dim (None): resize input images during preprocessing, if
             necessary, so that the smaller image dimension is at least this
             value
-        image_max_size (None): resize the input images during preprocessing, if
-            necessary to prevent OOM, so that the image dimensions are at 
-            most this ``(width, height)``
+        image_max_size (None): resize the input images during preprocessing so 
+            that the image dimensions are at most this ``(width, height)``
         image_max_dim (None): resize input images during preprocessing, if
             necessary, so that the largest image dimension is at most this
-            value to prevent out of memory
+            value.
         image_size (None): a ``(width, height)`` to which to resize the input
             images during preprocessing
         image_dim (None): resize the smaller input dimension to this value
@@ -402,7 +401,7 @@ class TorchImageModel(
         if config.image_max_size:
             transforms.append(MaxResize(config.image_max_size))
         elif config.image_max_dim:
-            transforms.append(MinResize(config.image_max_dim))
+            transforms.append(MaxResize(config.image_max_dim))
         
         # Converts PIL/numpy (HWC) to Torch tensor (CHW) in [0, 1]
         transforms.append(torchvision.transforms.ToTensor())
