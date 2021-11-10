@@ -114,6 +114,12 @@ class TorchImageModelConfig(foc.Config):
         image_min_dim (None): resize input images during preprocessing, if
             necessary, so that the smaller image dimension is at least this
             value
+        image_max_size (None): resize the input images during preprocessing, if
+            necessary to prevent OOM, so that the image dimensions are at 
+            most this ``(width, height)``
+        image_max_dim (None): resize input images during preprocessing, if
+            necessary, so that the largest image dimension is at most this
+            value to prevent out of memory
         image_size (None): a ``(width, height)`` to which to resize the input
             images during preprocessing
         image_dim (None): resize the smaller input dimension to this value
@@ -156,10 +162,17 @@ class TorchImageModelConfig(foc.Config):
         self.image_min_dim = self.parse_number(
             d, "image_min_dim", default=None
         )
+        self.image_max_size = self.parse_array(
+            d, "image_max_size", default=None
+        )
+        self.image_max_dim = self.parse_number(
+            d, "image_max_dim", default=None
+        )
         self.image_size = self.parse_array(d, "image_size", default=None)
         self.image_dim = self.parse_number(d, "image_dim", default=None)
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
+        
         self.embeddings_layer = self.parse_string(
             d, "embeddings_layer", default=None
         )
@@ -386,6 +399,11 @@ class TorchImageModel(
         elif config.image_dim:
             transforms.append(torchvision.transforms.Resize(config.image_dim))
 
+        if config.image_max_size:
+            transforms.append(MaxResize(config.image_max_size))
+        elif config.image_max_dim:
+            transforms.append(MinResize(config.image_max_dim))
+        
         # Converts PIL/numpy (HWC) to Torch tensor (CHW) in [0, 1]
         transforms.append(torchvision.transforms.ToTensor())
 
@@ -482,6 +500,43 @@ class MinResize(object):
             return pil_image_or_tensor
 
         alpha = max(minh / h, minw / w)
+        size = (int(round(alpha * h)), int(round(alpha * w)))
+        return F.resize(pil_image_or_tensor, size, **self._kwargs)
+
+class MaxResize(object):
+    """Transform that resizes the PIL image or torch Tensor, if necessary, so
+    that its maximum dimensions do not cause memory overflow.
+
+    Args:
+        max_output_size: Desired maximum output dimensions. Can either be a
+            ``(max_height, max_width)`` tuple or a single ``max_dim``
+        interpolation (None): Optional interpolation mode. Passed directly to
+            :func:`torchvision:torchvision.transforms.functional.resize`
+    """
+
+    def __init__(self, max_output_size, interpolation=None):
+        if isinstance(max_output_size, int):
+            max_output_size = (max_output_size, max_output_size)
+
+        self.max_output_size = max_output_size
+        self.interpolation = interpolation
+
+        self._kwargs = {}
+        if interpolation is not None:
+            self._kwargs["interpolation"] = interpolation
+
+    def __call__(self, pil_image_or_tensor):
+        if isinstance(pil_image_or_tensor, torch.Tensor):
+            h, w = list(pil_image_or_tensor.size())[-2:]
+        else:
+            w, h = pil_image_or_tensor.size
+
+        maxh, maxw = self.max_output_size
+        
+        if h <= maxh and w <= maxw:
+            return pil_image_or_tensor
+
+        alpha = min(maxh / h, maxw / w)
         size = (int(round(alpha * h)), int(round(alpha * w)))
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
 
