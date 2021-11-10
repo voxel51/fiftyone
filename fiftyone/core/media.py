@@ -35,7 +35,7 @@ def normalize_filepath(filepath):
     Returns:
         the normalized filepath
     """
-    if foc.is_local_path(filepath):
+    if foc.is_local(filepath):
         return os.path.abspath(os.path.expanduser(filepath))
 
     return filepath

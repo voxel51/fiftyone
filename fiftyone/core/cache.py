@@ -6,9 +6,11 @@ Remote media caching.
 |
 """
 from collections import OrderedDict
+import io
 import logging
+import mimetypes
 import multiprocessing
-from multiprocessing.pool import ThreadPool
+import multiprocessing.dummy
 import os
 import urllib.parse as urlparse
 
@@ -24,8 +26,8 @@ logger = logging.getLogger(__name__)
 media_cache = None
 
 
-def is_local_path(filepath):
-    """Determines whether the given filepath is a local path.
+def is_local(filepath):
+    """Determines whether the given filepath is local.
 
     Args:
         filepath: a filepath
@@ -209,6 +211,12 @@ class MediaCache(object):
 
         self._init()
 
+    def __contains__(self, filepath):
+        return self.is_local_or_cached(filepath)
+
+    def __len__(self):
+        return len(self._cache)
+
     @property
     def cache_dir(self):
         return self.config.cache_dir
@@ -261,36 +269,220 @@ class MediaCache(object):
             "load_factor": self.load_factor,
         }
 
-    def get_local_path(self, filepath, skip_failures=True):
-        """Retrieves the local path for the given media file.
-
-        Remote files are downloaded to the local cache, if necessary.
+    def is_local(self, filepath):
+        """Determines whether the given filepath is local.
 
         Args:
             filepath: a filepath
+
+        Returns:
+            True/False
+        """
+        fs = _get_file_system(filepath)
+        return fs == FileSystem.LOCAL
+
+    def is_local_or_cached(self, filepath):
+        """Determines whether the given filepath is either local or a remote
+        file that has been cached.
+
+        Args:
+            filepath: a filepath
+
+        Returns:
+            True/False
+        """
+        fs, _, exists, _ = self._parse_filepath(filepath)
+        return fs == FileSystem.LOCAL or exists
+
+    def is_remote_uncached_video(self, filepath):
+        """Determines whether the given filepath is a remote video that is not
+        in the local cache.
+
+        Args:
+            filepath: a filepath
+
+        Returns:
+            True/False
+        """
+        fs, local_path, exists, _ = self._parse_filepath(filepath)
+        return (
+            fs != FileSystem.LOCAL
+            and not exists
+            and self._is_video(local_path)
+        )
+
+    def get_remote_file_metadata(self, filepath, skip_failures=True):
+        """Retrieves the file metadata for the given remote filepath, if
+        possible.
+
+        The returned value may be ``None`` if file metadata could not be
+        retrieved.
+
+        Args:
+            filepath: a filepath
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file's metadata cannot be computed
+
+        Returns:
+            a file metdata dict, or ``None``
+        """
+        _, _, _, client = self._parse_filepath(filepath)
+
+        task = (client, filepath, skip_failures)
+        _, metadata = _do_get_file_metadata(task)
+
+        return metadata
+
+    def get_remote_file_metadatas(self, filepaths, skip_failures=True):
+        """Returns a dictionary mapping any uncached remote filepaths in the
+        provided list to file metadata dicts retrieved from the remote source.
+
+        Values may be ``None`` if file metadata could not be retrieved for a
+        given remote file.
+
+        Args:
+            filepaths: a list of filepaths
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file's metadata cannot be computed
+
+        Returns:
+            a dict mapping remote filepaths to file metadata dicts, or ``None``
+        """
+        tasks = []
+        seen = set()
+        for filepath in filepaths:
+            fs, _, exists, client = self._parse_filepath(filepath)
+            if fs == FileSystem.LOCAL or filepath in seen:
+                continue
+
+            seen.add(filepath)
+
+            if not exists:
+                tasks.append((client, filepath, skip_failures))
+
+        if not tasks:
+            return {}
+
+        return _get_file_metadata(tasks, self.num_workers)
+
+    def get_remote_video_metadata(self, filepath, skip_failures=True):
+        """Retrieves the :class:`fiftyone.core.metadata.VideoMetadata` instance
+        for the given remote video.
+
+        Args:
+            filepath: a filepath
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file's metadata cannot be computed
+
+        Returns:
+            a :class:`fiftyone.core.metadata.VideoMetadata` or ``None``
+        """
+        _, _, _, client = self._parse_filepath(filepath)
+
+        task = (client, filepath, skip_failures)
+        _, metadata = _do_get_video_metadata(task)
+
+        return metadata
+
+    def get_remote_video_metadatas(self, filepaths, skip_failures=True):
+        """Returns a dictionary mapping any uncached remote video filepaths in
+        the provided list to :class:`fiftyone.core.metadata.VideoMetadata`
+        instances computed from the remote source.
+
+        Metadata is computed by applying ``ffprobe`` to the cloud object via a
+        signed URL.
+
+        Values may be ``None`` if metadata could not be retrieved for a given
+        remote video.
+
+        Args:
+            filepaths: a list of filepaths
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file's metadata cannot be computed
+
+        Returns:
+            a dict mapping remote video filepaths to
+            :class:`fiftyone.core.metadata.VideoMetadata` objects, or ``None``
+        """
+        tasks = []
+        seen = set()
+        for filepath in filepaths:
+            fs, local_path, exists, client = self._parse_filepath(filepath)
+            if fs == FileSystem.LOCAL or filepath in seen:
+                continue
+
+            seen.add(filepath)
+
+            if not exists and self._is_video(local_path):
+                tasks.append((client, filepath, skip_failures))
+
+        if not tasks:
+            return {}
+
+        return _get_video_metadata(tasks, self.num_workers)
+
+    def get_remote_content(self, filepath, start=None, end=None):
+        """Gets the content for the given remote filepath.
+
+        Args:
+            filepath: a filepath
+            start (None): an optional start of a byte range to get
+            end (None): an optional end of a byte range to get
+
+        Returns:
+            a bytes string
+        """
+        fs = _get_file_system(filepath)
+        client = self._get_client(fs)
+
+        return client.download_bytes(filepath, start=start, end=end)
+
+        """
+        chunk_size = 64 * 1024
+        with io.BytesIO() as f:
+            client.download_stream(filepath, f)
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    return
+
+                yield chunk
+        """
+
+    def get_local_path(
+        self, filepath, download_media=True, skip_failures=True
+    ):
+        """Retrieves the local path for the given media file.
+
+        Args:
+            filepath: a filepath
+            download_media (True): whether to download the remote media if it
+                is not cached
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
 
         Returns:
             the local filepath
         """
-        local_path, exists, client = self._get_local_path(filepath)
+        _, local_path, exists, client = self._parse_filepath(filepath)
 
-        if exists:
+        if exists or not download_media:
             return local_path
 
-        task = (client, filepath, local_path, skip_failures, False, False)
+        task = (client, filepath, local_path, skip_failures, False)
         _do_download_media(task)
 
         return local_path
 
-    def get_local_paths(self, filepaths, skip_failures=True):
+    def get_local_paths(
+        self, filepaths, download_media=True, skip_failures=True
+    ):
         """Retrieves the local paths for the given media files.
-
-        Remote files are downloaded to the local cache, if necessary.
 
         Args:
             filepaths: a list of filepaths
+            download_media (True): whether to download any remote media if it
+                is not cached
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
 
@@ -301,12 +493,16 @@ class MediaCache(object):
         tasks = []
         seen = set()
         for filepath in filepaths:
-            local_path, exists, client = self._get_local_path(filepath)
+            fs, local_path, exists, client = self._parse_filepath(filepath)
+            if fs == FileSystem.LOCAL or filepath in seen:
+                continue
+
+            seen.add(filepath)
             local_paths.append(local_path)
-            if not exists and filepath not in seen:
+
+            if download_media and not exists:
                 task = (client, filepath, local_path, skip_failures, False)
                 tasks.append(task)
-                seen.add(filepath)
 
         if tasks:
             _download_media(tasks, self.num_workers)
@@ -332,11 +528,12 @@ class MediaCache(object):
         tasks = []
         seen = set()
         for filepath in filepaths:
-            fs = _get_file_system(filepath)
-            if fs != FileSystem.LOCAL and filepath not in seen:
-                client = self._get_client(fs)
-                tasks.append((client, filepath))
-                seen.add(filepath)
+            fs, local_path, _, client = self._parse_filepath(filepath)
+            if fs == FileSystem.LOCAL or filepath in seen:
+                continue
+
+            seen.add(filepath)
+            tasks.append((client, filepath))
 
         if not tasks:
             return
@@ -348,9 +545,10 @@ class MediaCache(object):
             result = self._cache.get(filepath, None)
             if result is not None:
                 local_path, success, cached_checksum, _ = result
+                fs = None
                 client = None
             else:
-                local_path, _, client = self._get_local_path(filepath)
+                fs, local_path, _, client = self._parse_filepath(filepath)
                 cached_checksum = None
                 success = True
 
@@ -367,8 +565,11 @@ class MediaCache(object):
                 #
                 # In all cases, we need to re-download now
                 #
+                if fs is None:
+                    fs = _get_file_system(filepath)
+
                 if client is None:
-                    client = self._get_client(_get_file_system(filepath))
+                    client = self._get_client(fs)
 
                 task = (client, filepath, local_path, skip_failures, True)
                 tasks.append(task)
@@ -454,11 +655,12 @@ class MediaCache(object):
 
         return None
 
-    def _get_local_path(self, filepath):
+    def _parse_filepath(self, filepath):
         fs = _get_file_system(filepath)
 
+        # Always return `exists=True` for local filepaths
         if fs == FileSystem.LOCAL:
-            return filepath, True, None
+            return fs, filepath, True, None
 
         # Retrieve local path from cache if possible
         # We always pop and re-insert so that oldest files are deleted first
@@ -479,14 +681,18 @@ class MediaCache(object):
                 client = self._get_client(fs)
 
             self._cache[filepath] = result
-            return local_path, exists, client
+            return fs, local_path, exists, client
 
         client = self._get_client(fs)
         local_path = os.path.join(
             self.cache_dir, fs, client.get_local_path(filepath)
         )
 
-        return local_path, False, client
+        return fs, local_path, False, client
+
+    def _is_video(self, filepath):
+        mime_type = mimetypes.guess_type(filepath)[0]
+        return mime_type.startswith("video")
 
     def _merge_cache(self, cache):
         for filepath, result in cache.items():
@@ -576,7 +782,7 @@ def _upload_media(tasks, num_workers):
     else:
         # urllib3_logger = logging.getLogger("urllib3")
         # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
-        with ThreadPool(processes=num_workers) as pool:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_upload_media, tasks)
                 for _ in pb(results):
@@ -604,7 +810,7 @@ def _download_media(tasks, num_workers):
     else:
         # urllib3_logger = logging.getLogger("urllib3")
         # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
-        with ThreadPool(processes=num_workers) as pool:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_download_media, tasks)
                 for _ in pb(results):
@@ -614,10 +820,10 @@ def _download_media(tasks, num_workers):
 def _do_download_media(arg):
     client, remote_path, local_path, skip_failures, force = arg
 
+    success = True
     if force or not os.path.isfile(local_path):
         try:
             client.download(remote_path, local_path)
-            success = True
         except Exception as e:
             if not skip_failures:
                 raise
@@ -645,7 +851,7 @@ def _get_checksums(tasks, num_workers):
     else:
         # urllib3_logger = logging.getLogger("urllib3")
         # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
-        with ThreadPool(processes=num_workers) as pool:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_get_checksum, tasks)
                 for filepath, checksum in pb(results):
@@ -667,6 +873,83 @@ def _do_get_checksum(arg):
         checksum = ""
 
     return remote_path, checksum
+
+
+def _get_video_metadata(tasks, num_workers):
+    metadata = {}
+
+    logger.info("Getting video metadata...")
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                filepath, _meta = _do_get_video_metadata(task)
+                metadata[filepath] = _meta
+    else:
+        # urllib3_logger = logging.getLogger("urllib3")
+        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                results = pool.imap_unordered(_do_get_video_metadata, tasks)
+                for filepath, _meta in pb(results):
+                    metadata[filepath] = _meta
+
+    return metadata
+
+
+def _do_get_video_metadata(arg):
+    client, remote_path, skip_failures = arg
+
+    if hasattr(client, "generate_signed_url"):
+        url = client.generate_signed_url(remote_path)
+    else:
+        url = remote_path
+
+    try:
+        metadata = fo.VideoMetadata.build_for(url)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        logger.warning(e)
+        metadata = None
+
+    return remote_path, metadata
+
+
+def _get_file_metadata(tasks, num_workers):
+    metadata = {}
+
+    logger.info("Getting metadata...")
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                filepath, _meta = _do_get_file_metadata(task)
+                metadata[filepath] = _meta
+    else:
+        # urllib3_logger = logging.getLogger("urllib3")
+        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                results = pool.imap_unordered(_do_get_file_metadata, tasks)
+                for filepath, _meta in pb(results):
+                    metadata[filepath] = _meta
+
+    return metadata
+
+
+def _do_get_file_metadata(arg):
+    client, remote_path, skip_failures = arg
+
+    try:
+        metadata = client.get_file_metadata(remote_path)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        logger.warning(e)
+        metadata = None
+
+    return remote_path, metadata
 
 
 def _get_file_system(path):

@@ -8,6 +8,7 @@ Metadata stored in dataset samples.
 import itertools
 import logging
 import multiprocessing
+import multiprocessing.dummy
 import os
 
 import eta.core.image as etai
@@ -73,13 +74,13 @@ class ImageMetadata(Metadata):
         """Builds an :class:`ImageMetadata` object for the given image.
 
         Args:
-            image_or_path: an image or the path to the image on disk
+            image_or_path: an image, the path to the image on disk, or a URL
 
         Returns:
             an :class:`ImageMetadata`
         """
         if etau.is_str(image_or_path):
-            # From image on disk
+            # Image on disk or URL
             m = etai.ImageMetadata.build_for(image_or_path)
             return cls(
                 size_bytes=m.size_bytes,
@@ -125,7 +126,7 @@ class VideoMetadata(Metadata):
         """Builds an :class:`VideoMetadata` object for the given video.
 
         Args:
-            video_path: the path to a video on disk
+            video_path: the path to a video on disk or a URL
 
         Returns:
             a :class:`VideoMetadata`
@@ -152,7 +153,7 @@ def compute_sample_metadata(sample, skip_failures=False):
             an error if metadata cannot be computed
     """
     sample.metadata = _compute_sample_metadata(
-        sample.local_path, sample.media_type, skip_failures=skip_failures
+        sample.filepath, sample.media_type, skip_failures=skip_failures
     )
     if sample._in_db:
         sample.save()
@@ -206,8 +207,6 @@ def _compute_metadata(sample_collection, overwrite=False):
     if num_samples == 0:
         return
 
-    sample_collection.download_media()
-
     logger.info("Computing %s metadata...", sample_collection.media_type)
     with fou.ProgressBar(total=num_samples) as pb:
         for sample in pb(sample_collection.select_fields()):
@@ -218,26 +217,40 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
+    media_type = sample_collection.media_type
     ids, filepaths = sample_collection.values(["id", "filepath"])
-    local_paths = foc.media_cache.get_local_paths(filepaths)
+    media_types = itertools.repeat(media_type)
 
-    media_types = itertools.repeat(sample_collection.media_type)
-
-    inputs = list(zip(ids, local_paths, media_types))
+    inputs = list(zip(ids, filepaths, media_types))
     num_samples = len(inputs)
 
     if num_samples == 0:
         return
 
-    logger.info("Computing %s metadata...", sample_collection.media_type)
+    logger.info("Computing %s metadata...", media_type)
+
+    view = sample_collection.select_fields()
     with fou.ProgressBar(total=num_samples) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
+            # with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             for sample_id, metadata in pb(
                 pool.imap_unordered(_do_compute_metadata, inputs)
             ):
-                sample = sample_collection[sample_id]
+                sample = view[sample_id]
                 sample.metadata = metadata
                 sample.save()
+
+    """
+    values = {}
+    with fou.ProgressBar(total=num_samples) as pb:
+        with multiprocessing.pool.ThreadPool(processes=num_workers) as pool:
+            for sample_id, metadata in pb(
+                pool.imap_unordered(_do_compute_metadata, inputs)
+            ):
+                values[sample_id] = metadata
+
+    sample_collection.set_values("metadata", values, key_field="sample_id")
+    """
 
 
 def _do_compute_metadata(args):
@@ -259,11 +272,19 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
 
 
 def _get_metadata(filepath, media_type):
-    if media_type == fom.IMAGE:
-        metadata = ImageMetadata.build_for(filepath)
-    elif media_type == fom.VIDEO:
-        metadata = VideoMetadata.build_for(filepath)
-    else:
-        metadata = Metadata.build_for(filepath)
+    if foc.media_cache.is_remote_uncached_video(filepath):
+        # Compute metadata for uncached remote videos w/o downloading
+        return foc.media_cache.get_remote_video_metadata(
+            filepath, skip_failures=False
+        )
 
-    return metadata
+    # This will download any uncached remote files
+    local_path = foc.media_cache.get_local_path(filepath, skip_failures=False)
+
+    if media_type == fom.IMAGE:
+        return ImageMetadata.build_for(local_path)
+
+    if media_type == fom.VIDEO:
+        return VideoMetadata.build_for(local_path)
+
+    return Metadata.build_for(local_path)

@@ -124,9 +124,11 @@ def read_metadata(filepath, metadata=None):
         metadata (None): existing metadata dict
 
     Returns:
-        dict
+        dict, success
     """
     mimetype, _ = mimetypes.guess_type(filepath)
+
+    # Videos
     if mimetype.startswith("video/"):
         if metadata:
             width = metadata.get("frame_width", None)
@@ -134,20 +136,23 @@ def read_metadata(filepath, metadata=None):
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                return {
+                d = {
                     "width": width,
                     "height": height,
                     "frame_rate": frame_rate,
                 }
+                return d, True
 
         return read_video_metadata(filepath)
 
+    # Images
     if metadata:
         width = metadata.get("width", None)
         height = metadata.get("height", None)
 
         if width and height:
-            return {"width": width, "height": height}
+            d = {"width": width, "height": height}
+            return d, True
 
     return read_image_metadata(filepath)
 
@@ -160,16 +165,15 @@ def read_image_metadata(filepath):
         filepath (str): path to the file
 
     Returns:
-        dict
+        dict, success
     """
     try:
         width, height = get_image_size(filepath)
-        return {"width": width, "height": height}
+        d = {"width": width, "height": height}
+        return d, True
     except:
-        return {
-            "width": 512,
-            "height": 512,
-        }
+        d = {"width": 512, "height": 512}
+        return d, False
 
 
 def read_video_metadata(filepath):
@@ -180,17 +184,19 @@ def read_video_metadata(filepath):
         filepath (str): path to the file
 
     Returns:
-        dict
+        dict, success
     """
     try:
         info = etav.VideoStreamInfo.build_for(filepath)
-        return {
+        d = {
             "width": info.frame_size[0],
             "height": info.frame_size[1],
             "frame_rate": info.frame_rate,
         }
+        return d, True
     except:
-        return {"width": 512, "height": 512, "frame_rate": 30}
+        d = {"width": 512, "height": 512, "frame_rate": 30}
+        return d, False
 
 
 types = collections.OrderedDict()

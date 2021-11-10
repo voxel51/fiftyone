@@ -443,7 +443,7 @@ class MediaCacheConfig(EnvConfig):
             d,
             "cache_size_bytes",
             env_var="FIFTYONE_MEDIA_CACHE_SIZE_BYTES",
-            default=10 * 1024 ** 3,  # 10 GB
+            default=128 * 1024 ** 3,  # 128 GB
         )
         self.num_workers = self.parse_int(
             d,

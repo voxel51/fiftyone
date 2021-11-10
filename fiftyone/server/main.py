@@ -11,6 +11,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 import math
 import os
+import stat
 import traceback
 
 import tornado.escape
@@ -272,21 +273,47 @@ class PageHandler(tornado.web.RequestHandler):
             more = page + 1
 
         results = [{"sample": s} for s in samples]
-        metadata = {}
 
-        filepaths = [r["sample"]["filepath"] for r in results]
-        local_paths = media_cache.get_local_paths(filepaths)
-
-        for r, local_path in zip(results, local_paths):
-            filepath = r["sample"]["filepath"]
-            if filepath not in metadata:
-                metadata[filepath] = fosu.read_metadata(
-                    local_path, r["sample"].get("metadata", None)
-                )
-
-            r.update(metadata[filepath])
+        _add_metadata_simple(results, view.media_type, download_videos=False)
+        # _add_metadata_simple(results, view.media_type, download_videos=True)
 
         self.write({"results": results, "more": more})
+
+
+def _add_metadata_simple(results, media_type, download_videos=True):
+    # Download remote media locally, if necessary, so metadata can be computed.
+    # If downloading videos is not allowed, the local path for uncached videos
+    # won't exist and `read_metadata()` will just return placeholder data.
+    download_media = media_type != fom.VIDEO or download_videos
+    filepaths = [r["sample"]["filepath"] for r in results]
+    local_paths = media_cache.get_local_paths(
+        filepaths, download_media=download_media
+    )
+
+    tasks = {}
+    metadata = {}
+    for idx, (result, filepath, local_path) in enumerate(
+        zip(results, filepaths, local_paths)
+    ):
+        if filepath not in metadata:
+            d, success = fosu.read_metadata(
+                local_path, result["sample"].get("metadata", None)
+            )
+
+            if not success and media_cache.is_remote_uncached_video(filepath):
+                tasks[idx] = filepath
+
+            metadata[filepath] = d
+
+        result.update(metadata[filepath])
+
+    if tasks:
+        filepaths = tasks.values()
+        remote_metadata = media_cache.get_remote_video_metadatas(filepaths)
+        for idx, filepath in tasks.items():
+            d = remote_metadata.get(filepath, None)
+            if d:
+                results[idx].update(d)
 
 
 class TeamsHandler(RequestHandler):
@@ -1453,32 +1480,64 @@ class FileHandler(tornado.web.StaticFileHandler):
         return super().get_content_type()
 
 
+# https://www.tornadoweb.org/en/branch3.1/web.html#tornado.web.StaticFileHandler.get_content
 class MediaHandler(FileHandler):
     @classmethod
     def get_absolute_path(cls, root, path):
-        return media_cache.get_local_path(path)
+        return path
 
-    """
-    #https://www.tornadoweb.org/en/branch3.1/web.html#tornado.web.StaticFileHandler.get_absolute_path
     @classmethod
-    def get_content(abspath, start=None, end=None):
-    """
+    def get_content(cls, abspath, start=None, end=None):
+        # For undownloaded videos, stream directly from the remote source
+        if media_cache.is_remote_uncached_video(abspath):
+            return media_cache.get_remote_content(
+                abspath, start=start, end=end
+            )
+
+        # For everything else, stream from local disk, downloading remote files
+        # if necessary
+        local_path = media_cache.get_local_path(abspath)
+        return super().get_content(local_path, start=start, end=end)
 
     def validate_absolute_path(self, root, absolute_path):
-        if os.path.isdir(absolute_path) and self.default_filename is not None:
-            if not self.request.path.endswith("/"):
-                self.redirect(self.request.path + "/", permanent=True)
-                return None
-
-            absolute_path = os.path.join(absolute_path, self.default_filename)
-
-        if not os.path.exists(absolute_path):
-            raise HTTPError(404)
-
-        if not os.path.isfile(absolute_path):
-            raise HTTPError(403, "%s is not a file", self.path)
-
         return absolute_path
+
+    def get_content_size(self):
+        stat_result = self._stat()
+        return stat_result[stat.ST_SIZE]
+
+    def get_modified_time(self):
+        stat_result = self._stat()
+        return datetime.utcfromtimestamp(stat_result[stat.ST_MTIME])
+
+    def _stat(self):
+        if hasattr(self, "_stat_result"):
+            return self._stat_result
+
+        abspath = self.absolute_path
+
+        if media_cache.is_local(abspath):
+            self._stat_result = os.stat(abspath)
+            return self._stat_result
+
+        if media_cache.is_local_or_cached(abspath):
+            local_path = media_cache.get_local_path(abspath)
+            self._stat_result = os.stat(local_path)
+            return self._stat_result
+
+        metadata = media_cache.get_remote_file_metadata(abspath)
+
+        try:
+            self._stat_result = {
+                stat.ST_SIZE: metadata["size"],
+                stat.ST_MTIME: int(metadata["last_modified"].timestamp()),
+            }
+        except:
+            raise FileNotFoundError(
+                "Unable to get metadata for file: '%s'" % abspath
+            )
+
+        return self._stat_result
 
 
 class Application(tornado.web.Application):

@@ -1428,22 +1428,30 @@ class SampleCollection(object):
         Args:
             update (False): whether to re-download media whose checksums no
                 longer match
+            download_videos (True): whether to allow videos to be downloaded,
+                if necessary
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
         """
         foc.download_media(self, update=update, skip_failures=skip_failures)
 
-    def get_local_paths(self):
+    def get_local_paths(self, download_media=True):
         """Returns a list of local paths to the media files in this collection.
 
         This method is only useful for collections that contain at least one
         remote media file.
 
+        Args:
+            download_media (True): whether to download any non-cached remote
+                media files
+
         Returns:
             a list of local filepaths
         """
         filepaths = self.values("filepath")
-        return foc.media_cache.get_local_paths(filepaths)
+        return foc.media_cache.get_local_paths(
+            filepaths, download_media=download_media
+        )
 
     def apply_model(
         self,
