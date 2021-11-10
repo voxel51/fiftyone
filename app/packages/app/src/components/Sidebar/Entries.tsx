@@ -117,6 +117,7 @@ type PathEntryProps = {
   children?: ReactNode;
   ftype?: string | string[];
   embeddedDocType?: string | string[];
+  style?: React.CSSProperties;
 };
 
 export const PathEntry = React.memo(
@@ -128,6 +129,7 @@ export const PathEntry = React.memo(
     name,
     ftype,
     embeddedDocType,
+    style,
   }: PathEntryProps) => {
     if (!name) {
       name = path;
@@ -152,7 +154,7 @@ export const PathEntry = React.memo(
         onMouseDown={() => (canCommit.current = true)}
         onMouseMove={() => (canCommit.current = false)}
         onMouseUp={() => canCommit.current && setActive(!active)}
-        style={containerProps}
+        style={{ ...containerProps, ...style }}
       >
         {!disabled && (
           <Checkbox

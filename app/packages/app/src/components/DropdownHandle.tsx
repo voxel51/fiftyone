@@ -1,4 +1,4 @@
-import React, { CSSProperties, ReactNode } from "react";
+import React, { CSSProperties, ReactNode, useRef } from "react";
 import styled from "styled-components";
 import { Add, ExpandLess, ExpandMore, Remove } from "@material-ui/icons";
 
@@ -41,13 +41,13 @@ const DropdownHandle = ({
   icon = ArrowButton,
   ...rest
 }: DropdownHandleProps) => {
+  const canCommit = useRef(false);
+
   return (
     <Body
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onClick();
-      }}
+      onMouseDown={() => (canCommit.current = true)}
+      onMouseMove={() => (canCommit.current = false)}
+      onMouseUp={() => canCommit.current && onClick()}
       {...rest}
     >
       {children}

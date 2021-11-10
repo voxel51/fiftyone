@@ -60,6 +60,7 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
         title={title}
         onClick={() => setExpanded(!expanded)}
         expanded={expanded}
+        style={{ marginBottom: 4 }}
       >
         <span>{title}</span>
         {...pills}
@@ -74,6 +75,7 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
               name={tag}
               disabled={false}
               key={tag}
+              style={{ marginBottom: 4 }}
             >
               <MatchEye
                 matched={matchedTags}
