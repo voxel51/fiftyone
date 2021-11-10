@@ -502,6 +502,7 @@ class MinResize(object):
         size = (int(round(alpha * h)), int(round(alpha * w)))
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
 
+    
 class MaxResize(object):
     """Transform that resizes the PIL image or torch Tensor, if necessary, so
     that its maximum dimensions do not cause memory overflow.
