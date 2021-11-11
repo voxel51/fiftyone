@@ -3,16 +3,21 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { NamedRangeSlider } from "./RangeSlider";
+import { NamedRangeSlider } from "./NumericFieldFilter";
 import CategoricalFilter from "./CategoricalFilter";
-import { CONFIDENCE_LABELS } from "../../utils/labels";
+import {
+  CONFIDENCE_LABELS,
+  FLOAT_FIELD,
+  FRAME_SUPPORT_FIELD,
+  REGRESSION,
+  SUPPORT_LABELS,
+} from "../../utils/labels";
 import { useExpand } from "./hooks";
 import { getPathExtension } from "./LabelFieldFilters.state";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import * as numericField from "./NumericFieldFilter.state";
 import * as stringField from "./StringFieldFilter.state";
-import { countsAtom, noneCount } from "./atoms";
+import { countsAtom } from "./atoms";
 
 const FilterHeader = styled.div`
   display: flex;
@@ -76,44 +81,65 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const path = `${entry.path}${getPathExtension(entry.labelType)}`;
   const cPath = `${path}.confidence`;
   const lPath = `${path}.label`;
+  const sPath = `${path}.support`;
+  const vPath = `${path}.value`;
 
   return (
     <animated.div style={{ ...props }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           {modal && <HiddenLabelFilter entry={entry} />}
-          <CategoricalFilter
-            color={entry.color}
-            name={"Labels"}
-            valueName={"label"}
-            selectedValuesAtom={stringField.selectedValuesAtom({
-              modal,
-              path: lPath,
-            })}
-            countsAtom={countsAtom({ modal, path: lPath, filtered: false })}
-            excludeAtom={stringField.excludeAtom({ modal, path: lPath })}
-            modal={modal}
-            path={lPath}
-          />
+          {entry.labelType !== REGRESSION && (
+            <CategoricalFilter
+              color={entry.color}
+              name={"Labels"}
+              valueName={"label"}
+              selectedValuesAtom={stringField.selectedValuesAtom({
+                modal,
+                path: lPath,
+              })}
+              countsAtom={countsAtom({ modal, path: lPath, filtered: false })}
+              excludeAtom={stringField.excludeAtom({ modal, path: lPath })}
+              modal={modal}
+              path={lPath}
+            />
+          )}
           {CONFIDENCE_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
+              modal={modal}
               color={entry.color}
               name={"Confidence"}
+              path={cPath}
+              defaultRange={[0, 1]}
+              fieldType={FLOAT_FIELD}
+            />
+          )}
+          {entry.labelType === REGRESSION && (
+            <NamedRangeSlider
+              color={entry.color}
+              name={"Value"}
               noneAtom={numericField.noneAtom({
                 modal,
-                path: cPath,
-                defaultRange: [0, 1],
+                path: vPath,
               })}
-              noneCountAtom={noneCount({ path: cPath, modal })}
+              noneCountAtom={noneCount({ path: vPath, modal })}
               boundsAtom={numericField.boundsAtom({
-                path: cPath,
-                defaultRange: [0, 1],
+                path: vPath,
               })}
               valueAtom={numericField.rangeAtom({
                 modal,
-                path: cPath,
-                defaultRange: [0, 1],
+                path: vPath,
               })}
+              fieldType={FLOAT_FIELD}
+            />
+          )}
+          {SUPPORT_LABELS.includes(entry.labelType) && (
+            <NamedRangeSlider
+              modal={modal}
+              color={entry.color}
+              name={"Support"}
+              path={sPath}
+              fieldType={FRAME_SUPPORT_FIELD}
             />
           )}
         </div>

@@ -37,11 +37,8 @@ no_default = _NoDefault()
 class Label(DynamicEmbeddedDocument):
     """Base class for labels.
 
-    Label instances represent a logical collection of labels associated with a
-    sample in a dataset. Label instances may represent concrete tasks such as
-    image classification (:class:`Classification`) or image object detection
-    (:class:`Detections`), or they may represent higher-level constructs such
-    as a collection of labels for a particular sample (:class:`ImageLabels`).
+    Label instances represent a logical collection of data associated with a
+    particular task for a sample or frame in a dataset.
     """
 
     meta = {"allow_inheritance": True}
@@ -124,6 +121,7 @@ class Label(DynamicEmbeddedDocument):
             )
 
 
+# @todo remove this in favor of dynamic-only attributes
 class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
 
@@ -140,6 +138,7 @@ class Attribute(DynamicEmbeddedDocument):
     value = fof.Field()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class BooleanAttribute(Attribute):
     """A boolean attribute.
 
@@ -150,6 +149,7 @@ class BooleanAttribute(Attribute):
     value = fof.BooleanField()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class CategoricalAttribute(Attribute):
     """A categorical attribute.
 
@@ -164,6 +164,7 @@ class CategoricalAttribute(Attribute):
     logits = fof.VectorField()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class NumericAttribute(Attribute):
     """A numeric attribute.
 
@@ -174,6 +175,7 @@ class NumericAttribute(Attribute):
     value = fof.FloatField()
 
 
+# @todo remove this in favor of dynamic-only attributes
 class ListAttribute(Attribute):
     """A list attribute.
 
@@ -344,6 +346,20 @@ class _HasLabelList(object):
     _LABEL_LIST_FIELD = None
 
 
+class Regression(_HasID, Label):
+    """A regression value.
+
+    Args:
+        value (None): the regression value
+        confidence (None): a confidence in ``[0, 1]`` for the regression
+    """
+
+    meta = {"allow_inheritance": True}
+
+    value = fof.FloatField()
+    confidence = fof.FloatField()
+
+
 class Classification(_HasID, Label):
     """A classification label.
 
@@ -386,7 +402,7 @@ class Detection(_HasID, _HasAttributesDict, Label):
             [<top-left-x>, <top-left-y>, <width>, <height>]
 
         mask (None): an instance segmentation mask for the detection within
-            its bounding box, which should be a 2D binary or 0/1 integer NumPy
+            its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
@@ -846,11 +862,11 @@ class Keypoints(_HasLabelList, Label):
 
 
 class Segmentation(_HasID, Label):
-    """A semantic segmentation mask for an image.
+    """A semantic segmentation for an image.
 
     Args:
-        mask (None): a semantic segmentation mask, which should be a NumPy
-            array with integer values encoding the semantic labels
+        mask (None): a 2D numpy array with integer values encoding the semantic
+            labels
     """
 
     meta = {"allow_inheritance": True}
@@ -922,6 +938,23 @@ class Segmentation(_HasID, Label):
             self, mask_targets, mask_types, tolerance
         )
         return Polylines(polylines=polylines)
+
+
+class Heatmap(_HasID, Label):
+    """A heatmap for an image.
+
+    Args:
+        map (None): a 2D numpy array
+        range (None): an optional ``[min, max]`` range of the map's values. If
+            None is provided, ``[0, 1]`` will be assumed if ``map`` contains
+            floating point values, and ``[0, 255]`` will be assumed if ``map``
+            contains integer values
+    """
+
+    meta = {"allow_inheritance": True}
+
+    map = fof.ArrayField()
+    range = fof.HeatmapRangeField()
 
 
 class TemporalDetection(_HasID, Label):
@@ -1109,16 +1142,6 @@ class GeoLocations(_HasID, Label):
         return cls(points=points, lines=lines, polygons=polygons)
 
 
-_SINGLE_LABEL_FIELDS = (
-    Classification,
-    Detection,
-    GeoLocation,
-    Keypoint,
-    Polyline,
-    Segmentation,
-    TemporalDetection,
-)
-
 _LABEL_LIST_FIELDS = (
     Classifications,
     Detections,
@@ -1126,8 +1149,6 @@ _LABEL_LIST_FIELDS = (
     Polylines,
     TemporalDetections,
 )
-
-_LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 
 _PATCHES_FIELDS = (
     Detection,

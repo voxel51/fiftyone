@@ -8,6 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
+from datetime import date, datetime, timedelta
 import math
 import os
 import traceback
@@ -30,6 +31,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
+import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
@@ -40,8 +42,10 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
+import fiftyone.core.utils as fout
 import fiftyone.core.view as fov
 
+from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
@@ -244,12 +248,15 @@ class PageHandler(tornado.web.RequestHandler):
             self.write({"results": [], "more": False})
             return
 
-        if view.media_type == fom.VIDEO:
-            view = view.set_field(
-                "frames", F("frames").filter((F("frame_number") == 1))
-            )
-
         view = get_extended_view(view, state.filters, count_labels_tags=True)
+        if view.media_type == fom.VIDEO:
+            if isinstance(view, focl.ClipsView):
+                expr = F("frame_number") == F("$support")[0]
+            else:
+                expr = F("frame_number") == 1
+
+            view = view.set_field("frames", F("frames").filter(expr))
+
         view = view.skip((page - 1) * page_length)
 
         samples = await foo.aggregate(
@@ -370,6 +377,7 @@ class PollingHandler(tornado.web.RequestHandler):
                     message = {"state": StateHandler.state}
 
             if event in {
+                "count_values",
                 "distinct",
                 "distributions",
                 "get_video_data",
@@ -763,6 +771,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         aggregations = fos.DatasetStatistics(view, filters).aggregations
 
         results = await view._async_aggregate(aggregations)
+        convert(results)
 
         data = []
         for agg, result in zip(aggregations, results):
@@ -1007,6 +1016,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             aggregations = fos.DatasetStatistics(view, filters).aggregations
             results = await view._async_aggregate(aggregations)
+            convert(results)
 
             for agg, result in zip(aggregations, results):
                 data.append(
@@ -1072,7 +1082,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         _write_message(message, app=True, only=self)
 
     @classmethod
-    async def on_distributions(cls, self, group, omit=[]):
+    async def on_distributions(cls, self, group):
         """Sends distribution data with respect to a group to the requesting
         client.
 
@@ -1128,10 +1138,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif results is None:
 
             def filter(field):
-                if (
-                    field.name in {"tags"}
-                    or field.name in omit
-                    or field.name.startswith("_")
+                if field.name in {"tags", "filepath"} or field.name.startswith(
+                    "_"
                 ):
                     return None
 
@@ -1142,12 +1150,25 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             aggs, fields = _count_values(filter, view)
 
-            hist_aggs, hist_fields, ticks = await _numeric_histograms(
-                view, view.get_field_schema()
-            )
+            (
+                hist_aggs,
+                hist_fields,
+                ticks,
+                nonfinites,
+            ) = await _numeric_histograms(view, view.get_field_schema())
             aggs.extend(hist_aggs)
             fields.extend(hist_fields)
             results = await _gather_results(aggs, fields, view, ticks)
+            for result, nonfinites in zip(
+                results[-len(hist_aggs) :], nonfinites
+            ):
+                data = result["data"]
+                if data and data[-1]["key"] == "None":
+                    data[-1]["count"] -= sum(
+                        map(lambda v: v["count"], nonfinites)
+                    )
+
+                data.extend(nonfinites)
 
         results = sorted(results, key=lambda i: i["name"])
         _write_message(
@@ -1237,12 +1258,19 @@ def _filter_deactivated_clients(clients):
     return filtered
 
 
+def _create_histogram_key(field, start, end):
+    if isinstance(field, (fof.DateField, fof.DateTimeField)):
+        return fout.datetime_to_timestamp(start + ((end - start) / 2))
+
+    return round((start + end) / 2, 4)
+
+
 def _parse_histogram_values(result, field):
     counts, edges, other = result
     data = sorted(
         [
             {
-                "key": round((k + edges[idx + 1]) / 2, 4),
+                "key": _create_histogram_key(field, k, edges[idx + 1]),
                 "count": v,
                 "edges": (k, edges[idx + 1]),
             }
@@ -1352,13 +1380,15 @@ def _count_values(f, view):
 
 
 def _numeric_bounds(paths):
-    return [foa.Bounds(path) for path in paths]
+    return [
+        foa.Bounds(path, safe=True, _count_nonfinites=True) for path in paths
+    ]
 
 
 async def _numeric_histograms(view, schema, prefix=""):
     paths = []
     fields = []
-    numerics = (fof.IntField, fof.FloatField)
+    numerics = (fof.IntField, fof.FloatField, fof.DateField, fof.DateTimeField)
     for name, field in schema.items():
         if prefix != "" and name == "frame_number":
             continue
@@ -1371,27 +1401,36 @@ async def _numeric_histograms(view, schema, prefix=""):
     bounds = await view._async_aggregate(aggs)
     aggregations = []
     ticks = []
-    for range_, field, path in zip(bounds, fields, paths):
+    nonfinites = []
+    for result, field, path in zip(bounds, fields, paths):
+        range_ = result.pop("bounds")
+        result = [{"key": k, "count": v} for k, v in result.items() if v > 0]
+        nonfinites.append(result)
         bins = _DEFAULT_NUM_HISTOGRAM_BINS
         num_ticks = None
         if range_[0] == range_[1]:
             bins = 1
+            if range_[0] is None:
+                range_ = [0, 1]
 
-        if range_ == (None, None):
-            range_ = (0, 1)
-        elif fos._meets_type(field, fof.IntField):
+        if isinstance(range_[1], datetime):
+            range_ = (range_[0], range_[1] + timedelta(milliseconds=1))
+        elif isinstance(range_[1], date):
+            range_ = (range_[0], range_[1] + timedelta(days=1))
+        else:
+            range_ = (range_[0], range_[1] + 1e-6)
+
+        if fos._meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]
             range_ = (range_[0] - 0.5, range_[1] + 0.5)
             if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
                 bins = delta + 1
                 num_ticks = 0
-        else:
-            range_ = (range_[0], range_[1] + 0.01)
 
         ticks.append(num_ticks)
         aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))
 
-    return aggregations, fields, ticks
+    return aggregations, fields, ticks, nonfinites
 
 
 class FileHandler(tornado.web.StaticFileHandler):
@@ -1442,6 +1481,7 @@ class Application(tornado.web.Application):
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
+            (r"/colorscales", ColorscalesHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),

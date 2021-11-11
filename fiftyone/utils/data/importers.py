@@ -66,13 +66,15 @@ def import_samples(
         dataset_importer: a :class:`DatasetImporter`
         label_field (None): controls the field(s) in which imported labels are
             stored. Only applicable if ``dataset_importer`` is a
-            :class:`LabeledImageDatasetImporter`. If the importer produces a
-            single :class:`fiftyone.core.labels.Label` instance per sample,
-            this argument specifies the name of the field to use; the default
-            is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            :class:`LabeledImageDatasetImporter` or
+            :class:`LabeledVideoDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per
+            sample/frame, this argument specifies the name of the field to use;
+            the default is ``"ground_truth"``. If the importer produces a
+            dictionary of labels per sample, this argument specifies a string
+            prefix to prepend to each label key; the default in this case is to
+            directly use the keys of the imported label dictionaries as field
+            names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -195,14 +197,16 @@ def merge_samples(
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         dataset_importer: a :class:`DatasetImporter`
         label_field (None): controls the field(s) in which imported labels are
-            stored. Only applicable if the dataset importer used is a
-            :class:`LabeledImageDatasetImporter`. If the importer produces a
-            single :class:`fiftyone.core.labels.Label` instance per sample,
-            this argument specifies the name of the field to use; the default
-            is ``"ground_truth"``. If the importer produces a dictionary of
-            labels per sample, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            stored. Only applicable if ``dataset_importer`` is a
+            :class:`LabeledImageDatasetImporter` or
+            :class:`LabeledVideoDatasetImporter`. If the importer produces a
+            single :class:`fiftyone.core.labels.Label` instance per
+            sample/frame, this argument specifies the name of the field to use;
+            the default is ``"ground_truth"``. If the importer produces a
+            dictionary of labels per sample, this argument specifies a string
+            prefix to prepend to each label key; the default in this case is to
+            directly use the keys of the imported label dictionaries as field
+            names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         key_field ("filepath"): the sample field to use to decide whether to
@@ -1060,6 +1064,9 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             importer is guaranteed to return labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single label field of any of
+            these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the importer will return label dictionaries with keys
             and value-types specified by this dictionary. Not all keys need be
@@ -1139,6 +1146,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             importer is guaranteed to return sample-level labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single sample-level label
+            field of any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the importer will return sample-level label
             dictionaries with keys and value-types specified by this
@@ -1157,6 +1167,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             importer is guaranteed to return frame labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single frame label field of
+            any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the importer will return frame label dictionaries
             with keys and value-types specified by this dictionary. Not all
@@ -1467,22 +1480,27 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         if empty_import:
             #
-            # The `dataset` we're importing into is empty, so we mostly replace
-            # its backing document with `dataset_dict`
+            # The `dataset` we're importing into is empty, so we replace its
+            # backing document with `dataset_dict`, except for the
+            # metadata-related fields listed below, which we keep in `dataset`
             #
             # Note that we must work with dicts instead of `DatasetDocument`s
             # here because the import may need migration
             #
+            doc = dataset._doc
             dataset_dict.update(
                 dict(
-                    _id=dataset._doc.id,
-                    name=dataset._doc.name,
-                    sample_collection_name=dataset._doc.sample_collection_name,
-                    persistent=dataset._doc.persistent,
+                    _id=doc.id,
+                    name=doc.name,
+                    persistent=doc.persistent,
+                    created_at=doc.created_at,
+                    last_loaded_at=doc.last_loaded_at,
+                    sample_collection_name=doc.sample_collection_name,
+                    frame_collection_name=doc.frame_collection_name,
                 )
             )
 
-            # RunResults are imported separately
+            # Run results are imported separately
 
             for run_doc in dataset_dict.get("evaluations", {}).values():
                 run_doc["results"] = None
@@ -1553,7 +1571,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             )
 
         #
-        # Import RunResults
+        # Import Run results
         #
 
         if empty_import:
@@ -1629,8 +1647,11 @@ def _import_run_results(dataset, run_dir, run_cls, keys=None):
     for key in keys:
         json_path = os.path.join(run_dir, key + ".json")
         if os.path.exists(json_path):
-            results = fors.RunResults.from_json(json_path, dataset)
-            run_cls.save_run_results(dataset, key, results)
+            view = run_cls.load_run_view(dataset, key)
+            run_info = run_cls.get_run_info(dataset, key)
+            config = run_info.config
+            results = fors.RunResults.from_json(json_path, view, config)
+            run_cls.save_run_results(dataset, key, results, cache=False)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
@@ -1798,14 +1819,15 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
 class FiftyOneImageClassificationDatasetImporter(
     LabeledImageDatasetImporter, ImportPathsMixin
 ):
-    """Importer for image classification datasets stored on disk in FiftyOne's
-    default format.
+    """Importer for image classification datasets stored on disk in a simple
+    JSON format.
 
     See :ref:`this page <FiftyOneImageClassificationDataset-import>` for format
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -1851,6 +1873,12 @@ class FiftyOneImageClassificationDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -1913,7 +1941,7 @@ class FiftyOneImageClassificationDatasetImporter(
 
     @property
     def label_cls(self):
-        return fol.Classification
+        return (fol.Classification, fol.Classifications)
 
     def setup(self):
         self._sample_parser = FiftyOneImageClassificationSampleParser()
@@ -2194,14 +2222,15 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
 class FiftyOneImageDetectionDatasetImporter(
     LabeledImageDatasetImporter, ImportPathsMixin
 ):
-    """Importer for image detection datasets stored on disk in FiftyOne's
-    default format.
+    """Importer for image detection datasets stored on disk in a simple JSON
+    format.
 
     See :ref:`this page <FiftyOneImageDetectionDataset-import>` for format
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -2247,6 +2276,12 @@ class FiftyOneImageDetectionDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -2357,14 +2392,15 @@ class FiftyOneImageDetectionDatasetImporter(
 class FiftyOneTemporalDetectionDatasetImporter(
     LabeledVideoDatasetImporter, ImportPathsMixin
 ):
-    """Importer for temporal video detection datasets stored on disk in
-    FiftyOne's default format.
+    """Importer for temporal video detection datasets stored on disk in a
+    simple JSON format.
 
     See :ref:`this page <FiftyOneTemporalDetectionDataset-import>` for format
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -2410,6 +2446,12 @@ class FiftyOneTemporalDetectionDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -2532,7 +2574,8 @@ class ImageSegmentationDirectoryImporter(
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -2585,6 +2628,12 @@ class ImageSegmentationDirectoryImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )

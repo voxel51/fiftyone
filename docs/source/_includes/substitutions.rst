@@ -13,6 +13,7 @@
 
 .. |ToPatches| replace:: :class:`ToPatches <fiftyone.core.stages.ToPatches>`
 .. |ToEvaluationPatches| replace:: :class:`ToEvaluationPatches <fiftyone.core.stages.ToEvaluationPatches>`
+.. |ToClips| replace:: :class:`ToClips <fiftyone.core.stages.ToClips>`
 .. |SortBySimilarity| replace:: :class:`SortBySimilarity <fiftyone.core.stages.SortBySimilarity>`
 
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
@@ -25,6 +26,8 @@
 .. |IntField| replace:: :class:`IntField <fiftyone.core.fields.IntField>`
 .. |FloatField| replace:: :class:`FloatField <fiftyone.core.fields.FloatField>`
 .. |StringField| replace:: :class:`StringField <fiftyone.core.fields.StringField>`
+.. |DateField| replace:: :class:`DateField <fiftyone.core.fields.DateField>`
+.. |DateTimeField| replace:: :class:`DateTimeField <fiftyone.core.fields.DateTimeField>`
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 .. |VectorField| replace:: :class:`VectorField <fiftyone.core.fields.VectorField>`
@@ -34,6 +37,7 @@
 .. |ViewField| replace:: :class:`ViewField <fiftyone.core.expressions.ViewField>`
 
 .. |Label| replace:: :class:`Label <fiftyone.core.labels.Label>`
+.. |Regression| replace:: :class:`Regression <fiftyone.core.labels.Regression>`
 .. |Classification| replace:: :class:`Classification <fiftyone.core.labels.Classification>`
 .. |Classifications| replace:: :class:`Classifications <fiftyone.core.labels.Classifications>`
 .. |Detection| replace:: :class:`Detection <fiftyone.core.labels.Detection>`
@@ -43,6 +47,7 @@
 .. |Keypoint| replace:: :class:`Keypoint <fiftyone.core.labels.Keypoint>`
 .. |Keypoints| replace:: :class:`Keypoints <fiftyone.core.labels.Keypoints>`
 .. |Segmentation| replace:: :class:`Segmentation <fiftyone.core.labels.Segmentation>`
+.. |Heatmap| replace:: :class:`Heatmap <fiftyone.core.labels.Heatmap>`
 .. |TemporalDetection| replace:: :class:`TemporalDetection <fiftyone.core.labels.TemporalDetection>`
 .. |TemporalDetections| replace:: :class:`TemporalDetections <fiftyone.core.labels.TemporalDetections>`
 .. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
@@ -97,9 +102,11 @@
 .. |EmbeddingsMixin| replace:: :class:`EmbeddingsMixin <fiftyone.core.models.EmbeddingsMixin>`
 .. |TorchModelMixin| replace:: :class:`TorchModelMixin <fiftyone.core.models.TorchModelMixin>`
 
-.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
+.. |AnnotationResults| replace:: :class:`AnnotationResults <fiftyone.core.annotation.AnnotationResults>`
 .. |BrainResults| replace:: :class:`BrainResults <fiftyone.core.brain.BrainResults>`
+.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
 
+.. |RegressionResults| replace:: :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`
 .. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
 .. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.eval.classification.BinaryClassificationResults>`
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`

@@ -31,10 +31,15 @@ import { Entry } from "./CheckboxGroup";
 import * as atoms from "../recoil/atoms";
 import * as fieldAtoms from "./Filters/utils";
 import * as selectors from "../recoil/selectors";
-import { FILTERABLE_TYPES } from "../utils/labels";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FILTERABLE_TYPES,
+  FRAME_SUPPORT_FIELD,
+} from "../utils/labels";
 import { useTheme } from "../utils/hooks";
 import { PillButton } from "./utils";
-import { prettify } from "../utils/generic";
+import { formatDateTime, prettify } from "../utils/generic";
 import * as filterAtoms from "./Filters/atoms";
 
 const Container = styled.div`
@@ -544,7 +549,7 @@ type OthersCellProps = {
   modal: boolean;
 };
 
-const OthersCell = ({ modal }: ScalarsCellProps) => {
+const OthersCell = ({ modal }: OthersCellProps) => {
   const scalars = useRecoilValue(selectors.primitiveNames("sample"));
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
@@ -558,6 +563,10 @@ const OthersCell = ({ modal }: ScalarsCellProps) => {
     filterAtoms.filteredScalarCounts(modal),
     useRecoilValue(filterAtoms.scalarCounts(modal)),
   ];
+  const types = useRecoilValue(selectors.primitivesMap("sample"));
+  const timeZone = useRecoilValue(selectors.timeZone);
+  const subTypes = useRecoilValue(selectors.primitiveSubfields("sample"));
+  const dates = [DATE_TIME_FIELD, DATE_FIELD];
 
   return (
     <Cell
@@ -575,7 +584,20 @@ const OthersCell = ({ modal }: ScalarsCellProps) => {
       entries={scalars
         .filter((name) => !(["filepath", "id"].includes(name) && modal))
         .map((name) => {
-          const value = modal ? count[dbFields[name]] : null;
+          let value = modal ? count[dbFields[name]] : null;
+
+          if (
+            value &&
+            (dates.includes(types[name]) || dates.includes(subTypes[name]))
+          ) {
+            value = formatDateTime(
+              value.datetime,
+              types[name] === DATE_FIELD || subTypes[name] === DATE_TIME_FIELD
+                ? "UTC"
+                : timeZone
+            );
+          }
+
           return {
             name,
             disabled: false,
@@ -584,14 +606,22 @@ const OthersCell = ({ modal }: ScalarsCellProps) => {
             selected: activeScalars.includes(name),
             color: colorByLabel ? theme.brand : colorMap(name),
             title:
-              modal && !Array.isArray(value) ? prettify(value, false) : name,
+              modal &&
+              (!Array.isArray(value) || types[name] === FRAME_SUPPORT_FIELD)
+                ? prettify(value, false)
+                : name,
             value:
-              modal && !Array.isArray(value) ? prettify(value, false) : null,
+              modal &&
+              (!Array.isArray(value) || types[name] === FRAME_SUPPORT_FIELD)
+                ? prettify(value, false)
+                : null,
             path: name,
             count:
               count === null
                 ? null
-                : modal && Array.isArray(value)
+                : modal &&
+                  Array.isArray(value) &&
+                  types[name] !== FRAME_SUPPORT_FIELD
                 ? value.length
                 : count[name],
             type: "values",

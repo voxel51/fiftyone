@@ -205,7 +205,7 @@ export class FullscreenButtonElement<
     const element = document.createElement("img");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
-    element.style.gridArea = "2 / 11 / 2 / 11";
+    element.style.gridArea = "2 / 12 / 2 / 12";
     return element;
   }
 
@@ -243,7 +243,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.plus;
     element.title = "Zoom in (+)";
-    element.style.gridArea = "2 / 9 / 2 / 9";
+    element.style.gridArea = "2 / 10 / 2 / 10";
     return element;
   }
 
@@ -272,7 +272,7 @@ export class MinusElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.minus;
     element.title = "Zoom out (-)";
-    element.style.gridArea = "2 / 8 / 2 / 8";
+    element.style.gridArea = "2 / 9 / 2 / 9";
     return element;
   }
 
@@ -302,7 +302,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.help;
     element.title = "Help (?)";
-    element.style.gridArea = "2 / 13 / 2 / 13";
+    element.style.gridArea = "2 / 14 / 2 / 14";
     return element;
   }
 
@@ -339,7 +339,7 @@ export class OptionsButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.options;
     element.title = "Settings (s)";
-    element.style.gridArea = "2 / 14 / 2 / 14";
+    element.style.gridArea = "2 / 15 / 2 / 15";
     return element;
   }
 
@@ -375,7 +375,7 @@ export class CropToContentButtonElement<
     element.style.padding = "2px";
     element.src = cropIcon;
     element.title = `${cropToContent.title} (${cropToContent.shortcut})`;
-    element.style.gridArea = "2 / 10 / 2 / 10";
+    element.style.gridArea = "2 / 11 / 2 / 11";
     return element;
   }
 
@@ -411,7 +411,7 @@ export class JSONButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = jsonIcon;
     element.title = `${json.title} (${json.shortcut})`;
-    element.style.gridArea = "2 / 12 / 2 / 12";
+    element.style.gridArea = "2 / 13 / 2 / 13";
     return element;
   }
 

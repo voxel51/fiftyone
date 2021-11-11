@@ -28,33 +28,41 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
       this.errorElement.appendChild(errorImg);
 
       if (!thumbnail) {
-        const isVideo = mimetype.startsWith("video/");
-        const text = document.createElement("p");
-        const textDiv = document.createElement("div");
-        text.innerText = `This ${
-          isVideo ? "video" : "image"
-        } failed to load. The file may not exist, or its type (${mimetype}) may be unsupported.`;
-        textDiv.appendChild(text);
+        if (error === true) {
+          const isVideo = mimetype.startsWith("video/");
+          const text = document.createElement("p");
+          const textDiv = document.createElement("div");
+          text.innerText = `This ${
+            isVideo ? "video" : "image"
+          } failed to load. The file may not exist, or its type (${mimetype}) may be unsupported.`;
+          textDiv.appendChild(text);
 
-        this.errorElement.appendChild(textDiv);
+          this.errorElement.appendChild(textDiv);
 
-        if (isVideo) {
-          const videoText = document.createElement("p");
-          videoText.innerHTML = `You can use
-            <code>
-              <a>
-                fiftyone.utils.video.reencode_videos()
-              </a>
-            </code>
-            to re-encode videos in a supported format.`;
-          videoText
-            .querySelector("a")
-            .addEventListener("click", () =>
-              onClick(
-                "https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos"
-              )
-            );
-          textDiv.appendChild(videoText);
+          if (isVideo) {
+            const videoText = document.createElement("p");
+            videoText.innerHTML = `You can use
+              <code>
+                <a>
+                  fiftyone.utils.video.reencode_videos()
+                </a>
+              </code>
+              to re-encode videos in a supported format.`;
+            videoText
+              .querySelector("a")
+              .addEventListener("click", () =>
+                onClick(
+                  "https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos"
+                )
+              );
+            textDiv.appendChild(videoText);
+          }
+        } else {
+          const text = document.createElement("p");
+          const textDiv = document.createElement("div");
+          text.innerText = "Something went wrong";
+          textDiv.appendChild(text);
+          this.errorElement.appendChild(textDiv);
         }
       } else {
         this.errorElement.style.cursor = "pointer";

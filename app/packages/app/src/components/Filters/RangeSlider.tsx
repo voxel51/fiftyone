@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import numeral from "numeral";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 import {
   RecoilState,
   RecoilValueReadOnly,
@@ -9,9 +9,17 @@ import {
 } from "recoil";
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
-import Checkbox from "../Common/Checkbox";
-import { PopoutSectionTitle } from "../utils";
-import { Button } from "../FieldsSidebar";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+} from "../../utils/labels";
+import * as selectors from "../../recoil/selectors";
+import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
+import { useTheme } from "../../utils/hooks";
+import { isDateTimeField } from "./NumericFieldFilter.state";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -23,7 +31,7 @@ const SliderContainer = styled.div`
 const SliderStyled = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.brand};
-    margin: 0 1rem 0 0.8rem;
+    margin: 0 1.5rem 0 1.3rem;
     height: 3px;
   }
 
@@ -54,6 +62,7 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 
   .valueLabel {
+    width: auto;
     margin-top: 0.5rem;
     font-weight: bold;
     font-family: "Palanquin", sans-serif;
@@ -66,17 +75,93 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 
   .valueLabel > span > span {
-    color: transparent;
-  }
-
-  .valueLabel > span > span {
+    text-align: center;
     color: ${({ theme }) => theme.font};
     background: ${({ theme }) => theme.backgroundDark};
     border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   }
 `;
 
-const formatNumeral = (int) => (v) => numeral(v).format(int ? "0a" : "0.00a");
+const getFormatter = (fieldType, timeZone, bounds) => {
+  let hasTitle = false;
+  let dtFormatters;
+  const date = [DATE_TIME_FIELD, DATE_FIELD].includes(fieldType);
+
+  if (date) {
+    dtFormatters = getDateTimeRangeFormattersWithPrecision(
+      timeZone,
+      bounds[0],
+      bounds[1]
+    );
+
+    hasTitle = dtFormatters[0] !== null;
+  }
+
+  return {
+    hasTitle,
+    formatter: (v) => {
+      if (date) {
+        const str = dtFormatters[1].format(v).split(",");
+        if (str.length === 1) {
+          const day = str[0].split("-");
+          if (day.length === 3) {
+            const [y, m, d] = day;
+            return (
+              <div>
+                {y}&#8209;{m}&#8209;{d}
+              </div>
+            );
+          }
+
+          return str[0];
+        }
+
+        let [day, time] = str;
+
+        if (dtFormatters[1].resolvedOptions().fractionalSecondDigits === 3) {
+          time += "ms";
+          return (
+            <>
+              <div>{day}</div>
+              <div>{time}</div>
+            </>
+          );
+        }
+
+        const [y, m, d] = day.split("/");
+
+        return (
+          <>
+            <div>
+              {y}&#8209;{m}&#8209;{d}
+            </div>
+            {time && <div>{time}</div>}
+          </>
+        );
+      }
+
+      return numeral(v).format(
+        [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
+          ? "0a"
+          : "0.00a"
+      );
+    },
+  };
+};
+
+const getStep = (bounds: [number, number], fieldType?: string): number => {
+  const delta = bounds[1] - bounds[0];
+  const max = 100;
+
+  let step = delta / max;
+  if (
+    [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
+  ) {
+    return Math.ceil(step);
+  }
+
+  return step;
+};
 
 type SliderValue = number | undefined;
 
@@ -90,6 +175,8 @@ type BaseSliderProps = {
   onCommit: (e: Event, v: Range | number) => void;
   persistValue?: boolean;
   showBounds?: boolean;
+  fieldType?: string;
+  showValue: boolean;
   int?: boolean;
   style?: React.CSSProperties;
 };
@@ -98,16 +185,22 @@ const BaseSlider = React.memo(
   ({
     boundsAtom,
     color,
-    int = false,
+    fieldType,
     onChange,
     onCommit,
     persistValue = true,
     showBounds = true,
     value,
     style,
+    showValue = true,
   }: BaseSliderProps) => {
-    const theme = useContext(ThemeContext);
+    const theme = useTheme();
     const bounds = useRecoilValue(boundsAtom);
+
+    const timeZone =
+      fieldType && isDateTimeField(fieldType)
+        ? useRecoilValue(selectors.timeZone)
+        : null;
     const [clicking, setClicking] = useState(false);
 
     const hasBounds = bounds.every((b) => b !== null);
@@ -115,42 +208,69 @@ const BaseSlider = React.memo(
     if (!hasBounds) {
       return null;
     }
-    let step = (bounds[1] - bounds[0]) / 100;
-    if (int) {
-      step = Math.ceil(step);
-    }
 
-    const formatter = formatNumeral(int);
+    const step = getStep(bounds, fieldType);
+    const { formatter, hasTitle } = getFormatter(
+      fieldType,
+      fieldType === DATE_FIELD ? "UTC" : timeZone,
+      bounds
+    );
 
     return (
-      <SliderContainer style={style}>
-        {showBounds && formatter(bounds[0])}
-        <SliderStyled
-          onMouseDown={() => setClicking(true)}
-          onMouseUp={() => setClicking(false)}
-          value={value}
-          onChange={onChange}
-          onChangeCommitted={(e, v) => {
-            onCommit(e, v);
-            setClicking(false);
-          }}
-          classes={{
-            thumb: "thumb",
-            track: "track",
-            rail: "rail",
-            active: "active",
-            valueLabel: "valueLabel",
-          }}
-          valueLabelFormat={formatter}
-          aria-labelledby="slider"
-          valueLabelDisplay={clicking || persistValue ? "on" : "off"}
-          max={bounds[1]}
-          min={bounds[0]}
-          step={step}
-          theme={{ ...theme, brand: color }}
-        />
-        {showBounds && formatter(bounds[1])}
-      </SliderContainer>
+      <>
+        {hasTitle ? (
+          <>
+            {
+              <div
+                style={{
+                  width: "100%",
+                  textAlign: "center",
+                  padding: "0.25rem",
+                  color: theme.font,
+                }}
+              >
+                {getDateTimeRangeFormattersWithPrecision(
+                  timeZone,
+                  bounds[0],
+                  bounds[1]
+                )[0]
+                  .format(bounds[0])
+                  .replaceAll("/", "-")}
+              </div>
+            }
+          </>
+        ) : null}
+        <SliderContainer style={style}>
+          {showBounds && formatter(bounds[0])}
+          <SliderStyled
+            onMouseDown={() => setClicking(true)}
+            onMouseUp={() => setClicking(false)}
+            value={value}
+            onChange={onChange}
+            onChangeCommitted={(e, v) => {
+              onCommit(e, v);
+              setClicking(false);
+            }}
+            classes={{
+              thumb: "thumb",
+              track: "track",
+              rail: "rail",
+              active: "active",
+              valueLabel: "valueLabel",
+            }}
+            valueLabelFormat={formatter}
+            aria-labelledby="slider"
+            valueLabelDisplay={
+              (clicking || persistValue) && showValue ? "on" : "off"
+            }
+            max={bounds[1]}
+            min={bounds[0]}
+            step={step}
+            theme={{ ...theme, brand: color }}
+          />
+          {showBounds && formatter(bounds[1])}
+        </SliderContainer>
+      </>
     );
   }
 );
@@ -160,11 +280,14 @@ type SliderProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   persistValue?: boolean;
+  fieldType?: string;
+  showValue?: boolean;
   showBounds?: boolean;
+  onChange?: boolean;
   int?: boolean;
 };
 
-export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
+export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
   const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<SliderValue>(null);
   useEffect(() => {
@@ -175,7 +298,7 @@ export const Slider = ({ valueAtom, ...rest }: SliderProps) => {
   return (
     <BaseSlider
       {...rest}
-      onChange={(_, v) => setLocalValue(v)}
+      onChange={(_, v) => (onChange ? setValue(v) : setLocalValue(v))}
       onCommit={(_, v) => setValue(v)}
       value={localValue}
     />
@@ -187,7 +310,7 @@ type RangeSliderProps = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   showBounds?: boolean;
-  int?: boolean;
+  fieldType: string;
 };
 
 export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
@@ -207,101 +330,5 @@ export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
     />
   );
 };
-
-const NamedRangeSliderContainer = styled.div`
-  padding-bottom: 0.5rem;
-  margin: 3px;
-  font-weight: bold;
-`;
-
-const NamedRangeSliderHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-`;
-
-const RangeSliderContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem 0 0.5rem;
-`;
-
-type NamedProps = {
-  valueAtom: RecoilState<Range>;
-  boundsAtom: RecoilValueReadOnly<Range>;
-  noneCountAtom: RecoilValueReadOnly<number>;
-  noneAtom: RecoilState<boolean>;
-  name?: string;
-  int?: boolean;
-  color: string;
-};
-
-const isDefaultRange = (range, bounds) => {
-  return bounds.every((b, i) => b === range[i]);
-};
-
-export const NamedRangeSlider = React.memo(
-  React.forwardRef(
-    (
-      { noneCountAtom, name, noneAtom, ...rangeSliderProps }: NamedProps,
-      ref
-    ) => {
-      const none = useRecoilValue(noneCountAtom);
-      const hasNone = none > 0;
-      const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
-      const [range, setRange] = useRecoilState(rangeSliderProps.valueAtom);
-      const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
-      const hasDefaultRange = isDefaultRange(range, bounds);
-      const hasBounds = bounds.every((b) => b !== null);
-      const isSingleValue = hasBounds && bounds[0] === bounds[1];
-
-      if (!hasBounds || (!hasNone && isSingleValue)) {
-        return null;
-      }
-
-      return (
-        <NamedRangeSliderContainer ref={ref}>
-          {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
-          <RangeSliderContainer>
-            {hasBounds && !isSingleValue && (
-              <RangeSlider {...rangeSliderProps} showBounds={false} />
-            )}
-            {((hasNone && hasBounds && hasDefaultRange) ||
-              !hasDefaultRange) && <PopoutSectionTitle />}
-            {hasNone && hasBounds && hasDefaultRange && (
-              <Checkbox
-                color={rangeSliderProps.color}
-                name={null}
-                value={includeNone}
-                setValue={setIncludeNone}
-                count={none}
-              />
-            )}
-            {(!hasDefaultRange || !includeNone) && (
-              <>
-                <Button
-                  text={"Reset"}
-                  color={rangeSliderProps.color}
-                  onClick={() => {
-                    setRange(bounds);
-                    setIncludeNone(true);
-                  }}
-                  style={{
-                    margin: "0.25rem -0.5rem",
-                    height: "2rem",
-                    borderRadius: 0,
-                    textAlign: "center",
-                  }}
-                ></Button>
-              </>
-            )}
-          </RangeSliderContainer>
-        </NamedRangeSliderContainer>
-      );
-    }
-  )
-);
 
 export default RangeSlider;

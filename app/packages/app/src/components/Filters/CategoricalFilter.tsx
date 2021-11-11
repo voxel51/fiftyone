@@ -16,19 +16,21 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
 import { Button } from "../FieldsSidebar";
-import { PopoutSectionTitle, TabOption } from "../utils";
+import { PopoutSectionTitle } from "../utils";
 import { LIST_LIMIT } from "./StringFieldFilter.state";
 import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
-import { Value } from "./types";
 import { subCountValueAtom } from "./atoms";
 import { genSort } from "../../utils/generic";
+import { FRAME_SUPPORT_FIELD } from "../../utils/labels";
+import ExcludeOption from "./Exclude";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -52,37 +54,7 @@ const NamedCategoricalFilterHeader = styled.div`
 
 const CHECKBOX_LIMIT = 20;
 
-interface ExcludeOptionProps {
-  excludeAtom: RecoilState<boolean>;
-  valueName: string;
-  color: string;
-}
-
-const ExcludeOption = ({
-  excludeAtom,
-  valueName,
-  color,
-}: ExcludeOptionProps) => {
-  const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  return (
-    <TabOption
-      active={excluded ? "Exclude" : "Select"}
-      color={color}
-      options={[
-        {
-          text: "Select",
-          title: `Select ${valueName}`,
-          onClick: () => excluded && setExcluded(false),
-        },
-        {
-          text: "Exclude",
-          title: `Exclude ${valueName}`,
-          onClick: () => !excluded && setExcluded(true),
-        },
-      ]}
-    />
-  );
-};
+type Value = string | number | null | boolean | [number, number];
 
 const nullSort = ({
   count,
@@ -149,6 +121,10 @@ const Wrapper = ({
     value,
     counts[String(value)] ?? 0,
   ]);
+  const disableCount =
+    modal &&
+    useRecoilValue(selectors.primitivesSubfieldMap("sample"))[path] ===
+      FRAME_SUPPORT_FIELD;
 
   if (totalCount <= CHECKBOX_LIMIT || disableItems) {
     allValues = [
@@ -184,7 +160,9 @@ const Wrapper = ({
           disabled={(modal && allValues.length === 1) || disableItems}
           name={value}
           count={
-            selectedCounts.current.has(value)
+            disableCount
+              ? null
+              : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
               : count
           }
@@ -204,7 +182,6 @@ const Wrapper = ({
       ))}
       {Boolean(selectedSet.size) && !disableItems && (
         <>
-          <PopoutSectionTitle />
           {totalCount > 3 && excludeAtom && (
             <ExcludeOption
               excludeAtom={excludeAtom}

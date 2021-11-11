@@ -7,6 +7,7 @@ Aggregations.
 """
 from collections import OrderedDict
 from copy import deepcopy
+from datetime import date, datetime
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
 
 
 class Aggregation(object):
@@ -34,9 +36,11 @@ class Aggregation(object):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
-    def __init__(self, field_or_expr, expr=None):
+    def __init__(self, field_or_expr, expr=None, safe=False):
         if field_or_expr is not None and not etau.is_str(field_or_expr):
             if expr is not None:
                 raise ValueError(
@@ -51,6 +55,7 @@ class Aggregation(object):
 
         self._field_name = field_name
         self._expr = expr
+        self._safe = safe
 
     @property
     def field_name(self):
@@ -61,6 +66,13 @@ class Aggregation(object):
     def expr(self):
         """The expression being computed, if any."""
         return self._expr
+
+    @property
+    def safe(self):
+        """Whether nan/inf values will be ignored when dealing with floating
+        point values.
+        """
+        return self._safe
 
     @property
     def _has_big_result(self):
@@ -153,11 +165,13 @@ class Bounds(Aggregation):
 
     ``None``-valued fields are ignored.
 
-    This aggregation is typically applied to *numeric* field types (or lists of
-    such types):
+    This aggregation is typically applied to *numeric* or *date* field types
+    (or lists of such types):
 
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -218,7 +232,16 @@ class Bounds(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
+
+    def __init__(
+        self, field_or_expr, expr=None, safe=False, _count_nonfinites=False
+    ):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._field_type = None
+        self._count_nonfinites = _count_nonfinites
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -237,27 +260,63 @@ class Bounds(Aggregation):
         Returns:
             the ``(min, max)`` bounds
         """
-        return d["min"], d["max"]
+        bounds = d["min"], d["max"]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            bounds = p(bounds[0]), p(bounds[1])
+
+        if self._count_nonfinites:
+            return {
+                "bounds": bounds,
+                "inf": d["inf"],
+                "-inf": d["-inf"],
+                "nan": d["nan"],
+            }
+
+        return bounds
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe and not self._count_nonfinites,
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
         else:
             value = "$" + path
 
+        if self._safe and self._count_nonfinites:
+            safe_value = _to_safe_expr(F(value), self._field_type).to_mongo()
+        else:
+            safe_value = value
+
         pipeline.append(
             {
                 "$group": {
                     "_id": None,
-                    "min": {"$min": value},
-                    "max": {"$max": value},
+                    "min": {"$min": safe_value},
+                    "max": {"$max": safe_value},
                 }
             }
         )
+
+        if self._count_nonfinites:
+            for nonfinite in (float("inf"), -float("inf"), float("nan")):
+                pipeline[-1]["$group"][str(nonfinite)] = {
+                    "$sum": {
+                        "$cond": {
+                            "if": {"$eq": [value, nonfinite]},
+                            "then": 1,
+                            "else": 0,
+                        }
+                    }
+                }
 
         return pipeline
 
@@ -350,10 +409,12 @@ class Count(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
-    def __init__(self, field_or_expr=None, expr=None):
-        super().__init__(field_or_expr, expr=expr)
+    def __init__(self, field_or_expr=None, expr=None, safe=False):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -378,8 +439,11 @@ class Count(Aggregation):
         if self._field_name is None and self._expr is None:
             return [{"$count": "count"}]
 
-        path, pipeline, _, _ = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+        path, pipeline, _, _, _ = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
@@ -399,6 +463,8 @@ class CountValues(Aggregation):
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.StringField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -472,22 +538,26 @@ class CountValues(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to treat nan/inf values as None when dealing with
+            floating point values
     """
 
     def __init__(
         self,
         field_or_expr,
         expr=None,
+        safe=False,
         _first=None,
         _sort_by="count",
         _asc=True,
         _include=None,
     ):
-        super().__init__(field_or_expr, expr=expr)
+        super().__init__(field_or_expr, expr=expr, safe=safe)
         self._first = _first
         self._sort_by = _sort_by
         self._order = 1 if _asc else -1
         self._include = _include
+        self._field_type = None
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -495,10 +565,10 @@ class CountValues(Aggregation):
         Returns:
             ``{}``
         """
-        if self._first is None:
-            return {}
+        if self._first is not None:
+            return 0, []
 
-        return 0, []
+        return {}
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo`.
@@ -509,18 +579,32 @@ class CountValues(Aggregation):
         Returns:
             a dict mapping values to counts
         """
-        if self._first is None:
-            return {i["k"]: i["count"] for i in d["result"]}
+        if self._field_type is not None:
+            p = self._field_type.to_python
+        else:
+            p = lambda x: x
 
-        return (
-            d["count"],
-            [[i["k"], i["count"]] for i in d["result"] if i["k"] is not None],
-        )
+        if self._first is not None:
+            return (
+                d["count"],
+                [
+                    [p(i["k"]), i["count"]]
+                    for i in d["result"]
+                    if i["k"] is not None
+                ],
+            )
+
+        return {p(i["k"]): i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -571,6 +655,8 @@ class Distinct(Aggregation):
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.StringField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -644,7 +730,13 @@ class Distinct(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
+
+    def __init__(self, field_or_expr, expr=None, safe=False):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._field_type = None
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -663,12 +755,23 @@ class Distinct(Aggregation):
         Returns:
             a sorted list of distinct values
         """
-        return d["values"]
+        values = d["values"]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            return [p(v) for v in values]
+
+        return values
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -689,11 +792,13 @@ class Distinct(Aggregation):
 class HistogramValues(Aggregation):
     """Computes a histogram of the field values in a collection.
 
-    This aggregation is typically applied to *numeric* field types (or
-    lists of such types):
+    This aggregation is typically applied to *numeric* or *date* field types
+    (or lists of such types):
 
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
 
     Examples::
 
@@ -780,13 +885,17 @@ class HistogramValues(Aggregation):
         self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
         super().__init__(field_or_expr, expr=expr)
+
         self._bins = bins
         self._range = range
         self._auto = auto
 
+        self._field_type = None
+        self._is_datetime = False
         self._num_bins = None
         self._edges = None
-        self._edges_last_used = None
+        self._last_edges = None
+
         self._parse_args()
 
     def default_result(self):
@@ -795,9 +904,9 @@ class HistogramValues(Aggregation):
         Returns:
             a tuple of
 
-            -   counts: ``[]``
-            -   edges: ``[]``
-            -   other: ``0``
+            -   **counts**: ``[]``
+            -   **edges**: ``[]``
+            -   **other**: ``0``
         """
         return [], [], 0
 
@@ -810,12 +919,12 @@ class HistogramValues(Aggregation):
         Returns:
             a tuple of
 
-            -   counts: a list of counts in each bin
-            -   edges: an increasing list of bin edges of length
+            -   **counts**: a list of counts in each bin
+            -   **edges**: an increasing list of bin edges of length
                 ``len(counts) + 1``. Note that each bin is treated as having an
                 inclusive lower boundary and exclusive upper boundary,
                 ``[lower, upper)``, including the rightmost bin
-            -   other: the number of items outside the bins
+            -   **other**: the number of items outside the bins
         """
         if self._auto:
             return self._parse_result_auto(d)
@@ -823,9 +932,11 @@ class HistogramValues(Aggregation):
         return self._parse_result_edges(d)
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
             sample_collection, self._field_name, expr=self._expr
         )
+
+        self._field_type = field_type
 
         if id_to_str:
             value = {"$toString": "$" + path}
@@ -848,7 +959,11 @@ class HistogramValues(Aggregation):
             else:
                 edges = self._compute_bin_edges(sample_collection)
 
-            self._edges_last_used = edges
+            self._last_edges = edges
+
+            if self._is_datetime:
+                edges = [{"$toDate": e} for e in edges]
+
             pipeline.append(
                 {
                     "$bucket": {
@@ -865,14 +980,20 @@ class HistogramValues(Aggregation):
         return pipeline
 
     def _parse_args(self):
+        if self._range is not None:
+            self._range, self._is_datetime = _handle_dates(self._range)
+
+        if self._bins is not None and etau.is_container(self._bins):
+            self._bins, self._is_datetime = _handle_dates(self._bins)
+
         if self._bins is None:
             bins = 10
         else:
-            bins = self._bins
+            bins = int(self._bins)
 
         if self._auto:
             if etau.is_numeric(bins):
-                self._num_bins = bins
+                self._num_bins = int(bins)
             else:
                 self._num_bins = 10
 
@@ -893,17 +1014,22 @@ class HistogramValues(Aggregation):
             self._num_bins = bins
 
     def _compute_bin_edges(self, sample_collection):
-        bounds = sample_collection.bounds(self._field_name, expr=self._expr)
-        if any(b is None for b in bounds):
-            bounds = (-1, -1)
-
-        return list(
-            np.linspace(bounds[0], bounds[1] + 1e-6, self._num_bins + 1)
+        bounds = sample_collection.bounds(
+            self._field_name, expr=self._expr, safe=True
         )
 
+        if any(b is None for b in bounds):
+            bounds = [-1, -1]
+
+        bounds, self._is_datetime = _handle_dates(bounds)
+        db = 1 if self._is_datetime else 1e-6
+
+        return list(np.linspace(bounds[0], bounds[1] + db, self._num_bins + 1))
+
     def _parse_result_edges(self, d):
-        _edges_array = np.array(self._edges_last_used)
-        edges = list(_edges_array)
+        edges = self._last_edges
+        edges_array = np.array(edges)
+
         counts = [0] * (len(edges) - 1)
         other = 0
         for di in d["bins"]:
@@ -911,8 +1037,11 @@ class HistogramValues(Aggregation):
             if left == "other":
                 other = di["count"]
             else:
-                idx = np.abs(_edges_array - left).argmin()
+                left, _ = _handle_dates(left)
+                idx = np.abs(edges_array - left).argmin()
                 counts[idx] = di["count"]
+
+        edges = self._parse_edges(edges)
 
         return counts, edges, other
 
@@ -925,7 +1054,20 @@ class HistogramValues(Aggregation):
 
         edges.append(di["_id"]["max"])
 
+        edges = self._parse_edges(edges)
+
         return counts, edges, 0
+
+    def _parse_edges(self, edges):
+        if self._is_datetime:
+            edges = [fou.timestamp_to_datetime(e) for e in edges]
+        elif self._field_type is not None:
+            # Note that we don't do this for datetimes, since we need datetimes
+            # rather than dates to handle sub-day resolution
+            p = self._field_type.to_python
+            edges = [p(e) for e in edges]
+
+        return edges
 
 
 class Mean(Aggregation):
@@ -998,6 +1140,8 @@ class Mean(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
     def default_result(self):
@@ -1020,8 +1164,11 @@ class Mean(Aggregation):
         return d["mean"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+        path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if id_to_str:
@@ -1104,12 +1251,14 @@ class Std(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
         sample (False): whether to compute the sample standard deviation rather
             than the population standard deviation
     """
 
-    def __init__(self, field_or_expr, expr=None, sample=False):
-        super().__init__(field_or_expr, expr=expr)
+    def __init__(self, field_or_expr, expr=None, safe=False, sample=False):
+        super().__init__(field_or_expr, expr=expr, safe=safe)
         self._sample = sample
 
     def default_result(self):
@@ -1132,8 +1281,11 @@ class Std(Aggregation):
         return d["std"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+        path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if id_to_str:
@@ -1217,6 +1369,8 @@ class Sum(Aggregation):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             to apply to ``field_or_expr`` (which must be a field) before
             aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
     """
 
     def default_result(self):
@@ -1239,8 +1393,11 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, _, id_to_str = _parse_field_and_expr(
-            sample_collection, self._field_name, expr=self._expr
+        path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
         )
 
         if id_to_str:
@@ -1380,7 +1537,7 @@ class Values(Aggregation):
         self._big_result = _big_result
         self._big_field = None
         self._raw = _raw
-        self._parse_fcn = None
+        self._field_type = None
         self._num_list_fields = None
 
     @property
@@ -1422,14 +1579,21 @@ class Values(Aggregation):
         if self._raw:
             return values
 
-        if self._parse_fcn is not None:
+        if self._field_type is not None:
+            fcn = self._field_type.to_python
             level = 1 + self._num_list_fields
-            return _transform_values(values, self._parse_fcn, level=level)
+            return _transform_values(values, fcn, level=level)
 
         return values
 
     def to_mongo(self, sample_collection, big_field="values"):
-        path, pipeline, list_fields, id_to_str = _parse_field_and_expr(
+        (
+            path,
+            pipeline,
+            list_fields,
+            id_to_str,
+            field_type,
+        ) = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
@@ -1437,19 +1601,8 @@ class Values(Aggregation):
             allow_missing=self._allow_missing,
         )
 
-        parse_fcn = None
-        if self._expr is None and not id_to_str:
-            field_type = sample_collection._get_field_type(
-                self._field_name, ignore_primitives=True
-            )
-            if field_type is not None:
-                if self._unwind and isinstance(field_type, fof.ListField):
-                    field_type = field_type.field
-
-                parse_fcn = field_type.to_python
-
         self._big_field = big_field
-        self._parse_fcn = parse_fcn
+        self._field_type = field_type
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
@@ -1530,7 +1683,12 @@ def _extract_list_values(subfield, expr):
 
 
 def _parse_field_and_expr(
-    sample_collection, field_name, expr=None, unwind=True, allow_missing=False,
+    sample_collection,
+    field_name,
+    expr=None,
+    safe=False,
+    unwind=True,
+    allow_missing=False,
 ):
     # unwind can be {True, False, -1}
     auto_unwind = unwind != False
@@ -1545,6 +1703,15 @@ def _parse_field_and_expr(
 
     if field_name is None:
         field_name, expr = _extract_prefix_from_expr(expr)
+
+    found_expr = expr is not None
+
+    field_type = _get_field_type(
+        sample_collection, field_name, unwind=auto_unwind
+    )
+
+    if safe:
+        expr = _to_safe_expr(expr, field_type)
 
     if expr is not None:
         if field_name is None:
@@ -1577,8 +1744,13 @@ def _parse_field_and_expr(
         allow_missing=allow_missing,
     )
 
-    if expr is not None:
-        id_to_str = False  # we have no way of knowing what type expr outputs
+    if found_expr:
+        # We have no way of knowing what type `expr` outputs...
+        id_to_str = False
+        field_type = None
+
+    if id_to_str or type(field_type) in fof._PRIMITIVE_FIELDS:
+        field_type = None
 
     if keep_top_level:
         if is_frame_field:
@@ -1595,8 +1767,8 @@ def _parse_field_and_expr(
         if is_frame_field:
             pipeline.extend(
                 [
-                    {"$project": {"frames." + path: True}},
                     {"$unwind": "$frames"},
+                    {"$project": {"frames." + path: True}},
                     {"$replaceRoot": {"newRoot": "$frames"}},
                 ]
             )
@@ -1621,7 +1793,27 @@ def _parse_field_and_expr(
     for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
 
-    return path, pipeline, other_list_fields, id_to_str
+    return path, pipeline, other_list_fields, id_to_str, field_type
+
+
+def _to_safe_expr(expr, field_type):
+    if (
+        expr is None
+        and field_type is not None
+        and not isinstance(field_type, fof.FloatField)
+    ):
+        return None
+
+    to_finite = (
+        F()
+        .is_in([float("nan"), float("inf"), -float("inf")])
+        .if_else(None, F())
+    )
+
+    if expr is None:
+        return to_finite
+
+    return expr.apply(to_finite)
 
 
 def _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields):
@@ -1752,3 +1944,33 @@ def _remove_prefix(expr, prefix):
     elif isinstance(expr, dict):
         for e in expr.values():
             _remove_prefix(e, prefix)
+
+
+def _get_field_type(sample_collection, field_name, unwind=True):
+    # Remove array references
+    field_name = "".join(field_name.split("[]"))
+
+    field_type = sample_collection._get_field_type(field_name)
+
+    if unwind:
+        while isinstance(field_type, fof.ListField):
+            field_type = field_type.field
+
+    return field_type
+
+
+def _handle_dates(arg):
+    is_scalar = not etau.is_container(arg)
+
+    if is_scalar:
+        arg = [arg]
+
+    is_datetime = any(isinstance(x, (date, datetime)) for x in arg)
+
+    if is_datetime:
+        arg = [fou.datetime_to_timestamp(a) for a in arg]
+
+    if is_scalar:
+        arg = arg[0]
+
+    return arg, is_datetime

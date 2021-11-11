@@ -164,7 +164,7 @@ to add an iterable of unlabeled images that can be parsed via a specified
 FiftyOne provides an
 :class:`ImageSampleParser <fiftyone.utils.data.parsers.ImageSampleParser>`
 that handles samples that contain either an image that can be converted to
-`NumPy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
+`numpy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
 image on disk.
 
 .. code-block:: python
@@ -475,7 +475,7 @@ and then written to the backing directory.
 FiftyOne provides an
 :class:`ImageSampleParser <fiftyone.utils.data.parsers.ImageSampleParser>`
 that handles samples that contain either an image that can be converted to
-`NumPy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
+`numpy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
 image on disk.
 
 .. code-block:: python
@@ -865,6 +865,9 @@ classification or object detections) associated with the image.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         parser is guaranteed to return labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single label field of any of
+                        these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the parser will return label dictionaries with keys
                         and value-types specified by this dictionary. Not all keys need be
@@ -1099,6 +1102,9 @@ classification or object detections) associated with the image.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         parser is guaranteed to return sample-level labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single sample-level label field
+                        of any of these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the parser will return sample-level label
                         dictionaries with keys and value-types specified by this
@@ -1118,6 +1124,9 @@ classification or object detections) associated with the image.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         parser is guaranteed to return frame labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single frame label field of any
+                        of these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the parser will return frame label dictionaries with
                         keys and value-types specified by this dictionary. Not all keys

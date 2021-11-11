@@ -50,7 +50,8 @@ export type Render = (
   id: string,
   element: HTMLDivElement,
   dimensions: [number, number],
-  soft: boolean
+  soft: boolean,
+  disable: boolean
 ) => (() => void) | void;
 
 export type OnItemResize = (id: string, dimensions: [number, number]) => void;

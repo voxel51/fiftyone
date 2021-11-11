@@ -658,7 +658,7 @@ updated to reflect the new field:
         integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
-`list`, `dict`, or more complex data structures
+`date`, `datetime`, `list`, `dict`, or more complex data structures
 :ref:`like label types <using-labels>`:
 
 .. code-block:: python
@@ -816,6 +816,7 @@ The `tags` field can be used like a standard Python list:
 .. code-block:: python
     :linenos:
 
+    sample = dataset.first()
     sample.tags.append("new_tag")
     sample.save()
 
@@ -824,6 +825,33 @@ The `tags` field can be used like a standard Python list:
     You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
     order to persist changes to the database when editing samples that are in
     datasets.
+
+Datasets and views provide helpful methods such as
+:meth:`count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`,
+:meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`,
+:meth:`untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`,
+and
+:meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
+that you can use to perform batch queries and edits to sample tags:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    print(dataset.count_sample_tags())  # {'validation': 200}
+
+    # Tag samples in a view
+    test_view = dataset.limit(100)
+    test_view.untag_samples("validation")
+    test_view.tag_samples("test")
+    print(dataset.count_sample_tags())  # {'validation': 100, 'test': 100}
+
+    # Create a view containing samples with a specific tag
+    validation_view = dataset.match_tags("validation")
+    print(len(validation_view))  # 100
 
 .. _using-metadata:
 
@@ -959,6 +987,81 @@ some workflows when it is available.
                 'frames': <Frames: 0>,
             }>
 
+.. _dates-and-datetimes:
+
+Dates and datetimes
+___________________
+
+You can store date information in FiftyOne datasets by populating fields with
+`date` or `datetime` values:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import date, datetime
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath="image1.png",
+                created_at=datetime(2021, 8, 24, 21, 18, 7),
+                created_date=date(2021, 8, 24),
+            ),
+            fo.Sample(
+                filepath="image2.png",
+                created_at=datetime.utcnow(),
+                created_date=date.today(),
+            ),
+        ]
+    )
+
+    print(dataset)
+    print(dataset.head())
+
+.. note::
+
+    Did you know? You can :ref:`create dataset views <date-views>` with
+    date-based queries!
+
+Internally, FiftyOne stores all dates as UTC timestamps, but you can provide
+any valid `datetime` object when setting a |DateTimeField| of a sample,
+including timezone-aware datetimes, which are internally converted to UTC
+format for safekeeping.
+
+.. code-block:: python
+    :linenos:
+
+    # A datetime in your local timezone
+    now = datetime.utcnow().astimezone()
+
+    sample = fo.Sample(filepath="image.png", created_at=now)
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    # Samples are singletons, so we reload so `sample` will contain values as
+    # loaded from the database
+    dataset.reload()
+
+    sample.created_at.tzinfo  # None
+
+By default, when you access a datetime field of a sample in a dataset, it is
+retrieved as a naive `datetime` instance expressed in UTC format.
+
+However, if you prefer, you can
+:ref:`configure FiftyOne <configuring-timezone>` to load datetime fields as
+timezone-aware `datetime` instances in a timezone of your choice.
+
+.. warning::
+
+    FiftyOne assumes that all `datetime` instances with no explicit timezone
+    are stored in UTC format.
+
+    Therefore, never use `datetime.datetime.now()` when populating a datetime
+    field of a FiftyOne dataset! Instead, use `datetime.datetime.utcnow()`.
+
 .. _using-labels:
 
 Labels
@@ -995,6 +1098,58 @@ labels.
 
 FiftyOne provides a dedicated |Label| subclass for many common tasks. The
 subsections below describe them.
+
+.. _regression:
+
+Regression
+----------
+
+The |Regression| class represents a numeric regression value for an image. The
+value itself is stored in the
+:attr:`value <fiftyone.core.labels.Regression.value>` attribute of the
+|Regression| object. This may be a ground truth value or a model prediction.
+
+The optional
+:attr:`confidence <fiftyone.core.labels.Regression.confidence>` attribute can
+be used to store a score associated with the model prediction and can be
+visualized in the App or used, for example, when
+:ref:`evaluating regressions <evaluating-regressions>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["ground_truth"] = fo.Regression(value=51.0)
+    sample["prediction"] = fo.Classification(value=42.0, confidence=0.9)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Regression: {
+            'id': '616c4bef36297ec40a26d112',
+            'tags': BaseList([]),
+            'value': 51.0,
+            'confidence': None,
+        }>,
+        'prediction': <Classification: {
+            'id': '616c4bef36297ec40a26d113',
+            'tags': BaseList([]),
+            'label': None,
+            'confidence': 0.9,
+            'logits': None,
+            'value': 42.0,
+        }>,
+    }>
 
 .. _classification:
 
@@ -1298,7 +1453,7 @@ masks, which should be stored in the
 :attr:`mask <fiftyone.core.labels.Detection.mask>` attribute of each
 |Detection|.
 
-The mask must be a 2D NumPy array containing either booleans or 0/1 integers
+The mask must be a 2D numpy array containing either booleans or 0/1 integers
 encoding the extent of the instance mask within the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` of the
 object. The array can be of any size; it is stretched as necessary to fill the
@@ -1640,7 +1795,7 @@ The mask itself is stored in the
 :attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute of the
 |Segmentation| object.
 
-The mask should be a 2D NumPy array with integer values encoding the semantic
+The mask should be a 2D numpy array with integer values encoding the semantic
 labels for each pixel in the image. The array can be of any size; it is
 stretched as necessary to fit the image's extent when visualizing in the App.
 
@@ -1680,12 +1835,12 @@ stretched as necessary to fit the image's extent when visualizing in the App.
     }>
 
 When you load datasets with |Segmentation| fields in the App, each pixel value
-is rendered as a distinct color.
+is rendered as a different color (if possible) from the App's color pool.
 
 .. note::
 
-    The mask value ``0`` is a reserved "background" class that is rendered as
-    invislble in the App.
+    The mask value `0` is a reserved "background" class that is rendered as
+    invisible in the App.
 
 .. note::
 
@@ -1693,6 +1848,152 @@ is rendered as a distinct color.
     for your segmentation fields on your dataset. Then, when you view the
     dataset in the App, label strings will appear in the App's tooltip when you
     hover over pixels.
+
+.. _heatmaps:
+
+Heatmaps
+--------
+
+The |Heatmap| class represents a heatmap for an image. The map itself is stored
+in the :attr:`map <fiftyone.core.labels.Heatmap.map>` attribute of the
+|Heatmap| object.
+
+Maps should be 2D numpy arrays. By default, the map values are assumed to be in
+`[0, 1]` for floating point arrays and `[0, 255]` for integer-valued arrays,
+but you can specify a custom `[min, max]` range for a map by setting its
+optional :attr:`range <fiftyone.core.labels.Heatmap.range>` attribute.
+
+The array can be of any size; it is stretched as necessary to fit the image's
+extent when visualizing in the App.
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    import fiftyone as fo
+
+    # Example heatmap
+    heatmap = np.random.randint(256, size=(128, 128), dtype=np.uint8)
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["heatmap"] = fo.Heatmap(map=heatmap)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'heatmap': <Heatmap: {
+            'id': '6129495c9e526ca632663cca',
+            'tags': BaseList([]),
+            'map': array([[  9,  65,  55, ...,  75, 203,  49],
+                          [151,  50,   3, ..., 136, 145, 144],
+                          [242, 110, 150, ...,  90, 214, 151],
+                          ...,
+                          [197, 195, 140, ..., 245, 128, 153],
+                          [145, 124,   9, ..., 205, 254,  68],
+                          [107, 123,  29, ..., 247,  74,   2]], dtype=uint8),
+        }>,
+    }>
+
+When visualizing heatmaps :ref:`in the App <fiftyone-app>`, when the App is
+in color-by-field mode, heatmaps are rendered in their field's color with
+opacity proportional to the magnitude of the heatmap's values. For example, for
+a heatmap whose :attr:`range <fiftyone.core.labels.Heatmap.range>` is
+`[-10, 10]`, pixels with the value +9 will be rendered with 90% opacity, and
+pixels with the value -3 will be rendered with 30% opacity.
+
+When the App is in color-by-value mode, heatmaps are rendered using the
+colormap defined by the `colorscale` of your
+:ref:`App config <configuring-fiftyone-app>`, which can be:
+
+-   The string name of any colorscale
+    `recognized by Plotly <https://plotly.com/python/colorscales>`_
+
+-   A manually-defined colorscale like the following::
+
+        [
+            [0.000, "rgb(165,0,38)"],
+            [0.111, "rgb(215,48,39)"],
+            [0.222, "rgb(244,109,67)"],
+            [0.333, "rgb(253,174,97)"],
+            [0.444, "rgb(254,224,144)"],
+            [0.555, "rgb(224,243,248)"],
+            [0.666, "rgb(171,217,233)"],
+            [0.777, "rgb(116,173,209)"],
+            [0.888, "rgb(69,117,180)"],
+            [1.000, "rgb(49,54,149)"],
+        ]
+
+The example code below demonstrates the possibilities that heatmaps provide by
+overlaying random gaussian kernels with positive or negative sign on an image
+dataset and configuring the App's colorscale in various ways on-the-fly:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    def random_kernel(metadata):
+        h = metadata.height // 2
+        w = metadata.width // 2
+        sign = np.sign(np.random.randn())
+        x, y = np.meshgrid(np.linspace(-1, 1, w), np.linspace(-1, 1, h))
+        x0, y0 = np.random.random(2) - 0.5
+        kernel = sign * np.exp(-np.sqrt((x - x0) ** 2 + (y - y0) ** 2))
+        return fo.Heatmap(map=kernel, range=[-1, 1])
+
+    dataset = foz.load_zoo_dataset("quickstart").select_fields().clone()
+    dataset.compute_metadata()
+
+    for sample in dataset:
+        sample["heatmap"] = random_kernel(sample.metadata)
+        sample.save()
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Select `Settings -> Color by value` in the App
+    # Heatmaps will now be rendered using your default colorscale (printed below)
+    print(session.config.colorscale)
+
+.. code-block:: python
+    :linenos:
+
+    # Switch to a different named colorscale
+    session.config.colorscale = "RdBu"
+    session.refresh()
+
+.. code-block:: python
+    :linenos:
+
+    # Switch to a custom colorscale
+    session.config.colorscale = [
+        [0.00, "rgb(166,206,227)"],
+        [0.25, "rgb(31,120,180)"],
+        [0.45, "rgb(178,223,138)"],
+        [0.65, "rgb(51,160,44)"],
+        [0.85, "rgb(251,154,153)"],
+        [1.00, "rgb(227,26,28)"],
+    ]
+    session.refresh()
+
+.. note::
+
+    Did you know? You customize your App config in various ways, from
+    environment varibables to directly editing a |Session| object's config.
+    See :ref:`this page <configuring-fiftyone-app>` for more details.
 
 .. _temporal-detection:
 
@@ -1980,6 +2281,42 @@ information like whether the label is incorrect:
 
     Did you know? You can add, edit, and filter by label tags
     :ref:`directly in the App <app-tagging>`.
+
+Datasets and views provide helpful methods such as
+:meth:`count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`,
+:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`,
+:meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`,
+:meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels>`,
+and
+:meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
+that you can use to perform batch queries and edits to label tags:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+
+    # Tag all low confidence prediction
+    view = dataset.filter_labels("predictions", F("confidence") < 0.1)
+    view.tag_labels("potential_mistake", label_fields="predictions")
+    print(dataset.count_label_tags())  # {'potential_mistake': 1555}
+
+    # Create a view containing only tagged labels
+    view = dataset.select_labels(tags="potential_mistake", fields="predictions")
+    print(len(view))  # 173
+    print(view.count("predictions.detections"))  # 1555
+
+    # Create a view containing only samples with at least one tagged label
+    view = dataset.match_labels(tags="potential_mistake", fields="predictions")
+    print(len(view))  # 173
+    print(view.count("predictions.detections"))  # 5151
+
+    dataset.untag_labels("potential_mistake", label_fields="predictions")
+    print(dataset.count_label_tags())  # {}
 
 .. _label-attributes:
 

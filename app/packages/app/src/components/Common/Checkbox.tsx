@@ -6,19 +6,21 @@ import styled from "styled-components";
 import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
-import { summarizeLongStr } from "../../utils/generic";
+import { formatDateTime, summarizeLongStr } from "../../utils/generic";
 import { getValueString } from "../Filters/utils";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
-import { Value } from "../Filters/types";
+import * as selectors from "../../recoil/selectors";
+import { DATE_TIME } from "@fiftyone/looker/src/constants";
 
 interface CheckboxProps {
   color?: string;
-  name: Value;
+  name: number | string | boolean | null | [number, number];
   value: boolean;
   setValue: (value: boolean) => void;
   count?: number;
   subCountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
+  forceColor?: boolean;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -69,11 +71,18 @@ const CheckboxName = ({
 }) => {
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const countStr = makeCountStr(subCount, count);
+  const timeZone = useRecoilValue(selectors.timeZone);
 
   return (
     <CheckboxNameDiv>
       <span style={color ? { color } : {}}>
-        {summarizeLongStr(text, 28 - countStr.length, "middle")}
+        {summarizeLongStr(
+          text && text._cls === DATE_TIME
+            ? formatDateTime(text.datetime, timeZone)
+            : text,
+          28 - countStr.length,
+          "middle"
+        )}
       </span>
       {count && <span>{countStr}</span>}
     </CheckboxNameDiv>
@@ -89,6 +98,7 @@ const Checkbox = React.memo(
     subCountAtom,
     count,
     disabled,
+    forceColor,
   }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
@@ -121,7 +131,7 @@ const Checkbox = React.memo(
             }
           >
             <CheckboxName
-              color={coloring ? color : null}
+              color={coloring || forceColor ? color : null}
               count={count}
               subCountAtom={subCountAtom}
               text={text}
