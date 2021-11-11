@@ -326,7 +326,8 @@ class MediaCache(object):
         Returns:
             a file metdata dict, or ``None``
         """
-        _, _, _, client = self._parse_filepath(filepath)
+        fs = _get_file_system(filepath)
+        client = self._get_client(fs)
 
         task = (client, filepath, skip_failures)
         _, metadata = _do_get_file_metadata(task)
@@ -377,7 +378,8 @@ class MediaCache(object):
         Returns:
             a :class:`fiftyone.core.metadata.VideoMetadata` or ``None``
         """
-        _, _, _, client = self._parse_filepath(filepath)
+        fs = _get_file_system(filepath)
+        client = self._get_client(fs)
 
         task = (client, filepath, skip_failures)
         _, metadata = _do_get_video_metadata(task)
@@ -434,7 +436,6 @@ class MediaCache(object):
         """
         fs = _get_file_system(filepath)
         client = self._get_client(fs)
-
         return client.download_bytes(filepath, start=start, end=end)
 
         """

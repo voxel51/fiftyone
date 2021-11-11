@@ -272,48 +272,67 @@ class PageHandler(tornado.web.RequestHandler):
             samples = samples[:page_length]
             more = page + 1
 
-        results = [{"sample": s} for s in samples]
-
-        _add_metadata_simple(results, view.media_type, download_videos=False)
-        # _add_metadata_simple(results, view.media_type, download_videos=True)
+        results = _generate_results(samples, view.media_type)
 
         self.write({"results": results, "more": more})
 
 
-def _add_metadata_simple(results, media_type, download_videos=True):
+def _generate_results(samples, media_type, download_videos=False):
+    filepaths = [s["filepath"] for s in samples]
+
     # Download remote media locally, if necessary, so metadata can be computed.
     # If downloading videos is not allowed, the local path for uncached videos
-    # won't exist and `read_metadata()` will just return placeholder data.
+    # with no sample metadata won't exist and `read_metadata()` will return
+    # placeholder data
     download_media = media_type != fom.VIDEO or download_videos
-    filepaths = [r["sample"]["filepath"] for r in results]
     local_paths = media_cache.get_local_paths(
         filepaths, download_media=download_media
     )
 
+    results = []
     tasks = {}
     metadata = {}
-    for idx, (result, filepath, local_path) in enumerate(
-        zip(results, filepaths, local_paths)
+    for idx, (sample, filepath, local_path) in enumerate(
+        zip(samples, filepaths, local_paths)
     ):
         if filepath not in metadata:
             d, success = fosu.read_metadata(
-                local_path, result["sample"].get("metadata", None)
+                local_path, sample.get("metadata", None)
             )
-
-            if not success and media_cache.is_remote_uncached_video(filepath):
-                tasks[idx] = filepath
-
             metadata[filepath] = d
 
+            # When downloading videos is not allowed, we store tasks for the
+            # remote video metadata that we'll need to compute separately
+            if (
+                not success
+                and not download_videos
+                and media_cache.is_remote_uncached_video(filepath)
+            ):
+                tasks[idx] = filepath
+
+        result = {"sample": sample}
         result.update(metadata[filepath])
 
-    if tasks:
-        filepaths = tasks.values()
-        remote_metadata = media_cache.get_remote_video_metadatas(filepaths)
-        for idx, filepath in tasks.items():
-            d = remote_metadata.get(filepath, None)
-            if d:
-                results[idx].update(d)
+        results.append(result)
+
+    if not tasks:
+        return results
+
+    # Get metadata for uncached remote videos
+    remote_metadata = media_cache.get_remote_video_metadatas(tasks.values())
+    for idx, filepath in tasks.items():
+        try:
+            video_metadata = remote_metadata[filepath]
+            d = {
+                "width": video_metadata.frame_width,
+                "height": video_metadata.frame_height,
+                "frame_rate": video_metadata.frame_rate,
+            }
+            results[idx].update(d)
+        except:
+            pass
+
+    return results
 
 
 class TeamsHandler(RequestHandler):
@@ -1480,7 +1499,6 @@ class FileHandler(tornado.web.StaticFileHandler):
         return super().get_content_type()
 
 
-# https://www.tornadoweb.org/en/branch3.1/web.html#tornado.web.StaticFileHandler.get_content
 class MediaHandler(FileHandler):
     @classmethod
     def get_absolute_path(cls, root, path):
