@@ -60,7 +60,7 @@ would like to run the App as a desktop application.
     App asynchronously and return control to your Python process. The App will
     then remain connected until the process exits.
 
-    If you are using the App in a script, you should use
+    Therefore, if you are using the App in a script, you should use
     :meth:`session.wait() <fiftyone.core.session.Session.wait>` to block
     execution until you close it manually:
 
@@ -72,6 +72,22 @@ would like to run the App as a desktop application.
         # (Perform any additional operations here)
 
         # Blocks execution until the App is closed
+        session.wait()
+
+    If you are a Windows user launching the App from a script, you must use the
+    pattern below to avoid
+    `multiprocessing issues <https://stackoverflow.com/q/20360686>`_, since the
+    App is served via a separate process:
+
+    .. code-block:: python
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    if __name__ == "__main__":
+        # Ensures that the App is only launched once
+        session = fo.launch_app(dataset)
         session.wait()
 
 .. image:: /images/app/app-empty.gif
