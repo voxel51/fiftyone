@@ -36,6 +36,8 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Fashion MNIST <dataset-zoo-fashion-mnist>`                   | image, classification                                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Families In the Wild <dataset-zoo-fiw>`                      | image, classification                                                     |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`HMDB51 <dataset-zoo-hmdb51>`                                 | video, action-recognition                                                 |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`ImageNet 2012 <dataset-zoo-imagenet-2012>`                   | image, classification, manual                                             |
@@ -989,6 +991,87 @@ There are 60,000 training images and 10,000 test images.
 
 .. image:: /images/dataset_zoo/fashion-mnist-test.png
    :alt: fashion-mnist-test
+   :align: center
+
+.. _dataset-zoo-fiw:
+
+Labeled Faces in the Wild
+-------------------------
+
+Families in the Wild is a public benchmark for recognizing families via facial images.
+
+The dataset contains over 26,642 images of 5,037 faces from collected from
+978 families. Each family is indexed under an unique Family ID (FID), which
+range from F0001-F1018 (i.e., some families were merged or removed since its
+first release in 2016.
+
+Faces were cropped from imagery using the five-point face detector MTCNN
+from a variety of photo types (i.e., mostly family photos, along with
+several profile pics of individuals (facial shots). The number of members
+per family varies from 3-to-26, with the number of faces per subject ranging
+from 1 to >10.
+
+Labels exist at different levels of the datastructures (i.e., list of family
+trees). Family-level labels contain a list of members, each assigned an
+member ID (MID) unique to that respective family (e.g., F0011.MID2, refers
+to member 2 of family 11). Besides, members have annotations specifying
+gender and relationship to all other members in that respective family
+(i.e., q relationship matrix were each row represents a member's
+relationship to all other members, with the ith row and the jth column set
+with an integer value (i.e., 0-not related, 1-child of, 2-sibling of,
+3-grandchild of, 4-parent of, 5-spouse (or ex-spouse), 6-grandparent of,
+7-great grandchild of, 8-great grandparent of). Hence, each matrix has a
+zero diagonal (i.e., MID-K is unrelated to MID-K, or themselves), with the
+upper and lower triangles being inverted (i.e., given MID-1 is "parent of"
+MID-2, then MID-2 is the "child of" MID-1.
+
+See https://github.com/visionjo/pykinship#db-contents-and-structure for
+additional details and example annotations.
+
+For more information on the data (e.g., statistics, task evaluations,
+benchmarks, and more), see our recent journal:
+Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling of
+Visual Kinship: A Decade in the Making." IEEE Transactions on Pattern
+Analysis and Machine Intelligence (PAMI), 2021.
+
+
+
+**Details**
+
+-   Dataset name: ``fiw``
+-   Dataset source: https://web.northeastern.edu/smilelab/fiw/
+-   Dataset size: 173.00 MB
+-   Tags: ``image, kinship, verification, classification, search-and-retrieval, facial-recognition``
+-   Supported splits: ``test, val, train``
+-   ZooDataset class:
+    :class:`FamiliesInTheWildDataset <fiftyone.zoo.datasets.base.FamiliesInTheWildDataset>`
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fiw", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load lfw --split test
+
+        fiftyone app launch lfw-test
+
+.. image:: /images/dataset_zoo/lfw-test.png
+   :alt: lfw-test
    :align: center
 
 .. _dataset-zoo-hmdb51:
