@@ -26,6 +26,7 @@ import fiftyone.utils.openimages as fouo
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -891,7 +892,7 @@ class FamiliesInTheWildDataset(FiftyOneDataset):
             etau.delete_dir(scratch_dir)
 
         logger.info("Parsing dataset metadata")
-        print(f"{dataset_dir}\n{scratch_dir}")
+        print("{dataset_dir}\n{scratch_dir}")
         dataset_type = fot.ImageClassificationDirectoryTree()
         importer = foud.ImageClassificationDirectoryTreeImporter
         classes = sorted(
