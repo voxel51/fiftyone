@@ -917,13 +917,16 @@ def _get_video_metadata(tasks, num_workers):
 def _do_get_video_metadata(arg):
     client, remote_path, skip_failures = arg
 
+    mime_type = mimetypes.guess_type(remote_path)[0]
+
     if hasattr(client, "generate_signed_url"):
-        url = client.generate_signed_url(remote_path)
+        video_path = client.generate_signed_url(remote_path)
     else:
-        url = remote_path
+        video_path = remote_path
 
     try:
-        metadata = fo.VideoMetadata.build_for(url)
+        metadata = fo.VideoMetadata.build_for(video_path)
+        metadata.mime_type = mime_type
     except Exception as e:
         if not skip_failures:
             raise
