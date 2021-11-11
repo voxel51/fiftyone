@@ -284,10 +284,8 @@ def _generate_results(samples, media_type, download_videos=False):
     # If downloading videos is not allowed, the local path for uncached videos
     # with no sample metadata won't exist and `read_metadata()` will return
     # placeholder data
-    download_media = media_type != fom.VIDEO or download_videos
-    local_paths = media_cache.get_local_paths(
-        filepaths, download_media=download_media
-    )
+    download = media_type != fom.VIDEO or download_videos
+    local_paths = media_cache.get_local_paths(filepaths, download=download)
 
     results = []
     tasks = {}

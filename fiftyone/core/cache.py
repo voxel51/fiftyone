@@ -5,7 +5,6 @@ Remote media caching.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
 import io
 import logging
 import mimetypes
@@ -26,19 +25,6 @@ logger = logging.getLogger(__name__)
 media_cache = None
 
 
-def is_local(filepath):
-    """Determines whether the given filepath is local.
-
-    Args:
-        filepath: a filepath
-
-    Returns:
-        True/False
-    """
-    fs = _get_file_system(filepath)
-    return fs == FileSystem.LOCAL
-
-
 def init_media_cache(config):
     """Initializes the media cache.
 
@@ -46,7 +32,6 @@ def init_media_cache(config):
         config: a :class:`fiftyone.core.config.MediaCacheConfig`
     """
     global media_cache
-
     media_cache = MediaCache(config)
 
 
@@ -200,73 +185,50 @@ class MediaCache(object):
 
     def __init__(self, config):
         self.config = config
-
-        self._cache = None
-        self._current_size = None
-
+        self._http_client = None
         self._s3_client = None
         self._gcs_client = None
-        self._http_client = None
-        self._gdrive_client = None
-
-        self._init()
 
     def __contains__(self, filepath):
         return self.is_local_or_cached(filepath)
-
-    def __len__(self):
-        return len(self._cache)
 
     @property
     def cache_dir(self):
         return self.config.cache_dir
 
     @property
-    def cache_manifest_path(self):
-        return os.path.join(self.cache_dir, "manifest.txt")
-
-    @property
     def cache_size(self):
         return self.config.cache_size_bytes
-
-    @property
-    def cache_size_str(self):
-        return etau.to_human_bytes_str(self.cache_size)
-
-    @property
-    def current_size(self):
-        return self._current_size
-
-    @property
-    def current_size_str(self):
-        return etau.to_human_bytes_str(self.current_size)
-
-    @property
-    def current_count(self):
-        return len(self._cache)
-
-    @property
-    def load_factor(self):
-        return self.current_size / self.cache_size
 
     @property
     def num_workers(self):
         return self.config.num_workers
 
-    def stats(self):
-        """Returns stats about the cache.
+    def stats(self, filepaths=None):
+        """Returns a dictionary of stats about the cache.
+
+        Args:
+            filepaths (None): a list of filepaths to restrict the stats to
 
         Returns:
             a stats dict
         """
+        current_count, current_size = _compute_cache_stats(
+            self, filepaths=filepaths
+        )
+
+        cache_size_str = etau.to_human_bytes_str(self.cache_size)
+        current_size_str = etau.to_human_bytes_str(current_size)
+        load_factor = current_size / self.cache_size
+
         return {
             "cache_dir": self.cache_dir,
             "cache_size": self.cache_size,
-            "cache_size_str": self.cache_size_str,
-            "current_size": self.current_size,
-            "current_size_str": self.current_size_str,
-            "current_count": self.current_count,
-            "load_factor": self.load_factor,
+            "cache_size_str": cache_size_str,
+            "current_size": current_size,
+            "current_size_str": current_size_str,
+            "current_count": current_count,
+            "load_factor": load_factor,
         }
 
     def is_local(self, filepath):
@@ -305,11 +267,7 @@ class MediaCache(object):
             True/False
         """
         fs, local_path, exists, _ = self._parse_filepath(filepath)
-        return (
-            fs != FileSystem.LOCAL
-            and not exists
-            and self._is_video(local_path)
-        )
+        return fs != FileSystem.LOCAL and not exists and _is_video(local_path)
 
     def generate_signed_url(self, filepath, **kwargs):
         """Generates a signed URL for accessing the given remote filepath.
@@ -325,7 +283,6 @@ class MediaCache(object):
         """
         fs = _get_file_system(filepath)
         client = self._get_client(fs)
-
         return client.generate_signed_url(filepath, **kwargs)
 
     def get_remote_file_metadata(self, filepath, skip_failures=True):
@@ -432,7 +389,7 @@ class MediaCache(object):
 
             seen.add(filepath)
 
-            if not exists and self._is_video(local_path):
+            if not exists and _is_video(local_path):
                 tasks.append((client, filepath, skip_failures))
 
         if not tasks:
@@ -467,15 +424,12 @@ class MediaCache(object):
                 yield chunk
         """
 
-    def get_local_path(
-        self, filepath, download_media=True, skip_failures=True
-    ):
-        """Retrieves the local path for the given media file.
+    def get_local_path(self, filepath, download=True, skip_failures=True):
+        """Retrieves the local path for the given file.
 
         Args:
             filepath: a filepath
-            download_media (True): whether to download the remote media if it
-                is not cached
+            download (True): whether to download uncached remote files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
 
@@ -484,7 +438,7 @@ class MediaCache(object):
         """
         _, local_path, exists, client = self._parse_filepath(filepath)
 
-        if exists or not download_media:
+        if exists or not download:
             return local_path
 
         task = (client, filepath, local_path, skip_failures, False)
@@ -492,15 +446,12 @@ class MediaCache(object):
 
         return local_path
 
-    def get_local_paths(
-        self, filepaths, download_media=True, skip_failures=True
-    ):
-        """Retrieves the local paths for the given media files.
+    def get_local_paths(self, filepaths, download=True, skip_failures=True):
+        """Retrieves the local paths for the given files.
 
         Args:
             filepaths: a list of filepaths
-            download_media (True): whether to download any remote media if it
-                is not cached
+            download (True): whether to download uncached remote files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
 
@@ -519,7 +470,7 @@ class MediaCache(object):
 
             seen.add(filepath)
 
-            if download_media and not exists:
+            if download and not exists:
                 task = (client, filepath, local_path, skip_failures, False)
                 tasks.append(task)
 
@@ -542,7 +493,7 @@ class MediaCache(object):
                 raising an error if a remote file cannot be downloaded
         """
         if filepaths is None:
-            filepaths = self._cache.keys()
+            filepaths = _get_cached_filepaths(self.cache_dir)
 
         tasks = []
         seen = set()
@@ -561,20 +512,19 @@ class MediaCache(object):
 
         tasks = []
         for filepath, checksum in checksums.items():
-            result = self._cache.get(filepath, None)
+            fs, local_path, _, client = self._parse_filepath(filepath)
+
+            result = _get_cache_result(local_path)
             if result is not None:
-                local_path, success, cached_checksum, _ = result
-                fs = None
-                client = None
+                _, success, cached_checksum, _ = result
             else:
-                fs, local_path, _, client = self._parse_filepath(filepath)
-                cached_checksum = None
                 success = True
+                cached_checksum = None
 
             if success and checksum is None:
                 # We were previously able to download the file but now failed
                 # to retrieve its checksum, assume the file was deleted
-                self._pop_cache(filepath)
+                _pop_cache(local_path)
             elif cached_checksum != checksum or not checksum:
                 #
                 # Any of the following things may have happened
@@ -584,68 +534,36 @@ class MediaCache(object):
                 #
                 # In all cases, we need to re-download now
                 #
-                if fs is None:
-                    fs = _get_file_system(filepath)
-
-                if client is None:
-                    client = self._get_client(fs)
-
                 task = (client, filepath, local_path, skip_failures, True)
                 tasks.append(task)
 
         if tasks:
             _download_media(tasks, self.num_workers)
 
-    def clear(self):
-        """Clears the cache."""
-        if os.path.isdir(self.cache_dir):
-            etau.delete_dir(self.cache_dir)
+    def garbage_collect(self):
+        """Executes the cache's garbage collection routine.
 
-        self._cache = OrderedDict()
-        self._current_size = 0
+        This will delete any orphan files from the cache directory, as well as
+        the oldest files, if necessary, if the cache's total size exceeds its
+        limit.
+        """
+        _garbage_collect_cache(self)
 
-    def save(self):
-        """Writes a manifest for the current cache to disk."""
-        if self._cache:
-            _write_manifest(self._cache, self.cache_manifest_path)
-
-    def sync(self, save=True):
-        """Syncs the cache with the contents of the cache manifest on disk.
+    def clear(self, filepaths=None):
+        """Deletes all or specific files from the cache.
 
         Args:
-            save (True): whether to write the merged cache to disk
+            filepaths (None): a list of filepaths to restrict the deletion. By
+                default, all cached files are deleted
         """
-        try:
-            cache, _ = _read_manifest(self.cache_manifest_path)
-        except:
-            cache = {}
-
-        if cache:
-            self._merge_cache(cache)
-
-        if save:
-            self.save()
-
-    def _init(self):
-        manifest_path = self.cache_manifest_path
-
-        if not os.path.isfile(manifest_path):
-            self.clear()
-            return
-
-        try:
-            cache, total_size = _read_manifest(manifest_path)
-        except Exception as e:
-            logger.warning(
-                "Failed to load cache manifest '%s' with error %s",
-                manifest_path,
-                e,
-            )
-            self.clear()
-            return
-
-        self._cache = cache
-        self._current_size = total_size
+        if filepaths is None:
+            if os.path.isdir(self.cache_dir):
+                etau.delete_dir(self.cache_dir)
+        else:
+            for filepath in filepaths:
+                fs, local_path, exists, _ = self._parse_filepath(filepath)
+                if fs != FileSystem.LOCAL and exists:
+                    _pop_cache(local_path)
 
     def _get_client(self, fs):
         if fs == FileSystem.S3:
@@ -681,108 +599,170 @@ class MediaCache(object):
         if fs == FileSystem.LOCAL:
             return fs, filepath, True, None
 
-        # Retrieve local path from cache if possible
-        # We always pop and re-insert so that oldest files are deleted first
-        result = self._cache.pop(filepath, None)
-        if result is not None:
-            local_path, success, _, _ = result
-
-            if success:
-                exists = os.path.isfile(local_path)
-            else:
-                # If we were unable to download the remote file in the first
-                # place, report that the file exists to avoid retried downloads
-                exists = True
-
-            if exists:
-                client = None
-            else:
-                client = self._get_client(fs)
-
-            self._cache[filepath] = result
-            return fs, local_path, exists, client
-
         client = self._get_client(fs)
-        local_path = os.path.join(
-            self.cache_dir, fs, client.get_local_path(filepath)
-        )
+        relpath = client.get_local_path(filepath)
+        local_path = os.path.join(self.cache_dir, fs, relpath)
+        exists = os.path.isfile(local_path)
 
-        return fs, local_path, False, client
+        # If the file does not exist and we were unable to download it in the
+        # first place, report that the file exists to avoid retried downloads
+        if not exists:
+            result = _get_cache_result(local_path)
+            if result is not None:
+                _, success, _, _ = result
+                if not success:
+                    exists = True
 
-    def _is_video(self, filepath):
-        mime_type = mimetypes.guess_type(filepath)[0]
-        return mime_type.startswith("video")
+        return fs, local_path, exists, client
 
-    def _merge_cache(self, cache):
-        for filepath, result in cache.items():
-            if filepath not in self._cache:
-                self._cache[filepath] = result
-                self._current_size += result[-1]
 
-    def _add_cache(self, filepath, local_path, success, checksum):
-        if success:
-            size_bytes = os.path.getsize(local_path)
+def _is_video(filepath):
+    mime_type = mimetypes.guess_type(filepath)[0]
+    return mime_type.startswith("video/")
+
+
+def _is_cache_path(path):
+    return path.endswith(".cache")
+
+
+def _get_cache_path(local_path):
+    return os.path.splitext(local_path)[0] + ".cache"
+
+
+def _get_cache_result(local_path):
+    cache_path = _get_cache_path(local_path)
+    try:
+        return _read_cache_result(cache_path)
+    except FileNotFoundError:
+        return None
+
+
+def _read_cache_result(cache_path):
+    with open(cache_path, "r") as f:
+        filepath, success_str, checksum = f.read().split(",")
+        success = success_str == "1"
+        return filepath, success, checksum
+
+
+def _write_cache_result(filepath, local_path, success, checksum):
+    cache_path = _get_cache_path(local_path)
+    with open(cache_path, "w") as f:
+        f.write("%s,%d,%s" % (filepath, int(success), checksum or ""))
+
+
+def _get_lock_path(cache_dir):
+    return os.path.join(cache_dir, "lock")
+
+
+def _is_cache_locked(cache_dir):
+    lock_path = _get_lock_path(cache_dir)
+    return os.path.isfile(lock_path)
+
+
+def _lock_cache(cache_dir):
+    lock_path = _get_lock_path(cache_dir)
+    open(lock_path, "a").close()
+
+
+def _unlock_cache(cache_dir):
+    lock_path = _get_lock_path(cache_dir)
+    _delete_file(lock_path)
+
+
+def _garbage_collect_cache(media_cache):
+    cache_dir = media_cache.cache_dir
+    cache_size = media_cache.cache_size
+
+    if _is_cache_locked(cache_dir):
+        return
+
+    _lock_cache(cache_dir)
+
+    paths = etau.list_files(cache_dir, recursive=True, sort=False)
+
+    media_roots = set(
+        os.path.splitext(path)[0] for path in paths if not _is_cache_path(path)
+    )
+
+    current_count = 0
+    current_size = 0
+    results = []
+    for path in paths:
+        if _is_cache_path(path):
+            root = os.path.splitext(path)[0]
+            if root not in media_roots:
+                # Found cache file with no corresponding media
+                cache_path = os.path.join(cache_dir, path)
+                _delete_file(cache_path)
         else:
-            size_bytes = 0
+            local_path = os.path.join(cache_dir, path)
+            cache_path = _get_cache_path(local_path)
 
-        while self._current_size + size_bytes > self.cache_size:
-            if not self._pop_oldest():
-                break
+            stat = os.stat(local_path)
+            size_bytes = stat.st_size
 
-        if checksum is None:
-            checksum = ""
+            try:
+                _read_cache_result(cache_path)
+                atime = stat.st_atime
+            except:
+                # Found media with missing or invalid cache file
+                atime = -1
 
-        self._current_size += size_bytes
-        self._cache[filepath] = (local_path, success, checksum, size_bytes)
+            current_count += 1
+            current_size += size_bytes
+            results.append((local_path, size_bytes, atime))
 
-    def _pop_cache(self, filepath):
-        result = self._cache.pop(filepath, None)
-        if result is None:
-            return
+    for local_path, size_bytes, atime in sorted(results, key=lambda r: r[2]):
+        if current_size <= cache_size and atime > 0:
+            break
 
-        local_path, _, _, size_bytes = result
+        current_count -= 1
+        current_size -= size_bytes
+        _pop_cache(local_path)
 
-        self._current_size -= size_bytes
-        _delete_file(local_path)
-
-    def _pop_oldest(self):
-        try:
-            _, (del_path, _, _, del_size) = self._cache.popitem(last=False)
-        except KeyError:
-            return False
-
-        self._current_size -= del_size
-        _delete_file(del_path)
-
-        return True
+    _unlock_cache(cache_dir)
 
 
-def _read_manifest(manifest_path):
-    cache = OrderedDict()
-    total_size = 0
+def _get_cached_filepaths(cache_dir):
+    filepaths = []
+    for path in etau.list_files(cache_dir, recursive=True, sort=False):
+        if _is_cache_path(path):
+            cache_path = os.path.join(cache_dir, path)
+            filepath = _read_cache_result(cache_path)[0]
+            filepaths.append(filepath)
 
-    with open(manifest_path, "r") as f:
-        for line in f.read().splitlines():
-            (
-                filepath,
-                local_path,
-                success_str,
-                checksum,
-                size_bytes_str,
-            ) = line.split(",")
-            success = success_str == "True"
-            size_bytes = int(size_bytes_str)
-            cache[filepath] = (local_path, success, checksum, size_bytes)
-            total_size += size_bytes
-
-    return cache, total_size
+    return filepaths
 
 
-def _write_manifest(cache, manifest_path):
-    etau.ensure_basedir(manifest_path)
-    with open(manifest_path, "w") as f:
-        for fp, (lp, ss, cs, sb) in cache.items():
-            f.write("%s,%s,%s,%s,%d\n" % (fp, lp, ss, cs, sb))
+def _compute_cache_stats(media_cache, filepaths=None):
+    current_count = 0
+    current_size = 0
+
+    if filepaths is not None:
+        for filepath in filepaths:
+            fs, local_path, exists, _ = media_cache._parse_filepath(filepath)
+            if fs != FileSystem.LOCAL and exists:
+                try:
+                    current_size += os.path.getsize(local_path)
+                    current_count += 1
+                except FileNotFoundError:
+                    pass
+    else:
+        cache_dir = media_cache.cache_dir
+
+        for path in etau.list_files(cache_dir, recursive=True, sort=False):
+            if not _is_cache_path(path):
+                local_path = os.path.join(cache_dir, path)
+                current_size += os.path.getsize(local_path)
+                current_count += 1
+
+    return current_count, current_size
+
+
+def _pop_cache(local_path):
+    cache_path = _get_cache_path(local_path)
+    _delete_file(local_path)
+    _delete_file(cache_path)
 
 
 def _delete_file(local_path):
@@ -855,7 +835,7 @@ def _do_download_media(arg):
     else:
         checksum = None
 
-    media_cache._add_cache(remote_path, local_path, success, checksum)
+    _write_cache_result(remote_path, local_path, success, checksum)
 
 
 def _get_checksums(tasks, num_workers):

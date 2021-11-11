@@ -1435,23 +1435,43 @@ class SampleCollection(object):
         """
         foc.download_media(self, update=update, skip_failures=skip_failures)
 
-    def get_local_paths(self, download_media=True):
+    def get_local_paths(self, download=True):
         """Returns a list of local paths to the media files in this collection.
 
         This method is only useful for collections that contain at least one
         remote media file.
 
         Args:
-            download_media (True): whether to download any non-cached remote
-                media files
+            download (True): whether to download any non-cached media files
 
         Returns:
             a list of local filepaths
         """
         filepaths = self.values("filepath")
-        return foc.media_cache.get_local_paths(
-            filepaths, download_media=download_media
-        )
+        return foc.media_cache.get_local_paths(filepaths, download=download)
+
+    def clear_media(self):
+        """Deletes any local copies of media files in this collection from the
+        media cache.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+        """
+        filepaths = self.values("filepath")
+        foc.media_cache.clear(filepaths=filepaths)
+
+    def cache_stats(self):
+        """Returns a dictionary of stats about the cached media files in this
+        collection.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+
+        Returns:
+            a stats dict
+        """
+        filepaths = self.values("filepath")
+        return foc.media_cache.stats(filepaths=filepaths)
 
     def apply_model(
         self,
