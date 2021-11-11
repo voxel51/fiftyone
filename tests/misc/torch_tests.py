@@ -18,41 +18,41 @@ from PIL import Image
 import fiftyone as fo
 import fiftyone.utils.torch as fout
 
-def _get_fake_img(h,w):
-    array = np.random.randint(255, size=(w, h),dtype=np.uint8)
+
+def _get_fake_img(h, w):
+    array = np.random.randint(255, size=(w, h), dtype=np.uint8)
     return Image.fromarray(array)
 
+
 def test_torch_min_size():
-    image = _get_fake_img(32,32)
+    image = _get_fake_img(32, 32)
     transf = fout.MinResize(64)
     res = transf(image)
-    assert res.size == (64,64)
-    
-    image = _get_fake_img(32,32)
-    transf = fout.MinResize((64,32))
+    assert res.size == (64, 64)
+
+    image = _get_fake_img(32, 32)
+    transf = fout.MinResize((64, 32))
     result = transf(image)
-    assert result.size == (64,64)
-    
-    
+    assert result.size == (64, 64)
+
+
 def test_torch_max_size():
     image = _get_fake_img(400, 400)
     transf = fout.MaxResize(200)
     result = transf(image)
     assert result.size == (200, 200)
-    
+
     image = _get_fake_img(400, 800)
     transf = fout.MaxResize(400)
     result = transf(image)
     assert result.size == (200, 400)
-    
+
     image = _get_fake_img(400, 400)
-    
-    transf = fout.MaxResize((400,200))
+
+    transf = fout.MaxResize((400, 200))
     result = transf(image)
     assert result.size == (200, 200)
-    
-    
-    
+
 
 @unittest.skip("Must be run manually")
 def test_torch_image_patches_dataset():
