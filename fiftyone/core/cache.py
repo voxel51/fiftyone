@@ -512,11 +512,12 @@ class MediaCache(object):
         seen = set()
         for filepath in filepaths:
             fs, local_path, exists, client = self._parse_filepath(filepath)
+            local_paths.append(local_path)
+
             if fs == FileSystem.LOCAL or filepath in seen:
                 continue
 
             seen.add(filepath)
-            local_paths.append(local_path)
 
             if download_media and not exists:
                 task = (client, filepath, local_path, skip_failures, False)

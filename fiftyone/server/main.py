@@ -1489,7 +1489,7 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         self.set_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-        self.set_header("content-length", self.get_content_size())
+        # self.set_header("content-length", self.get_content_size())
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
     def get_content_type(self):
@@ -1511,13 +1511,15 @@ class MediaHandler(FileHandler):
                 abspath, start=start, end=end
             )
 
+        """
         # For undownloaded videos, stream directly from the remote source
         if media_cache.is_remote_uncached_video(abspath):
             return media_cache.get_remote_content(
                 abspath, start=start, end=end
             )
+        """
 
-        # Stream from local disk, downloading remote images if necessary
+        # Stream from local disk, downloading remote media if necessary
         local_path = media_cache.get_local_path(abspath)
         return super().get_content(local_path, start=start, end=end)
 
