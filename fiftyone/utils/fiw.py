@@ -47,6 +47,8 @@ def download_fiw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         etau.delete_dir(scratch_dir)
     return scratch_dir
 
+    return scratch_dir
+
 
 _IMAGES_DOWNLOAD_LINK = "1rkrDGOjS0e_pptzRHZl5bRGq0yy5xQxQ"
 _MD5_DATA_DOWNLOAD_LINK = "121lbbeaiY-qM2tK9sJXWNuvMczVuwi2p"
