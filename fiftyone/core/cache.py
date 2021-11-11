@@ -5,6 +5,7 @@ Remote media caching.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import datetime, timedelta
 import io
 import logging
 import mimetypes
@@ -650,18 +651,45 @@ def _write_cache_result(filepath, local_path, success, checksum):
         f.write("%s,%d,%s" % (filepath, int(success), checksum or ""))
 
 
+_LOCK_FILENAME = "lock"
+_LOCK_MINUTES = 1
+
+
 def _get_lock_path(cache_dir):
-    return os.path.join(cache_dir, "lock")
+    return os.path.join(cache_dir, _LOCK_FILENAME)
 
 
 def _is_cache_locked(cache_dir):
     lock_path = _get_lock_path(cache_dir)
-    return os.path.isfile(lock_path)
+    try:
+        with open(lock_path, "r") as f:
+            lock_time = datetime.fromtimestamp(int(f.read()))
+            lock_delta = datetime.utcnow() - lock_time
+            thresh_delta = timedelta(minutes=_LOCK_MINUTES)
+            if lock_delta < thresh_delta:
+                logger.info(
+                    "The cache was locked at %s (%s ago)",
+                    lock_time,
+                    lock_delta,
+                )
+                return True
+            else:
+                logger.info(
+                    "The cache was locked at %s (%s >= %s ago) and never "
+                    "unlocked, so we're force-unlocking it now",
+                    lock_time,
+                    lock_delta,
+                    thresh_delta,
+                )
+                return False
+    except:
+        return False
 
 
 def _lock_cache(cache_dir):
     lock_path = _get_lock_path(cache_dir)
-    open(lock_path, "a").close()
+    with open(lock_path, "w") as f:
+        f.write(str(int(datetime.utcnow().timestamp())))
 
 
 def _unlock_cache(cache_dir):
@@ -670,15 +698,26 @@ def _unlock_cache(cache_dir):
 
 
 def _garbage_collect_cache(media_cache):
+    logger.info("Running garbage collection")
+
+    cache_dir = media_cache.cache_dir
+
+    if _is_cache_locked(cache_dir):
+        logger.info("Aborting garbage collection")
+        return
+
+    try:
+        _lock_cache(cache_dir)
+        _do_garbage_collection(media_cache)
+    finally:
+        _unlock_cache(cache_dir)
+
+
+def _do_garbage_collection(media_cache):
     cache_dir = media_cache.cache_dir
     cache_size = media_cache.cache_size
 
-    if _is_cache_locked(cache_dir):
-        return
-
-    _lock_cache(cache_dir)
-
-    paths = etau.list_files(cache_dir, recursive=True, sort=False)
+    paths = _list_cache(cache_dir)
 
     media_roots = set(
         os.path.splitext(path)[0] for path in paths if not _is_cache_path(path)
@@ -686,12 +725,17 @@ def _garbage_collect_cache(media_cache):
 
     current_count = 0
     current_size = 0
+    orphan_cache_files = 0
+    deleted_count = 0
+    deleted_size = 0
+
     results = []
     for path in paths:
         if _is_cache_path(path):
             root = os.path.splitext(path)[0]
             if root not in media_roots:
                 # Found cache file with no corresponding media
+                orphan_cache_files += 1
                 cache_path = os.path.join(cache_dir, path)
                 _delete_file(cache_path)
         else:
@@ -716,16 +760,36 @@ def _garbage_collect_cache(media_cache):
         if current_size <= cache_size and atime > 0:
             break
 
-        current_count -= 1
-        current_size -= size_bytes
         _pop_cache(local_path)
 
-    _unlock_cache(cache_dir)
+        current_count -= 1
+        current_size -= size_bytes
+        deleted_count += 1
+        deleted_size += 1
+
+    if deleted_count > 0:
+        logger.info(
+            "Deleted %d media files (%s)",
+            deleted_count,
+            etau.to_human_bytes_str(deleted_size),
+        )
+
+    if orphan_cache_files > 0:
+        logger.info("Deleted %d orphan cache files", orphan_cache_files)
+
+    if deleted_count == 0 and orphan_cache_files == 0:
+        logger.info("Nothing to cleanup")
+
+    logger.info(
+        "Garbage collection complete; the cache size is %d media files (%s)",
+        current_count,
+        etau.to_human_bytes_str(current_size),
+    )
 
 
 def _get_cached_filepaths(cache_dir):
     filepaths = []
-    for path in etau.list_files(cache_dir, recursive=True, sort=False):
+    for path in _list_cache(cache_dir):
         if _is_cache_path(path):
             cache_path = os.path.join(cache_dir, path)
             filepath = _read_cache_result(cache_path)[0]
@@ -750,13 +814,18 @@ def _compute_cache_stats(media_cache, filepaths=None):
     else:
         cache_dir = media_cache.cache_dir
 
-        for path in etau.list_files(cache_dir, recursive=True, sort=False):
+        for path in _list_cache(cache_dir):
             if not _is_cache_path(path):
                 local_path = os.path.join(cache_dir, path)
                 current_size += os.path.getsize(local_path)
                 current_count += 1
 
     return current_count, current_size
+
+
+def _list_cache(cache_dir):
+    paths = etau.list_files(cache_dir, recursive=True, sort=False)
+    return [p for p in paths if p != _LOCK_FILENAME]
 
 
 def _pop_cache(local_path):
