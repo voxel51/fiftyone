@@ -122,7 +122,7 @@ jobs:
           pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Install fiftyone
         run: |
-          pip install scikit-learn scikit-image shapely pydicom
+          pip install --use-deprecated=legacy-resolver -r requirements/extras.txt
           pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
           pip install -e .
       - name: Install ETA from source

@@ -63,7 +63,7 @@ jobs:
       - name: Install
         run: |
           sudo apt-get install pandoc
-          pip install scikit-learn scikit-image
+          pip install --use-deprecated=legacy-resolver -r requirements/extras.txt
           pip install --use-deprecated=legacy-resolver -r requirements/docs.txt
           pip install fiftyone-brain
           pip install pycocotools tensorflow torch torchvision

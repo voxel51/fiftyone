@@ -1,0 +1,3 @@
+apache-beam==2.33.0
+pydicom==2.2.0
+shapely==1.7.1
