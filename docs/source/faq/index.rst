@@ -88,17 +88,6 @@ is served via a separate process:
         session = fo.launch_app(dataset)
         session.wait()
 
-Non-Windows users can write scripts
-
-.. code-block:: python
-
-    import fiftyone as fo
-
-    dataset = fo.load_dataset(...)
-
-    session = fo.launch_app(dataset)
-    session.wait()
-
 See :ref:`this section <creating-an-app-session>` for more details.
 
 .. _faq-notebook-support:

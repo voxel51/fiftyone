@@ -81,14 +81,14 @@ would like to run the App as a desktop application.
 
     .. code-block:: python
 
-    import fiftyone as fo
+        import fiftyone as fo
 
-    dataset = fo.load_dataset(...)
+        dataset = fo.load_dataset(...)
 
-    if __name__ == "__main__":
-        # Ensures that the App is only launched once
-        session = fo.launch_app(dataset)
-        session.wait()
+        if __name__ == "__main__":
+            # Ensures that the App is only launched once
+            session = fo.launch_app(dataset)
+            session.wait()
 
 .. image:: /images/app/app-empty.gif
    :alt: app-empty
