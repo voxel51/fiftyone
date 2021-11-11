@@ -1506,18 +1506,28 @@ class MediaHandler(FileHandler):
 
     @classmethod
     def get_content(cls, abspath, start=None, end=None):
+        if abspath.startswith("http"):
+            return media_cache.get_remote_content(
+                abspath, start=start, end=end
+            )
+
         # For undownloaded videos, stream directly from the remote source
         if media_cache.is_remote_uncached_video(abspath):
             return media_cache.get_remote_content(
                 abspath, start=start, end=end
             )
 
-        # For everything else, stream from local disk, downloading remote files
-        # if necessary
+        # Stream from local disk, downloading remote images if necessary
         local_path = media_cache.get_local_path(abspath)
         return super().get_content(local_path, start=start, end=end)
 
     def validate_absolute_path(self, root, absolute_path):
+        """
+        if media_cache.is_remote_uncached_video(absolute_path):
+            self._orig_path = absolute_path
+            return media_cache.generate_signed_url(absolute_path)
+        """
+
         return absolute_path
 
     def get_content_size(self):
@@ -1533,6 +1543,11 @@ class MediaHandler(FileHandler):
             return self._stat_result
 
         abspath = self.absolute_path
+
+        """
+        if hasattr(self, "_orig_path"):
+            abspath = self._orig_path
+        """
 
         if media_cache.is_local(abspath):
             self._stat_result = os.stat(abspath)

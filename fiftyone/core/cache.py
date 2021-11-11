@@ -311,6 +311,23 @@ class MediaCache(object):
             and self._is_video(local_path)
         )
 
+    def generate_signed_url(self, filepath, **kwargs):
+        """Generates a signed URL for accessing the given remote filepath.
+
+        Args:
+            filepath: a filepath
+            **kwargs: optional keyword arguments for
+                :meth:`S3StorageClient.generate_signed_url` or
+                :meth:`GoogleCloudStorageClient.generate_signed_url`
+
+        Returns:
+            the signed URL
+        """
+        fs = _get_file_system(filepath)
+        client = self._get_client(fs)
+
+        return client.generate_signed_url(filepath, **kwargs)
+
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote filepath, if
         possible.
