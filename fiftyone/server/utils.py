@@ -129,7 +129,7 @@ def read_metadata(filepath, metadata=None):
     mimetype, _ = mimetypes.guess_type(filepath)
 
     # Videos
-    if mimetype.startswith("video/"):
+    if mimetype and mimetype.startswith("video/"):
         if metadata:
             width = metadata.get("frame_width", None)
             height = metadata.get("frame_height", None)
