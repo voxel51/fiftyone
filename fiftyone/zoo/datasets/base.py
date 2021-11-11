@@ -8,9 +8,11 @@ FiftyOne Zoo Datasets provided natively by the library.
 import logging
 import os
 import shutil
+from pathlib import Path
 
 import eta.core.utils as etau
 import eta.core.web as etaw
+
 import fiftyone.types as fot
 import fiftyone.utils.bdd as foub
 import fiftyone.utils.cityscapes as foucs
@@ -860,7 +862,7 @@ class FamiliesInTheWildDataset(FiftyOneDataset):
             "kinship",
             "verification",
             "classification",
-            "search and retrieval",
+            "search-and-retrieval",
             "facial-recognition",
         )
 
@@ -876,12 +878,20 @@ class FamiliesInTheWildDataset(FiftyOneDataset):
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
+
         if not os.path.exists(split_dir):
-            ffiw.download_fiw_dataset(
-                dataset_dir, scratch_dir=scratch_dir, cleanup=False
+            scratch_dir = ffiw.download_fiw_dataset(
+                dataset_dir, scratch_dir=None, cleanup=False
             )
+            print(f"{dataset_dir}\n{scratch_dir}")
+            # move contents to dataset_dir and remove temp folder
+            for file in Path(scratch_dir).glob("*"):
+                if not str(file).count(".zip"):
+                    file.rename(Path(dataset_dir) / file.name)
+            etau.delete_dir(scratch_dir)
 
         logger.info("Parsing dataset metadata")
+        print(f"{dataset_dir}\n{scratch_dir}")
         dataset_type = fot.ImageClassificationDirectoryTree()
         importer = foud.ImageClassificationDirectoryTreeImporter
         classes = sorted(
