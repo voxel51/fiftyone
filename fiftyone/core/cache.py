@@ -474,14 +474,16 @@ class MediaCache(object):
 
         return local_paths
 
-    def open(self, filepath, mode):
-        if self.is_local_or_cached(filepath):
-            local_path = self.get_local_path(filepath)
-            return open(local_path, mode)
+    def get_url(self, remote_path):
+        fs = _get_file_system(remote_path)
+        if fs == FileSystem.LOCAL:
+            raise ValueError("get_url() called with local filepath")
 
-        fs = _get_file_system(filepath)
         client = self._get_client(fs)
-        return client.open(filepath, mode)
+        if hasattr(client, "generate_signed_url"):
+            return client.generate_signed_url(remote_path)
+
+        return remote_path
 
     def size_bytes(self, filepath):
         fs = _get_file_system(filepath)

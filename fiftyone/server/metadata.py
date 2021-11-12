@@ -7,6 +7,7 @@ import struct
 
 import asyncio
 import aiofiles
+import aiohttp
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -29,7 +30,7 @@ TIFF = types["TIFF"] = "TIFF"
 FFPROBE = shutil.which("ffprobe")
 
 
-async def ffprobe(input):
+async def get_stream_info(path):
     proc = await asyncio.create_subprocess_exec(
         *[
             FFPROBE,
@@ -40,10 +41,9 @@ async def ffprobe(input):
             "-show_streams",
             "-show_format",
             "-i",
-            "pipe:",
+            path,
         ],
-        stdout=asyncio.subprocess.PIPE,
-        stdin=input
+        stdout=asyncio.subprocess.PIPE
     )
 
     stdout, _ = await proc.communicate()
@@ -63,52 +63,81 @@ async def ffprobe(input):
         logger.warning("Found multiple video streams; using first stream")
         stream_info = video_streams[0]
 
-    return stream_info, format_info
+    info = etav.VideoStreamInfo(
+        stream_info, format_info, mime_type=etau.guess_mime_type(path),
+    )
+    return info
 
 
 async def read_metadata(filepath):
-    video = _is_video(filepath)
-
-    d = {}
-
     if filepath in media_cache:
         local_path = media_cache.get_local_path(filepath)
-        size = os.path.getsize(local_path)
+        result = await read_local_metadata(local_path)
+        return result
 
-        async with aiofiles.open(local_path, "rb") as input:
-            if video:
-                stream_info, format_info = await ffprobe(input)
-                info = etav.VideoStreamInfo(
-                    stream_info,
-                    format_info,
-                    mime_type=etau.guess_mime_type(filepath),
-                )
-                d["width"] = info.frame_size[0]
-                d["height"] = info.frame_size[1]
-                d["frame_rate"] = info.frame_rate
-            else:
-                width, height = await read_image_dimensions(input, size)
-                d["width"] = width
-                d["height"] = height
-    else:
-        with media_cache.open(filepath, "rb") as input:
-            size = media_cache.size_bytes(filepath)
-            if video:
-                stream_info, format_info = await ffprobe(input)
-                info = etav.VideoStreamInfo(
-                    stream_info,
-                    format_info,
-                    mime_type=etau.guess_mime_type(filepath),
-                )
-                d["width"] = info.frame_size[0]
-                d["height"] = info.frame_size[1]
-                d["frame_rate"] = info.frame_rate
-            else:
-                width, height = await read_image_dimensions(input, size)
-                d["width"] = width
-                d["height"] = height
+    url = media_cache.get_url(filepath)
+    result = await read_url_metadata(url)
+    return result
+
+
+async def read_url_metadata(url):
+    d = {}
+    video = _is_video(url)
+
+    if video:
+        info = await get_stream_info(url)
+        d["width"] = info.frame_size[0]
+        d["height"] = info.frame_size[1]
+        d["frame_rate"] = info.frame_rate
+        return d
+
+    async with aiohttp.ClientSession() as session, session.get(
+        url
+    ) as response:
+        width, height = await read_image_dimensions(Reader(response.content))
+        d["width"] = width
+        d["height"] = height
 
     return d
+
+
+async def read_local_metadata(filepath):
+    d = {}
+    path = media_cache.get_local_path(filepath)
+    video = _is_video(filepath)
+
+    if video:
+        info = await get_stream_info(path)
+        d["width"] = info.frame_size[0]
+        d["height"] = info.frame_size[1]
+        d["frame_rate"] = info.frame_rate
+
+    async with aiofiles.open(path, "rb") as input:
+        width, height = await read_image_dimensions(input)
+        d["width"] = width
+        d["height"] = height
+
+    return d
+
+
+class Reader(object):
+    def __init__(self, content):
+        self._data = b""
+        self._content = content
+
+    async def read(self, bytes):
+        data = await self._content.read(bytes)
+        self._data += data
+        return data
+
+    async def seek(self, bytes):
+        delta = bytes - len(self._data)
+        if delta < 0:
+            data = self._data[delta:]
+            self._data = data[:delta]
+            self._content.unread_data(data)
+        else:
+            self._data += await self._content.read(delta)
 
 
 def _is_video(filepath):
@@ -116,10 +145,11 @@ def _is_video(filepath):
     return mime_type.startswith("video/")
 
 
-async def read_image_dimensions(input, size):
+async def read_image_dimensions(input):
     height = -1
     width = -1
     data = await input.read(26)
+    size = len(data)
 
     if (size >= 10) and data[:6] in (b"GIF87a", b"GIF89a"):
         # GIFs
@@ -142,15 +172,14 @@ async def read_image_dimensions(input, size):
         height = int(h)
     elif (size >= 2) and data.startswith(b"\377\330"):
         # JPEG
-        await input.seek(0)
-        await input.read(2)
-        b = await input.read(1)
+        it = iter(data[3])
+        b = next(it)
 
         while b and ord(b) != 0xDA:
             while ord(b) != 0xFF:
-                b = await input.read(1)
+                b = next(it)
             while ord(b) == 0xFF:
-                b = await input.read(1)
+                b = next(it)
             if ord(b) >= 0xC0 and ord(b) <= 0xC3:
                 await input.read(3)
                 tmp = await input.read(4)
