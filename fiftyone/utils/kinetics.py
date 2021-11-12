@@ -773,7 +773,11 @@ class ClasswiseS3KineticsDatasetInfo(KineticsDatasetInfo):
         if split == "validation":
             split = "val"
 
-        return "s3://kinetics/%s/%s/%s.tar.gz" % (self.version, split, c,)
+        return "https://s3.amazonaws.com/kinetics/%s/%s/%s.tar.gz" % (
+            self.version,
+            split,
+            c,
+        )
 
     def unloaded_class_urls(self, classes):
         urls = []
@@ -805,10 +809,9 @@ class Kinetics7002020DatasetInfo(ClasswiseS3KineticsDatasetInfo):
         if split == "validation":
             split = "val"
 
-        return "s3://kinetics/700_2020/%s/k700_%s_%03d.tar.gz" % (
-            split,
-            split,
-            class_ind,
+        return (
+            "https://s3.amazonaws.com/kinetics/700_2020/%s/k700_%s_%03d.tar.gz"
+            % (split, split, class_ind)
         )
 
 
