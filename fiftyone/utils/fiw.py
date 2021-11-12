@@ -263,10 +263,9 @@ def get_id_map(dataset):
 
 
 def prepare_dataset(
+    dataset,
     dir_scratch="/tmp/fiw_test/",
     data_split="test",
-    overwrite=True,
-    data_ref="FIW",
     max_relationships=1000,
 ):
     """
@@ -279,11 +278,8 @@ def prepare_dataset(
     :return:
         dataset parsed out with family IDs, member IDs, and relationship types
     """
-    if overwrite and data_ref in fo.list_datasets():
-        fo.delete_dataset("FIW")
-
-    dataset = fo.Dataset("FIW")
-
+    if dataset is None:
+        dataset = fo.load_dataset("fiw")
     logger.info(f"Loading split {data_split}")
     dataset.add_samples(load_split(data_split, dir_scratch))
     parse_relationships(
