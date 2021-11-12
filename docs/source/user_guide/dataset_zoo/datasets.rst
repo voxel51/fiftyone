@@ -1247,10 +1247,6 @@ This version contains videos and action classifications for the 400 class
 version of the dataset.
 
 
-.. note::
-
-
-
 **Details**
 
 -   Dataset name: ``kinetics-400``
@@ -1431,10 +1427,6 @@ This version contains videos and action classifications for the 600 class
 version of the dataset.
 
 
-.. note::
-
-
-
 **Details**
 
 -   Dataset name: ``kinetics-600``
@@ -1609,10 +1601,6 @@ This version contains videos and action classifications for the 700 class
 version of the dataset.
 
 
-.. note::
-
-
-
 **Details**
 
 -   Dataset name: ``kinetics-700``
@@ -1779,10 +1767,6 @@ action class and lasts around 10 seconds.
 This version contains videos and action classifications for the 700 class
 version of the dataset that was updated with new videos in 2020. This dataset
 is a superset of Kinetics 700.
-
-
-.. note::
-
 
 
 **Details**
