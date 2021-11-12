@@ -70,20 +70,19 @@ async def get_stream_info(path):
 
 
 async def read_metadata(filepath):
+    video = _is_video(filepath)
     if filepath in media_cache:
         local_path = media_cache.get_local_path(filepath)
-        result = await read_local_metadata(local_path)
+        result = await read_local_metadata(local_path, video)
         return result
 
     url = media_cache.get_url(filepath)
-    result = await read_url_metadata(url)
+    result = await read_url_metadata(url, video)
     return result
 
 
-async def read_url_metadata(url):
+async def read_url_metadata(url, video):
     d = {}
-    video = _is_video(url)
-
     if video:
         info = await get_stream_info(url)
         d["width"] = info.frame_size[0]
@@ -101,23 +100,26 @@ async def read_url_metadata(url):
     return d
 
 
-async def read_local_metadata(filepath):
+async def read_local_metadata(local_path, video):
     d = {}
-    path = media_cache.get_local_path(filepath)
-    video = _is_video(filepath)
-
     if video:
-        info = await get_stream_info(path)
+        info = await get_stream_info(local_path)
         d["width"] = info.frame_size[0]
         d["height"] = info.frame_size[1]
         d["frame_rate"] = info.frame_rate
+        return d
 
-    async with aiofiles.open(path, "rb") as input:
+    async with aiofiles.open(local_path, "rb") as input:
         width, height = await read_image_dimensions(input)
         d["width"] = width
         d["height"] = height
 
     return d
+
+
+def _is_video(filepath):
+    mime_type = mimetypes.guess_type(filepath)[0]
+    return mime_type.startswith("video/")
 
 
 class Reader(object):
@@ -138,11 +140,6 @@ class Reader(object):
             self._content.unread_data(data)
         else:
             self._data += await self._content.read(delta)
-
-
-def _is_video(filepath):
-    mime_type = mimetypes.guess_type(filepath)[0]
-    return mime_type.startswith("video/")
 
 
 async def read_image_dimensions(input):

@@ -11,10 +11,8 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 import math
 import os
-import stat
 import traceback
 
-import aiohttp
 import tornado.escape
 import tornado.ioloop
 import tornado.iostream
@@ -47,8 +45,10 @@ import fiftyone.core.uid as fou
 import fiftyone.core.utils as fout
 import fiftyone.core.view as fov
 
+import fiftyone.server.base as fosb
 from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
+from fiftyone.server.media import MediaHandler
 import fiftyone.server.metadata as fosm
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
@@ -1444,167 +1444,6 @@ async def _numeric_histograms(view, schema, prefix=""):
     return aggregations, fields, ticks, nonfinites
 
 
-class FileHandler(tornado.web.StaticFileHandler):
-    def set_headers(self):
-        super().set_headers()
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-        self.set_header("x-colab-notebook-cache-control", "no-cache")
-
-    def get_content_type(self):
-        if self.absolute_path.endswith(".js"):
-            return "text/javascript"
-
-        return super().get_content_type()
-
-
-class MediaHandler(FileHandler):
-    async def get(self, path, include_body):
-        # Set up our path instance variables.
-        self.path = self.parse_url_path(path)
-        del path  # make sure we don't refer to path instead of self.path again
-        absolute_path = self.get_absolute_path(self.root, self.path)
-        self.absolute_path = self.validate_absolute_path(
-            self.root, absolute_path
-        )
-        if self.absolute_path is None:
-            return
-
-        self.modified = await self.get_modified_time()
-        self.set_headers()
-
-        if self.should_return_304():
-            self.set_status(304)
-            return
-
-        request_range = None
-        range_header = self.request.headers.get("Range")
-        if range_header:
-            # As per RFC 2616 14.16, if an invalid Range header is specified,
-            # the request will be treated as if the header didn't exist.
-            request_range = tornado.httputil._parse_request_range(range_header)
-
-        size = await self.get_content_size()
-        if request_range:
-            start, end = request_range
-            if start is not None and start < 0:
-                start += size
-                if start < 0:
-                    start = 0
-            if (
-                start is not None
-                and (start >= size or (end is not None and start >= end))
-            ) or end == 0:
-                # As per RFC 2616 14.35.1, a range is not satisfiable only: if
-                # the first requested byte is equal to or greater than the
-                # content, or when a suffix with length 0 is specified.
-                # https://tools.ietf.org/html/rfc7233#section-2.1
-                # A byte-range-spec is invalid if the last-byte-pos value is present
-                # and less than the first-byte-pos.
-                self.set_status(416)  # Range Not Satisfiable
-                self.set_header("Content-Type", "text/plain")
-                self.set_header("Content-Range", "bytes */%s" % (size,))
-                return
-            if end is not None and end > size:
-                # Clients sometimes blindly use a large range to limit their
-                # download size; cap the endpoint at the actual file size.
-                end = size
-            # Note: only return HTTP 206 if less than the entire range has been
-            # requested. Not only is this semantically correct, but Chrome
-            # refuses to play audio if it gets an HTTP 206 in response to
-            # ``Range: bytes=0-``.
-            if size != (end or size) - (start or 0):
-                self.set_status(206)  # Partial Content
-                self.set_header(
-                    "Content-Range",
-                    tornado.httputil._get_content_range(start, end, size),
-                )
-        else:
-            start = end = None
-
-        if start is not None and end is not None:
-            content_length = end - start
-        elif end is not None:
-            content_length = end
-        elif start is not None:
-            content_length = size - start
-        else:
-            content_length = size
-        self.set_header("Content-Length", content_length)
-
-        if include_body:
-            content = self.get_content(self.absolute_path, start, end)
-            if isinstance(content, bytes):
-                content = [content]
-            for chunk in content:
-                try:
-                    self.write(chunk)
-                    await self.flush()
-                except tornado.iostream.StreamClosedError:
-                    return
-        else:
-            assert self.request.method == "HEAD"
-
-    @classmethod
-    def get_absolute_path(cls, root, path):
-        return path
-
-    @classmethod
-    def get_content(cls, abspath, start=None, end=None):
-        if abspath.startswith("http"):
-            return media_cache.get_remote_content(
-                abspath, start=start, end=end
-            )
-
-        # Stream from local disk, downloading remote media if necessary
-        local_path = media_cache.get_local_path(abspath)
-        return super().get_content(local_path, start=start, end=end)
-
-    def validate_absolute_path(self, root, absolute_path):
-        return absolute_path
-
-    async def get_content_size(self):
-        stat_result = await self._stat()
-        return stat_result[stat.ST_SIZE]
-
-    async def get_modified_time(self):
-        stat_result = await self._stat()
-        return datetime.utcfromtimestamp(stat_result[stat.ST_MTIME])
-
-    async def _stat(self):
-        if hasattr(self, "_stat_result"):
-            return self._stat_result
-
-        abspath = self.absolute_path
-        if media_cache.is_local(abspath):
-            self._stat_result = os.stat(abspath)
-            return self._stat_result
-
-        if media_cache.is_local_or_cached(abspath):
-            local_path = media_cache.get_local_path(abspath)
-            self._stat_result = os.stat(local_path)
-            return self._stat_result
-
-        url = media_cache.get_url(abspath)
-        async with aiohttp.ClientSession() as session, session.head(
-            url
-        ) as response:
-            print(response.header)
-
-        try:
-            self._stat_result = {
-                stat.ST_SIZE: metadata["size"],
-                stat.ST_MTIME: int(metadata["last_modified"].timestamp()),
-            }
-        except:
-            raise FileNotFoundError(
-                "Unable to get metadata for file: '%s'" % abspath
-            )
-
-        return self._stat_result
-
-
 class Application(tornado.web.Application):
     """FiftyOne Tornado Application"""
 
@@ -1626,7 +1465,7 @@ class Application(tornado.web.Application):
             (r"/teams", TeamsHandler),
             (
                 r"/(.*)",
-                FileHandler,
+                fosb.FileHandler,
                 {"path": web_path, "default_filename": "index.html"},
             ),
         ]

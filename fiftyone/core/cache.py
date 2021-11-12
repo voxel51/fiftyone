@@ -474,14 +474,16 @@ class MediaCache(object):
 
         return local_paths
 
-    def get_url(self, remote_path):
+    def get_url(self, remote_path, method="GET", headers=None):
         fs = _get_file_system(remote_path)
         if fs == FileSystem.LOCAL:
             raise ValueError("get_url() called with local filepath")
 
         client = self._get_client(fs)
         if hasattr(client, "generate_signed_url"):
-            return client.generate_signed_url(remote_path)
+            return client.generate_signed_url(
+                remote_path, method=method, headers=headers
+            )
 
         return remote_path
 
