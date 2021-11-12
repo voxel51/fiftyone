@@ -42,6 +42,14 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`ImageNet Sample <dataset-zoo-imagenet-sample>`               | image, classification                                                     |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Kinetics 400 <dataset-zoo-kinetics400>`                      | video, classification, action-recognition                                 |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Kinetics 600 <dataset-zoo-kinetics600>`                      | video, classification, action-recognition                                 |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Kinetics 700 <dataset-zoo-kinetics700>`                      | video, classification, action-recognition                                 |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`Kinetics 700 2020 <dataset-zoo-kinetics7002020>`             | video, classification, action-recognition                                 |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`KITTI <dataset-zoo-kitti>`                                   | image, detection                                                          |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Labeled Faces in the Wild <dataset-zoo-lfw>`                 | image, classification, facial-recognition                                 |
@@ -1220,6 +1228,716 @@ These images are provided according to the terms below.
 
 .. image:: /images/dataset_zoo/imagenet-sample.png
    :alt: imagenet-sample
+   :align: center
+
+.. _dataset-zoo-kinetics400:
+
+Kinetics 400
+------------
+
+Kinetics is a collection of large-scale, high-quality datasets of URL
+links of up to 650,000 video clips that cover 400/600/700 human action
+classes, depending on the dataset version. The videos include human-object
+interactions such as playing instruments, as well as human-human
+interactions such as shaking hands and hugging. Each action class has at
+least 400/600/700 video clips. Each clip is human annotated with a single
+action class and lasts around 10 seconds.
+
+This version contains videos and action classifications for the 400 class
+version of the dataset.
+
+
+.. note::
+
+
+
+**Details**
+
+-   Dataset name: ``kinetics-400``
+-   Dataset source: https://deepmind.com/research/open-source/kinetics
+-   Dataset size: 456 GB
+-   Tags: ``video, classification, action-recognition``
+-   Supported splits: ``train, test, validation``
+-   ZooDataset class:
+    :class:`Kinetics400Dataset <fiftyone.zoo.datasets.base.Kinetics400Dataset>`
+
+
+Original split stats:
+
+-   Train split: 219,782 videos
+-   Test split: 35,357 videos
+-   Validation split: 18,035 videos
+
+CVDF split stats:
+
+-   Train split: 246,534 videos
+-   Test split: 39,805 videos
+-   Validation split: 19,906 videos
+
+Dataset size:
+
+-   Train split: 370 GB 
+-   Test split: 56 GB 
+-   Validation split: 30 GB 
+
+**Partial downloads**
+
+Kinetics is a massive dataset, so FiftyOne provides parameters that can be
+used to efficiently download specific subsets of the dataset to suit your
+needs. When new subsets are specified, FiftyOne will use existing downloaded
+data first if possible before resorting to downloading additional data from the
+web.
+
+Kinetics videos were originally only accessible from YouTube. Over time, some
+videos have become unavailable so the 
+`CVDF <https://github.com/cvdfoundation>`_ have hosted the Kinetics dataset on AWS.
+If you are partially downloading the dataset through FiftyOne, specific videos will generally be
+downloaded from YouTube. Whenever the dataset is loaded in its entirety, the
+CVDF-provided files will be downloaded from AWS. 
+
+The following parameters are available to configure a partial download of Kinetics
+by passing them to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
+
+-   **split** (*None*) and **splits** (*None*): a string or list of strings,
+    respectively, specifying the splits to load. Supported values are
+    ``("train", "test", "validation")``. If neither is provided, all available
+    splits are loaded
+
+-   **classes** (*None*): a string or list of strings specifying required classes
+    to load. If provided, only samples containing at least one instance
+    of a specified class will be loaded
+
+-   **num_workers** (*None*): the number of processes to use when downloading
+    individual videos. By default, `multiprocessing.cpu_count()` is used
+
+-   **shuffle** (*False*): whether to randomly shuffle the order in which
+    samples are chosen for partial downloads
+
+-   **seed** (*None*): a random seed to use when shuffling
+
+-   **max_samples** (*None*): a maximum number of samples to load per split. If
+    ``classes`` are also specified, only up to the number of samples
+    that contain at least one specified class will be loaded.
+    By default, all matching samples are loaded
+
+.. note::
+
+    Unlike other versions, Kinteics 400 does not have zips available by class so whenever either
+    `classes` or `max_samples` is provided, videos will be downloaded from
+    YouTube.
+
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-400",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "springboard diving" and "surfing water"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-400",
+            split="validation",
+            classes=["springboard diving", "surfing water"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+
+        fiftyone zoo datasets load kinetics-400 \
+            --split validation \
+            --kwargs \
+                max_samples=10
+
+        fiftyone app launch kinetics-400-validation-10
+
+        #
+        # Download the entire validation split
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        fiftyone zoo datasets load kinetics-400 \
+            --split validation
+
+        fiftyone app launch kinetics-400-validation
+
+    
+.. image:: /images/dataset_zoo/kinetics.png
+   :alt: kinetics
+   :align: center
+
+
+.. _dataset-zoo-kinetics600:
+
+Kinetics 600
+------------
+
+Kinetics is a collection of large-scale, high-quality datasets of URL
+links of up to 650,000 video clips that cover 400/600/700 human action
+classes, depending on the dataset version. The videos include human-object
+interactions such as playing instruments, as well as human-human
+interactions such as shaking hands and hugging. Each action class has at
+least 400/600/700 video clips. Each clip is human annotated with a single
+action class and lasts around 10 seconds.
+
+This version contains videos and action classifications for the 600 class
+version of the dataset.
+
+
+.. note::
+
+
+
+**Details**
+
+-   Dataset name: ``kinetics-600``
+-   Dataset source: https://deepmind.com/research/open-source/kinetics
+-   Dataset size: 779 GB
+-   Tags: ``video, classification, action-recognition``
+-   Supported splits: ``train, test, validation``
+-   ZooDataset class:
+    :class:`Kinetics600Dataset <fiftyone.zoo.datasets.base.Kinetics600Dataset>`
+
+Original split stats:
+
+-   Train split: 370,582 videos
+-   Test split: 56,618 videos
+-   Validation split: 28,313 videos
+
+CVDF split stats:
+
+-   Train split: 427,549 videos
+-   Test split: 72,924 videos
+-   Validation split: 29,793 videos
+
+Dataset size:
+
+-   Train split: 648 GB 
+-   Test split: 88 GB 
+-   Validation split: 43 GB 
+
+
+**Partial downloads**
+
+Kinetics is a massive dataset, so FiftyOne provides parameters that can be
+used to efficiently download specific subsets of the dataset to suit your
+needs. When new subsets are specified, FiftyOne will use existing downloaded
+data first if possible before resorting to downloading additional data from the
+web.
+
+Kinetics videos were originally only accessible from YouTube. Over time, some
+videos have become unavailable so the 
+`CVDF <https://github.com/cvdfoundation>`_ have hosted the Kinetics dataset on AWS.
+If you are partially downloading the dataset through FiftyOne, specific videos will generally be
+downloaded from YouTube. Whenever the dataset is loaded in its entirety, the
+CVDF-provided files will be downloaded from AWS. 
+
+The following parameters are available to configure a partial download of Kinetics
+by passing them to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
+
+-   **split** (*None*) and **splits** (*None*): a string or list of strings,
+    respectively, specifying the splits to load. Supported values are
+    ``("train", "test", "validation")``. If neither is provided, all available
+    splits are loaded
+
+-   **classes** (*None*): a string or list of strings specifying required classes
+    to load. If provided, only samples containing at least one instance
+    of a specified class will be loaded
+
+-   **num_workers** (*None*): the number of processes to use when downloading
+    individual videos. By default, `multiprocessing.cpu_count()` is used
+
+-   **shuffle** (*False*): whether to randomly shuffle the order in which
+    samples are chosen for partial downloads
+
+-   **seed** (*None*): a random seed to use when shuffling
+
+-   **max_samples** (*None*): a maximum number of samples to load per split. If
+    ``classes`` are also specified, only up to the number of samples
+    that contain at least one specified class will be loaded.
+    By default, all matching samples are loaded
+
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-600",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "springboard diving" and "surfing water"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-600",
+            split="validation",
+            classes=["springboard diving", "surfing water"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+
+        fiftyone zoo datasets load kinetics-600 \
+            --split validation \
+            --kwargs \
+                max_samples=10
+
+        fiftyone app launch kinetics-600-validation-10
+
+        #
+        # Download the entire validation split
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        fiftyone zoo datasets load kinetics-600 \
+            --split validation
+
+        fiftyone app launch kinetics-600-validation
+
+    
+.. image:: /images/dataset_zoo/kinetics.png
+   :alt: kinetics
+   :align: center
+
+
+.. _dataset-zoo-kinetics700:
+
+Kinetics 700
+------------
+
+Kinetics is a collection of large-scale, high-quality datasets of URL
+links of up to 650,000 video clips that cover 400/700/700 human action
+classes, depending on the dataset version. The videos include human-object
+interactions such as playing instruments, as well as human-human
+interactions such as shaking hands and hugging. Each action class has at
+least 400/700/700 video clips. Each clip is human annotated with a single
+action class and lasts around 10 seconds.
+
+This version contains videos and action classifications for the 700 class
+version of the dataset.
+
+
+.. note::
+
+
+
+**Details**
+
+-   Dataset name: ``kinetics-700``
+-   Dataset source: https://deepmind.com/research/open-source/kinetics
+-   Dataset size: 710 GB
+-   Tags: ``video, classification, action-recognition``
+-   Supported splits: ``train, test, validation``
+-   ZooDataset class:
+    :class:`Kinetics700Dataset <fiftyone.zoo.datasets.base.Kinetics700Dataset>`
+
+Split stats:
+
+-   Train split: 529,046 videos
+-   Test split: 67,446 videos
+-   Validation split: 33,925 videos
+
+Dataset size
+
+-   Train split: 603 GB 
+-   Test split: 59 GB 
+-   Validation split: 48 GB 
+
+**Partial downloads**
+
+Kinetics is a massive dataset, so FiftyOne provides parameters that can be
+used to efficiently download specific subsets of the dataset to suit your
+needs. When new subsets are specified, FiftyOne will use existing downloaded
+data first if possible before resorting to downloading additional data from the
+web.
+
+Kinetics videos were originally only accessible from YouTube. Over time, some
+videos have become unavailable so the 
+`CVDF <https://github.com/cvdfoundation>`_ have hosted the Kinetics dataset on AWS.
+If you are partially downloading the dataset through FiftyOne, specific videos will generally be
+downloaded from YouTube. Whenever the dataset is loaded in its entirety, the
+CVDF-provided files will be downloaded from AWS. 
+
+The following parameters are available to configure a partial download of Kinetics
+by passing them to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
+
+-   **split** (*None*) and **splits** (*None*): a string or list of strings,
+    respectively, specifying the splits to load. Supported values are
+    ``("train", "test", "validation")``. If neither is provided, all available
+    splits are loaded
+
+-   **classes** (*None*): a string or list of strings specifying required classes
+    to load. If provided, only samples containing at least one instance
+    of a specified class will be loaded
+
+-   **num_workers** (*None*): the number of processes to use when downloading
+    individual videos. By default, `multiprocessing.cpu_count()` is used
+
+-   **shuffle** (*False*): whether to randomly shuffle the order in which
+    samples are chosen for partial downloads
+
+-   **seed** (*None*): a random seed to use when shuffling
+
+-   **max_samples** (*None*): a maximum number of samples to load per split. If
+    ``classes`` are also specified, only up to the number of samples
+    that contain at least one specified class will be loaded.
+    By default, all matching samples are loaded
+
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "springboard diving" and "surfing water"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700",
+            split="validation",
+            classes=["springboard diving", "surfing water"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+
+        fiftyone zoo datasets load kinetics-700 \
+            --split validation \
+            --kwargs \
+                max_samples=10
+
+        fiftyone app launch kinetics-700-validation-10
+
+        #
+        # Download the entire validation split
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        fiftyone zoo datasets load kinetics-700 \
+            --split validation
+
+        fiftyone app launch kinetics-700-validation
+
+    
+.. image:: /images/dataset_zoo/kinetics.png
+   :alt: kinetics
+   :align: center
+
+
+.. _dataset-zoo-kinetics7002020:
+
+Kinetics 700 2020
+-----------------
+
+Kinetics is a collection of large-scale, high-quality datasets of URL
+links of up to 650,000 video clips that cover 400/700/700 human action
+classes, depending on the dataset version. The videos include human-object
+interactions such as playing instruments, as well as human-human
+interactions such as shaking hands and hugging. Each action class has at
+least 400/700/700 video clips. Each clip is human annotated with a single
+action class and lasts around 10 seconds.
+
+This version contains videos and action classifications for the 700 class
+version of the dataset that was updated with new videos in 2020. This dataset
+is a superset of Kinetics 700.
+
+
+.. note::
+
+
+
+**Details**
+
+-   Dataset name: ``kinetics-700-2020``
+-   Dataset source: https://deepmind.com/research/open-source/kinetics
+-   Dataset size: 710 GB
+-   Tags: ``video, classification, action-recognition``
+-   Supported splits: ``train, test, validation``
+-   ZooDataset class:
+    :class:`Kinetics7002020Dataset <fiftyone.zoo.datasets.base.Kinetics7002020Dataset>`
+
+Original split stats:
+
+-   Train split: 542,352 videos
+-   Test split: 67,433 videos
+-   Validation split: 34,125 videos
+
+CVDF split stats:
+
+-   Train split: 534,073 videos
+-   Test split: 64,260 videos
+-   Validation split: 33,914 videos
+
+Dataset size
+
+-   Train split: 603 GB 
+-   Test split: 59 GB 
+-   Validation split: 48 GB 
+
+**Partial downloads**
+
+Kinetics is a massive dataset, so FiftyOne provides parameters that can be
+used to efficiently download specific subsets of the dataset to suit your
+needs. When new subsets are specified, FiftyOne will use existing downloaded
+data first if possible before resorting to downloading additional data from the
+web.
+
+Kinetics videos were originally only accessible from YouTube. Over time, some
+videos have become unavailable so the 
+`CVDF <https://github.com/cvdfoundation>`_ have hosted the Kinetics dataset on AWS.
+If you are partially downloading the dataset through FiftyOne, specific videos will generally be
+downloaded from YouTube. Whenever the dataset is loaded in its entirety, the
+CVDF-provided files will be downloaded from AWS. 
+
+The following parameters are available to configure a partial download of Kinetics
+by passing them to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
+
+-   **split** (*None*) and **splits** (*None*): a string or list of strings,
+    respectively, specifying the splits to load. Supported values are
+    ``("train", "test", "validation")``. If neither is provided, all available
+    splits are loaded
+
+-   **classes** (*None*): a string or list of strings specifying required classes
+    to load. If provided, only samples containing at least one instance
+    of a specified class will be loaded
+
+-   **num_workers** (*None*): the number of processes to use when downloading
+    individual videos. By default, `multiprocessing.cpu_count()` is used
+
+-   **shuffle** (*False*): whether to randomly shuffle the order in which
+    samples are chosen for partial downloads
+
+-   **seed** (*None*): a random seed to use when shuffling
+
+-   **max_samples** (*None*): a maximum number of samples to load per split. If
+    ``classes`` are also specified, only up to the number of samples
+    that contain at least one specified class will be loaded.
+    By default, all matching samples are loaded
+
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700-2020",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "springboard diving" and "surfing water"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700-2020",
+            split="validation",
+            classes=["springboard diving", "surfing water"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+
+        fiftyone zoo datasets load kinetics-700-2020 \
+            --split validation \
+            --kwargs \
+                max_samples=10
+
+        fiftyone app launch kinetics-700-2020-validation-10
+
+        #
+        # Download the entire validation split
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any images
+        #
+
+        fiftyone zoo datasets load kinetics-700-2020 \
+            --split validation
+
+        fiftyone app launch kinetics-700-2020-validation
+
+    
+.. image:: /images/dataset_zoo/kinetics.png
+   :alt: kinetics
    :align: center
 
 .. _dataset-zoo-kitti:

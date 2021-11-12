@@ -1285,12 +1285,6 @@ class Kinetics700Dataset(FiftyOneDataset):
     -   Test split: 67,446 videos
     -   Validation split: 33,925 videos
 
-    CVDF split stats:
-    
-    -   Train split:  videos
-    -   Test split:  videos
-    -   Validation split:  videos
-
     Partial downloads:
 
     -   You can specify subsets of data to download via the 
