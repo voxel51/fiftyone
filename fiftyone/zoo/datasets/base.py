@@ -962,7 +962,96 @@ class ImageNetSampleDataset(FiftyOneDataset):
 
 
 class Kinetics400Dataset(FiftyOneDataset):
-    """"""
+    """Kinetics is a collection of large-scale, high-quality datasets of URL
+    links of up to 650,000 video clips that cover 400/600/700 human action
+    classes, depending on the dataset version. The videos include human-object
+    interactions such as playing instruments, as well as human-human
+    interactions such as shaking hands and hugging. Each action class has at
+    least 400/600/700 video clips. Each clip is human annotated with a single
+    action class and lasts around 10 seconds.
+
+    This version contains videos and action classifications for the 400 class
+    version of the dataset.
+    
+    Original split stats:
+    
+    -   Train split: 219,782 videos
+    -   Test split: 35,357 videos
+    -   Validation split: 18,035 videos
+
+    CVDF split stats:
+    
+    -   Train split: 246,534 videos
+    -   Test split: 39,805 videos
+    -   Validation split: 19,906 videos
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the 
+        ``classes`` and ``max_samples`` parameters
+    
+    Example usage::
+       
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-400",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "springboard diving" and "surfing water"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-400",
+            split="validation",
+            classes=["springboard diving", "surfing water"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+    Source 
+        https://deepmind.com/research/open-source/kinetics
+
+    Args:
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded.
+            By default, all matching samples are loaded
+    """
 
     def __init__(
         self,
@@ -1020,7 +1109,96 @@ class Kinetics400Dataset(FiftyOneDataset):
 
 
 class Kinetics600Dataset(FiftyOneDataset):
-    """"""
+    """Kinetics is a collection of large-scale, high-quality datasets of URL
+    links of up to 650,000 video clips that cover 400/600/700 human action
+    classes, depending on the dataset version. The videos include human-object
+    interactions such as playing instruments, as well as human-human
+    interactions such as shaking hands and hugging. Each action class has at
+    least 400/600/700 video clips. Each clip is human annotated with a single
+    action class and lasts around 10 seconds.
+
+    This version contains videos and action classifications for the 600 class
+    version of the dataset.
+    
+    Original split stats:
+    
+    -   Train split: 370,582 videos
+    -   Test split: 56,618 videos
+    -   Validation split: 28,313 videos
+
+    CVDF split stats:
+    
+    -   Train split: 427,549 videos
+    -   Test split: 72,924 videos
+    -   Validation split: 29,793 videos
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the 
+        ``classes`` and ``max_samples`` parameters
+    
+    Example usage::
+       
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-600",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "springboard diving" and "surfing water"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-600",
+            split="validation",
+            classes=["springboard diving", "surfing water"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+    Source 
+        https://deepmind.com/research/open-source/kinetics
+
+    Args:
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded.
+            By default, all matching samples are loaded
+    """
 
     def __init__(
         self,
@@ -1089,7 +1267,13 @@ class Kinetics700Dataset(FiftyOneDataset):
     This version contains videos and action classifications for the 700 class
     version of the dataset.
     
-    Full split stats:
+    Original split stats:
+    
+    -   Train split: 529,046 videos
+    -   Test split: 67,446 videos
+    -   Validation split: 33,925 videos
+
+    CVDF split stats:
     
     -   Train split:  videos
     -   Test split:  videos
@@ -1122,7 +1306,7 @@ class Kinetics700Dataset(FiftyOneDataset):
         
         #
         # Load 10 samples from the validation split that
-        # contain the actions "" and ""
+        # contain the actions "springboard diving" and "surfing water"
         #
         # Videos that contain all `classes` will be prioritized first, followed
         # by videos that contain at least one of the required `classes`. If
@@ -1138,13 +1322,11 @@ class Kinetics700Dataset(FiftyOneDataset):
         dataset = foz.load_zoo_dataset(
             "kinetics-700",
             split="validation",
-            classes=[],
+            classes=["springboard diving", "surfing water"],
             max_samples=10,
         )
         
         session.dataset = dataset
-
-    Dataset size
 
     Source 
         https://deepmind.com/research/open-source/kinetics
@@ -1221,7 +1403,103 @@ class Kinetics700Dataset(FiftyOneDataset):
 
 
 class Kinetics7002020Dataset(FiftyOneDataset):
-    """"""
+    """Kinetics is a collection of large-scale, high-quality datasets of URL
+    links of up to 650,000 video clips that cover 400/600/700 human action
+    classes, depending on the dataset version. The videos include human-object
+    interactions such as playing instruments, as well as human-human
+    interactions such as shaking hands and hugging. Each action class has at
+    least 400/600/700 video clips. Each clip is human annotated with a single
+    action class and lasts around 10 seconds.
+
+    This version contains videos and action classifications for the 700 class
+    version of the dataset.
+    
+    Original split stats:
+    
+    -   Train split: 542,352 videos
+    -   Test split: 67,433 videos
+    -   Validation split: 34,125 videos
+
+    CVDF split stats:
+    
+    -   Train split: 534,073 videos
+    -   Test split: 64,260 videos
+    -   Validation split: 33,914 videos
+
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the 
+        ``classes`` and ``max_samples`` parameters
+    
+    Example usage::
+       
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary).
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700-2020",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+        
+        session = fo.launch_app(dataset)
+        
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "springboard diving" and "surfing water"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+        
+        dataset = foz.load_zoo_dataset(
+            "kinetics-700-2020",
+            split="validation",
+            classes=["springboard diving", "surfing water"],
+            max_samples=10,
+        )
+        
+        session.dataset = dataset
+
+    Dataset size
+
+    -   Train split: 603 GB 
+    -   Test split: 59 GB 
+    -   Validation split: 48 GB 
+
+    Source 
+        https://deepmind.com/research/open-source/kinetics
+
+    Args:
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded.
+            By default, all matching samples are loaded
+    """
 
     def __init__(
         self,
