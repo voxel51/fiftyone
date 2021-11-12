@@ -6,12 +6,14 @@ Remote media caching.
 |
 """
 from datetime import datetime, timedelta
-import io
 import logging
+import logging.handlers
 import mimetypes
 import multiprocessing
 import multiprocessing.dummy
 import os
+import schedule
+import time
 import urllib.parse as urlparse
 
 import eta.core.storage as etas
@@ -196,6 +198,14 @@ class MediaCache(object):
     @property
     def cache_dir(self):
         return self.config.cache_dir
+
+    @property
+    def media_dir(self):
+        return _get_media_dir(self.config.cache_dir)
+
+    @property
+    def log_path(self):
+        return _get_log_path(self.config.cache_dir)
 
     @property
     def cache_size(self):
@@ -413,18 +423,6 @@ class MediaCache(object):
         client = self._get_client(fs)
         return client.download_bytes(filepath, start=start, end=end)
 
-        """
-        chunk_size = 64 * 1024
-        with io.BytesIO() as f:
-            client.download_stream(filepath, f)
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    return
-
-                yield chunk
-        """
-
     def get_local_path(self, filepath, download=True, skip_failures=True):
         """Retrieves the local path for the given file.
 
@@ -548,7 +546,7 @@ class MediaCache(object):
         the oldest files, if necessary, if the cache's total size exceeds its
         limit.
         """
-        _garbage_collect_cache(self)
+        _garbage_collect_cache(self, logger)
 
     def clear(self, filepaths=None):
         """Deletes all or specific files from the cache.
@@ -558,8 +556,8 @@ class MediaCache(object):
                 default, all cached files are deleted
         """
         if filepaths is None:
-            if os.path.isdir(self.cache_dir):
-                etau.delete_dir(self.cache_dir)
+            if os.path.isdir(self.media_dir):
+                etau.delete_dir(self.media_dir)
         else:
             for filepath in filepaths:
                 fs, local_path, exists, _ = self._parse_filepath(filepath)
@@ -602,7 +600,7 @@ class MediaCache(object):
 
         client = self._get_client(fs)
         relpath = client.get_local_path(filepath)
-        local_path = os.path.join(self.cache_dir, fs, relpath)
+        local_path = os.path.join(self.media_dir, fs, relpath)
         exists = os.path.isfile(local_path)
 
         # If the file does not exist and we were unable to download it in the
@@ -651,73 +649,76 @@ def _write_cache_result(filepath, local_path, success, checksum):
         f.write("%s,%d,%s" % (filepath, int(success), checksum or ""))
 
 
-_LOCK_FILENAME = "lock"
-_LOCK_MINUTES = 1
+def _get_media_dir(cache_dir):
+    return os.path.join(cache_dir, "media")
+
+
+def _get_log_path(cache_dir):
+    return os.path.join(cache_dir, "log", "gc.log")
 
 
 def _get_lock_path(cache_dir):
-    return os.path.join(cache_dir, _LOCK_FILENAME)
+    return os.path.join(cache_dir, "lock")
 
 
-def _is_cache_locked(cache_dir):
-    lock_path = _get_lock_path(cache_dir)
+def _garbage_collect_cache(gc_media_cache, gc_logger):
+    gc_logger.info("Running garbage collection")
+
+    media_dir = gc_media_cache.media_dir
+    lock_path = gc_media_cache.lock_path
+    cache_size = gc_media_cache.cache_size
+
+    if _is_cache_locked(lock_path, gc_logger):
+        gc_logger.info("Aborting garbage collection")
+        return
+
+    try:
+        _lock_cache(lock_path)
+        _do_garbage_collection(media_dir, cache_size, gc_logger)
+    except Exception as e:
+        gc_logger.error(e)
+    finally:
+        _unlock_cache(lock_path)
+
+
+def _is_cache_locked(lock_path, gc_logger):
     try:
         with open(lock_path, "r") as f:
             lock_time = datetime.fromtimestamp(int(f.read()))
             lock_delta = datetime.utcnow() - lock_time
-            thresh_delta = timedelta(minutes=_LOCK_MINUTES)
+            thresh_delta = timedelta(minutes=1)
+
             if lock_delta < thresh_delta:
-                logger.info(
+                gc_logger.info(
                     "The cache was locked at %s (%s ago)",
                     lock_time,
                     lock_delta,
                 )
                 return True
-            else:
-                logger.info(
-                    "The cache was locked at %s (%s >= %s ago) and never "
-                    "unlocked, so we're force-unlocking it now",
-                    lock_time,
-                    lock_delta,
-                    thresh_delta,
-                )
-                return False
+
+            gc_logger.info(
+                "The cache was locked at %s (%s >= %s ago) and never "
+                "unlocked, so we're force-unlocking it now",
+                lock_time,
+                lock_delta,
+                thresh_delta,
+            )
+            return False
     except:
         return False
 
 
-def _lock_cache(cache_dir):
-    lock_path = _get_lock_path(cache_dir)
+def _lock_cache(lock_path):
     with open(lock_path, "w") as f:
         f.write(str(int(datetime.utcnow().timestamp())))
 
 
-def _unlock_cache(cache_dir):
-    lock_path = _get_lock_path(cache_dir)
+def _unlock_cache(lock_path):
     _delete_file(lock_path)
 
 
-def _garbage_collect_cache(media_cache):
-    logger.info("Running garbage collection")
-
-    cache_dir = media_cache.cache_dir
-
-    if _is_cache_locked(cache_dir):
-        logger.info("Aborting garbage collection")
-        return
-
-    try:
-        _lock_cache(cache_dir)
-        _do_garbage_collection(media_cache)
-    finally:
-        _unlock_cache(cache_dir)
-
-
-def _do_garbage_collection(media_cache):
-    cache_dir = media_cache.cache_dir
-    cache_size = media_cache.cache_size
-
-    paths = _list_cache(cache_dir)
+def _do_garbage_collection(media_dir, cache_size, gc_logger):
+    paths = etau.list_files(media_dir, recursive=True, sort=False)
 
     media_roots = set(
         os.path.splitext(path)[0] for path in paths if not _is_cache_path(path)
@@ -736,10 +737,10 @@ def _do_garbage_collection(media_cache):
             if root not in media_roots:
                 # Found cache file with no corresponding media
                 orphan_cache_files += 1
-                cache_path = os.path.join(cache_dir, path)
+                cache_path = os.path.join(media_dir, path)
                 _delete_file(cache_path)
         else:
-            local_path = os.path.join(cache_dir, path)
+            local_path = os.path.join(media_dir, path)
             cache_path = _get_cache_path(local_path)
 
             stat = os.stat(local_path)
@@ -768,19 +769,19 @@ def _do_garbage_collection(media_cache):
         deleted_size += 1
 
     if deleted_count > 0:
-        logger.info(
+        gc_logger.info(
             "Deleted %d media files (%s)",
             deleted_count,
             etau.to_human_bytes_str(deleted_size),
         )
 
     if orphan_cache_files > 0:
-        logger.info("Deleted %d orphan cache files", orphan_cache_files)
+        gc_logger.info("Deleted %d orphan cache files", orphan_cache_files)
 
     if deleted_count == 0 and orphan_cache_files == 0:
-        logger.info("Nothing to cleanup")
+        gc_logger.info("Nothing to cleanup")
 
-    logger.info(
+    gc_logger.info(
         "Garbage collection complete; the cache size is %d media files (%s)",
         current_count,
         etau.to_human_bytes_str(current_size),
@@ -788,23 +789,26 @@ def _do_garbage_collection(media_cache):
 
 
 def _get_cached_filepaths(cache_dir):
+    media_dir = _get_media_dir(cache_dir)
+    paths = etau.list_files(media_dir, recursive=True, sort=False)
+
     filepaths = []
-    for path in _list_cache(cache_dir):
+    for path in paths:
         if _is_cache_path(path):
-            cache_path = os.path.join(cache_dir, path)
+            cache_path = os.path.join(media_dir, path)
             filepath = _read_cache_result(cache_path)[0]
             filepaths.append(filepath)
 
     return filepaths
 
 
-def _compute_cache_stats(media_cache, filepaths=None):
+def _compute_cache_stats(_media_cache, filepaths=None):
     current_count = 0
     current_size = 0
 
     if filepaths is not None:
         for filepath in filepaths:
-            fs, local_path, exists, _ = media_cache._parse_filepath(filepath)
+            fs, local_path, exists, _ = _media_cache._parse_filepath(filepath)
             if fs != FileSystem.LOCAL and exists:
                 try:
                     current_size += os.path.getsize(local_path)
@@ -812,20 +816,16 @@ def _compute_cache_stats(media_cache, filepaths=None):
                 except FileNotFoundError:
                     pass
     else:
-        cache_dir = media_cache.cache_dir
+        media_dir = _media_cache.media_dir
+        paths = etau.list_files(media_dir, recursive=True, sort=False)
 
-        for path in _list_cache(cache_dir):
+        for path in paths:
             if not _is_cache_path(path):
-                local_path = os.path.join(cache_dir, path)
+                local_path = os.path.join(media_dir, path)
                 current_size += os.path.getsize(local_path)
                 current_count += 1
 
     return current_count, current_size
-
-
-def _list_cache(cache_dir):
-    paths = etau.list_files(cache_dir, recursive=True, sort=False)
-    return [p for p in paths if p != _LOCK_FILENAME]
 
 
 def _pop_cache(local_path):
@@ -848,8 +848,6 @@ def _upload_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_upload_media(task)
     else:
-        # urllib3_logger = logging.getLogger("urllib3")
-        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_upload_media, tasks)
@@ -876,8 +874,6 @@ def _download_media(tasks, num_workers):
             for task in pb(tasks):
                 _do_download_media(task)
     else:
-        # urllib3_logger = logging.getLogger("urllib3")
-        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_download_media, tasks)
@@ -917,8 +913,6 @@ def _get_checksums(tasks, num_workers):
                 filepath, checksum = _do_get_checksum(task)
                 checksums[filepath] = checksum
     else:
-        # urllib3_logger = logging.getLogger("urllib3")
-        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_get_checksum, tasks)
@@ -953,8 +947,6 @@ def _get_video_metadata(tasks, num_workers):
                 filepath, _meta = _do_get_video_metadata(task)
                 metadata[filepath] = _meta
     else:
-        # urllib3_logger = logging.getLogger("urllib3")
-        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_get_video_metadata, tasks)
@@ -997,8 +989,6 @@ def _get_file_metadata(tasks, num_workers):
                 filepath, _meta = _do_get_file_metadata(task)
                 metadata[filepath] = _meta
     else:
-        # urllib3_logger = logging.getLogger("urllib3")
-        # with fou.SetAttributes(urllib3_logger, level=logging.ERROR):
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
                 results = pool.imap_unordered(_do_get_file_metadata, tasks)
@@ -1070,3 +1060,36 @@ def _make_client(fs, num_workers=None):
         return HTTPStorageClient(**kwargs)
 
     raise ValueError("Unsupported file system '%s'" % fs)
+
+
+# This is a garbage collection service that manages the cache's size
+if __name__ == "__main__":
+    _logger = logging.getLogger("gc")
+
+    if media_cache.config.gc_log:
+        _logger.setLevel(logging.INFO)
+        handler = logging.handlers.RotatingFileHandler(
+            media_cache.log_path,
+            maxBytes=media_cache.config.gc_log_max_bytes,
+            backupCount=media_cache.config.gc_log_backup_count,
+        )
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        handler.setFormatter(formatter)
+        _logger.addHandler(handler)
+
+    def gc():
+        try:
+            _garbage_collect_cache(media_cache, _logger)
+        except:
+            pass
+
+    interval = media_cache.config.gc_sleep_seconds
+    sleep = min(interval, 1)
+
+    schedule.every(interval).seconds.do(gc)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(sleep)

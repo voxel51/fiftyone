@@ -451,6 +451,30 @@ class MediaCacheConfig(EnvConfig):
             env_var="FIFTYONE_MEDIA_CACHE_NUM_WORKERS",
             default=None,
         )
+        self.gc_sleep_seconds = self.parse_number(
+            d,
+            "gc_sleep_seconds",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_SLEEP_SECONDS",
+            default=60,  # 1 minute
+        )
+        self.gc_log = self.parse_bool(
+            d,
+            "gc_log",
+            env_var="FIFTYONE_MEDIA_CACHE_LOG_GARBAGE_COLLECTION",
+            default=True,
+        )
+        self.gc_log_max_bytes = self.parse_number(
+            d,
+            "gc_log_max_bytes",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_MAX_BYTES",
+            default=512 * 1024 ** 2,  # 512 KB
+        )
+        self.gc_log_backup_count = self.parse_int(
+            d,
+            "gc_log_backup_count",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_BACKUP_COUNT",
+            default=10,
+        )
         self.aws_config_file = self.parse_string(
             d, "aws_config_file", env_var="AWS_CONFIG_FILE", default=None,
         )
