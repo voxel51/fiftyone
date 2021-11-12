@@ -38,7 +38,9 @@ def init_media_cache(config):
     global gc_service
 
     media_cache = MediaCache(config)
-    gc_service = fos.MediaCacheService()
+
+    if media_cache.cache_size >= 0:
+        gc_service = fos.MediaCacheService()
 
 
 def download_media(sample_collection, update=False, skip_failures=True):
@@ -235,13 +237,20 @@ class MediaCache(object):
             self, filepaths=filepaths
         )
 
-        cache_size_str = etau.to_human_bytes_str(self.cache_size)
+        cache_dir = self.cache_dir
+        if self.cache_size < 0:
+            cache_size = float("inf")
+            cache_size_str = "unlimited"
+        else:
+            cache_size = self.cache_size
+            cache_size_str = etau.to_human_bytes_str(cache_size)
+
         current_size_str = etau.to_human_bytes_str(current_size)
-        load_factor = current_size / self.cache_size
+        load_factor = current_size / cache_size
 
         return {
-            "cache_dir": self.cache_dir,
-            "cache_size": self.cache_size,
+            "cache_dir": cache_dir,
+            "cache_size": cache_size,
             "cache_size_str": cache_size_str,
             "current_size": current_size,
             "current_size_str": current_size_str,
@@ -716,6 +725,9 @@ def _unlock_cache(lock_path):
 
 
 def _do_garbage_collection(media_dir, cache_size, gc_logger):
+    if cache_size < 0:
+        cache_size = float("inf")
+
     paths = etau.list_files(media_dir, recursive=True, sort=False)
 
     media_roots = set(
