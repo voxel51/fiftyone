@@ -12,20 +12,20 @@ import mimetypes
 import multiprocessing
 import multiprocessing.dummy
 import os
-import schedule
-import time
 import urllib.parse as urlparse
 
 import eta.core.storage as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
 
 media_cache = None
+gc_service = None
 
 
 def init_media_cache(config):
@@ -35,7 +35,10 @@ def init_media_cache(config):
         config: a :class:`fiftyone.core.config.MediaCacheConfig`
     """
     global media_cache
+    global gc_service
+
     media_cache = MediaCache(config)
+    gc_service = fos.MediaCacheService()
 
 
 def download_media(sample_collection, update=False, skip_failures=True):
@@ -179,8 +182,8 @@ class GoogleCloudStorageClient(etas.GoogleCloudStorageClient):
 
 
 class MediaCache(object):
-    """Media cache that automatically manages the downloading of remote media
-    files stored in S3, GCS, or web URLs.
+    """A cache that automatically manages the downloading of remote media files
+    stored in S3, GCS, or web URLs.
 
     Args:
         config: a :class:`fiftyone.core.config.MediaCacheConfig`
@@ -201,11 +204,15 @@ class MediaCache(object):
 
     @property
     def media_dir(self):
-        return _get_media_dir(self.config.cache_dir)
+        return os.path.join(self.config.cache_dir, "media")
 
     @property
     def log_path(self):
-        return _get_log_path(self.config.cache_dir)
+        return os.path.join(self.config.cache_dir, "log", "gc.log")
+
+    @property
+    def _lock_path(self):
+        return os.path.join(self.config.cache_dir, "lock")
 
     @property
     def cache_size(self):
@@ -492,7 +499,7 @@ class MediaCache(object):
                 raising an error if a remote file cannot be downloaded
         """
         if filepaths is None:
-            filepaths = _get_cached_filepaths(self.cache_dir)
+            filepaths = _get_cached_filepaths(self)
 
         tasks = []
         seen = set()
@@ -539,14 +546,17 @@ class MediaCache(object):
         if tasks:
             _download_media(tasks, self.num_workers)
 
-    def garbage_collect(self):
+    def garbage_collect(self, _logger=None):
         """Executes the cache's garbage collection routine.
 
         This will delete any orphan files from the cache directory, as well as
         the oldest files, if necessary, if the cache's total size exceeds its
         limit.
         """
-        _garbage_collect_cache(self, logger)
+        if _logger is None:
+            _logger = logger
+
+        _garbage_collect_cache(self, _logger)
 
     def clear(self, filepaths=None):
         """Deletes all or specific files from the cache.
@@ -649,24 +659,12 @@ def _write_cache_result(filepath, local_path, success, checksum):
         f.write("%s,%d,%s" % (filepath, int(success), checksum or ""))
 
 
-def _get_media_dir(cache_dir):
-    return os.path.join(cache_dir, "media")
-
-
-def _get_log_path(cache_dir):
-    return os.path.join(cache_dir, "log", "gc.log")
-
-
-def _get_lock_path(cache_dir):
-    return os.path.join(cache_dir, "lock")
-
-
 def _garbage_collect_cache(gc_media_cache, gc_logger):
     gc_logger.info("Running garbage collection")
 
     media_dir = gc_media_cache.media_dir
-    lock_path = gc_media_cache.lock_path
     cache_size = gc_media_cache.cache_size
+    lock_path = gc_media_cache._lock_path
 
     if _is_cache_locked(lock_path, gc_logger):
         gc_logger.info("Aborting garbage collection")
@@ -788,8 +786,8 @@ def _do_garbage_collection(media_dir, cache_size, gc_logger):
     )
 
 
-def _get_cached_filepaths(cache_dir):
-    media_dir = _get_media_dir(cache_dir)
+def _get_cached_filepaths(_media_cache):
+    media_dir = _media_cache.media_dir
     paths = etau.list_files(media_dir, recursive=True, sort=False)
 
     filepaths = []
@@ -1060,36 +1058,3 @@ def _make_client(fs, num_workers=None):
         return HTTPStorageClient(**kwargs)
 
     raise ValueError("Unsupported file system '%s'" % fs)
-
-
-# This is a garbage collection service that manages the cache's size
-if __name__ == "__main__":
-    _logger = logging.getLogger("gc")
-
-    if media_cache.config.gc_log:
-        _logger.setLevel(logging.INFO)
-        handler = logging.handlers.RotatingFileHandler(
-            media_cache.log_path,
-            maxBytes=media_cache.config.gc_log_max_bytes,
-            backupCount=media_cache.config.gc_log_backup_count,
-        )
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        handler.setFormatter(formatter)
-        _logger.addHandler(handler)
-
-    def gc():
-        try:
-            _garbage_collect_cache(media_cache, _logger)
-        except:
-            pass
-
-    interval = media_cache.config.gc_sleep_seconds
-    sleep = min(interval, 1)
-
-    schedule.every(interval).seconds.do(gc)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(sleep)

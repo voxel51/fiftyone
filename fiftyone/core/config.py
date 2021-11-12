@@ -455,13 +455,13 @@ class MediaCacheConfig(EnvConfig):
             d,
             "gc_sleep_seconds",
             env_var="FIFTYONE_MEDIA_CACHE_GC_SLEEP_SECONDS",
-            default=60,  # 1 minute
+            default=60,
         )
         self.gc_log = self.parse_bool(
             d,
             "gc_log",
             env_var="FIFTYONE_MEDIA_CACHE_LOG_GARBAGE_COLLECTION",
-            default=True,
+            default=False,
         )
         self.gc_log_max_bytes = self.parse_number(
             d,
