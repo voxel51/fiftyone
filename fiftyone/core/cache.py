@@ -5,7 +5,6 @@ Remote media caching.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import io
 import logging
 import mimetypes
 import multiprocessing
@@ -173,6 +172,14 @@ class GoogleCloudStorageClient(etas.GoogleCloudStorageClient):
             raise ValueError("Invalid GCS path '%s'" % remote_path)
 
         return path
+
+    def open(self, remote_path, mode):
+        blob = self._get_blob(remote_path)
+        return blob.open(mode)
+
+    def size_bytes(self, remote_path):
+        blob = self._get_blob(remote_path)
+        return blob.size
 
 
 class MediaCache(object):
@@ -412,18 +419,6 @@ class MediaCache(object):
         client = self._get_client(fs)
         return client.download_bytes(filepath, start=start, end=end)
 
-        """
-        chunk_size = 64 * 1024
-        with io.BytesIO() as f:
-            client.download_stream(filepath, f)
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    return
-
-                yield chunk
-        """
-
     def get_local_path(self, filepath, download=True, skip_failures=True):
         """Retrieves the local path for the given file.
 
@@ -478,6 +473,20 @@ class MediaCache(object):
             _download_media(tasks, self.num_workers)
 
         return local_paths
+
+    def open(self, filepath, mode):
+        if self.is_local_or_cached(filepath):
+            local_path = self.get_local_path(filepath)
+            return open(local_path, mode)
+
+        fs = _get_file_system(filepath)
+        client = self._get_client(fs)
+        return client.open(filepath, mode)
+
+    def size_bytes(self, filepath):
+        fs = _get_file_system(filepath)
+        client = self._get_client(fs)
+        return client.size(filepath)
 
     def update(self, filepaths=None, skip_failures=True):
         """Re-downloads any cached files whose checksum no longer matches their

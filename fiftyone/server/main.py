@@ -19,7 +19,6 @@ import tornado.ioloop
 import tornado.iostream
 import tornado.options
 import tornado.web
-from tornado.web import HTTPError
 import tornado.websocket
 
 import eta.core.serial as etas
@@ -49,6 +48,7 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
+import fiftyone.server.metadata as fosm
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.utils as fosu
 
@@ -272,65 +272,27 @@ class PageHandler(tornado.web.RequestHandler):
             samples = samples[:page_length]
             more = page + 1
 
-        results = _generate_results(samples, view.media_type)
+        results = await _generate_results(samples)
 
         self.write({"results": results, "more": more})
 
 
-def _generate_results(samples, media_type, download_videos=False):
-    filepaths = [s["filepath"] for s in samples]
+async def _generate_results(samples):
+    filepaths = list({s["filepath"] for s in samples})
+    futures = [fosm.read_metadata(filepath) for filepath in filepaths]
+    metadatas = await asyncio.gather(*futures)
 
-    # Download remote media locally, if necessary, so metadata can be computed.
-    # If downloading videos is not allowed, the local path for uncached videos
-    # with no sample metadata won't exist and `read_metadata()` will return
-    # placeholder data
-    download = media_type != fom.VIDEO or download_videos
-    local_paths = media_cache.get_local_paths(filepaths, download=download)
+    metadatas = {
+        filepath: metadata for filepath, metadata in zip(filepaths, metadatas)
+    }
 
-    results = []
-    tasks = {}
-    metadata = {}
-    for idx, (sample, filepath, local_path) in enumerate(
-        zip(samples, filepaths, local_paths)
-    ):
-        if filepath not in metadata:
-            d, success = fosu.read_metadata(
-                local_path, sample.get("metadata", None)
-            )
-            metadata[filepath] = d
+    result = []
+    for sample in samples:
+        sample_result = {"sample": sample}
+        sample_result.update(metadatas[sample["filepath"]])
+        result.append(sample_result)
 
-            # When downloading videos is not allowed, we store tasks for the
-            # remote video metadata that we'll need to compute separately
-            if (
-                not success
-                and not download_videos
-                and media_cache.is_remote_uncached_video(filepath)
-            ):
-                tasks[idx] = filepath
-
-        result = {"sample": sample}
-        result.update(metadata[filepath])
-
-        results.append(result)
-
-    if not tasks:
-        return results
-
-    # Get metadata for uncached remote videos
-    remote_metadata = media_cache.get_remote_video_metadatas(tasks.values())
-    for idx, filepath in tasks.items():
-        try:
-            video_metadata = remote_metadata[filepath]
-            d = {
-                "width": video_metadata.frame_width,
-                "height": video_metadata.frame_height,
-                "frame_rate": video_metadata.frame_rate,
-            }
-            results[idx].update(d)
-        except:
-            pass
-
-    return results
+    return result
 
 
 class TeamsHandler(RequestHandler):
@@ -1487,7 +1449,6 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         self.set_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-        # self.set_header("content-length", self.get_content_size())
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
     def get_content_type(self):
@@ -1509,25 +1470,11 @@ class MediaHandler(FileHandler):
                 abspath, start=start, end=end
             )
 
-        """
-        # For undownloaded videos, stream directly from the remote source
-        if media_cache.is_remote_uncached_video(abspath):
-            return media_cache.get_remote_content(
-                abspath, start=start, end=end
-            )
-        """
-
         # Stream from local disk, downloading remote media if necessary
         local_path = media_cache.get_local_path(abspath)
         return super().get_content(local_path, start=start, end=end)
 
     def validate_absolute_path(self, root, absolute_path):
-        """
-        if media_cache.is_remote_uncached_video(absolute_path):
-            self._orig_path = absolute_path
-            return media_cache.generate_signed_url(absolute_path)
-        """
-
         return absolute_path
 
     def get_content_size(self):
@@ -1543,12 +1490,6 @@ class MediaHandler(FileHandler):
             return self._stat_result
 
         abspath = self.absolute_path
-
-        """
-        if hasattr(self, "_orig_path"):
-            abspath = self._orig_path
-        """
-
         if media_cache.is_local(abspath):
             self._stat_result = os.stat(abspath)
             return self._stat_result
