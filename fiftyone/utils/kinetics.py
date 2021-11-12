@@ -18,7 +18,6 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
-import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
 import fiftyone.utils.youtubedl as fouy
 
@@ -208,6 +207,8 @@ class KineticsDatasetManager(object):
             # Download up to max_samples from YouTube
             self._download_samples_from_youtube(config)
 
+        self.info.cleanup_excess_videos()
+
     def _download_entire_classes(self, config, downloader):
         incomplete_classes = self.info.get_incomplete_classes()
         classes = list(set(incomplete_classes).intersection(config.classes))
@@ -294,7 +295,12 @@ class KineticsDatasetManager(object):
         prev_loaded = self.info.all_prev_loaded_tars
 
         split = self.info.split
-        prev_loaded[split].extend(tar_urls)
+        for tar_url in tar_urls:
+            if tar_url in self.info.download_urls:
+                prev_loaded[split].append(tar_url)
+            elif tar_url in self.info.multisplit_urls:
+                prev_loaded["multisplit"].append(tar_url)
+
         prev_loaded[split] = sorted(set(prev_loaded[split]))
 
         etas.write_json(prev_loaded, loaded_tar_path, pretty_print=True)
@@ -321,13 +327,39 @@ class KineticsDatasetDownloader(object):
         self.num_workers = num_workers
 
     def download_entire_split(self, info):
-        all_urls = info.download_urls
+        urls = self._process_split_tars(info)
+        urls.extend(self._process_multisplit_tars(info))
+        return urls
+
+    def _process_split_tars(self, info):
+        split_urls = info.download_urls
         prev_urls = info.prev_loaded_tars
-        urls = list(set(all_urls) - set(prev_urls))
+        urls = list(set(split_urls) - set(prev_urls))
         if urls:
             tar_paths = self._download_tars(urls, info.scratch_dir)
             self._process_tars(tar_paths, info)
 
+        return urls
+
+    def _process_multisplit_tars(self, info):
+        urls = info.multisplit_urls
+        prev_urls = info.all_prev_loaded_tars["multisplit"]
+        urls = list(set(urls) - set(prev_urls))
+        if urls:
+            tar_paths = []
+            urls_to_download = []
+            for url in urls:
+                if url in prev_urls:
+                    tar_path = os.path.join(
+                        info.raw_dir, os.path.basename(url)
+                    )
+                    tar_paths.append(tar_path)
+                else:
+                    urls_to_download.append(url)
+            tar_paths.extend(
+                self._download_tars(urls_to_download, info.raw_dir)
+            )
+            self._process_tars(tar_paths, info)
         return urls
 
     def download_classes(self, info, classes):
@@ -346,28 +378,30 @@ class KineticsDatasetDownloader(object):
         return urls
 
     def _download_tars(self, urls, download_dir):
-        foua.download_from_s3(
-            urls, download_dir=download_dir, num_workers=self.num_workers,
-        )
-        return [
-            os.path.join(download_dir, os.path.basename(url)) for url in urls
-        ]
+        tar_paths = []
+        logger.info("Downloading %d tars..." % len(urls))
+        for url in urls:
+            tar_path = os.path.join(download_dir, os.path.basename(url))
+            etaw.download_file(url, path=tar_path)
+        return tar_paths
 
     def _process_tars(self, tar_paths, info):
-        logger.info("Extracting videos...")
+        logger.info("Extracting and moving videos...")
         with fou.ProgressBar(total=len(info.all_sample_ids)) as pb:
             for tar_path in tar_paths:
                 extract_dir = tar_path.replace(".tar.gz", "")
-                etau.extract_archive(
-                    tar_path, extract_dir, delete_archive=True
-                )
+                if os.path.isfile(tar_path):
+                    etau.extract_archive(
+                        tar_path, extract_dir, delete_archive=True
+                    )
                 for video_fn in os.listdir(extract_dir):
                     video_id = info.id_from_filename(video_fn)
                     c = info.get_video_class(video_id)
-                    video_fp = os.path.join(extract_dir, video_fn)
-                    moved_fp = os.path.join(info.class_dir(c), video_fn)
-                    etau.move_file(video_fp, moved_fp)
-                    pb.update()
+                    if c is not None:
+                        video_fp = os.path.join(extract_dir, video_fn)
+                        moved_fp = os.path.join(info.class_dir(c), video_fn)
+                        etau.move_file(video_fp, moved_fp)
+                        pb.update()
 
     def _process_class_tars(self, class_tar_map, info):
         for c, tar_path in class_tar_map.items():
@@ -429,6 +463,7 @@ class KineticsDatasetInfo(object):
         self.kinetics_dir = os.path.abspath(kinetics_dir)
         self.scratch_dir = os.path.abspath(scratch_dir)
         self.split = split
+        etau.ensure_dir(self.split_dir)
         self.cleanup_partial_downloads()
 
         self.raw_annotations = self._get_raw_annotations()
@@ -468,11 +503,36 @@ class KineticsDatasetInfo(object):
         )
 
     @property
+    def raw_dir(self):
+        return os.path.join(self.kinetics_dir, "raw")
+
+    @property
     def raw_anno_path(self):
         return self.raw_anno_path_split(self.split)
 
     def raw_anno_path_split(self, split):
-        return os.path.join(self.kinetics_dir, "%s.json" % split)
+        return os.path.join(self.raw_dir, "%s.json" % split)
+
+    @property
+    def urls_s3_file(self):
+        split = self.split
+        if split == "validation":
+            split = "val"
+        version = self.version.replace("-", "_")
+        return "https://s3.amazonaws.com/kinetics/%s/%s/k%s_%s_path.txt" % (
+            version,
+            split,
+            version,
+            split,
+        )
+
+    @property
+    def urls_filename(self):
+        return os.path.basename(self.urls_s3_file)
+
+    @property
+    def urls_path(self):
+        return os.path.join(self.raw_dir, self.urls_filename)
 
     @property
     def error_path(self):
@@ -489,6 +549,10 @@ class KineticsDatasetInfo(object):
     @property
     def prev_loaded_tars(self):
         return self.all_prev_loaded_tars[self.split]
+
+    @property
+    def multisplit_urls(self):
+        return []
 
     @property
     def split_dir(self):
@@ -523,7 +587,7 @@ class KineticsDatasetInfo(object):
         return self._url_id_map[video_url]
 
     def get_video_class(self, video_id):
-        return self._classwise_sample_ids_rev[video_id]
+        return self._classwise_sample_ids_rev.get(video_id, None)
 
     def ensure_class_dirs(self):
         for c in self.all_classes:
@@ -540,6 +604,16 @@ class KineticsDatasetInfo(object):
                         os.remove(filepath)
                     except FileNotFoundError:
                         pass
+
+    def cleanup_excess_videos(self):
+        self.update_existing_sample_ids()
+        for c, existing_ids in self._classwise_existing_sample_ids.items():
+            all_ids = self._classwise_sample_ids[c]
+            excess_ids = list(set(existing_ids) - set(all_ids))
+            for _id in excess_ids:
+                vfn = self.filename_from_id(_id)
+                filepath = os.path.join(self.class_dir(c), vfn)
+                os.remove(filepath)
 
     def update_existing_sample_ids(self):
         classwise_existing_sample_ids = {}
@@ -582,14 +656,16 @@ class KineticsDatasetInfo(object):
         return classes
 
     def _get_download_urls(self):
-        split = self.split
-        if split == "validation":
-            split = "val"
-        version = self.version.replace("-", "_")
-        data = etaw.download_file(
-            "https://s3.amazonaws.com/kinetics/%s/%s/k%s_%s_path.txt"
-            % (version, split, version, split)
-        )
+        urls = self._get_split_download_urls()
+        return urls
+
+    def _get_split_download_urls(self):
+        if not os.path.exists(self.urls_path):
+            etaw.download_file(
+                self.urls_s3_file, path=self.urls_path,
+            )
+        with open(self.urls_path, "rb") as f:
+            data = f.read()
         urls = data.decode("utf-8").split("\n")
         return [url for url in urls if url]
 
@@ -631,7 +707,8 @@ class KineticsDatasetInfo(object):
     def _get_video_files(self, class_dir):
         video_ids = []
         for vfn in etau.list_files(class_dir):
-            video_id, ext = os.path.splitext(vfn)
+            video_fn, ext = os.path.splitext(vfn)
+            video_id = self.id_from_filename(video_fn)
             if ext not in [".part", ".ytdl"]:
                 video_ids.append(video_id)
         return video_ids
@@ -640,7 +717,7 @@ class KineticsDatasetInfo(object):
         if os.path.isfile(self.loaded_tar_path):
             return etas.load_json(self.loaded_tar_path)
 
-        return {s: [] for s in self.splits}
+        return {s: [] for s in self.splits + ["multisplit"]}
 
     def _get_prev_errors(self):
         if os.path.isfile(self.error_path):
@@ -674,6 +751,17 @@ class Kinetics400DatasetInfo(KineticsDatasetInfo):
     def version(self):
         return "400"
 
+    @property
+    def multisplit_urls(self):
+        return [
+            "https://s3.amazonaws.com/kinetics/400/replacement_for_corrupted_k400.tgz"
+        ]
+
+    def _get_download_urls(self):
+        urls = self._get_split_download_urls()
+        urls.extend(self.multisplit_urls)
+        return urls
+
 
 class ClasswiseS3KineticsDatasetInfo(KineticsDatasetInfo):
     @property
@@ -704,20 +792,45 @@ class Kinetics600DatasetInfo(ClasswiseS3KineticsDatasetInfo):
         return "600"
 
 
-class Kinetics700DatasetInfo(ClasswiseS3KineticsDatasetInfo):
-    """Kinetics700-specific info management"""
-
-    @property
-    def version(self):
-        return "700-2020"
-
-
 class Kinetics7002020DatasetInfo(ClasswiseS3KineticsDatasetInfo):
     """Kinetics700-2020-specific info management"""
 
     @property
     def version(self):
+        return "700-2020"
+
+    def class_url(self, c):
+        split = self.split
+        class_ind = self.all_classes.index(c) + 1
+        if split == "validation":
+            split = "val"
+
+        return "s3://kinetics/700_2020/%s/k700_%s_%03d.tar.gz" % (
+            split,
+            split,
+            class_ind,
+        )
+
+
+class Kinetics700DatasetInfo(Kinetics7002020DatasetInfo):
+    """Kinetics700-specific info management"""
+
+    @property
+    def version(self):
         return "700"
+
+    @property
+    def urls_s3_file(self):
+        split = self.split
+        if split == "validation":
+            split = "val"
+        version = "700_2020"
+        return "https://s3.amazonaws.com/kinetics/%s/%s/k%s_%s_path.txt" % (
+            version,
+            split,
+            version,
+            split,
+        )
 
 
 def _flatten_list(l):
@@ -737,7 +850,6 @@ _ANNOTATION_DOWNLOAD_LINKS = {
     "600": "https://storage.googleapis.com/deepmind-media/Datasets/kinetics600.tar.gz",
     "700": "https://storage.googleapis.com/deepmind-media/Datasets/kinetics700.tar.gz",
     "700-2020": "https://storage.googleapis.com/deepmind-media/Datasets/kinetics700_2020.tar.gz",
-    "700-2020-delta": "https://storage.googleapis.com/deepmind-media/Datasets/kinetics700_2020_delta.tar.gz",
 }
 
 _SPLIT_MAP = {
