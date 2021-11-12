@@ -474,7 +474,17 @@ class MediaCache(object):
 
         return local_paths
 
-    def get_url(self, remote_path, method="GET", headers=None):
+    def get_url(self, remote_path, method="GET", headers=None, hours=1):
+        """Get a valid URL that may expire depending on its the file system.
+
+        GCS and S3 URLs are signed URL that will expire.
+
+        Args:
+            remote_path: the remote path
+            method ("GET"): a valid HTTP method
+            headers (None): optional headers to forward to the storage client
+            hours (1): TTL for URLs that expire 
+        """
         fs = _get_file_system(remote_path)
         if fs == FileSystem.LOCAL:
             raise ValueError("get_url() called with local filepath")
@@ -482,15 +492,10 @@ class MediaCache(object):
         client = self._get_client(fs)
         if hasattr(client, "generate_signed_url"):
             return client.generate_signed_url(
-                remote_path, method=method, headers=headers
+                remote_path, method=method, headers=headers, hours=hours
             )
 
         return remote_path
-
-    def size_bytes(self, filepath):
-        fs = _get_file_system(filepath)
-        client = self._get_client(fs)
-        return client.size(filepath)
 
     def update(self, filepaths=None, skip_failures=True):
         """Re-downloads any cached files whose checksum no longer matches their

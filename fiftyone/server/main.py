@@ -289,8 +289,12 @@ async def _generate_results(samples):
 
     result = []
     for sample in samples:
+        filepath = sample["filepath"]
         sample_result = {"sample": sample}
-        sample_result.update(metadatas[sample["filepath"]])
+        sample_result.update(metadatas[filepath])
+        if filepath not in media_cache:
+            sample_result["url"] = media_cache.get_url(filepath, hours=1)
+
         result.append(sample_result)
 
     return result

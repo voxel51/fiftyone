@@ -43,7 +43,8 @@ async def get_stream_info(path):
             "-i",
             path,
         ],
-        stdout=asyncio.subprocess.PIPE
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
     )
 
     stdout, _ = await proc.communicate()
@@ -168,15 +169,13 @@ async def read_image_dimensions(input):
         width = int(w)
         height = int(h)
     elif (size >= 2) and data.startswith(b"\377\330"):
-        # JPEG
-        it = iter(data[3])
-        b = next(it)
-
+        await input.seek(2)
+        b = await input.read(1)
         while b and ord(b) != 0xDA:
             while ord(b) != 0xFF:
-                b = next(it)
+                b = await input.read(1)
             while ord(b) == 0xFF:
-                b = next(it)
+                b = await input.read(1)
             if ord(b) >= 0xC0 and ord(b) <= 0xC3:
                 await input.read(3)
                 tmp = await input.read(4)
@@ -263,7 +262,7 @@ async def read_image_dimensions(input):
         reserved = await input.read(2)
         if 0 != struct.unpack("<H", reserved)[0]:
             raise MetadataException(MSG)
-        format = input.read(2)
+        format = await input.read(2)
         if 1 != struct.unpack("<H", format)[0]:
             raise MetadataException(MSG)
         num = await input.read(2)

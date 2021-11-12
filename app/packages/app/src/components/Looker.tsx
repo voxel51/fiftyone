@@ -399,14 +399,14 @@ const Looker = ({
   style,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const { sample, dimensions, frameRate, frameNumber } = useRecoilValue(
+  const { sample, dimensions, frameRate, frameNumber, url } = useRecoilValue(
     atoms.modal
   );
   const fullscreen = useRecoilValue(atoms.fullscreen);
   const isClips = useRecoilValue(selectors.isClipsView);
   const mimetype = getMimeType(sample);
   const schema = useRecoilValue(selectors.fieldSchema("sample"));
-  const sampleSrc = getSampleSrc(sample.filepath, sample._id);
+  const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
   const options = useRecoilValue(lookerOptions);
   const activePaths = useRecoilValue(labelAtoms.activeModalFields);
   const theme = useTheme();
