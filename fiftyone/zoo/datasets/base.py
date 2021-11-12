@@ -881,9 +881,7 @@ class FamiliesInTheWildDataset(FiftyOneDataset):
         split_dir = os.path.join(dataset_dir, split)
 
         if not os.path.exists(split_dir):
-            scratch_dir = ffiw.download_fiw_dataset(
-                dataset_dir, scratch_dir=None, cleanup=False
-            )
+            scratch_dir = ffiw.prepare_dataset(dataset_dir, split)
             print(f"{dataset_dir}\n{scratch_dir}")
             # move contents to dataset_dir and remove temp folder
             for file in Path(scratch_dir).glob("*"):
