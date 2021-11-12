@@ -1034,6 +1034,12 @@ class Kinetics400Dataset(FiftyOneDataset):
         
         session.dataset = dataset
 
+    Dataset size
+
+    -   Train split: 370 GB 
+    -   Test split: 56 GB 
+    -   Validation split: 30 GB 
+
     Source 
         https://deepmind.com/research/open-source/kinetics
 
@@ -1181,6 +1187,12 @@ class Kinetics600Dataset(FiftyOneDataset):
         
         session.dataset = dataset
 
+    Dataset size
+
+    -   Train split: 648 GB 
+    -   Test split: 88 GB 
+    -   Validation split: 43 GB 
+
     Source 
         https://deepmind.com/research/open-source/kinetics
 
@@ -1327,6 +1339,12 @@ class Kinetics700Dataset(FiftyOneDataset):
         )
         
         session.dataset = dataset
+
+    Dataset size
+
+    -   Train split: 603 GB 
+    -   Test split: 59 GB 
+    -   Validation split: 48 GB 
 
     Source 
         https://deepmind.com/research/open-source/kinetics
