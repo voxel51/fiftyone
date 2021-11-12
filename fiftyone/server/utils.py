@@ -13,6 +13,7 @@ import io
 import struct
 import warnings
 
+import eta.core.utils as etau
 import eta.core.video as etav
 import PIL.Image
 
@@ -189,6 +190,11 @@ def read_video_metadata(filepath):
             "height": info.frame_size[1],
             "frame_rate": info.frame_rate,
         }
+    except etau.ExecutableNotFoundError as e:
+        raise RuntimeError(
+            "You must have ffmpeg installed on your machine in order to view "
+            "video datasets in the App, but we failed to find it"
+        ) from e
     except:
         return {"width": 512, "height": 512, "frame_rate": 30}
 
