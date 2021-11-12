@@ -26,12 +26,11 @@ FiftyOne in all common local, remote, cloud, and notebook environments.
 Which web browsers does the FiftyOne App support?
 -------------------------------------------------
 
-The :ref:`FiftyOne App <fiftyone-app>` fully supports the Chrome, Firefox, and
-Safari browsers.
+The :ref:`FiftyOne App <fiftyone-app>` fully supports Chrome, Firefox, and
+Safari.
 
-You may also find success using other browsers like Edge, Opera, and Chromium,
-but your mileage may vary. Internet Explorer is explicitly unsupported at this
-time.
+You may find success using browsers like Edge, Opera, or Chromium, but your
+mileage will vary. Internet Explorer is explicitly unsupported at this time.
 
 If using a supported browser is not an option, you can also run FiftyOne
 :ref:`as a desktop application <faq-desktop-app-support>`.

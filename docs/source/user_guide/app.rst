@@ -51,9 +51,10 @@ App instances to the  :ref:`same dataset <faq-multiple-sessions-same-dataset>`.
 
 By default, when you're working in a non-notebook context, the App will be
 opened in a new tab of your web browser. See
-:ref:`this FAQ <faq-supported-browsers>` for supported browsers. There is also
-a :ref:`desktop App <installing-fiftyone-desktop>` that you can install if you
-would like to run the App as a desktop application.
+:ref:`this FAQ <faq-supported-browsers>` for supported browsers.
+
+There is also a :ref:`desktop App <installing-fiftyone-desktop>` that you can
+install if you would like to run the App as a desktop application.
 
 .. note::
 
