@@ -74,8 +74,10 @@ would like to run the App as a desktop application.
         # Blocks execution until the App is closed
         session.wait()
 
-    If you are a Windows user launching the App from a script, you must use the
-    pattern below to avoid
+.. note::
+
+    If you are a Windows user launching the App from a script, you should use
+    the pattern below to avoid
     `multiprocessing issues <https://stackoverflow.com/q/20360686>`_, since the
     App is served via a separate process:
 
@@ -86,7 +88,7 @@ would like to run the App as a desktop application.
         dataset = fo.load_dataset(...)
 
         if __name__ == "__main__":
-            # Ensures that the App is only launched once
+            # Ensures that the App processes are safely launched on Windows
             session = fo.launch_app(dataset)
             session.wait()
 
