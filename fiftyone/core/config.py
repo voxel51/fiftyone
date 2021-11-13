@@ -458,10 +458,7 @@ class MediaCacheConfig(EnvConfig):
             default=60,
         )
         self.gc_log = self.parse_bool(
-            d,
-            "gc_log",
-            env_var="FIFTYONE_MEDIA_CACHE_LOG_GARBAGE_COLLECTION",
-            default=False,
+            d, "gc_log", env_var="FIFTYONE_MEDIA_CACHE_GC_LOG", default=False,
         )
         self.gc_log_max_bytes = self.parse_number(
             d,
