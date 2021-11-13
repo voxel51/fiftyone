@@ -345,6 +345,13 @@ class MediaCacheService(MultiClientService):
     allow_headless = True
 
     @property
+    def _service_args(self):
+        # Include `cache_dir` here so that users can have one cache service
+        # per cache directory running simultaenously
+        cache_dir = focn.load_media_cache_config().cache_dir
+        return super()._service_args + ["--cache-dir", cache_dir]
+
+    @property
     def command(self):
         cache_service_path = os.path.join(
             foc.FIFTYONE_DIR, "service", "cache.py"
