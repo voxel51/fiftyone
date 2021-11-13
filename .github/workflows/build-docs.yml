@@ -63,8 +63,8 @@ jobs:
       - name: Install
         run: |
           sudo apt-get install pandoc
-          pip install --use-deprecated=legacy-resolver -r requirements/extras.txt
-          pip install --use-deprecated=legacy-resolver -r requirements/docs.txt
+          pip install -r requirements/extras.txt
+          pip install -r requirements/docs.txt
           pip install fiftyone-brain
           pip install pycocotools tensorflow torch torchvision
           pip install -e .
