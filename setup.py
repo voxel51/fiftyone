@@ -65,6 +65,8 @@ setup(
     include_package_data=True,
     install_requires=[
         # third-party packages
+        "aiofiles",
+        "aiohttp",
         "argcomplete",
         "boto3",
         "Deprecated",
