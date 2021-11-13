@@ -5,7 +5,6 @@ FiftyOne Server JIT metadata processing
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import collections
 import logging
 import mimetypes
 import shutil

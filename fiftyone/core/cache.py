@@ -182,14 +182,6 @@ class GoogleCloudStorageClient(etas.GoogleCloudStorageClient):
 
         return path
 
-    def open(self, remote_path, mode):
-        blob = self._get_blob(remote_path)
-        return blob.open(mode)
-
-    def size_bytes(self, remote_path):
-        blob = self._get_blob(remote_path)
-        return blob.size
-
 
 class MediaCache(object):
     """A cache that automatically manages the downloading of remote media files
@@ -502,15 +494,14 @@ class MediaCache(object):
 
         return local_paths
 
-    def get_url(self, remote_path, method="GET", headers=None, hours=1):
-        """Get a valid URL that may expire depending on its the file system.
+    def get_url(self, remote_path, method="GET", hours=1):
+        """Get a valid URL that may expire depending on the file system.
 
-        GCS and S3 URLs are signed URL that will expire.
+        GCS and S3 URLs are signed URLs that will expire.
 
         Args:
             remote_path: the remote path
             method ("GET"): a valid HTTP method
-            headers (None): optional headers to forward to the storage client
             hours (1): TTL for URLs that expire 
         """
         fs = _get_file_system(remote_path)
@@ -520,7 +511,7 @@ class MediaCache(object):
         client = self._get_client(fs)
         if hasattr(client, "generate_signed_url"):
             return client.generate_signed_url(
-                remote_path, method=method, headers=headers, hours=hours
+                remote_path, method=method, hours=hours
             )
 
         return remote_path
