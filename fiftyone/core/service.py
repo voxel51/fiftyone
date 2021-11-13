@@ -338,6 +338,23 @@ class DatabaseService(MultiClientService):
         return mongod
 
 
+class MediaCacheService(MultiClientService):
+    """Garbage collection service for the FiftyOne media cache."""
+
+    # @todo allow one service per `cache_dir`
+    # cache_dir = focn.load_media_cache_config().cache_dir
+
+    service_name = "cache"
+    allow_headless = True
+
+    @property
+    def command(self):
+        cache_service_path = os.path.join(
+            foc.FIFTYONE_DIR, "service", "cache.py"
+        )
+        return [sys.executable, cache_service_path]
+
+
 class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 

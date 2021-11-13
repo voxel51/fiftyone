@@ -21,6 +21,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -139,6 +140,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier"
@@ -183,6 +185,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier"
@@ -227,6 +230,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier"
@@ -271,6 +275,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier"
@@ -424,6 +429,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -588,6 +594,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.1"
@@ -632,6 +639,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.1"
@@ -676,6 +684,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.1"
@@ -720,6 +729,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -764,6 +774,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -808,6 +819,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -852,6 +864,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -896,6 +909,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -940,6 +954,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -984,6 +999,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -1063,6 +1079,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -1107,6 +1124,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -1151,6 +1169,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225]
                 }
@@ -1188,6 +1207,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225]
                 }
@@ -1225,6 +1245,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1269,6 +1290,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1313,6 +1335,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1357,6 +1380,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1401,6 +1425,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1445,6 +1470,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1489,6 +1515,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1533,6 +1560,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<classifier.6"
@@ -1577,6 +1605,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"
@@ -1621,6 +1650,7 @@
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
+                    "image_max_dim": 2048,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
                     "embeddings_layer": "<fc"

@@ -87,9 +87,27 @@ class _SampleMixin(object):
         """The local path to the sample's media.
 
         Accessing this property will cause remote files to be downloaded to
-        FiftyOne's local cache, if necessary.
+        FiftyOne's local media cache, if necessary.
         """
-        return foc.media_cache.get_local_path(self.filepath)
+        return self.get_local_path()
+
+    def get_local_path(self, download=True, skip_failures=True):
+        """Returns the local path to the sample's media.
+
+        This method is only useful for samples backed by remote media.
+
+        Args:
+            download (True): whether to download the remote file to FiftyOne's
+                local media cache, if necessary
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+
+        Returns:
+            the local filepath
+        """
+        return foc.media_cache.get_local_path(
+            self.filepath, download=download, skip_failures=skip_failures
+        )
 
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:

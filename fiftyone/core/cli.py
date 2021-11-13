@@ -24,6 +24,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.cache as foca
 import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
@@ -967,6 +968,8 @@ class CacheCommand(Command):
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "config", CacheConfigCommand)
+        _register_command(subparsers, "clear", CacheClearCommand)
+        _register_command(subparsers, "stats", CacheStatsCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -1025,6 +1028,70 @@ class CacheConfigCommand(Command):
                 print(etas.json_to_str(field))
         else:
             print(fo.media_cache_config)
+
+
+class CacheClearCommand(Command):
+    """Tools for clearing your FiftyOne media cache.
+
+    Examples::
+
+        # Clear your entire media cache
+        fiftyone cache clear
+
+        # Clear a specific dataset(s) media from your cache
+        fiftyone cache clear <dataset-name> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="DATASET_NAME",
+            nargs="+",
+            help="specific dataset(s) whose media to clear from the cache",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.name:
+            foca.media_cache.clear()
+            return
+
+        for name in args.name:
+            dataset = fod.load_dataset(name)
+            dataset.clear_media()
+
+
+class CacheStatsCommand(Command):
+    """Tools for getting stats about your FiftyOne media cache.
+
+    Examples::
+
+        # Print stats about your current media cache
+        fiftyone cache stats
+
+        # Print stats about any cached media in a specific dataset
+        fiftyone cache stats <dataset-name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="DATASET_NAME",
+            nargs="?",
+            help="a specific dataset to which to restrict the stats",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.name:
+            dataset = fod.load_dataset(args.name)
+            stats = dataset.cache_stats()
+        else:
+            stats = foca.media_cache.stats()
+
+        _print_dict_as_table(stats)
 
 
 class AppCommand(Command):

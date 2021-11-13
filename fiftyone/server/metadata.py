@@ -1,7 +1,13 @@
+"""
+FiftyOne Server JIT metadata processing
+
+| Copyright 2017-2021, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import collections
 import logging
 import mimetypes
-import os
 import shutil
 import struct
 
@@ -30,7 +36,16 @@ TIFF = types["TIFF"] = "TIFF"
 FFPROBE = shutil.which("ffprobe")
 
 
-async def get_stream_info(path):
+async def build_stream_info(path):
+    """Build a :class:`eta.core.video.VideoStreamInfo` instance for a provided
+    path
+
+    Args:
+        path: a filepath or URL
+
+    Returns:
+        a :class:`eta.core.video.VideoStreamInfo` instance
+    """
     proc = await asyncio.create_subprocess_exec(
         *[
             FFPROBE,
@@ -71,6 +86,15 @@ async def get_stream_info(path):
 
 
 async def read_metadata(filepath):
+    """Calculates the metadata for a specified media file
+
+    Args:
+        filepath: path to the file
+        metadata (None): existing metadata dict
+
+    Returns:
+        dict
+    """
     video = _is_video(filepath)
     if filepath in media_cache:
         local_path = media_cache.get_local_path(filepath)
@@ -85,7 +109,7 @@ async def read_metadata(filepath):
 async def read_url_metadata(url, video):
     d = {}
     if video:
-        info = await get_stream_info(url)
+        info = await build_stream_info(url)
         d["width"] = info.frame_size[0]
         d["height"] = info.frame_size[1]
         d["frame_rate"] = info.frame_rate
@@ -104,7 +128,7 @@ async def read_url_metadata(url, video):
 async def read_local_metadata(local_path, video):
     d = {}
     if video:
-        info = await get_stream_info(local_path)
+        info = await build_stream_info(local_path)
         d["width"] = info.frame_size[0]
         d["height"] = info.frame_size[1]
         d["frame_rate"] = info.frame_rate
