@@ -23,17 +23,7 @@ from fiftyone.core.cache import media_cache
 
 
 logger = logging.getLogger(__name__)
-
-
-types = collections.OrderedDict()
-BMP = types["BMP"] = "BMP"
-GIF = types["GIF"] = "GIF"
-ICO = types["ICO"] = "ICO"
-JPEG = types["JPEG"] = "JPEG"
-PNG = types["PNG"] = "PNG"
-TIFF = types["TIFF"] = "TIFF"
-
-FFPROBE = shutil.which("ffprobe")
+_FFPROBE = shutil.which("ffprobe")
 
 
 async def build_stream_info(path):
@@ -48,7 +38,7 @@ async def build_stream_info(path):
     """
     proc = await asyncio.create_subprocess_exec(
         *[
-            FFPROBE,
+            _FFPROBE,
             "-loglevel",
             "warning",
             "-print_format",
@@ -89,8 +79,7 @@ async def read_metadata(filepath):
     """Calculates the metadata for a specified media file
 
     Args:
-        filepath: path to the file
-        metadata (None): existing metadata dict
+        filepath: path to the file (remote or local)
 
     Returns:
         dict
@@ -107,6 +96,15 @@ async def read_metadata(filepath):
 
 
 async def read_url_metadata(url, video):
+    """Calculates the metadata for a specified file URL
+
+    Args:
+        url: a file URL
+        video: whether it is a video file
+
+    Returns:
+        dict
+    """
     d = {}
     if video:
         info = await build_stream_info(url)
@@ -126,6 +124,15 @@ async def read_url_metadata(url, video):
 
 
 async def read_local_metadata(local_path, video):
+    """Calculates the metadata for a specified filepath
+
+    Args:
+        local_path: a local filepath
+        video: whether it is a video file
+
+    Returns:
+        dict
+    """
     d = {}
     if video:
         info = await build_stream_info(local_path)
@@ -142,12 +149,13 @@ async def read_local_metadata(local_path, video):
     return d
 
 
-def _is_video(filepath):
-    mime_type = mimetypes.guess_type(filepath)[0]
-    return mime_type.startswith("video/")
-
-
 class Reader(object):
+    """Asynchronous file-like reader
+
+    Args:
+        content: a :class:`aiohttp.StreamReader`
+    """
+
     def __init__(self, content):
         self._data = b""
         self._content = content
@@ -168,6 +176,14 @@ class Reader(object):
 
 
 async def read_image_dimensions(input):
+    """Read the image dimensions of a file-like asynchronous byte stream
+
+    Args:
+        input: file-like input with async read and seek methods
+
+    Raises:
+        MetadataException
+    """
     height = -1
     width = -1
     data = await input.read(26)
@@ -305,4 +321,11 @@ MSG = "unable to read metadata"
 
 
 class MetadataException(Exception):
+    """"Exception for any error encountered during metadata processing"""
+
     pass
+
+
+def _is_video(filepath):
+    mime_type = mimetypes.guess_type(filepath)[0]
+    return mime_type.startswith("video/")
