@@ -67,6 +67,29 @@ connection will close when the script exits, and you will see a message like
 "It looks like you are not connected to a session" in the browser tab that was
 opened.
 
+.. _faq-app-script-windows:
+
+Why can't I open the App from a script on Windows?
+--------------------------------------------------
+
+If you are a Windows user launching the :ref:`FiftyOne App <fiftyone-app>` from
+a script, you should use the pattern below to avoid
+`multiprocessing issues <https://stackoverflow.com/q/20360686>`_, since the App
+is served via a separate process:
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    if __name__ == "__main__":
+        # Ensures that the App processes are safely launched on Windows
+        session = fo.launch_app(dataset)
+        session.wait()
+
+See :ref:`this section <creating-an-app-session>` for more details.
+
 .. _faq-notebook-support:
 
 Can I use FiftyOne in a notebook?
