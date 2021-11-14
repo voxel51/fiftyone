@@ -539,7 +539,7 @@ class MediaCache(object):
 
             result = _get_cache_result(local_path)
             if result is not None:
-                _, success, cached_checksum, _ = result
+                _, success, cached_checksum = result
             else:
                 success = True
                 cached_checksum = None
@@ -635,7 +635,7 @@ class MediaCache(object):
         if not exists:
             result = _get_cache_result(local_path)
             if result is not None:
-                _, success, _, _ = result
+                _, success, _ = result
                 if not success:
                     exists = True
 
