@@ -290,11 +290,6 @@ async def _generate_results(samples):
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
         sample_result.update(metadata[filepath])
-        if not media_cache.is_local_or_cached(filepath):
-            sample_result["url"] = media_cache.get_url(
-                filepath, method="GET", hours=24
-            )
-
         result.append(sample_result)
 
     return result

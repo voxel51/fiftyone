@@ -197,9 +197,6 @@ class MediaCache(object):
         self._s3_client = None
         self._gcs_client = None
 
-    def __contains__(self, filepath):
-        return self.is_local_or_cached(filepath)
-
     @property
     def cache_dir(self):
         return self.config.cache_dir

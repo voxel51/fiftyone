@@ -39,10 +39,28 @@ async def read_metadata(filepath):
 
     if media_cache.is_local_or_cached(filepath):
         local_path = media_cache.get_local_path(filepath)
-        return await read_local_metadata(local_path, is_video)
+        try:
+            return await read_local_metadata(local_path, is_video)
+        except:
+            return _default_metadata(is_video)
 
-    url = media_cache.get_url(filepath, method="GET", hours=1)
-    return await read_url_metadata(url, is_video)
+    url = media_cache.get_url(filepath, method="GET", hours=24)
+
+    try:
+        d = await read_url_metadata(url, is_video)
+    except:
+        d = _default_metadata(is_video)
+
+    d["url"] = url
+
+    return d
+
+
+def _default_metadata(is_video):
+    if is_video:
+        return {"width": 512, "height": 512, "frame_rate": 30}
+
+    return {"width": 512, "height": 512}
 
 
 async def read_url_metadata(url, is_video):
@@ -322,4 +340,4 @@ class MetadataException(Exception):
 
 def _is_video(filepath):
     mime_type = mimetypes.guess_type(filepath)[0]
-    return mime_type.startswith("video/")
+    return mime_type and mime_type.startswith("video/")
