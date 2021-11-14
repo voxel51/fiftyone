@@ -341,11 +341,15 @@ class DatabaseService(MultiClientService):
 class MediaCacheService(MultiClientService):
     """Garbage collection service for the FiftyOne media cache."""
 
-    # @todo allow one service per `cache_dir`
-    # cache_dir = focn.load_media_cache_config().cache_dir
-
-    service_name = "cache"
+    service_name = "media-cache"
     allow_headless = True
+
+    @property
+    def _service_args(self):
+        # Include `cache_dir` here so that users can have one cache service
+        # per cache directory running simultaenously
+        cache_dir = focn.load_media_cache_config().cache_dir
+        return super()._service_args + ["--cache-dir", cache_dir]
 
     @property
     def command(self):

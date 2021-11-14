@@ -520,8 +520,11 @@ class MediaCache(object):
         """Re-downloads any cached files whose checksum no longer matches their
         remote source.
 
-        Any remote files that have been deleted are also deleted from the
-        cache.
+        Cached files whose remote source have been deleted are also deleted
+        from the cache.
+
+        If a remote client doesn't support checksums, all of its files will be
+        re-downloaded.
 
         Args:
             filepaths (None): an optional list of remote files to check for
