@@ -1,4 +1,12 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Close } from "@material-ui/icons";
 import {
   atomFamily,
@@ -21,7 +29,6 @@ import DropdownHandle, {
 import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
 import { move } from "@fiftyone/utilities";
-import { number } from "prop-types";
 
 const MARGIN = 4;
 
@@ -89,7 +96,13 @@ const InteractiveGroupEntry = React.memo(
 
 const InteractivePathEntry = React.memo(
   ({ modal, path }: { modal: boolean; path: string; group: string }) => {
-    return <PathEntryComponent modal={modal} path={path} disabled={false} />;
+    return (
+      <PathEntryComponent
+        modal={modal}
+        path={path}
+        disabled={false}
+      ></PathEntryComponent>
+    );
   }
 );
 
@@ -143,6 +156,7 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
 
     const groups = {
       labels: get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })),
+      metadata: Object.keys(get(schemaAtoms.field("metadata")).fields),
     };
 
     if (frameLabels.length) {
@@ -176,16 +190,16 @@ const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
 
           return [
             group,
-            {
-              kind: EntryKind.EMPTY,
-              shown: paths.length === 0 && shown,
-              group: groupName,
-            } as EmptyEntry,
             ...paths.map<PathEntry>((path) => ({
               path,
               kind: EntryKind.PATH,
               shown,
             })),
+            {
+              kind: EntryKind.EMPTY,
+              shown: paths.length === 0 && shown,
+              group: groupName,
+            } as EmptyEntry,
           ];
         })
         .flat(),
@@ -243,6 +257,12 @@ const fn = (
 
     currentY[key] = y;
 
+    if (key === activeKey) {
+      if (y + delta < 0) {
+        // delta = y;
+      }
+    }
+
     if (shown) {
       y += getHeight(el) + MARGIN;
     }
@@ -250,11 +270,13 @@ const fn = (
 
   const results = {};
   y = 0;
+  let paths = 0;
 
   for (const key of newOrder) {
     const { entry, el } = items[key];
     if (entry.kind === EntryKind.GROUP) {
       groupActive = key === activeKey;
+      paths = 0;
     }
 
     const dragging =
@@ -264,23 +286,25 @@ const fn = (
 
     if (entry.kind === EntryKind.PATH) {
       shown = entry.shown;
+      paths++;
     } else if (entry.kind === EntryKind.EMPTY) {
-      shown = entry.shown;
+      shown = shown && paths === 0;
     }
 
     results[key] = {
-      cursor: dragging ? "grabbing" : "pointer",
+      cursor: dragging ? "grabbing" : "grabbing",
       top: dragging ? currentY[key] + delta : y,
-      immediate: (k) =>
-        dragging ||
-        activeKey === null ||
-        ["left", "zIndex", "cursor"].includes(k),
       zIndex: dragging ? 1 : 0,
       left: shown ? "unset" : -3000,
     };
 
     if (shown) {
       y += getHeight(el) + MARGIN;
+    }
+
+    if (activeKey) {
+      results[key].immediate = (k) =>
+        dragging || ["left", "zIndex", "cursor"].includes(k);
     }
   }
 
@@ -373,23 +397,43 @@ const getAfterKey = (
   items: InteractiveItems,
   order: string[],
   y: number
-): string => {
+): string | null => {
   const top = getY(items[order[0]].el);
 
-  const tops: Array<{ top: number; key: string }> = order
+  const data: Array<{ top: number; key: string; height: number }> = order
     .map((key) => ({ height: getHeight(items[key].el) + MARGIN, key }))
-    .reduce((tops, { height, key }) => {
-      const add = tops.length ? tops[tops.length - 1].top : top;
-      return [...tops, { top: add + height, key }];
-    }, []);
+    .reduce(
+      (tops, { height, key }) => {
+        return [
+          ...tops,
+          {
+            top: tops[tops.length - 1].top + tops[tops.length - 1].height,
+            height,
+            key,
+          },
+        ];
+      },
+      [{ top, height: 0, key: null }]
+    );
 
-  y += tops.filter(({ key }) => key === activeKey)[0].top;
+  y += data.filter(({ key }) => key === activeKey)[0].top;
 
   let groupKey = null;
   const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
-  const result = tops
-    .map(({ key, top }) => ({ delta: Math.abs(top - y), key }))
+  const result = data
+    .map(({ key, top, height }, i) => ({
+      delta: Math.abs(top + height / 2 - y),
+      key,
+    }))
     .filter(({ key }) => {
+      if (key === activeKey) {
+        return false;
+      }
+
+      if (key === null) {
+        return isGroup;
+      }
+
       const { entry } = items[key];
       if (isGroup) {
         return entry.kind === EntryKind.GROUP;
@@ -399,13 +443,40 @@ const getAfterKey = (
         groupKey = key;
       }
 
-      return groupKey !== activeKey && key !== activeKey;
+      if (entry.kind === EntryKind.TAIL) {
+        return false;
+      }
+
+      return groupKey !== activeKey;
     })
     .sort((a, b) => a.delta - b.delta)[0].key;
 
   if (isGroup) {
-    let end = order.indexOf(result) + 1;
+    if (result === null) {
+      return result;
+    }
+    let index = order.indexOf(result);
+
+    while (index < order.length) {
+      index++;
+      const entry = items[order[index]].entry;
+
+      if (entry.kind === EntryKind.TAIL) {
+        break;
+      }
+
+      if (entry.kind === EntryKind.GROUP) {
+        break;
+      }
+    }
+
+    return order[index - 1];
   }
+
+  if (!isGroup && order.indexOf(result) === 0) {
+    return order[1];
+  }
+
   return result;
 };
 
@@ -451,7 +522,12 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     if (!(key in items)) {
       items.current[key] = {
         el: null,
-        controller: new Controller({ top: 0, zIndex: 0, left: "unset" }),
+        controller: new Controller({
+          cursor: "pointer",
+          top: 0,
+          zIndex: 0,
+          left: "unset",
+        }),
         entry,
       };
     } else {
@@ -468,20 +544,37 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       delta
     );
     let entry = items.current[down.current].entry;
-    const kind = entry.kind;
-    let result = order.current;
-    const from = order.current.indexOf(down.current);
-    const to = order.current.indexOf(after);
-    let count = 0;
+    let from = order.current.indexOf(down.current);
+    const to = after ? order.current.indexOf(after) : 0;
+
+    if (entry.kind === EntryKind.PATH) {
+      return move(order.current, from, to);
+    }
+
+    const section = [];
     do {
-      result = move(result, from, to);
-      entry = items.current[result[from]].entry;
+      section.push(order.current[from]);
+      from++;
+      entry = items.current[order.current[from]].entry;
+    } while (entry.kind !== EntryKind.GROUP && entry.kind !== EntryKind.TAIL);
 
-      if (kind === EntryKind.PATH) return result;
-      if (entry.kind === EntryKind.GROUP) count++;
-    } while (count < 2 && EntryKind.TAIL !== entry.kind);
+    if (after === null) {
+      return [
+        ...section,
+        ...order.current.filter((key) => !section.includes(key)),
+      ];
+    }
+    const result = [];
+    const pool = order.current.filter((key) => !section.includes(key));
+    let i = 0;
+    let terminate = false;
+    while (i < pool.length && !terminate) {
+      result.push(pool[i]);
+      terminate = pool[i] === after;
+      i++;
+    }
 
-    return result;
+    return [...result, ...section, ...pool.slice(i + 1)];
   };
 
   useEventHandler(document.body, "mouseup", (event) => {
@@ -502,7 +595,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     const results = fn(items.current, order.current, newOrder);
 
     for (const key of order.current) {
-      items.current[key].controller.start(results[key]);
+      items.current[key].controller.set(results[key]);
     }
 
     if (order.current.some((key, i) => newOrder[i] !== key)) {
@@ -529,13 +622,18 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     );
     for (const key of order.current)
       items.current[key].controller.start(results[key]);
+    items.current[down.current].el.scrollIntoView();
   });
 
+  const trigger = useCallback((event) => {
+    down.current = event.currentTarget.dataset.key;
+    start.current = event.clientY;
+  }, []);
+
   useLayoutEffect(() => {
-    const results = fn(items.current, order.current, order.current);
-    for (const key of order.current) {
-      items.current[key].controller.start(results[key]);
-    }
+    const placements = fn(items.current, order.current, order.current);
+    for (const key of order.current)
+      items.current[key].controller.set(placements[key]);
   }, [entries]);
 
   return (
@@ -550,18 +648,12 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
           <animated.div
             data-key={key}
             ref={(node) => {
-              const handler = (event) => {
-                down.current = event.currentTarget.dataset.key;
-                start.current = event.clientY;
-              };
+              if (items.current[key].el) {
+                items.current[key].el.removeEventListener("mousedown", trigger);
+              }
+
               if (node) {
-                node.addEventListener("mousedown", handler);
-              } else {
-                items.current[key].el &&
-                  items.current[key].el.removeEventListener(
-                    "mousedown",
-                    handler
-                  );
+                node.addEventListener("mousedown", trigger);
               }
               items.current[key].el = node;
             }}

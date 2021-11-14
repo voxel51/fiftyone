@@ -60,6 +60,7 @@ export const fieldSchema = selectorFamily<State.Schema, State.SPACE>({
         });
       }
     });
+
     return fields;
   },
 });

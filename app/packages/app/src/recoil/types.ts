@@ -19,6 +19,7 @@ export namespace State {
     timezone: string | null;
     useFrameNumber: boolean;
   }
+
   export interface ID {
     $oid: string;
   }

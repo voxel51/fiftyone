@@ -7,7 +7,6 @@ import {
 } from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { toSnakeCase } from "@fiftyone/utilities";
 
 import socket, { http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
@@ -66,7 +65,7 @@ export const useClearModal = () => {
 
 export const setState = (set: SetRecoilState, state: State.Description) => {
   set(atoms.stateDescription, state);
-  socket.send(packageMessage("update", { state: toSnakeCase(state) }));
+  socket.send(packageMessage("update", { state }));
 };
 
 export const setModal = async (
@@ -79,7 +78,10 @@ export const setModal = async (
   const data = [
     [filterAtoms.modalFilters, filterAtoms.filters],
     [atoms.colorByLabel(true), atoms.colorByLabel(false)],
-    [schemaAtoms.activeFields(true), schemaAtoms.activeFields(false)],
+    [
+      schemaAtoms.activeFields({ modal: true }),
+      schemaAtoms.activeFields({ modal: false }),
+    ],
     [atoms.cropToContent(true), atoms.cropToContent(false)],
     [atoms.colorSeed(true), atoms.colorSeed(false)],
     [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],

@@ -2,8 +2,6 @@ import React, { useState, useRef, Suspense } from "react";
 import { useRecoilCallback } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 
-import { toCamelCase } from "@fiftyone/utilities";
-
 import "../app.global.css";
 
 import { patching } from "../components/Actions/Patcher";
@@ -36,7 +34,7 @@ const useStateUpdate = () => {
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
-      set(atoms.stateDescription, toCamelCase(state) as State.Description);
+      set(atoms.stateDescription, state as State.Description);
       set(selectors.anyTagging, false);
       set(patching, false);
       set(similaritySorting, false);
