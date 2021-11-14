@@ -10,16 +10,15 @@ import os
 from tornado.web import HTTPError
 
 from fiftyone.core.cache import media_cache
-
 import fiftyone.server.base as fosb
 
 
 class MediaHandler(fosb.FileHandler):
-    """Media server for serving local or cached media files"""
+    """Media server for serving local or cached media files."""
 
     @classmethod
     def get_absolute_path(cls, root, path):
-        if path in media_cache:
+        if media_cache.is_local_or_cached(path):
             path = media_cache.get_local_path(path)
         elif os.name != "nt":
             path = os.path.join("/", path)
@@ -34,6 +33,7 @@ class MediaHandler(fosb.FileHandler):
                 return None
 
             absolute_path = os.path.join(absolute_path, self.default_filename)
+
         if not os.path.exists(absolute_path):
             raise HTTPError(404)
 

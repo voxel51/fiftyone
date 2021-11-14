@@ -296,22 +296,6 @@ class MediaCache(object):
         fs, local_path, exists, _ = self._parse_filepath(filepath)
         return fs != FileSystem.LOCAL and not exists and _is_video(local_path)
 
-    def generate_signed_url(self, filepath, **kwargs):
-        """Generates a signed URL for accessing the given remote filepath.
-
-        Args:
-            filepath: a filepath
-            **kwargs: optional keyword arguments for
-                :meth:`S3StorageClient.generate_signed_url` or
-                :meth:`GoogleCloudStorageClient.generate_signed_url`
-
-        Returns:
-            the signed URL
-        """
-        fs = _get_file_system(filepath)
-        client = self._get_client(fs)
-        return client.generate_signed_url(filepath, **kwargs)
-
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote filepath, if
         possible.
@@ -495,18 +479,20 @@ class MediaCache(object):
         return local_paths
 
     def get_url(self, remote_path, method="GET", hours=1):
-        """Get a valid URL that may expire depending on the file system.
+        """Retrieves a URL for accessing the given remote file.
 
-        GCS and S3 URLs are signed URLs that will expire.
+        Note that GCS and S3 URLs are signed URLs that will expire.
 
         Args:
             remote_path: the remote path
-            method ("GET"): a valid HTTP method
-            hours (1): TTL for URLs that expire 
+            method ("GET"): a valid HTTP method for signed URLs
+            hours (1): a TTL for signed URLs
         """
         fs = _get_file_system(remote_path)
         if fs == FileSystem.LOCAL:
-            raise ValueError("get_url() called with local filepath")
+            raise ValueError(
+                "Cannot get URL for local file '%s'" % remote_path
+            )
 
         client = self._get_client(fs)
         if hasattr(client, "generate_signed_url"):

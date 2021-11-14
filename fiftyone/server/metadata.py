@@ -1,5 +1,5 @@
 """
-FiftyOne Server JIT metadata processing
+FiftyOne Server JIT metadata utilities.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -22,134 +22,77 @@ from fiftyone.core.cache import media_cache
 
 
 logger = logging.getLogger(__name__)
-_FFPROBE = shutil.which("ffprobe")
 
-
-async def build_stream_info(path):
-    """Build a :class:`eta.core.video.VideoStreamInfo` instance for a provided
-    path
-
-    Args:
-        path: a filepath or URL
-
-    Returns:
-        a :class:`eta.core.video.VideoStreamInfo` instance
-    """
-    proc = await asyncio.create_subprocess_exec(
-        *[
-            _FFPROBE,
-            "-loglevel",
-            "warning",
-            "-print_format",
-            "json",
-            "-show_streams",
-            "-show_format",
-            "-i",
-            path,
-        ],
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-
-    stdout, _ = await proc.communicate()
-    info = etas.load_json(stdout.decode("utf8"))
-    # Get format info
-    format_info = info["format"]
-
-    # Get stream info
-    video_streams = [s for s in info["streams"] if s["codec_type"] == "video"]
-    num_video_streams = len(video_streams)
-    if num_video_streams == 1:
-        stream_info = video_streams[0]
-    elif num_video_streams == 0:
-        logger.warning("No video stream found; defaulting to first stream")
-        stream_info = info["streams"][0]
-    else:
-        logger.warning("Found multiple video streams; using first stream")
-        stream_info = video_streams[0]
-
-    info = etav.VideoStreamInfo(
-        stream_info, format_info, mime_type=etau.guess_mime_type(path),
-    )
-    return info
+_FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
 async def read_metadata(filepath):
-    """Calculates the metadata for a specified media file
+    """Calculates the metadata for the given local or remote media file.
 
     Args:
-        filepath: path to the file (remote or local)
+        filepath: the path to the file
 
     Returns:
-        dict
+        metadata dict
     """
-    video = _is_video(filepath)
-    if filepath in media_cache:
+    is_video = _is_video(filepath)
+
+    if media_cache.is_local_or_cached(filepath):
         local_path = media_cache.get_local_path(filepath)
-        result = await read_local_metadata(local_path, video)
-        return result
+        return await read_local_metadata(local_path, is_video)
 
-    url = media_cache.get_url(filepath)
-    result = await read_url_metadata(url, video)
-    return result
+    url = media_cache.get_url(filepath, method="GET", hours=1)
+    return await read_url_metadata(url, is_video)
 
 
-async def read_url_metadata(url, video):
-    """Calculates the metadata for a specified file URL
+async def read_url_metadata(url, is_video):
+    """Calculates the metadata for the given media URL.
 
     Args:
         url: a file URL
-        video: whether it is a video file
+        is_video: whether the file is a video
 
     Returns:
-        dict
+        metadata dict
     """
-    d = {}
-    if video:
-        info = await build_stream_info(url)
-        d["width"] = info.frame_size[0]
-        d["height"] = info.frame_size[1]
-        d["frame_rate"] = info.frame_rate
-        return d
+    if is_video:
+        info = await get_stream_info(url)
+        return {
+            "width": info.frame_size[0],
+            "height": info.frame_size[1],
+            "frame_rate": info.frame_rate,
+        }
 
-    async with aiohttp.ClientSession() as session, session.get(
-        url
-    ) as response:
-        width, height = await read_image_dimensions(Reader(response.content))
-        d["width"] = width
-        d["height"] = height
-
-    return d
+    async with aiohttp.ClientSession() as sess, sess.get(url) as resp:
+        width, height = await get_image_dimensions(Reader(resp.content))
+        return {"width": width, "height": height}
 
 
-async def read_local_metadata(local_path, video):
-    """Calculates the metadata for a specified filepath
+async def read_local_metadata(local_path, is_video):
+    """Calculates the metadata for the given local media path.
 
     Args:
         local_path: a local filepath
-        video: whether it is a video file
+        is_video: whether the file is a video
 
     Returns:
         dict
     """
-    d = {}
-    if video:
-        info = await build_stream_info(local_path)
-        d["width"] = info.frame_size[0]
-        d["height"] = info.frame_size[1]
-        d["frame_rate"] = info.frame_rate
-        return d
+    if is_video:
+        info = await get_stream_info(local_path)
+        return {
+            "width": info.frame_size[0],
+            "height": info.frame_size[1],
+            "frame_rate": info.frame_rate,
+        }
 
-    async with aiofiles.open(local_path, "rb") as input:
-        width, height = await read_image_dimensions(input)
-        d["width"] = width
-        d["height"] = height
-
-    return d
+    async with aiofiles.open(local_path, "rb") as f:
+        width, height = await get_image_dimensions(f)
+        return {"width": width, "height": height}
 
 
 class Reader(object):
-    """Asynchronous file-like reader
+    """Asynchronous file-like reader.
 
     Args:
         content: a :class:`aiohttp.StreamReader`
@@ -174,14 +117,68 @@ class Reader(object):
             self._data += await self._content.read(delta)
 
 
-async def read_image_dimensions(input):
-    """Read the image dimensions of a file-like asynchronous byte stream
+async def get_stream_info(path):
+    """Returns a :class:`eta.core.video.VideoStreamInfo` instance for the
+    provided video path or URL.
 
     Args:
-        input: file-like input with async read and seek methods
+        path: a video filepath or URL
 
-    Raises:
-        MetadataException
+    Returns:
+        a :class:`eta.core.video.VideoStreamInfo`
+    """
+    if _FFPROBE_BINARY_PATH is None:
+        raise RuntimeError(
+            "You must have ffmpeg installed on your machine in order to view "
+            "video datasets in the App, but we failed to find it"
+        )
+
+    proc = await asyncio.create_subprocess_exec(
+        _FFPROBE_BINARY_PATH,
+        "-loglevel",
+        "error",
+        "-show_format",
+        "-show_streams",
+        "-print_format",
+        "json",
+        "-i",
+        path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    stdout, stderr = await proc.communicate()
+    if stderr:
+        raise ValueError(stderr)
+
+    info = etas.load_json(stdout.decode("utf8"))
+
+    video_streams = [s for s in info["streams"] if s["codec_type"] == "video"]
+    num_video_streams = len(video_streams)
+    if num_video_streams == 1:
+        stream_info = video_streams[0]
+    elif num_video_streams == 0:
+        logger.debug("No video stream found; defaulting to first stream")
+        stream_info = info["streams"][0]
+    else:
+        logger.debug("Found multiple video streams; using first stream")
+        stream_info = video_streams[0]
+
+    format_info = info["format"]
+    mime_type = etau.guess_mime_type(path)
+
+    return etav.VideoStreamInfo(stream_info, format_info, mime_type=mime_type)
+
+
+async def get_image_dimensions(input):
+    """Gets the dimensions of an image from its file-like asynchronous byte
+    stream.
+
+    Args:
+        input: file-like object with async read and seek methods
+
+    Returns:
+        the ``(width, height)``
     """
     height = -1
     width = -1
@@ -226,7 +223,6 @@ async def read_image_dimensions(input):
             b = await input.read(1)
         width = int(w)
         height = int(h)
-
     elif (size >= 26) and data.startswith(b"BM"):
         # BMP
         headersize = struct.unpack("<I", data[14:18])[0]
@@ -240,7 +236,9 @@ async def read_image_dimensions(input):
             # as h is negative when stored upside down
             height = abs(int(h))
         else:
-            raise ("Unkown DIB header size:" + str(headersize))
+            raise MetadataException(
+                "Unkown DIB header size: %s" % str(headersize)
+            )
     elif (size >= 8) and data[:4] in (b"II\052\000", b"MM\000\052"):
         # Standard TIFF, big- or little-endian
         # BigTIFF and other different but TIFF-like formats are not
@@ -283,7 +281,7 @@ async def read_image_dimensions(input):
                 type = await input.read(2)
                 type = struct.unpack(boChar + "H", type)[0]
                 if type not in tiffTypes:
-                    raise MetadataException(MSG)
+                    raise MetadataException("Unable to read metadata")
                 typeSize = tiffTypes[type][0]
                 typeChar = tiffTypes[type][1]
                 await input.seek(entryOffset + 8)
@@ -300,10 +298,10 @@ async def read_image_dimensions(input):
         await input.seek(0)
         reserved = await input.read(2)
         if 0 != struct.unpack("<H", reserved)[0]:
-            raise MetadataException(MSG)
+            raise MetadataException("Unable to read metadata")
         format = await input.read(2)
         if 1 != struct.unpack("<H", format)[0]:
-            raise MetadataException(MSG)
+            raise MetadataException("Unable to read metadata")
         num = await input.read(2)
         num = struct.unpack("<H", num)[0]
 
@@ -313,14 +311,11 @@ async def read_image_dimensions(input):
         width = ord(w)
         height = ord(h)
 
-    return [width, height]
-
-
-MSG = "unable to read metadata"
+    return width, height
 
 
 class MetadataException(Exception):
-    """"Exception for any error encountered during metadata processing"""
+    """"Exception raised when metadata for a media file cannot be computed."""
 
     pass
 

@@ -283,17 +283,17 @@ async def _generate_results(samples):
     futures = [fosm.read_metadata(filepath) for filepath in filepaths]
     metadatas = await asyncio.gather(*futures)
 
-    metadatas = {
-        filepath: metadata for filepath, metadata in zip(filepaths, metadatas)
-    }
+    metadata = {f: m for f, m in zip(filepaths, metadatas)}
 
     result = []
     for sample in samples:
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
-        sample_result.update(metadatas[filepath])
-        if filepath not in media_cache:
-            sample_result["url"] = media_cache.get_url(filepath, hours=1)
+        sample_result.update(metadata[filepath])
+        if not media_cache.is_local_or_cached(filepath):
+            sample_result["url"] = media_cache.get_url(
+                filepath, method="GET", hours=24
+            )
 
         result.append(sample_result)
 
