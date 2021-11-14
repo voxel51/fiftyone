@@ -278,7 +278,12 @@ def _get_metadata(filepath, media_type):
             filepath, skip_failures=False
         )
 
+    #
     # This will download any uncached remote files
+    #
+    # @todo respect `media_cache.config.stream_images` setting here by
+    # computing image metadata directly from URL. This is partially
+    #
     local_path = foc.media_cache.get_local_path(filepath, skip_failures=False)
 
     if media_type == fom.IMAGE:

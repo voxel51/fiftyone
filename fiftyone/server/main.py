@@ -273,16 +273,23 @@ class PageHandler(tornado.web.RequestHandler):
             samples = samples[:page_length]
             more = page + 1
 
-        results = await _generate_results(samples)
+        results = await _generate_results(samples, view.media_type)
 
         self.write({"results": results, "more": more})
 
 
-async def _generate_results(samples):
+async def _generate_results(samples, media_type):
     filepaths = list({s["filepath"] for s in samples})
-    futures = [fosm.read_metadata(filepath) for filepath in filepaths]
-    metadatas = await asyncio.gather(*futures)
 
+    if media_type == fom.IMAGE and not media_cache.config.stream_images:
+        # This will download uncached images
+        # @todo async/await would be preferrable to this expensive vanilla
+        # thread-based implementation
+        paths = media_cache.get_local_paths(filepaths)
+    else:
+        paths = filepaths
+
+    metadatas = await asyncio.gather(*[fosm.read_metadata(p) for p in paths])
     metadata = {f: m for f, m in zip(filepaths, metadatas)}
 
     result = []
