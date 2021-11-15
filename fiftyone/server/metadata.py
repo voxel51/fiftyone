@@ -32,6 +32,9 @@ async def read_metadata(filepath, media_type, existing_metadata):
         filepath: the path to the file
         media_type: the media type of the collection
         existing_metadata: dict that may already contain the required metadata
+
+    Returns:
+        metadata dict
     """
     is_video = media_type == fom.VIDEO
 
