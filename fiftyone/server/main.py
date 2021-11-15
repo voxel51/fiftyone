@@ -271,15 +271,15 @@ class PageHandler(tornado.web.RequestHandler):
             samples = samples[:page_length]
             more = page + 1
 
-        results = await _generate_results(samples)
+        results = await _generate_results(samples, view.media_type)
 
         self.write({"results": results, "more": more})
 
 
-async def _generate_results(samples):
-    filepaths = list({s["filepath"] for s in samples})
+async def _generate_results(samples, media_type):
+    filepaths = list({s["filepath"] for s in samples if "metadata" not in s})
     metadatas = await asyncio.gather(
-        *[fosm.read_metadata(p) for p in filepaths]
+        *[fosm.read_metadata(p, media_type) for p in filepaths]
     )
     metadata = {f: m for f, m in zip(filepaths, metadatas)}
 
@@ -287,10 +287,26 @@ async def _generate_results(samples):
     for sample in samples:
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
-        sample_result.update(metadata[filepath])
+        if "metadata" in sample:
+            sample_metadata = _parse_metadata(sample, media_type)
+        else:
+            sample_metadata = metadata[filepath]
+
+        sample_result.update(sample_metadata)
         result.append(sample_result)
 
     return result
+
+
+def _parse_metadata(s, media_type):
+    if media_type == fom.VIDEO:
+        return {
+            "frame_rate": s["frame_rate"],
+            "heigh": s["frame_height"],
+            "width": s["frame_width"],
+        }
+
+    return {"height": s["height"], "width": s["width"]}
 
 
 class TeamsHandler(RequestHandler):

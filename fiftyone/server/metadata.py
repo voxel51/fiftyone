@@ -17,22 +17,25 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.media as fom
+
 
 logger = logging.getLogger(__name__)
 
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def read_metadata(filepath):
+async def read_metadata(filepath, media_type):
     """Calculates the metadata for the given media file.
 
     Args:
         filepath: the path to the file
+        media_type: the media type of the collection
 
     Returns:
         metadata dict
     """
-    is_video = _is_video(filepath)
+    is_video = media_type == fom.VIDEO
 
     try:
         return await get_metadata(filepath, is_video)
