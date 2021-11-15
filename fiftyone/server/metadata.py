@@ -36,11 +36,12 @@ async def read_metadata(filepath):
         metadata dict
     """
     is_video = _is_video(filepath)
-    download = not is_video and not media_cache.config.stream_images
+    download = not is_video and media_cache.config.serve_images
 
     if download or media_cache.is_local_or_cached(filepath):
-        local_path = await media_cache.get_local_path(
-            filepath, download=True, coroutine=True
+        loop = asyncio.get_event_loop()
+        local_path = await loop.run_in_executor(
+            None, media_cache.get_local_path, filepath
         )
 
         try:
