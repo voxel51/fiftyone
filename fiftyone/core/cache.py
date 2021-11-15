@@ -10,7 +10,6 @@ import logging
 import logging.handlers
 import multiprocessing
 import multiprocessing.dummy
-import requests
 import os
 import urllib.parse as urlparse
 
