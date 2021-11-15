@@ -18,23 +18,24 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 from fiftyone.core.cache import media_cache
-
+import fiftyone.core.media as fom
 
 logger = logging.getLogger(__name__)
 
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def read_metadata(filepath):
+async def read_metadata(filepath, media_type):
     """Calculates the metadata for the given local or remote media file.
 
     Args:
         filepath: the path to the file
+        media_type: the media type of the collection
 
     Returns:
         metadata dict
     """
-    is_video = _is_video(filepath)
+    is_video = media_type == fom.VIDEO
     download = not is_video and media_cache.config.serve_images
 
     if download or media_cache.is_local_or_cached(filepath):
