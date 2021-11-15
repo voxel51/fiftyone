@@ -96,9 +96,7 @@ def get_implied_field_kwargs(value):
 
 
 def get_embedded_document_fields(value):
-    return {
-        name: field for name, field in value._fields.items() if name != "_cls"
-    }
+    return [field for name, field in value._fields.items() if name != "_cls"]
 
 
 def _get_list_value_type(value):
@@ -158,4 +156,4 @@ def _merge_implied_fields(implied_fields):
                     [fields[field]["fields"], field_kwargs["fields"]]
                 )
 
-    return fields
+    return [dict(name=name, **kwargs) for name, kwargs in field.items()]

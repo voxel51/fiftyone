@@ -30,7 +30,7 @@ from .utils import get_embedded_document_fields
 
 
 def create_field(
-    field_name,
+    name,
     ftype,
     embedded_doc_type=None,
     subfield=None,
@@ -49,7 +49,7 @@ def create_field(
         additional decorations when they are loaded from the database.
 
     Args:
-        field_name: the field name
+        name: the field name
         ftype: the field type to create. Must be a subclass of
             :class:`fiftyone.core.fields.Field`
         embedded_doc_type (None): the
@@ -61,7 +61,7 @@ def create_field(
             :class:`fiftyone.core.fields.ListField` or
             :class:`fiftyone.core.fields.DictField`
         db_field (None): the database field to store this field in. By default,
-            ``field_name`` is used
+            ``name`` is used
         fields (None): the subfields of the
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
             Only applicable when ``ftype`` is
@@ -77,33 +77,31 @@ def create_field(
         )
 
     if db_field is None:
-        db_field = field_name
+        db_field = name
 
     # All user-defined fields are nullable
     kwargs = dict(null=True, db_field=db_field)
 
     if fields is not None:
-        for name, value in fields.items():
+        for idx, value in enumerate(fields):
             if isinstance(value, Field):
                 continue
 
-            fields[name] = create_field(name, **value)
+            fields[idx] = create_field(**value)
 
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
-                    fields = fields or {}
-                    fields.update(
-                        get_embedded_document_fields(embedded_doc_type)
-                    )
+                    fields = fields or []
+                    fields += get_embedded_document_fields(embedded_doc_type)
                     subfield = subfield(
                         fields=fields, document_type=embedded_doc_type
                     )
                 else:
                     subfield = subfield()
 
-                subfield.name = field_name
+                subfield.name = name
 
             if not isinstance(subfield, Field):
                 raise ValueError(
@@ -120,21 +118,21 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
-        fields = fields or {}
-        fields.update(get_embedded_document_fields(embedded_doc_type))
+        fields = fields or []
+        fields += get_embedded_document_fields(embedded_doc_type)
         kwargs.update(
-            {"document_type": embedded_doc_type, "fields": fields or {}}
+            {"document_type": embedded_doc_type, "fields": fields or []}
         )
 
     field = ftype(**kwargs)
-    field.name = field_name
+    field.name = name
 
     if parent is not None and isinstance(field, EmbeddedDocumentField):
         field._set_parent(parent)
 
     if fields:
         parent = field.field if subfield else field
-        for child in fields.values():
+        for child in fields:
             if not isinstance(child, EmbeddedDocumentField):
                 continue
 
@@ -151,7 +149,7 @@ class SampleFieldDocument(EmbeddedDocument):
     subfield = StringField(null=True)
     embedded_doc_type = StringField(null=True)
     db_field = StringField(null=True)
-    fields = DictField(
+    fields = ListField(
         EmbeddedDocumentField(document_type="SampleFieldDocument")
     )
 
@@ -175,10 +173,7 @@ class SampleFieldDocument(EmbeddedDocument):
 
         fields = None
         if self.fields is not None:
-            fields = {
-                name: field_doc.to_field()
-                for name, field_doc in self.fields.items()
-            }
+            fields = [field_doc.to_field() for field_doc in self.fields]
 
         return create_field(
             self.name,
@@ -242,8 +237,8 @@ class SampleFieldDocument(EmbeddedDocument):
         if self.db_field != field.db_field:
             return False
 
-        cur_fields = getattr(self, "fields", None)
-        fields = getattr(field, "fields", None)
+        cur_fields = {f.name: f for f in getattr(self, "fields", [])}
+        fields = {f.name: f for f in getattr(field, "fields", [])}
         if cur_fields and fields:
             if len(fields) != len(cur_fields):
                 return False
@@ -273,24 +268,13 @@ class SampleFieldDocument(EmbeddedDocument):
         if not hasattr(field, "fields"):
             return None
 
-        field_docs = BaseDict(
-            {
-                name: cls.from_field(value)
-                for name, value in field.document_type._fields.items()
-                if name != "_cls"
-            },
-            cls,
-            None,
-        )
+        field_docs = [
+            cls.from_field(value)
+            for name, value in field.document_type._fields.items()
+            if name != "_cls"
+        ]
 
-        field_docs.update(
-            {
-                name: cls.from_field(value)
-                for name, value in field.fields.items()
-            }
-        )
-
-        return field_docs
+        return field_docs + [cls.from_field(value) for value in field.fields]
 
 
 class DatasetDocument(Document):

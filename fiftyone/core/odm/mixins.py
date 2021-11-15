@@ -681,7 +681,7 @@ class DatasetMixin(object):
             if isinstance(parent, (fo.DictField, fo.ListField)):
                 parent = parent.field
 
-            parent.fields[path[-1]] = field
+            parent.fields.append(field)
 
     @classmethod
     def _add_field_schema(
@@ -727,9 +727,9 @@ class DatasetMixin(object):
                     break
 
             for key in path[1:-1]:
-                doc_field = doc_field.fields[key]
+                doc_field = doc_field.get_field_schema()[key]
 
-            doc_field.fields[path[-1]] = sample_field
+            doc_field.fields.append(sample_field)
 
         dataset_doc.save()
         cls._declare_field(field, path)

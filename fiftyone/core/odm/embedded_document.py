@@ -35,7 +35,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     def _set_parent(self, parent):
         self._parent = parent
         # pylint: disable=no-member
-        for field in self._fields.values():
+        for field in self._fields:
             if isinstance(field, (DictField, ListField)):
                 field = field.field
             if isinstance(field, EmbeddedDocumentField):
@@ -45,13 +45,14 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         if not self._parent:
             return {}
 
-        return getattr(self._parent, "fields", {})
+        fields = getattr(self._parent, "fields", [])
+        return {field.name: field for field in fields}
 
-    def has_field(self, field_name):
-        if super().has_field(field_name):
+    def has_field(self, name):
+        if super().has_field(name):
             return True
 
-        if field_name in self._get_custom_fields():
+        if name in self._get_custom_fields():
             return True
 
         return False
@@ -66,38 +67,38 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     def __setitem__(self, name, value):
         self.set_field(name, value, create=True)
 
-    def set_field(self, field_name, value, create=False):
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
+    def set_field(self, name, value, create=False):
+        if hasattr(self, name) and not self.has_field(name):
+            raise ValueError("Cannot use reserved keyword '%s'" % name)
 
-        if not self.has_field(field_name):
+        if not self.has_field(name):
             if create:
-                self.add_implied_field(field_name, value)
+                self.add_implied_field(name, value)
             else:
                 raise ValueError(
-                    "%s has no field '%s'" % (self.__class__, field_name)
+                    "%s has no field '%s'" % (self.__class__, name)
                 )
 
-        setattr(self, field_name, value)
+        setattr(self, name, value)
 
-    def add_implied_field(self, field_name, value):
+    def add_implied_field(self, name, value):
         """Adds the field to the document, inferring the field type from the
         provided value.
 
         Args:
-            field_name: the field name
+            name: the field name
             value: the field value
         """
-        if self.has_field(field_name):
+        if self.has_field(name):
             raise ValueError(
-                "%s field '%s' already exists" % (self.__class__, field_name)
+                "%s field '%s' already exists" % (self.__class__, name)
             )
 
-        self.add_field(field_name, **get_implied_field_kwargs(value))
+        self.add_field(name, **get_implied_field_kwargs(value))
 
     def add_field(
         self,
-        field_name,
+        name,
         ftype,
         embedded_doc_type=None,
         subfield=None,
@@ -107,7 +108,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         """Adds a new field to the embedded document.
 
         Args:
-            field_name: the field name
+            name: the field name
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
@@ -124,7 +125,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
         """
         self._add_field_schema(
-            field_name,
+            name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
@@ -133,20 +134,15 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         )
 
     def _add_field_schema(
-        self,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
+        self, name, ftype, embedded_doc_type=None, subfield=None, **kwargs,
     ):
-        if self.has_field(field_name):
+        if self.has_field(name):
             raise ValueError(
-                "%s field '%s' already exists" % (self.__class__, field_name)
+                "%s field '%s' already exists" % (self.__class__, name)
             )
 
         field = food.create_field(
-            field_name,
+            name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
