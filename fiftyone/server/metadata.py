@@ -25,17 +25,34 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def read_metadata(filepath, media_type):
+async def read_metadata(filepath, media_type, existing_metadata):
     """Calculates the metadata for the given media file.
 
     Args:
         filepath: the path to the file
         media_type: the media type of the collection
-
-    Returns:
-        metadata dict
+        existing_metadata: dict that may already contain the required metadata
     """
     is_video = media_type == fom.VIDEO
+
+    if existing_metadata:
+        if is_video:
+            frame_height = existing_metadata.get("frame_height", None)
+            frame_width = existing_metadata.get("frame_width", None)
+            frame_rate = existing_metadata.get("frame_rate", None)
+
+            if frame_height and frame_width and frame_rate:
+                return {
+                    "height": frame_height,
+                    "width": frame_width,
+                    "frame_rate": frame_rate,
+                }
+        else:
+            height = existing_metadata.get("height", None)
+            width = existing_metadata.get("width", None)
+
+            if width and height:
+                return {"height": height, "width": width}
 
     try:
         return await get_metadata(filepath, is_video)

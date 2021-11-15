@@ -277,36 +277,24 @@ class PageHandler(tornado.web.RequestHandler):
 
 
 async def _generate_results(samples, media_type):
-    filepaths = list({s["filepath"] for s in samples if "metadata" not in s})
+    metadatas = {s["filepath"]: s.get("metadata", None) for s in samples}
+    filepaths = list(metadatas.keys())
     metadatas = await asyncio.gather(
-        *[fosm.read_metadata(p, media_type) for p in filepaths]
+        *[
+            fosm.read_metadata(p, media_type, metadatas["filepath"])
+            for p in filepaths
+        ]
     )
-    metadata = {f: m for f, m in zip(filepaths, metadatas)}
+    metadatas = {f: m for f, m in zip(filepaths, metadatas)}
 
     result = []
     for sample in samples:
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
-        if "metadata" in sample:
-            sample_metadata = _parse_metadata(sample["metadata"], media_type)
-        else:
-            sample_metadata = metadata[filepath]
-
-        sample_result.update(sample_metadata)
+        sample_result.update(metadatas[filepath])
         result.append(sample_result)
 
     return result
-
-
-def _parse_metadata(metadata, media_type):
-    if media_type == fom.VIDEO:
-        return {
-            "frame_rate": metadata["frame_rate"],
-            "heigh": metadata["frame_height"],
-            "width": metadata["frame_width"],
-        }
-
-    return {"height": metadata["height"], "width": metadata["width"]}
 
 
 class TeamsHandler(RequestHandler):
