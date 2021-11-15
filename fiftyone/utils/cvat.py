@@ -4007,10 +4007,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             id_map = {}
             for anno in anno_list:
                 server_id = anno["id"]
-                label_attr_id = label_id_map[anno["label_id"]]
-                for attr in anno["attributes"]:
-                    if attr["spec_id"] == label_attr_id:
-                        id_map[server_id] = attr["value"]
+                label_id = anno["label_id"]
+                if label_id in label_id_map.keys():
+                    label_attr_id = label_id_map[label_id]
+                    for attr in anno["attributes"]:
+                        if attr["spec_id"] == label_attr_id:
+                            id_map[server_id] = attr["value"]
 
             server_id_map[anno_type] = id_map
 
@@ -4503,9 +4505,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field_classes = defaultdict(dict)
 
         _class_label_fields = {}
-        _duplicate_classes = []
+        _duplicate_classes = set()
+        _prev_field_classes = set()
 
         for label_field, label_info in label_schema.items():
+            _field_classes = set()
             label_type = label_info["type"]
             is_existing_field = label_info["existing_field"]
             classes = label_info["classes"]
@@ -4557,8 +4561,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for name in _classes:
                     # If two label fields share a class name, we must append
                     # `label_field` to all instances of `name` to disambiguate
-                    if name in cvat_schema:
-                        _duplicate_classes.append(name)
+                    if (
+                        name in _prev_field_classes
+                        and name not in _duplicate_classes
+                    ):
+                        _duplicate_classes.add(name)
 
                         prev_field = _class_label_fields[name]
 
@@ -4571,6 +4578,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             attr_name = occluded_attrs[label_field].pop(name)
                             occluded_attrs[label_field][new_name] = attr_name
 
+                    _field_classes.add(name)
+
                     if name in _duplicate_classes:
                         new_name = "%s_%s" % (name, label_field)
                         label_field_classes[label_field][name] = new_name
@@ -4582,6 +4591,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     cvat_schema[name] = deepcopy(attributes)
                     if occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = occluded_attr_name
+
+            _prev_field_classes = _prev_field_classes.union(_field_classes)
 
             # Class-specific attributes
             for _class in classes:
