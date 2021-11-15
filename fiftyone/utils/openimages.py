@@ -1612,7 +1612,7 @@ def _download_images_if_necessary(
     else:
         logger.info("Downloading %d images", num_images)
 
-    foua.download_from_s3(urls, num_workers=num_workers)
+    foua.download_public_s3_files(urls, num_workers=num_workers)
 
     return num_images
 
