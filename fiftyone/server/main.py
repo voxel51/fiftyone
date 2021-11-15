@@ -29,7 +29,6 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-import fiftyone.core.cache as foca
 import fiftyone.constants as foc
 import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
@@ -279,22 +278,21 @@ class PageHandler(tornado.web.RequestHandler):
 
 
 async def _generate_results(samples, media_type):
-    filepaths = list({s["filepath"] for s in samples if "metadata" not in s})
+    metadatas = {s["filepath"]: s.get("metadata", None) for s in samples}
+    filepaths = list(metadatas.keys())
     metadatas = await asyncio.gather(
-        *[fosm.read_metadata(p, media_type) for p in filepaths]
+        *[
+            fosm.read_metadata(p, media_type, metadatas["filepath"])
+            for p in filepaths
+        ]
     )
-    metadata = {f: m for f, m in zip(filepaths, metadatas)}
+    metadatas = {f: m for f, m in zip(filepaths, metadatas)}
 
     result = []
     for sample in samples:
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
-        if "metadata" in sample:
-            sample_metadata = _parse_metadata(sample, media_type)
-        else:
-            sample_metadata = metadata[filepath]
-
-        sample_result.update(sample_metadata)
+        sample_result.update(metadatas[filepath])
         result.append(sample_result)
 
     return result
