@@ -5,7 +5,6 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import io
 import itertools
 import logging
 import multiprocessing
@@ -41,19 +40,21 @@ class Metadata(DynamicEmbeddedDocument):
     mime_type = fof.StringField()
 
     @classmethod
-    def build_for(cls, filepath, mime_type=None):
-        """Builds a :class:`Metadata` object for the given filepath.
+    def build_for(cls, path_or_url, mime_type=None):
+        """Builds a :class:`Metadata` object for the given file.
 
         Args:
-            filepath: the path to the data on disk or a URL
+            path_or_url: the path to the data on disk or a URL
+            mime_type (None): the MIME type of the file. If not provided, it
+                will be guessed
 
         Returns:
             a :class:`Metadata`
         """
-        if filepath.startswith("http"):
-            return cls._build_for_url(filepath, mime_type=mime_type)
+        if path_or_url.startswith("http"):
+            return cls._build_for_url(path_or_url, mime_type=mime_type)
 
-        return cls._build_for_local(filepath, mime_type=mime_type)
+        return cls._build_for_local(path_or_url, mime_type=mime_type)
 
     @classmethod
     def _build_for_local(cls, filepath, mime_type=None):
@@ -95,9 +96,9 @@ class ImageMetadata(Metadata):
         """Builds an :class:`ImageMetadata` object for the given image.
 
         Args:
-            img_or_path_or_url: an image, an image path, or a URL
+            img_or_path_or_url: an image, an image path on disk, or a URL
             mime_type (None): the MIME type of the image. If not provided, it
-                will be guessed from the provided path or URL
+                will be guessed
 
         Returns:
             an :class:`ImageMetadata`
@@ -190,6 +191,8 @@ class VideoMetadata(Metadata):
 
         Args:
             video_path_or_url: the path to a video on disk or a URL
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
 
         Returns:
             a :class:`VideoMetadata`
