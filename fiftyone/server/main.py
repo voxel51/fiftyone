@@ -48,6 +48,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
+import fiftyone.server.metadata as fosm
 import fiftyone.server.utils as fosu
 
 
@@ -270,19 +271,26 @@ class PageHandler(tornado.web.RequestHandler):
             samples = samples[:page_length]
             more = page + 1
 
-        results = [{"sample": s} for s in samples]
-        metadata = {}
-
-        for r in results:
-            filepath = r["sample"]["filepath"]
-            if filepath not in metadata:
-                metadata[filepath] = fosu.read_metadata(
-                    filepath, r["sample"].get("metadata", None)
-                )
-
-            r.update(metadata[filepath])
+        results = await _generate_results(samples)
 
         self.write({"results": results, "more": more})
+
+
+async def _generate_results(samples):
+    filepaths = list({s["filepath"] for s in samples})
+    metadatas = await asyncio.gather(
+        *[fosm.read_metadata(p) for p in filepaths]
+    )
+    metadata = {f: m for f, m in zip(filepaths, metadatas)}
+
+    result = []
+    for sample in samples:
+        filepath = sample["filepath"]
+        sample_result = {"sample": sample}
+        sample_result.update(metadata[filepath])
+        result.append(sample_result)
+
+    return result
 
 
 class TeamsHandler(RequestHandler):
