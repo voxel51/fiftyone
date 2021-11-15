@@ -80,9 +80,8 @@ def download_public_s3_files(
     inputs = _build_inputs(
         urls, s3_client, download_dir=download_dir, overwrite=overwrite
     )
-    num_samples = len(inputs)
 
-    if not urls:
+    if not inputs:
         return
 
     if num_workers == 1:
