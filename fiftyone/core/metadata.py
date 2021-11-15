@@ -5,7 +5,6 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import io
 import itertools
 import logging
 import multiprocessing
