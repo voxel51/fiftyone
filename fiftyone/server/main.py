@@ -288,7 +288,7 @@ async def _generate_results(samples, media_type):
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
         if "metadata" in sample:
-            sample_metadata = _parse_metadata(sample, media_type)
+            sample_metadata = _parse_metadata(sample["metadata"], media_type)
         else:
             sample_metadata = metadata[filepath]
 
@@ -298,15 +298,15 @@ async def _generate_results(samples, media_type):
     return result
 
 
-def _parse_metadata(s, media_type):
+def _parse_metadata(metadata, media_type):
     if media_type == fom.VIDEO:
         return {
-            "frame_rate": s["frame_rate"],
-            "heigh": s["frame_height"],
-            "width": s["frame_width"],
+            "frame_rate": metadata["frame_rate"],
+            "heigh": metadata["frame_height"],
+            "width": metadata["frame_width"],
         }
 
-    return {"height": s["height"], "width": s["width"]}
+    return {"height": metadata["height"], "width": metadata["width"]}
 
 
 class TeamsHandler(RequestHandler):
