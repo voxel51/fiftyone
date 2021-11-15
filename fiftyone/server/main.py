@@ -29,7 +29,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-from fiftyone.core.cache import media_cache
+import fiftyone.core.cache as foca
 import fiftyone.constants as foc
 import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
@@ -281,11 +281,11 @@ class PageHandler(tornado.web.RequestHandler):
 async def _generate_results(samples, media_type):
     filepaths = list({s["filepath"] for s in samples})
 
-    if media_type == fom.IMAGE and not media_cache.config.stream_images:
+    if media_type == fom.IMAGE and not foca.media_cache.config.stream_images:
         # This will download uncached images
         # @todo async/await would be preferrable to this expensive vanilla
         # thread-based implementation
-        paths = media_cache.get_local_paths(filepaths)
+        paths = foca.media_cache.get_local_paths(filepaths)
     else:
         paths = filepaths
 
