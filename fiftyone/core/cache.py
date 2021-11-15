@@ -14,6 +14,9 @@ import multiprocessing.dummy
 import os
 import urllib.parse as urlparse
 
+import aiofiles
+import aiohttp
+
 import eta.core.storage as etas
 import eta.core.utils as etau
 
@@ -420,7 +423,9 @@ class MediaCache(object):
         client = self._get_client(fs)
         return client.download_bytes(filepath, start=start, end=end)
 
-    def get_local_path(self, filepath, download=True, skip_failures=True):
+    def get_local_path(
+        self, filepath, download=True, skip_failures=True, coroutine=False
+    ):
         """Retrieves the local path for the given file.
 
         Args:
@@ -428,14 +433,19 @@ class MediaCache(object):
             download (True): whether to download uncached remote files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            coroutine (False): whether to return a coroutine
 
         Returns:
             the local filepath
         """
         _, local_path, exists, client = self._parse_filepath(filepath)
 
-        if exists or not download:
+        if (exists or not download) and not coroutine:
             return local_path
+
+        if coroutine:
+            task = (self, filepath, local_path, skip_failures, False)
+            return _do_async_download_media(task)
 
         task = (client, filepath, local_path, skip_failures, False)
         _do_download_media(task)
@@ -919,6 +929,38 @@ def _do_download_media(arg):
         checksum = None
 
     _write_cache_result(remote_path, local_path, success, checksum)
+
+
+async def _do_async_download_media(arg):
+    cache, remote_path, local_path, skip_failures, force = arg
+    checksum = None
+    success = True
+
+    if force or not os.path.isfile(local_path):
+        try:
+            url = cache.get_url(remote_path)
+            etau.ensure_basedir(local_path)
+            async with aiohttp.ClientSession() as session, session.get(
+                url
+            ) as response, aiofiles.open(local_path, "wb") as f:
+                async for chunk, _ in response.content.iter_chunks():
+                    await f.write(chunk)
+
+                checksum = response.headers["Etag"][1:-1]
+        except Exception as e:
+            if not skip_failures:
+                raise
+
+            logger.warning(e)
+            success = False
+
+        cache_path = _get_cache_path(local_path)
+        async with aiofiles.open(cache_path, "w") as f:
+            await f.write(
+                "%s,%d,%s" % (remote_path, int(success), checksum or "")
+            )
+
+    return local_path
 
 
 def _get_checksums(tasks, num_workers):

@@ -36,9 +36,13 @@ async def read_metadata(filepath):
         metadata dict
     """
     is_video = _is_video(filepath)
+    download = not is_video and not media_cache.config.stream_images
 
-    if media_cache.is_local_or_cached(filepath):
-        local_path = media_cache.get_local_path(filepath)
+    if download or media_cache.is_local_or_cached(filepath):
+        local_path = await media_cache.get_local_path(
+            filepath, download=True, coroutine=True
+        )
+
         try:
             return await read_local_metadata(local_path, is_video)
         except:
