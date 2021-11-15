@@ -8,18 +8,19 @@ Remote media caching.
 from datetime import datetime, timedelta
 import logging
 import logging.handlers
-import mimetypes
 import multiprocessing
 import multiprocessing.dummy
+import requests
 import os
 import urllib.parse as urlparse
 
 import eta.core.storage as etas
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+
+fom = fou.lazy_import("fiftyone.core.metadata")
 
 
 logger = logging.getLogger(__name__)
@@ -280,22 +281,8 @@ class MediaCache(object):
         fs, _, exists, _ = self._parse_filepath(filepath)
         return fs == FileSystem.LOCAL or exists
 
-    def is_remote_uncached_video(self, filepath):
-        """Determines whether the given filepath is a remote video that is not
-        in the local cache.
-
-        Args:
-            filepath: a filepath
-
-        Returns:
-            True/False
-        """
-        fs, local_path, exists, _ = self._parse_filepath(filepath)
-        return fs != FileSystem.LOCAL and not exists and _is_video(local_path)
-
     def get_remote_file_metadata(self, filepath, skip_failures=True):
-        """Retrieves the file metadata for the given remote filepath, if
-        possible.
+        """Retrieves the file metadata for the given remote file, if possible.
 
         The returned value may be ``None`` if file metadata could not be
         retrieved.
@@ -303,10 +290,10 @@ class MediaCache(object):
         Args:
             filepath: a filepath
             skip_failures (True): whether to gracefully continue without
-                raising an error if a remote file's metadata cannot be computed
+                raising an error if a file's metadata cannot be computed
 
         Returns:
-            a file metdata dict, or ``None``
+            a file metdata dict or ``None``
         """
         fs = _get_file_system(filepath)
         client = self._get_client(fs)
@@ -321,15 +308,15 @@ class MediaCache(object):
         provided list to file metadata dicts retrieved from the remote source.
 
         Values may be ``None`` if file metadata could not be retrieved for a
-        given remote file.
+        given file.
 
         Args:
             filepaths: a list of filepaths
             skip_failures (True): whether to gracefully continue without
-                raising an error if a remote file's metadata cannot be computed
+                raising an error if a file's metadata cannot be computed
 
         Returns:
-            a dict mapping remote filepaths to file metadata dicts, or ``None``
+            a dict mapping filepaths to file metadata dicts or ``None``
         """
         tasks = []
         seen = set()
@@ -348,36 +335,33 @@ class MediaCache(object):
 
         return _get_file_metadata(tasks, self.num_workers)
 
-    def get_remote_video_metadata(self, filepath, skip_failures=True):
-        """Retrieves the :class:`fiftyone.core.metadata.VideoMetadata` instance
-        for the given remote video.
+    def get_remote_metadata(self, filepath, skip_failures=True):
+        """Retrieves the :class:`fiftyone.core.metadata.Metadata` instance for
+        the given remote file.
 
         Args:
             filepath: a filepath
             skip_failures (True): whether to gracefully continue without
-                raising an error if a remote file's metadata cannot be computed
+                raising an error if a file's metadata cannot be computed
 
         Returns:
-            a :class:`fiftyone.core.metadata.VideoMetadata` or ``None``
+            a :class:`fiftyone.core.metadata.Metadata` or ``None``
         """
         fs = _get_file_system(filepath)
         client = self._get_client(fs)
 
         task = (client, filepath, skip_failures)
-        _, metadata = _do_get_video_metadata(task)
+        _, metadata = _do_get_metadata(task)
 
         return metadata
 
-    def get_remote_video_metadatas(self, filepaths, skip_failures=True):
-        """Returns a dictionary mapping any uncached remote video filepaths in
-        the provided list to :class:`fiftyone.core.metadata.VideoMetadata`
-        instances computed from the remote source.
-
-        Metadata is computed by applying ``ffprobe`` to the cloud object via a
-        signed URL.
+    def get_remote_metadatas(self, filepaths, skip_failures=True):
+        """Returns a dictionary mapping any uncached remote filepaths in the
+        provided list to :class:`fiftyone.core.metadata.Metadata` instances
+        computed from the remote source.
 
         Values may be ``None`` if metadata could not be retrieved for a given
-        remote video.
+        file.
 
         Args:
             filepaths: a list of filepaths
@@ -385,8 +369,8 @@ class MediaCache(object):
                 raising an error if a remote file's metadata cannot be computed
 
         Returns:
-            a dict mapping remote video filepaths to
-            :class:`fiftyone.core.metadata.VideoMetadata` objects, or ``None``
+            a dict mapping remote filepaths to
+            :class:`fiftyone.core.metadata.Metadata` instances or ``None``
         """
         tasks = []
         seen = set()
@@ -397,28 +381,13 @@ class MediaCache(object):
 
             seen.add(filepath)
 
-            if not exists and _is_video(local_path):
+            if not exists:
                 tasks.append((client, filepath, skip_failures))
 
         if not tasks:
             return {}
 
-        return _get_video_metadata(tasks, self.num_workers)
-
-    def get_remote_content(self, filepath, start=None, end=None):
-        """Gets the content for the given remote filepath.
-
-        Args:
-            filepath: a filepath
-            start (None): an optional start of a byte range to get
-            end (None): an optional end of a byte range to get
-
-        Returns:
-            a bytes string
-        """
-        fs = _get_file_system(filepath)
-        client = self._get_client(fs)
-        return client.download_bytes(filepath, start=start, end=end)
+        return _get_metadata(tasks, self.num_workers)
 
     def get_local_path(self, filepath, download=True, skip_failures=True):
         """Retrieves the local path for the given file.
@@ -643,7 +612,7 @@ class MediaCache(object):
 
 
 def _is_video(filepath):
-    mime_type = mimetypes.guess_type(filepath)[0]
+    mime_type = etau.guess_mime_type(filepath)
     return mime_type.startswith("video/")
 
 
@@ -955,52 +924,10 @@ def _do_get_checksum(arg):
     return remote_path, checksum
 
 
-def _get_video_metadata(tasks, num_workers):
-    metadata = {}
-
-    logger.info("Getting video metadata...")
-    if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
-            for task in pb(tasks):
-                filepath, _meta = _do_get_video_metadata(task)
-                metadata[filepath] = _meta
-    else:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks)) as pb:
-                results = pool.imap_unordered(_do_get_video_metadata, tasks)
-                for filepath, _meta in pb(results):
-                    metadata[filepath] = _meta
-
-    return metadata
-
-
-def _do_get_video_metadata(arg):
-    client, remote_path, skip_failures = arg
-
-    mime_type = mimetypes.guess_type(remote_path)[0]
-
-    if hasattr(client, "generate_signed_url"):
-        video_path = client.generate_signed_url(remote_path)
-    else:
-        video_path = remote_path
-
-    try:
-        metadata = fo.VideoMetadata.build_for(video_path)
-        metadata.mime_type = mime_type
-    except Exception as e:
-        if not skip_failures:
-            raise
-
-        logger.warning(e)
-        metadata = None
-
-    return remote_path, metadata
-
-
 def _get_file_metadata(tasks, num_workers):
     metadata = {}
 
-    logger.info("Getting metadata...")
+    logger.info("Getting file metadata...")
     if not num_workers or num_workers <= 1:
         with fou.ProgressBar() as pb:
             for task in pb(tasks):
@@ -1031,6 +958,52 @@ def _do_get_file_metadata(arg):
     return remote_path, metadata
 
 
+def _get_metadata(tasks, num_workers):
+    metadata = {}
+
+    logger.info("Getting metadata...")
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                filepath, _meta = _do_get_metadata(task)
+                metadata[filepath] = _meta
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                results = pool.imap_unordered(_do_get_metadata, tasks)
+                for filepath, _meta in pb(results):
+                    metadata[filepath] = _meta
+
+    return metadata
+
+
+def _do_get_metadata(arg):
+    client, remote_path, skip_failures = arg
+
+    mime_type = etau.guess_mime_type(remote_path)
+
+    if hasattr(client, "generate_signed_url"):
+        url = client.generate_signed_url(remote_path)
+    else:
+        url = remote_path
+
+    try:
+        if mime_type.startswith("video"):
+            metadata = fom.VideoMetadata.build_for(url, mime_type=mime_type)
+        elif mime_type.startswith("image"):
+            metadata = fom.ImageMetadata.build_for(url, mime_type=mime_type)
+        else:
+            metadata = fom.Metadata.build_for(url, mime_type=mime_type)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        logger.warning(e)
+        metadata = None
+
+    return remote_path, metadata
+
+
 def _get_file_system(path):
     if path.startswith("http"):
         return FileSystem.HTTP
@@ -1046,8 +1019,8 @@ def _get_file_system(path):
 
 def _make_client(fs, num_workers=None):
     if fs == FileSystem.S3:
-        profile = fo.media_cache_config.aws_profile
-        credentials_path = fo.media_cache_config.aws_config_file
+        profile = media_cache.config.aws_profile
+        credentials_path = media_cache.config.aws_config_file
         credentials, _ = S3StorageClient.load_credentials(
             credentials_path=credentials_path, profile=profile
         )
@@ -1059,7 +1032,7 @@ def _make_client(fs, num_workers=None):
         return S3StorageClient(credentials=credentials, **kwargs)
 
     if fs == FileSystem.GCS:
-        credentials_path = fo.media_cache_config.google_application_credentials
+        credentials_path = media_cache.config.google_application_credentials
         credentials, _ = GoogleCloudStorageClient.load_credentials(
             credentials_path=credentials_path
         )
