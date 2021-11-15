@@ -59,6 +59,11 @@ async def read_metadata(filepath, media_type, existing_metadata):
     download = not is_video and media_cache.config.serve_images
 
     if download or media_cache.is_local_or_cached(filepath):
+        # alternative to pure aysnc...
+        # this will be run in a new thread
+        # loop = asyncio.get_event_loop()
+        # local_path = await loop.run_in_executor(None, media_cache.get_local_path, filepath)
+
         local_path = await media_cache.get_local_path(
             filepath, download=True, coroutine=True
         )

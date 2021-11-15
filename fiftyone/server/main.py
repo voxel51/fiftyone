@@ -5,14 +5,15 @@ FiftyOne Tornado server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio
 import argparse
+import concurrent.futures
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 import math
 import os
 import traceback
 
+import asyncio
 import tornado.escape
 import tornado.ioloop
 import tornado.iostream
@@ -296,17 +297,6 @@ async def _generate_results(samples, media_type):
         result.append(sample_result)
 
     return result
-
-
-def _parse_metadata(s, media_type):
-    if media_type == fom.VIDEO:
-        return {
-            "frame_rate": s["frame_rate"],
-            "heigh": s["frame_height"],
-            "width": s["frame_width"],
-        }
-
-    return {"height": s["height"], "width": s["width"]}
 
 
 class TeamsHandler(RequestHandler):
@@ -1494,4 +1484,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     app = Application(debug=foc.DEV_INSTALL)
     app.listen(args.port, address=args.address)
+
+    loop = asyncio.get_event_loop()
+    loop.set_default_executor(concurrent.futures.ThreadPoolExecutor(20))
+
     tornado.ioloop.IOLoop.current().start()
