@@ -29,7 +29,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-from fiftyone.core.cache import media_cache
+import fiftyone.core.cache as foca
 import fiftyone.constants as foc
 import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars

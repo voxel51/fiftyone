@@ -6,7 +6,6 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
-import mimetypes
 import shutil
 import struct
 
@@ -344,5 +343,5 @@ class MetadataException(Exception):
 
 
 def _is_video(filepath):
-    mime_type = mimetypes.guess_type(filepath)[0]
+    mime_type = etau.guess_mime_type(filepath)
     return mime_type and mime_type.startswith("video/")
