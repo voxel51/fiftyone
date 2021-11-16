@@ -463,10 +463,9 @@ provided:
     otherwise a new project is created. By default, no project is used
 -   **project_id** (*None*): an optional ID of an existing CVAT project to
     which to upload the annotation tasks. By default, no project is used
--   **occluded_attr** (*None*): an optional string indicating the attribute name
-    containing existing occluded values and/or in which to store
-    downloaded occluded values for all objects in the annotation run
-
+-   **occluded_attr** (*None*): an optional attribute name containing existing
+    occluded values and/or in which to store downloaded occluded values for all
+    objects in the annotation run
 
 .. _cvat-label-schema:
 
@@ -1501,9 +1500,8 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     will receieve command line prompt(s) at import time to provide label
     field(s) in which to store the annotations.
 
-    The `occluded_attr` argument allows you to link the occlusion widget to
-    your object attributes when uploading to existing projects.
-
+    You can also use the `occluded_attr` argument to link the state of CVAT's
+    occlusion widget to a specified attribute of your objects.
 
 .. code:: python
     :linenos:
@@ -1786,16 +1784,14 @@ linked to the occlusion widget.
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
+You can also use the `occluded_attr` parameter to sync the state of CVAT's
+occlusion widet with a specified attribute of all spatial fields that are being
+annotated that did not explicitly have an occluded attribute defined in the
+label schema.
 
-The `occluded_attr` parameter is another way to upload and download occlusion
-attributes to the occlusion widget. This parameter allows you to define the
-attribute name that will be used for all spatial fields that are being
-annotated that did not explicitly have an occluded attribute defined in
-the label schema.
-
-This parameter is especially useful when working with existing projects since the
-CVAT project schema is not able to retain information about
-occluded attributes between runs. 
+This parameter is especially useful when working with existing CVAT projects,
+since CVAT project schemas are not able to retain information about occluded
+attributes between annotation runs.
 
 .. code:: python
     :linenos:
@@ -1811,7 +1807,7 @@ occluded attributes between runs.
     label_field = "ground_truth"
 
     # Create project
-    view.annotate("create_proj", label_field=label_field, project_name=project_name)
+    view.annotate("new_proj", label_field=label_field, project_name=project_name)
 
     # Upload to existing project
     view.annotate(
@@ -1827,7 +1823,6 @@ occluded attributes between runs.
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
-
 
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget

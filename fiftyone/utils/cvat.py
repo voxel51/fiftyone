@@ -2520,9 +2520,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             default, no project is used
         project_id (None): an optional ID of an existing CVAT project to which
             to upload the annotation tasks. By default, no project is used
-        occluded_attr (None): an optional string indicating the attribute name
-            containing existing occluded values and/or in which to store
-            downloaded occluded values for all objects in the annotation run
+        occluded_attr (None): an optional attribute name containing existing
+            occluded values and/or in which to store downloaded occluded values
+            for all objects in the annotation run
     """
 
     def __init__(
@@ -3451,8 +3451,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # When adding to an existing project, its label schema is inherited, so
         # we need to store the updated one
-        # Providing a global occluded_attr will also result in an updated label
-        # schema
         if project_id is not None or occluded_attr is not None:
             config.label_schema = label_schema
 
@@ -4008,7 +4006,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for anno in anno_list:
                 server_id = anno["id"]
                 label_id = anno["label_id"]
-                if label_id in label_id_map.keys():
+                if label_id in label_id_map:
                     label_attr_id = label_id_map[label_id]
                     for attr in anno["attributes"]:
                         if attr["spec_id"] == label_attr_id:
@@ -4592,7 +4590,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = occluded_attr_name
 
-            _prev_field_classes = _prev_field_classes.union(_field_classes)
+            _prev_field_classes |= _field_classes
 
             # Class-specific attributes
             for _class in classes:
