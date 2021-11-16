@@ -480,7 +480,7 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
 def _get_metadata(filepath, media_type):
     use_local = foc.media_cache.is_local_or_cached(filepath)
 
-    if media_type == fom.IMAGE and not foc.media_cache.config.serve_images:
+    if media_type == fom.IMAGE and not foc.media_cache.config.stream_images:
         # Force image to be downloaded to compute its metadata
         use_local = True
 

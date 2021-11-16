@@ -279,21 +279,25 @@ class PageHandler(tornado.web.RequestHandler):
 
 
 async def _generate_results(samples, media_type):
-    metadatas = {s["filepath"]: s.get("metadata", None) for s in samples}
-    filepaths = list(metadatas.keys())
-    metadatas = await asyncio.gather(
-        *[fosm.read_metadata(p, media_type, metadatas[p]) for p in filepaths]
-    )
-    metadatas = {f: m for f, m in zip(filepaths, metadatas)}
+    metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
 
-    result = []
+    filepaths = list(metadata_map.keys())
+    metadatas = await asyncio.gather(
+        *[
+            fosm.get_metadata(f, media_type, metadata=metadata_map[f])
+            for f in filepaths
+        ]
+    )
+    metadata_map = {f: m for f, m in zip(filepaths, metadatas)}
+
+    results = []
     for sample in samples:
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
-        sample_result.update(metadatas[filepath])
-        result.append(sample_result)
+        sample_result.update(metadata_map[filepath])
+        results.append(sample_result)
 
-    return result
+    return results
 
 
 class TeamsHandler(RequestHandler):

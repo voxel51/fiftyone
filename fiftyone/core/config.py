@@ -445,10 +445,10 @@ class MediaCacheConfig(EnvConfig):
             env_var="FIFTYONE_MEDIA_CACHE_SIZE_BYTES",
             default=128 * 1024 ** 3,  # 128 GB
         )
-        self.serve_images = self.parse_bool(
+        self.stream_images = self.parse_bool(
             d,
-            "serve_images",
-            env_var="FIFTYONE_MEDIA_CACHE_SERVE_IMAGES",
+            "stream_images",
+            env_var="FIFTYONE_MEDIA_CACHE_STREAM_IMAGES",
             default=False,
         )
         self.num_workers = self.parse_int(

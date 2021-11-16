@@ -17,79 +17,83 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from fiftyone.core.cache import media_cache
+import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
+
 
 logger = logging.getLogger(__name__)
 
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def read_metadata(filepath, media_type, existing_metadata):
-    """Calculates the metadata for the given local or remote media file.
+async def get_metadata(filepath, media_type, metadata=None):
+    """Gets the metadata for the given local or remote media file.
 
     Args:
         filepath: the path to the file
         media_type: the media type of the collection
-        existing_metadata: dict that may already contain the required metadata
+        metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
         metadata dict
     """
     is_video = media_type == fom.VIDEO
-    if existing_metadata:
-        if is_video:
-            frame_height = existing_metadata.get("frame_height", None)
-            frame_width = existing_metadata.get("frame_width", None)
-            frame_rate = existing_metadata.get("frame_rate", None)
 
-            if frame_height and frame_width and frame_rate:
-                return {
-                    "height": frame_height,
-                    "width": frame_width,
-                    "frame_rate": frame_rate,
-                }
+    use_local = foc.media_cache.is_local_or_cached(filepath)
+    if media_type == fom.IMAGE and not foc.media_cache.config.stream_images:
+        use_local = True
+
+    d = {}
+
+    # Get a URL to use to retrieve metadata (if necessary) and for the App to
+    # use to serve the media
+    if not use_local:
+        url = foc.media_cache.get_url(filepath, method="GET", hours=24)
+        d["url"] = url
+
+    # If pre-existing metadata exists, use it
+    if metadata:
+        if is_video:
+            width = metadata.get("frame_width", None)
+            height = metadata.get("frame_height", None)
+            frame_rate = metadata.get("frame_rate", None)
+
+            if width and height and frame_rate:
+                d["width"] = width
+                d["height"] = height
+                d["frame_rate"] = frame_rate
+                return d
         else:
-            height = existing_metadata.get("height", None)
-            width = existing_metadata.get("width", None)
+            width = metadata.get("width", None)
+            height = metadata.get("height", None)
 
             if width and height:
-                return {"height": height, "width": width}
-
-    download = not is_video and media_cache.config.serve_images
-
-    if download or media_cache.is_local_or_cached(filepath):
-        # alternative to pure aysnc...
-        # this will be run in a new thread
-        # loop = asyncio.get_event_loop()
-        # local_path = await loop.run_in_executor(None, media_cache.get_local_path, filepath)
-
-        local_path = await media_cache.get_local_path(
-            filepath, download=True, coroutine=True
-        )
-
-        try:
-            return await read_local_metadata(local_path, is_video)
-        except:
-            return _default_metadata(is_video)
-
-    url = media_cache.get_url(filepath, method="GET", hours=24)
+                d["width"] = width
+                d["height"] = height
+                return d
 
     try:
-        d = await read_url_metadata(url, is_video)
+        if use_local:
+            # Retrieve media metadata from local disk, downloading any uncached
+            # remote files if necessary
+            local_path = await foc.media_cache.get_local_path(
+                filepath, download=True, coroutine=True
+            )
+            metadata = await read_local_metadata(local_path, is_video)
+        else:
+            # Retrieve metadata from remote source
+            metadata = await read_url_metadata(url, is_video)
     except:
-        d = _default_metadata(is_video)
+        # Something went wrong (ie non-existent file), so we gracefully return
+        # some placeholder metadata so the App grid can be rendered
+        if is_video:
+            metadata = {"width": 512, "height": 512, "frame_rate": 30}
+        else:
+            metadata = {"width": 512, "height": 512}
 
-    d["url"] = url
+    d.update(metadata)
 
     return d
-
-
-def _default_metadata(is_video):
-    if is_video:
-        return {"width": 512, "height": 512, "frame_rate": 30}
-
-    return {"width": 512, "height": 512}
 
 
 async def read_url_metadata(url, is_video):
