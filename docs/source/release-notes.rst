@@ -3,6 +3,60 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.1:
+
+FiftyOne 0.14.1
+---------------
+*Released November 15, 2021*
+
+App
+
+- Optimized pagination for collections that do not have metadata computed
+- Fixed filtering by label for Colab notebooks
+- Fixed a bug where the App would crash if a image or video MIME type could not
+  be inferred from the filepath
+- 
+
+Core
+
+- Fixed cloning for views with a parent dataset that has brain runs
+- Fixed sampling frames when using
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
+- Fixed importing of :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>`
+  with run results
+- Added a :class:`MaxResize <fiftyone.utils.torch.MaxResize>` transform
+- Added `image_max_size ` and `image_max_dim` parameters to
+  :class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`
+- Added support for non-sequential updates in
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+- Added a
+  :meth:`compute_max_ious() <fiftyone.utils.eval.detection.compute_max_ious>`
+  utility
+- Added support for labels-only exports when working with
+  :class:`YOLOv4Dataset <fiftyone.types.YOLOv4Dataset>` and
+  :class:`YOLOv5Dataset <fiftyone.types.YOLOv5Dataset>`` formats
+- Added an  :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
+  utility that provides support for adding YOLO-formatted model predictions to
+  an existing dataset
+- Converted COCO and Open Images downloading to use multithreading instead of
+  multiprocessing
+
+Annotation
+
+- Fixed a bug when annotating videos in CVAT with `None` label field
+- Fixed a bug when annotating new fields in CVAT
+- Improved label ID tracking in CVAT by leveraging CVAT's server IDs
+- Fix bug when annotating and `allow_additions`` is `False`
+- Added an `allow_index_edits` to
+  :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+  for disallowing video track index changes
+- Fixed a bug when annotating a track in CVAT up to the last frame
+
+Docs
+
+- Added a :ref:`Loading model predictions <loading-model-predictions>` to the dataset user guide
+  
+
 .. _release-notes-v0.14.0:
 
 FiftyOne 0.14.0
