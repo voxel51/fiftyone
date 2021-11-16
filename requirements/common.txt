@@ -1,5 +1,5 @@
-aiofiles
-aiohttp
+aiofiles==0.7.0
+aiohttp==3.8.0
 argcomplete==1.11.0
 boto3==1.17.36
 Deprecated==1.2.11

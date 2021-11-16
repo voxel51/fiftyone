@@ -5,17 +5,6 @@ FiftyOne server utils.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import collections
-import json
-import mimetypes
-import os
-import io
-import struct
-import warnings
-
-import eta.core.video as etav
-import PIL.Image
-
 from fiftyone import ViewField as F
 
 

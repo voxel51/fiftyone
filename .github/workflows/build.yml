@@ -74,6 +74,8 @@ jobs:
         exclude:
           - os: windows-latest
             python: 3.6
+          - os: ubuntu-20.04
+            python: 3.6
     defaults:
       run:
         shell: bash
@@ -121,8 +123,8 @@ jobs:
           pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Install fiftyone
         run: |
-          pip install scikit-learn scikit-image shapely pydicom
-          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
+          pip install -r requirements/extras.txt
+          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta["storage"]
           pip install -e .
       - name: Install ETA from source
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
