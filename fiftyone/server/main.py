@@ -51,6 +51,7 @@ from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.media import MediaHandler
 import fiftyone.server.metadata as fosm
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
+import fiftyone.server.metadata as fosm
 import fiftyone.server.utils as fosu
 
 
