@@ -8,7 +8,6 @@ Metadata stored in dataset samples.
 import itertools
 import logging
 import multiprocessing
-import multiprocessing.dummy
 import os
 import requests
 import struct
@@ -480,7 +479,7 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
 def _get_metadata(filepath, media_type):
     use_local = foc.media_cache.is_local_or_cached(filepath)
 
-    if media_type == fom.IMAGE and not foc.media_cache.config.stream_images:
+    if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
         # Force image to be downloaded to compute its metadata
         use_local = True
 

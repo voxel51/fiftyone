@@ -40,7 +40,7 @@ async def get_metadata(filepath, media_type, metadata=None):
     is_video = media_type == fom.VIDEO
 
     use_local = foc.media_cache.is_local_or_cached(filepath)
-    if media_type == fom.IMAGE and not foc.media_cache.config.stream_images:
+    if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
         use_local = True
 
     d = {}
