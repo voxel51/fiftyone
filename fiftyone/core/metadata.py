@@ -215,8 +215,9 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
+    media_type = sample_collection.media_type
     ids, filepaths = sample_collection.values(["id", "filepath"])
-    media_types = itertools.repeat(sample_collection.media_type)
+    media_types = itertools.repeat(media_type)
 
     inputs = list(zip(ids, filepaths, media_types))
     num_samples = len(inputs)
@@ -224,13 +225,15 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if num_samples == 0:
         return
 
-    logger.info("Computing %s metadata...", sample_collection.media_type)
+    logger.info("Computing %s metadata...", media_type)
+
+    view = sample_collection.select_fields()
     with fou.ProgressBar(total=num_samples) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
             for sample_id, metadata in pb(
                 pool.imap_unordered(_do_compute_metadata, inputs)
             ):
-                sample = sample_collection[sample_id]
+                sample = view[sample_id]
                 sample.metadata = metadata
                 sample.save()
 

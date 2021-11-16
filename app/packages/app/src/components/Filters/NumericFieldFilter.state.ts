@@ -12,6 +12,10 @@ import { Range } from "./RangeSlider";
 type NumericFilter = {
   range: Range;
   none: boolean;
+  nan: boolean;
+  ninf: boolean;
+  inf: boolean;
+  exclude: boolean;
   _CLS: string;
 };
 
@@ -27,17 +31,26 @@ const getFilter = (
     ...{
       range: bounds,
       none: true,
+      nan: true,
+      inf: true,
+      ninf: true,
+      exclude: false,
     },
     ...get(filterAtoms.filter({ modal, path })),
   };
-  if (!meetsDefault({ ...result, none: true }, bounds)) {
-    return { ...result, none: false };
-  }
+
   return result;
 };
 
 const meetsDefault = (filter: NumericFilter, bounds: Range) => {
-  return filter.range.every((r, i) => r === bounds[i]) && filter.none === true;
+  return (
+    filter.range.every((r, i) => r === bounds[i]) &&
+    filter.none &&
+    filter.nan &&
+    filter.inf &&
+    filter.ninf &&
+    !filter.exclude
+  );
 };
 
 const setFilter = (
@@ -57,15 +70,21 @@ const setFilter = (
     _CLS: "numeric",
   };
 
-  const check = { ...filter, none: true };
-  if (key === "none") {
-    check[key] = Boolean(value);
-  }
+  const check = {
+    ...filter,
+    [key]: value,
+  };
 
-  if (meetsDefault(check, bounds)) {
+  const isDefault = meetsDefault(check, bounds);
+  if (!isDefault && meetsDefault({ ...check, range: bounds }, bounds)) {
+    set(filterAtoms.filter({ modal, path }), {
+      range: filter.range,
+      _CLS: "numeric",
+    });
+  } else if (isDefault) {
     set(filterAtoms.filter({ modal, path }), null);
   } else {
-    set(filterAtoms.filter({ modal, path }), { ...filter, none: false });
+    set(filterAtoms.filter({ modal, path }), filter);
   }
 };
 
@@ -115,7 +134,30 @@ export const rangeAtom = selectorFamily<
   },
 });
 
-export const noneAtom = selectorFamily<
+export const otherAtom = selectorFamily<
+  boolean,
+  {
+    defaultRange?: Range;
+    modal: boolean;
+    path: string;
+    key: "nan" | "none" | "inf" | "ninf";
+  }
+>({
+  key: "otherAtom",
+  get: ({ defaultRange, modal, path, key }) => ({ get }) =>
+    getFilter(get, modal, path, defaultRange)[key],
+  set: ({ defaultRange, modal, path, key }) => ({ get, set }, value) =>
+    setFilter(get, set, modal, path, key, value, defaultRange),
+});
+
+export interface OtherCounts {
+  none: number;
+  inf?: number;
+  ninf?: number;
+  nan?: number;
+}
+
+export const excludeAtom = selectorFamily<
   boolean,
   {
     defaultRange?: Range;
@@ -123,11 +165,13 @@ export const noneAtom = selectorFamily<
     path: string;
   }
 >({
-  key: "filterNumericFieldNone",
-  get: ({ defaultRange, modal, path }) => ({ get }) =>
-    getFilter(get, modal, path, defaultRange).none,
-  set: ({ defaultRange, modal, path }) => ({ get, set }, value) =>
-    setFilter(get, set, modal, path, "none", value, defaultRange),
+  key: "filterNumericFieldExclude",
+  get: ({ modal, path, defaultRange }) => ({ get }) => {
+    return getFilter(get, modal, path, defaultRange).exclude;
+  },
+  set: ({ modal, path, defaultRange }) => ({ get, set }, value) => {
+    setFilter(get, set, modal, path, "exclude", value, defaultRange);
+  },
 });
 
 export const fieldIsFiltered = selectorFamily<
@@ -139,19 +183,20 @@ export const fieldIsFiltered = selectorFamily<
   }
 >({
   key: "numericFieldIsFiltered",
-  get: ({ path, defaultRange, modal }) => ({ get }) => {
-    const [none, range] = [
-      get(noneAtom({ modal, path, defaultRange })),
-      get(rangeAtom({ modal, path, defaultRange })),
-    ];
-    const bounds = get(boundsAtom({ path, defaultRange }));
+  get: ({ path, defaultRange, modal }) => ({ get }) =>
+    !meetsDefault(
+      getFilter(get, modal, path, defaultRange),
+      get(boundsAtom({ path, defaultRange }))
+    ),
+});
 
-    return (
-      !none ||
-      (bounds.some(
-        (b, i) => range[i] !== b && b !== null && range[i] !== null
-      ) &&
-        bounds[0] !== bounds[1])
-    );
+export const isDefaultRange = selectorFamily<
+  boolean,
+  { defaultRange?: Range; modal: boolean; path: string }
+>({
+  key: "isDefaultNumericFieldRange",
+  get: (params) => ({ get }) => {
+    const range = get(rangeAtom(params));
+    return get(boundsAtom(params)).every((b, i) => b === range[i]);
   },
 });

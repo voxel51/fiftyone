@@ -20,6 +20,7 @@ interface CheckboxProps {
   count?: number;
   subCountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
+  forceColor?: boolean;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -97,6 +98,7 @@ const Checkbox = React.memo(
     subCountAtom,
     count,
     disabled,
+    forceColor,
   }: CheckboxProps) => {
     const theme = useTheme();
     color = color ?? theme.brand;
@@ -129,7 +131,7 @@ const Checkbox = React.memo(
             }
           >
             <CheckboxName
-              color={coloring ? color : null}
+              color={coloring || forceColor ? color : null}
               count={count}
               subCountAtom={subCountAtom}
               text={text}

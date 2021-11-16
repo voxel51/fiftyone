@@ -166,6 +166,7 @@ Datasets can also store more specific types of ancillary information such as
 :ref:`mask targets <storing-mask-targets>`.
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -816,6 +817,7 @@ The `tags` field can be used like a standard Python list:
 .. code-block:: python
     :linenos:
 
+    sample = dataset.first()
     sample.tags.append("new_tag")
     sample.save()
 
@@ -824,6 +826,33 @@ The `tags` field can be used like a standard Python list:
     You must call :meth:`sample.save() <fiftyone.core.sample.Sample.save>` in
     order to persist changes to the database when editing samples that are in
     datasets.
+
+Datasets and views provide helpful methods such as
+:meth:`count_sample_tags() <fiftyone.core.collections.SampleCollection.count_sample_tags>`,
+:meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`,
+:meth:`untag_samples() <fiftyone.core.collections.SampleCollection.untag_samples>`,
+and
+:meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
+that you can use to perform batch queries and edits to sample tags:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    print(dataset.count_sample_tags())  # {'validation': 200}
+
+    # Tag samples in a view
+    test_view = dataset.limit(100)
+    test_view.untag_samples("validation")
+    test_view.tag_samples("test")
+    print(dataset.count_sample_tags())  # {'validation': 100, 'test': 100}
+
+    # Create a view containing samples with a specific tag
+    validation_view = dataset.match_tags("validation")
+    print(len(validation_view))  # 100
 
 .. _using-metadata:
 
@@ -2253,6 +2282,42 @@ information like whether the label is incorrect:
 
     Did you know? You can add, edit, and filter by label tags
     :ref:`directly in the App <app-tagging>`.
+
+Datasets and views provide helpful methods such as
+:meth:`count_label_tags() <fiftyone.core.collections.SampleCollection.count_label_tags>`,
+:meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`,
+:meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`,
+:meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels>`,
+and
+:meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`
+that you can use to perform batch queries and edits to label tags:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+
+    # Tag all low confidence prediction
+    view = dataset.filter_labels("predictions", F("confidence") < 0.1)
+    view.tag_labels("potential_mistake", label_fields="predictions")
+    print(dataset.count_label_tags())  # {'potential_mistake': 1555}
+
+    # Create a view containing only tagged labels
+    view = dataset.select_labels(tags="potential_mistake", fields="predictions")
+    print(len(view))  # 173
+    print(view.count("predictions.detections"))  # 1555
+
+    # Create a view containing only samples with at least one tagged label
+    view = dataset.match_labels(tags="potential_mistake", fields="predictions")
+    print(len(view))  # 173
+    print(view.count("predictions.detections"))  # 5151
+
+    dataset.untag_labels("potential_mistake", label_fields="predictions")
+    print(dataset.count_label_tags())  # {}
 
 .. _label-attributes:
 
