@@ -956,7 +956,7 @@ def _do_get_checksum(arg):
     if hasattr(client, "get_file_metadata"):
         try:
             metadata = client.get_file_metadata(remote_path)
-            checksum = metadata["checksum"]
+            checksum = metadata["etag"]
         except:
             checksum = None
     else:
