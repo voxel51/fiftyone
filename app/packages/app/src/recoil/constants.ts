@@ -125,7 +125,7 @@ export const LIST_FIELD = "fiftyone.core.fields.ListField";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
-export const VALID_SCALAR_TYPES = [
+export const VALID_PRIMITIVE_TYPES = [
   BOOLEAN_FIELD,
   DATE_FIELD,
   DATE_TIME_FIELD,

@@ -1,12 +1,4 @@
-import React, {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Close } from "@material-ui/icons";
 import {
   atomFamily,
@@ -30,15 +22,8 @@ import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
 import { move } from "@fiftyone/utilities";
 import {
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
-  FILTERABLE_TYPES,
-  FRAME_NUMBER_FIELD,
-  FRAME_SUPPORT_FIELD,
-  INT_FIELD,
-  STRING_FIELD,
+  VALID_PRIMITIVE_TYPES,
 } from "../../recoil/constants";
 
 const MARGIN = 4;
@@ -105,13 +90,16 @@ const InteractiveGroupEntry = React.memo(
   }
 );
 
-const InteractivePathEntry = React.memo(
+const InteractiveEntry = React.memo(
   ({ modal, path }: { modal: boolean; path: string; group: string }) => {
+    const [expanded, setExpanded] = useState(false);
+
     return (
       <PathEntryComponent
         modal={modal}
         path={path}
         disabled={false}
+        icon={}
       ></PathEntryComponent>
     );
   }
@@ -167,35 +155,37 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
     const sampleLabels = get(
       schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })
     );
-    const labels = [...frameLabels, sampleLabels];
+    const labels = [...frameLabels, ...sampleLabels];
 
     const otherSampleFields = get(
-      schemaAtoms.fieldPaths({ ftype: EMBEDDED_DOCUMENT_FIELD })
+      schemaAtoms.fieldPaths({
+        space: State.SPACE.SAMPLE,
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+      })
     ).filter((path) => !labels.includes(path));
 
     const groups = {
       labels: sampleLabels,
       primitives: get(
         schemaAtoms.fieldPaths({
-          ftype: FILTERABLE_TYPES,
+          ftype: VALID_PRIMITIVE_TYPES,
           space: State.SPACE.SAMPLE,
         })
       ),
       ...otherSampleFields.reduce((other, current) => {
         other[current] = get(
-          schemaAtoms.fieldPaths({ path: current, ftype: FILTERABLE_TYPES })
+          schemaAtoms.fieldPaths({
+            path: current,
+            ftype: VALID_PRIMITIVE_TYPES,
+          })
         );
         return other;
       }, {}),
     };
 
-    console.log(otherSampleFields);
-
     if (frameLabels.length) {
       groups["frame labels"] = frameLabels;
     }
-
-    console.log("GROUPS", groups);
 
     return prioritySort(groups, [
       "metadata",
@@ -296,12 +286,6 @@ const fn = (
 
     currentY[key] = y;
 
-    if (key === activeKey) {
-      if (y + delta < 0) {
-        // delta = y;
-      }
-    }
-
     if (shown) {
       y += getHeight(el) + MARGIN;
     }
@@ -327,11 +311,11 @@ const fn = (
       shown = entry.shown;
       paths++;
     } else if (entry.kind === EntryKind.EMPTY) {
-      shown = shown && paths === 0;
+      shown = shown && paths === 0 && entry.shown;
     }
 
     results[key] = {
-      cursor: dragging ? "grabbing" : "grabbing",
+      cursor: dragging ? "grabbing" : "pointer",
       top: dragging ? currentY[key] + delta : y,
       zIndex: dragging ? 1 : 0,
       left: shown ? "unset" : -3000,
@@ -437,10 +421,10 @@ const getAfterKey = (
   order: string[],
   y: number
 ): string | null => {
-  const top = getY(items[order[0]].el);
+  const top = getY(items[order[0]].el.parentNode);
 
   const data: Array<{ top: number; key: string; height: number }> = order
-    .map((key) => ({ height: getHeight(items[key].el) + MARGIN, key }))
+    .map((key) => ({ height: getHeight(items[key].el), key }))
     .reduce(
       (tops, { height, key }) => {
         return [
@@ -452,23 +436,14 @@ const getAfterKey = (
           },
         ];
       },
-      [{ top, height: 0, key: null }]
+      [{ top, height: -3, key: null }]
     );
 
   y += data.filter(({ key }) => key === activeKey)[0].top;
 
-  let groupKey = null;
   const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
-  const result = data
-    .map(({ key, top, height }, i) => ({
-      delta: Math.abs(top + height / 2 - y),
-      key,
-    }))
+  const filtered = data
     .filter(({ key }) => {
-      if (key === activeKey) {
-        return false;
-      }
-
       if (key === null) {
         return isGroup;
       }
@@ -478,17 +453,25 @@ const getAfterKey = (
         return entry.kind === EntryKind.GROUP;
       }
 
-      if (entry.kind === EntryKind.GROUP) {
-        groupKey = key;
+      if (entry.kind === EntryKind.EMPTY) {
+        return false;
       }
 
       if (entry.kind === EntryKind.TAIL) {
         return false;
       }
 
-      return groupKey !== activeKey;
+      return true;
     })
-    .sort((a, b) => a.delta - b.delta)[0].key;
+    .map(({ key, top, height }) => ({
+      delta: Math.abs(top + height / 2 - y),
+      key,
+    }))
+    .sort((a, b) => a.delta - b.delta);
+
+  console.log(filtered.map(({ delta }) => delta));
+
+  const result = filtered[0].key;
 
   if (isGroup) {
     if (result === null) {
@@ -661,7 +644,6 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     );
     for (const key of order.current)
       items.current[key].controller.start(results[key]);
-    items.current[down.current].el.scrollIntoView();
   });
 
   const trigger = useCallback((event) => {
@@ -717,7 +699,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
               ) : entry.kind == EntryKind.EMPTY ? (
                 <TextEntry text={"No fields"} />
               ) : (
-                <InteractivePathEntry
+                <InteractiveEntry
                   modal={modal}
                   path={entry.path}
                   group={group}

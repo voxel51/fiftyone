@@ -36,7 +36,13 @@ export const patchesFields = selector<string[]>({
   get: ({ get }) => {
     const paths = get(schemaAtoms.labelPaths({}));
     return paths.filter((p) =>
-      get(schemaAtoms.meetsType({ path: p, ftype: PATCHES_FIELDS }))
+      get(
+        schemaAtoms.meetsType({
+          path: p,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: PATCHES_FIELDS,
+        })
+      )
     );
   },
 });

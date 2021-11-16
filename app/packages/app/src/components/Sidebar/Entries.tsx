@@ -1,4 +1,4 @@
-import React, { ReactNode, useRef } from "react";
+import React, { ReactNode, useRef, useState } from "react";
 import { animated, useSpring } from "@react-spring/web";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -60,17 +60,21 @@ const EntryCounts = ({
 const Container = animated(styled.div`
   position: relative;
   overflow: visible;
-  vertical-align: middle;
-  font-weight: bold;
-  display: flex;
   justify-content: space-between;
   padding: 3px;
   border-radius: 2px;
+  user-select: none;
+`);
+
+const Header = styled.div`
+  vertical-align: middle;
+  display: flex;
+  font-weight: bold;
 
   & > * {
     margin: 0 6px;
   }
-`);
+`;
 
 type PathValueProps = {
   path: string;
@@ -93,7 +97,9 @@ export const TextEntry = ({ text }: { text: string }) => {
       style={{ color: theme.fontDarkest, background: theme.backgroundLight }}
       title={text}
     >
-      <span>{text}</span>
+      <Header>
+        <span>{text}</span>
+      </Header>
     </Container>
   );
 };
@@ -146,7 +152,6 @@ export const PathEntry = React.memo(
 
     const containerProps = useSpring({
       backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-      cursor: disabled ? "unset" : "pointer",
     });
 
     return (
@@ -156,32 +161,34 @@ export const PathEntry = React.memo(
         onMouseUp={() => canCommit.current && setActive(!active)}
         style={{ ...containerProps, ...style }}
       >
-        {!disabled && (
-          <Checkbox
-            disableRipple={true}
-            checked={active}
-            title={`Show ${name}`}
-            onMouseDown={null}
-            style={{
-              color: active
-                ? color
-                : disabled
-                ? theme.fontDarkest
-                : theme.fontDark,
-              padding: 0,
-            }}
-          />
-        )}
-        <span style={{ flexGrow: 1 }}>{name}</span>
-        {
-          <EntryCounts
-            path={path}
-            modal={modal}
-            ftype={ftype}
-            embeddedDocType={embeddedDocType}
-          />
-        }
-        {children}
+        <Header>
+          {!disabled && (
+            <Checkbox
+              disableRipple={true}
+              checked={active}
+              title={`Show ${name}`}
+              onMouseDown={null}
+              style={{
+                color: active
+                  ? color
+                  : disabled
+                  ? theme.fontDarkest
+                  : theme.fontDark,
+                padding: 0,
+              }}
+            />
+          )}
+          <span style={{ flexGrow: 1 }}>{name}</span>
+          {
+            <EntryCounts
+              path={path}
+              modal={modal}
+              ftype={ftype}
+              embeddedDocType={embeddedDocType}
+            />
+          }
+          {children}
+        </Header>
       </Container>
     );
   }

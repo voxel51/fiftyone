@@ -74,7 +74,7 @@ export const fieldPaths = selectorFamily<
   {
     path?: string;
     space?: State.SPACE;
-    ftype: string | string[];
+    ftype?: string | string[];
     embeddedDocType?: string | string[];
   }
 >({
@@ -93,7 +93,9 @@ export const fieldPaths = selectorFamily<
       .sort();
 
     const f = (paths) =>
-      paths.filter((p) => meetsType({ path: p, ftype, embeddedDocType }));
+      paths.filter(
+        (p) => !ftype || get(meetsType({ path: p, ftype, embeddedDocType }))
+      );
 
     if (space === State.SPACE.SAMPLE) {
       return f(sampleLabels);
@@ -110,11 +112,13 @@ export const fieldPaths = selectorFamily<
     return Object.keys(get(field(path)).fields)
       .map((name) => [path, name].join("."))
       .filter((path) => {
-        return meetsType({
-          path,
-          embeddedDocType,
-          ftype,
-        });
+        return get(
+          meetsType({
+            path,
+            embeddedDocType,
+            ftype,
+          })
+        );
       });
   },
 });
@@ -320,12 +324,12 @@ export const meetsType = selectorFamily<
       ftype = [ftype];
     }
 
-    if (!Array.isArray(embeddedDocType)) {
-      embeddedDocType = [embeddedDocType];
-    }
-
     if (!ftype.includes(EMBEDDED_DOCUMENT_FIELD) && embeddedDocType) {
       throw new Error("invalid parameters");
+    }
+
+    if (!Array.isArray(embeddedDocType)) {
+      embeddedDocType = [embeddedDocType];
     }
 
     if (

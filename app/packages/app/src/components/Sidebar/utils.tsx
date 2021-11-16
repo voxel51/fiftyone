@@ -1,7 +1,5 @@
 import { Visibility } from "@material-ui/icons";
-import React, { ReactNode, useState } from "react";
-import { animated, useSpring } from "@react-spring/web";
-import styled from "styled-components";
+import React, { ReactNode } from "react";
 
 import { useTheme } from "../../utils/hooks";
 
