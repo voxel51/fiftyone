@@ -477,22 +477,13 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
 
 
 def _get_metadata(filepath, media_type):
-    use_local = foc.media_cache.is_local_or_cached(filepath)
-
-    if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
-        # Force image to be downloaded to compute its metadata
-        use_local = True
-
-    if not use_local:
+    if not foc.media_cache.is_local_or_cached(filepath):
         # Compute metadata for uncached remote media w/o downloading
         return foc.media_cache.get_remote_metadata(
             filepath, skip_failures=False
         )
 
-    # This will download any uncached remote files
-    local_path = foc.media_cache.get_local_path(
-        filepath, download=True, skip_failures=False
-    )
+    local_path = foc.media_cache.get_local_path(filepath, skip_failures=False)
 
     if media_type == fom.IMAGE:
         return ImageMetadata.build_for(local_path)
