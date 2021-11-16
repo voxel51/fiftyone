@@ -33,7 +33,7 @@ Core
   :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels()>`
   queries
 - Added a :class:`MaxResize <fiftyone.utils.torch.MaxResize>` transform
-- Added `image_max_size ` and `image_max_dim` parameters to
+- Added `image_max_size` and `image_max_dim` parameters to
   :class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`
 - Added support for non-sequential updates in
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
@@ -45,40 +45,44 @@ Core
   :class:`YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
   formats
 - Added :mod:`fiftyone.utils.beam` for parallel import, merge, and export
-  operations with `Apache Beam <https://beam.apache.org/>`
+  operations with `Apache Beam <https://beam.apache.org>`_
 - Added an  :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
   utility that provides support for adding YOLO-formatted model predictions to
   an existing dataset
-- Added support for importing/exporting multilabel
-  :class:`Classifications <fiftyone.core.labels.Classification>` fields when
-  using the
-  :class:`FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
-  format
+- Added support for importing/exporting multilabel classifications when using
+  :ref:`FiftyOneImageClassificationDataset format <FiftyOneImageClassificationDataset-import>`
 - Fixed the `force_reencode` flag for
   :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
-- Converted COCO and Open Images downloading to use multithreading instead of
-  multiprocessing
-- Changed evalution confusion matrices to always include rows and columns for
+- Converted COCO and Open Images dataset downloads to use multithreading
+  rather than multiprocessing
+- Updated evalution confusion matrices to always include rows and columns for
   missing/other
 
 Annotation
 
-- Fixed a bug when annotating videos in CVAT with `None` label field
-- Fixed a bug when annotating new fields in CVAT
-- Fixed a bug when annotating noncontinuous tracks in CVAT
-- Fixed a bug when annotating a track in CVAT up to the last frame
-- Improved label ID tracking in CVAT by leveraging CVAT's server IDs
-- Fix an :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-  when `allow_additions`` is `False`
-- Added an `allow_index_edits` to
+- Added support for annotating multiple label fields in one CVAT task
+- Added an `allow_index_edits` parameter to
   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
   for disallowing video track index changes
-- Added support for multiple label fields in one CVAT task
+- Improved label ID tracking in CVAT by leveraging CVAT's server IDs in
+  addition to `label_id` attributes
+- Fixed a bug when annotating videos in CVAT with `None` label fields
+- Fixed a bug when annotating new fields in CVAT
+- Fixed a bug when annotating non-continuous tracks in CVAT
+- Fixed a bug when annotating a track in CVAT that is present on the last frame
+  of a video
+- Fixed a bug when annotating with `allow_additions=False`
 
 Docs
 
-- Added a :ref:`Loading model predictions <loading-model-predictions>` to the
-  dataset user guide
+- Added a section on :ref:`adding model predictions <model-predictions>` to
+  existing datasets to the user guide
+- Added explicit examples of labels-only
+  :ref:`imports <loading-datasets-from-disk>` and
+  :ref:`exports <exporting-datasets>` for all relevant datasets to the docs
+- Documented how class lists are computed when exporting in formats like YOLO
+  and COCO that require explicit class lists
+- Documented the supported label types for all exporters
 
 .. _release-notes-v0.14.0:
 
