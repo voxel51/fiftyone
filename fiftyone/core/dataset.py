@@ -4715,8 +4715,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     clone_dataset = load_dataset(name)
 
-    # Clone run results
-    if (
+    # Clone run results (full datasets only)
+    if view is None and (
         dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations

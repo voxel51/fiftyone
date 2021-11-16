@@ -1098,7 +1098,11 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     if label_type != "scalar":
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
-    _, is_frame_field = samples._handle_frame_field(label_field)
+    if label_field is not None:
+        _, is_frame_field = samples._handle_frame_field(label_field)
+    else:
+        is_frame_field = samples.media_type == fom.VIDEO
+
     if is_frame_field:
         schema = samples.get_frame_field_schema()
     else:
