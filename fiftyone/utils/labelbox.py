@@ -490,7 +490,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         # @todo implement this
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
-                raise NotImplementedError(
+                logger.info(
                     "Uploading existing labels in field '%s' to Labelbox is "
                     "not yet supported" % label_field
                 )
