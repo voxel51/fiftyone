@@ -5,14 +5,15 @@ FiftyOne Tornado server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio
 import argparse
+import concurrent.futures
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 import math
 import os
 import traceback
 
+import asyncio
 import tornado.escape
 import tornado.ioloop
 import tornado.iostream
@@ -29,7 +30,6 @@ os.environ["FIFTYONE_SERVER"] = "1"
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-import fiftyone.core.cache as foca
 import fiftyone.constants as foc
 import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
@@ -279,27 +279,25 @@ class PageHandler(tornado.web.RequestHandler):
 
 
 async def _generate_results(samples, media_type):
-    filepaths = list({s["filepath"] for s in samples})
+    metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
 
-    if media_type == fom.IMAGE and not foca.media_cache.config.stream_images:
-        # This will download uncached images
-        # @todo async/await would be preferrable to this expensive vanilla
-        # thread-based implementation
-        paths = foca.media_cache.get_local_paths(filepaths)
-    else:
-        paths = filepaths
+    filepaths = list(metadata_map.keys())
+    metadatas = await asyncio.gather(
+        *[
+            fosm.get_metadata(f, media_type, metadata=metadata_map[f])
+            for f in filepaths
+        ]
+    )
+    metadata_map = {f: m for f, m in zip(filepaths, metadatas)}
 
-    metadatas = await asyncio.gather(*[fosm.read_metadata(p) for p in paths])
-    metadata = {f: m for f, m in zip(filepaths, metadatas)}
-
-    result = []
+    results = []
     for sample in samples:
         filepath = sample["filepath"]
         sample_result = {"sample": sample}
-        sample_result.update(metadata[filepath])
-        result.append(sample_result)
+        sample_result.update(metadata_map[filepath])
+        results.append(sample_result)
 
-    return result
+    return results
 
 
 class TeamsHandler(RequestHandler):
@@ -1487,4 +1485,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     app = Application(debug=foc.DEV_INSTALL)
     app.listen(args.port, address=args.address)
+
+    loop = asyncio.get_event_loop()
+    loop.set_default_executor(concurrent.futures.ThreadPoolExecutor(20))
+
     tornado.ioloop.IOLoop.current().start()
