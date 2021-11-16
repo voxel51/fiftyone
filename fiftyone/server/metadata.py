@@ -6,7 +6,6 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
-import mimetypes
 import shutil
 import struct
 
@@ -25,56 +24,54 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def read_metadata(filepath, media_type, existing_metadata):
-    """Calculates the metadata for the given media file.
+async def get_metadata(filepath, media_type, metadata=None):
+    """Gets the metadata for the given media file.
 
     Args:
         filepath: the path to the file
         media_type: the media type of the collection
-        existing_metadata: dict that may already contain the required metadata
+        metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
         metadata dict
     """
     is_video = media_type == fom.VIDEO
 
-    if existing_metadata:
+    if metadata:
         if is_video:
-            frame_height = existing_metadata.get("frame_height", None)
-            frame_width = existing_metadata.get("frame_width", None)
-            frame_rate = existing_metadata.get("frame_rate", None)
+            width = metadata.get("frame_width", None)
+            height = metadata.get("frame_height", None)
+            frame_rate = metadata.get("frame_rate", None)
 
-            if frame_height and frame_width and frame_rate:
+            if width and height and frame_rate:
                 return {
-                    "height": frame_height,
-                    "width": frame_width,
+                    "width": width,
+                    "height": height,
                     "frame_rate": frame_rate,
                 }
         else:
-            height = existing_metadata.get("height", None)
-            width = existing_metadata.get("width", None)
+            width = metadata.get("width", None)
+            height = metadata.get("height", None)
 
             if width and height:
-                return {"height": height, "width": width}
+                return {"width": width, "height": height}
 
     try:
-        return await get_metadata(filepath, is_video)
+        return await read_metadata(filepath, is_video)
     except:
-        return _default_metadata(is_video)
+        pass
 
-
-def _default_metadata(is_video):
     if is_video:
         return {"width": 512, "height": 512, "frame_rate": 30}
 
     return {"width": 512, "height": 512}
 
 
-async def get_metadata(filepath, is_video):
-    """Calculates the metadata for the given media file.
+async def read_metadata(filepath, is_video):
+    """Calculates the metadata for the given media path.
 
     Args:
-        filepath: a local filepath
+        filepath: a filepath
         is_video: whether the file is a video
 
     Returns:
@@ -293,8 +290,3 @@ class MetadataException(Exception):
     """"Exception raised when metadata for a media file cannot be computed."""
 
     pass
-
-
-def _is_video(filepath):
-    mime_type = mimetypes.guess_type(filepath)[0]
-    return mime_type and mime_type.startswith("video/")
