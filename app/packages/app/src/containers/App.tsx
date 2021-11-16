@@ -25,6 +25,7 @@ import {
 import Dataset from "./Dataset";
 import Error from "./Error";
 import Setup from "./Setup";
+import { toCamelCase } from "@fiftyone/utilities";
 
 const useStateUpdate = () => {
   return useRecoilCallback(
@@ -34,7 +35,7 @@ const useStateUpdate = () => {
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
-      set(atoms.stateDescription, state as State.Description);
+      set(atoms.stateDescription, toCamelCase(state) as State.Description);
       set(selectors.anyTagging, false);
       set(patching, false);
       set(similaritySorting, false);

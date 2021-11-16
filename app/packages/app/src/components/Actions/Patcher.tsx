@@ -10,6 +10,7 @@ import socket from "../../shared/connection";
 import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
+  EMBEDDED_DOCUMENT_FIELD,
   PATCHES_FIELDS,
 } from "../../recoil/constants";
 import { useTheme } from "../../utils/hooks";
@@ -23,6 +24,7 @@ import {
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
+import { State } from "../../recoil/types";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -42,18 +44,22 @@ export const patchesFields = selector<string[]>({
 export const clipsFields = selector<string[]>({
   key: "clipsFields",
   get: ({ get }) =>
-    get(schemaAtoms.fieldPaths({}))
-      .filter((path) =>
-        get(
-          schemaAtoms.meetsType({
-            path,
-            ftype: path.startsWith("frames.")
-              ? CLIPS_FRAME_FIELDS
-              : CLIPS_SAMPLE_FIELDS,
-          })
-        )
-      )
-      .sort(),
+    [
+      ...get(
+        schemaAtoms.fieldPaths({
+          space: State.SPACE.FRAME,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: CLIPS_FRAME_FIELDS,
+        })
+      ),
+      ...get(
+        schemaAtoms.fieldPaths({
+          space: State.SPACE.SAMPLE,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: CLIPS_SAMPLE_FIELDS,
+        })
+      ),
+    ].sort(),
 });
 
 const evaluationKeys = selector<string[]>({

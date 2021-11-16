@@ -2,6 +2,7 @@ import { atomFamily, selectorFamily } from "recoil";
 
 import * as atoms from "./atoms";
 import {
+  EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_LIST,
   RESERVED_FIELDS,
@@ -15,7 +16,10 @@ const schemaReduce = (
   schema: State.Schema,
   field: State.Field
 ): State.Schema => {
-  schema[field.name] = field;
+  schema[field.name] = {
+    ...field,
+    fields: ((field.fields || []) as State.Field[]).reduce(schemaReduce, {}),
+  };
   return schema;
 };
 
@@ -65,29 +69,53 @@ export const fieldSchema = selectorFamily<State.Schema, State.SPACE>({
   },
 });
 
-export const fieldPaths = selectorFamily<string[], { space?: State.SPACE }>({
+export const fieldPaths = selectorFamily<
+  string[],
+  {
+    path?: string;
+    space?: State.SPACE;
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
   key: "fieldPaths",
-  get: ({ space }) => ({ get }) => {
-    const sampleLabels = Object.keys(
-      get(fieldSchema(State.SPACE.SAMPLE))
-    ).sort();
+  get: ({ path, space, ftype, embeddedDocType }) => ({ get }) => {
+    if (path && space) {
+      throw new Error("path and space provided");
+    }
+
+    const sampleLabels = Object.keys(get(fieldSchema(State.SPACE.SAMPLE)))
+      .filter((l) => !l.startsWith("_"))
+      .sort();
     const frameLabels = Object.keys(get(fieldSchema(State.SPACE.FRAME)))
+      .filter((l) => !l.startsWith("_"))
       .map((l) => "frames." + l)
       .sort();
 
+    const f = (paths) =>
+      paths.filter((p) => meetsType({ path: p, ftype, embeddedDocType }));
+
     if (space === State.SPACE.SAMPLE) {
-      return sampleLabels;
+      return f(sampleLabels);
     }
 
     if (space === State.SPACE.FRAME) {
-      return frameLabels;
+      return f(frameLabels);
     }
 
-    if (!space) {
-      return sampleLabels.concat(frameLabels).sort();
+    if (!space && !path) {
+      return f(sampleLabels.concat(frameLabels).sort());
     }
 
-    throw new Error("invalid parameters");
+    return Object.keys(get(field(path)).fields)
+      .map((name) => [path, name].join("."))
+      .filter((path) => {
+        return meetsType({
+          path,
+          embeddedDocType,
+          ftype,
+        });
+      });
   },
 });
 
@@ -270,10 +298,22 @@ export const meetsType = selectorFamily<
     path: string;
     ftype: string | string[];
     embeddedDocType?: string | string[];
+    acceptLists?: boolean;
+    under?: boolean;
   }
 >({
   key: "meetsType",
-  get: ({ path, ftype, embeddedDocType }) => ({ get }) => {
+  get: ({
+    path,
+    ftype,
+    embeddedDocType,
+    acceptLists = true,
+    under = false,
+  }) => ({ get }) => {
+    if (!under && path.startsWith("_")) {
+      return false;
+    }
+
     const fieldValue = get(field(path));
 
     if (!Array.isArray(ftype)) {
@@ -284,8 +324,15 @@ export const meetsType = selectorFamily<
       embeddedDocType = [embeddedDocType];
     }
 
+    if (!ftype.includes(EMBEDDED_DOCUMENT_FIELD) && embeddedDocType) {
+      throw new Error("invalid parameters");
+    }
+
     if (
-      ftype.some((f) => fieldValue.ftype === f || fieldValue.subfield === f)
+      ftype.some(
+        (f) =>
+          fieldValue.ftype === f || (fieldValue.subfield === f && acceptLists)
+      )
     ) {
       return embeddedDocType.some(
         (doc) => fieldValue.embeddedDocType === doc || !doc

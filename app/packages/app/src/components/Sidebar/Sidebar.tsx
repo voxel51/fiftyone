@@ -29,6 +29,17 @@ import DropdownHandle, {
 import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
 import { move } from "@fiftyone/utilities";
+import {
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
+  FILTERABLE_TYPES,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+} from "../../recoil/constants";
 
 const MARGIN = 4;
 
@@ -153,17 +164,45 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
     const frameLabels = get(
       schemaAtoms.labelFields({ space: State.SPACE.FRAME })
     );
+    const sampleLabels = get(
+      schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })
+    );
+    const labels = [...frameLabels, sampleLabels];
+
+    const otherSampleFields = get(
+      schemaAtoms.fieldPaths({ ftype: EMBEDDED_DOCUMENT_FIELD })
+    ).filter((path) => !labels.includes(path));
 
     const groups = {
-      labels: get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })),
-      metadata: Object.keys(get(schemaAtoms.field("metadata")).fields),
+      labels: sampleLabels,
+      primitives: get(
+        schemaAtoms.fieldPaths({
+          ftype: FILTERABLE_TYPES,
+          space: State.SPACE.SAMPLE,
+        })
+      ),
+      ...otherSampleFields.reduce((other, current) => {
+        other[current] = get(
+          schemaAtoms.fieldPaths({ path: current, ftype: FILTERABLE_TYPES })
+        );
+        return other;
+      }, {}),
     };
+
+    console.log(otherSampleFields);
 
     if (frameLabels.length) {
       groups["frame labels"] = frameLabels;
     }
 
-    return prioritySort(groups, ["metadata", "labels", "frame labels"]);
+    console.log("GROUPS", groups);
+
+    return prioritySort(groups, [
+      "metadata",
+      "labels",
+      "frame labels",
+      "primitives",
+    ]);
   },
 });
 
