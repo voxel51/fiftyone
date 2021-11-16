@@ -97,8 +97,13 @@ setup(
         "tornado>=5.1.1,<7",
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
+        "boto3>=1.15",
+        "google-api-python-client",
+        "google-cloud-storage>=1.36",
+        "httplib2<=0.15",
+        "pysftp",
         # internal packages
-        "voxel51-eta['storage']>=0.6.0,<0.7",
+        "voxel51-eta>=0.6.0,<0.7",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
