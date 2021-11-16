@@ -136,6 +136,8 @@ def apply_model(
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
 
+    samples.download_media(skip_failures=skip_failures)
+
     with contextlib.ExitStack() as context:
         try:
             if confidence_thresh is not None:
@@ -230,7 +232,7 @@ def _apply_image_model_single(
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
             try:
-                img = etai.read(sample.filepath)
+                img = etai.read(sample.local_path)
                 labels = model.predict(img)
 
                 sample.add_labels(
@@ -240,7 +242,7 @@ def _apply_image_model_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
     if errors:
         lines = [
@@ -272,7 +274,9 @@ def _apply_image_model_batch(
     with fou.ProgressBar(samples) as pb:
         for idx, sample_batch in enumerate(samples_loader, 1):
             try:
-                imgs = [etai.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    etai.read(sample.local_path) for sample in sample_batch
+                ]
                 labels_batch = model.predict_all(imgs)
 
                 for sample, labels in zip(sample_batch, labels_batch):
@@ -382,7 +386,7 @@ def _apply_image_model_to_frames_single(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         labels = model.predict(img)
@@ -399,7 +403,7 @@ def _apply_image_model_to_frames_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
@@ -441,7 +445,7 @@ def _apply_image_model_to_frames_batch(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         labels_batch = model.predict_all(imgs)
@@ -461,7 +465,7 @@ def _apply_image_model_to_frames_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
@@ -501,7 +505,7 @@ def _apply_video_model(
 
         try:
             with etav.FFmpegVideoReader(
-                sample.filepath, frames=frames
+                sample.local_path, frames=frames
             ) as video_reader:
                 labels = model.predict(video_reader)
 
@@ -513,7 +517,7 @@ def _apply_video_model(
             if not skip_failures:
                 raise e
 
-            errors.append((sample.filepath, e))
+            errors.append((sample.local_path, e))
 
     if errors:
         lines = [
@@ -573,7 +577,7 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
         num_workers = fout.recommend_num_workers()
 
     dataset = fout.TorchImageDataset(
-        samples.values("filepath"),
+        samples.get_local_paths(),
         transform=model.transforms,
         use_numpy=use_numpy,
         force_rgb=True,
@@ -750,6 +754,8 @@ def compute_embeddings(
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
 
+    samples.download_media(skip_failures=skip_failures)
+
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
@@ -811,13 +817,13 @@ def _compute_image_embeddings_single(
             embedding = None
 
             try:
-                img = etai.read(sample.filepath)
+                img = etai.read(sample.local_path)
                 embedding = model.embed(img)[0]
             except Exception as e:
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
             if embeddings_field:
                 sample[embeddings_field] = embedding
@@ -866,7 +872,9 @@ def _compute_image_embeddings_batch(
             embeddings_batch = [None] * len(sample_batch)
 
             try:
-                imgs = [etai.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    etai.read(sample.local_path) for sample in sample_batch
+                ]
                 embeddings_batch = list(model.embed_all(imgs))  # list of 1D
             except Exception as e:
                 if not skip_failures:
@@ -994,7 +1002,7 @@ def _compute_frame_embeddings_single(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         embedding = model.embed(img)[0]
@@ -1013,7 +1021,7 @@ def _compute_frame_embeddings_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
             if embeddings_field is None:
                 if embeddings:
@@ -1071,7 +1079,7 @@ def _compute_frame_embeddings_batch(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         embeddings_batch = list(model.embed_all(imgs))
@@ -1095,7 +1103,7 @@ def _compute_frame_embeddings_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
             if embeddings_field is None:
                 if embeddings:
@@ -1147,7 +1155,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
 
         try:
             with etav.FFmpegVideoReader(
-                sample.filepath, frames=frames
+                sample.local_path, frames=frames
             ) as video_reader:
                 embedding = model.embed(video_reader)[0]
 
@@ -1155,7 +1163,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
             if not skip_failures:
                 raise e
 
-            errors.append((sample.filepath, e))
+            errors.append((sample.local_path, e))
             embedding = None
 
         if embeddings_field:
@@ -1323,6 +1331,8 @@ def compute_patch_embeddings(
 
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
+    samples.download_media(skip_failures=skip_failures)
+
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
@@ -1395,7 +1405,7 @@ def _embed_patches(
                 )
 
                 if patches is not None:
-                    img = etai.read(sample.filepath)
+                    img = etai.read(sample.local_path)
 
                     if batch_size is None:
                         embeddings = _embed_patches_single(
@@ -1415,7 +1425,7 @@ def _embed_patches(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
@@ -1586,7 +1596,7 @@ def _embed_frame_patches(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         frame_number = video_reader.frame_number
@@ -1624,7 +1634,7 @@ def _embed_frame_patches(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.local_path, e))
 
             if embeddings_field is None:
                 embeddings_dict[sample.id] = frame_embeddings_dict
@@ -1681,7 +1691,7 @@ def _make_patch_data_loader(
         patches = foup.parse_patches(
             sample, patches_field, handle_missing=handle_missing
         )
-        image_paths.append(sample.filepath)
+        image_paths.append(sample.local_path)
         detections.append(patches)
 
     dataset = fout.TorchImagePatchesDataset(

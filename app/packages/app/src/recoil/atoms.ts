@@ -10,6 +10,7 @@ export interface SampleData {
   dimensions: Dimensions;
   frameRate?: number;
   frameNumber?: number;
+  url?: string;
 }
 
 interface ModalSample extends SampleData {

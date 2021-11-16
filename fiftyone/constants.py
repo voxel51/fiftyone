@@ -23,6 +23,9 @@ FIFTYONE_ANNOTATION_CONFIG_PATH = os.path.join(
     FIFTYONE_CONFIG_DIR, "annotation_config.json"
 )
 FIFTYONE_APP_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "app_config.json")
+FIFTYONE_MEDIA_CACHE_CONFIG_PATH = os.path.join(
+    FIFTYONE_CONFIG_DIR, "media_cache_config.json"
+)
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")

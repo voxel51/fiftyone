@@ -223,10 +223,15 @@ parser.add_argument(
 parser.add_argument("--multi", action="store_true")
 
 args, command = parser.parse_known_args()
+
+# Services may define additional flags beyond ``--51-service`` and ``--multi``
+# which we do not need here
+while command and command[0].startswith("--"):
+    command = command[2:]
+
 if not command:
     raise ValueError("No command given")
-if command[0].startswith("--"):
-    raise ValueError("Unhandled service argument: %s" % command[0])
+
 service_class = Service.find_subclass_by_name(args.service_name)
 
 if args.multi:

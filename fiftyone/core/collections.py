@@ -24,6 +24,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
+import fiftyone.core.cache as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
@@ -1476,6 +1477,65 @@ class SampleCollection(object):
             num_workers=num_workers,
             skip_failures=skip_failures,
         )
+
+    def download_media(self, update=False, skip_failures=True):
+        """Downloads the source media files for all samples in the collection.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+
+        Any existing files are not re-downloaded, unless ``update == True`` and
+        their checksums no longer match.
+
+        Args:
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+        """
+        foc.download_media(self, update=update, skip_failures=skip_failures)
+
+    def get_local_paths(self, download=True, skip_failures=True):
+        """Returns a list of local paths to the media files in this collection.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+
+        Args:
+            download (True): whether to download any non-cached media files
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+
+        Returns:
+            a list of local filepaths
+        """
+        filepaths = self.values("filepath")
+        return foc.media_cache.get_local_paths(
+            filepaths, download=download, skip_failures=skip_failures
+        )
+
+    def clear_media(self):
+        """Deletes any local copies of media files in this collection from the
+        media cache.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+        """
+        filepaths = self.values("filepath")
+        foc.media_cache.clear(filepaths=filepaths)
+
+    def cache_stats(self):
+        """Returns a dictionary of stats about the cached media files in this
+        collection.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+
+        Returns:
+            a stats dict
+        """
+        filepaths = self.values("filepath")
+        return foc.media_cache.stats(filepaths=filepaths)
 
     def apply_model(
         self,

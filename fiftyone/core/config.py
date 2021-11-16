@@ -6,6 +6,7 @@ FiftyOne config.
 |
 """
 import logging
+import multiprocessing
 import os
 
 try:
@@ -428,6 +429,80 @@ class AnnotationConfig(EnvConfig):
         return d
 
 
+class MediaCacheConfig(EnvConfig):
+    """FiftyOne media cache configuration settings."""
+
+    def __init__(self, d=None):
+        if d is None:
+            d = {}
+
+        self.cache_dir = self.parse_string(
+            d, "cache_dir", env_var="FIFTYONE_MEDIA_CACHE_DIR", default=None,
+        )
+        self.cache_size_bytes = self.parse_int(
+            d,
+            "cache_size_bytes",
+            env_var="FIFTYONE_MEDIA_CACHE_SIZE_BYTES",
+            default=128 * 1024 ** 3,  # 128 GB
+        )
+        self.cache_app_images = self.parse_bool(
+            d,
+            "cache_app_images",
+            env_var="FIFTYONE_MEDIA_CACHE_APP_IMAGES",
+            default=True,
+        )
+        self.num_workers = self.parse_int(
+            d,
+            "num_workers",
+            env_var="FIFTYONE_MEDIA_CACHE_NUM_WORKERS",
+            default=None,
+        )
+        self.gc_sleep_seconds = self.parse_number(
+            d,
+            "gc_sleep_seconds",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_SLEEP_SECONDS",
+            default=60,
+        )
+        self.gc_log = self.parse_bool(
+            d, "gc_log", env_var="FIFTYONE_MEDIA_CACHE_GC_LOG", default=False,
+        )
+        self.gc_log_max_bytes = self.parse_number(
+            d,
+            "gc_log_max_bytes",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_MAX_BYTES",
+            default=512 * 1024 ** 2,  # 512 KB
+        )
+        self.gc_log_backup_count = self.parse_int(
+            d,
+            "gc_log_backup_count",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_BACKUP_COUNT",
+            default=10,
+        )
+        self.aws_config_file = self.parse_string(
+            d, "aws_config_file", env_var="AWS_CONFIG_FILE", default=None,
+        )
+        self.aws_profile = self.parse_string(
+            d, "aws_profile", env_var="AWS_PROFILE", default=None,
+        )
+        self.google_application_credentials = self.parse_string(
+            d,
+            "google_application_credentials",
+            env_var="GOOGLE_APPLICATION_CREDENTIALS",
+            default=None,
+        )
+
+        self._set_defaults()
+
+    def _set_defaults(self):
+        if self.cache_dir is None:
+            self.cache_dir = os.path.join(
+                os.path.expanduser("~"), "fiftyone", "__cache__"
+            )
+
+        if self.num_workers is None:
+            self.num_workers = multiprocessing.cpu_count()
+
+
 def locate_config():
     """Returns the path to the :class:`FiftyOneConfig` on disk.
 
@@ -508,6 +583,33 @@ def locate_annotation_config():
     return config_path
 
 
+def locate_media_cache_config():
+    """Returns the path to the :class:`MediaCacheConfig` on disk.
+
+    The default location is ``~/.fiftyone/media_cache_config.json``, but you
+    can override this path by setting the ``FIFTYONE_MEDIA_CACHE_CONFIG_PATH``
+    environment variable.
+
+    Note that a config file may not actually exist on disk in the default
+    location, in which case the default config settings will be used.
+
+    Returns:
+        the path to the :class:`MediaCacheConfig` on disk
+
+    Raises:
+        OSError: if the media cache config path has been customized but the
+            file does not exist on disk
+    """
+    if "FIFTYONE_MEDIA_CACHE_CONFIG_PATH" not in os.environ:
+        return foc.FIFTYONE_MEDIA_CACHE_CONFIG_PATH
+
+    config_path = os.environ["FIFTYONE_MEDIA_CACHE_CONFIG_PATH"]
+    if not os.path.isfile(config_path):
+        raise OSError("Media cache config file '%s' not found" % config_path)
+
+    return config_path
+
+
 def load_config():
     """Loads the FiftyOne config.
 
@@ -545,6 +647,19 @@ def load_annotation_config():
         return AnnotationConfig.from_json(annotation_config_path)
 
     return AnnotationConfig()
+
+
+def load_media_cache_config():
+    """Loads the FiftyOne media cache config.
+
+    Returns:
+        an :class:`MediaCacheConfig` instance
+    """
+    media_cache_config_path = locate_media_cache_config()
+    if os.path.isfile(media_cache_config_path):
+        return MediaCacheConfig.from_json(media_cache_config_path)
+
+    return MediaCacheConfig()
 
 
 def _parse_env_value(value):

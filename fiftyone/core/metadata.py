@@ -9,11 +9,13 @@ import itertools
 import logging
 import multiprocessing
 import os
+import requests
+import struct
 
-import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.cache as foc
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -37,19 +39,40 @@ class Metadata(DynamicEmbeddedDocument):
     mime_type = fof.StringField()
 
     @classmethod
-    def build_for(cls, filepath):
-        """Builds a :class:`Metadata` object for the given filepath.
+    def build_for(cls, path_or_url, mime_type=None):
+        """Builds a :class:`Metadata` object for the given file.
 
         Args:
-            filepath: the path to the data on disk
+            path_or_url: the path to the data on disk or a URL
+            mime_type (None): the MIME type of the file. If not provided, it
+                will be guessed
 
         Returns:
             a :class:`Metadata`
         """
-        return cls(
-            size_bytes=os.path.getsize(filepath),
-            mime_type=etau.guess_mime_type(filepath),
-        )
+        if path_or_url.startswith("http"):
+            return cls._build_for_url(path_or_url, mime_type=mime_type)
+
+        return cls._build_for_local(path_or_url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, filepath, mime_type=None):
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(filepath)
+
+        size_bytes = os.path.getsize(filepath)
+
+        return cls(size_bytes=size_bytes, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_url(cls, url, mime_type=None):
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(url)
+
+        with requests.get(url, stream=True) as r:
+            size_bytes = int(r.headers["Content-Length"])
+
+        return cls(size_bytes=size_bytes, mime_type=mime_type)
 
 
 class ImageMetadata(Metadata):
@@ -68,34 +91,76 @@ class ImageMetadata(Metadata):
     num_channels = fof.IntField()
 
     @classmethod
-    def build_for(cls, image_or_path):
+    def build_for(cls, img_or_path_or_url, mime_type=None):
         """Builds an :class:`ImageMetadata` object for the given image.
 
         Args:
-            image_or_path: an image or the path to the image on disk
+            img_or_path_or_url: an image, an image path on disk, or a URL
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
 
         Returns:
             an :class:`ImageMetadata`
         """
-        if etau.is_str(image_or_path):
-            # From image on disk
-            m = etai.ImageMetadata.build_for(image_or_path)
-            return cls(
-                size_bytes=m.size_bytes,
-                mime_type=m.mime_type,
-                width=m.frame_size[0],
-                height=m.frame_size[1],
-                num_channels=m.num_channels,
-            )
+        if not etau.is_str(img_or_path_or_url):
+            return cls._build_for_img(img_or_path_or_url, mime_type=mime_type)
 
-        # From in-memory image
-        height, width = image_or_path.shape[:2]
+        if img_or_path_or_url.startswith("http"):
+            return cls._build_for_url(img_or_path_or_url, mime_type=mime_type)
+
+        return cls._build_for_local(img_or_path_or_url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, path, mime_type=None):
+        size_bytes = os.path.getsize(path)
+
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(path)
+
+        with open(path, "rb") as f:
+            width, height = get_image_dimensions(f)
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            width=width,
+            height=height,
+            num_channels=None,  # @todo can we get this w/o reading full image?
+        )
+
+    @classmethod
+    def _build_for_url(cls, url, mime_type=None):
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(url)
+
+        with requests.get(url, stream=True) as r:
+            size_bytes = int(r.headers["Content-Length"])
+            width, height = get_image_dimensions(fou.ResponseStream(r))
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            width=width,
+            height=height,
+            num_channels=None,  # @todo can we get this w/o reading full image?
+        )
+
+    @classmethod
+    def _build_for_img(cls, img, mime_type=None):
+        size_bytes = img.nbytes
+        height, width = img.shape[:2]
         try:
-            num_channels = image_or_path.shape[2]
+            num_channels = img.shape[2]
         except IndexError:
             num_channels = 1
 
-        return cls(width=width, height=height, num_channels=num_channels)
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            width=width,
+            height=height,
+            num_channels=num_channels,
+        )
 
 
 class VideoMetadata(Metadata):
@@ -120,25 +185,29 @@ class VideoMetadata(Metadata):
     encoding_str = fof.StringField()
 
     @classmethod
-    def build_for(cls, video_path):
+    def build_for(cls, video_path_or_url, mime_type=None):
         """Builds an :class:`VideoMetadata` object for the given video.
 
         Args:
-            video_path: the path to a video on disk
+            video_path_or_url: the path to a video on disk or a URL
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
 
         Returns:
             a :class:`VideoMetadata`
         """
-        m = etav.VideoMetadata.build_for(video_path)
+        stream_info = etav.VideoStreamInfo.build_for(
+            video_path_or_url, mime_type=mime_type
+        )
         return cls(
-            size_bytes=m.size_bytes,
-            mime_type=m.mime_type,
-            frame_width=m.frame_size[0],
-            frame_height=m.frame_size[1],
-            frame_rate=m.frame_rate,
-            total_frame_count=m.total_frame_count,
-            duration=m.duration,
-            encoding_str=m.encoding_str,
+            size_bytes=stream_info.size_bytes,
+            mime_type=stream_info.mime_type,
+            frame_width=stream_info.frame_size[0],
+            frame_height=stream_info.frame_size[1],
+            frame_rate=stream_info.frame_rate,
+            total_frame_count=stream_info.total_frame_count,
+            duration=stream_info.duration,
+            encoding_str=stream_info.encoding_str,
         )
 
 
@@ -197,6 +266,157 @@ def compute_metadata(
             raise ValueError(msg)
 
 
+def get_image_dimensions(f):
+    """Retrieves the dimensions of the given image from a file-like object that
+    is streaming its contents.
+
+    Args:
+        f: a file-like object that supports ``read()`` and ``seek()``
+
+    Returns:
+        the ``(width, height)``
+    """
+    width = -1
+    height = -1
+
+    data = f.read(26)
+    size = len(data)
+
+    if (size >= 10) and data[:6] in (b"GIF87a", b"GIF89a"):
+        # GIFs
+        w, h = struct.unpack("<HH", data[6:10])
+        width = int(w)
+        height = int(h)
+    elif (
+        (size >= 24)
+        and data.startswith(b"\211PNG\r\n\032\n")
+        and (data[12:16] == b"IHDR")
+    ):
+        # PNGs
+        w, h = struct.unpack(">LL", data[16:24])
+        width = int(w)
+        height = int(h)
+    elif (size >= 16) and data.startswith(b"\211PNG\r\n\032\n"):
+        # older PNGs
+        w, h = struct.unpack(">LL", data[8:16])
+        width = int(w)
+        height = int(h)
+    elif (size >= 2) and data.startswith(b"\377\330"):
+        f.seek(2)
+        b = f.read(1)
+        while b and ord(b) != 0xDA:
+            while ord(b) != 0xFF:
+                b = f.read(1)
+            while ord(b) == 0xFF:
+                b = f.read(1)
+            if ord(b) >= 0xC0 and ord(b) <= 0xC3:
+                f.read(3)
+                tmp = f.read(4)
+                h, w = struct.unpack(">HH", tmp)
+                break
+            else:
+                tmp = f.read(2)
+                f.read(int(struct.unpack(">H", tmp)[0]) - 2)
+            b = f.read(1)
+        width = int(w)
+        height = int(h)
+    elif (size >= 26) and data.startswith(b"BM"):
+        # BMP
+        headersize = struct.unpack("<I", data[14:18])[0]
+        if headersize == 12:
+            w, h = struct.unpack("<HH", data[18:22])
+            width = int(w)
+            height = int(h)
+        elif headersize >= 40:
+            w, h = struct.unpack("<ii", data[18:26])
+            width = int(w)
+            # as h is negative when stored upside down
+            height = abs(int(h))
+        else:
+            raise MetadataException(
+                "Unkown DIB header size: %s" % str(headersize)
+            )
+    elif (size >= 8) and data[:4] in (b"II\052\000", b"MM\000\052"):
+        # Standard TIFF, big- or little-endian
+        # BigTIFF and other different but TIFF-like formats are not
+        # supported currently
+        byteOrder = data[:2]
+        boChar = ">" if byteOrder == "MM" else "<"
+        # maps TIFF type id to size (in bytes)
+        # and python format char for struct
+        tiffTypes = {
+            1: (1, boChar + "B"),  # BYTE
+            2: (1, boChar + "c"),  # ASCII
+            3: (2, boChar + "H"),  # SHORT
+            4: (4, boChar + "L"),  # LONG
+            5: (8, boChar + "LL"),  # RATIONAL
+            6: (1, boChar + "b"),  # SBYTE
+            7: (1, boChar + "c"),  # UNDEFINED
+            8: (2, boChar + "h"),  # SSHORT
+            9: (4, boChar + "l"),  # SLONG
+            10: (8, boChar + "ll"),  # SRATIONAL
+            11: (4, boChar + "f"),  # FLOAT
+            12: (8, boChar + "d"),  # DOUBLE
+        }
+        ifdOffset = struct.unpack(boChar + "L", data[4:8])[0]
+
+        countSize = 2
+        f.seek(ifdOffset)
+        ec = f.read(countSize)
+        ifdEntryCount = struct.unpack(boChar + "H", ec)[0]
+        # 2 bytes: TagId + 2 bytes: type + 4 bytes: count of values + 4
+        # bytes: value offset
+        ifdEntrySize = 12
+        for i in range(ifdEntryCount):
+            entryOffset = ifdOffset + countSize + i * ifdEntrySize
+            f.seek(entryOffset)
+            tag = f.read(2)
+            tag = struct.unpack(boChar + "H", tag)[0]
+            if tag == 256 or tag == 257:
+                # if type indicates that value fits into 4 bytes, value
+                # offset is not an offset but value itself
+                type = f.read(2)
+                type = struct.unpack(boChar + "H", type)[0]
+                if type not in tiffTypes:
+                    raise MetadataException("Unable to read metadata")
+                typeSize = tiffTypes[type][0]
+                typeChar = tiffTypes[type][1]
+                f.seek(entryOffset + 8)
+                value = f.read(typeSize)
+                value = int(struct.unpack(typeChar, value)[0])
+                if tag == 256:
+                    width = value
+                else:
+                    height = value
+            if width > -1 and height > -1:
+                break
+
+    elif size >= 2:
+        f.seek(0)
+        reserved = f.read(2)
+        if 0 != struct.unpack("<H", reserved)[0]:
+            raise MetadataException("Unable to read metadata")
+        format = f.read(2)
+        if 1 != struct.unpack("<H", format)[0]:
+            raise MetadataException("Unable to read metadata")
+        num = f.read(2)
+        num = struct.unpack("<H", num)[0]
+
+        # http://msdn.microsoft.com/en-us/library/ms997538.aspx
+        w = f.read(1)
+        h = f.read(1)
+        width = ord(w)
+        height = ord(h)
+
+    return width, height
+
+
+class MetadataException(Exception):
+    """"Exception raised when metadata for a media file cannot be computed."""
+
+    pass
+
+
 def _compute_metadata(sample_collection, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
@@ -215,8 +435,9 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
+    media_type = sample_collection.media_type
     ids, filepaths = sample_collection.values(["id", "filepath"])
-    media_types = itertools.repeat(sample_collection.media_type)
+    media_types = itertools.repeat(media_type)
 
     inputs = list(zip(ids, filepaths, media_types))
     num_samples = len(inputs)
@@ -224,13 +445,15 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if num_samples == 0:
         return
 
-    logger.info("Computing %s metadata...", sample_collection.media_type)
+    logger.info("Computing %s metadata...", media_type)
+
+    view = sample_collection.select_fields()
     with fou.ProgressBar(total=num_samples) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
             for sample_id, metadata in pb(
                 pool.imap_unordered(_do_compute_metadata, inputs)
             ):
-                sample = sample_collection[sample_id]
+                sample = view[sample_id]
                 sample.metadata = metadata
                 sample.save()
 
@@ -254,11 +477,18 @@ def _compute_sample_metadata(filepath, media_type, skip_failures=False):
 
 
 def _get_metadata(filepath, media_type):
-    if media_type == fom.IMAGE:
-        metadata = ImageMetadata.build_for(filepath)
-    elif media_type == fom.VIDEO:
-        metadata = VideoMetadata.build_for(filepath)
-    else:
-        metadata = Metadata.build_for(filepath)
+    if not foc.media_cache.is_local_or_cached(filepath):
+        # Compute metadata for uncached remote media w/o downloading
+        return foc.media_cache.get_remote_metadata(
+            filepath, skip_failures=False
+        )
 
-    return metadata
+    local_path = foc.media_cache.get_local_path(filepath, skip_failures=False)
+
+    if media_type == fom.IMAGE:
+        return ImageMetadata.build_for(local_path)
+
+    if media_type == fom.VIDEO:
+        return VideoMetadata.build_for(local_path)
+
+    return Metadata.build_for(local_path)
