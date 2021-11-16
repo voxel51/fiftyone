@@ -282,10 +282,7 @@ async def _generate_results(samples, media_type):
     metadatas = {s["filepath"]: s.get("metadata", None) for s in samples}
     filepaths = list(metadatas.keys())
     metadatas = await asyncio.gather(
-        *[
-            fosm.read_metadata(p, media_type, metadatas["filepath"])
-            for p in filepaths
-        ]
+        *[fosm.read_metadata(p, media_type, metadatas[p]) for p in filepaths]
     )
     metadatas = {f: m for f, m in zip(filepaths, metadatas)}
 
