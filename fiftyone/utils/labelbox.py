@@ -2082,9 +2082,12 @@ def _parse_attributes(cd_list):
             answer = cd["answer"]
             if isinstance(answer, list):
                 # Dropdown
-                attributes[name] = [
-                    _parse_attribute(a["value"]) for a in answer
-                ]
+                answers = [_parse_attribute(a["value"]) for a in answer]
+                if len(answers) == 1:
+                    answers = answers[0]
+
+                attributes[name] = answers
+
             elif isinstance(answer, dict):
                 # Radio question
                 attributes[name] = _parse_attribute(answer["value"])
