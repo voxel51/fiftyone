@@ -74,6 +74,8 @@ jobs:
         exclude:
           - os: windows-latest
             python: 3.6
+          - os: ubuntu-20.04
+            python: 3.6
     defaults:
       run:
         shell: bash
