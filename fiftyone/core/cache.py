@@ -411,11 +411,11 @@ class MediaCache(object):
         if (exists or not download) and not coroutine:
             return local_path
 
+        task = (client, filepath, local_path, skip_failures, False)
+
         if coroutine:
-            task = (self, filepath, local_path, skip_failures, False)
             return _do_async_download_media(task)
 
-        task = (client, filepath, local_path, skip_failures, False)
         _do_download_media(task)
 
         return local_path
@@ -470,12 +470,7 @@ class MediaCache(object):
             )
 
         client = self._get_client(fs)
-        if hasattr(client, "generate_signed_url"):
-            return client.generate_signed_url(
-                remote_path, method=method, hours=hours
-            )
-
-        return remote_path
+        return _get_url(client, remote_path, method=method, hours=hours)
 
     def update(self, filepaths=None, skip_failures=True):
         """Re-downloads any cached files whose checksum no longer matches their
@@ -838,7 +833,7 @@ def _delete_file(local_path):
 
 
 def _upload_media(tasks, num_workers):
-    logger.info("Uploading media files...")
+    logger.info("Uploading media...")
     if not num_workers or num_workers <= 1:
         with fou.ProgressBar() as pb:
             for task in pb(tasks):
@@ -864,7 +859,7 @@ def _do_upload_media(arg):
 
 
 def _download_media(tasks, num_workers):
-    logger.info("Downloading media files...")
+    logger.info("Downloading media...")
     if not num_workers or num_workers <= 1:
         with fou.ProgressBar() as pb:
             for task in pb(tasks):
@@ -900,35 +895,45 @@ def _do_download_media(arg):
 
 
 async def _do_async_download_media(arg):
-    cache, remote_path, local_path, skip_failures, force = arg
-    checksum = None
+    client, remote_path, local_path, skip_failures, force = arg
+
+    if not force and os.path.isfile(local_path):
+        return local_path
+
+    etau.ensure_basedir(local_path)
+    url = _get_url(client, remote_path)
+
     success = True
+    checksum = None
 
-    if force or not os.path.isfile(local_path):
-        try:
-            url = cache.get_url(remote_path)
-            etau.ensure_basedir(local_path)
-            async with aiohttp.ClientSession() as session, session.get(
-                url
-            ) as response, aiofiles.open(local_path, "wb") as f:
-                async for chunk, _ in response.content.iter_chunks():
-                    await f.write(chunk)
+    try:
+        async with aiohttp.ClientSession() as session, session.get(
+            url
+        ) as response, aiofiles.open(local_path, "wb") as f:
+            checksum = response.headers.get("Etag", None)
+            if checksum:
+                checksum = checksum[1:-1]
 
-                checksum = response.headers["Etag"][1:-1]
-        except Exception as e:
-            if not skip_failures:
-                raise
+            async for chunk, _ in response.content.iter_chunks():
+                await f.write(chunk)
 
-            logger.warning(e)
-            success = False
+            response.raise_for_status()
+    except Exception as e:
+        if not skip_failures:
+            raise
 
-        cache_path = _get_cache_path(local_path)
-        async with aiofiles.open(cache_path, "w") as f:
-            await f.write(
-                "%s,%d,%s" % (remote_path, int(success), checksum or "")
-            )
+        logger.warning(e)
+        success = False
+
+    await _async_write_cache_result(remote_path, local_path, success, checksum)
 
     return local_path
+
+
+async def _async_write_cache_result(filepath, local_path, success, checksum):
+    cache_path = _get_cache_path(local_path)
+    async with aiofiles.open(cache_path, "w") as f:
+        await f.write("%s,%d,%s" % (filepath, int(success), checksum or ""))
 
 
 def _get_checksums(tasks, num_workers):
@@ -1022,11 +1027,7 @@ def _do_get_metadata(arg):
     client, remote_path, skip_failures = arg
 
     mime_type = etau.guess_mime_type(remote_path)
-
-    if hasattr(client, "generate_signed_url"):
-        url = client.generate_signed_url(remote_path)
-    else:
-        url = remote_path
+    url = _get_url(client, remote_path)
 
     try:
         if mime_type.startswith("video"):
@@ -1043,6 +1044,13 @@ def _do_get_metadata(arg):
         metadata = None
 
     return remote_path, metadata
+
+
+def _get_url(client, remote_path, **kwargs):
+    if hasattr(client, "generate_signed_url"):
+        return client.generate_signed_url(remote_path, **kwargs)
+
+    return remote_path
 
 
 def _get_file_system(path):
