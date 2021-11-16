@@ -15,7 +15,8 @@ App
 - Fixed filtering by label for Colab notebooks
 - Fixed a bug where the App would crash if a image or video MIME type could not
   be inferred from the filepath
-- 
+- Fixed first pixel coloring for segmentations
+- Added graceful handling of nonfinites (`-inf`, `inf`, and `nan`)
 
 Core
 
@@ -24,6 +25,11 @@ Core
   :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
 - Fixed importing of :class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>`
   with run results
+- Added a :class:`Regression <fiftyone.core.labels.Regression>` label type
+- Added a :func:`random_split() <fiftyone.utils.split.random_split>` method
+- Added support for negating
+  :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels()>`
+  queries
 - Added a :class:`MaxResize <fiftyone.utils.torch.MaxResize>` transform
 - Added `image_max_size ` and `image_max_dim` parameters to
   :class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`
@@ -35,27 +41,39 @@ Core
 - Added support for labels-only exports when working with
   :class:`YOLOv4Dataset <fiftyone.types.YOLOv4Dataset>` and
   :class:`YOLOv5Dataset <fiftyone.types.YOLOv5Dataset>`` formats
+- Added :mod:`fiftyone.utils.beam` for parallelizing import, merge, and export
+  operations with `Apache Beam <https://beam.apache.org/>`
 - Added an  :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
   utility that provides support for adding YOLO-formatted model predictions to
   an existing dataset
+- Added support for importing/exporting multilabel
+  :class:`Classifications <fiftyone.core.labels.Classification>` fields when
+  using the
+  :class:`FiftyOneImageClassificationDataset <fiftyone.types.FiftyOneImageClassificationDataset>`
+  format
+- Fixed the `force_reencode` flag for
+  :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
 - Converted COCO and Open Images downloading to use multithreading instead of
   multiprocessing
+- Changed evalution confusion matrices to always include rows and columns for
+  missing/other
 
 Annotation
 
 - Fixed a bug when annotating videos in CVAT with `None` label field
 - Fixed a bug when annotating new fields in CVAT
+- Fixed a bug when annotating noncontinuous tracks in CVAT
+- Fixed a bug when annotating a track in CVAT up to the last frame
 - Improved label ID tracking in CVAT by leveraging CVAT's server IDs
 - Fix bug when annotating and `allow_additions`` is `False`
 - Added an `allow_index_edits` to
   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
   for disallowing video track index changes
-- Fixed a bug when annotating a track in CVAT up to the last frame
+- Added support for multiple label fields in one CVAT task
 
 Docs
 
 - Added a :ref:`Loading model predictions <loading-model-predictions>` to the dataset user guide
-  
 
 .. _release-notes-v0.14.0:
 
