@@ -45,13 +45,19 @@ async def get_metadata(filepath, media_type, metadata=None):
 
     d = {}
 
-    # Get a URL to use to retrieve metadata (if necessary) and for the App to
-    # use to serve the media
-    if not use_local:
+    if use_local:
+        # Get local path to media on disk, downloading any uncached remote
+        # files if necessary
+        local_path = await foc.media_cache.get_local_path(
+            filepath, download=True, coroutine=True
+        )
+    else:
+        # Get a URL to use to retrieve metadata (if necessary) and for the App
+        # to use to serve the media
         url = foc.media_cache.get_url(filepath, method="GET", hours=24)
         d["url"] = url
 
-    # If pre-existing metadata exists, use it
+    # If sufficient pre-existing metadata exists, use it
     if metadata:
         if is_video:
             width = metadata.get("frame_width", None)
@@ -74,11 +80,7 @@ async def get_metadata(filepath, media_type, metadata=None):
 
     try:
         if use_local:
-            # Retrieve media metadata from local disk, downloading any uncached
-            # remote files if necessary
-            local_path = await foc.media_cache.get_local_path(
-                filepath, download=True, coroutine=True
-            )
+            # Retrieve media metadata from local disk
             metadata = await read_local_metadata(local_path, is_video)
         else:
             # Retrieve metadata from remote source
