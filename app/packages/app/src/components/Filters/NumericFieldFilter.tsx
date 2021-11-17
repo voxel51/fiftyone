@@ -9,14 +9,13 @@ import {
 import styled from "styled-components";
 
 import * as selectors from "../../recoil/selectors";
-import { useExpand } from "./hooks";
-import * as filterAtoms from "./NumericFieldFilter.state";
-import CategoricalFilter from "./CategoricalFilter";
+import * as filterAtoms from "../../recoil/filters";
+
+import * as numericAtoms from "./NumericFieldFilter.state";
 import ExcludeOption from "./Exclude";
 import RangeSlider from "./RangeSlider";
-import { Entry } from "../CheckboxGroup";
 import Checkbox from "../Common/Checkbox";
-import { Button } from "../FieldsSidebar";
+import { Button } from "../utils";
 
 const NamedRangeSliderContainer = styled.div`
   padding-bottom: 0.5rem;
@@ -96,13 +95,13 @@ const useOthers = ({
 export const NamedRangeSlider = React.memo(
   React.forwardRef(({ color, name, fieldType, ...rest }: NamedProps, ref) => {
     const setFilter = useSetRecoilState(
-      filterStage({ modal: rest.modal, path: rest.path })
+      filterAtoms.filter({ modal: rest.modal, path: rest.path })
     );
-    const bounds = useRecoilValue(filterAtoms.boundsAtom(rest));
-    const hasDefaultRange = useRecoilValue(filterAtoms.isDefaultRange(rest));
+    const bounds = useRecoilValue(numericAtoms.boundsAtom(rest));
+    const hasDefaultRange = useRecoilValue(numericAtoms.isDefaultRange(rest));
     const hasBounds = bounds.every((b) => b !== null);
-    const otherCounts = useRecoilValue(
-      filterAtoms.otherCounts({ modal: rest.modal, path: rest.path })
+    const nonfiniteCounts = useRecoilValue(
+      filterAtoms.nonfiniteCounts({ modal: rest.modal, path: rest.path })
     );
     const others = useOthers({ ...rest, fieldType, otherCounts });
     const isFiltered = useRecoilValue(filterAtoms.fieldIsFiltered(rest));
@@ -169,47 +168,21 @@ export const NamedRangeSlider = React.memo(
 );
 
 const NumericFieldFilter = ({
-  expanded,
-  entry,
   modal,
-  fieldType,
+  path,
 }: {
-  expanded: boolean;
-  entry: Entry;
+  path: string;
   modal: boolean;
-  fieldType?: string;
 }) => {
-  const [ref, props] = useExpand(expanded);
-
-  if (!fieldType) {
-    const type = useRecoilValue(selectors.fieldType(entry.path));
-    const subType = useRecoilValue(selectors.subfieldType(entry.path));
-
-    fieldType = type === LIST_FIELD ? subType : type;
-  }
+  const color = useRecoilValue(selectors.colorMap(modal))(path);
 
   return (
-    <animated.div style={props}>
-      {modal ? (
-        <CategoricalFilter
-          valueName={entry.path}
-          color={entry.color}
-          countsAtom={countsAtom({ modal, path: entry.path, filtered: false })}
-          path={entry.path}
-          modal={modal}
-          disableItems={entry.disableList}
-          ref={ref}
-        />
-      ) : (
-        <NamedRangeSlider
-          color={entry.color}
-          modal={modal}
-          path={entry.path}
-          fieldType={fieldType}
-          ref={ref}
-        />
-      )}
-    </animated.div>
+    <NamedRangeSlider
+      color={color}
+      modal={modal}
+      path={path}
+      fieldType={fieldType}
+    />
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { ReactNode, useRef, useState } from "react";
+import React, { ReactNode, useRef } from "react";
 import { animated, useSpring } from "@react-spring/web";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";

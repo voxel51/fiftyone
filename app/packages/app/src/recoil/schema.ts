@@ -337,29 +337,41 @@ export const meetsType = selectorFamily<
 
     const fieldValue = get(field(path));
 
-    if (!Array.isArray(ftype)) {
-      ftype = [ftype];
-    }
-
-    if (!ftype.includes(EMBEDDED_DOCUMENT_FIELD) && embeddedDocType) {
-      throw new Error("invalid parameters");
-    }
-
-    if (!Array.isArray(embeddedDocType)) {
-      embeddedDocType = [embeddedDocType];
-    }
-
-    if (
-      ftype.some(
-        (f) =>
-          fieldValue.ftype === f || (fieldValue.subfield === f && acceptLists)
-      )
-    ) {
-      return embeddedDocType.some(
-        (doc) => fieldValue.embeddedDocType === doc || !doc
-      );
-    }
-
-    return false;
+    return meetsFieldType(fieldValue, { ftype, embeddedDocType, acceptLists });
   },
 });
+
+export const meetsFieldType = (
+  field: State.Field,
+  {
+    ftype,
+    embeddedDocType,
+    acceptLists,
+  }: {
+    ftype: string | string[];
+    embeddedDocType?: string | string[];
+    acceptLists?: boolean;
+  }
+) => {
+  if (!Array.isArray(ftype)) {
+    ftype = [ftype];
+  }
+
+  if (!ftype.includes(EMBEDDED_DOCUMENT_FIELD) && embeddedDocType) {
+    throw new Error("invalid parameters");
+  }
+
+  if (!Array.isArray(embeddedDocType)) {
+    embeddedDocType = [embeddedDocType];
+  }
+
+  if (
+    ftype.some(
+      (f) => field.ftype === f || (field.subfield === f && acceptLists)
+    )
+  ) {
+    return embeddedDocType.some((doc) => field.embeddedDocType === doc || !doc);
+  }
+
+  return false;
+};

@@ -1,9 +1,16 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { ArrowDropDown, ArrowDropUp, Close } from "@material-ui/icons";
+import {
+  ArrowDropDown,
+  ArrowDropUp,
+  Close,
+  Delete,
+  Edit,
+} from "@material-ui/icons";
 import {
   atomFamily,
   DefaultValue,
   selectorFamily,
+  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
@@ -23,8 +30,11 @@ import { useEventHandler } from "../../utils/hooks";
 import { move } from "@fiftyone/utilities";
 import {
   EMBEDDED_DOCUMENT_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "../../recoil/constants";
+import { fieldIsFiltered } from "../../recoil/filters";
 
 const MARGIN = 4;
 
@@ -39,11 +49,22 @@ const GroupHeaderStyled = styled(DropdownHandle)`
   color: ${({ theme }) => theme.fontDark};
 `;
 
+const GroupInput = styled.input`
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: ${({ theme }) => theme.fontDark};
+  pointer-events: none;
+`;
+
 type GroupHeaderProps = {
   pills?: JSX.Element[];
   title: string;
-  icon?: JSX.Element;
-  onDelete?: () => void;
+  setValue?: (name: string) => void;
+  onDelete: () => void;
 } & DropdownHandleProps;
 
 export const GroupHeader = ({
@@ -51,22 +72,48 @@ export const GroupHeader = ({
   icon,
   pills,
   onDelete,
+  setValue,
   ...rest
 }: GroupHeaderProps) => {
+  const [localValue, setLocalValue] = useState(() => title);
+  useLayoutEffect(() => {
+    setLocalValue(title);
+  }, [title]);
+  const [editing, setEditing] = useState(false);
+  const [hovering, setHovering] = useState(false);
+
   return (
-    <GroupHeaderStyled title={title} icon={PlusMinusButton} {...rest}>
-      {onDelete && (
-        <Close
-          onClick={(event) => {
-            event.stopPropagation();
-            event.preventDefault();
-            onDelete();
-          }}
+    <GroupHeaderStyled
+      title={title}
+      icon={PlusMinusButton}
+      {...rest}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      <GroupInput
+        maxLength={40}
+        value={localValue}
+        disabled={!editing || !setValue}
+        style={{ flexGrow: 1 }}
+        onBlur={() => setEditing(false)}
+        onChange={(event) => setLocalValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") setValue(event.target.value);
+        }}
+      />
+      {hovering && !editing && setValue && (
+        <Edit
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={() => setEditing(true)}
         />
       )}
-      {icon}
-      <span style={{ flexGrow: 1 }}>{title}</span>
       {...pills}
+      {onDelete && (
+        <Delete
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={() => setEditing(true)}
+        />
+      )}
     </GroupHeaderStyled>
   );
 };
@@ -76,21 +123,90 @@ const groupShown = atomFamily<boolean, { name: string; modal: boolean }>({
   default: true,
 });
 
+const numGroupFieldsFiltered = selectorFamily<
+  number,
+  { modal: boolean; group: string }
+>({
+  key: "numGroupFieldsFiltered",
+  get: (params) => ({ get }) => {
+    let count = 0;
+
+    for (const path of get(sidebarGroup(params))) {
+      if (get(fieldIsFiltered({ path, modal: params.modal }))) count++;
+    }
+
+    return count;
+  },
+});
+
+const numGroupFieldsActive = selectorFamily<
+  number,
+  { modal: boolean; group: string }
+>({
+  key: "numGroupFieldsActive",
+  get: (params) => ({ get }) => {
+    let count = 0;
+    const active = new Set(
+      get(schemaAtoms.activeFields({ modal: params.modal }))
+    );
+
+    for (const path of get(sidebarGroup(params))) {
+      if (active.has(path)) count++;
+    }
+
+    return count;
+  },
+});
+
+const useRenameGroup = (modal: boolean, group: string) => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (newName: string) => {
+      const groups = await snapshot.getPromise(sidebarGroups(modal));
+      set(
+        sidebarGroups(modal),
+        groups.map<[string, string[]]>(([name, paths]) => [
+          name === group ? newName : name,
+          paths,
+        ])
+      );
+    },
+    []
+  );
+};
+
 const InteractiveGroupEntry = React.memo(
   ({ name, modal }: { name: string; modal: boolean }) => {
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
+    const [groups, setGroups] = useRecoilState(sidebarGroups(modal));
+    const renameGroup = useRenameGroup(modal, name);
 
     return (
       <GroupHeader
         title={name}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
+        setValue={(value) => renameGroup(value)}
       />
     );
   }
 );
 
-const getFilterComponent = (field: State.Field) => {
+const FILTERS = {
+  [INT_FIELD]: NumericField,
+};
+
+const getFilterComponents = (
+  parent: State.Field,
+  fields: State.Field[]
+): React.Component<{ path: string; modal: boolean }> => {
+  if (schemaAtoms.meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
+    if (parent.ftype === LIST_FIELD) {
+      return FILTERS[parent.subfield];
+    }
+
+    return FILTERS[parent.ftype];
+  }
+
   return <div>{field.name}</div>;
 };
 
@@ -101,6 +217,7 @@ const InteractiveEntry = React.memo(
     const fields = useRecoilValue(
       schemaAtoms.fields({ path, ftype: VALID_PRIMITIVE_TYPES })
     );
+    const field = useRecoilValue(schemaAtoms.field(path));
 
     return (
       <PathEntryComponent
@@ -122,11 +239,7 @@ const InteractiveEntry = React.memo(
           />
         }
       >
-        {expanded
-          ? fields.length
-            ? fields.map((field) => getFilterComponent(field))
-            : "No fields"
-          : null}
+        {expanded ? getFilterComponents(field, fields) : null}
       </PathEntryComponent>
     );
   }
@@ -226,6 +339,18 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
 const sidebarGroups = atomFamily<SidebarGroups, boolean>({
   key: "sidebarGroups",
   default: defaultSidebarGroups,
+});
+
+const sidebarGroup = selectorFamily<
+  string[],
+  { modal: boolean; group: string }
+>({
+  key: "sidebarGroup",
+  get: (params) => ({ get }) => {
+    return get(sidebarGroups(params.modal)).filter(
+      ([name]) => name === params.group
+    )[0][1];
+  },
 });
 
 const sidebarGroupNames = selectorFamily<string[], boolean>({
@@ -496,30 +621,14 @@ const getAfterKey = (
     }))
     .sort((a, b) => a.delta - b.delta);
 
-  console.log(filtered.map(({ delta }) => delta));
-
   const result = filtered[0].key;
 
   if (isGroup) {
-    if (result === null) {
-      return result;
-    }
     let index = order.indexOf(result);
-
-    while (index < order.length) {
-      index++;
-      const entry = items[order[index]].entry;
-
-      if (entry.kind === EntryKind.TAIL) {
-        break;
-      }
-
-      if (entry.kind === EntryKind.GROUP) {
-        break;
-      }
+    if (index > 0) {
+      return order[index - 1];
     }
-
-    return order[index - 1];
+    return null;
   }
 
   if (!isGroup && order.indexOf(result) === 0) {
@@ -686,12 +795,13 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       items.current[key].controller.set(placements[key]);
   }, [entries]);
 
-  const observer = useRef<ResizeObserver>(
-    new ResizeObserver(() => {
-      const placements = fn(items.current, order.current, order.current);
-      for (const key of order.current)
-        items.current[key].controller.set(placements[key]);
-    })
+  const [observer] = useState<ResizeObserver>(
+    () =>
+      new ResizeObserver(() => {
+        const placements = fn(items.current, order.current, order.current);
+        for (const key of order.current)
+          items.current[key].controller.set(placements[key]);
+      })
   );
 
   return (
@@ -708,11 +818,11 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
             ref={(node) => {
               if (items.current[key].el) {
                 items.current[key].el.removeEventListener("mousedown", trigger);
-                observer.current.unobserve(node);
+                observer.unobserve(node);
               }
 
               if (node) {
-                observer.current.observe(node);
+                observer.observe(node);
                 node.addEventListener("mousedown", trigger);
               }
               items.current[key].el = node;

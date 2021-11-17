@@ -25,9 +25,7 @@ export type DropdownHandleProps = {
   expanded: boolean;
   onClick: () => void;
   icon?: (expanded: boolean) => ReactNode;
-  style?: CSSProperties;
-  children?: ReactNode;
-};
+} & React.HTMLProps<HTMLDivElement>;
 
 export const ArrowButton = (expanded) =>
   expanded ? <ExpandLess /> : <ExpandMore />;
@@ -45,10 +43,10 @@ const DropdownHandle = ({
 
   return (
     <Body
+      {...rest}
       onMouseDown={() => (canCommit.current = true)}
       onMouseMove={() => (canCommit.current = false)}
       onMouseUp={() => canCommit.current && onClick()}
-      {...rest}
     >
       {children}
       <span className="icon">{icon(expanded)}</span>
