@@ -559,6 +559,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const down = useRef<string>(null);
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
+
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
   for (const entry of entries) {
@@ -685,6 +686,14 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       items.current[key].controller.set(placements[key]);
   }, [entries]);
 
+  const observer = useRef<ResizeObserver>(
+    new ResizeObserver(() => {
+      const placements = fn(items.current, order.current, order.current);
+      for (const key of order.current)
+        items.current[key].controller.set(placements[key]);
+    })
+  );
+
   return (
     <InteractiveSidebarContainer>
       {entries.map((entry) => {
@@ -699,9 +708,11 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
             ref={(node) => {
               if (items.current[key].el) {
                 items.current[key].el.removeEventListener("mousedown", trigger);
+                observer.current.unobserve(node);
               }
 
               if (node) {
+                observer.current.observe(node);
                 node.addEventListener("mousedown", trigger);
               }
               items.current[key].el = node;
