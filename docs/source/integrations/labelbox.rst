@@ -1053,12 +1053,6 @@ fields at once:
    :align: center
 
 
-.. note::
-
-    Setting `classes_as_attrs=False` allows you to annotate classes 
-    directly at the top level of the editor instead of needing to click on the
-    label field first and then specifying the class as an attribute of each
-    object.
 
 
 Configuring Labelbox projects
@@ -1238,6 +1232,60 @@ For example, let's upload some blurred images to Labelbox for annotation:
 .. image:: /images/integrations/labelbox_alt_media.png
    :alt: labelbox-alt-media
    :align: center
+ 
+.. _labelbox-classes-as-attrs:
+
+Annotate classes directly
+-------------------------
+
+By default, the Labelbox editor is constructed so that all label fields being
+annotated are shown on the left sidebar at the top-level. When an object is
+annotated, the class name is then selected as an attribute.
+
+However, it can be useful to directly show the object classes at the top-level
+of the sidebar to avoid additional clicks. The `classes_as_attrs` argument can
+be set to `False` to provide this functionality. 
+
+.. note::
+
+    When `classes_as_attrs=False`, only one label field of each type of spatial
+    label is allowed. For example, only one "detections" label field can be
+    annotated. Annotating multiple "scalar", "classification", and "classifications"
+    fields is still allowed.
+
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "labelbox_classes_as_attrs"
+
+    view.annotate(
+        anno_key,
+        backend="labelbox",
+        label_field="new_dets",
+        label_type="detections",
+        classes=["dog", "cat", "person"],
+        classes_as_attrs=False,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Create annotations in Labelbox
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+
+.. image:: /images/integrations/labelbox_classes_as_attrs.png
+   :alt: labelbox_classes_as_attrs
+   :align: center
+
 
 .. _labelbox-annotating-videos:
 
