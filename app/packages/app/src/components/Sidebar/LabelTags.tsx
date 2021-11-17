@@ -98,22 +98,23 @@ const LabelTagsCell = React.memo(({ modal }: { modal: boolean }) => {
                 disabled={false}
                 key={tag}
                 style={{ marginBottom: 4 }}
-              >
-                <MatchEye
-                  matched={matchedTags}
-                  elementsName={"samples"}
-                  name={tag}
-                  onClick={() => {
-                    const newMatch = new Set(matchedTags);
-                    if (matchedTags.has(tag)) {
-                      newMatch.delete(tag);
-                    } else {
-                      newMatch.add(tag);
-                    }
-                    setMatchedTags(newMatch);
-                  }}
-                />
-              </PathEntry>
+                pills={
+                  <MatchEye
+                    matched={matchedTags}
+                    elementsName={"samples"}
+                    name={tag}
+                    onClick={() => {
+                      const newMatch = new Set(matchedTags);
+                      if (matchedTags.has(tag)) {
+                        newMatch.delete(tag);
+                      } else {
+                        newMatch.add(tag);
+                      }
+                      setMatchedTags(newMatch);
+                    }}
+                  />
+                }
+              />
             ))
           ) : (
             <TextEntry text={"No label tags"} />

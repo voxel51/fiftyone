@@ -123,6 +123,23 @@ export const fieldPaths = selectorFamily<
   },
 });
 
+export const fields = selectorFamily<
+  State.Field[],
+  {
+    path?: string;
+    space?: State.SPACE;
+    ftype?: string | string[];
+    embeddedDocType?: string | string[];
+  }
+>({
+  key: "fields",
+  get: (params) => ({ get }) => {
+    return get(fieldPaths(params))
+      .sort()
+      .map((name) => get(field([params.path, name].join("."))));
+  },
+});
+
 export const field = selectorFamily<State.Field, string>({
   key: "field",
   get: (path) => ({ get }) => {

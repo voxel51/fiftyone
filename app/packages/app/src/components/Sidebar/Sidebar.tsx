@@ -1,5 +1,5 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { Close } from "@material-ui/icons";
+import { ArrowDropDown, ArrowDropUp, Close } from "@material-ui/icons";
 import {
   atomFamily,
   DefaultValue,
@@ -90,17 +90,44 @@ const InteractiveGroupEntry = React.memo(
   }
 );
 
+const getFilterComponent = (field: State.Field) => {
+  return <div>{field.name}</div>;
+};
+
 const InteractiveEntry = React.memo(
   ({ modal, path }: { modal: boolean; path: string; group: string }) => {
     const [expanded, setExpanded] = useState(false);
+    const Arrow = expanded ? ArrowDropUp : ArrowDropDown;
+    const fields = useRecoilValue(
+      schemaAtoms.fields({ path, ftype: VALID_PRIMITIVE_TYPES })
+    );
 
     return (
       <PathEntryComponent
         modal={modal}
         path={path}
         disabled={false}
-        icon={}
-      ></PathEntryComponent>
+        pills={
+          <Arrow
+            style={{ cursor: "pointer", margin: 0 }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            onMouseDown={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+            }}
+          />
+        }
+      >
+        {expanded
+          ? fields.length
+            ? fields.map((field) => getFilterComponent(field))
+            : "No fields"
+          : null}
+      </PathEntryComponent>
     );
   }
 );
@@ -647,6 +674,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   });
 
   const trigger = useCallback((event) => {
+    if (event.button !== 0) return;
     down.current = event.currentTarget.dataset.key;
     start.current = event.clientY;
   }, []);

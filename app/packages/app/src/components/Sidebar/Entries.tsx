@@ -120,6 +120,7 @@ type PathEntryProps = {
   path: string;
   modal: boolean;
   disabled: boolean;
+  pills?: ReactNode;
   children?: ReactNode;
   ftype?: string | string[];
   embeddedDocType?: string | string[];
@@ -129,6 +130,7 @@ type PathEntryProps = {
 export const PathEntry = React.memo(
   ({
     children,
+    pills,
     disabled,
     modal,
     path,
@@ -187,8 +189,9 @@ export const PathEntry = React.memo(
               embeddedDocType={embeddedDocType}
             />
           }
-          {children}
+          {pills}
         </Header>
+        {children}
       </Container>
     );
   }
