@@ -578,9 +578,14 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 for label_d in video_d_list:
                     frame_number = label_d["frameNumber"]
                     frame_id = frame_id_map[sample_id][frame_number]
-                    frames[frame_id] = _parse_image_labels(
+                    labels_dict = _parse_image_labels(
                         label_d, frame_size, class_attr=class_attr
                     )
+                    if not classes_as_attrs:
+                        labels_dict = self._process_label_fields(
+                            label_schema, labels_dict
+                        )
+                    frames[frame_id] = labels_dict
 
                 self._add_video_labels_to_results(
                     annotations, frames, sample_id, label_schema
@@ -590,11 +595,41 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 labels_dict = _parse_image_labels(
                     d["Label"], frame_size, class_attr=class_attr
                 )
+                if not classes_as_attrs:
+                    labels_dict = self._process_label_fields(
+                        label_schema, labels_dict
+                    )
                 annotations = self._add_labels_to_results(
                     annotations, labels_dict, sample_id, label_schema
                 )
 
         return annotations
+
+    def _process_label_fields(self, label_schema, labels_dict):
+        unexpected_types = [
+            "segmentation",
+            "detections",
+            "keypoints",
+            "polylines",
+        ]
+        field_map = {}
+        for label_field, label_info in label_schema.items():
+            label_type = label_info["type"]
+            mapped_type = _UNIQUE_TYPE_MAP.get(label_type, label_type)
+            field_map[mapped_type] = label_field
+
+        _labels_dict = {}
+        for field_or_type, label_info in labels_dict.items():
+            if field_or_type in unexpected_types:
+                label_field = field_map[field_or_type]
+                _labels_dict[label_field] = {}
+                if field_or_type in label_info:
+                    label_info = label_info[field_or_type]
+                _labels_dict[label_field][field_or_type] = label_info
+            else:
+                _labels_dict[field_or_type] = label_info
+
+        return _labels_dict
 
     def launch_editor(self, url=None):
         """Launches the Labelbox editor in your default web browser.
@@ -661,7 +696,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                         "Only one field of each label type is allowed when "
                         "`classes_as_attrs=False`. Found fields '%s' and '%s' of "
                         "type '%s'"
-                        % (label_field, label_types[label_type], label_type,)
+                        % (label_field, label_types[label_type], label_type)
                     )
                 label_types[unique_label_type] = label_field
 
@@ -1107,7 +1142,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 else:
                     fo_type = "polylines"
 
-            if lb_type == "segmentations":
+            if lb_type == "segmentation":
                 if expected_type == "segmentation":
                     fo_type = "segmentation"
                 else:
@@ -2258,10 +2293,10 @@ def _parse_objects(od_list, frame_size, class_attr=None):
                     "label": label,
                     "attributes": attributes,
                 }
-                if "segmentations" not in label_fields[label_field]:
-                    label_fields[label_field]["segmentations"] = []
+                if "segmentation" not in label_fields[label_field]:
+                    label_fields[label_field]["segmentation"] = []
 
-                label_fields[label_field]["segmentations"].append(segmentation)
+                label_fields[label_field]["segmentation"].append(segmentation)
         else:
             msg = "Ignoring unsupported label"
             warnings.warn(msg)
@@ -2359,4 +2394,10 @@ def _get_attr_type(label_schema, label_field, attr_name, class_name=None):
     return None
 
 
-_UNIQUE_TYPE_MAP = {"instance": "segmentation"}
+_UNIQUE_TYPE_MAP = {
+    "instance": "segmentation",
+    "instances": "segmentation",
+    "polygons": "polylines",
+    "polygon": "polylines",
+    "polyline": "polylines",
+}
