@@ -376,6 +376,8 @@ def _build_label_schema(
 
     _label_schema = {}
 
+    is_video = samples.media_type == fom.VIDEO
+
     for _label_field, _label_info in label_schema.items():
         (
             _label_type,
@@ -385,6 +387,17 @@ def _build_label_schema(
         ) = _get_label_type(
             samples, backend, label_type, _label_field, _label_info
         )
+
+        _return_type = _RETURN_TYPES_MAP[_label_type]
+        if (
+            is_video
+            and not samples._is_frame_field(_label_field)
+            and _return_type in _SPATIAL_TYPES
+        ):
+            logger.warning(
+                "Label field '%s' is a spatial type being annotated on a video "
+                'so it should likely start with "frames.".' % _label_field
+            )
 
         if _label_type not in backend.supported_label_types:
             raise ValueError(
