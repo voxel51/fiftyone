@@ -424,6 +424,11 @@ details:
         `values`, and `default` for each attribute
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
+-   **classes_as_attrs** (*True*): whether to show every object class at the top
+    level of the editor (False) or whether to show the label field
+    at the top level and annotate the class as a required
+    attribute of each object (True)
+
 
 |br|
 In addition, the following Labelbox-specific parameters from
@@ -1042,9 +1047,19 @@ fields at once:
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
+
 .. image:: /images/integrations/labelbox_multiple_fields.png
    :alt: labelbox-multiple-fields
    :align: center
+
+
+.. note::
+
+    Setting `classes_as_attrs=False` allows you to annotate classes 
+    directly at the top level of the editor instead of needing to click on the
+    label field first and then specifying the class as an attribute of each
+    object.
+
 
 Configuring Labelbox projects
 -----------------------------

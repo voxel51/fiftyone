@@ -57,6 +57,10 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             user is not a member of the project's organization, an email
             invitation will be sent to them. The supported roles are
             ``["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]``
+        classes_as_attrs (True): whether to show every object class at the top
+            level of the editor (False) or whether to show the label field
+            at the top level and annotate the class as a required
+            attribute of each object (True)
     """
 
     def __init__(
@@ -68,6 +72,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         api_key=None,
         project_name=None,
         members=None,
+        classes_as_attrs=True,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -75,14 +80,10 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.url = url
         self.project_name = project_name
         self.members = members
+        self.classes_as_attrs = classes_as_attrs
 
         # store privately so it isn't serialized
         self._api_key = api_key
-
-        # @todo support `_classes_as_attrs=False`, which allows classes to be
-        # stored at the top level when annotating a single label field rather
-        # than as an attribute under the label field
-        self._classes_as_attrs = True
 
     @property
     def api_key(self):
@@ -262,6 +263,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             "radio": lbo.Classification.Type.RADIO,
             "checkbox": lbo.Classification.Type.CHECKLIST,
         }
+
+    @property
+    def attr_list_types(self):
+        # Attribute types that return lists of values
+        return ["checkbox"]
 
     @property
     def base_api_url(self):
@@ -479,13 +485,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         media_field = config.media_field
         project_name = config.project_name
         members = config.members
-        classes_as_attrs = config._classes_as_attrs
-
-        if not classes_as_attrs:
-            # @todo implement this
-            raise NotImplementedError(
-                "Annotating classes at the top level is not yet supported"
-            )
+        classes_as_attrs = config.classes_as_attrs
 
         # @todo implement this
         for label_field, label_info in label_schema.items():
@@ -532,13 +532,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_id = results.project_id
         label_schema = results.config.label_schema
         is_video = results.is_video
-        classes_as_attrs = results.config._classes_as_attrs
-
-        if not classes_as_attrs:
-            # @todo implement this
-            raise NotImplementedError(
-                "Annotating classes at the top level is not yet supported"
-            )
+        classes_as_attrs = results.config.classes_as_attrs
 
         project = self._client.get_project(project_id)
         labels_json = self._download_project_labels(project=project)
@@ -628,8 +622,24 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         tools = []
         classifications = []
+        label_types = {}
+        _multiple_types = ["scalar", "classification", "classifications"]
 
         for label_field, label_info in label_schema.items():
+            label_type = label_info["type"]
+            if label_type not in _multiple_types:
+                unique_label_type = _UNIQUE_TYPE_MAP.get(
+                    label_type, label_type
+                )
+                if unique_label_type in label_types and not classes_as_attrs:
+                    raise ValueError(
+                        "Only one field of each label type is allowed when "
+                        "`classes_as_attrs=False`. Found fields '%s' and '%s' of "
+                        "type '%s'"
+                        % (label_field, label_types[label_type], label_type,)
+                    )
+                label_types[unique_label_type] = label_field
+
             field_tools, field_classifications = self._create_ontology_tools(
                 label_info, label_field, classes_as_attrs
             )
@@ -948,12 +958,23 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 if isinstance(labels, fol.Classification):
                     val = _parse_attribute(labels.label)
                 elif isinstance(labels, fol.Classifications):
+                    attr_type = _get_attr_type(
+                        label_schema,
+                        label_field,
+                        attr_name,
+                        class_name=class_name,
+                    )
                     val = [
                         _parse_attribute(c.label)
                         for c in labels.classifications
                     ]
+                    if attr_type not in self.attr_list_types:
+                        if val:
+                            val = val[0]
+                        else:
+                            val = None
                 else:
-                    msg = (
+                    logger.warning(
                         "Ignoring invalid label of type %s in label field "
                         "'%s'. Expected a %s or %s"
                         % (
@@ -963,7 +984,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                             fol.Classifications,
                         )
                     )
-                    warnings.warn(msg)
                     continue
 
                 if label_field not in attributes:
@@ -2282,3 +2302,26 @@ def _parse_attribute(value):
         return None
 
     return value
+
+
+def _get_attr_type(label_schema, label_field, attr_name, class_name=None):
+    # Get type of attribute whether it was defined globally or class-wise
+    label_info = label_schema.get(label_field, {})
+    classes = label_info.get("classes", [])
+    global_attrs = label_info.get("attributes", {})
+    if attr_name in global_attrs:
+        return global_attrs[attr_name]["type"]
+
+    else:
+        for _class in classes:
+            if isinstance(_class, dict):
+                _classes = _class["classes"]
+                if class_name in _classes:
+                    _attrs = _class["attributes"]
+                    if attr_name in _attrs:
+                        return _attrs[attr_name]["type"]
+
+    return None
+
+
+_UNIQUE_TYPE_MAP = {"instance": "segmentation"}
