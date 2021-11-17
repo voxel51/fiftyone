@@ -395,7 +395,7 @@ def _build_label_schema(
             and _return_type in _SPATIAL_TYPES
         ):
             logger.warning(
-                "Label field '%s' is a spatial type being annotated on a video "
+                "Warning: Label field '%s' is a spatial type being annotated on a video "
                 'so it should likely start with "frames.".' % _label_field
             )
 
