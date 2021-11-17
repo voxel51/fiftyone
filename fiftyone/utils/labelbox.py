@@ -500,6 +500,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 samples._root_dataset.name.replace(" ", "_"),
             )
 
+        frame_id_map = self._build_frame_id_map(samples)
+
         dataset = self._client.create_dataset(name=project_name)
         self.upload_data(samples, dataset, media_field=media_field)
 
@@ -516,7 +518,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         is_video = samples.media_type == fomm.VIDEO
 
         return LabelboxAnnotationResults(
-            samples, config, id_map, project_id, is_video, backend=backend
+            samples,
+            config,
+            id_map,
+            project_id,
+            is_video,
+            frame_id_map,
+            backend=backend,
         )
 
     def download_annotations(self, results):
@@ -530,8 +538,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             the annotations dict
         """
         project_id = results.project_id
-        label_schema = results.config.label_schema
+        frame_id_map = results.frame_id_map
         is_video = results.is_video
+        label_schema = results.config.label_schema
         classes_as_attrs = results.config.classes_as_attrs
 
         project = self._client.get_project(project_id)
@@ -568,7 +577,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 frames = {}
                 for label_d in video_d_list:
                     frame_number = label_d["frameNumber"]
-                    frames[frame_number] = _parse_image_labels(
+                    frame_id = frame_id_map[sample_id][frame_number]
+                    frames[frame_id] = _parse_image_labels(
                         label_d, frame_size, class_attr=class_attr
                     )
 
@@ -597,6 +607,21 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             url = self.projects_url
 
         webbrowser.open(url, new=2)
+
+    def _build_frame_id_map(self, samples):
+        # Build mapping of sample_id and frame_numbers to frame_ids
+        is_video = samples.media_type == fomm.VIDEO
+        if not is_video:
+            return {}
+
+        samples.ensure_frames()
+        frame_id_map = {}
+        for sample in samples:
+            frame_id_map[sample.id] = {
+                f.frame_number: f.id for f in sample.frames.values()
+            }
+
+        return frame_id_map
 
     def _setup_project(
         self, project_name, dataset, label_schema, classes_as_attrs
@@ -898,7 +923,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             <label_field>: {
                 <label_type>: {
                     <sample_id>: {
-                        <frame_number>: {
+                        <frame_id>: {
                             <label_id>: <fo.Label>
                         }
                         or <label - for scalars>
@@ -909,14 +934,14 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         frames_dict::
 
             {
-                <frame_number>: {
+                <frame_id>: {
                     <label_field>: {
                         <label_type>: [<fo.Label>, ...]
                     }
                 }
             }
         """
-        for frame_number, labels_dict in frames_dict.items():
+        for frame_id, labels_dict in frames_dict.items():
             # Parse all classification attributes first
             attributes = self._gather_classification_attributes(
                 labels_dict, label_schema
@@ -930,7 +955,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 sample_id,
                 label_schema,
                 attributes,
-                frame_number=frame_number,
+                frame_id=frame_id,
             )
 
         return results
@@ -1003,7 +1028,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         sample_id,
         label_schema,
         attributes,
-        frame_number=None,
+        frame_id=None,
     ):
         for label_field, labels in labels_dict.items():
             if label_field in label_schema:
@@ -1012,10 +1037,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 if isinstance(labels, dict):
                     # Object labels
                     label_results = self._convert_label_types(
-                        labels,
-                        expected_type,
-                        sample_id,
-                        frame_number=frame_number,
+                        labels, expected_type, sample_id, frame_id=frame_id,
                     )
                 else:
                     # Classifications and scalar labels
@@ -1053,8 +1075,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                         result_type = "scalar"
                         sample_results = _parse_attribute(labels.label)
 
-                    if frame_number is not None:
-                        sample_results = {frame_number: sample_results}
+                    if frame_id is not None:
+                        sample_results = {frame_id: sample_results}
 
                     label_results = {result_type: {sample_id: sample_results}}
 
@@ -1064,7 +1086,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _convert_label_types(
-        self, labels_dict, expected_type, sample_id, frame_number=None
+        self, labels_dict, expected_type, sample_id, frame_id=None
     ):
         """Converts labels into the format expected by the Fiftyone annotation
         API.
@@ -1100,13 +1122,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 output_labels[fo_type][sample_id] = {}
 
             if labels_list:
-                if frame_number is not None:
-                    if frame_number not in output_labels[fo_type][sample_id]:
-                        output_labels[fo_type][sample_id][frame_number] = {}
+                if frame_id is not None:
+                    if frame_id not in output_labels[fo_type][sample_id]:
+                        output_labels[fo_type][sample_id][frame_id] = {}
 
             for label in labels_list:
-                if frame_number is not None:
-                    output_labels[fo_type][sample_id][frame_number][
+                if frame_id is not None:
+                    output_labels[fo_type][sample_id][frame_id][
                         label.id
                     ] = label
                 else:
@@ -1152,11 +1174,19 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     """
 
     def __init__(
-        self, samples, config, id_map, project_id, is_video, backend=None
+        self,
+        samples,
+        config,
+        id_map,
+        project_id,
+        is_video,
+        frame_id_map,
+        backend=None,
     ):
         super().__init__(samples, config, id_map, backend=backend)
         self.project_id = project_id
         self.is_video = is_video
+        self.frame_id_map = frame_id_map
 
     def load_credentials(self, url=None, api_key=None):
         """Load the Labelbox credentials from the given keyword arguments or
@@ -1285,7 +1315,12 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     @classmethod
     def _from_dict(cls, d, samples, config):
         return cls(
-            samples, config, d["id_map"], d["project_id"], d["is_video"]
+            samples,
+            config,
+            d["id_map"],
+            d["project_id"],
+            d["is_video"],
+            d["frame_id_map"],
         )
 
 
@@ -2133,7 +2168,7 @@ def _parse_objects(od_list, frame_size, class_attr=None):
     for od in od_list:
         attributes = _parse_attributes(od.get("classifications", []))
         if class_attr is not None and class_attr in attributes:
-            label_field = od["value"]
+            label_field = od["title"]
             label = attributes.pop(class_attr)
             if label_field not in label_fields:
                 label_fields[label_field] = {}
