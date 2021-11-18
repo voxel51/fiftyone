@@ -91,9 +91,10 @@ type Props = {
   defaultRange?: [number, number];
   modal: boolean;
   path: string;
+  named?: boolean;
 };
 
-const NumericFieldFilter = ({ defaultRange, modal, path }: Props) => {
+const NumericFieldFilter = ({ defaultRange, modal, path, named }: Props) => {
   const color = useRecoilValue(selectors.colorMap(modal))(path);
   const name = path.split(".").slice(-1)[0];
 
@@ -126,7 +127,7 @@ const NumericFieldFilter = ({ defaultRange, modal, path }: Props) => {
 
   return (
     <NamedRangeSliderContainer>
-      {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
+      {named && name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
       <RangeSliderContainer>
         {hasBounds && (
           <RangeSlider

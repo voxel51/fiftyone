@@ -5,6 +5,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_LIST,
+  LABEL_LISTS,
   LIST_FIELD,
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
@@ -110,6 +111,22 @@ export const fieldPaths = selectorFamily<
       return f(sampleLabels.concat(frameLabels).sort());
     }
 
+    console.log(
+      path,
+      get(field(path)),
+      Object.keys(get(field(path)).fields)
+        .map((name) => [path, name].join("."))
+        .filter((path) => {
+          return get(
+            meetsType({
+              path,
+              embeddedDocType,
+              ftype,
+            })
+          );
+        })
+    );
+
     return Object.keys(get(field(path)).fields)
       .map((name) => [path, name].join("."))
       .filter((path) => {
@@ -202,6 +219,22 @@ export const labelPaths = selectorFamily<string[], { space?: State.SPACE }>({
 
       return path;
     });
+  },
+});
+
+export const expandPath = selectorFamily<string, string>({
+  key: "expandPath",
+  get: (path) => ({ get }) => {
+    const { embeddedDocType } = get(field(path));
+
+    if (withPath(LABELS_PATH, LABEL_LISTS).includes(embeddedDocType)) {
+      const typePath = embeddedDocType.split(".");
+      const type = typePath[typePath.length - 1];
+      alert(`${path}.${LABEL_LIST[type]}`);
+      return `${path}.${LABEL_LIST[type]}`;
+    }
+
+    return path;
   },
 });
 

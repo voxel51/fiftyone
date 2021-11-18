@@ -29,15 +29,15 @@ type FloatBounds = {
 type Bounds = [Bound, Bound] | DateTimeBounds | FloatBounds;
 type Count = number;
 type None = number;
-type CountValues = [number, [string, number][]];
+type CountValues<T> = [number, [T, number][]];
 
 type BaseAggregations = {
   Count: Count;
   None: None;
 };
 
-type CategoricalAggregations = {
-  CountValues: CountValues;
+type CategoricalAggregations<T = unknown> = {
+  CountValues: CountValues<T>;
 } & BaseAggregations;
 
 type NumericAggregations = {
@@ -109,7 +109,7 @@ export const aggregations = selector<AggregationsData>({
     if (!view) {
       return null;
     }
-    console.log(data);
+
     if (viewsAreEqual(view, get(viewAtoms.view))) {
       data = { ...data };
       data && addNoneCounts(data);
@@ -271,28 +271,37 @@ export const sampleTagCounts = selectorFamily<
   },
 });
 
-export const fieldAtom = selectorFamily<
-  { count: number; results: [string | boolean | null, number][] },
-  { path: string; modal: boolean; extended: boolean }
->({
-  key: "fieldCounts",
-  get: ({ extended, path, modal }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
+const makeCountResults = <T>(key) =>
+  selectorFamily<
+    { count: number; results: [T, number][] },
+    { path: string; modal: boolean; extended: boolean }
+  >({
+    key,
+    get: ({ extended, path, modal }) => ({ get }) => {
+      const atom = modal
+        ? extended
+          ? extendedModalAggregations
+          : modalAggregations
+        : extended
+        ? extendedAggregations
+        : aggregations;
 
-    const data = get(atom)[path] as CategoricalAggregations;
+      const data = get(atom)[path] as CategoricalAggregations<T>;
 
-    return {
-      count: data.Count + data.None,
-      results: [...data.CountValues[1], [null, data.None]],
-    };
-  },
-});
+      return {
+        count: data.Count + data.None,
+        results: [...data.CountValues[1], [null, data.None]],
+      };
+    },
+  });
+
+export const booleanCountResults = makeCountResults<boolean | null>(
+  "booleanCountResults"
+);
+
+export const stringCountResults = makeCountResults<string | null>(
+  "stringCountResults"
+);
 
 export const labelCount = selectorFamily<number | null, boolean>({
   key: "labelCount",
@@ -332,7 +341,7 @@ export const values = selectorFamily<
     const data = get(atom);
 
     if (data) {
-      const agg = data[path] as CategoricalAggregations;
+      const agg = data[path] as CategoricalAggregations<string>;
       return agg.CountValues[1].map(([value]) => value).sort();
     }
 

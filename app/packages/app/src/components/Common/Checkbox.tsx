@@ -80,58 +80,56 @@ const CheckboxName = ({
   );
 };
 
-const Checkbox = React.memo(
-  <T,>({
-    color,
-    name,
-    value,
-    setValue,
-    subCountAtom,
-    count,
-    disabled,
-    forceColor,
-  }: CheckboxProps<T>) => {
-    const theme = useTheme();
-    color = color ?? theme.brand;
-    const props = useHighlightHover(disabled);
-    const [text, coloring] = getValueString(name);
+const Checkbox = <T extends unknown>({
+  color,
+  name,
+  value,
+  setValue,
+  subCountAtom,
+  count,
+  disabled,
+  forceColor,
+}: CheckboxProps<T>) => {
+  const theme = useTheme();
+  color = color ?? theme.brand;
+  const props = useHighlightHover(disabled);
+  const [text, coloring] = getValueString(name);
 
-    return (
-      <StyledCheckboxContainer title={text}>
-        <StyledCheckbox {...props} onClick={() => setValue(!value)}>
-          {!disabled && (
-            <MaterialCheckbox
-              checked={value}
-              title={text}
-              style={{ color, padding: "0 0.5rem 0 0" }}
-              onChange={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setValue(!value);
-              }}
-              disableRipple={true}
-            />
-          )}
-          <Suspense
-            fallback={
-              <CheckboxName
-                count={count}
-                color={coloring ? color : null}
-                text={text}
-              />
-            }
-          >
+  return (
+    <StyledCheckboxContainer title={text}>
+      <StyledCheckbox {...props} onClick={() => setValue(!value)}>
+        {!disabled && (
+          <MaterialCheckbox
+            checked={value}
+            title={text}
+            style={{ color, padding: "0 0.5rem 0 0" }}
+            onChange={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setValue(!value);
+            }}
+            disableRipple={true}
+          />
+        )}
+        <Suspense
+          fallback={
             <CheckboxName
-              color={coloring || forceColor ? color : null}
               count={count}
-              subCountAtom={subCountAtom}
+              color={coloring ? color : null}
               text={text}
             />
-          </Suspense>
-        </StyledCheckbox>
-      </StyledCheckboxContainer>
-    );
-  }
-);
+          }
+        >
+          <CheckboxName
+            color={coloring || forceColor ? color : null}
+            count={count}
+            subCountAtom={subCountAtom}
+            text={text}
+          />
+        </Suspense>
+      </StyledCheckbox>
+    </StyledCheckboxContainer>
+  );
+};
 
 export default Checkbox;

@@ -28,8 +28,13 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "../../recoil/constants";
 import { fieldIsFiltered } from "../../recoil/filters";
@@ -194,11 +199,18 @@ const InteractiveGroupEntry = React.memo(
   }
 );
 
-const FILTERS: { [key: string]: React.FC<{ modal: boolean; path: string }> } = {
+const FILTERS: {
+  [key: string]: React.FC<{ modal: boolean; path: string; named?: boolean }>;
+} = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
-  [INT_FIELD]: NumericFieldFilter,
   [DATE_FIELD]: NumericFieldFilter,
   [DATE_TIME_FIELD]: NumericFieldFilter,
+  [FLOAT_FIELD]: NumericFieldFilter,
+  [FRAME_NUMBER_FIELD]: NumericFieldFilter,
+  [FRAME_SUPPORT_FIELD]: NumericFieldFilter,
+  [INT_FIELD]: NumericFieldFilter,
+  [OBJECT_ID_FIELD]: StringFieldFilter,
+  [STRING_FIELD]: StringFieldFilter,
 };
 
 const getFilterData = (
@@ -206,7 +218,7 @@ const getFilterData = (
   modal: boolean,
   parent: State.Field,
   fields: State.Field[]
-): { ftype: string; path: string; modal: boolean }[] => {
+): { ftype: string; path: string; modal: boolean; named?: boolean }[] => {
   if (schemaAtoms.meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
     let ftype = parent.ftype;
     if (ftype === LIST_FIELD) {
@@ -218,6 +230,7 @@ const getFilterData = (
         ftype,
         path,
         modal,
+        named: false,
       },
     ];
   }
@@ -234,7 +247,10 @@ const InteractiveEntry = React.memo(
     const [expanded, setExpanded] = useState(false);
     const Arrow = expanded ? ArrowDropUp : ArrowDropDown;
     const fields = useRecoilValue(
-      schemaAtoms.fields({ path, ftype: VALID_PRIMITIVE_TYPES })
+      schemaAtoms.fields({
+        path: useRecoilValue(schemaAtoms.expandPath(path)),
+        ftype: VALID_PRIMITIVE_TYPES,
+      })
     );
     const field = useRecoilValue(schemaAtoms.field(path));
     const data = getFilterData(path, modal, field, fields);
@@ -261,7 +277,11 @@ const InteractiveEntry = React.memo(
       >
         {expanded
           ? data.map(({ ftype, modal, path }) =>
-              React.createElement(FILTERS[ftype], { modal, path })
+              React.createElement(FILTERS[ftype], {
+                modal,
+                path,
+                key: path,
+              })
             )
           : null}
       </PathEntryComponent>
@@ -842,7 +862,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
             ref={(node) => {
               if (items.current[key].el) {
                 items.current[key].el.removeEventListener("mousedown", trigger);
-                observer.unobserve(node);
+                observer.unobserve(items.current[key].el);
               }
 
               if (node) {

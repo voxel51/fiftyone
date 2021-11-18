@@ -6,6 +6,7 @@ import React, {
 } from "react";
 import {
   RecoilState,
+  RecoilValue,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
@@ -51,7 +52,7 @@ const NamedCategoricalFilterHeader = styled.div`
 
 const CHECKBOX_LIMIT = 20;
 
-const nullSort = <T,>({
+const nullSort = <T extends unknown>({
   count,
   asc,
 }: atoms.SortResults): ((
@@ -90,7 +91,7 @@ interface WrapperProps<T> {
   selectedCounts: MutableRefObject<Map<T, number>>;
 }
 
-const Wrapper = <T,>({
+const Wrapper = <T extends unknown>({
   color,
   results,
   totalCount,
@@ -188,7 +189,7 @@ const Wrapper = <T,>({
   );
 };
 
-const useOnSelect = <T,>(
+const useOnSelect = <T extends unknown>(
   selectedAtom: RecoilState<T[]>,
   selectedCounts: MutableRefObject<Map<T, number>>,
   callbacks
@@ -215,7 +216,7 @@ interface ResultsWrapperProps<T> {
   active: string | null;
 }
 
-const ResultsWrapper = <T,>({
+const ResultsWrapper = <T extends unknown>({
   results,
   color,
   shown,
@@ -265,7 +266,7 @@ const ResultsWrapper = <T,>({
   );
 };
 
-const useSearch = <T,>() => {
+const useSearch = <T extends unknown>() => {
   const currentPromise = useRef<
     Promise<{
       count: number;
@@ -348,15 +349,22 @@ const useSearch = <T,>() => {
 interface Props<T> {
   selectedValuesAtom: RecoilState<T[]>;
   excludeAtom?: RecoilState<boolean>;
+  countsAtom: RecoilValue<{
+    count: number;
+    results: [T, number][];
+  }>;
   modal: boolean;
   path: string;
+  named?: boolean;
 }
 
-const CategoricalFilter = <T,>({
+const CategoricalFilter = <T extends unknown>({
+  countsAtom,
   selectedValuesAtom,
   excludeAtom,
   path,
   modal,
+  named,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(selectors.colorMap(modal))(path);
@@ -379,7 +387,7 @@ const CategoricalFilter = <T,>({
 
   const none = results.filter(([v, c]) => v === null);
   const noneCount = none.length ? none[0][1] : 0;
-  const runSearch = useSearch();
+  const runSearch = useSearch<T>();
 
   useLayoutEffect(() => {
     focused &&
@@ -403,7 +411,7 @@ const CategoricalFilter = <T,>({
   return (
     <NamedCategoricalFilterContainer>
       <NamedCategoricalFilterHeader>
-        {name && <>{name}</>}
+        {named && name && <>{name}</>}
       </NamedCategoricalFilterHeader>
       <CategoricalFilterContainer>
         {count > CHECKBOX_LIMIT && (
@@ -441,7 +449,12 @@ const CategoricalFilter = <T,>({
                 if (active !== undefined) {
                   onSelect(active, getCount(searchResults, active));
                 }
-                if (results && results.map(([v]) => v).includes(search)) {
+                if (
+                  results &&
+                  results
+                    .map(([v]) => (v === null ? "None" : String(v)))
+                    .includes(search)
+                ) {
                   onSelect(search, getCount(searchResults, active));
                 }
               }}
