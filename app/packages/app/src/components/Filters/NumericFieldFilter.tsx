@@ -7,6 +7,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
+import * as aggregationAtoms from "../../recoil/aggregations";
 import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
 import * as filterAtoms from "../../recoil/filters";
@@ -52,7 +53,7 @@ const useNonfinites = ({
   counts,
   ...rest
 }: {
-  counts: { [key: string]: number };
+  counts: aggregationAtoms.NonfiniteCounts;
   fieldType: string;
   defaultRange?: [number, number];
   modal: boolean;
@@ -92,93 +93,92 @@ type Props = {
   path: string;
 };
 
-const NumericFieldFilter = React.memo(
-  React.forwardRef(({ defaultRange, modal, path }: Props, ref) => {
-    const color = useRecoilValue(selectors.colorMap(modal))(path);
-    const name = path.split(".").slice(-1)[0];
+const NumericFieldFilter = ({ defaultRange, modal, path }: Props) => {
+  const color = useRecoilValue(selectors.colorMap(modal))(path);
+  const name = path.split(".").slice(-1)[0];
 
-    const setFilter = useSetRecoilState(filterAtoms.filter({ modal, path }));
-    const bounds = useRecoilValue(
-      numericAtoms.boundsAtom({ path, defaultRange })
-    );
-    const ftype = useRecoilValue(schemaAtoms.fieldType({ path }));
-    const hasDefaultRange = useRecoilValue(
-      numericAtoms.isDefaultRange({ modal, path, defaultRange })
-    );
-    const hasBounds = bounds.every((b) => b !== null);
-    const nonfiniteCounts = useRecoilValue(
-      filterAtoms.nonfiniteCounts({ modal, path })
-    );
-    const nonfinites = useNonfinites({ modal, path, counts });
-    const isFiltered = useRecoilValue(
-      filterAtoms.fieldIsFiltered({ modal, path })
-    );
+  const setFilter = useSetRecoilState(filterAtoms.filter({ modal, path }));
+  const bounds = useRecoilValue(
+    numericAtoms.boundsAtom({ path, defaultRange })
+  );
+  const ftype = useRecoilValue(schemaAtoms.fieldType({ path }));
+  const hasDefaultRange = useRecoilValue(
+    numericAtoms.isDefaultRange({ modal, path, defaultRange })
+  );
+  const hasBounds = bounds.every((b) => b !== null);
+  const nonfiniteCounts = useRecoilValue(
+    aggregationAtoms.nonfiniteCounts({ modal, path, extended: false })
+  );
+  const nonfinites = useNonfinites({
+    modal,
+    path,
+    counts: nonfiniteCounts,
+    defaultRange,
+    fieldType: ftype,
+  });
+  const isFiltered = useRecoilValue(
+    filterAtoms.fieldIsFiltered({ modal, path })
+  );
 
-    if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none") {
-      return null;
-    }
+  if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none") {
+    return null;
+  }
 
-    return (
-      <NamedRangeSliderContainer ref={ref}>
-        {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
-        <RangeSliderContainer>
-          {hasBounds && (
-            <RangeSlider
-              showBounds={false}
-              fieldType={ftype}
-              valueAtom={numericAtoms.rangeAtom({ modal, path, defaultRange })}
-              boundsAtom={numericAtoms.boundsAtom({
-                path,
-                defaultRange,
-              })}
+  return (
+    <NamedRangeSliderContainer>
+      {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
+      <RangeSliderContainer>
+        {hasBounds && (
+          <RangeSlider
+            showBounds={false}
+            fieldType={ftype}
+            valueAtom={numericAtoms.rangeAtom({ modal, path, defaultRange })}
+            boundsAtom={numericAtoms.boundsAtom({
+              path,
+              defaultRange,
+            })}
+            color={color}
+          />
+        )}
+        {(hasDefaultRange ||
+          nonfinites.some(([_, [v]]) => v !== nonfinites[0][1][0])) &&
+          nonfinites.map(([key, [value, setValue]]) => (
+            <Checkbox
               color={color}
+              name={NONFINITES[key]}
+              value={value}
+              setValue={setValue}
+              count={nonfiniteCounts[key]}
+              forceColor={true}
             />
-          )}
-          {(hasDefaultRange ||
-            nonfinites.some(([_, [v]]) => v !== nonfinites[0][1][0])) &&
-            nonfinites.map(([key, [value, setValue]]) => (
-              <Checkbox
-                color={color}
-                name={NONFINITES[key]}
-                value={value}
-                setValue={setValue}
-                count={counts[key]}
-                subCountAtom={filterAtoms.otherKeyedFilteredCount({
-                  key,
-                  modal,
-                  path,
-                })}
-                forceColor={true}
-              />
-            ))}
-          {isFiltered && nonfinites.length > 0 && hasBounds && (
-            <ExcludeOption
-              excludeAtom={numericAtoms.excludeAtom({
-                path,
-                modal,
-                defaultRange,
-              })}
-              valueName={""}
-              color={color}
-            />
-          )}
-          {isFiltered && (
-            <Button
-              text={"Reset"}
-              color={color}
-              onClick={() => setFilter(null)}
-              style={{
-                margin: "0.25rem -0.5rem",
-                height: "2rem",
-                borderRadius: 0,
-                textAlign: "center",
-              }}
-            ></Button>
-          )}
-        </RangeSliderContainer>
-      </NamedRangeSliderContainer>
-    );
-  })
-);
+          ))}
+        {isFiltered && nonfinites.length > 0 && hasBounds && (
+          <ExcludeOption
+            excludeAtom={numericAtoms.excludeAtom({
+              path,
+              modal,
+              defaultRange,
+            })}
+            valueName={""}
+            color={color}
+          />
+        )}
+        {isFiltered && (
+          <Button
+            text={"Reset"}
+            color={color}
+            onClick={() => setFilter(null)}
+            style={{
+              margin: "0.25rem -0.5rem",
+              height: "2rem",
+              borderRadius: 0,
+              textAlign: "center",
+            }}
+          ></Button>
+        )}
+      </RangeSliderContainer>
+    </NamedRangeSliderContainer>
+  );
+};
 
 export default React.memo(NumericFieldFilter);

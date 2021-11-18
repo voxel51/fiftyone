@@ -11,7 +11,7 @@ const BooleanFieldFilter = ({
   modal: boolean;
 }) => {
   return (
-    <CategoricalFilter
+    <CategoricalFilter<boolean | null>
       selectedValuesAtom={selectedValuesAtom({ path, modal })}
       countsAtom={countsAtom({ path, modal, filtered: false })}
       path={path}

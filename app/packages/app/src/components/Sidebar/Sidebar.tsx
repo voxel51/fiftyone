@@ -25,6 +25,7 @@ import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
 import {
   BOOLEAN_FIELD,
+  DATE_FIELD,
   DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   INT_FIELD,
@@ -193,25 +194,39 @@ const InteractiveGroupEntry = React.memo(
   }
 );
 
-const FILTERS = {
+const FILTERS: { [key: string]: React.FC<{ modal: boolean; path: string }> } = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
   [INT_FIELD]: NumericFieldFilter,
+  [DATE_FIELD]: NumericFieldFilter,
   [DATE_TIME_FIELD]: NumericFieldFilter,
 };
 
-const getFilterComponents = (
+const getFilterData = (
+  path: string,
+  modal: boolean,
   parent: State.Field,
   fields: State.Field[]
-): React.Component<{ path: string; modal: boolean }> => {
+): { ftype: string; path: string; modal: boolean }[] => {
   if (schemaAtoms.meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
-    if (parent.ftype === LIST_FIELD) {
-      return FILTERS[parent.subfield];
+    let ftype = parent.ftype;
+    if (ftype === LIST_FIELD) {
+      ftype = parent.subfield;
     }
 
-    return FILTERS[parent.ftype];
+    return [
+      {
+        ftype,
+        path,
+        modal,
+      },
+    ];
   }
 
-  return <div>{field.name}</div>;
+  return fields.map(({ ftype, subfield, name }) => ({
+    path: [path, name].join("."),
+    modal,
+    ftype: ftype === LIST_FIELD ? subfield : ftype,
+  }));
 };
 
 const InteractiveEntry = React.memo(
@@ -222,6 +237,7 @@ const InteractiveEntry = React.memo(
       schemaAtoms.fields({ path, ftype: VALID_PRIMITIVE_TYPES })
     );
     const field = useRecoilValue(schemaAtoms.field(path));
+    const data = getFilterData(path, modal, field, fields);
 
     return (
       <PathEntryComponent
@@ -243,7 +259,11 @@ const InteractiveEntry = React.memo(
           />
         }
       >
-        {expanded ? getFilterComponents(field, fields) : null}
+        {expanded
+          ? data.map(({ ftype, modal, path }) =>
+              React.createElement(FILTERS[ftype], { modal, path })
+            )
+          : null}
       </PathEntryComponent>
     );
   }

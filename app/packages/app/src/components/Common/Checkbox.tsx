@@ -6,15 +6,13 @@ import styled from "styled-components";
 import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
-import { formatDateTime, summarizeLongStr } from "../../utils/generic";
+import { summarizeLongStr } from "../../utils/generic";
 import { getValueString } from "../Filters/utils";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
-import * as selectors from "../../recoil/selectors";
-import { DATE_TIME } from "@fiftyone/looker/src/constants";
 
-interface CheckboxProps {
+interface CheckboxProps<T> {
   color?: string;
-  name: number | string | boolean | null | [number, number];
+  name: T;
   value: boolean;
   setValue: (value: boolean) => void;
   count?: number;
@@ -71,18 +69,11 @@ const CheckboxName = ({
 }) => {
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const countStr = makeCountStr(subCount, count);
-  const timeZone = useRecoilValue(selectors.timeZone);
 
   return (
     <CheckboxNameDiv>
       <span style={color ? { color } : {}}>
-        {summarizeLongStr(
-          text && text._cls === DATE_TIME
-            ? formatDateTime(text.datetime, timeZone)
-            : text,
-          28 - countStr.length,
-          "middle"
-        )}
+        {summarizeLongStr(text, 28 - countStr.length, "middle")}
       </span>
       {count && <span>{countStr}</span>}
     </CheckboxNameDiv>
@@ -90,7 +81,7 @@ const CheckboxName = ({
 };
 
 const Checkbox = React.memo(
-  ({
+  <T,>({
     color,
     name,
     value,
@@ -99,7 +90,7 @@ const Checkbox = React.memo(
     count,
     disabled,
     forceColor,
-  }: CheckboxProps) => {
+  }: CheckboxProps<T>) => {
     const theme = useTheme();
     color = color ?? theme.brand;
     const props = useHighlightHover(disabled);

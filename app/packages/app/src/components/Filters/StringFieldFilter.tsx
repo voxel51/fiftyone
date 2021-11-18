@@ -11,7 +11,7 @@ const StringFieldFilter = ({
   modal: boolean;
 }) => {
   return (
-    <CategoricalFilter
+    <CategoricalFilter<string | null>
       selectedValuesAtom={selectedValuesAtom({ modal, path })}
       excludeAtom={excludeAtom({ modal, path })}
       path={path}

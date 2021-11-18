@@ -150,13 +150,6 @@ export const nonfiniteAtom = selectorFamily<
     setFilter(get, set, modal, path, key, value, defaultRange),
 });
 
-export interface NonfiniteCounts {
-  none: number;
-  inf?: number;
-  ninf?: number;
-  nan?: number;
-}
-
 export const excludeAtom = selectorFamily<
   boolean,
   {

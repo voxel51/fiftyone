@@ -13,10 +13,20 @@ import * as viewAtoms from "./view";
 import { State } from "./types";
 import { modalFilters } from "./filters";
 
-type Bounds = [
-  number | null | { datetime: number },
-  number | null | { datetime: number }
-];
+type DateTimeBound = { datetime: number } | null;
+
+type DateTimeBounds = [DateTimeBound, DateTimeBound];
+
+type Bound = number | null;
+
+type FloatBounds = {
+  bounds: [Bound, Bound];
+  nan: number;
+  "-inf": number;
+  inf: number;
+};
+
+type Bounds = [Bound, Bound] | DateTimeBounds | FloatBounds;
 type Count = number;
 type None = number;
 type CountValues = [number, [string, number][]];
@@ -478,7 +488,7 @@ export const cumulativeValues = selectorFamily<
 });
 
 export const bounds = selectorFamily<
-  Bounds,
+  [Bound, Bound],
   { extended: boolean; path: string; modal: boolean }
 >({
   key: "bounds",
@@ -497,12 +507,61 @@ export const bounds = selectorFamily<
     );
 
     if (isDateOrDateTime) {
-      const bounds = data.Bounds.map((bound) =>
-        bound && typeof bound !== "number" ? (bound.datetime as number) : bound
-      ) as Bounds;
-      return bounds;
+      const [lower, upper] = data.Bounds as DateTimeBounds;
+
+      return [lower.datetime, upper.datetime] as [Bound, Bound];
     }
 
-    return data.Bounds;
+    const isFloatField = get(
+      schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
+    );
+
+    if (isFloatField) {
+      return (data.Bounds as FloatBounds).bounds;
+    }
+
+    return data.Bounds as [Bound, Bound];
+  },
+});
+
+export interface NonfiniteCounts {
+  none: number;
+  inf?: number;
+  ninf?: number;
+  nan?: number;
+}
+
+export const nonfiniteCounts = selectorFamily<
+  NonfiniteCounts,
+  { extended: boolean; path: string; modal: boolean }
+>({
+  key: "nonfiniteCounts",
+  get: ({ extended, modal, path }) => ({ get }) => {
+    const atom = modal
+      ? extended
+        ? extendedModalAggregations
+        : modalAggregations
+      : extended
+      ? extendedAggregations
+      : aggregations;
+
+    const data = get(atom)[path] as NumericAggregations;
+    const isFloatField = get(
+      schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
+    );
+
+    const result = { none: data.None };
+
+    if (isFloatField) {
+      const bounds = data.Bounds as FloatBounds;
+      return {
+        ...result,
+        nan: bounds.nan,
+        ninf: bounds["-inf"],
+        inf: bounds.inf,
+      };
+    }
+
+    return result;
   },
 });
