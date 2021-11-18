@@ -1,11 +1,5 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
-import {
-  ArrowDropDown,
-  ArrowDropUp,
-  Close,
-  Delete,
-  Edit,
-} from "@material-ui/icons";
+import { ArrowDropDown, ArrowDropUp, Delete, Edit } from "@material-ui/icons";
 import {
   atomFamily,
   DefaultValue,
@@ -17,6 +11,8 @@ import {
 import { animated, Controller } from "@react-spring/web";
 import styled from "styled-components";
 
+import { move } from "@fiftyone/utilities";
+
 import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
 import LabelTagsCell from "./LabelTags";
@@ -27,14 +23,20 @@ import DropdownHandle, {
 } from "../DropdownHandle";
 import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
-import { move } from "@fiftyone/utilities";
 import {
+  BOOLEAN_FIELD,
+  DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   INT_FIELD,
   LIST_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "../../recoil/constants";
 import { fieldIsFiltered } from "../../recoil/filters";
+import {
+  BooleanFieldFilter,
+  NumericFieldFilter,
+  StringFieldFilter,
+} from "../Filters";
 
 const MARGIN = 4;
 
@@ -192,7 +194,9 @@ const InteractiveGroupEntry = React.memo(
 );
 
 const FILTERS = {
-  [INT_FIELD]: NumericField,
+  [BOOLEAN_FIELD]: BooleanFieldFilter,
+  [INT_FIELD]: NumericFieldFilter,
+  [DATE_TIME_FIELD]: NumericFieldFilter,
 };
 
 const getFilterComponents = (

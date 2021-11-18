@@ -24,7 +24,7 @@ const getFilter = (
     values: [],
     exclude: false,
     _CLS: "str",
-    ...get(filterStage({ modal, path })),
+    ...get(filterAtoms.filter({ modal, path })),
   };
 };
 
@@ -53,14 +53,20 @@ const setFilter = (
   }
 };
 
-export const selectedValuesAtom = selectorFamily<string[], FilterParams>({
+export const selectedValuesAtom = selectorFamily<
+  string[],
+  { modal: boolean; path: string }
+>({
   key: "filterStringFieldValues",
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).values,
   set: ({ modal, path }) => ({ get, set }, value) =>
     setFilter(get, set, modal, path, "values", value),
 });
 
-export const excludeAtom = selectorFamily<boolean, FilterParams>({
+export const excludeAtom = selectorFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
   key: "filterStringFieldExclude",
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).exclude,
   set: ({ modal, path }) => ({ get, set }, value) =>

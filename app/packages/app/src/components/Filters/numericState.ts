@@ -134,7 +134,7 @@ export const rangeAtom = selectorFamily<
   },
 });
 
-export const otherAtom = selectorFamily<
+export const nonfiniteAtom = selectorFamily<
   boolean,
   {
     defaultRange?: Range;
@@ -143,14 +143,14 @@ export const otherAtom = selectorFamily<
     key: "nan" | "none" | "inf" | "ninf";
   }
 >({
-  key: "otherAtom",
+  key: "nonfiniteAtom",
   get: ({ defaultRange, modal, path, key }) => ({ get }) =>
     getFilter(get, modal, path, defaultRange)[key],
   set: ({ defaultRange, modal, path, key }) => ({ get, set }, value) =>
     setFilter(get, set, modal, path, key, value, defaultRange),
 });
 
-export interface OtherCounts {
+export interface NonfiniteCounts {
   none: number;
   inf?: number;
   ninf?: number;

@@ -71,10 +71,11 @@ async def get_app_statistics(view, filters):
 
 def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
     aggregations = []
-    if meets_type(
-        field,
-        (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField,),
-    ):
+    if meets_type(field, fof.FloatField):
+        aggregations.append(
+            foa.Bounds(path, safe=True, _count_nonfinites=True,)
+        )
+    elif meets_type(field, (fof.DateField, fof.DateTimeField, fof.IntField,),):
         aggregations.append(foa.Bounds(path))
     elif meets_type(field, fof.BooleanField):
         aggregations.append(foa.CountValues(path, _first=3))

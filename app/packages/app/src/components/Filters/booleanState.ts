@@ -50,21 +50,30 @@ const setFilter = (
   }
 };
 
-export const trueAtom = selectorFamily<boolean, FilterParams>({
+export const trueAtom = selectorFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
   key: "filterBooleanFieldTrue",
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).true,
   set: ({ modal, path }) => ({ get, set }, value) =>
     setFilter(get, set, modal, path, "true", value),
 });
 
-export const falseAtom = selectorFamily<boolean, FilterParams>({
+export const falseAtom = selectorFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
   key: "filterBooleanFieldFalse",
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).false,
   set: ({ modal, path }) => ({ get, set }, value) =>
     setFilter(get, set, modal, path, "false", value),
 });
 
-export const noneAtom = selectorFamily<boolean, FilterParams>({
+export const noneAtom = selectorFamily<
+  boolean,
+  { modal: boolean; path: string }
+>({
   key: "filterBooleanFieldNone",
   get: ({ modal, path }) => ({ get }) => getFilter(get, modal, path).none,
   set: ({ modal, path }) => ({ get, set }, value) =>
@@ -86,12 +95,12 @@ export const fieldIsFiltered = selectorFamily<
 });
 
 export const selectedValuesAtom = selectorFamily<
-  Value[],
+  (null | boolean)[],
   { modal: boolean; path: string }
 >({
   key: "booleanSelectedValues",
   get: ({ modal, path }) => ({ get }) => {
-    const values: Value[] = [];
+    const values: (null | boolean)[] = [];
 
     if (get(noneAtom({ modal, path }))) {
       values.push(null);

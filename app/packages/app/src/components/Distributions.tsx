@@ -17,7 +17,7 @@ import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as viewAtoms from "../recoil/view";
 import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
-import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
+import { LIST_LIMIT } from "./Filters/stringState";
 import { meetsType } from "../recoil/schema";
 import { DATE_FIELD, DATE_TIME_FIELD } from "../recoil/constants";
 

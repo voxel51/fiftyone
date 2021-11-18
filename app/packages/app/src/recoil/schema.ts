@@ -5,6 +5,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_LIST,
+  LIST_FIELD,
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
   withPath,
@@ -338,6 +339,21 @@ export const meetsType = selectorFamily<
     const fieldValue = get(field(path));
 
     return meetsFieldType(fieldValue, { ftype, embeddedDocType, acceptLists });
+  },
+});
+
+export const fieldType = selectorFamily<
+  string,
+  { path: string; useListSubfield?: boolean }
+>({
+  key: "fieldType",
+  get: ({ path, useListSubfield = true }) => ({ get }) => {
+    const { ftype, subfield } = get(field(path));
+    if (useListSubfield && ftype === LIST_FIELD) {
+      return subfield;
+    }
+
+    return ftype;
   },
 });
 

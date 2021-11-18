@@ -99,6 +99,7 @@ export const aggregations = selector<AggregationsData>({
     if (!view) {
       return null;
     }
+    console.log(data);
     if (viewsAreEqual(view, get(viewAtoms.view))) {
       data = { ...data };
       data && addNoneCounts(data);

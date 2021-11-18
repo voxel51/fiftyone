@@ -1,28 +1,22 @@
 import React from "react";
-import { animated } from "@react-spring/web";
 
 import CategoricalFilter from "./CategoricalFilter";
-import { useExpand } from "./hooks";
-import { selectedValuesAtom, excludeAtom } from "./StringFieldFilter.state";
-import { countsAtom } from "./atoms";
+import { selectedValuesAtom, excludeAtom } from "./stringState";
 
-const StringFieldFilter = ({ expanded, entry, modal }) => {
-  const [ref, props] = useExpand(expanded);
-
+const StringFieldFilter = ({
+  path,
+  modal,
+}: {
+  path: string;
+  modal: boolean;
+}) => {
   return (
-    <animated.div style={props}>
-      <CategoricalFilter
-        valueName={entry.path}
-        color={entry.color}
-        selectedValuesAtom={selectedValuesAtom({ modal, path: entry.path })}
-        excludeAtom={excludeAtom({ modal, path: entry.path })}
-        countsAtom={countsAtom({ modal, path: entry.path, filtered: false })}
-        path={entry.path}
-        modal={modal}
-        disableItems={entry.disableList}
-        ref={ref}
-      />
-    </animated.div>
+    <CategoricalFilter
+      selectedValuesAtom={selectedValuesAtom({ modal, path })}
+      excludeAtom={excludeAtom({ modal, path })}
+      path={path}
+      modal={modal}
+    />
   );
 };
 
