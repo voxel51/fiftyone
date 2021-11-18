@@ -2523,6 +2523,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
+        git_repo (None): the url of the GitHub repository to link with the
+            created tasks and to which to upload annotations
     """
 
     def __init__(
@@ -2544,6 +2546,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         project_id=None,
         occluded_attr=None,
+        git_repo=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -2559,6 +2562,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.project_id = project_id
         self.occluded_attr = occluded_attr
+        self.git_repo = git_repo
 
         # store privately so these aren't serialized
         self._username = username
@@ -2977,6 +2981,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def project_id_search_url(self, project_id):
         return "%s/projects?id=%d" % (self.base_api_url, project_id)
+
+    @property
+    def git_api_url(self):
+        return "%s/git/repository" % self.base_url
+
+    def git_create_url(self, task_id):
+        return "%s/create/%d" % (self.git_api_url, task_id)
+
+    def git_push_url(self, task_id):
+        return "%s/push/%d" % (self.git_api_url, task_id)
+
+    def git_check_url(self, git_rq_id):
+        return "%s/check/%s" % (self.git_api_url, git_rq_id)
 
     def _setup(self):
         if not self._url:
