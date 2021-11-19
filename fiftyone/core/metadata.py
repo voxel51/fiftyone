@@ -10,7 +10,6 @@ import logging
 import multiprocessing
 import os
 import requests
-import struct
 
 from PIL import Image
 
@@ -280,12 +279,6 @@ def get_image_info(f):
     """
     img = Image.open(f)
     return (img.width, img.height, len(img.getbands()))
-
-
-class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
-
-    pass
 
 
 def _compute_metadata(sample_collection, overwrite=False):
