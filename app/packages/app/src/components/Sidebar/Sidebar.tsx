@@ -1,5 +1,5 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { ArrowDropDown, ArrowDropUp, Delete, Edit } from "@material-ui/icons";
+import { ArrowDropDown, ArrowDropUp, Close, Edit } from "@material-ui/icons";
 import {
   atomFamily,
   DefaultValue,
@@ -54,6 +54,7 @@ const GroupHeaderStyled = styled(DropdownHandle)`
   display: flex;
   justify-content: space-between;
   vertical-align: middle;
+  align-items: center;
   color: ${({ theme }) => theme.fontDark};
 `;
 
@@ -65,7 +66,6 @@ const GroupInput = styled.input`
   text-transform: uppercase;
   font-weight: bold;
   color: ${({ theme }) => theme.fontDark};
-  pointer-events: none;
 `;
 
 type GroupHeaderProps = {
@@ -89,38 +89,54 @@ export const GroupHeader = ({
   }, [title]);
   const [editing, setEditing] = useState(false);
   const [hovering, setHovering] = useState(false);
+  const ref = useRef<HTMLInputElement>();
 
   return (
     <GroupHeaderStyled
       title={title}
       icon={PlusMinusButton}
       {...rest}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseEnter={() => !hovering && setHovering(true)}
+      onMouseLeave={() => hovering && setHovering(false)}
     >
       <GroupInput
+        ref={ref}
         maxLength={40}
         value={localValue}
-        disabled={!editing || !setValue}
-        style={{ flexGrow: 1 }}
-        onBlur={() => setEditing(false)}
+        focus={editing}
+        style={{ flexGrow: 1, pointerEvents: editing ? "unset" : "none" }}
         onChange={(event) => setLocalValue(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === "Enter") setValue(event.target.value);
+          if (event.key === "Enter") {
+            setValue(event.target.value);
+            setEditing(false);
+          }
         }}
+        onFocus={() => !editing && setEditing(true)}
+        onBlur={() => editing && setEditing(false)}
       />
       {hovering && !editing && setValue && (
-        <Edit
-          onMouseDown={(event) => event.stopPropagation()}
-          onClick={() => setEditing(true)}
-        />
+        <span title={"Rename group"}>
+          <Edit
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => {
+              setEditing(true);
+              if (ref.current) {
+                ref.current.setSelectionRange(0, ref.current.value.length);
+                ref.current.focus();
+              }
+            }}
+          />
+        </span>
       )}
       {...pills}
-      {onDelete && (
-        <Delete
-          onMouseDown={(event) => event.stopPropagation()}
-          onClick={() => setEditing(true)}
-        />
+      {onDelete && !editing && (
+        <span title={"Delete group"}>
+          <Close
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => onDelete()}
+          />
+        </span>
       )}
     </GroupHeaderStyled>
   );
@@ -129,6 +145,14 @@ export const GroupHeader = ({
 const groupShown = atomFamily<boolean, { name: string; modal: boolean }>({
   key: "sidebarGroupShown",
   default: true,
+});
+
+const numGroupFields = selectorFamily<
+  number,
+  { modal: boolean; group: string }
+>({
+  key: "numGroupFields",
+  get: (params) => ({ get }) => get(sidebarGroup(params)).length,
 });
 
 const numGroupFieldsFiltered = selectorFamily<
@@ -182,11 +206,32 @@ const useRenameGroup = (modal: boolean, group: string) => {
   );
 };
 
+const useDeleteGroup = (modal: boolean, group: string) => {
+  const numFields = useRecoilValue(numGroupFields({ modal, group }));
+  const onDelete = useRecoilCallback(
+    ({ set, snapshot }) => async () => {
+      const groups = await snapshot.getPromise(sidebarGroups(modal));
+      set(
+        sidebarGroups(modal),
+        groups.filter(([name]) => name !== group)
+      );
+    },
+    []
+  );
+
+  if (numFields) {
+    return null;
+  }
+
+  return onDelete;
+};
+
 const InteractiveGroupEntry = React.memo(
   ({ name, modal }: { name: string; modal: boolean }) => {
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
     const [groups, setGroups] = useRecoilState(sidebarGroups(modal));
     const renameGroup = useRenameGroup(modal, name);
+    const onDelete = useDeleteGroup(modal, name);
 
     return (
       <GroupHeader
@@ -194,6 +239,7 @@ const InteractiveGroupEntry = React.memo(
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         setValue={(value) => renameGroup(value)}
+        onDelete={onDelete}
       />
     );
   }
@@ -247,15 +293,15 @@ const InteractiveEntry = React.memo(
   ({ modal, path }: { modal: boolean; path: string; group: string }) => {
     const [expanded, setExpanded] = useState(false);
     const Arrow = expanded ? ArrowDropUp : ArrowDropDown;
-    path = useRecoilValue(schemaAtoms.expandPath(path));
+    const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
     const fields = useRecoilValue(
       schemaAtoms.fields({
-        path,
+        path: expandedPath,
         ftype: VALID_PRIMITIVE_TYPES,
       })
     );
     const field = useRecoilValue(schemaAtoms.field(path));
-    const data = getFilterData(path, modal, field, fields);
+    const data = getFilterData(expandedPath, modal, field, fields);
 
     return (
       <PathEntryComponent
@@ -647,7 +693,7 @@ const getAfterKey = (
 
       const { entry } = items[key];
       if (isGroup) {
-        return entry.kind === EntryKind.GROUP;
+        return entry.kind === EntryKind.GROUP && key !== activeKey;
       }
 
       if (entry.kind === EntryKind.EMPTY) {
@@ -669,14 +715,15 @@ const getAfterKey = (
   const result = filtered[0].key;
 
   if (isGroup) {
-    let index = order.indexOf(result);
-    if (index > 0) {
-      return order[index - 1];
+    if (result === null) {
+      return null;
     }
-    return null;
+    let index = order.indexOf(result) + 1;
+    while (items[order[index]].entry.kind === EntryKind.PATH) index++;
+    return order[index];
   }
 
-  if (!isGroup && order.indexOf(result) === 0) {
+  if (order.indexOf(result) === 0) {
     return order[1];
   }
 
@@ -747,6 +794,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       order.current,
       delta
     );
+
     let entry = items.current[down.current].entry;
     let from = order.current.indexOf(down.current);
     const to = after ? order.current.indexOf(after) : 0;
@@ -778,7 +826,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       i++;
     }
 
-    return [...result, ...section, ...pool.slice(i + 1)];
+    return [...result, ...section, ...pool.slice(i)];
   };
 
   useEventHandler(document.body, "mouseup", (event) => {
@@ -788,16 +836,8 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       return;
     }
 
-    const entry = items.current[down.current].entry;
-    if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) {
-      down.current = null;
-      start.current = null;
-      return;
-    }
-
     const newOrder = getNewOrder(event);
     const results = fn(items.current, order.current, newOrder);
-
     for (const key of order.current) {
       items.current[key].controller.set(results[key]);
     }

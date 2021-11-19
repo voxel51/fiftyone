@@ -146,11 +146,12 @@ export const PathEntry = React.memo(
       schemaAtoms.activeField({ modal, path })
     );
     const canCommit = useRef(false);
-    const color = useRecoilValue(colorMap(modal))(path);
+    const color = useRecoilValue(colorMap(modal))(path.split(".")[0]);
     const theme = useTheme();
     const fieldIsFiltered = useRecoilValue(
       filterAtoms.fieldIsFiltered({ path, modal })
     );
+    const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
 
     const containerProps = useSpring({
       backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
@@ -183,7 +184,7 @@ export const PathEntry = React.memo(
           <span style={{ flexGrow: 1 }}>{name}</span>
           {
             <EntryCounts
-              path={path}
+              path={expandedPath}
               modal={modal}
               ftype={ftype}
               embeddedDocType={embeddedDocType}

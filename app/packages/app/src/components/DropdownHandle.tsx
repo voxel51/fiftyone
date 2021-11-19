@@ -15,6 +15,7 @@ const Body = styled.div`
   display: flex;
   justify-content: space-between;
   padding: 0.5rem;
+
   svg {
     font-size: 1.25em;
     vertical-align: middle;
@@ -49,7 +50,7 @@ const DropdownHandle = ({
       onMouseUp={() => canCommit.current && onClick()}
     >
       {children}
-      <span className="icon">{icon(expanded)}</span>
+      {<span>{icon(expanded)}</span>}
     </Body>
   );
 };

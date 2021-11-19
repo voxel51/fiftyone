@@ -20,7 +20,6 @@ import { Button } from "../utils";
 import { FLOAT_FIELD } from "../../recoil/constants";
 
 const NamedRangeSliderContainer = styled.div`
-  padding-bottom: 0.5rem;
   margin: 3px;
   font-weight: bold;
 `;
@@ -101,7 +100,7 @@ const NumericFieldFilter = ({
   path,
   named = true,
 }: Props) => {
-  const color = useRecoilValue(selectors.colorMap(modal))(path);
+  const color = useRecoilValue(selectors.colorMap(modal))(path.split(".")[0]);
   const name = path.split(".").slice(-1)[0];
 
   const setFilter = useSetRecoilState(filterAtoms.filter({ modal, path }));
@@ -127,9 +126,8 @@ const NumericFieldFilter = ({
     filterAtoms.fieldIsFiltered({ modal, path })
   );
 
-  if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none") {
-    return null;
-  }
+  const noResults =
+    !hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none";
 
   return (
     <NamedRangeSliderContainer>
@@ -139,7 +137,7 @@ const NumericFieldFilter = ({
         </NamedRangeSliderHeader>
       )}
       <RangeSliderContainer>
-        {hasBounds && (
+        {hasBounds ? (
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
@@ -149,6 +147,15 @@ const NumericFieldFilter = ({
               defaultRange,
             })}
             color={color}
+          />
+        ) : (
+          <Checkbox
+            key={"No finite results"}
+            color={color}
+            value={false}
+            disabled={true}
+            name={"No finite results"}
+            setValue={() => {}}
           />
         )}
         {(hasDefaultRange ||

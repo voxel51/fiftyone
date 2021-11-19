@@ -40,7 +40,6 @@ const CategoricalFilterContainer = styled.div`
 `;
 
 const NamedCategoricalFilterContainer = styled.div`
-  padding-bottom: 0.5rem;
   margin: 3px;
   font-weight: bold;
 `;
@@ -237,7 +236,7 @@ const ResultsWrapper = <T extends unknown>({
           onMouseLeave={onMouseLeave}
         >
           {results && (
-            <Results
+            <Results<T>
               color={color}
               active={active}
               onSelect={onSelect}
@@ -368,7 +367,7 @@ const CategoricalFilter = <T extends unknown>({
   named = true,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
-  const color = useRecoilValue(selectors.colorMap(modal))(path);
+  const color = useRecoilValue(selectors.colorMap(modal))(path.split(".")[0]);
   const selected = useRecoilValue(selectedValuesAtom);
   const { count, results } = useRecoilValue(countsAtom);
   const [focused, setFocused] = useState(false);

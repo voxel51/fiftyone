@@ -4,7 +4,7 @@ import { summarizeLongStr } from "../../utils/generic";
 
 import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
-import { getValueString, Value } from "../Filters/utils";
+import { getValueString } from "../Filters/utils";
 
 export const ResultsContainer = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
@@ -102,41 +102,39 @@ const Result = React.memo(
   }
 );
 
-type ResultValue = [Value, number];
+type ResultValue<T> = [T, number];
 
-interface ResultsProps {
-  results: ResultValue[];
+interface ResultsProps<T> {
+  results: ResultValue<T>[];
   highlight: string;
-  onSelect: (value: Value) => void;
+  onSelect: (value: T) => void;
   active: string | null;
   alignRight?: boolean;
   color: string;
 }
 
-const Results = React.memo(
-  ({
-    color,
-    onSelect,
-    results,
-    highlight,
-    active = undefined,
-  }: ResultsProps) => {
-    return (
-      <ScrollResultsContainer>
-        {results.map((result) => (
-          <Result
-            key={String(result[0])}
-            result={result}
-            highlight={highlight}
-            onClick={() => onSelect(result[0])}
-            active={active === result[0]}
-            maxLen={26 - result[1].toLocaleString().length}
-            color={color}
-          />
-        ))}
-      </ScrollResultsContainer>
-    );
-  }
-);
+const Results = <T extends unknown>({
+  color,
+  onSelect,
+  results,
+  highlight,
+  active = undefined,
+}: ResultsProps<T>) => {
+  return (
+    <ScrollResultsContainer>
+      {results.map((result) => (
+        <Result
+          key={String(result[0])}
+          result={result}
+          highlight={highlight}
+          onClick={() => onSelect(result[0])}
+          active={active === result[0]}
+          maxLen={26 - result[1].toLocaleString().length}
+          color={color}
+        />
+      ))}
+    </ScrollResultsContainer>
+  );
+};
 
 export default Results;
