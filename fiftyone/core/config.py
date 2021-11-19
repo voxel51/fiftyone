@@ -77,34 +77,34 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DATABASE_VALIDATION",
             default=True,
         )
-        self.database_dir = self.parse_string(
+        self.database_dir = self.parse_path(
             d,
             "database_dir",
             env_var="FIFTYONE_DATABASE_DIR",
             default=foc.DEFAULT_DB_DIR,
         )
-        self.dataset_zoo_dir = self.parse_string(
+        self.dataset_zoo_dir = self.parse_path(
             d,
             "dataset_zoo_dir",
             env_var="FIFTYONE_DATASET_ZOO_DIR",
             default=None,
         )
-        self.model_zoo_dir = self.parse_string(
+        self.model_zoo_dir = self.parse_path(
             d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
-        self.dataset_zoo_manifest_paths = self.parse_string_array(
+        self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
             env_var="FIFTYONE_DATASET_ZOO_MANIFEST_PATHS",
             default=None,
         )
-        self.model_zoo_manifest_paths = self.parse_string_array(
+        self.model_zoo_manifest_paths = self.parse_path_array(
             d,
             "model_zoo_manifest_paths",
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
         )
-        self.default_dataset_dir = self.parse_string(
+        self.default_dataset_dir = self.parse_path(
             d,
             "default_dataset_dir",
             env_var="FIFTYONE_DEFAULT_DATASET_DIR",
@@ -436,7 +436,7 @@ class MediaCacheConfig(EnvConfig):
         if d is None:
             d = {}
 
-        self.cache_dir = self.parse_string(
+        self.cache_dir = self.parse_path(
             d, "cache_dir", env_var="FIFTYONE_MEDIA_CACHE_DIR", default=None,
         )
         self.cache_size_bytes = self.parse_int(
@@ -478,13 +478,13 @@ class MediaCacheConfig(EnvConfig):
             env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_BACKUP_COUNT",
             default=10,
         )
-        self.aws_config_file = self.parse_string(
+        self.aws_config_file = self.parse_path(
             d, "aws_config_file", env_var="AWS_CONFIG_FILE", default=None,
         )
         self.aws_profile = self.parse_string(
             d, "aws_profile", env_var="AWS_PROFILE", default=None,
         )
-        self.google_application_credentials = self.parse_string(
+        self.google_application_credentials = self.parse_path(
             d,
             "google_application_credentials",
             env_var="GOOGLE_APPLICATION_CREDENTIALS",
