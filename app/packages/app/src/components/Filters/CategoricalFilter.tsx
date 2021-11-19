@@ -48,6 +48,7 @@ const NamedCategoricalFilterContainer = styled.div`
 const NamedCategoricalFilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
+  text-transform: capitalize;
 `;
 
 const CHECKBOX_LIMIT = 20;
@@ -364,7 +365,7 @@ const CategoricalFilter = <T extends unknown>({
   excludeAtom,
   path,
   modal,
-  named,
+  named = true,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(selectors.colorMap(modal))(path);
@@ -411,7 +412,7 @@ const CategoricalFilter = <T extends unknown>({
   return (
     <NamedCategoricalFilterContainer>
       <NamedCategoricalFilterHeader>
-        {named && name && <>{name}</>}
+        {named && name && <>{name.replaceAll("_", " ")}</>}
       </NamedCategoricalFilterHeader>
       <CategoricalFilterContainer>
         {count > CHECKBOX_LIMIT && (

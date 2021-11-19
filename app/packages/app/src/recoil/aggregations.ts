@@ -5,7 +5,7 @@ import { request } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 
 import * as atoms from "./atoms";
-import { DATE_FIELD, DATE_TIME_FIELD } from "./constants";
+import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "./constants";
 import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
@@ -522,7 +522,7 @@ export const bounds = selectorFamily<
     }
 
     const isFloatField = get(
-      schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
+      schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
     );
 
     if (isFloatField) {

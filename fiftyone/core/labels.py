@@ -322,13 +322,10 @@ class _HasID(Label):
 
     meta = {"allow_inheritance": True}
 
-    _id = fof.ObjectIdField(default=ObjectId, required=True, unique=True)
+    id = fof.ObjectIdField(
+        default=ObjectId, required=True, unique=True, db_field="_id"
+    )
     tags = fof.ListField(fof.StringField())
-
-    @property
-    def id(self):
-        """The ID of the label."""
-        return str(self._id)
 
     def _get_repr_fields(self):
         # pylint: disable=no-member

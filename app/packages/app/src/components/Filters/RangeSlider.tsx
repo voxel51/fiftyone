@@ -197,7 +197,7 @@ const BaseSlider = React.memo(
     const bounds = useRecoilValue(boundsAtom);
 
     const timeZone =
-      fieldType && isDateTimeField(fieldType)
+      fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
         ? useRecoilValue(selectors.timeZone)
         : null;
     const [clicking, setClicking] = useState(false);

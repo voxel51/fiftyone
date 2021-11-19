@@ -111,22 +111,6 @@ export const fieldPaths = selectorFamily<
       return f(sampleLabels.concat(frameLabels).sort());
     }
 
-    console.log(
-      path,
-      get(field(path)),
-      Object.keys(get(field(path)).fields)
-        .map((name) => [path, name].join("."))
-        .filter((path) => {
-          return get(
-            meetsType({
-              path,
-              embeddedDocType,
-              ftype,
-            })
-          );
-        })
-    );
-
     return Object.keys(get(field(path)).fields)
       .map((name) => [path, name].join("."))
       .filter((path) => {
@@ -152,7 +136,7 @@ export const fields = selectorFamily<
 >({
   key: "fields",
   get: (params) => ({ get }) => {
-    return get(fieldPaths(params))
+    return [...get(fieldPaths(params))]
       .sort()
       .map((name) => get(field([params.path, name].join("."))));
   },
@@ -230,7 +214,6 @@ export const expandPath = selectorFamily<string, string>({
     if (withPath(LABELS_PATH, LABEL_LISTS).includes(embeddedDocType)) {
       const typePath = embeddedDocType.split(".");
       const type = typePath[typePath.length - 1];
-      alert(`${path}.${LABEL_LIST[type]}`);
       return `${path}.${LABEL_LIST[type]}`;
     }
 

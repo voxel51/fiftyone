@@ -239,6 +239,7 @@ const getFilterData = (
     path: [path, name].join("."),
     modal,
     ftype: ftype === LIST_FIELD ? subfield : ftype,
+    named: true,
   }));
 };
 
@@ -246,9 +247,10 @@ const InteractiveEntry = React.memo(
   ({ modal, path }: { modal: boolean; path: string; group: string }) => {
     const [expanded, setExpanded] = useState(false);
     const Arrow = expanded ? ArrowDropUp : ArrowDropDown;
+    path = useRecoilValue(schemaAtoms.expandPath(path));
     const fields = useRecoilValue(
       schemaAtoms.fields({
-        path: useRecoilValue(schemaAtoms.expandPath(path)),
+        path,
         ftype: VALID_PRIMITIVE_TYPES,
       })
     );
@@ -276,11 +278,10 @@ const InteractiveEntry = React.memo(
         }
       >
         {expanded
-          ? data.map(({ ftype, modal, path }) =>
+          ? data.map(({ ftype, ...props }) =>
               React.createElement(FILTERS[ftype], {
-                modal,
-                path,
-                key: path,
+                key: props.path,
+                ...props,
               })
             )
           : null}

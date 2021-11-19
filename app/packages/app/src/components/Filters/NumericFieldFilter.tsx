@@ -28,6 +28,7 @@ const NamedRangeSliderContainer = styled.div`
 const NamedRangeSliderHeader = styled.div`
   display: flex;
   justify-content: space-between;
+  text-transform: capitalize;
 `;
 
 const RangeSliderContainer = styled.div`
@@ -94,7 +95,12 @@ type Props = {
   named?: boolean;
 };
 
-const NumericFieldFilter = ({ defaultRange, modal, path, named }: Props) => {
+const NumericFieldFilter = ({
+  defaultRange,
+  modal,
+  path,
+  named = true,
+}: Props) => {
   const color = useRecoilValue(selectors.colorMap(modal))(path);
   const name = path.split(".").slice(-1)[0];
 
@@ -127,7 +133,11 @@ const NumericFieldFilter = ({ defaultRange, modal, path, named }: Props) => {
 
   return (
     <NamedRangeSliderContainer>
-      {named && name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
+      {named && name && (
+        <NamedRangeSliderHeader>
+          {name.replaceAll("_", " ")}
+        </NamedRangeSliderHeader>
+      )}
       <RangeSliderContainer>
         {hasBounds && (
           <RangeSlider
