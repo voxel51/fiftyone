@@ -466,6 +466,11 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
+-   **git_repo** (*None*): the url of the GitHub repository to link with the
+    created tasks and to which to upload annotations
+-   **push_to_git** (*True*): whether to automatically push annotations to Git
+    whenever samples are uploaded or downloaded and a `git_repo` is
+    provided
 
 .. _cvat-label-schema:
 
@@ -1827,6 +1832,52 @@ attributes between annotation runs.
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget
    :align: center
+
+Connecting to GitHub
+--------------------
+
+CVAT provides the ability to link an annotation task to a GitHub repository,
+allowing you to upload the labels of the task to a zip file in the repository.
+
+The `git_repo` argument can be used to define the URL of of the GitHub
+repository when annotating a FiftyOne |SampleCollection|. When samples are
+uploaded and when annotations are downloaded, the labels in the task are
+automatically pushed to the `git_repo` unless the `push_to_repo` parameter
+is set to `False`.
+
+.. note::
+    
+    The first time that you connect CVAT to a GitHub repository, you will need to add
+    the SSH key that gets printed to your GitHub account. 
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_github"
+    label_field = "ground_truth"
+    git_repo = "https://github.com/username/repo-name"
+    push_to_repo = True # Default
+
+    # Create task and connect to GitHub
+    view.annotate(
+        anno_key,
+        label_field=label_field,
+        git_repo=git_repo,
+        push_to_repo=push_to_repo,
+        launch_editor=True,
+    )
+
+    # Annotate in CVAT 
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)   
+
 
 .. _cvat-annotating-videos:
 
