@@ -1836,7 +1836,7 @@ attributes between annotation runs.
 Connecting to Git
 -----------------
 
-CVAT provides the ability to link an annotation task to a Git repository,
+CVAT provides the ability to link an annotation task to a git dataset repository,
 allowing you to upload the labels of the task to a zip file in the repository.
 
 The `git_repo` argument can be used to define the URL of of the Git
@@ -1847,8 +1847,8 @@ is set to `False`.
 
 .. note::
     
-    The first time that you connect CVAT to a GitHub repository, you will need to add
-    the SSH key that gets printed to your GitHub account. 
+    The first time that you connect CVAT to a git repository, you will need to add
+    the SSH key that gets printed to your git account. 
 
 .. code:: python
     :linenos:
