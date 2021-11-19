@@ -6,6 +6,7 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
+import requests
 import shutil
 import struct
 
@@ -19,6 +20,8 @@ import eta.core.video as etav
 
 import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
+import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
@@ -115,6 +118,20 @@ async def read_url_metadata(url, is_video):
             "height": info.frame_size[1],
             "frame_rate": info.frame_rate,
         }
+
+    #
+    # Here's an alternative that uses PIL.Image
+    # Our async get_image_dimensions() seems to be a bit faster, so we won't
+    # use this unless PIL's presumably wider range of supported image formats
+    # becomes important
+    #
+    """
+    loop = asyncio.get_event_loop()
+    width, height, _ = await loop.run_in_executor(
+        None, _get_image_dimensions, url
+    )
+    return {"width": width, "height": height}
+    """
 
     async with aiohttp.ClientSession() as sess, sess.get(url) as resp:
         width, height = await get_image_dimensions(Reader(resp.content))
@@ -221,6 +238,11 @@ async def get_stream_info(path):
     mime_type = etau.guess_mime_type(path)
 
     return etav.VideoStreamInfo(stream_info, format_info, mime_type=mime_type)
+
+
+def _get_image_dimensions(url):
+    with requests.get(url, stream=True) as r:
+        return fome.get_image_info(fou.ResponseStream(r))
 
 
 async def get_image_dimensions(input):
