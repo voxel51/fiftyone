@@ -2524,9 +2524,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
-        git_repo (None): the url of the GitHub repository to link with the
+        git_repo (None): the url of the git repository to link with the
             created tasks and to which to upload annotations
-        push_to_git (True): whether to automatically push annotations to Git
+        push_to_git (True): whether to automatically push annotations to git
             whenever samples are uploaded or downloaded and a `git_repo` is
             provided
     """

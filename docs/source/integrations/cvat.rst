@@ -466,9 +466,9 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
--   **git_repo** (*None*): the url of the GitHub repository to link with the
+-   **git_repo** (*None*): the url of the git repository to link with the
     created tasks and to which to upload annotations
--   **push_to_git** (*True*): whether to automatically push annotations to Git
+-   **push_to_git** (*True*): whether to automatically push annotations to git
     whenever samples are uploaded or downloaded and a `git_repo` is
     provided
 
@@ -1833,13 +1833,13 @@ attributes between annotation runs.
    :alt: cvat-occ-widget
    :align: center
 
-Connecting to GitHub
---------------------
+Connecting to Git
+-----------------
 
-CVAT provides the ability to link an annotation task to a GitHub repository,
+CVAT provides the ability to link an annotation task to a Git repository,
 allowing you to upload the labels of the task to a zip file in the repository.
 
-The `git_repo` argument can be used to define the URL of of the GitHub
+The `git_repo` argument can be used to define the URL of of the Git
 repository when annotating a FiftyOne |SampleCollection|. When samples are
 uploaded and when annotations are downloaded, the labels in the task are
 automatically pushed to the `git_repo` unless the `push_to_repo` parameter
