@@ -379,6 +379,7 @@ const UPDATE_LABEL = {
     );
     const bitColor = get32BitColor(color);
 
+    // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
       if (targets[i]) {
         overlay[i] = bitColor;
@@ -432,6 +433,7 @@ const UPDATE_LABEL = {
           return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         };
 
+    // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
       if (targets[i] !== 0) {
         overlay[i] = getColor(targets[i]);
@@ -471,6 +473,7 @@ const UPDATE_LABEL = {
       return cache[i];
     };
 
+    // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
       if (targets[i] !== 0) {
         overlay[i] = color ? color : getColor(targets[i]);
