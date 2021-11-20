@@ -240,25 +240,14 @@ def _apply_image_model_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
     if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d images" % num_errors
-        else:
-            estr = "%d image" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
+            "Errors occured while generating predictions for %d images. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
 
@@ -270,7 +259,7 @@ def _apply_image_model_batch(
     errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for idx, sample_batch in enumerate(samples_loader, 1):
+        for sample_batch in samples_loader:
             try:
                 imgs = [etai.read(sample.filepath) for sample in sample_batch]
                 labels_batch = model.predict_all(imgs)
@@ -286,24 +275,19 @@ def _apply_image_model_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                errors.append((sample_batch[0].id, sample_batch[-1].id, e))
 
             pb.update(len(sample_batch))
 
     if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
+        lines = [
+            "Batch: %s - %s\nError: %s" % (id1, id2, str(e))
+            for id1, id2, e in errors
+        ]
         lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
+            "Errors occured while generating predictions for %d batches. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
 
@@ -324,9 +308,7 @@ def _apply_image_model_data_loader(
     errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for idx, (sample_batch, imgs) in enumerate(
-            zip(samples_loader, data_loader), 1
-        ):
+        for sample_batch, imgs in zip(samples_loader, data_loader):
             try:
                 if isinstance(imgs, Exception):
                     raise imgs
@@ -344,24 +326,19 @@ def _apply_image_model_data_loader(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                errors.append((sample_batch[0].id, sample_batch[-1].id, e))
 
             pb.update(len(sample_batch))
 
     if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
+        lines = [
+            "Batch: %s - %s\nError: %s" % (id1, id2, str(e))
+            for id1, id2, e in errors
+        ]
         lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
+            "Errors occured while generating predictions for %d batches. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
 
@@ -399,28 +376,17 @@ def _apply_image_model_to_frames_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
 
     if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
+            "Errors occured while generating predictions for %d videos. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
 
@@ -461,28 +427,17 @@ def _apply_image_model_to_frames_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
 
     if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
+            "Errors occured while generating predictions for %d videos. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
 
@@ -513,25 +468,14 @@ def _apply_video_model(
             if not skip_failures:
                 raise e
 
-            errors.append((sample.filepath, e))
+            errors.append((sample.id, e))
 
     if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occurred while generating predictions for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating predictions for %d videos. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
 
@@ -817,7 +761,7 @@ def _compute_image_embeddings_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
             if embeddings_field:
                 sample[embeddings_field] = embedding
@@ -826,22 +770,11 @@ def _compute_image_embeddings_single(
                 embeddings.append(embedding)
 
     if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d images" % num_errors
-        else:
-            estr = "%d image" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating embeddings for %d images. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -862,7 +795,7 @@ def _compute_image_embeddings_batch(
     errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for idx, sample_batch in enumerate(samples_loader, 1):
+        for sample_batch in samples_loader:
             embeddings_batch = [None] * len(sample_batch)
 
             try:
@@ -872,7 +805,7 @@ def _compute_image_embeddings_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                errors.append((sample_batch[0].id, sample_batch[-1].id, e))
 
             if embeddings_field:
                 for sample, embedding in zip(sample_batch, embeddings_batch):
@@ -884,19 +817,14 @@ def _compute_image_embeddings_batch(
             pb.update(len(sample_batch))
 
     if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
+        lines = [
+            "Batch: %s - %s\nError: %s" % (id1, id2, str(e))
+            for id1, id2, e in errors
+        ]
         lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating embeddings for %d batches. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -924,9 +852,7 @@ def _compute_image_embeddings_data_loader(
     errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for idx, (sample_batch, imgs) in enumerate(
-            zip(samples_loader, data_loader), 1
-        ):
+        for sample_batch, imgs in zip(samples_loader, data_loader):
             embeddings_batch = [None] * len(sample_batch)
 
             try:
@@ -938,7 +864,7 @@ def _compute_image_embeddings_data_loader(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                errors.append((sample_batch[0].id, sample_batch[-1].id, e))
 
             if embeddings_field:
                 for sample, embedding in zip(sample_batch, embeddings_batch):
@@ -950,19 +876,14 @@ def _compute_image_embeddings_data_loader(
             pb.update(len(sample_batch))
 
     if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
+        lines = [
+            "Batch: %s - %s\nError: %s" % (id1, id2, str(e))
+            for id1, id2, e in errors
+        ]
         lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating embeddings for %d batches. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -1013,7 +934,7 @@ def _compute_frame_embeddings_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
             if embeddings_field is None:
                 if embeddings:
@@ -1027,22 +948,11 @@ def _compute_frame_embeddings_single(
             pb.set_iteration(frame_counts[idx])
 
     if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating embeddings for %d videos. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -1095,7 +1005,7 @@ def _compute_frame_embeddings_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
             if embeddings_field is None:
                 if embeddings:
@@ -1109,22 +1019,11 @@ def _compute_frame_embeddings_batch(
             pb.set_iteration(frame_counts[idx])
 
     if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating embeddings for %d videos. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -1155,7 +1054,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
             if not skip_failures:
                 raise e
 
-            errors.append((sample.filepath, e))
+            errors.append((sample.id, e))
             embedding = None
 
         if embeddings_field:
@@ -1165,22 +1064,11 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
             embeddings.append(embedding)
 
     if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating embeddings for %d videos. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -1415,7 +1303,7 @@ def _embed_patches(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
@@ -1424,22 +1312,11 @@ def _embed_patches(
                 embeddings_dict[sample.id] = embeddings
 
     if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d images" % num_errors
-        else:
-            estr = "%d image" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occured while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occured while generating embeddings for %d images. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -1504,9 +1381,7 @@ def _embed_patches_data_loader(
     errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for idx, (sample, patches) in pb(
-            enumerate(zip(samples, data_loader), 1)
-        ):
+        for sample, patches in pb(zip(samples, data_loader)):
             embeddings = None
 
             try:
@@ -1525,7 +1400,7 @@ def _embed_patches_data_loader(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                errors.append((sample.id, e))
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
@@ -1534,22 +1409,11 @@ def _embed_patches_data_loader(
                 embeddings_dict[sample.id] = embeddings
 
     if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occurred while generating embeddings for %d images. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
@@ -1624,31 +1488,20 @@ def _embed_frame_patches(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.filepath, e))
+                errors.append((sample.id, e))
 
             if embeddings_field is None:
                 embeddings_dict[sample.id] = frame_embeddings_dict
 
-        # Explicitly set in case actual # frames differed from expected #
-        pb.set_iteration(frame_counts[idx])
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
 
     if errors:
-        lines = [
-            "Video: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
+        lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
         lines.append(
-            "Errors occured while generating embeddings for %s. See above "
-            "for details." % estr
+            "Errors occured while generating embeddings for %d videos. See "
+            "above for details." % len(errors)
         )
-
         logger.warning("\n\n".join(lines))
 
     if embeddings_field:
