@@ -7,7 +7,6 @@ FiftyOne models.
 """
 import contextlib
 import inspect
-import itertools
 import logging
 
 import numpy as np
@@ -225,6 +224,8 @@ def _is_flash_model(model):
 def _apply_image_model_single(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
+    samples = samples.select_fields()
+
     errors = []
 
     with fou.ProgressBar() as pb:
@@ -254,6 +255,7 @@ def _apply_image_model_single(
 def _apply_image_model_batch(
     samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
 
     errors = []
@@ -300,6 +302,7 @@ def _apply_image_model_data_loader(
     num_workers,
     skip_failures,
 ):
+    samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
@@ -345,6 +348,7 @@ def _apply_image_model_data_loader(
 def _apply_image_model_to_frames_single(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
@@ -393,6 +397,7 @@ def _apply_image_model_to_frames_single(
 def _apply_image_model_to_frames_batch(
     samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
@@ -444,31 +449,32 @@ def _apply_image_model_to_frames_batch(
 def _apply_video_model(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
+    samples = samples.select_fields()
     is_clips = samples._dataset._is_clips
 
     errors = []
 
-    for sample in samples.iter_samples(progress=True):
-        if is_clips:
-            frames = etaf.FrameRange(*sample.support)
-        else:
-            frames = None
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
 
-        try:
-            with etav.FFmpegVideoReader(
-                sample.filepath, frames=frames
-            ) as video_reader:
-                labels = model.predict(video_reader)
+            try:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
+                    labels = model.predict(video_reader)
 
-            # Save labels
-            sample.add_labels(
-                labels, label_field, confidence_thresh=confidence_thresh
-            )
-        except Exception as e:
-            if not skip_failures:
-                raise e
+                sample.add_labels(
+                    labels, label_field, confidence_thresh=confidence_thresh
+                )
+            except Exception as e:
+                if not skip_failures:
+                    raise e
 
-            errors.append((sample.id, e))
+                errors.append((sample.id, e))
 
     if errors:
         lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
@@ -747,6 +753,8 @@ def compute_embeddings(
 def _compute_image_embeddings_single(
     samples, model, embeddings_field, skip_failures
 ):
+    samples = samples.select_fields()
+
     embeddings = []
     errors = []
 
@@ -789,6 +797,7 @@ def _compute_image_embeddings_single(
 def _compute_image_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
 
     embeddings = []
@@ -839,14 +848,11 @@ def _compute_image_embeddings_batch(
 def _compute_image_embeddings_data_loader(
     samples, model, embeddings_field, batch_size, num_workers, skip_failures
 ):
+    samples = samples.select_fields()
+    samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
-
-    if embeddings_field:
-        samples_loader = fou.iter_batches(samples, batch_size)
-    else:
-        samples_loader = itertools.repeat([None] * batch_size)
 
     embeddings = []
     errors = []
@@ -898,6 +904,7 @@ def _compute_image_embeddings_data_loader(
 def _compute_frame_embeddings_single(
     samples, model, embeddings_field, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
@@ -964,6 +971,7 @@ def _compute_frame_embeddings_single(
 def _compute_frame_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
@@ -1033,35 +1041,37 @@ def _compute_frame_embeddings_batch(
 
 
 def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
+    samples = samples.select_fields()
     is_clips = samples._dataset._is_clips
 
     embeddings = []
     errors = []
 
-    for sample in samples.iter_samples(progress=True):
-        if is_clips:
-            frames = etaf.FrameRange(*sample.support)
-        else:
-            frames = None
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
 
-        try:
-            with etav.FFmpegVideoReader(
-                sample.filepath, frames=frames
-            ) as video_reader:
-                embedding = model.embed(video_reader)[0]
+            try:
+                with etav.FFmpegVideoReader(
+                    sample.filepath, frames=frames
+                ) as video_reader:
+                    embedding = model.embed(video_reader)[0]
 
-        except Exception as e:
-            if not skip_failures:
-                raise e
+            except Exception as e:
+                if not skip_failures:
+                    raise e
 
-            errors.append((sample.id, e))
-            embedding = None
+                errors.append((sample.id, e))
+                embedding = None
 
-        if embeddings_field:
-            sample[embeddings_field] = embedding
-            sample.save()
-        else:
-            embeddings.append(embedding)
+            if embeddings_field:
+                sample[embeddings_field] = embedding
+                sample.save()
+            else:
+                embeddings.append(embedding)
 
     if errors:
         lines = ["Sample: %s\nError: %s" % (_id, str(e)) for _id, e in errors]
@@ -1270,6 +1280,8 @@ def _embed_patches(
     batch_size,
     skip_failures,
 ):
+    samples = samples.select_fields(patches_field)
+
     embeddings_dict = {}
     errors = []
 
@@ -1366,6 +1378,7 @@ def _embed_patches_data_loader(
     num_workers,
     skip_failures,
 ):
+    samples = samples.select_fields(patches_field)
     data_loader = _make_patch_data_loader(
         samples,
         model,
@@ -1433,6 +1446,7 @@ def _embed_frame_patches(
     batch_size,
     skip_failures,
 ):
+    samples = samples.select_fields(samples._FRAMES_PREFIX + patches_field)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
