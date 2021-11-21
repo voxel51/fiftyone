@@ -2653,6 +2653,9 @@ class CVATBackend(foua.AnnotationBackend):
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
 
+        # @todo support passing native cloud paths to CVAT
+        samples.download_media()
+
         logger.info("Uploading samples to CVAT...")
         results = api.upload_samples(samples, self)
         logger.info("Upload complete")
