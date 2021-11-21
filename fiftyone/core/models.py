@@ -1542,18 +1542,10 @@ def _make_patch_data_loader(
     if num_workers is None:
         num_workers = fout.recommend_num_workers()
 
-    image_paths = []
-    detections = []
-    for sample in samples.select_fields(patches_field):
-        patches = foup.parse_patches(
-            sample, patches_field, handle_missing=handle_missing
-        )
-        image_paths.append(sample.filepath)
-        detections.append(patches)
-
     dataset = fout.TorchImagePatchesDataset(
-        image_paths,
-        detections,
+        samples=samples,
+        patches_field=patches_field,
+        handle_missing=handle_missing,
         transform=model.transforms,
         ragged_batches=model.ragged_batches,
         use_numpy=use_numpy,
