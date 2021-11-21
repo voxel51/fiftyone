@@ -3934,6 +3934,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_ids.append(task_id)
 
         if media_field == "filepath":
+            # @todo support passing native cloud paths to CVAT
             media_paths = samples_batch.get_local_paths()
         else:
             media_paths = samples_batch.values(media_field)
