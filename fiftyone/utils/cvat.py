@@ -3930,10 +3930,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         task_ids.append(task_id)
 
+        if media_field == "filepath":
+            media_paths = samples_batch.get_local_paths()
+        else:
+            media_paths = samples_batch.values(media_field)
+
         # Upload media
         job_ids[task_id] = self.upload_data(
             task_id,
-            samples_batch.values(media_field),
+            media_paths,
             image_quality=image_quality,
             use_cache=use_cache,
             use_zip_chunks=use_zip_chunks,
