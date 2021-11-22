@@ -2653,6 +2653,9 @@ class CVATBackend(foua.AnnotationBackend):
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
 
+        # @todo support passing native cloud paths to CVAT
+        samples.download_media()
+
         logger.info("Uploading samples to CVAT...")
         results = api.upload_samples(samples, self)
         logger.info("Upload complete")
@@ -3930,10 +3933,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         task_ids.append(task_id)
 
+        if media_field == "filepath":
+            # @todo support passing native cloud paths to CVAT
+            media_paths = samples_batch.get_local_paths()
+        else:
+            media_paths = samples_batch.values(media_field)
+
         # Upload media
         job_ids[task_id] = self.upload_data(
             task_id,
-            samples_batch.values(media_field),
+            media_paths,
             image_quality=image_quality,
             use_cache=use_cache,
             use_zip_chunks=use_zip_chunks,
