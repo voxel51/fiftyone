@@ -2524,11 +2524,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
-        git_repo (None): the url of the git repository to link with the
+        git_repository (None): the url of the git repository to link with the
             created tasks and to which to upload annotations
         push_to_git (True): whether to automatically push annotations to git
-            whenever samples are uploaded or downloaded and a `git_repo` is
-            provided
+            whenever samples are uploaded or downloaded and a
+            `git_repository` is provided
+        git_lfs (False): whether to use the git LFS (Large File Storage) to
+            store annotations
     """
 
     def __init__(
@@ -2550,8 +2552,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         project_id=None,
         occluded_attr=None,
-        git_repo=None,
+        git_repository=None,
         push_to_git=True,
+        git_lfs=False,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -2567,8 +2570,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.project_id = project_id
         self.occluded_attr = occluded_attr
-        self.git_repo = git_repo
+        self.git_repository = git_repository
         self.push_to_git = push_to_git
+        self.git_lfs = git_lfs
 
         # store privately so these aren't serialized
         self._username = username
@@ -3338,26 +3342,26 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for task_id in pb(list(task_ids)):
                 self.delete_task(task_id)
 
-    def create_git(self, task_id, git_repo):
+    def create_git(self, task_id, git_repository, git_lfs=False):
         json_data = {
-            "path": git_repo,
-            "lfs": False,
+            "path": git_repository,
+            "lfs": git_lfs,
             "tid": task_id,
         }
         resp = self.post(self.git_create_url(task_id), json=json_data).json()
         rq_id = resp["rq_id"]
         error_msg = (
             "Could not create git dataset repository '%s' from task id '%d'"
-            % (git_repo, task_id)
+            % (git_repository, task_id)
         )
         return self._wait_for_git_response(rq_id, error_msg)
 
-    def push_git(self, task_id, git_repo):
+    def push_git(self, task_id, git_repository):
         resp = self.get(self.git_push_url(task_id)).json()
         rq_id = resp["rq_id"]
         error_msg = (
             "Could not push task id '%d' to connected git dataset repository '%s'"
-            % (task_id, git_repo)
+            % (task_id, git_repository)
         )
         return self._wait_for_git_response(rq_id, error_msg)
 
@@ -3495,8 +3499,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
-        git_repo = config.git_repo
+        git_repository = config.git_repository
         push_to_git = config.push_to_git
+        git_lfs = config.git_lfs
 
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
@@ -3602,10 +3607,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 task_id,
             )
 
-            if git_repo is not None:
-                response = self.create_git(task_id, git_repo)
+            if git_repository is not None:
+                response = self.create_git(task_id, git_repository, git_lfs)
                 if response is self.GIT_SUCCESS and push_to_git:
-                    self.push_git(task_id, git_repo)
+                    self.push_git(task_id, git_repository)
 
         return CVATAnnotationResults(
             samples,
@@ -3632,7 +3637,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         label_schema = results.config.label_schema
         occluded_attr = results.config.occluded_attr
-        git_repo = results.config.git_repo
+        git_repository = results.config.git_repository
         push_to_git = results.config.push_to_git
         id_map = results.id_map
         server_id_map = results.server_id_map
@@ -3803,8 +3808,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     annotations, {label_field: label_field_results}
                 )
 
-            if git_repo is not None and push_to_git:
-                self.push_git(task_id, git_repo)
+            if git_repository is not None and push_to_git:
+                self.push_git(task_id, git_repository)
 
         return annotations
 

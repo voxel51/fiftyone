@@ -466,11 +466,14 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
--   **git_repo** (*None*): the url of the git repository to link with the
+-   **git_repository** (*None*): the url of the git repository to link with the
     created tasks and to which to upload annotations
 -   **push_to_git** (*True*): whether to automatically push annotations to git
-    whenever samples are uploaded or downloaded and a `git_repo` is
+    whenever samples are uploaded or downloaded and a `git_repository` is
     provided
+-   **git_lfs** (*False*): whether to use the git LFS (Large File Storage) to
+    store annotations
+
 
 .. _cvat-label-schema:
 
@@ -1839,11 +1842,12 @@ Connecting to Git
 CVAT provides the ability to link an annotation task to a git dataset repository,
 allowing you to upload the labels of the task to a zip file in the repository.
 
-The `git_repo` argument can be used to define the URL of of the Git
+The `git_repository` argument can be used to define the URL of of the Git
 repository when annotating a FiftyOne |SampleCollection|. When samples are
 uploaded and when annotations are downloaded, the labels in the task are
-automatically pushed to the `git_repo` unless the `push_to_repo` parameter
-is set to `False`.
+automatically pushed to the `git_repository` unless the `push_to_git` parameter
+is set to `False`. If the `git_lfs` flag is `True`, then the git Large File
+Storage (LFS) will be used to store the annotations.
 
 .. note::
     
@@ -1861,15 +1865,17 @@ is set to `False`.
 
     anno_key = "cvat_github"
     label_field = "ground_truth"
-    git_repo = "https://github.com/username/repo-name"
-    push_to_repo = True # Default
+    git_repository = "https://github.com/username/repository-name"
+    push_to_git = True # Default
+    git_lfs = False # Default
 
     # Create task and connect to GitHub
     view.annotate(
         anno_key,
         label_field=label_field,
-        git_repo=git_repo,
-        push_to_repo=push_to_repo,
+        git_repository=git_repository,
+        push_to_git=push_to_git,
+        git_lfs=git_lfs,
         launch_editor=True,
     )
 
