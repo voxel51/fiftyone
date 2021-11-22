@@ -3370,7 +3370,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # IMPORTANT: CVAT organizes media within a task alphabetically by
             # filename, so we must give CVAT filenames whose alphabetical order
             # matches the order of `paths`
-            filename = "%06d%s" % (idx, os.path.splitext(path)[1])
+            filename = "%06d_%s" % (idx, os.path.basename(path))
             files["client_files[%d]" % idx] = (filename, open(path, "rb"))
 
         self.post(self.task_data_url(task_id), data=data, files=files)
