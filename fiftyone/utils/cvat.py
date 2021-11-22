@@ -2525,7 +2525,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
         git_repository (None): the url of the git repository to link with the
-            created tasks and to which to upload annotations
+            created tasks and to which to upload annotations. The string can
+            also contain the path to the file within the repository `URL [PATH]`
         push_to_git (True): whether to automatically push annotations to git
             whenever samples are uploaded or downloaded and a
             `git_repository` is provided

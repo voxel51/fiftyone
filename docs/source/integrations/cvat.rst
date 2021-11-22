@@ -467,7 +467,9 @@ provided:
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
 -   **git_repository** (*None*): the url of the git repository to link with the
-    created tasks and to which to upload annotations
+    created tasks and to which to upload annotations. The string can
+    also contain the path to the file within the repository `URL [PATH]`
+    as defined in the `CVAT documentation <https://openvinotoolkit.github.io/cvat/docs/manual/basics/creating_an_annotation_task/#dataset-repository>`_
 -   **push_to_git** (*True*): whether to automatically push annotations to git
     whenever samples are uploaded or downloaded and a `git_repository` is
     provided
@@ -1836,14 +1838,19 @@ attributes between annotation runs.
    :alt: cvat-occ-widget
    :align: center
 
-Connecting to Git
------------------
+Connecting to Dataset Repository 
+--------------------------------
 
 CVAT provides the ability to link an annotation task to a git dataset repository,
 allowing you to upload the labels of the task to a zip file in the repository.
 
 The `git_repository` argument can be used to define the URL of the Git
-repository when annotating a FiftyOne |SampleCollection|. When samples are
+repository when annotating a FiftyOne |SampleCollection|. Alternatively, 
+you can provide the URL and a path
+to the annotations within the repository formatted as `URL [PATH]` 
+`defined here. <https://openvinotoolkit.github.io/cvat/docs/manual/basics/creating_an_annotation_task/#dataset-repository>`_
+
+When samples are
 uploaded and when annotations are downloaded, the labels in the task are
 automatically pushed to the `git_repository` unless the `push_to_git` parameter
 is set to `False`. If the `git_lfs` flag is `True`, then the git Large File
@@ -1866,6 +1873,7 @@ Storage (LFS) will be used to store the annotations.
     anno_key = "cvat_github"
     label_field = "ground_truth"
     git_repository = "https://github.com/username/repository-name"
+    git_repository_alt = "https://github.com/username/repository-name [path/to/annotations.xml]"
     push_to_git = True # Default
     git_lfs = False # Default
 
