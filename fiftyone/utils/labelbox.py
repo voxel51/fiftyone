@@ -487,20 +487,25 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         members = config.members
         classes_as_attrs = config.classes_as_attrs
 
-        # @todo implement this
+        frame_id_map = self._build_frame_id_map(samples)
+
+        is_video = samples.media_type == fomm.VIDEO
+        id_map = {}
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
+                # @todo implement this
                 logger.info(
                     "Uploading existing labels in field '%s' to Labelbox is "
                     "not yet supported" % label_field
+                )
+                id_map[label_field] = self._build_id_map(
+                    samples, label_field, label_info["type"]
                 )
 
         if project_name is None:
             project_name = "FiftyOne_%s" % (
                 samples._root_dataset.name.replace(" ", "_"),
             )
-
-        frame_id_map = self._build_frame_id_map(samples)
 
         dataset = self._client.create_dataset(name=project_name)
         self.upload_data(samples, dataset, media_field=media_field)
@@ -513,9 +518,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             for email, role in members:
                 self.add_member(project, email, role)
 
-        id_map = {}
         project_id = project.uid
-        is_video = samples.media_type == fomm.VIDEO
 
         return LabelboxAnnotationResults(
             samples,
@@ -540,8 +543,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_id = results.project_id
         frame_id_map = results.frame_id_map
         is_video = results.is_video
-        label_schema = results.config.label_schema
         classes_as_attrs = results.config.classes_as_attrs
+        label_schema = results.config.label_schema
 
         project = self._client.get_project(project_id)
         labels_json = self._download_project_labels(project=project)
@@ -551,7 +554,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         if classes_as_attrs:
             class_attr = "class_name"
         else:
-            class_attr = None
+            class_attr = False
 
         for d in labels_json:
             labelbox_id = d["DataRow ID"]
@@ -588,7 +591,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     frames[frame_id] = labels_dict
 
                 self._add_video_labels_to_results(
-                    annotations, frames, sample_id, label_schema
+                    annotations, frames, sample_id, label_schema,
                 )
 
             else:
@@ -600,7 +603,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                         label_schema, labels_dict
                     )
                 annotations = self._add_labels_to_results(
-                    annotations, labels_dict, sample_id, label_schema
+                    annotations, labels_dict, sample_id, label_schema,
                 )
 
         return annotations
@@ -621,12 +624,16 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         _labels_dict = {}
         for field_or_type, label_info in labels_dict.items():
             if field_or_type in unexpected_types:
+                # field_or_type is type
+                # label_info is labels
                 label_field = field_map[field_or_type]
                 _labels_dict[label_field] = {}
                 if field_or_type in label_info:
                     label_info = label_info[field_or_type]
                 _labels_dict[label_field][field_or_type] = label_info
             else:
+                # field_or_type is field
+                # label_info is {type: labels}
                 _labels_dict[field_or_type] = label_info
 
         return _labels_dict
@@ -657,6 +664,33 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             }
 
         return frame_id_map
+
+    def _build_id_map(self, samples, label_field, label_type):
+        # Build id map that adds annotations to list fields and replaces
+        # label of non-list fields
+        _id_map = {}
+        is_video = samples.media_type == fomm.VIDEO
+        fo_label_type = foua._LABEL_TYPES_MAP[label_type]
+        if not issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
+            _, id_path = samples._get_label_field_path(label_field, "id")
+            if is_video:
+                sample_ids, frame_ids, label_ids = samples.values(
+                    ["id", "frames.id", id_path]
+                )
+                for _id, _frame_ids, _frame_lids in zip(
+                    sample_ids, frame_ids, label_ids
+                ):
+                    if _id not in _id_map:
+                        _id_map[_id] = {}
+
+                    for _frame_id, _label_id in zip(_frame_ids, _frame_lids):
+                        _id_map[_id][_frame_id] = _label_id
+            else:
+                sample_ids, label_ids = samples.values(["id", id_path])
+                for _id, _label_id in zip(sample_ids, label_ids):
+                    _id_map[_id] = _label_id
+
+        return _id_map
 
     def _setup_project(
         self, project_name, dataset, label_schema, classes_as_attrs
@@ -912,7 +946,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return download_labels_from_labelbox(project)
 
     def _add_labels_to_results(
-        self, results, labels_dict, sample_id, label_schema
+        self, results, labels_dict, sample_id, label_schema,
     ):
         """Adds the labels in ``labels_dict`` to ``results``.
 
@@ -943,13 +977,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         # Parse remaining label fields and add classification attributes if
         # necessary
         results = self._parse_expected_label_fields(
-            results, labels_dict, sample_id, label_schema, attributes
+            results, labels_dict, sample_id, label_schema, attributes,
         )
 
         return results
 
     def _add_video_labels_to_results(
-        self, results, frames_dict, sample_id, label_schema
+        self, results, frames_dict, sample_id, label_schema,
     ):
         """Adds the video labels in ``frames_dict`` to ``results``.
 
@@ -1068,11 +1102,16 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         for label_field, labels in labels_dict.items():
             if label_field in label_schema:
                 label_info = label_schema[label_field]
+                mask_targets = label_info.get("mask_targets", None)
                 expected_type = label_info["type"]
                 if isinstance(labels, dict):
                     # Object labels
                     label_results = self._convert_label_types(
-                        labels, expected_type, sample_id, frame_id=frame_id,
+                        labels,
+                        expected_type,
+                        sample_id,
+                        frame_id=frame_id,
+                        mask_targets=mask_targets,
                     )
                 else:
                     # Classifications and scalar labels
@@ -1121,7 +1160,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return results
 
     def _convert_label_types(
-        self, labels_dict, expected_type, sample_id, frame_id=None
+        self,
+        labels_dict,
+        expected_type,
+        sample_id,
+        frame_id=None,
+        mask_targets=None,
     ):
         """Converts labels into the format expected by the Fiftyone annotation
         API.
@@ -1148,7 +1192,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 else:
                     fo_type = "detections"
 
-                labels_list = self._convert_segmentations(labels_list, fo_type)
+                labels_list = self._convert_segmentations(
+                    labels_list, fo_type, mask_targets=mask_targets
+                )
 
             if fo_type not in output_labels:
                 output_labels[fo_type] = {}
@@ -1171,7 +1217,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         return output_labels
 
-    def _convert_segmentations(self, labels_list, label_type):
+    def _convert_segmentations(
+        self, labels_list, label_type, mask_targets=None
+    ):
         labels = []
         for seg_dict in labels_list:
             mask = seg_dict["mask"]
@@ -1181,9 +1229,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         if label_type != "segmentation":
             return labels
-
-        # @todo support mask targets
-        mask_targets = {int(d.label): d.label for d in labels}
 
         frame_size = (mask.shape[1], mask.shape[0])
         detections = fol.Detections(detections=labels)
@@ -2197,12 +2242,14 @@ def _parse_objects(od_list, frame_size, class_attr=None):
     detections = []
     polylines = []
     keypoints = []
+    segmentations = []
     mask = None
     mask_instance_uri = None
     label_fields = {}
     for od in od_list:
         attributes = _parse_attributes(od.get("classifications", []))
-        if class_attr is not None and class_attr in attributes:
+        load_fo_seg = class_attr is not None
+        if class_attr and class_attr in attributes:
             label_field = od["title"]
             label = attributes.pop(class_attr)
             if label_field not in label_fields:
@@ -2275,10 +2322,15 @@ def _parse_objects(od_list, frame_size, class_attr=None):
 
         elif "instanceURI" in od:
             # Segmentation mask
-            if label_field is None:
+            if not load_fo_seg:
                 if mask is None:
                     mask_instance_uri = od["instanceURI"]
                     mask = _parse_mask(mask_instance_uri)
+                    segmentation = {
+                        "mask": current_mask,
+                        "label": label,
+                        "attributes": attributes,
+                    }
                 elif od["instanceURI"] != mask_instance_uri:
                     msg = (
                         "Only one segmentation mask per image/frame is "
@@ -2293,10 +2345,15 @@ def _parse_objects(od_list, frame_size, class_attr=None):
                     "label": label,
                     "attributes": attributes,
                 }
-                if "segmentation" not in label_fields[label_field]:
-                    label_fields[label_field]["segmentation"] = []
+                if label_field is not None:
+                    if "segmentation" not in label_fields[label_field]:
+                        label_fields[label_field]["segmentation"] = []
 
-                label_fields[label_field]["segmentation"].append(segmentation)
+                    label_fields[label_field]["segmentation"].append(
+                        segmentation
+                    )
+                else:
+                    segmentations.append(segmentation)
         else:
             msg = "Ignoring unsupported label"
             warnings.warn(msg)
@@ -2314,6 +2371,8 @@ def _parse_objects(od_list, frame_size, class_attr=None):
 
     if mask is not None:
         labels["segmentation"] = mask
+    elif segmentations:
+        labels["segmentation"] = segmentations
 
     labels.update(label_fields)
 
