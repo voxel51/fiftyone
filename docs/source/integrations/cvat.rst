@@ -1842,7 +1842,7 @@ Connecting to Git
 CVAT provides the ability to link an annotation task to a git dataset repository,
 allowing you to upload the labels of the task to a zip file in the repository.
 
-The `git_repository` argument can be used to define the URL of of the Git
+The `git_repository` argument can be used to define the URL of the Git
 repository when annotating a FiftyOne |SampleCollection|. When samples are
 uploaded and when annotations are downloaded, the labels in the task are
 automatically pushed to the `git_repository` unless the `push_to_git` parameter
