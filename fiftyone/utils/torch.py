@@ -967,16 +967,21 @@ class TorchImageDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` of images.
 
     Instances of this dataset emit images for each sample, or
-    ``(img, sample_id)`` pairs if ``sample_ids`` are provided.
+    ``(img, sample_id)`` pairs if ``sample_ids`` are provided or
+    ``include_ids == True``.
 
     By default, this class will load images in PIL format and emit Torch
     tensors, but you can use numpy images/tensors instead by passing
     ``use_numpy = True``.
 
     Args:
-        image_paths: an iterable of image paths
-        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
-            IDs corresponding to each image
+        image_paths (None): an iterable of image paths
+        samples (None): a :class:`fiftyone.core.collections.SampleCollection`
+            from which to extract image paths
+        sample_ids (None): an iterable of sample IDs corresponding to each
+            image
+        include_ids (False): whether to include the IDs of the ``samples`` in
+            the returned items
         transform (None): an optional transform function to apply to each image
             patch. When ``use_numpy == False``, this is typically a torchvision
             transform
@@ -989,17 +994,21 @@ class TorchImageDataset(Dataset):
 
     def __init__(
         self,
-        image_paths,
+        image_paths=None,
+        samples=None,
         sample_ids=None,
+        include_ids=False,
         transform=None,
         use_numpy=False,
         force_rgb=False,
         skip_failures=False,
     ):
-        image_paths = _to_bytes_array(image_paths)
-
-        if sample_ids is not None:
-            sample_ids = _to_bytes_array(sample_ids)
+        image_paths, sample_ids = self._parse_inputs(
+            image_paths=image_paths,
+            samples=samples,
+            sample_ids=sample_ids,
+            include_ids=include_ids,
+        )
 
         self.image_paths = image_paths
         self.sample_ids = sample_ids
@@ -1036,6 +1045,26 @@ class TorchImageDataset(Dataset):
         """Whether this dataset has sample IDs."""
         return self.sample_ids is not None
 
+    def _parse_inputs(
+        self,
+        image_paths=None,
+        samples=None,
+        sample_ids=None,
+        include_ids=False,
+    ):
+        if image_paths is None:
+            image_paths = samples.values("filepath")
+
+        image_paths = _to_bytes_array(image_paths)
+
+        if include_ids and sample_ids is None:
+            sample_ids = samples.values("id")
+
+        if sample_ids is not None:
+            sample_ids = _to_bytes_array(sample_ids)
+
+        return image_paths, sample_ids
+
 
 class TorchImageClassificationDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` for image classification.
@@ -1055,8 +1084,8 @@ class TorchImageClassificationDataset(Dataset):
             embedded field of ``samples`` to use as targets
         samples (None): a :class:`fiftyone.core.collections.SampleCollection`
             from which to extract image paths and targets
-        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
-            IDs corresponding to each image
+        sample_ids (None): an iterable of sample IDs corresponding to each
+            image
         include_ids (False): whether to include the IDs of the ``samples`` in
             the returned items
         transform (None): an optional transform function to apply to each image
@@ -1208,8 +1237,8 @@ class TorchImagePatchesDataset(Dataset):
         transform (None): an optional transform function to apply to each image
             patch. When ``use_numpy == False``, this is typically a torchvision
             transform
-        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
-            IDs corresponding to each image
+        sample_ids (None): an iterable of sample IDs corresponding to each
+            image
         include_ids (False): whether to include the IDs of the ``samples`` in
             the returned items
         ragged_batches (False): whether the provided ``transform`` may return
