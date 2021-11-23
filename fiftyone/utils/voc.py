@@ -800,6 +800,9 @@ def _parse_attribute(value):
     except:
         pass
 
+    if isinstance(value, list):
+        return value
+
     if value in {"True", "true"}:
         return True
 
