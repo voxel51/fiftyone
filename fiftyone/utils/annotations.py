@@ -400,6 +400,7 @@ def _build_label_schema(
                 )
             )
 
+        # Converting to return type normalizes for single vs multiple labels
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
