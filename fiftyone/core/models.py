@@ -468,7 +468,7 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
         num_workers = fout.recommend_num_workers()
 
     dataset = fout.TorchImageDataset(
-        samples.values("filepath"),
+        samples=samples,
         transform=model.transforms,
         use_numpy=use_numpy,
         force_rgb=True,
