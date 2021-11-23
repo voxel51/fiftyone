@@ -149,7 +149,6 @@ const Wrapper = <T extends unknown>({
               ? selectedCounts.current.get(value)
               : count
           }
-          subCountAtom={subCountValueAtom({ path, modal, value })}
           setValue={(checked: boolean) => {
             if (checked) {
               selectedSet.add(value);

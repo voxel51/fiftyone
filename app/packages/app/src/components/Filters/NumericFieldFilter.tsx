@@ -162,6 +162,7 @@ const NumericFieldFilter = ({
           nonfinites.some(([_, [v]]) => v !== nonfinites[0][1][0])) &&
           nonfinites.map(([key, [value, setValue]]) => (
             <Checkbox
+              key={key}
               color={color}
               name={NONFINITES[key]}
               value={value}

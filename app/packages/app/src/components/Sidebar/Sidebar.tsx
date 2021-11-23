@@ -1,5 +1,17 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { ArrowDropDown, ArrowDropUp, Close, Edit } from "@material-ui/icons";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  ArrowDropDown,
+  ArrowDropUp,
+  Close,
+  Edit,
+  RefreshOutlined,
+} from "@material-ui/icons";
 import {
   atomFamily,
   DefaultValue,
@@ -35,6 +47,7 @@ import {
   LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
+  VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
 } from "../../recoil/constants";
 import { fieldIsFiltered } from "../../recoil/filters";
@@ -281,12 +294,17 @@ const getFilterData = (
     ];
   }
 
-  return fields.map(({ ftype, subfield, name }) => ({
-    path: [path, name].join("."),
-    modal,
-    ftype: ftype === LIST_FIELD ? subfield : ftype,
-    named: true,
-  }));
+  const label = VALID_LABEL_TYPES.includes(parent.embeddedDocType);
+  const bbox = ["Detection"];
+
+  return fields
+    .filter(({ name }) => label && name === "tags")
+    .map(({ ftype, subfield, name }) => ({
+      path: [path, name].join("."),
+      modal,
+      ftype: ftype === LIST_FIELD ? subfield : ftype,
+      named: true,
+    }));
 };
 
 const InteractiveEntry = React.memo(
@@ -530,7 +548,7 @@ const fn = (
     currentY[key] = y;
 
     if (shown) {
-      y += getHeight(el) + MARGIN;
+      y += el.getBoundingClientRect().height + MARGIN;
     }
   }
 
@@ -565,7 +583,7 @@ const fn = (
     };
 
     if (shown) {
-      y += getHeight(el) + MARGIN;
+      y += el.getBoundingClientRect().height + MARGIN;
     }
 
     if (activeKey) {
@@ -650,70 +668,67 @@ const AddGroup = ({
   );
 };
 
-const getY = (el: HTMLElement) => {
-  return el ? el.getBoundingClientRect().y : 0;
-};
-
-const getHeight = (el: HTMLDivElement) => {
-  return el ? el.getBoundingClientRect().height : 0;
-};
-
 const getAfterKey = (
   activeKey: string,
   items: InteractiveItems,
   order: string[],
-  y: number
+  direction: Direction
 ): string | null => {
-  const top = getY(items[order[0]].el.parentNode);
-
-  const data: Array<{ top: number; key: string; height: number }> = order
-    .map((key) => ({ height: getHeight(items[key].el), key }))
-    .reduce(
-      (tops, { height, key }) => {
-        return [
-          ...tops,
-          {
-            top: tops[tops.length - 1].top + tops[tops.length - 1].height,
-            height,
-            key,
-          },
-        ];
-      },
-      [{ top, height: -3, key: null }]
-    );
-
-  y += data.filter(({ key }) => key === activeKey)[0].top;
-
+  const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
+  const { top, bottom } = items[activeKey].el.getBoundingClientRect();
+  const y = (direction === Direction.UP ? top : bottom) - baseTop;
   const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
+  const data: Array<{ top: number; height: number; key: string }> = isGroup
+    ? [{ top: 0, height: 0, key: null }]
+    : [];
+  let previous = { top: 0, height: 0 };
+
+  for (let i = 0; i < order.length; i++) {
+    const key = order[i];
+    const entry = items[key].entry;
+
+    if (entry.kind === EntryKind.PATH && !entry.shown) {
+      continue;
+    }
+
+    if (entry.kind === EntryKind.EMPTY && !entry.shown) {
+      continue;
+    }
+
+    if (entry.kind === EntryKind.TAIL || entry.kind === EntryKind.EMPTY) {
+      continue;
+    }
+
+    if (isGroup) {
+      if (entry.kind !== EntryKind.GROUP) continue;
+
+      if (key === activeKey) continue;
+    }
+
+    const height = items[key].el.getBoundingClientRect().height;
+
+    const top = previous.top + previous.height + MARGIN;
+    data.push({ key, height, top });
+    previous = { top, height };
+  }
+
   const filtered = data
-    .filter(({ key }) => {
-      if (key === null) {
-        return isGroup;
-      }
-
-      const { entry } = items[key];
-      if (isGroup) {
-        return entry.kind === EntryKind.GROUP && key !== activeKey;
-      }
-
-      if (entry.kind === EntryKind.EMPTY) {
-        return false;
-      }
-
-      if (entry.kind === EntryKind.TAIL) {
-        return false;
-      }
-
-      return true;
+    .map(({ key, top, height }, i) => {
+      const midpoint = top + height / 2;
+      return {
+        delta: direction === Direction.UP ? midpoint - y : y - midpoint,
+        i,
+        key,
+      };
     })
-    .map(({ key, top, height }) => ({
-      delta: Math.abs(top + height / 2 - y),
-      key,
-    }))
-    .sort((a, b) => a.delta - b.delta);
+    .sort((a, b) => a.delta - b.delta)
+    .filter(({ delta }) => delta > 0);
+
+  if (!filtered.length) {
+    return activeKey;
+  }
 
   const result = filtered[0].key;
-
   if (isGroup) {
     if (result === null) {
       return null;
@@ -754,10 +769,17 @@ type InteractiveItems = {
   };
 };
 
+enum Direction {
+  UP = "UP",
+  DOWN = "DOWN",
+}
+
 const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
   const order = useRef<string[]>([]);
   const down = useRef<string>(null);
+  const last = useRef<number>(null);
+  const lastDirection = useRef<Direction>(null);
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
 
@@ -786,16 +808,20 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     }
   }
 
-  const getNewOrder = (event: MouseEvent): string[] => {
-    const delta = event.clientY - start.current;
-    const after = getAfterKey(
+  const getNewOrder = (direction: Direction): string[] => {
+    let after = getAfterKey(
       down.current,
       items.current,
       order.current,
-      delta
+      direction
     );
 
     let entry = items.current[down.current].entry;
+    if (down.current === after && entry.kind === EntryKind.GROUP) {
+      const ai = order.current.indexOf(after) - 1;
+      after = ai >= 0 ? order.current[ai] : null;
+    }
+
     let from = order.current.indexOf(down.current);
     const to = after ? order.current.indexOf(after) : 0;
 
@@ -836,45 +862,57 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
       return;
     }
 
-    const newOrder = getNewOrder(event);
+    const newOrder = getNewOrder(lastDirection.current);
     const results = fn(items.current, order.current, newOrder);
-    for (const key of order.current) {
-      items.current[key].controller.set(results[key]);
-    }
-
     if (order.current.some((key, i) => newOrder[i] !== key)) {
       order.current = newOrder;
       setEntries(order.current.map((key) => items.current[key].entry));
     }
+    for (const key of newOrder) {
+      items.current[key].controller.set(results[key]);
+    }
+
     down.current = null;
     start.current = null;
+    lastDirection.current = null;
   });
 
   useEventHandler(document.body, "mousemove", (event) => {
     if (down.current == null) return;
 
+    const delta = event.clientY - last.current;
+    if (Math.abs(delta) <= 1) return;
+
     const entry = items.current[down.current].entry;
+    lastDirection.current =
+      event.clientY - last.current > 0 ? Direction.DOWN : Direction.UP;
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
-    const newOrder = getNewOrder(event);
-    const delta = event.clientY - start.current;
-    const results = fn(
-      items.current,
-      order.current,
-      newOrder,
-      down.current,
-      delta
-    );
-    for (const key of order.current)
-      items.current[key].controller.start(results[key]);
+
+    requestAnimationFrame(() => {
+      const realDelta = event.clientY - start.current;
+      const newOrder = getNewOrder(lastDirection.current);
+      const results = fn(
+        items.current,
+        order.current,
+        newOrder,
+        down.current,
+        realDelta
+      );
+      for (const key of order.current)
+        items.current[key].controller.start(results[key]);
+
+      last.current = event.clientY;
+    });
   });
 
   const trigger = useCallback((event) => {
     if (event.button !== 0) return;
     down.current = event.currentTarget.dataset.key;
     start.current = event.clientY;
+    last.current = start.current;
   }, []);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const placements = fn(items.current, order.current, order.current);
     for (const key of order.current)
       items.current[key].controller.set(placements[key]);
@@ -905,12 +943,13 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
                 items.current[key].el.removeEventListener("mousedown", trigger);
                 observer.unobserve(items.current[key].el);
               }
-
+              items.current[key].el = node;
               if (node) {
                 observer.observe(node);
                 node.addEventListener("mousedown", trigger);
+                // forces placement on rerender. fix me?
+                node.style.top = items.current[key].controller.springs.top.goal;
               }
-              items.current[key].el = node;
             }}
             key={key}
             style={items.current[key].controller.springs}
