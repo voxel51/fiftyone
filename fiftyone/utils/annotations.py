@@ -376,6 +376,8 @@ def _build_label_schema(
 
     _label_schema = {}
 
+    is_video = samples.media_type == fom.VIDEO
+
     for _label_field, _label_info in label_schema.items():
         (
             _label_type,
@@ -401,6 +403,14 @@ def _build_label_schema(
         # Converting to return type normalizes for single vs multiple labels
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
+
+        if is_video and _return_type in _SPATIAL_TYPES and not _is_frame_field:
+            raise ValueError(
+                "Invalid label field '%s'. Spatial labels of type '%s' being "
+                "annotated on a video must be stored in a frame-level field, "
+                "i.e., one that starts with 'frames.'"
+                % (_label_field, _label_type)
+            )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
