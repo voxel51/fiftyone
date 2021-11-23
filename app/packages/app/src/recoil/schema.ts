@@ -378,7 +378,7 @@ export const meetsFieldType = (
   {
     ftype,
     embeddedDocType,
-    acceptLists,
+    acceptLists = true,
   }: {
     ftype: string | string[];
     embeddedDocType?: string | string[];

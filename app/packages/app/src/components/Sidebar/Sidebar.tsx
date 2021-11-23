@@ -668,49 +668,88 @@ const AddGroup = ({
   );
 };
 
-const getAfterKey = (
-  activeKey: string,
+const isShown = (entry: SidebarEntry) => {
+  if (entry.kind === EntryKind.PATH && !entry.shown) {
+    return false;
+  }
+
+  if (entry.kind === EntryKind.EMPTY && !entry.shown) {
+    return false;
+  }
+
+  if (entry.kind === EntryKind.TAIL || entry.kind === EntryKind.EMPTY) {
+    return false;
+  }
+
+  return true;
+};
+
+const measureEntries = (
   items: InteractiveItems,
-  order: string[],
-  direction: Direction
-): string | null => {
-  const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
-  const { top, bottom } = items[activeKey].el.getBoundingClientRect();
-  const y = (direction === Direction.UP ? top : bottom) - baseTop;
-  const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
-  const data: Array<{ top: number; height: number; key: string }> = isGroup
-    ? [{ top: 0, height: 0, key: null }]
-    : [];
+  order: string[]
+): { top: number; height: number; key: string }[] => {
+  const data = [];
   let previous = { top: 0, height: 0 };
 
   for (let i = 0; i < order.length; i++) {
     const key = order[i];
     const entry = items[key].entry;
 
-    if (entry.kind === EntryKind.PATH && !entry.shown) {
-      continue;
-    }
-
-    if (entry.kind === EntryKind.EMPTY && !entry.shown) {
-      continue;
-    }
-
-    if (entry.kind === EntryKind.TAIL || entry.kind === EntryKind.EMPTY) {
-      continue;
-    }
-
-    if (isGroup) {
-      if (entry.kind !== EntryKind.GROUP) continue;
-
-      if (key === activeKey) continue;
-    }
+    if (!isShown(entry)) continue;
 
     const height = items[key].el.getBoundingClientRect().height;
-
     const top = previous.top + previous.height + MARGIN;
     data.push({ key, height, top });
     previous = { top, height };
   }
+
+  return data;
+};
+
+const measureGroups = (
+  items: InteractiveItems,
+  order: string[]
+): { top: number; height: number; key: string }[] => {
+  const data = [];
+  let current = { top: 0, height: 0, key: null };
+  let top = 0;
+
+  for (let i = 0; i < order.length; i++) {
+    const key = order[i];
+    const entry = items[key].entry;
+
+    if (entry.kind === EntryKind.GROUP) {
+      data.push(current);
+      current = { top, height: 0, key };
+    }
+
+    if (!isShown(entry)) continue;
+
+    const height = items[key].el.getBoundingClientRect().height;
+    top += height + MARGIN;
+  }
+
+  return data;
+};
+
+const getAfterKey = (
+  activeKey: string,
+  items: InteractiveItems,
+  order: string[],
+  direction: Direction
+): string | null => {
+  if (!items[activeKey].el) {
+    return;
+  }
+
+  const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
+  const { top, bottom } = items[activeKey].el.getBoundingClientRect();
+  const y = (direction === Direction.UP ? top : bottom) - baseTop;
+  const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
+
+  const data = isGroup
+    ? measureGroups(items, order)
+    : measureEntries(items, order);
 
   const filtered = data
     .map(({ key, top, height }, i) => {
@@ -725,10 +764,11 @@ const getAfterKey = (
     .filter(({ delta }) => delta > 0);
 
   if (!filtered.length) {
-    return activeKey;
+    return isGroup ? null : order[1];
   }
 
   const result = filtered[0].key;
+  console.log(result);
   if (isGroup) {
     if (result === null) {
       return null;
