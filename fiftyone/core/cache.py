@@ -200,7 +200,13 @@ class HTTPStorageClient(etas.HTTPStorageClient):
 
     def get_local_path(self, remote_path):
         p = urlparse.urlparse(remote_path)
-        return os.path.join(p.hostname, *p.path.lstrip("/").split("/"))
+
+        if p.port is not None:
+            host = "%s:%d" % (p.hostname, p.port)
+        else:
+            host = p.hostname
+
+        return os.path.join(host, *p.path.lstrip("/").split("/"))
 
 
 class MediaCache(object):
