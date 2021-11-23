@@ -182,6 +182,7 @@ def annotate(
 
     config = _parse_config(backend, None, media_field, **kwargs)
     anno_backend = config.build()
+    anno_backend.ensure_requirements()
 
     label_schema, samples = _build_label_schema(
         samples,
@@ -1920,6 +1921,7 @@ class AnnotationResults(foa.AnnotationResults):
     def __init__(self, samples, config, id_map, backend=None):
         if backend is None:
             backend = config.build()
+            backend.ensure_requirements()
 
         self._samples = samples
         self.id_map = id_map
