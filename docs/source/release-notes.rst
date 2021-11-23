@@ -3,6 +3,41 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.2:
+
+FiftyOne 0.14.2
+---------------
+*Released November 23, 2021*
+
+App
+
+- Improved mask loading times for
+  :class:`Segmentation <fiftyone.core.labels.Segmenataion>` and
+  :class:`Detection <fiftyone.core.labels.Detection>` labels and
+  map loading times for
+  :class:`Heatmap <fiftyone.core.labels.Heatmap>` labels
+
+Core
+
+- Optimized image metadata calculation to read only the bare minimum byte
+  content of each image
+- Improved handling of relative paths and user paths in config settings and
+  environment variables
+
+Brain
+
+- Added the `points` keyword argument to
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>` for
+  providing your own manually computed low-dimensional representation for use
+  with interactive embeddings plots
+- Improved handling of missing embeddings in all methods
+- Added requirements checks that occur at the start of all methods to ensure the
+  success expensive computations
+
+Annotation
+
+- Changed CVAT uploads to retain original filenames
+
 .. _release-notes-v0.14.1:
 
 FiftyOne 0.14.1
