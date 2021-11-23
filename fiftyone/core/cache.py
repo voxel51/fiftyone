@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 media_cache = None
 gc_service = None
+minio_alias_prefix = None
+minio_endpoint_prefix = None
 
 
 def init_media_cache(config):
@@ -39,11 +41,28 @@ def init_media_cache(config):
     """
     global media_cache
     global gc_service
+    global minio_alias_prefix
+    global minio_endpoint_prefix
 
     media_cache = MediaCache(config)
 
     if media_cache.cache_size >= 0:
         gc_service = fos.MediaCacheService()
+
+    try:
+        credentials = _load_minio_credentials()
+
+        if "alias" in credentials:
+            minio_alias_prefix = credentials["alias"] + "://"
+        else:
+            minio_alias_prefix = None
+
+        if "endpoint_url" in credentials:
+            minio_endpoint_prefix = credentials["endpoint_url"] + "/"
+        else:
+            minio_endpoint_prefix = None
+    except:
+        pass
 
 
 def download_media(sample_collection, update=False, skip_failures=True):
@@ -102,7 +121,7 @@ def upload_media(
     """
     fs = _get_file_system(remote_dir)
 
-    if fs not in (FileSystem.S3, FileSystem.GCS):
+    if fs not in (FileSystem.S3, FileSystem.GCS, FileSystem.MINIO):
         raise ValueError(
             "Cannot upload media to '%s'; unsupported file system '%s'"
             % (remote_dir, fs)
@@ -148,42 +167,46 @@ def upload_media(
 class FileSystem(object):
     """Enumeration of the available file systems."""
 
-    HTTP = "http"
     S3 = "s3"
     GCS = "gcs"
+    MINIO = "minio"
+    HTTP = "http"
     LOCAL = "local"
-
-
-class HTTPStorageClient(etas.HTTPStorageClient):
-    """.. autoclass:: eta.core.storage.HTTPStorageClient"""
-
-    @staticmethod
-    def get_local_path(remote_path):
-        return os.path.basename(urlparse.urlparse(remote_path).path)
 
 
 class S3StorageClient(etas.S3StorageClient):
     """.. autoclass:: eta.core.storage.S3StorageClient"""
 
-    @staticmethod
-    def get_local_path(remote_path):
-        prefix, path = remote_path[:5], remote_path[5:]
-        if prefix != "s3://":
-            raise ValueError("Invalid S3 path '%s'" % remote_path)
-
-        return path
+    def get_local_path(self, remote_path):
+        return self._strip_prefix(remote_path)
 
 
 class GoogleCloudStorageClient(etas.GoogleCloudStorageClient):
     """.. autoclass:: eta.core.storage.GoogleCloudStorageClient"""
 
-    @staticmethod
-    def get_local_path(remote_path):
-        prefix, path = remote_path[:5], remote_path[5:]
-        if prefix != "gs://":
-            raise ValueError("Invalid GCS path '%s'" % remote_path)
+    def get_local_path(self, remote_path):
+        return self._strip_prefix(remote_path)
 
-        return path
+
+class MinIOStorageClient(etas.MinIOStorageClient):
+    """.. autoclass:: eta.core.storage.MinIOStorageClient"""
+
+    def get_local_path(self, remote_path):
+        return self._strip_prefix(remote_path)
+
+
+class HTTPStorageClient(etas.HTTPStorageClient):
+    """.. autoclass:: eta.core.storage.HTTPStorageClient"""
+
+    def get_local_path(self, remote_path):
+        p = urlparse.urlparse(remote_path)
+
+        if p.port is not None:
+            host = "%s:%d" % (p.hostname, p.port)
+        else:
+            host = p.hostname
+
+        return os.path.join(host, *p.path.lstrip("/").split("/"))
 
 
 class MediaCache(object):
@@ -196,9 +219,11 @@ class MediaCache(object):
 
     def __init__(self, config):
         self.config = config
-        self._http_client = None
+
         self._s3_client = None
         self._gcs_client = None
+        self._minio_client = None
+        self._http_client = None
 
     @property
     def cache_dir(self):
@@ -580,6 +605,14 @@ class MediaCache(object):
                 )
 
             return self._gcs_client
+
+        if fs == FileSystem.MINIO:
+            if self._minio_client is None:
+                self._minio_client = _make_client(
+                    fs, num_workers=self.num_workers
+                )
+
+            return self._minio_client
 
         if fs == FileSystem.HTTP:
             if self._http_client is None:
@@ -1054,49 +1087,69 @@ def _get_url(client, remote_path, **kwargs):
 
 
 def _get_file_system(path):
-    if path.startswith("http"):
-        return FileSystem.HTTP
+    # Check MinIO first in case alias/endpoint clashes with another file system
+    if (
+        minio_alias_prefix is not None and path.startswith(minio_alias_prefix)
+    ) or (
+        minio_endpoint_prefix is not None
+        and path.startswith(minio_endpoint_prefix)
+    ):
+        return FileSystem.MINIO
+
+    if path.startswith("s3://"):
+        return FileSystem.S3
 
     if path.startswith("gs://"):
         return FileSystem.GCS
 
-    if path.startswith("s3://"):
-        return FileSystem.S3
+    if path.startswith(("http://", "https://")):
+        return FileSystem.HTTP
 
     return FileSystem.LOCAL
 
 
 def _make_client(fs, num_workers=None):
+    kwargs = {}
+
+    if num_workers is not None and num_workers > 10:
+        kwargs["max_pool_connections"] = num_workers
+
     if fs == FileSystem.S3:
-        profile = media_cache.config.aws_profile
-        credentials_path = media_cache.config.aws_config_file
-        credentials, _ = S3StorageClient.load_credentials(
-            credentials_path=credentials_path, profile=profile
-        )
-
-        kwargs = {}
-        if num_workers is not None and num_workers > 10:
-            kwargs["max_pool_connections"] = num_workers
-
+        credentials = _load_s3_credentials()
         return S3StorageClient(credentials=credentials, **kwargs)
 
     if fs == FileSystem.GCS:
-        credentials_path = media_cache.config.google_application_credentials
-        credentials, _ = GoogleCloudStorageClient.load_credentials(
-            credentials_path=credentials_path
-        )
-
-        kwargs = {}
-        if num_workers is not None and num_workers > 10:
-            kwargs["max_pool_connections"] = num_workers
-
+        credentials = _load_gcs_credentials()
         return GoogleCloudStorageClient(credentials=credentials, **kwargs)
 
-    if fs == FileSystem.HTTP:
-        kwargs = {}
-        if num_workers is not None and num_workers > 10:
-            kwargs["max_pool_connections"] = num_workers
+    if fs == FileSystem.MINIO:
+        credentials = _load_minio_credentials()
+        return MinIOStorageClient(credentials=credentials, **kwargs)
 
+    if fs == FileSystem.HTTP:
         return HTTPStorageClient(**kwargs)
 
     raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def _load_s3_credentials():
+    credentials, _ = S3StorageClient.load_credentials(
+        credentials_path=media_cache.config.aws_config_file,
+        profile=media_cache.config.aws_profile,
+    )
+    return credentials
+
+
+def _load_gcs_credentials():
+    credentials, _ = GoogleCloudStorageClient.load_credentials(
+        credentials_path=media_cache.config.google_application_credentials
+    )
+    return credentials
+
+
+def _load_minio_credentials():
+    credentials, _ = MinIOStorageClient.load_credentials(
+        credentials_path=media_cache.config.minio_config_file,
+        profile=media_cache.config.minio_profile,
+    )
+    return credentials
