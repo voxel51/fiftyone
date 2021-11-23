@@ -1375,12 +1375,11 @@ class TorchImagePatchesDataset(Dataset):
         for filepath, boxes in zip(image_paths, bboxes):
             if not boxes:
                 if handle_missing == "skip":
-                    continue
-
-                if handle_missing == "image":
+                    boxes = []
+                elif handle_missing == "image":
                     boxes = [[0, 0, 1, 1]]
-
-                raise ValueError("Image '%s' has no patches" % filepath)
+                else:
+                    raise ValueError("Image '%s' has no patches" % filepath)
 
             num_patches += len(boxes)
             patch_edges.append(num_patches)
