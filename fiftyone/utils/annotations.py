@@ -388,17 +388,6 @@ def _build_label_schema(
             samples, backend, label_type, _label_field, _label_info
         )
 
-        _return_type = _RETURN_TYPES_MAP[_label_type]
-        if (
-            is_video
-            and not samples._is_frame_field(_label_field)
-            and _return_type in _SPATIAL_TYPES
-        ):
-            raise ValueError(
-                "Label field '%s' is a spatial type being annotated on a video "
-                'so it must start with "frames.".' % _label_field
-            )
-
         if _label_type not in backend.supported_label_types:
             raise ValueError(
                 "Field '%s' has unsupported label type '%s'. The '%s' backend "
@@ -411,9 +400,16 @@ def _build_label_schema(
                 )
             )
 
-        # Converting to return type normalizes for single vs multiple labels
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
+
+        if is_video and _return_type in _SPATIAL_TYPES and not _is_frame_field:
+            raise ValueError(
+                "Invalid label field '%s'. Spatial labels of type '%s' being "
+                "annotated on a video must be stored in a frame-level field, "
+                "i.e., one that starts with 'frames.'"
+                % (_label_field, _label_type)
+            )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
