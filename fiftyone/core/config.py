@@ -490,6 +490,12 @@ class MediaCacheConfig(EnvConfig):
             env_var="GOOGLE_APPLICATION_CREDENTIALS",
             default=None,
         )
+        self.minio_config_file = self.parse_string(
+            d, "minio_config_file", env_var="MINIO_CONFIG_FILE", default=None,
+        )
+        self.minio_profile = self.parse_string(
+            d, "minio_profile", env_var="MINIO_PROFILE", default=None,
+        )
 
         self._set_defaults()
 
