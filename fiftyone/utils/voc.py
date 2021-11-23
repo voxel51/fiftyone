@@ -800,16 +800,14 @@ def _parse_attribute(value):
     except:
         pass
 
-    if isinstance(value, list):
-        return value
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
 
-    if value in {"True", "true"}:
-        return True
+        if value in ("False", "false"):
+            return False
 
-    if value in {"False", "false"}:
-        return False
-
-    if value == "None":
-        return None
+        if value in ("None", ""):
+            return None
 
     return value
