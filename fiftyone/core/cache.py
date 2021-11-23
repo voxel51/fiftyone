@@ -199,7 +199,8 @@ class HTTPStorageClient(etas.HTTPStorageClient):
     """.. autoclass:: eta.core.storage.HTTPStorageClient"""
 
     def get_local_path(self, remote_path):
-        return os.path.basename(urlparse.urlparse(remote_path).path)
+        p = urlparse.urlparse(remote_path)
+        return os.path.join(p.hostname, *p.path.lstrip("/").split("/"))
 
 
 class MediaCache(object):
