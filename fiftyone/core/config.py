@@ -76,34 +76,34 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DATABASE_VALIDATION",
             default=True,
         )
-        self.database_dir = self.parse_string(
+        self.database_dir = self.parse_path(
             d,
             "database_dir",
             env_var="FIFTYONE_DATABASE_DIR",
             default=foc.DEFAULT_DB_DIR,
         )
-        self.dataset_zoo_dir = self.parse_string(
+        self.dataset_zoo_dir = self.parse_path(
             d,
             "dataset_zoo_dir",
             env_var="FIFTYONE_DATASET_ZOO_DIR",
             default=None,
         )
-        self.model_zoo_dir = self.parse_string(
+        self.model_zoo_dir = self.parse_path(
             d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
-        self.dataset_zoo_manifest_paths = self.parse_string_array(
+        self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
             env_var="FIFTYONE_DATASET_ZOO_MANIFEST_PATHS",
             default=None,
         )
-        self.model_zoo_manifest_paths = self.parse_string_array(
+        self.model_zoo_manifest_paths = self.parse_path_array(
             d,
             "model_zoo_manifest_paths",
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
         )
-        self.default_dataset_dir = self.parse_string(
+        self.default_dataset_dir = self.parse_path(
             d,
             "default_dataset_dir",
             env_var="FIFTYONE_DEFAULT_DATASET_DIR",
@@ -558,13 +558,13 @@ def _parse_env_value(value):
     except:
         pass
 
-    if value in {"True", "true"}:
+    if value in ("True", "true"):
         return True
 
-    if value in {"False", "false"}:
+    if value in ("False", "false"):
         return False
 
-    if value == "None":
+    if value in ("None", ""):
         return None
 
     if "," in value:

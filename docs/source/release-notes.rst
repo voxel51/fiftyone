@@ -3,6 +3,58 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.2:
+
+FiftyOne 0.14.2
+---------------
+*Released November 24, 2021*
+
+App
+
+- Improved mask loading times for |Segmentation|, |Heatmap|, and |Detection|
+  labels with instance masks
+
+Core
+
+- Optimized image metadata calculation to read only the bare minimum byte
+  content of each image
+- Improved handling of relative paths and user paths in config settings and
+  environment variables
+- Optimized database I/O and improved the helpfulness of warnings/errors that
+  are generated when applying models via
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
+  and
+  :meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
+- Resolved a `memory leak <https://github.com/voxel51/fiftyone/issues/1442>`_
+  that could occur when computing predictions/embeddings for very large
+  datasets with Torch models
+
+Brain
+
+- Added the `points` keyword argument to
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>` for
+  providing your own manually computed low-dimensional representation for use
+  with interactive embeddings plots
+- Graceful handling of missing/uncomputable embeddings in
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>` and
+  :func:`compute_similarity() <fiftyone.brain.compute_similarity>`
+- Added checks that occur at the start of all methods to ensure that any
+  required dependencies are installed prior to performing any expensive
+  computations
+
+Annotation
+
+- Changed CVAT uploads to retain original filenames
+- A helpful error is now raised when the `"frames."` prefix is omitted from
+  label fields when requesting spatial annotations on video datasets
+
+Zoo
+
+- Patched an issue that prevented downloading the
+  :ref:`VOC-2007 <dataset-zoo-voc-2007>` and
+  :ref:`VOC-2012 <dataset-zoo-voc-2012>` datasets from the zoo
+
 .. _release-notes-v0.14.1:
 
 FiftyOne 0.14.1
