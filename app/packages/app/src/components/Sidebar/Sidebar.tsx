@@ -58,7 +58,7 @@ import {
   NumericFieldFilter,
   StringFieldFilter,
 } from "../Filters";
-import { usePills } from "./utils";
+import { Pills } from "./utils";
 
 const MARGIN = 4;
 
@@ -85,10 +85,10 @@ const GroupInput = styled.input`
 `;
 
 type GroupHeaderProps = {
-  pills?: JSX.Element[];
+  pills?: React.ReactNode;
   title: string;
   setValue?: (name: string) => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 } & DropdownHandleProps;
 
 export const GroupHeader = ({
@@ -145,7 +145,7 @@ export const GroupHeader = ({
           />
         </span>
       )}
-      {...pills}
+      {pills}
       {onDelete && !editing && (
         <span title={"Delete group"}>
           <Close
@@ -280,20 +280,6 @@ const InteractiveGroupEntry = React.memo(
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = useDeleteGroup(modal, name);
-    const pills = [
-      {
-        count: useRecoilValue(numGroupFieldsActive({ modal, group: name })),
-        onClick: useClearFiltered(modal, name),
-        icon: Filter,
-        title: "Clear filters",
-      },
-      {
-        count: useRecoilValue(numGroupFieldsActive({ modal, group: name })),
-        onClick: useClearActive(modal, name),
-        icon: Check,
-        title: "Clear shown",
-      },
-    ];
 
     return (
       <GroupHeader
@@ -302,14 +288,33 @@ const InteractiveGroupEntry = React.memo(
         onClick={() => setExpanded(!expanded)}
         setValue={(value) => renameGroup(value)}
         onDelete={onDelete}
-        pills={usePills(
-          pills
-            .filter(({ count }) => count > 0)
-            .map(({ count, ...rest }) => ({
-              ...rest,
-              text: count.toLocaleString(),
-            }))
-        )}
+        pills={
+          <Pills
+            entries={[
+              {
+                count: useRecoilValue(
+                  numGroupFieldsActive({ modal, group: name })
+                ),
+                onClick: useClearFiltered(modal, name),
+                icon: <Filter />,
+                title: "Clear filters",
+              },
+              {
+                count: useRecoilValue(
+                  numGroupFieldsActive({ modal, group: name })
+                ),
+                onClick: useClearActive(modal, name),
+                icon: <Check />,
+                title: "Clear shown",
+              },
+            ]
+              .filter(({ count }) => count > 0)
+              .map(({ count, ...rest }) => ({
+                ...rest,
+                text: count.toLocaleString(),
+              }))}
+          />
+        }
       />
     );
   }
@@ -825,7 +830,7 @@ const getAfterKey = (
   }
 
   const result = filtered[0].key;
-  console.log(result);
+
   if (isGroup) {
     if (result === null) {
       return null;

@@ -7,7 +7,7 @@ import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
 
-import { MatchEye, usePills } from "./utils";
+import { MatchEye, Pills } from "./utils";
 import { PathEntry, TextEntry } from "./Entries";
 import { GroupHeader } from "./Sidebar";
 
@@ -37,23 +37,6 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
     newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
   }, [matchedTags, allTags]);
 
-  const pills = usePills(
-    [
-      {
-        icon: Check,
-        title: "Clear displayed",
-        onClick: () => setActiveTags([]),
-        active: activeTags,
-      },
-      {
-        icon: Visibility,
-        title: "Clear matched",
-        active: [...matchedTags],
-        onClick: () => setMatchedTags(new Set()),
-      },
-    ].filter(({ active }) => active.length > 0)
-  );
-
   return (
     <>
       <GroupHeader
@@ -63,7 +46,27 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
         style={{ marginBottom: 4 }}
       >
         <span>{title}</span>
-        {...pills}
+        <Pills
+          entries={[
+            {
+              icon: Check,
+              title: "Clear displayed",
+              onClick: () => setActiveTags([]),
+              count: activeTags.length,
+            },
+            {
+              icon: Visibility,
+              title: "Clear matched",
+              count: matchedTags.size,
+              onClick: () => setMatchedTags(new Set()),
+            },
+          ]
+            .filter(({ count }) => count > 0)
+            .map(({ count, ...rest }) => ({
+              ...rest,
+              text: count.toLocaleString(),
+            }))}
+        />
       </GroupHeader>
       {expanded &&
         tags &&

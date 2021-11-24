@@ -12,22 +12,27 @@ export type PillEntry = {
   icon?: ReactNode;
 };
 
-export const usePills = (entries: PillEntry[]): JSX.Element[] => {
+export const Pills = ({ entries }: { entries: PillEntry[] }) => {
   const theme = useTheme();
 
-  return entries.map((data) => (
-    <PillButton
-      {...data}
-      highlight={false}
-      open={false}
-      style={{
-        height: "1.5rem",
-        fontSize: "0.8rem",
-        lineHeight: "1rem",
-        color: theme.font,
-      }}
-    />
-  ));
+  return (
+    <>
+      {entries.map((data, i) => (
+        <PillButton
+          {...data}
+          highlight={false}
+          open={false}
+          style={{
+            height: "1.5rem",
+            fontSize: "0.8rem",
+            lineHeight: "1rem",
+            color: theme.font,
+          }}
+          key={i}
+        />
+      ))}
+    </>
+  );
 };
 
 type MatchEyeProps = {
