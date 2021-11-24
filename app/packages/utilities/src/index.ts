@@ -45,3 +45,17 @@ export const move = <T>(
   }
   return array;
 };
+
+type KeyValue<T> = {
+  [key: string]: T;
+};
+
+export const removeKeys = <T>(
+  obj: KeyValue<T>,
+  keys: Iterable<string>
+): KeyValue<T> => {
+  const set = new Set(keys);
+  return Object.fromEntries(
+    Object.entries(obj).filter(([key]) => !set.has(key))
+  );
+};

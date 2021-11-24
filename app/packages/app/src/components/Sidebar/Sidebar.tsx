@@ -8,9 +8,10 @@ import React, {
 import {
   ArrowDropDown,
   ArrowDropUp,
+  Check,
   Close,
   Edit,
-  RefreshOutlined,
+  Filter,
 } from "@material-ui/icons";
 import {
   atomFamily,
@@ -23,8 +24,9 @@ import {
 import { animated, Controller } from "@react-spring/web";
 import styled from "styled-components";
 
-import { move } from "@fiftyone/utilities";
+import { move, removeKeys } from "@fiftyone/utilities";
 
+import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
 import LabelTagsCell from "./LabelTags";
@@ -56,6 +58,7 @@ import {
   NumericFieldFilter,
   StringFieldFilter,
 } from "../Filters";
+import { usePills } from "./utils";
 
 const MARGIN = 4;
 
@@ -239,12 +242,58 @@ const useDeleteGroup = (modal: boolean, group: string) => {
   return onDelete;
 };
 
+const useClearActive = (modal: boolean, group: string) => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async () => {
+      const paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
+      const active = await snapshot.getPromise(
+        schemaAtoms.activeFields({ modal })
+      );
+
+      set(
+        schemaAtoms.activeFields({ modal }),
+        active.filter((p) => !paths.includes(p))
+      );
+    },
+    [modal, group]
+  );
+};
+
+const useClearFiltered = (modal: boolean, group: string) => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async () => {
+      const paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
+      const filters = await snapshot.getPromise(
+        modal ? filterAtoms.modalFilters : filterAtoms.filters
+      );
+      set(
+        modal ? filterAtoms.modalFilters : filterAtoms.filters,
+        removeKeys(filters, paths)
+      );
+    },
+    [modal, group]
+  );
+};
+
 const InteractiveGroupEntry = React.memo(
   ({ name, modal }: { name: string; modal: boolean }) => {
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
-    const [groups, setGroups] = useRecoilState(sidebarGroups(modal));
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = useDeleteGroup(modal, name);
+    const pills = [
+      {
+        count: useRecoilValue(numGroupFieldsActive({ modal, group: name })),
+        onClick: useClearFiltered(modal, name),
+        icon: Filter,
+        title: "Clear filters",
+      },
+      {
+        count: useRecoilValue(numGroupFieldsActive({ modal, group: name })),
+        onClick: useClearActive(modal, name),
+        icon: Check,
+        title: "Clear shown",
+      },
+    ];
 
     return (
       <GroupHeader
@@ -253,6 +302,14 @@ const InteractiveGroupEntry = React.memo(
         onClick={() => setExpanded(!expanded)}
         setValue={(value) => renameGroup(value)}
         onDelete={onDelete}
+        pills={usePills(
+          pills
+            .filter(({ count }) => count > 0)
+            .map(({ count, ...rest }) => ({
+              ...rest,
+              text: count.toLocaleString(),
+            }))
+        )}
       />
     );
   }

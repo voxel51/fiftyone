@@ -7,7 +7,7 @@ import { PillButton } from "../utils";
 
 export type PillEntry = {
   onClick: () => void;
-  active: string[];
+  text: string;
   title: string;
   icon?: ReactNode;
 };
@@ -18,7 +18,6 @@ export const usePills = (entries: PillEntry[]): JSX.Element[] => {
   return entries.map((data) => (
     <PillButton
       {...data}
-      text={`${data.active.length}`}
       highlight={false}
       open={false}
       style={{
