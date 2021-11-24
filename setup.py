@@ -17,12 +17,12 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.7,<0.8",
+            "fiftyone-brain>=0.7.2,<0.8",
             "fiftyone-db>=0.3,<0.4",
         ]
 
 
-VERSION = "0.6.5"
+VERSION = "0.6.6"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.10,<0.11"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.10.1,<0.11"]}
 
 
 with open("README.md", "r") as fh:
@@ -103,7 +103,7 @@ setup(
         "httplib2<=0.15",
         "pysftp",
         # internal packages
-        "voxel51-eta>=0.6.0,<0.7",
+        "voxel51-eta>=0.6.1,<0.7",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

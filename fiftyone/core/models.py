@@ -7,7 +7,6 @@ FiftyOne models.
 """
 import contextlib
 import inspect
-import itertools
 import logging
 
 import numpy as np
@@ -227,7 +226,7 @@ def _is_flash_model(model):
 def _apply_image_model_single(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
-    errors = []
+    samples = samples.select_fields()
 
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
@@ -242,37 +241,17 @@ def _apply_image_model_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
-
-    if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d images" % num_errors
-        else:
-            estr = "%d image" % num_errors
-
-        lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
 
 def _apply_image_model_batch(
     samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
 
-    errors = []
-
     with fou.ProgressBar(samples) as pb:
-        for idx, sample_batch in enumerate(samples_loader, 1):
+        for sample_batch in samples_loader:
             try:
                 imgs = [
                     etai.read(sample.local_path) for sample in sample_batch
@@ -290,25 +269,14 @@ def _apply_image_model_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                )
 
             pb.update(len(sample_batch))
-
-    if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
-        lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
 
 def _apply_image_model_data_loader(
@@ -320,17 +288,14 @@ def _apply_image_model_data_loader(
     num_workers,
     skip_failures,
 ):
+    samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
 
-    errors = []
-
     with fou.ProgressBar(samples) as pb:
-        for idx, (sample_batch, imgs) in enumerate(
-            zip(samples_loader, data_loader), 1
-        ):
+        for sample_batch, imgs in zip(samples_loader, data_loader):
             try:
                 if isinstance(imgs, Exception):
                     raise imgs
@@ -348,34 +313,22 @@ def _apply_image_model_data_loader(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                )
 
             pb.update(len(sample_batch))
-
-    if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
-        lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
 
 def _apply_image_model_to_frames_single(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
-
-    errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
@@ -403,38 +356,18 @@ def _apply_image_model_to_frames_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
-
-    if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
-        lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
 
 def _apply_image_model_to_frames_batch(
     samples, model, label_field, confidence_thresh, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
-
-    errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
@@ -465,78 +398,39 @@ def _apply_image_model_to_frames_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
-
-    if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
-        lines.append(
-            "Errors occured while generating predictions for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
 
 def _apply_video_model(
     samples, model, label_field, confidence_thresh, skip_failures
 ):
+    samples = samples.select_fields()
     is_clips = samples._dataset._is_clips
 
-    errors = []
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
 
-    for sample in samples.iter_samples(progress=True):
-        if is_clips:
-            frames = etaf.FrameRange(*sample.support)
-        else:
-            frames = None
+            try:
+                with etav.FFmpegVideoReader(
+                    sample.local_path, frames=frames
+                ) as video_reader:
+                    labels = model.predict(video_reader)
 
-        try:
-            with etav.FFmpegVideoReader(
-                sample.local_path, frames=frames
-            ) as video_reader:
-                labels = model.predict(video_reader)
+                sample.add_labels(
+                    labels, label_field, confidence_thresh=confidence_thresh
+                )
+            except Exception as e:
+                if not skip_failures:
+                    raise e
 
-            # Save labels
-            sample.add_labels(
-                labels, label_field, confidence_thresh=confidence_thresh
-            )
-        except Exception as e:
-            if not skip_failures:
-                raise e
-
-            errors.append((sample.local_path, e))
-
-    if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
-        lines.append(
-            "Errors occurred while generating predictions for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
 
 def _get_frame_counts(samples):
@@ -564,7 +458,8 @@ def _iter_batches(video_reader, batch_size):
             frame_numbers = []
             imgs = []
 
-    yield frame_numbers, imgs
+    if frame_numbers:
+        yield frame_numbers, imgs
 
 
 def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
@@ -577,7 +472,7 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
         num_workers = fout.recommend_num_workers()
 
     dataset = fout.TorchImageDataset(
-        samples.get_local_paths(),
+        samples=samples,
         transform=model.transforms,
         use_numpy=use_numpy,
         force_rgb=True,
@@ -809,8 +704,10 @@ def compute_embeddings(
 def _compute_image_embeddings_single(
     samples, model, embeddings_field, skip_failures
 ):
+    samples = samples.select_fields()
     embeddings = []
-    errors = []
+
+    errors = False
 
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
@@ -823,32 +720,14 @@ def _compute_image_embeddings_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
+                errors = True
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field:
                 sample[embeddings_field] = embedding
                 sample.save()
             else:
                 embeddings.append(embedding)
-
-    if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d images" % num_errors
-        else:
-            estr = "%d image" % num_errors
-
-        lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
     if embeddings_field:
         return None
@@ -862,13 +741,14 @@ def _compute_image_embeddings_single(
 def _compute_image_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
 
     embeddings = []
-    errors = []
+    errors = False
 
     with fou.ProgressBar(samples) as pb:
-        for idx, sample_batch in enumerate(samples_loader, 1):
+        for sample_batch in samples_loader:
             embeddings_batch = [None] * len(sample_batch)
 
             try:
@@ -880,7 +760,13 @@ def _compute_image_embeddings_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                errors = True
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                )
 
             if embeddings_field:
                 for sample, embedding in zip(sample_batch, embeddings_batch):
@@ -890,22 +776,6 @@ def _compute_image_embeddings_batch(
                 embeddings.extend(embeddings_batch)
 
             pb.update(len(sample_batch))
-
-    if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
-        lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
     if embeddings_field:
         return None
@@ -919,22 +789,17 @@ def _compute_image_embeddings_batch(
 def _compute_image_embeddings_data_loader(
     samples, model, embeddings_field, batch_size, num_workers, skip_failures
 ):
+    samples = samples.select_fields()
+    samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
 
-    if embeddings_field:
-        samples_loader = fou.iter_batches(samples, batch_size)
-    else:
-        samples_loader = itertools.repeat([None] * batch_size)
-
     embeddings = []
-    errors = []
+    errors = False
 
     with fou.ProgressBar(samples) as pb:
-        for idx, (sample_batch, imgs) in enumerate(
-            zip(samples_loader, data_loader), 1
-        ):
+        for sample_batch, imgs in zip(samples_loader, data_loader):
             embeddings_batch = [None] * len(sample_batch)
 
             try:
@@ -946,7 +811,13 @@ def _compute_image_embeddings_data_loader(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                errors = True
+                logger.warning(
+                    "Batch: %s - %s\nError: %s\n",
+                    sample_batch[0].id,
+                    sample_batch[-1].id,
+                    e,
+                )
 
             if embeddings_field:
                 for sample, embedding in zip(sample_batch, embeddings_batch):
@@ -956,22 +827,6 @@ def _compute_image_embeddings_data_loader(
                 embeddings.extend(embeddings_batch)
 
             pb.update(len(sample_batch))
-
-    if errors:
-        lines = ["Batch: %s\nError: %s" % (idx, str(e)) for idx, e in errors]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
-        lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
     if embeddings_field:
         return None
@@ -985,11 +840,11 @@ def _compute_image_embeddings_data_loader(
 def _compute_frame_embeddings_single(
     samples, model, embeddings_field, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
     embeddings_dict = {}
-    errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
@@ -1021,7 +876,7 @@ def _compute_frame_embeddings_single(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field is None:
                 if embeddings:
@@ -1034,25 +889,6 @@ def _compute_frame_embeddings_single(
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
 
-    if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
-        lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
-
     if embeddings_field:
         return None
 
@@ -1062,11 +898,11 @@ def _compute_frame_embeddings_single(
 def _compute_frame_embeddings_batch(
     samples, model, embeddings_field, batch_size, skip_failures
 ):
+    samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
     embeddings_dict = {}
-    errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
@@ -1103,7 +939,7 @@ def _compute_frame_embeddings_batch(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field is None:
                 if embeddings:
@@ -1116,25 +952,6 @@ def _compute_frame_embeddings_batch(
             # Explicitly set in case actual # frames differed from expected #
             pb.set_iteration(frame_counts[idx])
 
-    if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
-        lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
-
     if embeddings_field:
         return None
 
@@ -1142,54 +959,37 @@ def _compute_frame_embeddings_batch(
 
 
 def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
+    samples = samples.select_fields()
     is_clips = samples._dataset._is_clips
 
     embeddings = []
-    errors = []
+    errors = False
 
-    for sample in samples.iter_samples(progress=True):
-        if is_clips:
-            frames = etaf.FrameRange(*sample.support)
-        else:
-            frames = None
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            if is_clips:
+                frames = etaf.FrameRange(*sample.support)
+            else:
+                frames = None
 
-        try:
-            with etav.FFmpegVideoReader(
-                sample.local_path, frames=frames
-            ) as video_reader:
-                embedding = model.embed(video_reader)[0]
+            try:
+                with etav.FFmpegVideoReader(
+                    sample.local_path, frames=frames
+                ) as video_reader:
+                    embedding = model.embed(video_reader)[0]
 
-        except Exception as e:
-            if not skip_failures:
-                raise e
+            except Exception as e:
+                if not skip_failures:
+                    raise e
 
-            errors.append((sample.local_path, e))
-            embedding = None
+                errors = True
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
-        if embeddings_field:
-            sample[embeddings_field] = embedding
-            sample.save()
-        else:
-            embeddings.append(embedding)
-
-    if errors:
-        lines = [
-            "Video: %s\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
-        lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
+            if embeddings_field:
+                sample[embeddings_field] = embedding
+                sample.save()
+            else:
+                embeddings.append(embedding)
 
     if embeddings_field:
         return None
@@ -1392,8 +1192,9 @@ def _embed_patches(
     batch_size,
     skip_failures,
 ):
+    samples = samples.select_fields(patches_field)
+
     embeddings_dict = {}
-    errors = []
 
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
@@ -1425,32 +1226,13 @@ def _embed_patches(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
                 sample.save()
             else:
                 embeddings_dict[sample.id] = embeddings
-
-    if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d images" % num_errors
-        else:
-            estr = "%d image" % num_errors
-
-        lines.append(
-            "Errors occured while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
     if embeddings_field:
         return None
@@ -1499,6 +1281,7 @@ def _embed_patches_data_loader(
     num_workers,
     skip_failures,
 ):
+    samples = samples.select_fields(patches_field)
     data_loader = _make_patch_data_loader(
         samples,
         model,
@@ -1511,12 +1294,9 @@ def _embed_patches_data_loader(
     )
 
     embeddings_dict = {}
-    errors = []
 
     with fou.ProgressBar(samples) as pb:
-        for idx, (sample, patches) in pb(
-            enumerate(zip(samples, data_loader), 1)
-        ):
+        for sample, patches in pb(zip(samples, data_loader)):
             embeddings = None
 
             try:
@@ -1535,32 +1315,13 @@ def _embed_patches_data_loader(
                 if not skip_failures:
                     raise e
 
-                errors.append((idx, e))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
                 sample.save()
             else:
                 embeddings_dict[sample.id] = embeddings
-
-    if errors:
-        lines = [
-            "Image: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d batches" % num_errors
-        else:
-            estr = "%d batch" % num_errors
-
-        lines.append(
-            "Errors occurred while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
 
     if embeddings_field:
         return None
@@ -1579,11 +1340,11 @@ def _embed_frame_patches(
     batch_size,
     skip_failures,
 ):
+    samples = samples.select_fields(samples._FRAMES_PREFIX + patches_field)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
     embeddings_dict = {}
-    errors = []
 
     with fou.ProgressBar(total=total_frame_count) as pb:
         for idx, sample in enumerate(samples):
@@ -1634,32 +1395,13 @@ def _embed_frame_patches(
                 if not skip_failures:
                     raise e
 
-                errors.append((sample.local_path, e))
+                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
 
             if embeddings_field is None:
                 embeddings_dict[sample.id] = frame_embeddings_dict
 
-        # Explicitly set in case actual # frames differed from expected #
-        pb.set_iteration(frame_counts[idx])
-
-    if errors:
-        lines = [
-            "Video: %s:\nError: %s" % (filepath, str(e))
-            for filepath, e in errors
-        ]
-
-        num_errors = len(errors)
-        if num_errors > 1:
-            estr = "%d videos" % num_errors
-        else:
-            estr = "%d video" % num_errors
-
-        lines.append(
-            "Errors occured while generating embeddings for %s. See above "
-            "for details." % estr
-        )
-
-        logger.warning("\n\n".join(lines))
+            # Explicitly set in case actual # frames differed from expected #
+            pb.set_iteration(frame_counts[idx])
 
     if embeddings_field:
         return None
@@ -1685,18 +1427,10 @@ def _make_patch_data_loader(
     if num_workers is None:
         num_workers = fout.recommend_num_workers()
 
-    image_paths = []
-    detections = []
-    for sample in samples.select_fields(patches_field):
-        patches = foup.parse_patches(
-            sample, patches_field, handle_missing=handle_missing
-        )
-        image_paths.append(sample.local_path)
-        detections.append(patches)
-
     dataset = fout.TorchImagePatchesDataset(
-        image_paths,
-        detections,
+        samples=samples,
+        patches_field=patches_field,
+        handle_missing=handle_missing,
         transform=model.transforms,
         ragged_batches=model.ragged_batches,
         use_numpy=use_numpy,

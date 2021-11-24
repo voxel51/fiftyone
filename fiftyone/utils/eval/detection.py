@@ -141,6 +141,8 @@ def evaluate_detections(
         **kwargs,
     )
     eval_method = config.build()
+    eval_method.ensure_requirements()
+
     eval_method.register_run(samples, eval_key)
     eval_method.register_samples(samples)
 

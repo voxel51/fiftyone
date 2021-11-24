@@ -56,7 +56,6 @@ def test_torch_max_size():
 
 @unittest.skip("Must be run manually")
 def test_torch_image_patches_dataset():
-
     image_path = "/path/to/an/image.png"
 
     dataset = fo.Dataset()
@@ -112,7 +111,7 @@ def test_torch_image_patches_dataset():
     )
 
     torch_dataset = fout.TorchImagePatchesDataset(
-        image_paths, detections, transform
+        image_paths=image_paths, detections=detections, transform=transform
     )
 
     data_loader = torch.utils.data.DataLoader(torch_dataset, batch_size=1)
