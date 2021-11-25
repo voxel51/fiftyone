@@ -774,22 +774,25 @@ const measureGroups = (
 ): { top: number; height: number; key: string }[] => {
   const data = [];
   let current = { top: 0, height: 0, key: null };
-  let top = 0;
 
   for (let i = 0; i < order.length; i++) {
     const key = order[i];
     const entry = items[key].entry;
 
+    if (entry.kind === EntryKind.TAIL) break;
+
     if (entry.kind === EntryKind.GROUP) {
       data.push(current);
-      current = { top, height: 0, key };
+      current = { top: current.top + current.height, height: 0, key };
+      data[data.length - 1].height -= MARGIN;
     }
 
     if (!isShown(entry)) continue;
 
-    const height = items[key].el.getBoundingClientRect().height;
-    top += height + MARGIN;
+    current.height += items[key].el.getBoundingClientRect().height + MARGIN;
   }
+
+  data.push(current);
 
   return data;
 };
@@ -805,37 +808,41 @@ const getAfterKey = (
   }
 
   const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
-  const { top, bottom } = items[activeKey].el.getBoundingClientRect();
-  const y = (direction === Direction.UP ? top : bottom) - baseTop;
   const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
-
   const data = isGroup
     ? measureGroups(items, order)
     : measureEntries(items, order);
+  const { height } = data.filter(({ key }) => key === activeKey)[0];
+  const { top } = items[activeKey].el.getBoundingClientRect();
+  let y = top - baseTop;
+
+  if (direction === Direction.DOWN) {
+    y += height;
+  }
 
   const filtered = data
-    .map(({ key, top, height }, i) => {
+    .map(({ key, top, height }) => {
       const midpoint = top + height / 2;
       return {
         delta: direction === Direction.UP ? midpoint - y : y - midpoint,
-        i,
         key,
       };
     })
     .sort((a, b) => a.delta - b.delta)
-    .filter(({ delta }) => delta > 0);
+    .filter(({ delta }) => delta >= 0);
 
   if (!filtered.length) {
     return isGroup ? null : order[1];
   }
 
-  const result = filtered[0].key;
-
+  let result = filtered[0].key;
   if (isGroup) {
-    if (result === null) {
-      return null;
-    }
+    if (result === null) return null;
+
     let index = order.indexOf(result) + 1;
+    if (result === activeKey) index--;
+    if (index < 0) return null;
+
     while (items[order[index]].entry.kind === EntryKind.PATH) index++;
     return order[index];
   }
@@ -879,6 +886,7 @@ enum Direction {
 const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
   const order = useRef<string[]>([]);
+  const lastOrder = useRef<string[]>([]);
   const down = useRef<string>(null);
   const last = useRef<number>(null);
   const lastDirection = useRef<Direction>(null);
@@ -914,38 +922,38 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     let after = getAfterKey(
       down.current,
       items.current,
-      order.current,
+      lastOrder.current,
       direction
     );
 
     let entry = items.current[down.current].entry;
     if (down.current === after && entry.kind === EntryKind.GROUP) {
-      const ai = order.current.indexOf(after) - 1;
-      after = ai >= 0 ? order.current[ai] : null;
+      const ai = lastOrder.current.indexOf(after) - 1;
+      after = ai >= 0 ? lastOrder.current[ai] : null;
     }
 
-    let from = order.current.indexOf(down.current);
-    const to = after ? order.current.indexOf(after) : 0;
+    let from = lastOrder.current.indexOf(down.current);
+    const to = after ? lastOrder.current.indexOf(after) : 0;
 
     if (entry.kind === EntryKind.PATH) {
-      return move(order.current, from, to);
+      return move(lastOrder.current, from, to);
     }
 
     const section = [];
     do {
-      section.push(order.current[from]);
+      section.push(lastOrder.current[from]);
       from++;
-      entry = items.current[order.current[from]].entry;
+      entry = items.current[lastOrder.current[from]].entry;
     } while (entry.kind !== EntryKind.GROUP && entry.kind !== EntryKind.TAIL);
 
     if (after === null) {
       return [
         ...section,
-        ...order.current.filter((key) => !section.includes(key)),
+        ...lastOrder.current.filter((key) => !section.includes(key)),
       ];
     }
     const result = [];
-    const pool = order.current.filter((key) => !section.includes(key));
+    const pool = lastOrder.current.filter((key) => !section.includes(key));
     let i = 0;
     let terminate = false;
     while (i < pool.length && !terminate) {
@@ -1004,6 +1012,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
         items.current[key].controller.start(results[key]);
 
       last.current = event.clientY;
+      lastOrder.current = newOrder;
     });
   });
 
@@ -1012,6 +1021,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     down.current = event.currentTarget.dataset.key;
     start.current = event.clientY;
     last.current = start.current;
+    lastOrder.current = order.current;
   }, []);
 
   useEffect(() => {
