@@ -832,14 +832,14 @@ const getAfterKey = (
     .filter(({ delta }) => delta >= 0);
 
   if (!filtered.length) {
-    return isGroup ? null : order[1];
+    return direction === Direction.UP ? data.slice(-1)[0].key : data[0].key;
   }
 
   let result = filtered[0].key;
   if (isGroup) {
     if (result === null) return null;
 
-    let index = order.indexOf(result) + 1;
+    let index = order.indexOf(result) + (direction === Direction.UP ? -1 : 1);
     if (result === activeKey) index--;
     if (index < 0) return null;
 
@@ -933,9 +933,10 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     }
 
     let from = lastOrder.current.indexOf(down.current);
-    const to = after ? lastOrder.current.indexOf(after) : 0;
+    let to = after ? lastOrder.current.indexOf(after) : 0;
 
     if (entry.kind === EntryKind.PATH) {
+      to = Math.max(to, 1);
       return move(lastOrder.current, from, to);
     }
 
