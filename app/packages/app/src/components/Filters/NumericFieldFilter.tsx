@@ -91,6 +91,8 @@ type Props = {
   modal: boolean;
   path: string;
   named?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 const NumericFieldFilter = ({

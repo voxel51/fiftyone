@@ -354,6 +354,8 @@ interface Props<T> {
   modal: boolean;
   path: string;
   named?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 const CategoricalFilter = <T extends unknown>({
@@ -363,6 +365,8 @@ const CategoricalFilter = <T extends unknown>({
   path,
   modal,
   named = true,
+  onFocus,
+  onBlur,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
@@ -462,8 +466,14 @@ const CategoricalFilter = <T extends unknown>({
               onFocus={() => {
                 results.length && setActive(results[0][0]);
                 setFocused(true);
+                onFocus && onFocus();
               }}
-              onBlur={() => !hovering && setFocused(false)}
+              onBlur={() => {
+                if (!hovering) {
+                  setFocused(false);
+                  onBlur && onBlur();
+                }
+              }}
             />
             <ResultsWrapper
               key={"results"}

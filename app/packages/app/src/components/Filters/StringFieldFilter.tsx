@@ -8,11 +8,13 @@ import { selectedValuesAtom, excludeAtom } from "./stringState";
 const StringFieldFilter = ({
   path,
   modal,
-  named,
+  ...rest
 }: {
   path: string;
   modal: boolean;
-  named?: boolean;
+  name?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) => {
   return (
     <CategoricalFilter<string | null>
@@ -25,7 +27,7 @@ const StringFieldFilter = ({
       })}
       path={path}
       modal={modal}
-      named={named}
+      {...rest}
     />
   );
 };

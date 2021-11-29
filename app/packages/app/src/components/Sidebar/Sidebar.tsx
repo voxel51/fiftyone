@@ -134,7 +134,10 @@ export const GroupHeader = ({
       {hovering && !editing && setValue && (
         <span title={"Rename group"}>
           <Edit
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
             onClick={() => {
               setEditing(true);
               if (ref.current) {
@@ -149,7 +152,10 @@ export const GroupHeader = ({
       {onDelete && !editing && (
         <span title={"Delete group"}>
           <Close
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
             onClick={() => onDelete()}
           />
         </span>
@@ -370,7 +376,18 @@ const getFilterData = (
 };
 
 const InteractiveEntry = React.memo(
-  ({ modal, path }: { modal: boolean; path: string; group: string }) => {
+  ({
+    modal,
+    path,
+    onFocus,
+    onBlur,
+  }: {
+    modal: boolean;
+    path: string;
+    group: string;
+    onFocus?: () => void;
+    onBlur?: () => void;
+  }) => {
     const [expanded, setExpanded] = useState(false);
     const Arrow = expanded ? ArrowDropUp : ArrowDropDown;
     const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
@@ -407,6 +424,8 @@ const InteractiveEntry = React.memo(
           ? data.map(({ ftype, ...props }) =>
               React.createElement(FILTERS[ftype], {
                 key: props.path,
+                onFocus,
+                onBlur,
                 ...props,
               })
             )
@@ -1025,7 +1044,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
     lastOrder.current = order.current;
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const placements = fn(items.current, order.current, order.current);
     for (const key of order.current)
       items.current[key].controller.set(placements[key]);
@@ -1041,76 +1060,76 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   );
 
   return (
-    <InteractiveSidebarContainer>
-      {entries.map((entry) => {
-        const key = getEntryKey(entry);
-        if (entry.kind === EntryKind.GROUP) {
-          group = entry.name;
-        }
-
-        return (
-          <animated.div
-            data-key={key}
-            ref={(node) => {
-              if (items.current[key].el) {
-                items.current[key].el.removeEventListener("mousedown", trigger);
-                observer.unobserve(items.current[key].el);
-              }
-              items.current[key].el = node;
-              if (node) {
-                observer.observe(node);
-                node.addEventListener("mousedown", trigger);
-                // forces placement on rerender. fix me?
-                node.style.top = items.current[key].controller.springs.top.goal;
-              }
-            }}
-            key={key}
-            style={items.current[key].controller.springs}
-            children={
-              entry.kind === EntryKind.TAIL ? (
-                <AddGroup
-                  onSubmit={(name) => {
-                    const newEntries = [...entries];
-                    newEntries.splice(entries.length - 1, 0, {
-                      kind: EntryKind.GROUP,
-                      name,
-                    });
-
-                    setEntries(newEntries);
-                  }}
-                  modal={modal}
-                />
-              ) : entry.kind === EntryKind.GROUP ? (
-                <InteractiveGroupEntry name={group} modal={modal} />
-              ) : entry.kind == EntryKind.EMPTY ? (
-                <TextEntry text={"No fields"} />
-              ) : (
-                <InteractiveEntry
-                  modal={modal}
-                  path={entry.path}
-                  group={group}
-                />
-              )
-            }
-          />
-        );
-      })}
-    </InteractiveSidebarContainer>
-  );
-};
-
-export type SidebarProps = {
-  modal: boolean;
-};
-
-const Sidebar = React.memo(({ modal }: SidebarProps) => {
-  return (
     <>
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
-      <InteractiveSidebar key={"interactive"} modal={modal} />
+      <InteractiveSidebarContainer>
+        {entries.map((entry) => {
+          const key = getEntryKey(entry);
+          if (entry.kind === EntryKind.GROUP) {
+            group = entry.name;
+          }
+
+          return (
+            <animated.div
+              data-key={key}
+              ref={(node) => {
+                if (items.current[key].el) {
+                  items.current[key].el.removeEventListener(
+                    "mousedown",
+                    trigger
+                  );
+                  observer.unobserve(items.current[key].el);
+                }
+                items.current[key].el = node;
+                if (node) {
+                  observer.observe(node);
+                  node.addEventListener("mousedown", trigger);
+                  // forces placement on rerender. fix me?
+                  node.style.top =
+                    items.current[key].controller.springs.top.goal;
+                }
+              }}
+              key={key}
+              style={items.current[key].controller.springs}
+              children={
+                entry.kind === EntryKind.TAIL ? (
+                  <AddGroup
+                    onSubmit={(name) => {
+                      const newEntries = [...entries];
+                      newEntries.splice(entries.length - 1, 0, {
+                        kind: EntryKind.GROUP,
+                        name,
+                      });
+
+                      setEntries(newEntries);
+                    }}
+                    modal={modal}
+                  />
+                ) : entry.kind === EntryKind.GROUP ? (
+                  <InteractiveGroupEntry name={group} modal={modal} />
+                ) : entry.kind == EntryKind.EMPTY ? (
+                  <TextEntry text={"No fields"} />
+                ) : (
+                  <InteractiveEntry
+                    modal={modal}
+                    path={entry.path}
+                    group={group}
+                    onFocus={(event) => {
+                      items.current[key].controller.set({ zIndex: "1" });
+                    }}
+                    onBlur={(event) => {
+                      items.current[key].controller.set({ zIndex: "0" });
+                    }}
+                  />
+                )
+              }
+            />
+          );
+        })}
+      </InteractiveSidebarContainer>
     </>
   );
-});
+};
 
-export default Sidebar;
+export default InteractiveSidebar;

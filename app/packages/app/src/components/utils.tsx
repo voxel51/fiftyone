@@ -148,6 +148,10 @@ export const PillButton = React.memo(
           ref={ref}
           style={{ ...props, ...style }}
           title={title}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
         >
           {text && <span>{text}</span>}
           {icon}

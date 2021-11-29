@@ -7,12 +7,14 @@ import { selectedValuesAtom } from "./booleanState";
 
 const BooleanFieldFilter = ({
   path,
-  named,
   modal,
+  ...rest
 }: {
   path: string;
   modal: boolean;
   named?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) => {
   return (
     <CategoricalFilter<boolean | null>
@@ -24,7 +26,7 @@ const BooleanFieldFilter = ({
       })}
       modal={modal}
       path={path}
-      named={named}
+      {...rest}
     />
   );
 };
