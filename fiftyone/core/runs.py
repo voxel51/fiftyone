@@ -155,6 +155,15 @@ class Run(Configurable):
             "subclass must implement _results_cache_field()"
         )
 
+    def ensure_requirements(self):
+        """Ensures that any necessary packages to execute this run are
+        installed.
+
+        Runs should respect ``fiftyone.config.requirement_error_level`` when
+        handling errors.
+        """
+        pass
+
     def get_fields(self, samples, key):
         """Gets the fields that were involved in the given run.
 
