@@ -601,7 +601,7 @@ def _compute_pr_curves(samples, config, classes=None):
 
             matches_list = _coco_evaluation_iou_sweep(gts, preds, config)
 
-            for i, matches in enumerate(matches_list):
+            for idx, matches in enumerate(matches_list):
                 for match in matches:
                     gt_label = match[0]
                     pred_label = match[1]
@@ -616,38 +616,38 @@ def _compute_pr_curves(samples, config, classes=None):
 
                     c = gt_label if gt_label is not None else pred_label
 
-                    if c not in thresh_matches[i]:
-                        thresh_matches[i][c] = {
+                    if c not in thresh_matches[idx]:
+                        thresh_matches[idx][c] = {
                             "tp": [],
                             "fp": [],
                             "num_gt": 0,
                         }
 
                     if gt_label == pred_label:
-                        thresh_matches[i][c]["tp"].append(match)
+                        thresh_matches[idx][c]["tp"].append(match)
                     elif pred_label:
-                        thresh_matches[i][c]["fp"].append(match)
+                        thresh_matches[idx][c]["fp"].append(match)
 
                     if gt_label:
-                        thresh_matches[i][c]["num_gt"] += 1
+                        thresh_matches[idx][c]["num_gt"] += 1
 
     if classes is None:
         _classes.discard(None)
         classes = sorted(_classes)
 
     num_classes = len(classes)
-    class_idx_map = {c: i for i, c in enumerate(classes)}
+    class_idx_map = {c: idx for idx, c in enumerate(classes)}
 
     # Compute precision-recall
     # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
     precision = -np.ones((num_threshs, num_classes, 101))
     recall = np.linspace(0, 1, 101)
-    for i, _thresh_matches in enumerate(thresh_matches):
+    for idx, _thresh_matches in enumerate(thresh_matches):
         for c, matches in _thresh_matches.items():
-            j = class_idx_map.get(c, None)
+            c_idx = class_idx_map.get(c, None)
             num_gt = matches["num_gt"]
 
-            if j is None or num_gt == 0:
+            if c_idx is None or num_gt == 0:
                 continue
 
             tp = matches["tp"]
@@ -682,7 +682,7 @@ def _compute_pr_curves(samples, config, classes=None):
             except:
                 pass
 
-            precision[i][j] = q
+            precision[idx][c_idx] = q
 
     return precision, recall, iou_threshs, classes
 
