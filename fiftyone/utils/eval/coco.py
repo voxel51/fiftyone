@@ -192,10 +192,11 @@ class COCOEvaluation(DetectionEvaluation):
         Returns:
             a :class:`DetectionResults`
         """
-        gt_field = self.config.gt_field
-        pred_field = self.config.pred_field
+        config = self.config
+        gt_field = config.gt_field
+        pred_field = config.pred_field
 
-        if not self.config.compute_mAP:
+        if not config.compute_mAP:
             return DetectionResults(
                 matches,
                 eval_key=eval_key,
@@ -206,110 +207,9 @@ class COCOEvaluation(DetectionEvaluation):
                 samples=samples,
             )
 
-        _samples = samples.select_fields([gt_field, pred_field])
-        processing_frames = samples._is_frame_field(pred_field)
-
-        iou_threshs = self.config.iou_threshs
-        thresh_matches = {t: {} for t in iou_threshs}
-
-        if classes is None:
-            _classes = set()
-        else:
-            _classes = None
-
-        # IoU sweep
-        logger.info("Performing IoU sweep...")
-        for sample in _samples.iter_samples(progress=True):
-            if processing_frames:
-                images = sample.frames.values()
-            else:
-                images = [sample]
-
-            for image in images:
-                # Don't edit user's data during sweep
-                gts = _copy_labels(image[self.gt_field])
-                preds = _copy_labels(image[self.pred_field])
-
-                image_matches = _coco_evaluation_iou_sweep(
-                    gts, preds, self.config
-                )
-
-                for t, t_matches in image_matches.items():
-                    for match in t_matches:
-                        gt_label = match[0]
-                        pred_label = match[1]
-                        iscrowd = match[-1]
-
-                        if _classes is not None:
-                            _classes.add(gt_label)
-                            _classes.add(pred_label)
-
-                        if iscrowd:
-                            continue
-
-                        c = gt_label if gt_label is not None else pred_label
-
-                        if c not in thresh_matches[t]:
-                            thresh_matches[t][c] = {
-                                "tp": [],
-                                "fp": [],
-                                "num_gt": 0,
-                            }
-
-                        if gt_label == pred_label:
-                            thresh_matches[t][c]["tp"].append(match)
-                        elif pred_label:
-                            thresh_matches[t][c]["fp"].append(match)
-
-                        if gt_label:
-                            thresh_matches[t][c]["num_gt"] += 1
-
-        if _classes is not None:
-            _classes.discard(None)
-            classes = sorted(_classes)
-
-        # Compute precision-recall array
-        # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
-        precision = -np.ones((len(iou_threshs), len(classes), 101))
-        recall = np.linspace(0, 1, 101)
-        for t in thresh_matches.keys():
-            for c in thresh_matches[t].keys():
-                tp = thresh_matches[t][c]["tp"]
-                fp = thresh_matches[t][c]["fp"]
-                num_gt = thresh_matches[t][c]["num_gt"]
-                if num_gt == 0:
-                    continue
-
-                tp_fp = [1] * len(tp) + [0] * len(fp)
-                confs = [m[3] for m in tp] + [m[3] for m in fp]
-                if None in confs:
-                    raise ValueError(
-                        "All predicted objects must have their `confidence` "
-                        "attribute populated in order to compute "
-                        "precision-recall curves"
-                    )
-
-                inds = np.argsort(-np.array(confs), kind="mergesort")
-                tp_fp = np.array(tp_fp)[inds]
-                tp_sum = np.cumsum(tp_fp).astype(dtype=float)
-                total = np.arange(1, len(tp_fp) + 1).astype(dtype=float)
-
-                pre = tp_sum / total
-                rec = tp_sum / num_gt
-
-                q = np.zeros(101)
-                for i in range(len(pre) - 1, 0, -1):
-                    if pre[i] > pre[i - 1]:
-                        pre[i - 1] = pre[i]
-
-                inds = np.searchsorted(rec, recall, side="left")
-                try:
-                    for ri, pi in enumerate(inds):
-                        q[ri] = pre[pi]
-                except:
-                    pass
-
-                precision[iou_threshs.index(t)][classes.index(c)] = q
+        precision, recall, iou_threshs, classes = _compute_pr_curves(
+            samples, config, classes=classes
+        )
 
         return COCODetectionResults(
             matches,
@@ -489,20 +389,18 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
         gts, preds, id_keys, iou_key, config, max_preds=config.max_preds
     )
 
-    matches_dict = {
-        i: _compute_matches(
+    return [
+        _compute_matches(
             cats,
             pred_ious,
-            i,
+            iou_thresh,
             iscrowd,
-            eval_key="eval",
-            id_key=k,
+            eval_key="_eval",
+            id_key=id_key,
             iou_key=iou_key,
         )
-        for i, k in zip(iou_threshs, id_keys)
-    }
-
-    return matches_dict
+        for iou_thresh, id_key in zip(iou_threshs, id_keys)
+    ]
 
 
 def _coco_evaluation_setup(
@@ -673,6 +571,120 @@ def _compute_matches(
                 )
 
     return matches
+
+
+def _compute_pr_curves(samples, config, classes=None):
+    gt_field = config.gt_field
+    pred_field = config.pred_field
+    iou_threshs = config.iou_threshs
+
+    num_threshs = len(iou_threshs)
+    thresh_matches = [{} for _ in range(num_threshs)]
+
+    if classes is None:
+        _classes = set()
+
+    samples = samples.select_fields([gt_field, pred_field])
+    processing_frames = samples._is_frame_field(pred_field)
+
+    logger.info("Performing IoU sweep...")
+    for sample in samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            # Don't edit user's data during sweep
+            gts = _copy_labels(image[gt_field])
+            preds = _copy_labels(image[pred_field])
+
+            matches_list = _coco_evaluation_iou_sweep(gts, preds, config)
+
+            for i, matches in enumerate(matches_list):
+                for match in matches:
+                    gt_label = match[0]
+                    pred_label = match[1]
+                    iscrowd = match[-1]
+
+                    if classes is None:
+                        _classes.add(gt_label)
+                        _classes.add(pred_label)
+
+                    if iscrowd:
+                        continue
+
+                    c = gt_label if gt_label is not None else pred_label
+
+                    if c not in thresh_matches[i]:
+                        thresh_matches[i][c] = {
+                            "tp": [],
+                            "fp": [],
+                            "num_gt": 0,
+                        }
+
+                    if gt_label == pred_label:
+                        thresh_matches[i][c]["tp"].append(match)
+                    elif pred_label:
+                        thresh_matches[i][c]["fp"].append(match)
+
+                    if gt_label:
+                        thresh_matches[i][c]["num_gt"] += 1
+
+    if classes is None:
+        _classes.discard(None)
+        classes = sorted(_classes)
+
+    num_classes = len(classes)
+    class_idx_map = {c: i for i, c in enumerate(classes)}
+
+    # Compute precision-recall
+    # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
+    precision = -np.ones(num_threshs, num_classes, 101)
+    recall = np.linspace(0, 1, 101)
+    for i, _thresh_matches in enumerate(thresh_matches):
+        for c, matches in _thresh_matches.items():
+            j = class_idx_map.get(c, None)
+            num_gt = matches["num_gt"]
+
+            if j is None or num_gt == 0:
+                continue
+
+            tp = matches["tp"]
+            fp = matches["fp"]
+            tp_fp = [1] * len(tp) + [0] * len(fp)
+            confs = [m[3] for m in tp] + [m[3] for m in fp]
+            if None in confs:
+                raise ValueError(
+                    "All predicted objects must have their `confidence` "
+                    "attribute populated in order to compute precision-recall "
+                    "curves"
+                )
+
+            inds = np.argsort(-np.array(confs), kind="mergesort")
+            tp_fp = np.array(tp_fp)[inds]
+            tp_sum = np.cumsum(tp_fp).astype(dtype=float)
+            total = np.arange(1, len(tp_fp) + 1).astype(dtype=float)
+
+            pre = tp_sum / total
+            rec = tp_sum / num_gt
+
+            q = np.zeros(101)
+            for i in range(len(pre) - 1, 0, -1):
+                if pre[i] > pre[i - 1]:
+                    pre[i - 1] = pre[i]
+
+            inds = np.searchsorted(rec, recall, side="left")
+
+            try:
+                for ri, pi in enumerate(inds):
+                    q[ri] = pre[pi]
+            except:
+                pass
+
+            precision[i][j] = q
+
+    return precision, recall, iou_threshs, classes
 
 
 def _copy_labels(labels):
