@@ -9,7 +9,7 @@ import styled from "styled-components";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as schemaAtoms from "../../recoil/schema";
-import * as selectors from "../../recoil/selectors";
+import * as colorAtoms from "../../recoil/color";
 import * as filterAtoms from "../../recoil/filters";
 
 import * as numericAtoms from "./numericState";
@@ -27,7 +27,6 @@ const NamedRangeSliderContainer = styled.div`
 const NamedRangeSliderHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  text-transform: capitalize;
 `;
 
 const RangeSliderContainer = styled.div`
@@ -100,7 +99,7 @@ const NumericFieldFilter = ({
   path,
   named = true,
 }: Props) => {
-  const color = useRecoilValue(selectors.colorMap(modal))(path.split(".")[0]);
+  const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
   const name = path.split(".").slice(-1)[0];
 
   const setFilter = useSetRecoilState(filterAtoms.filter({ modal, path }));

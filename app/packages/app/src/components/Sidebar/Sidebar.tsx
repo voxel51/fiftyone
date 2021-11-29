@@ -11,7 +11,7 @@ import {
   Check,
   Close,
   Edit,
-  Filter,
+  FilterList,
 } from "@material-ui/icons";
 import {
   atomFamily,
@@ -293,10 +293,10 @@ const InteractiveGroupEntry = React.memo(
             entries={[
               {
                 count: useRecoilValue(
-                  numGroupFieldsActive({ modal, group: name })
+                  numGroupFieldsFiltered({ modal, group: name })
                 ),
                 onClick: useClearFiltered(modal, name),
-                icon: <Filter />,
+                icon: <FilterList />,
                 title: "Clear filters",
               },
               {
@@ -360,7 +360,7 @@ const getFilterData = (
   const bbox = ["Detection"];
 
   return fields
-    .filter(({ name }) => label && name === "tags")
+    .filter(({ name }) => !label || name !== "tags")
     .map(({ ftype, subfield, name }) => ({
       path: [path, name].join("."),
       modal,

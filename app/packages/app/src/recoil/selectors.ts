@@ -1,9 +1,5 @@
 import { DefaultValue, selector, selectorFamily } from "recoil";
 
-import { Coloring, createColorGenerator } from "@fiftyone/looker";
-import { getColor } from "@fiftyone/looker/src/color";
-
-import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 
@@ -130,37 +126,6 @@ export const timeZone = selector<string>({
 export const appConfig = selector<State.Config>({
   key: "appConfig",
   get: ({ get }) => get(atoms.stateDescription)?.config,
-});
-
-export const colorMap = selectorFamily<(val) => string, boolean>({
-  key: "colorMap",
-  get: (modal) => ({ get }) => {
-    const colorByLabel = get(atoms.colorByLabel(modal));
-    let pool = get(atoms.colorPool);
-    pool = pool.length ? pool : [darkTheme.brand];
-    const seed = get(atoms.colorSeed(modal));
-
-    return createColorGenerator(pool, seed);
-  },
-});
-
-export const coloring = selectorFamily<Coloring, boolean>({
-  key: "coloring",
-  get: (modal) => ({ get }) => {
-    const pool = get(atoms.colorPool);
-    const seed = get(atoms.colorSeed(modal));
-    return {
-      seed,
-      pool,
-      scale: get(atoms.stateDescription).colorscale,
-      byLabel: get(atoms.colorByLabel(modal)),
-      defaultMaskTargets: get(defaultTargets),
-      maskTargets: get(targets).fields,
-      targets: new Array(pool.length)
-        .fill(0)
-        .map((_, i) => getColor(pool, seed, i)),
-    };
-  },
 });
 
 export const defaultTargets = selector({

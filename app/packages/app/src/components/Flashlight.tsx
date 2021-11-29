@@ -25,6 +25,7 @@ import {
 } from "@fiftyone/looker";
 
 import * as atoms from "../recoil/atoms";
+import * as colorAtoms from "../recoil/color";
 import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
@@ -90,7 +91,7 @@ const flashlightLookerOptions = selector({
   key: "flashlightLookerOptions",
   get: ({ get }) => {
     return {
-      coloring: get(selectors.coloring(false)),
+      coloring: get(colorAtoms.coloring(false)),
       filter: () => true,
       activePaths: [],
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),

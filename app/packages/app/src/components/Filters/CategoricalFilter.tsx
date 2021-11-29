@@ -16,7 +16,7 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
+import * as colorAtoms from "../../recoil/color";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
@@ -47,7 +47,6 @@ const NamedCategoricalFilterContainer = styled.div`
 const NamedCategoricalFilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  text-transform: capitalize;
 `;
 
 const CHECKBOX_LIMIT = 20;
@@ -366,7 +365,7 @@ const CategoricalFilter = <T extends unknown>({
   named = true,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
-  const color = useRecoilValue(selectors.colorMap(modal))(path.split(".")[0]);
+  const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
   const selected = useRecoilValue(selectedValuesAtom);
   const { count, results } = useRecoilValue(countsAtom);
   const [focused, setFocused] = useState(false);

@@ -5,10 +5,10 @@ import styled from "styled-components";
 import { Checkbox, CircularProgress } from "@material-ui/core";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
+import * as colorAtoms from "../../recoil/color";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
-import { colorMap } from "../../recoil/selectors";
 
 const EntryCounts = ({
   path,
@@ -146,7 +146,7 @@ export const PathEntry = React.memo(
       schemaAtoms.activeField({ modal, path })
     );
     const canCommit = useRef(false);
-    const color = useRecoilValue(colorMap(modal))(path.split(".")[0]);
+    const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
     const theme = useTheme();
     const fieldIsFiltered = useRecoilValue(
       filterAtoms.fieldIsFiltered({ path, modal })

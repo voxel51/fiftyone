@@ -11,6 +11,7 @@ import { useEventHandler, useTheme } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
+import * as colorAtoms from "../recoil/color";
 import * as selectors from "../recoil/selectors";
 import { getSampleSrc, lookerType } from "../recoil/utils";
 
@@ -347,7 +348,7 @@ const lookerOptions = selector({
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
       timeZone: get(selectors.timeZone),
-      coloring: get(selectors.coloring(true)),
+      coloring: get(colorAtoms.coloring(true)),
       alpha: get(atoms.alpha(true)),
     };
   },
