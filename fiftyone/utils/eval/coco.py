@@ -578,14 +578,16 @@ def _compute_pr_curves(samples, config, classes=None):
     pred_field = config.pred_field
     iou_threshs = config.iou_threshs
 
+    samples = samples.select_fields([gt_field, pred_field])
+
+    gt_field, processing_frames = samples._handle_frame_field(gt_field)
+    pred_field, _ = samples._handle_frame_field(pred_field)
+
     num_threshs = len(iou_threshs)
     thresh_matches = [{} for _ in range(num_threshs)]
 
     if classes is None:
         _classes = set()
-
-    samples = samples.select_fields([gt_field, pred_field])
-    processing_frames = samples._is_frame_field(pred_field)
 
     logger.info("Performing IoU sweep...")
     for sample in samples.iter_samples(progress=True):
