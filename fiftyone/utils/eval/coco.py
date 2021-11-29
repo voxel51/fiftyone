@@ -640,7 +640,7 @@ def _compute_pr_curves(samples, config, classes=None):
 
     # Compute precision-recall
     # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
-    precision = -np.ones(num_threshs, num_classes, 101)
+    precision = -np.ones((num_threshs, num_classes, 101))
     recall = np.linspace(0, 1, 101)
     for i, _thresh_matches in enumerate(thresh_matches):
         for c, matches in _thresh_matches.items():
