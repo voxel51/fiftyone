@@ -127,9 +127,6 @@ const NumericFieldFilter = ({
     filterAtoms.fieldIsFiltered({ modal, path })
   );
 
-  const noResults =
-    !hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none";
-
   return (
     <NamedRangeSliderContainer>
       {named && name && (
@@ -137,7 +134,10 @@ const NumericFieldFilter = ({
           {name.replaceAll("_", " ")}
         </NamedRangeSliderHeader>
       )}
-      <RangeSliderContainer>
+      <RangeSliderContainer
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{ cursor: "default" }}
+      >
         {hasBounds ? (
           <RangeSlider
             showBounds={false}

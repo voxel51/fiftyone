@@ -826,39 +826,42 @@ const getAfterKey = (
     return;
   }
 
+  const up = direction === Direction.UP;
   const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
   const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
   const data = isGroup
     ? measureGroups(items, order)
     : measureEntries(items, order);
-  const { height } = data.filter(({ key }) => key === activeKey)[0];
+  const { height: activeHeight } = data.filter(
+    ({ key }) => key === activeKey
+  )[0];
   const { top } = items[activeKey].el.getBoundingClientRect();
   let y = top - baseTop;
 
-  if (direction === Direction.DOWN) {
-    y += height;
+  if (!up) {
+    y += activeHeight;
   }
 
   const filtered = data
     .map(({ key, top, height }) => {
-      const midpoint = top + height / 2;
+      const midpoint = up ? top + height / 2 : top + height - height / 2;
       return {
-        delta: direction === Direction.UP ? midpoint - y : y - midpoint,
+        delta: up ? midpoint - y : y - midpoint,
         key,
       };
     })
     .sort((a, b) => a.delta - b.delta)
-    .filter(({ delta }) => delta >= 0);
+    .filter(({ delta, key }) => delta >= 0 || key === activeKey);
 
   if (!filtered.length) {
-    return direction === Direction.UP ? data.slice(-1)[0].key : data[0].key;
+    return up ? data.slice(-1)[0].key : data[0].key;
   }
 
   let result = filtered[0].key;
   if (isGroup) {
     if (result === null) return null;
 
-    let index = order.indexOf(result) + (direction === Direction.UP ? -1 : 1);
+    let index = order.indexOf(result) + (up ? -1 : 1);
     if (result === activeKey) index--;
     if (index < 0) return null;
 
@@ -1038,6 +1041,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
 
   const trigger = useCallback((event) => {
     if (event.button !== 0) return;
+
     down.current = event.currentTarget.dataset.key;
     start.current = event.clientY;
     last.current = start.current;
@@ -1073,19 +1077,14 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
           return (
             <animated.div
               data-key={key}
+              onMouseDown={trigger}
               ref={(node) => {
-                if (items.current[key].el) {
-                  items.current[key].el.removeEventListener(
-                    "mousedown",
-                    trigger
-                  );
+                if (items.current[key].el)
                   observer.unobserve(items.current[key].el);
-                }
+
                 items.current[key].el = node;
                 if (node) {
                   observer.observe(node);
-                  node.addEventListener("mousedown", trigger);
-                  // forces placement on rerender. fix me?
                   node.style.top =
                     items.current[key].controller.springs.top.goal;
                 }

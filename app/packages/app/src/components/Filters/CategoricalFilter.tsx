@@ -415,7 +415,9 @@ const CategoricalFilter = <T extends unknown>({
       <NamedCategoricalFilterHeader>
         {named && name && <>{name.replaceAll("_", " ")}</>}
       </NamedCategoricalFilterHeader>
-      <CategoricalFilterContainer>
+      <CategoricalFilterContainer
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         {count > CHECKBOX_LIMIT && (
           <>
             <Input
