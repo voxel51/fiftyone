@@ -466,15 +466,6 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
--   **git_repository** (*None*): the url of the git repository to link with the
-    created tasks and to which to upload annotations. The string can
-    also contain the path to the file within the repository `URL [PATH]`
-    as defined in the `CVAT documentation <https://openvinotoolkit.github.io/cvat/docs/manual/basics/creating_an_annotation_task/#dataset-repository>`_
--   **push_to_git** (*True*): whether to automatically push annotations to git
-    whenever samples are uploaded or downloaded and a `git_repository` is
-    provided
--   **git_lfs** (*False*): whether to use the git LFS (Large File Storage) to
-    store annotations
 
 
 .. _cvat-label-schema:
@@ -1838,60 +1829,6 @@ attributes between annotation runs.
    :alt: cvat-occ-widget
    :align: center
 
-Connecting to Dataset Repository 
---------------------------------
-
-CVAT provides the ability to link an annotation task to a git dataset repository,
-allowing you to upload the labels of the task to a zip file in the repository.
-
-The `git_repository` argument can be used to define the URL of the Git
-repository when annotating a FiftyOne |SampleCollection|. Alternatively, 
-you can provide the URL and a path
-to the annotations within the repository formatted as `URL [PATH]` 
-`defined here. <https://openvinotoolkit.github.io/cvat/docs/manual/basics/creating_an_annotation_task/#dataset-repository>`_
-
-When samples are
-uploaded and when annotations are downloaded, the labels in the task are
-automatically pushed to the `git_repository` unless the `push_to_git` parameter
-is set to `False`. If the `git_lfs` flag is `True`, then the git Large File
-Storage (LFS) will be used to store the annotations.
-
-.. note::
-    
-    The first time that you connect CVAT to a git repository, you will need to add
-    the SSH key that gets printed to your git account. 
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart").clone()
-    view = dataset.take(1)
-
-    anno_key = "cvat_github"
-    label_field = "ground_truth"
-    git_repository = "https://github.com/username/repository-name"
-    git_repository_alt = "https://github.com/username/repository-name [path/to/annotations.xml]"
-    push_to_git = True # Default
-    git_lfs = False # Default
-
-    # Create task and connect to GitHub
-    view.annotate(
-        anno_key,
-        label_field=label_field,
-        git_repository=git_repository,
-        push_to_git=push_to_git,
-        git_lfs=git_lfs,
-        launch_editor=True,
-    )
-
-    # Annotate in CVAT 
-
-    dataset.load_annotations(anno_key, cleanup=True)
-    dataset.delete_annotation_run(anno_key)   
-
 
 .. _cvat-annotating-videos:
 
@@ -2121,6 +2058,65 @@ for that annotation run:
                 Status: annotation
                 Assignee: user1
                 Reviewer: user3
+
+
+Connecting to Dataset Repository 
+--------------------------------
+
+CVAT provides the ability to link an annotation task to a Git dataset repository,
+allowing you to upload the labels of the task to a zip file in the repository.
+
+You can use the
+:meth:`connect_to_repository() <fiftyone.utils.cvat.CVATAnnotationResults.connect_to_repository>`
+method to define the URL of the Git repository to which to connect to all tasks in this
+run. Alternatively, you can provide the URL and a path
+to the annotations within the repository formatted as `URL [PATH]` 
+`defined here. <https://openvinotoolkit.github.io/cvat/docs/manual/basics/creating_an_annotation_task/#dataset-repository>`_
+If the `git_lfs` flag is `True`, then the Git Large File
+Storage (LFS) will be used to store the annotations.
+
+After a repository has been connected to an annotation run, use the 
+:meth:`push_to_repository() <fiftyone.utils.cvat.CVATAnnotationResults.push_to_repository>`
+method to sync the current annotations in the task with the
+repository.
+
+.. note::
+    
+    The first time that you connect CVAT to a Git repository, you will need to add
+    the SSH key that gets printed to your Git account. 
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_github"
+    label_field = "ground_truth"
+    git_repository = "https://github.com/username/repository-name"
+    git_repository_alt = "https://github.com/username/repository-name [path/to/annotations.xml]"
+    git_lfs = False # Default
+
+    # Create task and connect to GitHub
+    results = view.annotate(
+        anno_key,
+        label_field=label_field,
+        launch_editor=True,
+    )
+
+    results.connect_to_repository(git_repository, git_lfs=git_lfs)
+    results.push_to_repository()
+
+    # Annotate in CVAT 
+
+    results.push_to_repository()
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)   
+
 
 Using the CVAT API
 ------------------

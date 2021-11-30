@@ -2524,14 +2524,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
-        git_repository (None): the url of the git repository to link with the
-            created tasks and to which to upload annotations. The string can
-            also contain the path to the file within the repository `URL [PATH]`
-        push_to_git (True): whether to automatically push annotations to git
-            whenever samples are uploaded or downloaded and a
-            `git_repository` is provided
-        git_lfs (False): whether to use the git LFS (Large File Storage) to
-            store annotations
     """
 
     def __init__(
@@ -2553,9 +2545,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         project_id=None,
         occluded_attr=None,
-        git_repository=None,
-        push_to_git=True,
-        git_lfs=False,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -2571,9 +2560,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.project_id = project_id
         self.occluded_attr = occluded_attr
-        self.git_repository = git_repository
-        self.push_to_git = push_to_git
-        self.git_lfs = git_lfs
 
         # store privately so these aren't serialized
         self._username = username
@@ -2690,6 +2676,7 @@ class CVATBackend(foua.AnnotationBackend):
 class CVATAnnotationResults(foua.AnnotationResults):
     """Class that stores all relevant information needed to monitor the
     progress of an annotation run sent to CVAT and download the results.
+
     """
 
     def __init__(
@@ -2713,6 +2700,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
+        self.git_repo_map = {}
 
     def load_credentials(self, url=None, username=None, password=None):
         """Load the CVAT credentials from the given keyword arguments or the
@@ -2763,6 +2751,76 @@ class CVATAnnotationResults(foua.AnnotationResults):
         """Print the status of the assigned tasks and jobs."""
         self._get_status(log=True)
 
+    def connect_task_to_repository(
+        self, task_id, git_repository, git_lfs=False, api=None
+    ):
+        """Connect the tasks in this annotation run to the given Git repository.
+
+        Args:
+            task_id: the ID of the task to which to connect the given Git repository 
+            git_repository: the url of the Git repository to link with the
+                given task and to which to upload annotations. The string can
+                also contain the path to the file within the repository `URL [PATH]`
+            git_lfs (False): whether to use the git LFS (Large File Storage) to
+                store annotations
+            api (None): an optional instance of the CVATAnnotationAPI to avoid
+                connecting multiple times
+        """
+        if api is None:
+            api = self.connect_to_api()
+
+        git_repo = self.git_repo_map.get(task_id, None)
+        if git_repo is not None:
+            logger.warning(
+                "Task `%d` has already been connect to Git repository `%s`.",
+                task_id,
+                git_repo,
+            )
+            return
+
+        response = api.create_git(task_id, git_repository, git_lfs=git_lfs)
+        if response is not api.GIT_SUCCESS:
+            logger.warning(
+                "Error connecting task `%d` to repository `%s`",
+                task_id,
+                git_repository,
+            )
+            return
+
+        self.git_repo_map[task_id] = git_repository
+
+    def connect_to_repository(self, git_repository, git_lfs=False):
+        """Connect the tasks in this annotation run to the given Git repository.
+
+        Args:
+            git_repository: the url of the Git repository to link with the
+                created tasks and to which to upload annotations. The string can
+                also contain the path to the file within the repository `URL [PATH]`
+            git_lfs (False): whether to use the git LFS (Large File Storage) to
+                store annotations
+        """
+        api = self.connect_to_api()
+        for task_id in self.task_ids:
+            self.connect_task_to_repository(
+                task_id, git_repository, git_lfs=git_lfs, api=api
+            )
+
+    def push_to_repository(self):
+        """Pushes the annotations in the tasks in this run to the connected
+        Git repositories.
+        """
+        api = self.connect_to_api()
+        for task_id in self.task_ids:
+            git_repo = self.git_repo_map.get(task_id, None)
+            if git_repo is None:
+                logger.warning(
+                    "Task `%d` has no connected Git repository. Call "
+                    "`connect_to_repository()` before pushing.",
+                    task_id,
+                )
+                continue
+            api.push_git(task_id, git_repo)
+
     def cleanup(self):
         """Deletes all tasks associated with this annotation run and any created
         projects from the CVAT server.
@@ -2811,6 +2869,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
                 task_status = task_json["status"]
                 task_assignee = task_json["assignee"]
                 task_updated = task_json["updated_date"]
+                git_repo = self.git_repo_map.get(task_id, None)
 
                 if log:
                     logger.info(
@@ -2826,6 +2885,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                         task_updated,
                         api.base_task_url(task_id),
                     )
+                    if git_repo:
+                        logger.info("\t\tGit Repository: %s\n", git_repo)
 
                 jobs_info = {}
                 for job_id in self.job_ids[task_id]:
@@ -2860,6 +2921,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     "status": task_status,
                     "assignee": task_assignee,
                     "last_updated": task_updated,
+                    "git_repository": git_repo,
                     "jobs": jobs_info,
                 }
 
@@ -3500,9 +3562,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
-        git_repository = config.git_repository
-        push_to_git = config.push_to_git
-        git_lfs = config.git_lfs
 
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
@@ -3608,11 +3667,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 task_id,
             )
 
-            if git_repository is not None:
-                response = self.create_git(task_id, git_repository, git_lfs)
-                if response is self.GIT_SUCCESS and push_to_git:
-                    self.push_git(task_id, git_repository)
-
         return CVATAnnotationResults(
             samples,
             config,
@@ -3638,8 +3692,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         label_schema = results.config.label_schema
         occluded_attr = results.config.occluded_attr
-        git_repository = results.config.git_repository
-        push_to_git = results.config.push_to_git
         id_map = results.id_map
         server_id_map = results.server_id_map
         task_ids = results.task_ids
@@ -3808,9 +3860,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 annotations = self._merge_results(
                     annotations, {label_field: label_field_results}
                 )
-
-            if git_repository is not None and push_to_git:
-                self.push_git(task_id, git_repository)
 
         return annotations
 
