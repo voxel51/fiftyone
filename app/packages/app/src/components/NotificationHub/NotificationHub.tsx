@@ -152,33 +152,35 @@ const NotificationHub = ({
 
   return (
     <Container>
-      {transitions(({ key, item, props: { life, ...style } }) => (
-        <Message key={key} style={style}>
-          <Content ref={(ref) => ref && refMap.set(item, ref)}>
-            {true ? <Life style={{ right: life }} /> : null}
-            <Header>
-              <MessageTitle style={{ color: theme[COLOR[item.kind]] }}>
-                {item.kind}
-              </MessageTitle>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  cancelMap.has(item) && cancelMap.get(item)();
-                }}
-              >
-                <Close />
-              </Button>
-            </Header>
-            <MessageText>{item.message}</MessageText>
-            {item.app_items &&
-              item.app_items.map((i, key) => (
-                <MessageText key={key}>{i}</MessageText>
-              ))}
-            {item.children && item.children}
-          </Content>
-        </Message>
-      ))}
+      {transitions(({ life, ...style }, { key, ...item }) => {
+        return (
+          <Message key={key} style={style}>
+            <Content ref={(ref) => ref && refMap.set(item, ref)}>
+              {true ? <Life style={{ right: life }} /> : null}
+              <Header>
+                <MessageTitle style={{ color: theme[COLOR[item.kind]] }}>
+                  {item.kind}
+                </MessageTitle>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    cancelMap.has(item) && cancelMap.get(item)();
+                  }}
+                >
+                  <Close />
+                </Button>
+              </Header>
+              <MessageText>{item.message}</MessageText>
+              {item.app_items &&
+                item.app_items.map((i, key) => (
+                  <MessageText key={key}>{i}</MessageText>
+                ))}
+              {item.children && item.children}
+            </Content>
+          </Message>
+        );
+      })}
     </Container>
   );
 };
