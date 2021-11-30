@@ -149,7 +149,7 @@ def get_implied_field_kwargs(value):
     if isinstance(value, bool):
         return {"ftype": fof.BooleanField}
 
-    if isinstance(value, six.integer_types):
+    if isinstance(value, numbers.Integral):
         return {"ftype": fof.IntField}
 
     if isinstance(value, numbers.Number):
@@ -196,7 +196,7 @@ def _get_list_value_type(value):
     if isinstance(value, bool):
         return fof.BooleanField
 
-    if isinstance(value, six.integer_types):
+    if isinstance(value, numbers.Integral):
         return fof.IntField
 
     if isinstance(value, numbers.Number):
@@ -1115,6 +1115,14 @@ def _serialize_value(value, extended=False):
         # EmbeddedDocumentField
         return value.to_dict(extended=extended)
 
+    if isinstance(value, numbers.Integral):
+        # IntField
+        return int(value)
+
+    if isinstance(value, numbers.Number):
+        # FloatField
+        return float(value)
+
     if type(value) is date:
         # DateField
         return datetime(value.year, value.month, value.day)
@@ -1129,9 +1137,11 @@ def _serialize_value(value, extended=False):
         return json.loads(json_util.dumps(Binary(binary)))
 
     if isinstance(value, (list, tuple)):
+        # ListField
         return [_serialize_value(v, extended=extended) for v in value]
 
     if isinstance(value, dict):
+        # DictField
         return {
             k: _serialize_value(v, extended=extended) for k, v in value.items()
         }

@@ -223,6 +223,7 @@ You can also store your credentials in your
     {
         "backends": {
             "cvat": {
+                ...
                 "username": ...,
                 "password": ...
             }
@@ -247,12 +248,7 @@ that require connections to CVAT:
 .. code:: python
     :linenos:
 
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        username=...,
-        password=...,
-    )
+    view.annotate(anno_key, ..., username=..., password=...)
 
 **Command line prompt**
 
@@ -296,7 +292,8 @@ you can configure the URL of your server in any of the following ways:
     {
         "backends": {
             "cvat": {
-                "url": "http://localhost:8080"
+                "url": "http://localhost:8080",
+                ...
             }
         }
     }
@@ -307,13 +304,39 @@ you can configure the URL of your server in any of the following ways:
 .. code:: python
     :linenos:
 
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        url="http://localhost:8080",
-        username=...,
-        password=...,
-    )
+    view.annotate(anno_key, ..., url="http://localhost:8080")
+
+If your self-hosted server requires additional headers in order to make HTTP
+requests, you can provide them in either of the following ways:
+
+-   Store your custom headers in a `headers` key of your
+    :ref:`annotation config <annotation-config>` at
+    `~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "backends": {
+            "cvat": {
+                ...
+                "headers": {
+                    "<name>": "<value>",
+                    ...
+                }
+            }
+        }
+    }
+
+-   Pass the `headers` parameter manually each time you call
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    and
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(anno_key, ... headers=...)
+    view.load_annotations(anno_key, ... headers=...)
 
 .. _cvat-requesting-annotations:
 
