@@ -943,6 +943,7 @@ const InteractiveSidebar = ({
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
   const container = useRef<HTMLDivElement>(null);
+  const newNode = useRef<boolean>(false);
 
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
@@ -1094,14 +1095,19 @@ const InteractiveSidebar = ({
       })
   );
 
+  const s = useCallback((event) => {
+    console.log(event.target.scrollTop);
+  }, []);
+
   return (
     <SidebarColumn
-      ref={container}
-      onScroll={(event) => {
-        console.log(container.current, event.target);
-        if (container.current && container.current !== event.target) {
-          event.target.scrollTo({ top: container.current.scrollTop });
-        }
+      ref={(node) => {
+        node
+          ? node.addEventListener("scroll", s)
+          : container.current &&
+            container.current.removeEventListener("scroll", s);
+
+        container.current = node;
       }}
     >
       {before}

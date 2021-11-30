@@ -9,6 +9,7 @@ from collections import OrderedDict
 from datetime import date, datetime
 import json
 import logging
+import numbers
 import six
 
 from bson import json_util
@@ -1087,6 +1088,14 @@ def _serialize_value(value, extended=False):
         # EmbeddedDocumentField
         return value.to_dict(extended=extended)
 
+    if isinstance(value, numbers.Integral):
+        # IntField
+        return int(value)
+
+    if isinstance(value, numbers.Number):
+        # FloatField
+        return float(value)
+
     if type(value) is date:
         # DateField
         return datetime(value.year, value.month, value.day)
@@ -1101,9 +1110,11 @@ def _serialize_value(value, extended=False):
         return json.loads(json_util.dumps(Binary(binary)))
 
     if isinstance(value, (list, tuple)):
+        # ListField
         return [_serialize_value(v, extended=extended) for v in value]
 
     if isinstance(value, dict):
+        # DictField
         return {
             k: _serialize_value(v, extended=extended) for k, v in value.items()
         }

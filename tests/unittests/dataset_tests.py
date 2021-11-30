@@ -871,6 +871,110 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(schema["array_field"], fo.ArrayField)
 
     @drop_datasets
+    def test_numeric_type_coercions(self):
+        sample = fo.Sample(
+            filepath="image.png",
+            float1=1.0,
+            float2=np.float32(1.0),
+            float3=np.float64(1.0),
+            int1=1,
+            int2=np.uint8(1),
+            int3=np.int64(1),
+            list_float1=[1.0],
+            list_float2=[np.float32(1.0)],
+            list_float3=[np.float64(1.0)],
+            list_int1=[1],
+            list_int2=[np.uint8(1)],
+            list_int3=[np.int64(1)],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.float1, float)
+        self.assertIsInstance(sample.float2, float)
+        self.assertIsInstance(sample.float3, float)
+        self.assertIsInstance(sample.int1, int)
+        self.assertIsInstance(sample.int2, int)
+        self.assertIsInstance(sample.int3, int)
+
+        self.assertIsInstance(sample.list_float1[0], float)
+        self.assertIsInstance(sample.list_float2[0], float)
+        self.assertIsInstance(sample.list_float3[0], float)
+        self.assertIsInstance(sample.list_int1[0], int)
+        self.assertIsInstance(sample.list_int2[0], int)
+        self.assertIsInstance(sample.list_int3[0], int)
+
+        schema = dataset.get_field_schema()
+
+        self.assertIsInstance(schema["float1"], fo.FloatField)
+        self.assertIsInstance(schema["float2"], fo.FloatField)
+        self.assertIsInstance(schema["float3"], fo.FloatField)
+        self.assertIsInstance(schema["int1"], fo.IntField)
+        self.assertIsInstance(schema["int2"], fo.IntField)
+        self.assertIsInstance(schema["int3"], fo.IntField)
+
+        self.assertIsInstance(schema["list_float1"], fo.ListField)
+        self.assertIsInstance(schema["list_float2"], fo.ListField)
+        self.assertIsInstance(schema["list_float3"], fo.ListField)
+        self.assertIsInstance(schema["list_int1"], fo.ListField)
+        self.assertIsInstance(schema["list_int2"], fo.ListField)
+        self.assertIsInstance(schema["list_int3"], fo.ListField)
+
+        sample["float1"] = 2.0
+        sample["float2"] = np.float32(2.0)
+        sample["float3"] = np.float64(2.0)
+        sample["int1"] = 2
+        sample["int2"] = np.uint8(2)
+        sample["int3"] = np.int64(2)
+
+        sample["list_float1"][0] = 2.0
+        sample["list_float2"][0] = np.float32(2.0)
+        sample["list_float3"][0] = np.float64(2.0)
+        sample["list_int1"][0] = 2
+        sample["list_int2"][0] = np.uint8(2)
+        sample["list_int3"][0] = np.int64(2)
+
+        sample.save()
+
+        dataset.set_values("float1", [3.0])
+        dataset.set_values("float2", [np.float32(3.0)])
+        dataset.set_values("float3", [np.float64(3.0)])
+        dataset.set_values("list_float1", [[3.0]])
+        dataset.set_values("list_float2", [[np.float32(3.0)]])
+        dataset.set_values("list_float3", [[np.float64(3.0)]])
+        dataset.set_values("int1", [3])
+        dataset.set_values("int2", [np.uint8(3)])
+        dataset.set_values("int3", [np.int64(3)])
+        dataset.set_values("list_int1", [[3]])
+        dataset.set_values("list_int2", [[np.uint8(3)]])
+        dataset.set_values("list_int3", [[np.int64(3)]])
+
+        self.assertAlmostEqual(sample["float1"], 3.0)
+        self.assertAlmostEqual(sample["float2"], 3.0)
+        self.assertAlmostEqual(sample["float3"], 3.0)
+        self.assertEqual(sample["int1"], 3)
+        self.assertEqual(sample["int2"], 3)
+        self.assertEqual(sample["int3"], 3)
+
+        self.assertAlmostEqual(sample["list_float1"][0], 3.0)
+        self.assertAlmostEqual(sample["list_float2"][0], 3.0)
+        self.assertAlmostEqual(sample["list_float3"][0], 3.0)
+        self.assertEqual(sample["list_int1"][0], 3)
+        self.assertEqual(sample["list_int2"][0], 3)
+        self.assertEqual(sample["list_int3"][0], 3)
+
+        dataset.set_values("float1", [None])
+        dataset.set_values("list_float1", [None])
+        dataset.set_values("int1", [None])
+        dataset.set_values("list_int1", [None])
+
+        self.assertIsNone(sample["float1"])
+        self.assertIsNone(sample["list_float1"])
+        self.assertIsNone(sample["int1"])
+        self.assertIsNone(sample["list_int1"])
+
+    @drop_datasets
     def test_rename_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="/path/to/image.jpg", field=1)

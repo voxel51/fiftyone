@@ -38,7 +38,7 @@ def get_implied_field_kwargs(value):
     if isinstance(value, bool):
         return {"ftype": fof.BooleanField}
 
-    if isinstance(value, six.integer_types):
+    if isinstance(value, numbers.Integral):
         return {"ftype": fof.IntField}
 
     if isinstance(value, numbers.Number):
@@ -103,7 +103,7 @@ def _get_list_value_type(value):
     if isinstance(value, bool):
         return fof.BooleanField
 
-    if isinstance(value, six.integer_types):
+    if isinstance(value, numbers.Integral):
         return fof.IntField
 
     if isinstance(value, numbers.Number):
