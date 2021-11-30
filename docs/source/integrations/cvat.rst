@@ -467,7 +467,6 @@ provided:
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
 
-
 .. _cvat-label-schema:
 
 Label schema
@@ -1828,7 +1827,6 @@ attributes between annotation runs.
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget
    :align: center
-
 
 .. _cvat-annotating-videos:
 
