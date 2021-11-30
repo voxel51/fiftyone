@@ -21,7 +21,7 @@ import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
 import { Button } from "../FieldsSidebar";
-import { PopoutSectionTitle, TabOption } from "../utils";
+import { PopoutSectionTitle } from "../utils";
 import { LIST_LIMIT } from "./StringFieldFilter.state";
 import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
@@ -30,6 +30,7 @@ import { useTheme } from "../../utils/hooks";
 import { subCountValueAtom } from "./atoms";
 import { genSort } from "../../utils/generic";
 import { FRAME_SUPPORT_FIELD } from "../../utils/labels";
+import ExcludeOption from "./Exclude";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -54,38 +55,6 @@ const NamedCategoricalFilterHeader = styled.div`
 const CHECKBOX_LIMIT = 20;
 
 type Value = string | number | null | boolean | [number, number];
-
-interface ExcludeOptionProps {
-  excludeAtom: RecoilState<boolean>;
-  valueName: string;
-  color: string;
-}
-
-const ExcludeOption = ({
-  excludeAtom,
-  valueName,
-  color,
-}: ExcludeOptionProps) => {
-  const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  return (
-    <TabOption
-      active={excluded ? "Exclude" : "Select"}
-      color={color}
-      options={[
-        {
-          text: "Select",
-          title: `Select ${valueName}`,
-          onClick: () => excluded && setExcluded(false),
-        },
-        {
-          text: "Exclude",
-          title: `Exclude ${valueName}`,
-          onClick: () => !excluded && setExcluded(true),
-        },
-      ]}
-    />
-  );
-};
 
 const nullSort = ({
   count,
@@ -213,7 +182,6 @@ const Wrapper = ({
       ))}
       {Boolean(selectedSet.size) && !disableItems && (
         <>
-          <PopoutSectionTitle />
           {totalCount > 3 && excludeAtom && (
             <ExcludeOption
               excludeAtom={excludeAtom}

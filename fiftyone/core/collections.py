@@ -965,9 +965,11 @@ class SampleCollection(object):
         self,
         field_name,
         values,
+        key_field=None,
         skip_none=False,
         expand_schema=True,
         _allow_missing=False,
+        _sample_ids=None,
     ):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -984,7 +986,7 @@ class SampleCollection(object):
         implementation of the following loop::
 
             for sample, array_values in zip(sample_collection, values):
-                for doc, value in zip(sample.embedded.array):
+                for doc, value in zip(sample.embedded.array, array_values):
                     doc.field.name = value
 
                 sample.save()
@@ -1008,6 +1010,18 @@ class SampleCollection(object):
                         doc.field.name = value
 
                 sample.save()
+
+        When ``values`` is a dict mapping keys in ``key_field`` to values, then
+        this function is an efficient implementation of the following loop::
+
+            for key, value in values.items():
+                sample = sample_collection.one(F(key_field) == key)
+                sample.embedded.field.name = value
+                sample.save()
+
+        You can also update list/frame fields using the dict ``values`` syntax,
+        in which case this method is an efficient implementation of the natural
+        nested list/frame modifications to the above loop.
 
         The dual function of :meth:`set_values` is :meth:`values`, which can be
         used to efficiently extract the values of a field or embedded field of
@@ -1060,16 +1074,29 @@ class SampleCollection(object):
         Args:
             field_name: a field or ``embedded.field.name``
             values: an iterable of values, one for each sample in the
-                collection. When setting frame fields, each element should be
-                an iterable of values, one for each frame of the sample. If
-                ``field_name`` contains array fields, the corresponding entries
-                of ``values`` must be arrays of the same lengths
+                collection. When setting frame fields, each element should
+                itself be an iterable of values, one for each frame of the
+                sample. If ``field_name`` contains array fields, the elements
+                of ``values`` must be arrays of the same lengths. This argument
+                can also be a dict mapping keys to values (each value as
+                described previously), in which case the keys are used to match
+                samples by their ``key_field``
+            key_field (None): a key field to use when choosing which samples to
+                update when ``values`` is a dict
             skip_none (False): whether to treat None data in ``values`` as
                 missing data that should not be set
             expand_schema (True): whether to dynamically add new sample/frame
                 fields encountered to the dataset schema. If False, an error is
                 raised if the root ``field_name`` does not exist
         """
+        if isinstance(values, dict):
+            if key_field is None:
+                raise ValueError(
+                    "You must provide a `key_field` when `values` is a dict"
+                )
+
+            _sample_ids, values = _parse_values_dict(self, key_field, values)
+
         if expand_schema:
             self._expand_schema_from_values(field_name, values)
 
@@ -1088,9 +1115,7 @@ class SampleCollection(object):
             to_mongo = lambda _id: ObjectId(_id)
         else:
             field_type = self._get_field_type(
-                field_name,
-                is_frame_field=is_frame_field,
-                ignore_primitives=True,
+                field_name, is_frame_field=is_frame_field
             )
             if field_type is not None:
                 to_mongo = field_type.to_mongo
@@ -1123,9 +1148,11 @@ class SampleCollection(object):
                 return self.set_values(
                     path,
                     list_values,
+                    key_field=key_field,
                     skip_none=skip_none,
                     expand_schema=expand_schema,
                     _allow_missing=_allow_missing,
+                    _sample_ids=_sample_ids,
                 )
 
         # If we're directly updating a document list field of a dataset view,
@@ -1142,6 +1169,7 @@ class SampleCollection(object):
                 field_name,
                 values,
                 list_fields,
+                sample_ids=_sample_ids,
                 to_mongo=to_mongo,
                 skip_none=skip_none,
             )
@@ -1150,6 +1178,7 @@ class SampleCollection(object):
                 field_name,
                 values,
                 list_fields,
+                sample_ids=_sample_ids,
                 to_mongo=to_mongo,
                 skip_none=skip_none,
             )
@@ -1218,18 +1247,29 @@ class SampleCollection(object):
             self._dataset._add_implied_sample_field(field_name, value)
 
     def _set_sample_values(
-        self, field_name, values, list_fields, to_mongo=None, skip_none=False
+        self,
+        field_name,
+        values,
+        list_fields,
+        sample_ids=None,
+        to_mongo=None,
+        skip_none=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
             )
 
-        sample_ids = self.values("_id")
-
         if list_fields:
             list_field = list_fields[0]
-            elem_ids = self.values(list_field + "._id")
+            elem_id_field = list_field + "._id"
+
+            if sample_ids is not None:
+                view = self.select(sample_ids, ordered=True)
+                sample_ids = [ObjectId(_id) for _id in sample_ids]
+                elem_ids = view.values(elem_id_field)
+            else:
+                sample_ids, elem_ids = self.values(["_id", elem_id_field])
 
             self._set_list_values_by_id(
                 field_name,
@@ -1241,6 +1281,11 @@ class SampleCollection(object):
                 skip_none=skip_none,
             )
         else:
+            if sample_ids is not None:
+                sample_ids = [ObjectId(_id) for _id in sample_ids]
+            else:
+                sample_ids = self.values("_id")
+
             self._set_values(
                 field_name,
                 sample_ids,
@@ -1250,22 +1295,32 @@ class SampleCollection(object):
             )
 
     def _set_frame_values(
-        self, field_name, values, list_fields, to_mongo=None, skip_none=False
+        self,
+        field_name,
+        values,
+        list_fields,
+        sample_ids=None,
+        to_mongo=None,
+        skip_none=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
                 "At most one array field can be unwound when setting values"
             )
 
-        frame_ids = self.values("frames._id")
-        frame_ids = list(itertools.chain.from_iterable(frame_ids))
-
-        values = list(itertools.chain.from_iterable(values))
+        if sample_ids is not None:
+            view = self.select(sample_ids, ordered=True)
+        else:
+            view = self
 
         if list_fields:
             list_field = list_fields[0]
-            elem_ids = self.values(self._FRAMES_PREFIX + list_field + "._id")
-            elem_ids = list(itertools.chain.from_iterable(elem_ids))
+            elem_id_field = "frames." + list_field + "._id"
+            frame_ids, elem_ids = view.values(["frames._id", elem_id_field])
+
+            frame_ids = itertools.chain.from_iterable(frame_ids)
+            elem_ids = itertools.chain.from_iterable(elem_ids)
+            values = itertools.chain.from_iterable(values)
 
             self._set_list_values_by_id(
                 field_name,
@@ -1278,6 +1333,11 @@ class SampleCollection(object):
                 frames=True,
             )
         else:
+            frame_ids = view.values("frames._id")
+
+            frame_ids = itertools.chain.from_iterable(frame_ids)
+            values = itertools.chain.from_iterable(values)
+
             self._set_values(
                 field_name,
                 frame_ids,
@@ -1651,6 +1711,65 @@ class SampleCollection(object):
             alpha=alpha,
             handle_missing=handle_missing,
             skip_failures=skip_failures,
+        )
+
+    def evaluate_regressions(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        missing=None,
+        method="simple",
+        **kwargs,
+    ):
+        """Evaluates the regression predictions in this collection with respect
+        to the specified ground truth values.
+
+        You can customize the evaluation method by passing additional
+        parameters for the method's config class as ``kwargs``.
+
+        The supported ``method`` values and their associated configs are:
+
+        -   ``"simple"``: :class:`fiftyone.utils.eval.regression.SimpleEvaluationConfig`
+
+        If an ``eval_key`` is specified, then this method will record some
+        statistics on each sample:
+
+        -   When evaluating sample-level fields, an ``eval_key`` field will be
+            populated on each sample recording the error of that sample's
+            prediction.
+
+        -   When evaluating frame-level fields, an ``eval_key`` field will be
+            populated on each frame recording the error of that frame's
+            prediction. In addition, an ``eval_key`` field will be populated on
+            each sample that records the average error of the frame predictions
+            of the sample.
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Regression` instances
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Regression` instances
+            eval_key (None): a string key to use to refer to this evaluation
+            missing (None): a missing value. Any None-valued regressions are
+                given this value for results purposes
+            method ("simple"): a string specifying the evaluation method to use.
+                Supported values are ``("simple")``
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
+                being used
+
+        Returns:
+            a :class:`fiftyone.utils.eval.regression.RegressionResults`
+        """
+        return foue.evaluate_regressions(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            missing=missing,
+            method=method,
+            **kwargs,
         )
 
     def evaluate_classifications(
@@ -4760,7 +4879,7 @@ class SampleCollection(object):
         return list(aggregation.all)
 
     @aggregation
-    def bounds(self, field_or_expr, expr=None):
+    def bounds(self, field_or_expr, expr=None, safe=False):
         """Computes the bounds of a numeric field of the collection.
 
         ``None``-valued fields are ignored.
@@ -4830,15 +4949,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the ``(min, max)`` bounds
         """
-        make = lambda field_or_expr: foa.Bounds(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Bounds(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def count(self, field_or_expr=None, expr=None):
+    def count(self, field_or_expr=None, expr=None, safe=False):
         """Counts the number of field values in the collection.
 
         ``None``-valued fields are ignored.
@@ -4925,15 +5048,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the count
         """
-        make = lambda field_or_expr: foa.Count(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Count(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def count_values(self, field_or_expr, expr=None):
+    def count_values(self, field_or_expr, expr=None, safe=False):
         """Counts the occurrences of field values in the collection.
 
         This aggregation is typically applied to *countable* field types (or
@@ -5015,15 +5142,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to treat nan/inf values as None when dealing
+                with floating point values
 
         Returns:
             a dict mapping values to counts
         """
-        make = lambda field_or_expr: foa.CountValues(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.CountValues(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def distinct(self, field_or_expr, expr=None):
+    def distinct(self, field_or_expr, expr=None, safe=False):
         """Computes the distinct values of a field in the collection.
 
         ``None``-valued fields are ignored.
@@ -5107,11 +5238,15 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             a sorted list of distinct values
         """
-        make = lambda field_or_expr: foa.Distinct(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Distinct(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
@@ -5229,7 +5364,7 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def mean(self, field_or_expr, expr=None):
+    def mean(self, field_or_expr, expr=None, safe=False):
         """Computes the arithmetic mean of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -5299,15 +5434,19 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the mean
         """
-        make = lambda field_or_expr: foa.Mean(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Mean(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def std(self, field_or_expr, expr=None, sample=False):
+    def std(self, field_or_expr, expr=None, safe=False, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
 
@@ -5378,6 +5517,8 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
             sample (False): whether to compute the sample standard deviation rather
                 than the population standard deviation
 
@@ -5385,12 +5526,12 @@ class SampleCollection(object):
             the standard deviation
         """
         make = lambda field_or_expr: foa.Std(
-            field_or_expr, expr=expr, sample=sample
+            field_or_expr, expr=expr, safe=safe, sample=sample
         )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
-    def sum(self, field_or_expr, expr=None):
+    def sum(self, field_or_expr, expr=None, safe=False):
         """Computes the sum of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -5460,11 +5601,15 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to ``field_or_expr`` (which must be a field) before
                 aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
 
         Returns:
             the sum
         """
-        make = lambda field_or_expr: foa.Sum(field_or_expr, expr=expr)
+        make = lambda field_or_expr: foa.Sum(
+            field_or_expr, expr=expr, safe=safe
+        )
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
@@ -5907,6 +6052,7 @@ class SampleCollection(object):
         allow_additions=True,
         allow_deletions=True,
         allow_label_edits=True,
+        allow_index_edits=True,
         allow_spatial_edits=True,
         media_field="filepath",
         backend=None,
@@ -5999,10 +6145,14 @@ class SampleCollection(object):
                 applicable when editing existing label fields
             allow_label_edits (True): whether to allow the ``label`` attribute
                 of existing labels to be modified. Only applicable when editing
-                existing label fields
+                existing fields with ``label`` attributes
+            allow_index_edits (True): whether to allow the ``index`` attribute
+                of existing video tracks to be modified. Only applicable when
+                editing existing frame fields with ``index`` attributes
             allow_spatial_edits (True): whether to allow edits to the spatial
-                properties (bounding boxes, vertices, keypoints, etc) of
-                labels. Only applicable when editing existing label fields
+                properties (bounding boxes, vertices, keypoints, masks, etc) of
+                labels. Only applicable when editing existing spatial label
+                fields
             media_field ("filepath"): the field containing the paths to the
                 media files to upload
             backend (None): the annotation backend to use. The supported values
@@ -6028,6 +6178,7 @@ class SampleCollection(object):
             allow_additions=allow_additions,
             allow_deletions=allow_deletions,
             allow_label_edits=allow_label_edits,
+            allow_index_edits=allow_index_edits,
             allow_spatial_edits=allow_spatial_edits,
             media_field=media_field,
             backend=backend,
@@ -7368,6 +7519,56 @@ def _get_matching_label_field(label_schema, label_type_or_types):
         )
 
     return valid_fields[0]
+
+
+def _parse_values_dict(sample_collection, key_field, values):
+    _key_field = key_field
+    (
+        key_field,
+        is_frame_field,
+        list_fields,
+        other_list_fields,
+        _,
+    ) = sample_collection._parse_field_name(key_field)
+
+    field_type = sample_collection._get_field_type(key_field)
+
+    if is_frame_field:
+        raise ValueError(
+            "Invalid key field '%s'; keys cannot be frame fields" % _key_field
+        )
+
+    if list_fields or other_list_fields:
+        raise ValueError(
+            "Invalid key field '%s'; keys cannot be list fields" % _key_field
+        )
+
+    if isinstance(field_type, fof.ObjectIdField):
+        keys = [ObjectId(k) for k in keys]
+
+    pipeline = [{"$match": {key_field: {"$in": list(values.keys())}}}]
+    view = sample_collection.mongo(pipeline)
+
+    id_map = {k: v for k, v in zip(*view.values([key_field, "id"]))}
+
+    sample_ids = []
+    bad_keys = []
+    for key in values.keys():
+        sample_id = id_map.get(key, None)
+        if sample_id is not None:
+            sample_ids.append(sample_id)
+        else:
+            bad_keys.append(key)
+
+    if bad_keys:
+        raise ValueError(
+            "Found %d keys (eg: %s) that do not match the '%s' field of any "
+            "samples" % (len(bad_keys), bad_keys[0], key_field)
+        )
+
+    values = list(values.values())
+
+    return sample_ids, values
 
 
 def _parse_field_name(

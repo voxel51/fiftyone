@@ -31,7 +31,8 @@ class VOCDetectionDatasetImporter(
     See :ref:`this page <VOCDetectionDataset-import>` for format details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -84,6 +85,12 @@ class VOCDetectionDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -793,13 +800,14 @@ def _parse_attribute(value):
     except:
         pass
 
-    if value in {"True", "true"}:
-        return True
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
 
-    if value in {"False", "false"}:
-        return False
+        if value in ("False", "false"):
+            return False
 
-    if value == "None":
-        return None
+        if value in ("None", ""):
+            return None
 
     return value

@@ -117,6 +117,10 @@ datasets:
     `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
     sure to add it to your path.
 
+Without FFmpeg installed, videos may appear in the App, but they will not be
+rendered with the correct aspect ratio and thus label overlays will not be
+positioned correctly.
+
 .. _troubleshooting-ipython:
 
 IPython installation

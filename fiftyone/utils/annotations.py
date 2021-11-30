@@ -45,6 +45,7 @@ def annotate(
     allow_additions=True,
     allow_deletions=True,
     allow_label_edits=True,
+    allow_index_edits=True,
     allow_spatial_edits=True,
     media_field="filepath",
     backend=None,
@@ -138,10 +139,13 @@ def annotate(
             applicable when editing existing label fields
         allow_label_edits (True): whether to allow the ``label`` attribute of
             existing labels to be modified. Only applicable when editing
-            existing label fields
+            existing fields with ``label`` attributes
+        allow_index_edits (True): whether to allow the ``index`` attribute of
+            existing video tracks to be modified. Only applicable when editing
+            existing frame fields with ``index`` attributes
         allow_spatial_edits (True): whether to allow edits to the spatial
-            properties (bounding boxes, vertices, keypoints, etc) of labels.
-            Only applicable when editing existing label fields
+            properties (bounding boxes, vertices, keypoints, masks, etc) of
+            labels. Only applicable when editing existing spatial label fields
         media_field ("filepath"): the field containing the paths to the
             media files to upload
         backend (None): the annotation backend to use. The supported values are
@@ -178,6 +182,7 @@ def annotate(
 
     config = _parse_config(backend, None, media_field, **kwargs)
     anno_backend = config.build()
+    anno_backend.ensure_requirements()
 
     label_schema, samples = _build_label_schema(
         samples,
@@ -191,16 +196,26 @@ def annotate(
         allow_additions,
         allow_deletions,
         allow_label_edits,
+        allow_index_edits,
         allow_spatial_edits,
     )
     config.label_schema = label_schema
 
-    # Don't allow overwriting an existing run with same `anno_key`
+    #
+    # Don't allow overwriting an existing run with same `anno_key`, since we
+    # need the existing run in order to perform workflows like automatically
+    # cleaning up the backend's tasks
+    #
     anno_backend.register_run(samples, anno_key, overwrite=False)
 
     results = anno_backend.upload_annotations(
         samples, launch_editor=launch_editor
     )
+
+    # It is possible that the annotation backend may update the run's config
+    # (e.g., when uploading to an existing project, its label schema may be
+    # inherited), so we update the config now
+    anno_backend.update_run_config(samples, anno_key, config)
 
     anno_backend.save_run_results(samples, anno_key, results)
 
@@ -287,25 +302,37 @@ _DEFAULT_LABEL_FIELDS_MAP = {
     fol.Detection: ["label", "index"],
     fol.Polyline: ["label", "index"],
     fol.Keypoint: ["label", "index"],
-    fol.Segmentation: [],
 }
 
 # Label fields that are overwritten when spatial changes are allowed
 _SPATIAL_LABEL_FIELDS_MAP = {
-    fol.Classification: [],
     fol.Detection: ["bounding_box", "mask"],
     fol.Polyline: ["points", "closed", "filled"],
     fol.Keypoint: ["points"],
     fol.Segmentation: ["mask"],
 }
 
-# Label types that can be annotated as tracks in videos
+# Return label types that can be annotated as tracks in videos
 _TRACKABLE_TYPES = (
     "detections",
-    "instances",
     "polylines",
-    "polygons",
     "keypoints",
+)
+
+# Return label types that have a ``label`` attribute
+_LABEL_TYPES = (
+    "classifications",
+    "detections",
+    "polylines",
+    "keypoints",
+)
+
+# Return label types that have spatial coordinates
+_SPATIAL_TYPES = (
+    "detections",
+    "polylines",
+    "keypoints",
+    "segmentation",
 )
 
 
@@ -321,10 +348,16 @@ def _build_label_schema(
     allow_additions,
     allow_deletions,
     allow_label_edits,
+    allow_index_edits,
     allow_spatial_edits,
 ):
     if label_schema is None and label_field is None:
-        raise ValueError("Either `label_schema` or `label_field` is required")
+        if backend.requires_label_schema:
+            raise ValueError(
+                "Either `label_schema` or `label_field` is required"
+            )
+
+        return {None: {}}, samples
 
     if label_schema is None:
         label_schema = _init_label_schema(
@@ -336,6 +369,7 @@ def _build_label_schema(
             allow_additions,
             allow_deletions,
             allow_label_edits,
+            allow_index_edits,
             allow_spatial_edits,
         )
     elif isinstance(label_schema, list):
@@ -343,8 +377,15 @@ def _build_label_schema(
 
     _label_schema = {}
 
+    is_video = samples.media_type == fom.VIDEO
+
     for _label_field, _label_info in label_schema.items():
-        _label_type, _existing_field, _multiple_types = _get_label_type(
+        (
+            _label_type,
+            _is_frame_field,
+            _existing_field,
+            _multiple_types,
+        ) = _get_label_type(
             samples, backend, label_type, _label_field, _label_info
         )
 
@@ -358,6 +399,18 @@ def _build_label_schema(
                     backend.config.name,
                     backend.supported_label_types,
                 )
+            )
+
+        # Converting to return type normalizes for single vs multiple labels
+        _return_type = _RETURN_TYPES_MAP[_label_type]
+        _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
+
+        if is_video and _return_type in _SPATIAL_TYPES and not _is_frame_field:
+            raise ValueError(
+                "Invalid label field '%s'. Spatial labels of type '%s' being "
+                "annotated on a video must be stored in a frame-level field, "
+                "i.e., one that starts with 'frames.'"
+                % (_label_field, _label_type)
             )
 
         # We found an existing field with multiple label types, so we must
@@ -414,18 +467,23 @@ def _build_label_schema(
             label_info["allow_deletions"] = _label_info.get(
                 "allow_deletions", allow_deletions
             )
-            label_info["allow_label_edits"] = _label_info.get(
-                "allow_label_edits", allow_label_edits
-            )
-            label_info["allow_spatial_edits"] = _label_info.get(
-                "allow_spatial_edits", allow_spatial_edits
-            )
 
-        if (
-            _existing_field
-            and samples.media_type == fom.VIDEO
-            and _label_type in _TRACKABLE_TYPES
-        ):
+            if _return_type in _LABEL_TYPES:
+                label_info["allow_label_edits"] = _label_info.get(
+                    "allow_label_edits", allow_label_edits
+                )
+
+            if _is_trackable:
+                label_info["allow_index_edits"] = _label_info.get(
+                    "allow_index_edits", allow_index_edits
+                )
+
+            if _return_type in _SPATIAL_TYPES:
+                label_info["allow_spatial_edits"] = _label_info.get(
+                    "allow_spatial_edits", allow_spatial_edits
+                )
+
+        if _existing_field and _is_trackable:
             # If we're uploading existing video tracks and there is at least
             # one object marked as a keyframe, then upload *only* keyframes
             _, keyframe_path = samples._get_label_field_path(
@@ -492,6 +550,7 @@ def _init_label_schema(
     allow_additions,
     allow_deletions,
     allow_label_edits,
+    allow_index_edits,
     allow_spatial_edits,
 ):
     d = {}
@@ -511,6 +570,7 @@ def _init_label_schema(
     d["allow_additions"] = allow_additions
     d["allow_deletions"] = allow_deletions
     d["allow_label_edits"] = allow_label_edits
+    d["allow_index_edits"] = allow_index_edits
     d["allow_spatial_edits"] = allow_spatial_edits
 
     return {label_field: d}
@@ -521,6 +581,7 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
         label_type = label_info["type"]
 
     field, is_frame_field = samples._handle_frame_field(label_field)
+
     if is_frame_field:
         schema = samples.get_frame_field_schema()
     else:
@@ -533,7 +594,7 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
                 % label_field
             )
 
-        return label_type, False, False
+        return label_type, is_frame_field, False, False
 
     _existing_type = _get_existing_label_type(
         samples, backend, label_field, schema[field]
@@ -548,10 +609,10 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
                 % (label_type, label_field, _existing_type)
             )
 
-        return label_type, True, _multiple_types
+        return label_type, is_frame_field, True, _multiple_types
 
     if not _multiple_types:
-        return _existing_type, True, _multiple_types
+        return _existing_type, is_frame_field, True, _multiple_types
 
     # Existing field contains multiple label types, so we must choose one
     if "detection" in _existing_type:
@@ -576,7 +637,7 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
         _label_type,
     )
 
-    return _label_type, True, _multiple_types
+    return _label_type, is_frame_field, True, _multiple_types
 
 
 def _to_list(value):
@@ -837,10 +898,16 @@ def _get_label_attributes(
                     attributes[name] = backend.recommend_attr_tool(name, value)
 
     # The keyframe attribute has special semantics for video track annotations
-    if samples.media_type == fom.VIDEO and label_type in _TRACKABLE_TYPES:
+    if _is_trackable_field(samples, label_field, label_type):
         attributes.pop("keyframe", None)
 
     return attributes
+
+
+def _is_trackable_field(samples, label_field, label_type):
+    is_frame_field = samples._is_frame_field(label_field)
+    return_type = _RETURN_TYPES_MAP[label_type]
+    return is_frame_field and return_type in _TRACKABLE_TYPES
 
 
 def _format_attributes(backend, attributes):
@@ -940,15 +1007,14 @@ def load_annotations(
     annotations = results.backend.download_annotations(results)
 
     for label_field, label_info in label_schema.items():
-        label_type = label_info["type"]
+        label_type = label_info.get("type", None)
         global_attrs, class_attrs = _parse_attributes(label_info)
         allow_additions = label_info.get("allow_additions", True)
-
-        expected_type = _RETURN_TYPES_MAP[label_type]
+        expected_type = _RETURN_TYPES_MAP.get(label_type, None)
 
         anno_dict = annotations.get(label_field, {})
 
-        if expected_type not in anno_dict:
+        if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
 
         for anno_type, annos in anno_dict.items():
@@ -1042,7 +1108,11 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     if label_type != "scalar":
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
-    _, is_frame_field = samples._handle_frame_field(label_field)
+    if label_field is not None:
+        _, is_frame_field = samples._handle_frame_field(label_field)
+    else:
+        is_frame_field = samples.media_type == fom.VIDEO
+
     if is_frame_field:
         schema = samples.get_frame_field_schema()
     else:
@@ -1198,10 +1268,12 @@ def _merge_labels(
     if label_info is None:
         label_info = {}
 
+    existing_field = label_info.get("existing_field", False)
     only_keyframes = label_info.get("only_keyframes", False)
     allow_additions = label_info.get("allow_additions", True)
     allow_deletions = label_info.get("allow_deletions", True)
     allow_label_edits = label_info.get("allow_label_edits", True)
+    allow_index_edits = label_info.get("allow_index_edits", True)
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
@@ -1216,6 +1288,10 @@ def _merge_labels(
     is_video = samples.media_type == fom.VIDEO
 
     if is_video and label_type in _TRACKABLE_TYPES:
+        if not existing_field:
+            # Always include keyframe info when importing new video tracks
+            only_keyframes = True
+
         _update_tracks(samples, label_field, anno_dict, only_keyframes)
 
     id_map = results.id_map.get(label_field, {})
@@ -1340,7 +1416,7 @@ def _merge_labels(
                         added_id_map[sample_id][frame_id] = label_id
                     else:
                         added_id_map[sample_id] = label_id
-            else:
+            elif image_label is not None:
                 if is_list:
                     labels = image_label[list_field]
                 else:
@@ -1363,6 +1439,7 @@ def _merge_labels(
                             global_attrs=global_attrs,
                             class_attrs=class_attrs,
                             allow_label_edits=allow_label_edits,
+                            allow_index_edits=allow_index_edits,
                             allow_spatial_edits=allow_spatial_edits,
                             only_keyframes=only_keyframes,
                         )
@@ -1432,12 +1509,18 @@ def _merge_label(
     global_attrs=None,
     class_attrs=None,
     allow_label_edits=True,
+    allow_index_edits=True,
     allow_spatial_edits=True,
     only_keyframes=False,
 ):
     for field in _DEFAULT_LABEL_FIELDS_MAP.get(type(label), []):
-        if allow_label_edits or field != "label":
-            label[field] = anno_label[field]
+        if not allow_label_edits and field == "label":
+            continue
+
+        if not allow_index_edits and field == "index":
+            continue
+
+        label[field] = anno_label[field]
 
     if allow_spatial_edits:
         for field in _SPATIAL_LABEL_FIELDS_MAP.get(type(label), []):
@@ -1676,6 +1759,13 @@ class AnnotationBackend(foa.AnnotationMethod):
         """
         raise NotImplementedError("subclass must implement supports_keyframes")
 
+    @property
+    def requires_label_schema(self):
+        """Whether this backend requires a pre-defined label schema for its
+        annotation runs.
+        """
+        return True
+
     def recommend_attr_tool(self, name, value):
         """Recommends an attribute tool for an attribute with the given name
         and value.
@@ -1841,6 +1931,7 @@ class AnnotationResults(foa.AnnotationResults):
     def __init__(self, samples, config, id_map, backend=None):
         if backend is None:
             backend = config.build()
+            backend.ensure_requirements()
 
         self._samples = samples
         self.id_map = id_map

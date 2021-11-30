@@ -865,6 +865,9 @@ classification or object detections) associated with the image.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         parser is guaranteed to return labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single label field of any of
+                        these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the parser will return label dictionaries with keys
                         and value-types specified by this dictionary. Not all keys need be
@@ -1099,6 +1102,9 @@ classification or object detections) associated with the image.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         parser is guaranteed to return sample-level labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single sample-level label field
+                        of any of these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the parser will return sample-level label
                         dictionaries with keys and value-types specified by this
@@ -1118,6 +1124,9 @@ classification or object detections) associated with the image.
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
                         parser is guaranteed to return frame labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single frame label field of any
+                        of these types
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the parser will return frame label dictionaries with
                         keys and value-types specified by this dictionary. Not all keys

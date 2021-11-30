@@ -1,0 +1,7 @@
+apache-beam>=2.33.0
+google-api-python-client>=1.6.5
+google-cloud-storage>=1.36
+httplib2<=0.15
+lightning-flash>=0.4.0
+pydicom>=2.2.0
+shapely>=1.7.1
