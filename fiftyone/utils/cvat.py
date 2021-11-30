@@ -2988,6 +2988,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
+    def task_id_search_url(self, task_id):
+        return "%s/tasks?id=%d" % (self.base_api_url, task_id)
+
     def user_search_url(self, username):
         return "%s/users?search=%s" % (self.base_api_url, username)
 
@@ -3299,13 +3302,30 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return task_id, class_id_map, attr_id_map
 
+    def project_exists(self, project_id):
+        """Checks if the given project exists.
+
+        Args:
+            project_id: the project ID
+        """
+        return (
+            self._get_value_from_search(
+                self.project_id_search_url, project_id, "id", "id",
+            )
+            is not None
+        )
+
     def delete_project(self, project_id):
         """Deletes the given project from the CVAT server.
 
         Args:
             project_id: the project ID
+
+        Returns:
+            boolean indicating if the project exists
         """
-        self.delete(self.project_url(project_id))
+        if self.project_exists(project_id):
+            self.delete(self.project_url(project_id))
 
     def delete_projects(self, project_ids):
         """Deletes the given projects from the CVAT server.
@@ -3317,13 +3337,30 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for project_id in pb(list(project_ids)):
                 self.delete_project(project_id)
 
+    def task_exists(self, task_id):
+        """Checks if the given task exists.
+
+        Args:
+            task_id: the task ID
+
+        Returns:
+            boolean indicating if the task exists
+        """
+        return (
+            self._get_value_from_search(
+                self.task_id_search_url, task_id, "id", "id",
+            )
+            is not None
+        )
+
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
 
         Args:
             task_id: the task ID
         """
-        self.delete(self.task_url(task_id))
+        if self.task_exists(task_id):
+            self.delete(self.task_url(task_id))
 
     def delete_tasks(self, task_ids):
         """Deletes the given tasks from the CVAT server.
@@ -3608,7 +3645,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         annotations = {}
 
         for task_id in task_ids:
+            label_fields = labels_task_map_rev[task_id]
             # Download task data
+            if not self.task_exists(task_id):
+                logger.warning("Warning: Task %d does not exist.", task_id)
+                # Setting allow_deletions to False to avoid deleting labels
+                # from this task
+                for label_field in label_fields:
+                    logger.warning(
+                        "Warning: Setting `allow_deletions=False` for label field `%s`",
+                        label_field,
+                    )
+                    results.config.label_schema[label_field][
+                        "allow_deletions"
+                    ] = False
+                continue
+
             task_json = self.get(self.task_url(task_id)).json()
             attr_id_map = {}
             _class_map = {}
@@ -3629,7 +3681,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data_resp = self.get(self.task_data_meta_url(task_id)).json()
             frames = data_resp["frames"]
 
-            label_fields = labels_task_map_rev[task_id]
             label_types = self._get_return_label_types(
                 label_schema, label_fields
             )
@@ -3748,7 +3799,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return annotations
 
     def _get_project_labels(self, project_id):
-        if self.get_project_name(project_id) is None:
+        if not self.project_exists(project_id):
             raise ValueError("Project '%s' not found" % project_id)
 
         return self.get(self.project_url(project_id)).json()["labels"]
