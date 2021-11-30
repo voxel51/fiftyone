@@ -3509,7 +3509,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # IMPORTANT: CVAT organizes media within a task alphabetically by
             # filename, so we must give CVAT filenames whose alphabetical order
             # matches the order of `paths`
-            filename = "%06d%s" % (idx, os.path.splitext(path)[1])
+            filename = "%06d_%s" % (idx, os.path.basename(path))
             files["client_files[%d]" % idx] = (filename, open(path, "rb"))
 
         self.post(self.task_data_url(task_id), data=data, files=files)
@@ -6069,15 +6069,6 @@ def _from_int_bool(value):
 
 
 def _parse_value(value):
-    if value in (None, "None", ""):
-        return None
-
-    if value in {"True", "true"}:
-        return True
-
-    if value in {"False", "false"}:
-        return False
-
     try:
         return int(value)
     except:
@@ -6087,6 +6078,16 @@ def _parse_value(value):
         return float(value)
     except:
         pass
+
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
+
+        if value in ("False", "false"):
+            return False
+
+        if value in ("None", ""):
+            return None
 
     return value
 
