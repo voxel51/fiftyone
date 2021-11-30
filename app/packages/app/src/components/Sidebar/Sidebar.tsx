@@ -59,11 +59,12 @@ import {
   StringFieldFilter,
 } from "../Filters";
 import { Pills } from "./utils";
+import { scrollbarStyles } from "../utils";
 
 const MARGIN = 4;
 
 const GroupHeaderStyled = styled(DropdownHandle)`
-  border-radius: 0;
+  border-radius: 2px;
   border-width: 0 0 1px 0;
   padding: 0.25rem;
   text-transform: uppercase;
@@ -72,6 +73,7 @@ const GroupHeaderStyled = styled(DropdownHandle)`
   vertical-align: middle;
   align-items: center;
   color: ${({ theme }) => theme.fontDark};
+  background: transparent;
 `;
 
 const GroupInput = styled.input`
@@ -629,7 +631,9 @@ const fn = (
     currentY[key] = y;
 
     if (shown) {
-      y += el.getBoundingClientRect().height + MARGIN;
+      let height = el.getBoundingClientRect().height;
+
+      y += height + MARGIN;
     }
   }
 
@@ -661,6 +665,8 @@ const fn = (
       top: dragging ? currentY[key] + delta : y,
       zIndex: dragging ? 1 : 0,
       left: shown ? "unset" : -3000,
+      scale: dragging ? 1.05 : 1,
+      shadow: dragging ? 8 : 0,
     };
 
     if (shown) {
@@ -905,7 +911,29 @@ enum Direction {
   DOWN = "DOWN",
 }
 
-const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
+const SidebarColumn = styled.div`
+  max-height: 100%;
+  height: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-color: ${({ theme }) => theme.fontDarkest}
+    ${({ theme }) => theme.background};
+
+  ${scrollbarStyles}
+
+  & > * {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+`;
+
+const InteractiveSidebar = ({
+  modal,
+  before,
+}: {
+  modal: boolean;
+  before?: React.ReactNode;
+}) => {
   const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
   const order = useRef<string[]>([]);
   const lastOrder = useRef<string[]>([]);
@@ -914,6 +942,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   const lastDirection = useRef<Direction>(null);
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
+  const container = useRef<HTMLDivElement>(null);
 
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
@@ -932,6 +961,8 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
           top: 0,
           zIndex: 0,
           left: "unset",
+          scale: 1,
+          shadow: 0,
         }),
         entry,
       };
@@ -1064,15 +1095,26 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
   );
 
   return (
-    <>
+    <SidebarColumn
+      ref={container}
+      onScroll={(event) => {
+        console.log(container.current, event.target);
+        if (container.current && container.current !== event.target) {
+          event.target.scrollTo({ top: container.current.scrollTop });
+        }
+      }}
+    >
+      {before}
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
-      <InteractiveSidebarContainer>
+      <InteractiveSidebarContainer key={"interactive-fields"}>
         {entries.map((entry) => {
           const key = getEntryKey(entry);
           if (entry.kind === EntryKind.GROUP) {
             group = entry.name;
           }
+
+          const { shadow, ...springs } = items.current[key].controller.springs;
 
           return (
             <animated.div
@@ -1087,10 +1129,16 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
                   observer.observe(node);
                   node.style.top =
                     items.current[key].controller.springs.top.goal;
+                  node.style.transform = `scale(1)`;
                 }
               }}
               key={key}
-              style={items.current[key].controller.springs}
+              style={{
+                ...springs,
+                boxShadow: shadow.to(
+                  (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+                ),
+              }}
               children={
                 entry.kind === EntryKind.TAIL ? (
                   <AddGroup
@@ -1127,7 +1175,7 @@ const InteractiveSidebar = ({ modal }: { modal: boolean }) => {
           );
         })}
       </InteractiveSidebarContainer>
-    </>
+    </SidebarColumn>
   );
 };
 

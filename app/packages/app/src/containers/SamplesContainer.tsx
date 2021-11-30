@@ -6,7 +6,6 @@ import FieldsSidebar from "../components/Sidebar/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
 import ViewBar from "../components/ViewBar/ViewBar";
-import { scrollbarStyles } from "../components/utils";
 
 import * as atoms from "../recoil/atoms";
 
@@ -15,21 +14,6 @@ const SidebarContainer = styled.div`
   height: 100%;
   width 286px;
   overflow: visible;
-`;
-
-const SidebarColumn = styled.div`
-  max-height: 100%;
-  height: 100%;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  scrollbar-color: ${({ theme }) => theme.fontDarkest}
-    ${({ theme }) => theme.background};
-
-  ${scrollbarStyles}
-
-  & > * {
-    margin-left: 1rem;
-  }
 `;
 
 const ContentColumn = styled.div`
@@ -57,9 +41,7 @@ const SamplesContainer = React.memo(() => {
       <Container>
         {showSidebar ? (
           <SidebarContainer>
-            <SidebarColumn>
-              <FieldsSidebar modal={false} />
-            </SidebarColumn>
+            <FieldsSidebar modal={false} />
           </SidebarContainer>
         ) : null}
         <ContentColumn style={{ paddingLeft: showSidebar ? 0 : "1rem" }}>

@@ -27,6 +27,7 @@ export const Pills = ({ entries }: { entries: PillEntry[] }) => {
             fontSize: "0.8rem",
             lineHeight: "1rem",
             color: theme.font,
+            padding: "0.25rem 0.5rem",
           }}
           key={i}
         />
