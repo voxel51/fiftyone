@@ -131,7 +131,12 @@ export const GroupHeader = ({
           }
         }}
         onFocus={() => !editing && setEditing(true)}
-        onBlur={() => editing && setEditing(false)}
+        onBlur={() => {
+          if (editing) {
+            setLocalValue(title);
+            setEditing(false);
+          }
+        }}
       />
       {hovering && !editing && setValue && (
         <span title={"Rename group"}>
@@ -614,7 +619,7 @@ const fn = (
 ) => {
   let groupActive = false;
   const currentY = {};
-  let y = MARGIN;
+  let y = 0;
   for (const key of currentOrder) {
     const { entry, el } = items[key];
     if (entry.kind === EntryKind.GROUP) {
@@ -636,16 +641,15 @@ const fn = (
       const scale = el.style.transform.match(/(\d*\.\d*)/);
 
       if (scale) height = height / parseFloat(scale[0]);
-      console.log(height, scale);
-
       y += height + MARGIN;
     }
   }
 
   const results = {};
-  y = MARGIN;
+  y = 0;
   let paths = 0;
 
+  groupActive = false;
   for (const key of newOrder) {
     const { entry, el } = items[key];
     if (entry.kind === EntryKind.GROUP) {
@@ -655,14 +659,13 @@ const fn = (
 
     const dragging =
       (activeKey === key || groupActive) && entry.kind !== EntryKind.TAIL;
-
     let shown = true;
 
     if (entry.kind === EntryKind.PATH) {
       shown = entry.shown;
       paths++;
     } else if (entry.kind === EntryKind.EMPTY) {
-      shown = shown && paths === 0 && entry.shown;
+      shown = paths === 0 && entry.shown;
     }
 
     results[key] = {
@@ -686,7 +689,7 @@ const fn = (
 
     if (activeKey) {
       results[key].immediate = (k) =>
-        dragging || ["left", "zIndex", "cursor"].includes(k);
+        (dragging && k !== "scale") || ["left", "zIndex", "cursor"].includes(k);
     }
   }
 
@@ -708,7 +711,7 @@ const InteractiveSidebarContainer = styled.div`
 
 const AddGroupDiv = styled.div`
   box-sizing: border-box;
-  background-color: ${({ theme }) => theme.background};
+  background-color: transparent;
   cursor: pointer;
   font-weight: bold;
   user-select: none;
@@ -846,7 +849,7 @@ const getAfterKey = (
   order: string[],
   direction: Direction
 ): string | null => {
-  if (!items[activeKey].el) {
+  if (!items[activeKey]) {
     return;
   }
 
@@ -922,6 +925,7 @@ type InteractiveItems = {
     el: HTMLDivElement;
     controller: Controller;
     entry: SidebarEntry;
+    active: boolean;
   };
 };
 
@@ -941,7 +945,7 @@ const SidebarColumn = styled.div`
   ${scrollbarStyles}
 
   & > * {
-    margin-left: 0.5rem;
+    margin-left: 1rem;
     margin-right: 0.5rem;
   }
 `;
@@ -961,6 +965,7 @@ const InteractiveSidebar = ({
   const lastDirection = useRef<Direction>(null);
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
+  const container = useRef<HTMLDivElement>();
 
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
@@ -971,7 +976,7 @@ const InteractiveSidebar = ({
 
     const key = getEntryKey(entry);
 
-    if (!(key in items)) {
+    if (!(key in items.current)) {
       items.current[key] = {
         el: null,
         controller: new Controller({
@@ -983,6 +988,7 @@ const InteractiveSidebar = ({
           shadow: 0,
         }),
         entry,
+        active: false,
       };
     } else {
       items.current[key].entry = entry;
@@ -1034,8 +1040,23 @@ const InteractiveSidebar = ({
       i++;
     }
 
+    console.log(section, pool);
+
     return [...result, ...section, ...pool.slice(i)];
   };
+
+  const placeItems = useCallback(() => {
+    const placements = fn(items.current, order.current, order.current);
+    for (const key of order.current) {
+      const item = items.current[key];
+      if (item.active) {
+        item.controller.start(placements[key]);
+      } else {
+        item.controller.set(placements[key]);
+        item.active = true;
+      }
+    }
+  }, []);
 
   useEventHandler(document.body, "mouseup", (event) => {
     if (start.current === event.clientY || down.current == null) {
@@ -1046,7 +1067,6 @@ const InteractiveSidebar = ({
 
     requestAnimationFrame(() => {
       const newOrder = getNewOrder(lastDirection.current);
-      const results = fn(items.current, order.current, newOrder);
       order.current = newOrder;
       setEntries(order.current.map((key) => items.current[key].entry));
       down.current = null;
@@ -1054,6 +1074,22 @@ const InteractiveSidebar = ({
       lastDirection.current = null;
     });
   });
+
+  const scrollWith = useCallback((direction: Direction, event: MouseEvent) => {
+    const { top, height } = container.current.getBoundingClientRect();
+    const scroll = container.current.scrollTop;
+    if (direction === Direction.UP) {
+      if (scroll === 0) return 0;
+      const delta = event.clientY - top;
+
+      if (delta < 0) {
+        container.current.scrollBy({ top: delta, behavior: "smooth" });
+        return delta;
+      }
+    }
+
+    return 0;
+  }, []);
 
   useEventHandler(document.body, "mousemove", (event) => {
     if (down.current == null) return;
@@ -1064,6 +1100,7 @@ const InteractiveSidebar = ({
     const entry = items.current[down.current].entry;
     lastDirection.current =
       event.clientY - last.current > 0 ? Direction.DOWN : Direction.UP;
+
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
 
     requestAnimationFrame(() => {
@@ -1079,7 +1116,6 @@ const InteractiveSidebar = ({
       for (const key of order.current)
         items.current[key].controller.start(results[key]);
 
-      items.current[down.current].el.scrollIntoView();
       last.current = event.clientY;
       lastOrder.current = newOrder;
     });
@@ -1094,15 +1130,6 @@ const InteractiveSidebar = ({
     lastOrder.current = order.current;
   }, []);
 
-  const placeItems = useCallback(() => {
-    requestAnimationFrame(() => {
-      const placements = fn(items.current, order.current, order.current);
-      for (const key of order.current) {
-        items.current[key].controller.set(placements[key]);
-      }
-    });
-  }, []);
-
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
   );
@@ -1110,7 +1137,7 @@ const InteractiveSidebar = ({
   useLayoutEffect(placeItems, [entries]);
 
   return (
-    <SidebarColumn>
+    <SidebarColumn ref={container}>
       {before}
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />

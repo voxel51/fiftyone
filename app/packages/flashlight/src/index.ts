@@ -505,10 +505,6 @@ export default class Flashlight<K> {
   private createContainer(): HTMLDivElement {
     const container = document.createElement("div");
     container.classList.add(flashlightContainer);
-    container.tabIndex = -1;
-    container.addEventListener("mouseenter", () => container.focus());
-    container.removeEventListener("mouseleaver", () => container.blur());
-
     return container;
   }
 
