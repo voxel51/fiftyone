@@ -1670,7 +1670,7 @@ __metadata:
     "@fiftyone/utilities": "*"
     "@material-ui/core": 4.11.4
     "@material-ui/icons": ^4.9.1
-    "@react-spring/web": ^9.3.0
+    "@react-spring/web": latest
     "@types/mime": ^2.0.3
     "@types/react": ^17.0.0
     "@types/react-dom": ^17.0.0
@@ -1977,9 +1977,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-spring/web@npm:^9.3.0":
-  version: 9.3.0
-  resolution: "@react-spring/web@npm:9.3.0"
+"@react-spring/web@npm:latest":
+  version: 9.3.1
+  resolution: "@react-spring/web@npm:9.3.1"
   dependencies:
     "@react-spring/animated": ~9.3.0
     "@react-spring/core": ~9.3.0
@@ -1988,7 +1988,7 @@ __metadata:
   peerDependencies:
     react: ^16.8.0  || ^17.0.0
     react-dom: ^16.8.0  || ^17.0.0
-  checksum: a78d23e538055f84ac3f8090286f3d3a17c56b5de35440f803c0dee5cb7af556dc6083f66feeb9dcd20a510ad390f8a3886abeeab7db9dab0da9e2104ee6f145
+  checksum: 1d40f89de08959a868c1a3e42f2e5c0efda3439c0777e9c0b2c59800464d32bb7b02ba81fab7fdfe727badb7ce21edfb7e47b1883c5887e09b22997fe1a2cc07
   languageName: node
   linkType: hard
 

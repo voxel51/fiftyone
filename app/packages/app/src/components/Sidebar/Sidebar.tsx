@@ -614,7 +614,7 @@ const fn = (
 ) => {
   let groupActive = false;
   const currentY = {};
-  let y = 0;
+  let y = MARGIN;
   for (const key of currentOrder) {
     const { entry, el } = items[key];
     if (entry.kind === EntryKind.GROUP) {
@@ -638,7 +638,7 @@ const fn = (
   }
 
   const results = {};
-  y = 0;
+  y = MARGIN;
   let paths = 0;
 
   for (const key of newOrder) {
@@ -784,7 +784,10 @@ const measureEntries = (
 
     if (!isShown(entry)) continue;
 
-    const height = items[key].el.getBoundingClientRect().height;
+    let height =
+      items[key].el.getBoundingClientRect().height /
+      items[key].controller.springs.scale.get();
+
     const top = previous.top + previous.height + MARGIN;
     data.push({ key, height, top });
     previous = { top, height };
@@ -814,7 +817,10 @@ const measureGroups = (
 
     if (!isShown(entry)) continue;
 
-    current.height += items[key].el.getBoundingClientRect().height + MARGIN;
+    current.height +=
+      items[key].el.getBoundingClientRect().height /
+        items[key].controller.springs.scale.get() +
+      MARGIN;
   }
 
   data.push(current);
@@ -838,6 +844,7 @@ const getAfterKey = (
   const data = isGroup
     ? measureGroups(items, order)
     : measureEntries(items, order);
+
   const { height: activeHeight } = data.filter(
     ({ key }) => key === activeKey
   )[0];
@@ -942,8 +949,6 @@ const InteractiveSidebar = ({
   const lastDirection = useRef<Direction>(null);
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
-  const container = useRef<HTMLDivElement>(null);
-  const newNode = useRef<boolean>(false);
 
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
@@ -1027,19 +1032,15 @@ const InteractiveSidebar = ({
       return;
     }
 
-    const newOrder = getNewOrder(lastDirection.current);
-    const results = fn(items.current, order.current, newOrder);
-    if (order.current.some((key, i) => newOrder[i] !== key)) {
+    requestAnimationFrame(() => {
+      const newOrder = getNewOrder(lastDirection.current);
+      const results = fn(items.current, order.current, newOrder);
       order.current = newOrder;
       setEntries(order.current.map((key) => items.current[key].entry));
-    }
-    for (const key of newOrder) {
-      items.current[key].controller.set(results[key]);
-    }
-
-    down.current = null;
-    start.current = null;
-    lastDirection.current = null;
+      down.current = null;
+      start.current = null;
+      lastDirection.current = null;
+    });
   });
 
   useEventHandler(document.body, "mousemove", (event) => {
@@ -1080,42 +1081,27 @@ const InteractiveSidebar = ({
     lastOrder.current = order.current;
   }, []);
 
-  useLayoutEffect(() => {
+  const placeItems = useCallback(() => {
     const placements = fn(items.current, order.current, order.current);
-    for (const key of order.current)
+    for (const key of order.current) {
       items.current[key].controller.set(placements[key]);
-  }, [entries]);
-
-  const [observer] = useState<ResizeObserver>(
-    () =>
-      new ResizeObserver(() => {
-        const placements = fn(items.current, order.current, order.current);
-        for (const key of order.current)
-          items.current[key].controller.set(placements[key]);
-      })
-  );
-
-  const s = useCallback((event) => {
-    console.log(event.target.scrollTop);
+    }
   }, []);
 
-  return (
-    <SidebarColumn
-      ref={(node) => {
-        node
-          ? node.addEventListener("scroll", s)
-          : container.current &&
-            container.current.removeEventListener("scroll", s);
+  const [observer] = useState<ResizeObserver>(
+    () => new ResizeObserver(placeItems)
+  );
 
-        container.current = node;
-      }}
-    >
+  useLayoutEffect(placeItems, [entries]);
+
+  return (
+    <SidebarColumn>
       {before}
       <SampleTagsCell key={"sample-tags"} modal={modal} />
       <LabelTagsCell key={"label-tags"} modal={modal} />
       <InteractiveSidebarContainer key={"interactive-fields"}>
-        {entries.map((entry) => {
-          const key = getEntryKey(entry);
+        {order.current.map((key) => {
+          const entry = items.current[key].entry;
           if (entry.kind === EntryKind.GROUP) {
             group = entry.name;
           }
@@ -1127,16 +1113,10 @@ const InteractiveSidebar = ({
               data-key={key}
               onMouseDown={trigger}
               ref={(node) => {
-                if (items.current[key].el)
+                items.current[key].el &&
                   observer.unobserve(items.current[key].el);
-
+                node && observer.observe(node);
                 items.current[key].el = node;
-                if (node) {
-                  observer.observe(node);
-                  node.style.top =
-                    items.current[key].controller.springs.top.goal;
-                  node.style.transform = `scale(1)`;
-                }
               }}
               key={key}
               style={{
