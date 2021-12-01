@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 def import_dataset(
-    data_path, project_name=None, tasks_list=None, dataset_name=None
+    data_path, project_name=None, task_ids=None, dataset_name=None
 ):
     """Create a FiftyOne dataset given a local directory of media and the name of a
     project or list of tasks containing corresponding annotations in CVAT.
@@ -59,7 +59,7 @@ def import_dataset(
 
         dataset = fouc.import_dataset("/path/to/data", project_name="project_name")
         
-        dataset = fouc.import_dataset("/path/to/data.json", tasks_list=[1,42,51])
+        dataset = fouc.import_dataset("/path/to/data.json", task_ids=[1,42,51])
 
 
     Any files that provided in `data_path` that do not exist in CVAT will
@@ -77,8 +77,8 @@ def import_dataset(
                 filepaths on disk
 
         project_name (None): the name of the CVAT project  containing labels to
-            load into the dataset. Required if `tasks_list` is `None`
-        tasks_list (None): a list of integer IDs of CVAT tasks containing
+            load into the dataset. Required if `task_ids` is `None`
+        task_ids (None): a list of integer IDs of CVAT tasks containing
             labels to load into the dataset. Required if `project_name` is
             `None`
         dataset_name (None): an optional name to give to the dataset
@@ -86,13 +86,13 @@ def import_dataset(
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    if project_name is None and tasks_list is None:
+    if project_name is None and task_ids is None:
         raise ValueError(
-            "Either `project_name` or `tasks_list` must be provided."
+            "Either `project_name` or `task_ids` must be provided."
         )
-    if project_name is not None and tasks_list is not None:
+    if project_name is not None and task_ids is not None:
         raise ValueError(
-            "Only one of `project_name` or `tasks_list` is allowed."
+            "Only one of `project_name` or `task_ids` is allowed."
         )
 
     filename_map = foud.ImportPathsMixin._load_data_map(data_path)
@@ -130,7 +130,7 @@ def import_dataset(
 
     else:
         _parse_and_load_tasks(
-            tasks_list,
+            task_ids,
             api,
             filename_map,
             dataset,
