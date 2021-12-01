@@ -2020,8 +2020,8 @@ The following parameters are supported by :func:`import_dataset() <fiftyone.util
         manifest containing a mapping of CVAT filenames to absolute
         filepaths on disk
 -   **project_name** (*None*): the name of the CVAT project  containing labels to
-    load into the dataset. Required if `tasks_list` is `None`
--   **tasks_list** (*None*): a list of integer IDs of CVAT tasks containing
+    load into the dataset. Required if `task_ids` is `None`
+-   **task_ids** (*None*): a list of integer IDs of CVAT tasks containing
     labels to load into the dataset. Required if `project_name` is
     `None`
 -   **dataset_name** (*None*): an optional name to give to the dataset
