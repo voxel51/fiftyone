@@ -58,7 +58,8 @@ def import_dataset(
 
             -   an absolute directory path where the media files reside
             -   an absolute filepath specifying the location of the JSON data
-                manifest containing a list of absolute filepaths
+                manifest containing a mapping of CVAT filenames to absolute
+                filepaths on disk
 
         project_name (None): the name of the CVAT project  containing labels to
             load into the dataset. Required if `tasks_list` is `None`
@@ -86,7 +87,7 @@ def import_dataset(
     dataset.add_samples([fos.Sample(filepath=fp) for fp in filepaths])
     dataset.ensure_frames()
 
-    anno_key = "load_from_cvat"
+    anno_key = "tmp_" + str(ObjectId())
     label_schema = {None: {"type": "tmp"}}
 
     config = foua._parse_config(
@@ -97,6 +98,7 @@ def import_dataset(
     api = anno_backend.connect_to_api()
     project_id = api.get_project_id(project_name)
     if project_id is not None:
+        # Update classes and attributes of label schema
         api._convert_cvat_schema(
             label_schema, project_id=project_id, update_server=False
         )
@@ -108,6 +110,7 @@ def import_dataset(
     frame_id_map = {}
     for task_id in task_ids:
         if project_id is None:
+            # Update classes and attributes of label schema
             api._convert_cvat_schema(
                 label_schema, task_id=task_id, update_server=False
             )
