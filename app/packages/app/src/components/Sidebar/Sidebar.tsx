@@ -633,6 +633,11 @@ const fn = (
     if (shown) {
       let height = el.getBoundingClientRect().height;
 
+      const scale = el.style.transform.match(/(\d*\.\d*)/);
+
+      if (scale) height = height / parseFloat(scale[0]);
+      console.log(height, scale);
+
       y += height + MARGIN;
     }
   }
@@ -670,7 +675,13 @@ const fn = (
     };
 
     if (shown) {
-      y += el.getBoundingClientRect().height + MARGIN;
+      let height = el.getBoundingClientRect().height;
+
+      const scale = el.style.transform.match(/(\d*\.\d*)/);
+
+      if (scale) height = height / parseFloat(scale[0]);
+
+      y += height + MARGIN;
     }
 
     if (activeKey) {
@@ -776,7 +787,7 @@ const measureEntries = (
   order: string[]
 ): { top: number; height: number; key: string }[] => {
   const data = [];
-  let previous = { top: 0, height: 0 };
+  let previous = { top: MARGIN, height: 0 };
 
   for (let i = 0; i < order.length; i++) {
     const key = order[i];
@@ -784,9 +795,10 @@ const measureEntries = (
 
     if (!isShown(entry)) continue;
 
-    let height =
+    let height = Math.round(
       items[key].el.getBoundingClientRect().height /
-      items[key].controller.springs.scale.get();
+        items[key].controller.springs.scale.get()
+    );
 
     const top = previous.top + previous.height + MARGIN;
     data.push({ key, height, top });
@@ -801,7 +813,7 @@ const measureGroups = (
   order: string[]
 ): { top: number; height: number; key: string }[] => {
   const data = [];
-  let current = { top: 0, height: 0, key: null };
+  let current = { top: MARGIN, height: 0, key: null };
 
   for (let i = 0; i < order.length; i++) {
     const key = order[i];
@@ -1067,6 +1079,7 @@ const InteractiveSidebar = ({
       for (const key of order.current)
         items.current[key].controller.start(results[key]);
 
+      items.current[down.current].el.scrollIntoView();
       last.current = event.clientY;
       lastOrder.current = newOrder;
     });
@@ -1082,10 +1095,12 @@ const InteractiveSidebar = ({
   }, []);
 
   const placeItems = useCallback(() => {
-    const placements = fn(items.current, order.current, order.current);
-    for (const key of order.current) {
-      items.current[key].controller.set(placements[key]);
-    }
+    requestAnimationFrame(() => {
+      const placements = fn(items.current, order.current, order.current);
+      for (const key of order.current) {
+        items.current[key].controller.set(placements[key]);
+      }
+    });
   }, []);
 
   const [observer] = useState<ResizeObserver>(
