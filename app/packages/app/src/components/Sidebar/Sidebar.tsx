@@ -35,7 +35,7 @@ import DropdownHandle, {
   DropdownHandleProps,
   PlusMinusButton,
 } from "../DropdownHandle";
-import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
+import { Entry, PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
 import {
   BOOLEAN_FIELD,
@@ -891,9 +891,15 @@ const getAfterKey = (
 
     let index = order.indexOf(result) + (up ? -1 : 1);
     if (result === activeKey) index--;
-    if (index < 0) return null;
+    if (index <= 0) return null;
 
-    while (items[order[index]].entry.kind === EntryKind.PATH) index++;
+    if (order[index] === activeKey) return activeKey;
+
+    while (
+      [EntryKind.PATH, EntryKind.GROUP].includes(items[order[index]].entry.kind)
+    )
+      index++;
+
     return order[index];
   }
 
@@ -1039,8 +1045,6 @@ const InteractiveSidebar = ({
       terminate = pool[i] === after;
       i++;
     }
-
-    console.log(section, pool);
 
     return [...result, ...section, ...pool.slice(i)];
   };
