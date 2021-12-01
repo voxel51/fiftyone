@@ -621,7 +621,11 @@ const fn = (
   const currentY = {};
   let y = 0;
   for (const key of currentOrder) {
-    const { entry, el } = items[key];
+    const {
+      entry,
+      el,
+      controller: { springs },
+    } = items[key];
     if (entry.kind === EntryKind.GROUP) {
       groupActive = key === activeKey;
     }
@@ -633,14 +637,15 @@ const fn = (
       shown = entry.shown;
     }
 
+    const height = el.getBoundingClientRect().height;
+    const scale = springs.scale.get();
+    if (scale > 1) {
+      y += (height - height / scale) / 2;
+    }
+
     currentY[key] = y;
 
     if (shown) {
-      let height = el.getBoundingClientRect().height;
-
-      const scale = el.style.transform.match(/(\d*\.\d*)/);
-
-      if (scale) height = height / parseFloat(scale[0]);
       y += height + MARGIN;
     }
   }
@@ -651,7 +656,11 @@ const fn = (
 
   groupActive = false;
   for (const key of newOrder) {
-    const { entry, el } = items[key];
+    const {
+      entry,
+      el,
+      controller: { springs },
+    } = items[key];
     if (entry.kind === EntryKind.GROUP) {
       groupActive = key === activeKey;
       paths = 0;
@@ -678,13 +687,7 @@ const fn = (
     };
 
     if (shown) {
-      let height = el.getBoundingClientRect().height;
-
-      const scale = el.style.transform.match(/(\d*\.\d*)/);
-
-      if (scale) height = height / parseFloat(scale[0]);
-
-      y += height + MARGIN;
+      y += el.getBoundingClientRect().height / springs.scale.get() + MARGIN;
     }
 
     if (activeKey) {
