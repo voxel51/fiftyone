@@ -26,16 +26,129 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
+import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
+
+
+def import_dataset(
+    data_path, project_name=None, tasks_list=None, dataset_name=None
+):
+    """Create a FiftyOne dataset given a local directory of media and the name of a
+    project or list of tasks containing corresponding annotations in CVAT.
+
+    Ex::
+
+        dataset = fouc.import_dataset("/path/to/data", project_name="project_name")
+        
+        dataset = fouc.import_dataset("/path/to/data.json", tasks_list=[1,42,51])
+
+    Args:
+        data_path: a parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   an absolute directory path where the media files reside
+            -   an absolute filepath specifying the location of the JSON data
+                manifest containing a list of absolute filepaths
+
+        project_name (None): the name of the CVAT project  containing labels to
+            load into the dataset. Required if `tasks_list` is `None`
+        tasks_list (None): a list of integer IDs of CVAT tasks containing
+            labels to load into the dataset. Required if `project_name` is
+            `None`
+        dataset_name (None): an optional name to give to the dataset
+    
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    if project_name is None and tasks_list is None:
+        raise ValueError(
+            "Either `project_name` or `tasks_list` must be provided."
+        )
+    if project_name is not None and tasks_list is not None:
+        raise ValueError(
+            "Only one of `project_name` or `tasks_list` is allowed."
+        )
+
+    filename_map = foud.ImportPathsMixin._load_data_map(data_path)
+    filepaths = list(filename_map.values())
+
+    dataset = fod.Dataset(dataset_name)
+    dataset.add_samples([fos.Sample(filepath=fp) for fp in filepaths])
+    dataset.ensure_frames()
+
+    anno_key = "load_from_cvat"
+    label_schema = {None: {"type": "tmp"}}
+
+    config = foua._parse_config(
+        "cvat", label_schema, "filepath", project_name=project_name
+    )
+    anno_backend = config.build()
+    anno_backend.register_run(dataset, anno_key, overwrite=False)
+    api = anno_backend.connect_to_api()
+    project_id = api.get_project_id(project_name)
+    if project_id is not None:
+        api._convert_cvat_schema(
+            label_schema, project_id=project_id, update_server=False
+        )
+        project_json = api.get(api.project_url(project_id)).json()
+        task_ids = [task["id"] for task in project_json["tasks"]]
+    else:
+        task_ids = tasks_list
+
+    frame_id_map = {}
+    for task_id in task_ids:
+        if project_id is None:
+            api._convert_cvat_schema(
+                label_schema, task_id=task_id, update_server=False
+            )
+        task_meta_json = api.get(api.task_data_meta_url(task_id)).json()
+        filenames = [frame["name"] for frame in task_meta_json["frames"]]
+        task_filepaths = []
+        for fn in filenames:
+            task_fp = filename_map.get(fn, None)
+            if task_fp:
+                task_filepaths.append(task_fp)
+        view = dataset.select_by("filepath", task_filepaths)
+        frame_map = api._build_frame_id_map(view)
+        frame_id_map[task_id] = frame_map
+
+    label_schema[None].pop("type")
+    config.label_schema = label_schema
+    anno_backend.update_run_config(dataset, anno_key, config)
+
+    id_map = {}
+    server_id_map = {}
+    project_ids = []
+    job_ids = []
+    results = CVATAnnotationResults(
+        dataset,
+        config,
+        id_map,
+        server_id_map,
+        project_ids,
+        task_ids,
+        job_ids,
+        frame_id_map,
+        {None: task_ids},
+        backend=anno_backend,
+    )
+
+    anno_backend.save_run_results(dataset, anno_key, results)
+
+    dataset.load_annotations(anno_key)
+    dataset.delete_annotation_run(anno_key)
+
+    return dataset
 
 
 class CVATImageDatasetImporter(
@@ -3730,6 +3843,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return self.get(self.project_url(project_id)).json()["labels"]
 
+    def _get_task_labels(self, task_id):
+        resp = self.get(self.task_url(task_id)).json()
+        if "labels" not in resp:
+            raise ValueError("Task '%s' not found" % task_id)
+
+        return resp["labels"]
+
     def _parse_project_details(self, project_name, project_id):
         if project_id is not None:
             project_name = self.get_project_name(project_id)
@@ -3746,7 +3866,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     ):
         if project_id is not None:
             return self._convert_cvat_schema(
-                label_schema, project_id, occluded_attr=occluded_attr
+                label_schema,
+                project_id=project_id,
+                occluded_attr=occluded_attr,
             )
 
         return self._build_cvat_schema(
@@ -3754,9 +3876,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def _convert_cvat_schema(
-        self, label_schema, project_id, occluded_attr=None
+        self,
+        label_schema,
+        project_id=None,
+        task_id=None,
+        occluded_attr=None,
+        update_server=True,
     ):
-        labels = self._get_project_labels(project_id)
+        if project_id is None:
+            if task_id is None:
+                raise ValueError(
+                    "Either `project_id` or `task_id` must be provided."
+                )
+            else:
+                labels = self._get_task_labels(task_id)
+        else:
+            labels = self._get_project_labels(project_id)
 
         cvat_schema = {}
         labels_to_update = []
@@ -3819,7 +3954,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     c: occluded_attr for c in class_names.keys()
                 }
 
-        if labels_to_update:
+        if project_id is not None and labels_to_update and update_server:
             self._add_project_label_ids(project_id, list(labels_to_update))
 
         return (
@@ -4508,8 +4643,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         for label_field, label_info in label_schema.items():
             _field_classes = set()
-            label_type = label_info["type"]
-            is_existing_field = label_info["existing_field"]
+            label_type = label_info.get("type", None)
+            is_existing_field = label_info.get("existing_field", False)
             classes = label_info["classes"]
             attributes, occluded_attr_name = self._to_cvat_attributes(
                 label_info["attributes"]
