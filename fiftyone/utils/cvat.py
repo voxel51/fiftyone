@@ -56,7 +56,8 @@ def import_dataset(
         data_path: a parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
-            -   an absolute directory path where the media files reside
+            -   an absolute directory path where the media files reside,
+                filenames on disk must match those in CVAT
             -   an absolute filepath specifying the location of the JSON data
                 manifest containing a mapping of CVAT filenames to absolute
                 filepaths on disk
