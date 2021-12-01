@@ -46,11 +46,25 @@ def import_dataset(
     """Create a FiftyOne dataset given a local directory of media and the name of a
     project or list of tasks containing corresponding annotations in CVAT.
 
+    Instead of a local directory, a JSON file can be provided that maps the
+    filenames of media in CVAT to the corresponding filepaths on disk::
+
+        data_map = {
+            "000000_00880.jpg": "/path/to/data/dir/00880.jpg",
+            "cvat_filename.ext": "/path/to/data/dir2/local_filename.jpg",
+            ...
+        }
+
     Ex::
 
         dataset = fouc.import_dataset("/path/to/data", project_name="project_name")
         
         dataset = fouc.import_dataset("/path/to/data.json", tasks_list=[1,42,51])
+
+
+    Any files that provided in `data_path` that do not exist in CVAT will
+    remain unlabeled, and any files that exist in CVAT that are not found in
+    `data_path` will be excluded. 
 
     Args:
         data_path: a parameter that enables explicit control
@@ -88,6 +102,7 @@ def import_dataset(
     dataset.add_samples([fos.Sample(filepath=fp) for fp in filepaths])
     dataset.ensure_frames()
 
+    # Construct temporary annotation run and config
     anno_key = "tmp_" + str(ObjectId())
     label_schema = {None: {"type": "tmp"}}
 
@@ -96,44 +111,116 @@ def import_dataset(
     )
     anno_backend = config.build()
     anno_backend.register_run(dataset, anno_key, overwrite=False)
+
     api = anno_backend.connect_to_api()
     project_id = api.get_project_id(project_name)
-    if project_id is not None:
-        # Update classes and attributes of label schema
-        api._convert_cvat_schema(
-            label_schema, project_id=project_id, update_server=False
-        )
-        project_json = api.get(api.project_url(project_id)).json()
-        task_ids = [task["id"] for task in project_json["tasks"]]
-    else:
-        task_ids = tasks_list
 
+    # Parse CVAT schemas and load annotations into dataset
+    if project_id is not None:
+        _parse_and_load_project(
+            project_id,
+            api,
+            filename_map,
+            dataset,
+            anno_backend,
+            config,
+            anno_key,
+            label_schema,
+        )
+
+    else:
+        _parse_and_load_tasks(
+            tasks_list,
+            api,
+            filename_map,
+            dataset,
+            anno_backend,
+            config,
+            anno_key,
+        )
+
+    dataset.delete_annotation_run(anno_key)
+
+    return dataset
+
+
+def _parse_and_load_project(
+    project_id,
+    api,
+    filename_map,
+    dataset,
+    anno_backend,
+    config,
+    anno_key,
+    label_schema,
+):
+    frame_id_map = {}
+    # Parse classes and attributes from project to label schema
+    api._convert_cvat_schema(
+        label_schema, project_id=project_id, update_server=False
+    )
+    project_json = api.get(api.project_url(project_id)).json()
+    task_ids = [task["id"] for task in project_json["tasks"]]
+    for task_id in task_ids:
+        frame_id_map[task_id] = _build_frame_id_map_for_task(
+            dataset, task_id, api, filename_map
+        )
+
+    _load_tasks_annotations(
+        dataset,
+        task_ids,
+        label_schema,
+        anno_backend,
+        config,
+        anno_key,
+        frame_id_map,
+    )
+
+
+def _parse_and_load_tasks(
+    task_ids, api, filename_map, dataset, anno_backend, config, anno_key
+):
     frame_id_map = {}
     for task_id in task_ids:
-        if project_id is None:
-            # Update classes and attributes of label schema
-            api._convert_cvat_schema(
-                label_schema, task_id=task_id, update_server=False
-            )
-        task_meta_json = api.get(api.task_data_meta_url(task_id)).json()
-        filenames = [frame["name"] for frame in task_meta_json["frames"]]
-        task_filepaths = []
-        for fn in filenames:
-            task_fp = filename_map.get(fn, None)
-            if task_fp:
-                task_filepaths.append(task_fp)
-        view = dataset.select_by("filepath", task_filepaths)
-        frame_map = api._build_frame_id_map(view)
-        frame_id_map[task_id] = frame_map
+        label_schema = {None: {"type": "tmp"}}
+        # Parse classes and attributes from task to label schema
+        api._convert_cvat_schema(
+            label_schema, task_id=task_id, update_server=False
+        )
+        frame_id_map[task_id] = _build_frame_id_map_for_task(
+            dataset, task_id, api, filename_map
+        )
+        _load_tasks_annotations(
+            dataset,
+            [task_id],
+            label_schema,
+            anno_backend,
+            config,
+            anno_key,
+            frame_id_map,
+        )
 
-    label_schema[None].pop("type")
+
+def _load_tasks_annotations(
+    dataset,
+    task_ids,
+    label_schema,
+    anno_backend,
+    config,
+    anno_key,
+    frame_id_map,
+):
+    label_schema[None].pop("type", None)
     config.label_schema = label_schema
     anno_backend.update_run_config(dataset, anno_key, config)
 
+    # All labels are considered new and will be added
     id_map = {}
     server_id_map = {}
+
     project_ids = []
     job_ids = []
+    labels_task_map = {None: task_ids}
     results = CVATAnnotationResults(
         dataset,
         config,
@@ -143,16 +230,24 @@ def import_dataset(
         task_ids,
         job_ids,
         frame_id_map,
-        {None: task_ids},
+        labels_task_map,
         backend=anno_backend,
     )
 
     anno_backend.save_run_results(dataset, anno_key, results)
-
     dataset.load_annotations(anno_key)
-    dataset.delete_annotation_run(anno_key)
 
-    return dataset
+
+def _build_frame_id_map_for_task(dataset, task_id, api, filename_map):
+    task_meta_json = api.get(api.task_data_meta_url(task_id)).json()
+    filenames = [frame["name"] for frame in task_meta_json["frames"]]
+    task_filepaths = []
+    for fn in filenames:
+        task_fp = filename_map.get(fn, None)
+        if task_fp:
+            task_filepaths.append(task_fp)
+    view = dataset.select_by("filepath", task_filepaths)
+    return api._build_frame_id_map(view)
 
 
 class CVATImageDatasetImporter(
