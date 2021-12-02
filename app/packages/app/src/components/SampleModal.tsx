@@ -3,7 +3,11 @@ import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import Actions from "./Actions";
-import FieldsSidebar from "./Sidebar/Sidebar";
+import FieldsSidebar, {
+  EntryKind,
+  sidebarEntries,
+  SidebarEntry,
+} from "./Sidebar/Sidebar";
 import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
@@ -12,6 +16,8 @@ import { useMessageHandler, useTheme } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
+import { Controller } from "@react-spring/core";
+import { TextEntry } from "./Sidebar/Entries";
 
 const Container = styled.div`
   position: relative;
@@ -230,8 +236,47 @@ const SampleModal = ({ onClose }: Props, ref) => {
   }
 
   useSampleUpdate(lookerRef);
-
   const theme = useTheme();
+
+  const renderEntry = (
+    group: string,
+    entry: SidebarEntry,
+    controller: Controller
+  ) => {
+    switch (entry.kind) {
+      case EntryKind.PATH:
+        return {
+          children: (
+            <FilterEntry
+              modal={false}
+              path={entry.path}
+              group={group}
+              onFocus={() => {
+                controller.set({ zIndex: "1" });
+              }}
+              onBlur={() => {
+                controller.set({ zIndex: "0" });
+              }}
+            />
+          ),
+          disabled: false,
+        };
+      case EntryKind.GROUP:
+        return {
+          children: <InteractiveGroupEntry name={entry.name} modal={true} />,
+          disabled: false,
+        };
+
+      case EntryKind.EMPTY:
+        return {
+          children: <TextEntry text={"No fields"} />,
+          disabled: true,
+        };
+      default:
+        throw new Error("invalid entry");
+    }
+  };
+
   return (
     <Container style={{ zIndex: 10001 }} ref={ref}>
       <div className={`looker-element`}>
@@ -256,30 +301,10 @@ const SampleModal = ({ onClose }: Props, ref) => {
           <Actions modal={true} lookerRef={lookerRef} />
         </ModalFooter>
         <div className="sidebar-content">
-          <h2>
-            Metadata
-            <span className="push-right" />
-          </h2>
-          <Row name="id" value={_id} />
-          <Row name="filepath" value={filepath} />
-          <Row name="media type" value={_media_type} />
-          {formatMetadata(metadata).map(({ name, value }) => (
-            <Row key={"metadata-" + name} name={name} value={value} />
-          ))}
-          <Suspense
-            fallback={
-              <h2>
-                Fields
-                <span className="push-right" />
-              </h2>
-            }
-          >
-            <h2>
-              Fields
-              <span className="push-right" />
-            </h2>
-            <FieldsSidebar modal={true} />
-          </Suspense>
+          <FieldsSidebar
+            entriesAtom={sidebarEntries(true)}
+            render={renderEntry}
+          />
         </div>
       </div>
     </Container>

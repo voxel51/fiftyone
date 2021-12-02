@@ -1,13 +1,19 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 
-import FieldsSidebar from "../components/Sidebar/Sidebar";
+import FieldsSidebar, {
+  EntryKind,
+  sidebarEntries,
+} from "../components/Sidebar/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
 import ViewBar from "../components/ViewBar/ViewBar";
 
 import * as atoms from "../recoil/atoms";
+import { elementNames } from "../recoil/view";
+import { TextEntry } from "../components/Sidebar/Entries";
 
 const SidebarContainer = styled.div`
   display: block;
@@ -29,6 +35,54 @@ const Container = styled.div`
 
 const SamplesContainer = React.memo(() => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
+  const { singular } = useRecoilValue(elementNames);
+
+  const renderGridEntry = (
+    group: string,
+    entry: SidebarEntry,
+    controller: Controller
+  ) => {
+    switch (entry.kind) {
+      case EntryKind.PATH:
+        return {
+          children: (
+            <FilterEntry
+              modal={false}
+              path={entry.path}
+              group={group}
+              onFocus={() => {
+                controller.set({ zIndex: "1" });
+              }}
+              onBlur={() => {
+                controller.set({ zIndex: "0" });
+              }}
+            />
+          ),
+          disabled: false,
+        };
+      case EntryKind.GROUP:
+        return {
+          children: <InteractiveGroupEntry name={entry.name} modal={false} />,
+          disabled: false,
+        };
+      case EntryKind.TAIL:
+        return {
+          children: <AddGridGroup />,
+          disabled: true,
+        };
+      case EntryKind.EMPTY:
+        return {
+          children: (
+            <TextEntry
+              text={group === "tags" ? `No ${singular} tags` : "No fields"}
+            />
+          ),
+          disabled: true,
+        };
+      default:
+        throw new Error("invalid entry");
+    }
+  };
 
   return (
     <>
@@ -39,11 +93,14 @@ const SamplesContainer = React.memo(() => {
         key={"header"}
       />
       <Container>
-        {showSidebar ? (
+        {showSidebar && (
           <SidebarContainer>
-            <FieldsSidebar modal={false} />
+            <FieldsSidebar
+              entriesAtom={sidebarEntries(false)}
+              render={renderGridEntry}
+            />
           </SidebarContainer>
-        ) : null}
+        )}
         <ContentColumn style={{ paddingLeft: showSidebar ? 0 : "1rem" }}>
           <Flashlight />
         </ContentColumn>

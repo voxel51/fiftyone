@@ -21,11 +21,10 @@ import styled from "styled-components";
 
 import { move, removeKeys } from "@fiftyone/utilities";
 
+import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
-import LabelTagsCell from "./LabelTags";
-import SampleTagsCell from "./SampleTags";
 import DropdownHandle, {
   DropdownHandleProps,
   PlusMinusButton,
@@ -363,7 +362,6 @@ const getFilterData = (
   }
 
   const label = VALID_LABEL_TYPES.includes(parent.embeddedDocType);
-  const bbox = ["Detection"];
 
   return fields
     .filter(({ name }) => !label || name !== "tags")
@@ -435,7 +433,7 @@ const FilterEntry = React.memo(
   }
 );
 
-enum EntryKind {
+export enum EntryKind {
   EMPTY = "EMPTY",
   GROUP = "GROUP",
   PATH = "PATH",
@@ -463,7 +461,7 @@ interface PathEntry {
   shown: boolean;
 }
 
-type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | TailEntry;
+export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | TailEntry;
 
 type SidebarGroups = [string, string[]][];
 
@@ -494,7 +492,12 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
       })
     ).filter((path) => !labels.includes(path));
 
+    const tags = get(
+      aggregationAtoms.values({ extended: false, modal, path: "tags" })
+    );
+
     const groups = {
+      tags,
       labels: sampleLabels,
       primitives: get(
         schemaAtoms.fieldPaths({
@@ -550,7 +553,7 @@ const sidebarGroupNames = selectorFamily<string[], boolean>({
   },
 });
 
-const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
+export const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
   key: "sidebarEntries",
   get: (modal) => ({ get }) => {
     return [
@@ -671,7 +674,7 @@ const fn = (
     }
 
     results[key] = {
-      cursor: dragging ? "grabbing" : "pointer",
+      cursor: dragging ? "grabbing" : "unset",
       top: dragging ? currentY[key] + delta : y,
       zIndex: dragging ? 1 : 0,
       left: shown ? "unset" : -3000,
@@ -1111,7 +1114,6 @@ const InteractiveSidebar = ({
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
     requestAnimationFrame(() => {
       start.current -= scrollWith(lastDirection.current, event);
-
       const realDelta = event.clientY - start.current;
       const newOrder = getNewOrder(lastDirection.current);
       const results = fn(
@@ -1205,89 +1207,6 @@ const AddGridGroup = () => {
       modal={false}
     />
   );
-};
-
-export const renderGridEntry = (
-  group: string,
-  entry: SidebarEntry,
-  controller: Controller
-) => {
-  switch (entry.kind) {
-    case EntryKind.PATH:
-      return {
-        children: (
-          <FilterEntry
-            modal={false}
-            path={entry.path}
-            group={group}
-            onFocus={() => {
-              controller.set({ zIndex: "1" });
-            }}
-            onBlur={() => {
-              controller.set({ zIndex: "0" });
-            }}
-          />
-        ),
-        disabled: false,
-      };
-    case EntryKind.GROUP:
-      return {
-        children: <InteractiveGroupEntry name={entry.name} modal={false} />,
-        disabled: false,
-      };
-    case EntryKind.TAIL:
-      return {
-        children: <AddGridGroup />,
-        disabled: true,
-      };
-
-    case EntryKind.EMPTY:
-      return {
-        children: <TextEntry text={"No fields"} />,
-        disabled: true,
-      };
-    default:
-      throw new Error("invalid entry");
-  }
-};
-
-export const renderModalEntry = (
-  group: string,
-  entry: SidebarEntry,
-  controller: Controller
-) => {
-  switch (entry.kind) {
-    case EntryKind.PATH:
-      return {
-        children: (
-          <FilterEntry
-            modal={false}
-            path={entry.path}
-            group={group}
-            onFocus={() => {
-              controller.set({ zIndex: "1" });
-            }}
-            onBlur={() => {
-              controller.set({ zIndex: "0" });
-            }}
-          />
-        ),
-        disabled: false,
-      };
-    case EntryKind.GROUP:
-      return {
-        children: <InteractiveGroupEntry name={entry.name} modal={true} />,
-        disabled: false,
-      };
-
-    case EntryKind.EMPTY:
-      return {
-        children: <TextEntry text={"No fields"} />,
-        disabled: true,
-      };
-    default:
-      throw new Error("invalid entry");
-  }
 };
 
 export default InteractiveSidebar;

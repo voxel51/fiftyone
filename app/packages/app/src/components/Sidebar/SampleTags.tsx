@@ -14,9 +14,7 @@ import { GroupHeader } from "./Sidebar";
 const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
   const [expanded, setExpanded] = useState(true);
   const { singular } = useRecoilValue(viewAtoms.elementNames);
-  const tags = useRecoilValue(
-    aggregationAtoms.values({ extended: false, modal, path: "tags" })
-  );
+  const tags = useRecoilValue();
   const title = `${singular} tags`;
 
   const allTags = useRecoilValue(
