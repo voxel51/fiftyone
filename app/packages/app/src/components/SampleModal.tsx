@@ -221,7 +221,7 @@ export const useSampleUpdate = (lookerRef) => {
 
 const SampleModal = ({ onClose }: Props, ref) => {
   const {
-    sample: { filepath, _id, _media_type, metadata },
+    sample: { filepath, _id },
     index,
     getIndex,
   } = useRecoilValue(atoms.modal);
@@ -229,11 +229,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
-  let count = useRecoilValue(selectors.filteredCount);
-  const total = useRecoilValue(selectors.totalCount);
-  if (count === null) {
-    count = total;
-  }
 
   useSampleUpdate(lookerRef);
   const theme = useTheme();

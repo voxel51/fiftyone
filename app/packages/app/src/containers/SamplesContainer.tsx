@@ -6,6 +6,7 @@ import styled from "styled-components";
 import FieldsSidebar, {
   EntryKind,
   sidebarEntries,
+  SidebarEntry,
 } from "../components/Sidebar/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
