@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowDropDown,
   ArrowDropUp,
@@ -16,6 +10,7 @@ import {
 import {
   atomFamily,
   DefaultValue,
+  RecoilState,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
@@ -35,7 +30,7 @@ import DropdownHandle, {
   DropdownHandleProps,
   PlusMinusButton,
 } from "../DropdownHandle";
-import { Entry, PathEntry as PathEntryComponent, TextEntry } from "./Entries";
+import { PathEntry as PathEntryComponent, TextEntry } from "./Entries";
 import { useEventHandler } from "../../utils/hooks";
 import {
   BOOLEAN_FIELD,
@@ -299,8 +294,8 @@ const InteractiveGroupEntry = React.memo(
         title={name}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
-        setValue={(value) => renameGroup(value)}
-        onDelete={onDelete}
+        setValue={modal ? null : (value) => renameGroup(value)}
+        onDelete={modal ? null : onDelete}
         pills={
           <Pills
             entries={[
@@ -333,9 +328,7 @@ const InteractiveGroupEntry = React.memo(
   }
 );
 
-const FILTERS: {
-  [key: string]: React.FC<{ modal: boolean; path: string; named?: boolean }>;
-} = {
+const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
   [DATE_FIELD]: NumericFieldFilter,
   [DATE_TIME_FIELD]: NumericFieldFilter,
@@ -382,7 +375,7 @@ const getFilterData = (
     }));
 };
 
-const InteractiveEntry = React.memo(
+const FilterEntry = React.memo(
   ({
     modal,
     path,
@@ -960,13 +953,19 @@ const SidebarColumn = styled.div`
 `;
 
 const InteractiveSidebar = ({
-  modal,
   before,
+  entriesAtom,
+  render,
 }: {
-  modal: boolean;
   before?: React.ReactNode;
+  entriesAtom: RecoilState<SidebarEntry[]>;
+  render: (
+    group: string,
+    entry: SidebarEntry,
+    controller: Controller
+  ) => { children: React.ReactNode; disabled: boolean };
 }) => {
-  const [entries, setEntries] = useRecoilState(sidebarEntries(modal));
+  const [entries, setEntries] = useRecoilState(entriesAtom);
   const order = useRef<string[]>([]);
   const lastOrder = useRef<string[]>([]);
   const down = useRef<string>(null);
@@ -1090,7 +1089,8 @@ const InteractiveSidebar = ({
       const delta = event.clientY - top;
 
       if (delta < 0) {
-        container.current.scrollBy({ top: delta, behavior: "smooth" });
+        console.log(delta);
+        // container.current.scrollBy({ top: delta, behavior: "smooth" });
         return delta;
       }
     }
@@ -1109,8 +1109,9 @@ const InteractiveSidebar = ({
       event.clientY - last.current > 0 ? Direction.DOWN : Direction.UP;
 
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
-
     requestAnimationFrame(() => {
+      start.current -= scrollWith(lastDirection.current, event);
+
       const realDelta = event.clientY - start.current;
       const newOrder = getNewOrder(lastDirection.current);
       const results = fn(
@@ -1146,8 +1147,6 @@ const InteractiveSidebar = ({
   return (
     <SidebarColumn ref={container}>
       {before}
-      <SampleTagsCell key={"sample-tags"} modal={modal} />
-      <LabelTagsCell key={"label-tags"} modal={modal} />
       <InteractiveSidebarContainer key={"interactive-fields"}>
         {order.current.map((key) => {
           const entry = items.current[key].entry;
@@ -1156,11 +1155,16 @@ const InteractiveSidebar = ({
           }
 
           const { shadow, ...springs } = items.current[key].controller.springs;
+          const { children, disabled } = render(
+            group,
+            entry,
+            items.current[key].controller
+          );
 
           return (
             <animated.div
               data-key={key}
-              onMouseDown={trigger}
+              onMouseDown={disabled ? null : trigger}
               ref={(node) => {
                 items.current[key].el &&
                   observer.unobserve(items.current[key].el);
@@ -1174,44 +1178,116 @@ const InteractiveSidebar = ({
                   (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
                 ),
               }}
-              children={
-                entry.kind === EntryKind.TAIL ? (
-                  <AddGroup
-                    onSubmit={(name) => {
-                      const newEntries = [...entries];
-                      newEntries.splice(entries.length - 1, 0, {
-                        kind: EntryKind.GROUP,
-                        name,
-                      });
-
-                      setEntries(newEntries);
-                    }}
-                    modal={modal}
-                  />
-                ) : entry.kind === EntryKind.GROUP ? (
-                  <InteractiveGroupEntry name={group} modal={modal} />
-                ) : entry.kind == EntryKind.EMPTY ? (
-                  <TextEntry text={"No fields"} />
-                ) : (
-                  <InteractiveEntry
-                    modal={modal}
-                    path={entry.path}
-                    group={group}
-                    onFocus={(event) => {
-                      items.current[key].controller.set({ zIndex: "1" });
-                    }}
-                    onBlur={(event) => {
-                      items.current[key].controller.set({ zIndex: "0" });
-                    }}
-                  />
-                )
-              }
-            />
+            >
+              {children}
+            </animated.div>
           );
         })}
       </InteractiveSidebarContainer>
     </SidebarColumn>
   );
+};
+
+const AddGridGroup = () => {
+  const [entries, setEntries] = useRecoilState(sidebarEntries(false));
+
+  return (
+    <AddGroup
+      onSubmit={(name) => {
+        const newEntries = [...entries];
+        newEntries.splice(entries.length - 1, 0, {
+          kind: EntryKind.GROUP,
+          name,
+        });
+
+        setEntries(newEntries);
+      }}
+      modal={false}
+    />
+  );
+};
+
+export const renderGridEntry = (
+  group: string,
+  entry: SidebarEntry,
+  controller: Controller
+) => {
+  switch (entry.kind) {
+    case EntryKind.PATH:
+      return {
+        children: (
+          <FilterEntry
+            modal={false}
+            path={entry.path}
+            group={group}
+            onFocus={() => {
+              controller.set({ zIndex: "1" });
+            }}
+            onBlur={() => {
+              controller.set({ zIndex: "0" });
+            }}
+          />
+        ),
+        disabled: false,
+      };
+    case EntryKind.GROUP:
+      return {
+        children: <InteractiveGroupEntry name={entry.name} modal={false} />,
+        disabled: false,
+      };
+    case EntryKind.TAIL:
+      return {
+        children: <AddGridGroup />,
+        disabled: true,
+      };
+
+    case EntryKind.EMPTY:
+      return {
+        children: <TextEntry text={"No fields"} />,
+        disabled: true,
+      };
+    default:
+      throw new Error("invalid entry");
+  }
+};
+
+export const renderModalEntry = (
+  group: string,
+  entry: SidebarEntry,
+  controller: Controller
+) => {
+  switch (entry.kind) {
+    case EntryKind.PATH:
+      return {
+        children: (
+          <FilterEntry
+            modal={false}
+            path={entry.path}
+            group={group}
+            onFocus={() => {
+              controller.set({ zIndex: "1" });
+            }}
+            onBlur={() => {
+              controller.set({ zIndex: "0" });
+            }}
+          />
+        ),
+        disabled: false,
+      };
+    case EntryKind.GROUP:
+      return {
+        children: <InteractiveGroupEntry name={entry.name} modal={true} />,
+        disabled: false,
+      };
+
+    case EntryKind.EMPTY:
+      return {
+        children: <TextEntry text={"No fields"} />,
+        disabled: true,
+      };
+    default:
+      throw new Error("invalid entry");
+  }
 };
 
 export default InteractiveSidebar;
