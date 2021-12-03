@@ -7,19 +7,17 @@ Remote media caching.
 """
 from datetime import datetime, timedelta
 import logging
-import logging.handlers
 import multiprocessing
 import multiprocessing.dummy
 import os
-import urllib.parse as urlparse
 
 import aiofiles
 import aiohttp
 
-import eta.core.storage as etas
 import eta.core.utils as etau
 
-import fiftyone.core.service as fos
+from fiftyone.core.service import MediaCacheService
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 fom = fou.lazy_import("fiftyone.core.metadata")
@@ -29,8 +27,6 @@ logger = logging.getLogger(__name__)
 
 media_cache = None
 gc_service = None
-minio_alias_prefix = None
-minio_endpoint_prefix = None
 
 
 def init_media_cache(config):
@@ -41,32 +37,16 @@ def init_media_cache(config):
     """
     global media_cache
     global gc_service
-    global minio_alias_prefix
-    global minio_endpoint_prefix
 
     media_cache = MediaCache(config)
 
     if media_cache.cache_size >= 0:
-        gc_service = fos.MediaCacheService()
-
-    try:
-        credentials = _load_minio_credentials()
-
-        if "alias" in credentials:
-            minio_alias_prefix = credentials["alias"] + "://"
-        else:
-            minio_alias_prefix = None
-
-        if "endpoint_url" in credentials:
-            minio_endpoint_prefix = credentials["endpoint_url"] + "/"
-        else:
-            minio_endpoint_prefix = None
-    except:
-        pass
+        gc_service = MediaCacheService()
 
 
 def download_media(sample_collection, update=False, skip_failures=True):
-    """Downloads the source media files for all samples in the collection.
+    """Downloads the source media files for all samples in the collection to
+    the media cache.
 
     Any existing files are not re-downloaded, unless ``update == True`` and
     their checksums no longer match.
@@ -86,129 +66,6 @@ def download_media(sample_collection, update=False, skip_failures=True):
         media_cache.get_local_paths(filepaths, skip_failures=skip_failures)
 
 
-def upload_media(
-    sample_collection,
-    remote_dir,
-    rel_dir=None,
-    update_filepaths=False,
-    overwrite=True,
-    num_workers=None,
-    skip_failures=True,
-):
-    """Uploads the source media files for the given collection to the given
-    remote directory.
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-        remote_dir: an S3 or GCS "folder" into which to upload
-        rel_dir (None): an optional relative directory to strip from each
-            filepath when constructing the corresponding remote path. Providing
-            a ``rel_dir`` enables writing nested subfolders within
-            ``remote_dir`` matching the structure of the input collection's
-            media. By default, the files are written directly to
-        update_filepaths (False): whether to update the ``filepath`` of each
-            sample in the collection to its remote path
-        overwrite (True): whether to overwrite (True) or skip (False) existing
-            remote files
-        num_workers (None): the number of threads to use. By default,
-            ``multiprocessing.cpu_count()`` is used
-        skip_failures (True): whether to gracefully continue without raising an
-            error if an upload fails
-
-    Returns:
-        the list of remote paths
-    """
-    fs = _get_file_system(remote_dir)
-
-    if fs not in (FileSystem.S3, FileSystem.GCS, FileSystem.MINIO):
-        raise ValueError(
-            "Cannot upload media to '%s'; unsupported file system '%s'"
-            % (remote_dir, fs)
-        )
-
-    client = _make_client(fs, num_workers=num_workers)
-
-    filepaths = sample_collection.values("filepath")
-
-    remote_paths = []
-    for filepath in filepaths:
-        if rel_dir is not None:
-            rel_path = os.path.relpath(filepath, rel_dir)
-        else:
-            rel_path = os.path.basename(filepath)
-
-        remote_paths.append(os.path.join(remote_dir, rel_path))
-
-    if overwrite:
-        existing_files = set()
-    else:
-        existing_files = set(
-            client.list_files_in_folder(remote_dir, recursive=True)
-        )
-
-    tasks = []
-    for filepath, remote_path in zip(filepaths, remote_paths):
-        if remote_path not in existing_files:
-            tasks.append((client, filepath, remote_path, skip_failures))
-
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    if tasks:
-        _upload_media(tasks, num_workers)
-
-    if update_filepaths:
-        sample_collection.set_values("filepath", remote_paths)
-
-    return remote_paths
-
-
-class FileSystem(object):
-    """Enumeration of the available file systems."""
-
-    S3 = "s3"
-    GCS = "gcs"
-    MINIO = "minio"
-    HTTP = "http"
-    LOCAL = "local"
-
-
-class S3StorageClient(etas.S3StorageClient):
-    """.. autoclass:: eta.core.storage.S3StorageClient"""
-
-    def get_local_path(self, remote_path):
-        return self._strip_prefix(remote_path)
-
-
-class GoogleCloudStorageClient(etas.GoogleCloudStorageClient):
-    """.. autoclass:: eta.core.storage.GoogleCloudStorageClient"""
-
-    def get_local_path(self, remote_path):
-        return self._strip_prefix(remote_path)
-
-
-class MinIOStorageClient(etas.MinIOStorageClient):
-    """.. autoclass:: eta.core.storage.MinIOStorageClient"""
-
-    def get_local_path(self, remote_path):
-        return self._strip_prefix(remote_path)
-
-
-class HTTPStorageClient(etas.HTTPStorageClient):
-    """.. autoclass:: eta.core.storage.HTTPStorageClient"""
-
-    def get_local_path(self, remote_path):
-        p = urlparse.urlparse(remote_path)
-
-        if p.port is not None:
-            host = "%s:%d" % (p.hostname, p.port)
-        else:
-            host = p.hostname
-
-        return os.path.join(host, *p.path.lstrip("/").split("/"))
-
-
 class MediaCache(object):
     """A cache that automatically manages the downloading of remote media files
     stored in S3, GCS, or web URLs.
@@ -219,11 +76,6 @@ class MediaCache(object):
 
     def __init__(self, config):
         self.config = config
-
-        self._s3_client = None
-        self._gcs_client = None
-        self._minio_client = None
-        self._http_client = None
 
     @property
     def cache_dir(self):
@@ -292,8 +144,8 @@ class MediaCache(object):
         Returns:
             True/False
         """
-        fs = _get_file_system(filepath)
-        return fs == FileSystem.LOCAL
+        fs = fos.get_file_system(filepath)
+        return fs == fos.FileSystem.LOCAL
 
     def is_local_or_cached(self, filepath):
         """Determines whether the given filepath is either local or a remote
@@ -306,7 +158,7 @@ class MediaCache(object):
             True/False
         """
         fs, _, exists, _ = self._parse_filepath(filepath)
-        return fs == FileSystem.LOCAL or exists
+        return fs == fos.FileSystem.LOCAL or exists
 
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote file, if possible.
@@ -322,8 +174,8 @@ class MediaCache(object):
         Returns:
             a file metdata dict or ``None``
         """
-        fs = _get_file_system(filepath)
-        client = self._get_client(fs)
+        fs = fos.get_file_system(filepath)
+        client = fos.get_client(fs)
 
         task = (client, filepath, skip_failures)
         _, metadata = _do_get_file_metadata(task)
@@ -349,7 +201,7 @@ class MediaCache(object):
         seen = set()
         for filepath in filepaths:
             fs, _, exists, client = self._parse_filepath(filepath)
-            if fs == FileSystem.LOCAL or filepath in seen:
+            if fs == fos.FileSystem.LOCAL or filepath in seen:
                 continue
 
             seen.add(filepath)
@@ -374,8 +226,8 @@ class MediaCache(object):
         Returns:
             a :class:`fiftyone.core.metadata.Metadata` or ``None``
         """
-        fs = _get_file_system(filepath)
-        client = self._get_client(fs)
+        fs = fos.get_file_system(filepath)
+        client = fos.get_client(fs)
 
         task = (client, filepath, skip_failures)
         _, metadata = _do_get_metadata(task)
@@ -403,7 +255,7 @@ class MediaCache(object):
         seen = set()
         for filepath in filepaths:
             fs, local_path, exists, client = self._parse_filepath(filepath)
-            if fs == FileSystem.LOCAL or filepath in seen:
+            if fs == fos.FileSystem.LOCAL or filepath in seen:
                 continue
 
             seen.add(filepath)
@@ -464,7 +316,7 @@ class MediaCache(object):
             fs, local_path, exists, client = self._parse_filepath(filepath)
             local_paths.append(local_path)
 
-            if fs == FileSystem.LOCAL or filepath in seen:
+            if fs == fos.FileSystem.LOCAL or filepath in seen:
                 continue
 
             seen.add(filepath)
@@ -488,13 +340,13 @@ class MediaCache(object):
             method ("GET"): a valid HTTP method for signed URLs
             hours (1): a TTL for signed URLs
         """
-        fs = _get_file_system(remote_path)
-        if fs == FileSystem.LOCAL:
+        fs = fos.get_file_system(remote_path)
+        if fs == fos.FileSystem.LOCAL:
             raise ValueError(
                 "Cannot get URL for local file '%s'" % remote_path
             )
 
-        client = self._get_client(fs)
+        client = fos.get_client(fs)
         return _get_url(client, remote_path, method=method, hours=hours)
 
     def update(self, filepaths=None, skip_failures=True):
@@ -520,7 +372,7 @@ class MediaCache(object):
         seen = set()
         for filepath in filepaths:
             fs, local_path, _, client = self._parse_filepath(filepath)
-            if fs == FileSystem.LOCAL or filepath in seen:
+            if fs == fos.FileSystem.LOCAL or filepath in seen:
                 continue
 
             seen.add(filepath)
@@ -586,52 +438,17 @@ class MediaCache(object):
         else:
             for filepath in filepaths:
                 fs, local_path, exists, _ = self._parse_filepath(filepath)
-                if fs != FileSystem.LOCAL and exists:
+                if fs != fos.FileSystem.LOCAL and exists:
                     _pop_cache(local_path)
 
-    def _get_client(self, fs):
-        if fs == FileSystem.S3:
-            if self._s3_client is None:
-                self._s3_client = _make_client(
-                    fs, num_workers=self.num_workers
-                )
-
-            return self._s3_client
-
-        if fs == FileSystem.GCS:
-            if self._gcs_client is None:
-                self._gcs_client = _make_client(
-                    fs, num_workers=self.num_workers
-                )
-
-            return self._gcs_client
-
-        if fs == FileSystem.MINIO:
-            if self._minio_client is None:
-                self._minio_client = _make_client(
-                    fs, num_workers=self.num_workers
-                )
-
-            return self._minio_client
-
-        if fs == FileSystem.HTTP:
-            if self._http_client is None:
-                self._http_client = _make_client(
-                    fs, num_workers=self.num_workers
-                )
-
-            return self._http_client
-
-        return None
-
     def _parse_filepath(self, filepath):
-        fs = _get_file_system(filepath)
+        fs = fos.get_file_system(filepath)
 
         # Always return `exists=True` for local filepaths
-        if fs == FileSystem.LOCAL:
+        if fs == fos.FileSystem.LOCAL:
             return fs, filepath, True, None
 
-        client = self._get_client(fs)
+        client = fos.get_client(fs)
         relpath = client.get_local_path(filepath)
         local_path = os.path.join(self.media_dir, fs, relpath)
         exists = os.path.isfile(local_path)
@@ -833,7 +650,7 @@ def _compute_cache_stats(_media_cache, filepaths=None):
     if filepaths is not None:
         for filepath in filepaths:
             fs, local_path, exists, _ = _media_cache._parse_filepath(filepath)
-            if fs != FileSystem.LOCAL and exists:
+            if fs != fos.FileSystem.LOCAL and exists:
                 try:
                     current_size += os.path.getsize(local_path)
                     current_count += 1
@@ -863,32 +680,6 @@ def _delete_file(local_path):
         os.remove(local_path)
     except FileNotFoundError:
         pass
-
-
-def _upload_media(tasks, num_workers):
-    logger.info("Uploading media...")
-    if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
-            for task in pb(tasks):
-                _do_upload_media(task)
-    else:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks)) as pb:
-                results = pool.imap_unordered(_do_upload_media, tasks)
-                for _ in pb(results):
-                    pass
-
-
-def _do_upload_media(arg):
-    client, local_path, remote_path, skip_failures = arg
-
-    try:
-        client.upload(local_path, remote_path)
-    except Exception as e:
-        if not skip_failures:
-            raise
-
-        logger.warning(e)
 
 
 def _download_media(tasks, num_workers):
@@ -1084,72 +875,3 @@ def _get_url(client, remote_path, **kwargs):
         return client.generate_signed_url(remote_path, **kwargs)
 
     return remote_path
-
-
-def _get_file_system(path):
-    # Check MinIO first in case alias/endpoint clashes with another file system
-    if (
-        minio_alias_prefix is not None and path.startswith(minio_alias_prefix)
-    ) or (
-        minio_endpoint_prefix is not None
-        and path.startswith(minio_endpoint_prefix)
-    ):
-        return FileSystem.MINIO
-
-    if path.startswith("s3://"):
-        return FileSystem.S3
-
-    if path.startswith("gs://"):
-        return FileSystem.GCS
-
-    if path.startswith(("http://", "https://")):
-        return FileSystem.HTTP
-
-    return FileSystem.LOCAL
-
-
-def _make_client(fs, num_workers=None):
-    kwargs = {}
-
-    if num_workers is not None and num_workers > 10:
-        kwargs["max_pool_connections"] = num_workers
-
-    if fs == FileSystem.S3:
-        credentials = _load_s3_credentials()
-        return S3StorageClient(credentials=credentials, **kwargs)
-
-    if fs == FileSystem.GCS:
-        credentials = _load_gcs_credentials()
-        return GoogleCloudStorageClient(credentials=credentials, **kwargs)
-
-    if fs == FileSystem.MINIO:
-        credentials = _load_minio_credentials()
-        return MinIOStorageClient(credentials=credentials, **kwargs)
-
-    if fs == FileSystem.HTTP:
-        return HTTPStorageClient(**kwargs)
-
-    raise ValueError("Unsupported file system '%s'" % fs)
-
-
-def _load_s3_credentials():
-    credentials, _ = S3StorageClient.load_credentials(
-        credentials_path=media_cache.config.aws_config_file,
-        profile=media_cache.config.aws_profile,
-    )
-    return credentials
-
-
-def _load_gcs_credentials():
-    credentials, _ = GoogleCloudStorageClient.load_credentials(
-        credentials_path=media_cache.config.google_application_credentials
-    )
-    return credentials
-
-
-def _load_minio_credentials():
-    credentials, _ = MinIOStorageClient.load_credentials(
-        credentials_path=media_cache.config.minio_config_file,
-        profile=media_cache.config.minio_profile,
-    )
-    return credentials
