@@ -68,36 +68,7 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
       </GroupHeader>
       {expanded &&
         tags &&
-        (tags.length ? (
-          tags.map((tag) => (
-            <PathEntry
-              path={`tags.${tag}`}
-              modal={modal}
-              name={tag}
-              disabled={false}
-              key={tag}
-              style={{ marginBottom: 4 }}
-              pills={
-                <MatchEye
-                  matched={matchedTags}
-                  elementsName={"samples"}
-                  name={tag}
-                  onClick={() => {
-                    const newMatch = new Set(matchedTags);
-                    if (matchedTags.has(tag)) {
-                      newMatch.delete(tag);
-                    } else {
-                      newMatch.add(tag);
-                    }
-                    setMatchedTags(newMatch);
-                  }}
-                />
-              }
-            />
-          ))
-        ) : (
-          <TextEntry text={`No ${singular} tags`} />
-        ))}
+        (tags.length ? null : <TextEntry text={`No ${singular} tags`} />)}
     </>
   );
 });

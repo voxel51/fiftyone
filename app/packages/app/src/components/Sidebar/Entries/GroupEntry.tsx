@@ -1,7 +1,19 @@
-import React from "react";
+import { Check, Close, Edit, FilterList } from "@material-ui/icons";
+import { string } from "prop-types";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
 
-import { useRecoilState } from "recoil";
-import { sidebarGroup } from "../recoil";
+import * as filterAtoms from "../../../recoil/filters";
+import * as schemaAtoms from "../../../recoil/schema";
+
+import DropdownHandle, {
+  DropdownHandleProps,
+  PlusMinusButton,
+} from "../../DropdownHandle";
+
+import { groupShown, sidebarGroup } from "../recoil";
+import { Pills } from "../utils";
 
 const numGroupFieldsFiltered = selectorFamily<
   number,
@@ -147,7 +159,15 @@ export const GroupHeader = ({
   );
 };
 
-const InteractiveGroupEntry = React.memo(
+export const TagGroupEntry = React.memo(({ name, modal }): {
+  name: string;
+  modal: boolean;
+} => {
+  const;
+  return <GroupHeader />;
+});
+
+export const PathGroupEntry = React.memo(
   ({ name, modal }: { name: string; modal: boolean }) => {
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
     const renameGroup = useRenameGroup(modal, name);

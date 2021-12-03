@@ -1,15 +1,36 @@
-import React, { ReactNode } from "react";
-import { CircularProgress } from "@material-ui/core";
-import { animated } from "@react-spring/web";
+import React, { ReactNode, useRef, useState } from "react";
+import { Checkbox, CircularProgress } from "@material-ui/core";
+import { animated, useSpring } from "@react-spring/web";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import * as aggregationAtoms from "../../../recoil/aggregations";
 import * as colorAtoms from "../../../recoil/color";
+import {
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+  VALID_LABEL_TYPES,
+  VALID_PRIMITIVE_TYPES,
+} from "../../../recoil/constants";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
+import { State } from "../../../recoil/types";
 
 import { useTheme } from "../../../utils/hooks";
+import {
+  BooleanFieldFilter,
+  NumericFieldFilter,
+  StringFieldFilter,
+} from "../../Filters";
+import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 
 const Container = animated(styled.div`
   position: relative;
@@ -76,89 +97,6 @@ const EntryCounts = ({
 
   return <span>{count.toLocaleString()}</span>;
 };
-
-type PathEntryProps = {
-  name?: string;
-  path: string;
-  modal: boolean;
-  disabled: boolean;
-  pills?: ReactNode;
-  children?: ReactNode;
-  ftype?: string | string[];
-  embeddedDocType?: string | string[];
-  style?: React.CSSProperties;
-};
-
-export const PathEntry = React.memo(
-  ({
-    children,
-    pills,
-    disabled,
-    modal,
-    path,
-    name,
-    ftype,
-    embeddedDocType,
-    style,
-  }: PathEntryProps) => {
-    if (!name) {
-      name = path;
-    }
-    const [active, setActive] = useRecoilState(
-      schemaAtoms.activeField({ modal, path })
-    );
-    const canCommit = useRef(false);
-    const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
-    const theme = useTheme();
-    const fieldIsFiltered = useRecoilValue(
-      filterAtoms.fieldIsFiltered({ path, modal })
-    );
-    const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
-
-    const containerProps = useSpring({
-      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-    });
-
-    return (
-      <Container
-        onMouseDown={() => (canCommit.current = true)}
-        onMouseMove={() => (canCommit.current = false)}
-        onMouseUp={() => canCommit.current && setActive(!active)}
-        style={{ ...containerProps, ...style }}
-      >
-        <Header>
-          {!disabled && (
-            <Checkbox
-              disableRipple={true}
-              checked={active}
-              title={`Show ${name}`}
-              onMouseDown={null}
-              style={{
-                color: active
-                  ? color
-                  : disabled
-                  ? theme.fontDarkest
-                  : theme.fontDark,
-                padding: 0,
-              }}
-            />
-          )}
-          <span style={{ flexGrow: 1 }}>{name}</span>
-          {
-            <EntryCounts
-              path={expandedPath}
-              modal={modal}
-              ftype={ftype}
-              embeddedDocType={embeddedDocType}
-            />
-          }
-          {pills}
-        </Header>
-        {children}
-      </Container>
-    );
-  }
-);
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -232,7 +170,7 @@ const FilterEntry = React.memo(
     const data = getFilterData(expandedPath, modal, field, fields);
 
     return (
-      <PathEntryComponent
+      <Entry
         modal={modal}
         path={path}
         disabled={false}
@@ -261,7 +199,7 @@ const FilterEntry = React.memo(
               })
             )
           : null}
-      </PathEntryComponent>
+      </Entry>
     );
   }
 );
