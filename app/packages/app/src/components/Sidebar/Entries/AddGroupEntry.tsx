@@ -1,4 +1,9 @@
-import { useRecoilState } from "recoil";
+import React, { useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
+
+import { sidebarEntries, sidebarGroupNames } from "../recoil";
+import { EntryKind } from "../utils";
 
 const AddGroupDiv = styled.div`
   box-sizing: border-box;
@@ -27,15 +32,10 @@ const AddGroupDiv = styled.div`
   }
 `;
 
-const AddGroup = ({
-  modal,
-  onSubmit,
-}: {
-  modal: boolean;
-  onSubmit: (name: string) => void;
-}) => {
+const AddGroup = () => {
+  const [entries, setEntries] = useRecoilState(sidebarEntries(false));
   const [value, setValue] = useState("");
-  const currentGroups = useRecoilValue(sidebarGroupNames(modal));
+  const currentGroups = useRecoilValue(sidebarGroupNames(false));
 
   return (
     <AddGroupDiv>
@@ -48,7 +48,13 @@ const AddGroup = ({
         onKeyDown={(e) => {
           if (e.key === "Enter" && value.length) {
             if (!currentGroups.includes(value)) {
-              onSubmit(value);
+              const newEntries = [...entries];
+              newEntries.splice(entries.length - 1, 0, {
+                kind: EntryKind.GROUP,
+                name: value,
+              });
+
+              setEntries(newEntries);
               setValue("");
             } else {
               alert(`${value.toUpperCase()} is already a group name`);
@@ -60,21 +66,4 @@ const AddGroup = ({
   );
 };
 
-const AddGridGroup = () => {
-  const [entries, setEntries] = useRecoilState(sidebarEntries(false));
-
-  return (
-    <AddGroup
-      onSubmit={(name) => {
-        const newEntries = [...entries];
-        newEntries.splice(entries.length - 1, 0, {
-          kind: EntryKind.GROUP,
-          name,
-        });
-
-        setEntries(newEntries);
-      }}
-      modal={false}
-    />
-  );
-};
+export default React.memo(AddGroup);

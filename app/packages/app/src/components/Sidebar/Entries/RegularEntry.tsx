@@ -1,86 +1,47 @@
-import React, { ReactNode, useRef } from "react";
-import { useRecoilState } from "recoil";
+import React, { MouseEventHandler, ReactNode, useRef } from "react";
+import { animated } from "@react-spring/web";
+import styled from "styled-components";
 
-import * as colorAtoms from "../../../recoil/color";
-import * as schemaAtoms from "../../../recoil/schema";
+const Container = animated(styled.div`
+  position: relative;
+  overflow: visible;
+  justify-content: space-between;
+  padding: 3px;
+  border-radius: 2px;
+  user-select: none;
+`);
 
-type PathEntryProps = {
-  name?: string;
-  path: string;
-  modal: boolean;
-  disabled: boolean;
-  pills?: ReactNode;
+const Header = styled.div`
+  vertical-align: middle;
+  display: flex;
+  font-weight: bold;
+
+  & > * {
+    margin: 0 6px;
+  }
+`;
+
+type RegularEntryProps = {
   children?: ReactNode;
-  ftype?: string | string[];
-  embeddedDocType?: string | string[];
+  heading: ReactNode;
+  onClick?: MouseEventHandler;
   style?: React.CSSProperties;
+  title: string;
 };
 
-export const PathEntry = React.memo(
-  ({
-    children,
-    pills,
-    disabled,
-    modal,
-    path,
-    name,
-    ftype,
-    embeddedDocType,
-    style,
-  }: PathEntryProps) => {
-    if (!name) {
-      name = path;
-    }
-    const [active, setActive] = useRecoilState(
-      schemaAtoms.activeField({ modal, path })
-    );
+export const RegularEntry = React.memo(
+  ({ children, heading, onClick, style, title }: RegularEntryProps) => {
     const canCommit = useRef(false);
-    const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
-    const theme = useTheme();
-    const fieldIsFiltered = useRecoilValue(
-      filterAtoms.fieldIsFiltered({ path, modal })
-    );
-    const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
-
-    const containerProps = useSpring({
-      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-    });
 
     return (
       <Container
         onMouseDown={() => (canCommit.current = true)}
         onMouseMove={() => (canCommit.current = false)}
-        onMouseUp={() => canCommit.current && setActive(!active)}
-        style={{ ...containerProps, ...style }}
+        onMouseUp={(event) => canCommit.current && onClick && onClick(event)}
+        style={style}
+        title={title}
       >
-        <Header>
-          {!disabled && (
-            <Checkbox
-              disableRipple={true}
-              checked={active}
-              title={`Show ${name}`}
-              onMouseDown={null}
-              style={{
-                color: active
-                  ? color
-                  : disabled
-                  ? theme.fontDarkest
-                  : theme.fontDark,
-                padding: 0,
-              }}
-            />
-          )}
-          <span style={{ flexGrow: 1 }}>{name}</span>
-          {
-            <EntryCounts
-              path={expandedPath}
-              modal={modal}
-              ftype={ftype}
-              embeddedDocType={embeddedDocType}
-            />
-          }
-          {pills}
-        </Header>
+        <Header>{heading}</Header>
         {children}
       </Container>
     );

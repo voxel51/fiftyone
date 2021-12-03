@@ -32,25 +32,6 @@ import {
 } from "../../Filters";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 
-const Container = animated(styled.div`
-  position: relative;
-  overflow: visible;
-  justify-content: space-between;
-  padding: 3px;
-  border-radius: 2px;
-  user-select: none;
-`);
-
-const Header = styled.div`
-  vertical-align: middle;
-  display: flex;
-  font-weight: bold;
-
-  & > * {
-    margin: 0 6px;
-  }
-`;
-
 const EntryCounts = ({
   path,
   modal,
@@ -144,7 +125,23 @@ const getFilterData = (
     }));
 };
 
-const FilterEntry = React.memo(
+const E = () => {
+  const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
+  const theme = useTheme();
+  const fieldIsFiltered = useRecoilValue(
+    filterAtoms.fieldIsFiltered({ path, modal })
+  );
+
+  const [active, setActive] = useRecoilState(
+    schemaAtoms.activeField({ modal, path })
+  );
+  const containerProps = useSpring({
+    backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
+  });
+  return <RegularEntry heading={}></RegularEntry>;
+};
+
+const FilterableEntry = React.memo(
   ({
     modal,
     path,
@@ -203,3 +200,5 @@ const FilterEntry = React.memo(
     );
   }
 );
+
+export default React.memo(FilterableEntry);

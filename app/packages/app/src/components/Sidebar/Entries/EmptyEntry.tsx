@@ -1,13 +1,18 @@
-export const TextEntry = ({ text }: { text: string }) => {
+import React from "react";
+
+import { useTheme } from "../../../utils/hooks";
+import { RegularEntry } from "./RegularEntry";
+
+const EmptyEntry = ({ text }: { text: string }) => {
   const theme = useTheme();
+
   return (
-    <Container
-      style={{ color: theme.fontDarkest, background: theme.backgroundLight }}
+    <RegularEntry
+      heading={<span>{text}</span>}
       title={text}
-    >
-      <Header>
-        <span>{text}</span>
-      </Header>
-    </Container>
+      style={{ color: theme.fontDarkest, background: theme.backgroundLight }}
+    />
   );
 };
+
+export default React.memo(EmptyEntry);
