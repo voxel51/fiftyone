@@ -31,53 +31,7 @@ import {
   StringFieldFilter,
 } from "../../Filters";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
-
-const EntryCounts = ({
-  path,
-  modal,
-  ftype,
-  embeddedDocType,
-}: {
-  path: string;
-  modal: boolean;
-  ftype?: string | string[];
-  embeddedDocType?: string | string[];
-}) => {
-  const theme = useTheme();
-  const count = useRecoilValue(
-    aggregationAtoms.count({
-      extended: false,
-      path,
-      modal,
-      ftype,
-      embeddedDocType,
-    })
-  );
-  const subCount = useRecoilValue(
-    aggregationAtoms.count({
-      extended: true,
-      path,
-      modal,
-      ftype,
-      embeddedDocType,
-    })
-  );
-
-  if (typeof count !== "number") {
-    return (
-      <CircularProgress
-        style={{
-          color: theme.font,
-          height: 16,
-          width: 16,
-          minWidth: 16,
-        }}
-      />
-    );
-  }
-
-  return <span>{count.toLocaleString()}</span>;
-};
+import RegularEntry from "./RegularEntry";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -125,22 +79,6 @@ const getFilterData = (
     }));
 };
 
-const E = () => {
-  const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
-  const theme = useTheme();
-  const fieldIsFiltered = useRecoilValue(
-    filterAtoms.fieldIsFiltered({ path, modal })
-  );
-
-  const [active, setActive] = useRecoilState(
-    schemaAtoms.activeField({ modal, path })
-  );
-  const containerProps = useSpring({
-    backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-  });
-  return <RegularEntry heading={}></RegularEntry>;
-};
-
 const FilterableEntry = React.memo(
   ({
     modal,
@@ -157,6 +95,7 @@ const FilterableEntry = React.memo(
     const [expanded, setExpanded] = useState(false);
     const Arrow = expanded ? ArrowDropUp : ArrowDropDown;
     const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
+    const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
     const fields = useRecoilValue(
       schemaAtoms.fields({
         path: expandedPath,
@@ -165,38 +104,67 @@ const FilterableEntry = React.memo(
     );
     const field = useRecoilValue(schemaAtoms.field(path));
     const data = getFilterData(expandedPath, modal, field, fields);
+    const fieldIsFiltered = useRecoilValue(
+      filterAtoms.fieldIsFiltered({ path, modal })
+    );
+    const theme = useTheme();
+    const [active, setActive] = useRecoilState(
+      schemaAtoms.activeField({ modal, path })
+    );
 
     return (
-      <Entry
-        modal={modal}
-        path={path}
-        disabled={false}
-        pills={
-          <Arrow
-            style={{ cursor: "pointer", margin: 0 }}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setExpanded(!expanded);
-            }}
-            onMouseDown={(event) => {
-              event.stopPropagation();
-              event.preventDefault();
-            }}
-          />
+      <RegularEntry
+        title={`${path}: ${
+          field.embeddedDocType ? field.embeddedDocType : field.ftype
+        }`}
+        heading={
+          <>
+            <CheckBox
+              disableRipple={true}
+              checked={active}
+              title={`Show ${path}`}
+              onMouseDown={null}
+              style={{
+                color: active ? color : theme.fontDark,
+                padding: 0,
+              }}
+            />
+            <span style={{ flexGrow: 1 }}>{path}</span>
+            <EntryCounts
+              path={expandedPath}
+              modal={modal}
+              ftype={ftype}
+              embeddedDocType={embeddedDocType}
+            />
+
+            <Arrow
+              style={{ cursor: "pointer", margin: 0 }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setExpanded(!expanded);
+              }}
+              onMouseDown={(event) => {
+                event.stopPropagation();
+                event.preventDefault();
+              }}
+            />
+          </>
         }
+        {...useSpring({
+          backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
+        })}
       >
-        {expanded
-          ? data.map(({ ftype, ...props }) =>
-              React.createElement(FILTERS[ftype], {
-                key: props.path,
-                onFocus,
-                onBlur,
-                ...props,
-              })
-            )
-          : null}
-      </Entry>
+        {expanded &&
+          data.map(({ ftype, ...props }) =>
+            React.createElement(FILTERS[ftype], {
+              key: props.path,
+              onFocus,
+              onBlur,
+              ...props,
+            })
+          )}
+      </RegularEntry>
     );
   }
 );

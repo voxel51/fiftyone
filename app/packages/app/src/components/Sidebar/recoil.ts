@@ -8,7 +8,15 @@ import {
 import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
 
-import { SidebarEntry, SidebarGroups } from "./utils";
+import {
+  EmptyEntry,
+  EntryKind,
+  GroupEntry,
+  PathEntry,
+  SidebarEntry,
+  SidebarGroups,
+  TailEntry,
+} from "./utils";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   {
@@ -81,7 +89,7 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
   },
 });
 
-const sidebarGroups = atomFamily<SidebarGroups, boolean>({
+export const sidebarGroups = atomFamily<SidebarGroups, boolean>({
   key: "sidebarGroups",
   default: defaultSidebarGroups,
 });

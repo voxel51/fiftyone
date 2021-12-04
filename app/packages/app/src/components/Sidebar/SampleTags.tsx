@@ -23,17 +23,6 @@ const SampleTagsCell = React.memo(({ modal }: { modal: boolean }) => {
   const [activeTags, setActiveTags] = useRecoilState(
     schemaAtoms.activeTags(modal)
   );
-  const [matchedTags, setMatchedTags] = useRecoilState(
-    filterAtoms.matchedTags({ modal, key: "sample" })
-  );
-  useLayoutEffect(() => {
-    const newMatches = new Set<string>();
-    matchedTags.forEach((tag) => {
-      tags.includes(tag) && newMatches.add(tag);
-    });
-
-    newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
-  }, [matchedTags, allTags]);
 
   return (
     <>

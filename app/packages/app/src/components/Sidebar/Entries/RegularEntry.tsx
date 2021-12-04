@@ -1,5 +1,5 @@
 import React, { MouseEventHandler, ReactNode, useRef } from "react";
-import { animated } from "@react-spring/web";
+import { animated, SpringValue } from "@react-spring/web";
 import styled from "styled-components";
 
 const Container = animated(styled.div`
@@ -22,23 +22,27 @@ const Header = styled.div`
 `;
 
 type RegularEntryProps = {
+  backgroundColor?: SpringValue<string>;
   children?: ReactNode;
   heading: ReactNode;
   onClick?: MouseEventHandler;
-  style?: React.CSSProperties;
   title: string;
 };
 
-export const RegularEntry = React.memo(
-  ({ children, heading, onClick, style, title }: RegularEntryProps) => {
+const RegularEntry = React.forwardRef(
+  (
+    { backgroundColor, children, heading, onClick, title }: RegularEntryProps,
+    ref
+  ) => {
     const canCommit = useRef(false);
 
     return (
       <Container
+        ref={ref}
         onMouseDown={() => (canCommit.current = true)}
         onMouseMove={() => (canCommit.current = false)}
         onMouseUp={(event) => canCommit.current && onClick && onClick(event)}
-        style={style}
+        style={backgroundColor ? { backgroundColor } : null}
         title={title}
       >
         <Header>{heading}</Header>
@@ -47,3 +51,5 @@ export const RegularEntry = React.memo(
     );
   }
 );
+
+export default React.memo(RegularEntry);

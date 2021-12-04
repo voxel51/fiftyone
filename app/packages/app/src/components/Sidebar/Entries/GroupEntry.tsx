@@ -1,8 +1,14 @@
-import { Check, Close, Edit, FilterList } from "@material-ui/icons";
-import { string } from "prop-types";
+import { Check, Close, Edit, FilterList, Visibility } from "@material-ui/icons";
 import React, { useLayoutEffect, useRef, useState } from "react";
-import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
+import {
+  selectorFamily,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import styled from "styled-components";
+
+import { removeKeys } from "@fiftyone/utilities";
 
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
@@ -12,8 +18,16 @@ import DropdownHandle, {
   PlusMinusButton,
 } from "../../DropdownHandle";
 
-import { groupShown, sidebarGroup } from "../recoil";
+import { groupShown, sidebarGroup, sidebarGroups } from "../recoil";
 import { Pills } from "../utils";
+
+const numGroupFields = selectorFamily<
+  number,
+  { modal: boolean; group: string }
+>({
+  key: "numGroupFields",
+  get: (params) => ({ get }) => get(sidebarGroup(params)).length,
+});
 
 const numGroupFieldsFiltered = selectorFamily<
   number,
@@ -51,7 +65,90 @@ const numGroupFieldsActive = selectorFamily<
   },
 });
 
-const GroupHeaderStyled = styled(DropdownHandle)`
+export const useRenameGroup = (modal: boolean, group: string) => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (newName: string) => {
+      const groups = await snapshot.getPromise(sidebarGroups(modal));
+      set(
+        sidebarGroups(modal),
+        groups.map<[string, string[]]>(([name, paths]) => [
+          name === group ? newName : name,
+          paths,
+        ])
+      );
+    },
+    []
+  );
+};
+
+export const useDeleteGroup = (modal: boolean, group: string) => {
+  const numFields = useRecoilValue(numGroupFields({ modal, group }));
+  const onDelete = useRecoilCallback(
+    ({ set, snapshot }) => async () => {
+      const groups = await snapshot.getPromise(sidebarGroups(modal));
+      set(
+        sidebarGroups(modal),
+        groups.filter(([name]) => name !== group)
+      );
+    },
+    []
+  );
+
+  if (numFields) {
+    return null;
+  }
+
+  return onDelete;
+};
+
+const useClearActive = (modal: boolean, group: string) => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async () => {
+      const paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
+      const active = await snapshot.getPromise(
+        schemaAtoms.activeFields({ modal })
+      );
+
+      set(
+        schemaAtoms.activeFields({ modal }),
+        active.filter((p) => !paths.includes(p))
+      );
+    },
+    [modal, group]
+  );
+};
+
+const useClearMatched = () => {
+  const [matchedTags, setMatchedTags] = useRecoilState(
+    filterAtoms.matchedTags({ modal, key: "sample" })
+  );
+  useLayoutEffect(() => {
+    const newMatches = new Set<string>();
+    matchedTags.forEach((tag) => {
+      tags.includes(tag) && newMatches.add(tag);
+    });
+
+    newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
+  }, [matchedTags, allTags]);
+};
+
+const useClearFiltered = (modal: boolean, group: string) => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async () => {
+      const paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
+      const filters = await snapshot.getPromise(
+        modal ? filterAtoms.modalFilters : filterAtoms.filters
+      );
+      set(
+        modal ? filterAtoms.modalFilters : filterAtoms.filters,
+        removeKeys(filters, paths)
+      );
+    },
+    [modal, group]
+  );
+};
+
+const GroupHeader = styled(DropdownHandle)`
   border-radius: 2px;
   border-width: 0 0 1px 0;
   padding: 0.25rem;
@@ -74,21 +171,21 @@ const GroupInput = styled.input`
   color: ${({ theme }) => theme.fontDark};
 `;
 
-type GroupHeaderProps = {
+type GroupEntryProps = {
   pills?: React.ReactNode;
   title: string;
   setValue?: (name: string) => void;
   onDelete?: () => void;
 } & DropdownHandleProps;
 
-export const GroupHeader = ({
+export const GroupEntry = ({
   title,
   icon,
   pills,
   onDelete,
   setValue,
   ...rest
-}: GroupHeaderProps) => {
+}: GroupEntryProps) => {
   const [localValue, setLocalValue] = useState(() => title);
   useLayoutEffect(() => {
     setLocalValue(title);
@@ -98,7 +195,7 @@ export const GroupHeader = ({
   const ref = useRef<HTMLInputElement>();
 
   return (
-    <GroupHeaderStyled
+    <GroupHeader
       title={title}
       icon={PlusMinusButton}
       {...rest}
@@ -155,17 +252,50 @@ export const GroupHeader = ({
           />
         </span>
       )}
-    </GroupHeaderStyled>
+    </GroupHeader>
   );
 };
 
-export const TagGroupEntry = React.memo(({ name, modal }): {
-  name: string;
-  modal: boolean;
-} => {
-  const;
-  return <GroupHeader />;
-});
+export const TagGroupEntry = React.memo(
+  ({ name, modal }: { name: string; modal: boolean }) => {
+    const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
+
+    return (
+      <GroupHeader
+        title={name}
+        onClick={() => setExpanded(!expanded)}
+        expanded={expanded}
+        pills={
+          <Pills
+            entries={[
+              {
+                count: useRecoilValue(
+                  numGroupTagsMatched({ modal, group: name })
+                ),
+                onClick: useClearMatched(modal, name),
+                icon: <Visibility />,
+                title: "Clear matched",
+              },
+              {
+                count: useRecoilValue(
+                  numGroupFieldsActive({ modal, group: name })
+                ),
+                onClick: useClearActive(modal, name),
+                icon: <Check />,
+                title: "Clear shown",
+              },
+            ]
+              .filter(({ count }) => count > 0)
+              .map(({ count, ...rest }) => ({
+                ...rest,
+                text: count.toLocaleString(),
+              }))}
+          />
+        }
+      />
+    );
+  }
+);
 
 export const PathGroupEntry = React.memo(
   ({ name, modal }: { name: string; modal: boolean }) => {
