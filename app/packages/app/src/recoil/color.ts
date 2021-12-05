@@ -4,9 +4,11 @@ import { Coloring, createColorGenerator } from "@fiftyone/looker";
 import { getColor } from "@fiftyone/looker/src/color";
 
 import { darkTheme } from "../shared/colors";
+
 import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
+import { State } from "./types";
 
 export const coloring = selectorFamily<Coloring, boolean>({
   key: "coloring",
@@ -41,10 +43,10 @@ export const colorMap = selectorFamily<(val) => string, boolean>({
 
 export const pathColor = selectorFamily<
   string,
-  { path: string; modal: boolean }
+  { path: string; modal: boolean; tag?: State.TagKey }
 >({
   key: "pathColor",
-  get: ({ modal, path }) => ({ get }) => {
+  get: ({ modal, path, tag }) => ({ get }) => {
     const map = get(colorMap(modal));
     const video = get(selectors.isVideoDataset);
 
@@ -52,6 +54,12 @@ export const pathColor = selectorFamily<
       video && path.startsWith("frames.")
         ? path.split(".").slice(0, 2).join(".")
         : path.split(".")[0];
+
+    if (tag) {
+      return map(
+        tag === State.TagKey.SAMPLE ? `tags.${path}` : `_label_tags.${path}`
+      );
+    }
 
     if (get(schemaAtoms.labelFields({})).includes(parentPath)) {
       return map(parentPath);

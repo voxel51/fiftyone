@@ -15,14 +15,16 @@ import * as aggregationAtoms from "../../../recoil/aggregations";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
+import { useTheme } from "../../../utils/hooks";
 
 import DropdownHandle, {
   DropdownHandleProps,
   PlusMinusButton,
 } from "../../DropdownHandle";
+import { PillButton } from "../../utils";
 
 import { groupShown, sidebarGroup, sidebarGroups } from "../recoil";
-import { Pills } from "../utils";
+
 import { MATCH_LABEL_TAGS } from "./utils";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
@@ -174,6 +176,37 @@ const useClearFiltered = (modal: boolean, group: string) => {
       );
     },
     [modal, group]
+  );
+};
+
+type PillEntry = {
+  onClick: () => void;
+  text: string;
+  title: string;
+  icon?: React.ReactNode;
+};
+
+const Pills = ({ entries }: { entries: PillEntry[] }) => {
+  const theme = useTheme();
+
+  return (
+    <>
+      {entries.map((data, i) => (
+        <PillButton
+          {...data}
+          highlight={false}
+          open={false}
+          style={{
+            height: "1.5rem",
+            fontSize: "0.8rem",
+            lineHeight: "1rem",
+            color: theme.font,
+            padding: "0.25rem 0.5rem",
+          }}
+          key={i}
+        />
+      ))}
+    </>
   );
 };
 

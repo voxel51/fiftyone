@@ -1,6 +1,6 @@
 import { CircularProgress } from "@material-ui/core";
 import React, { useCallback } from "react";
-import { RecoilValue, useRecoilValue } from "recoil";
+import { RecoilValue, selectorFamily, useRecoilValue } from "recoil";
 
 import * as aggregationAtoms from "../../../recoil/aggregations";
 import { useTheme } from "../../../utils/hooks";
@@ -56,14 +56,30 @@ export const PathEntryCounts = ({
   return <EntryCounts getAtom={getAtom} />;
 };
 
-export const LabelTagCounts = ({ modal }: { modal: boolean }) => {
-  const getAtom = useCallback(
-    (extended: boolean) =>
-      aggregationAtoms.count({
-        extended,
-        modal,
+const labelTagCount = selectorFamily<
+  number,
+  { modal: boolean; tag: string; extended: boolean }
+>({
+  key: `labelTagCount`,
+  get: ({ tag, ...rest }) => ({ get }) =>
+    get(
+      aggregationAtoms.cumulativeCounts({
+        path: tag,
         ...MATCH_LABEL_TAGS,
-      }),
+        ...rest,
+      })
+    )[tag],
+});
+
+export const LabelTagCounts = ({
+  modal,
+  tag,
+}: {
+  modal: boolean;
+  tag: string;
+}) => {
+  const getAtom = useCallback(
+    (extended: boolean) => labelTagCount({ modal, tag, extended }),
     [modal]
   );
 
