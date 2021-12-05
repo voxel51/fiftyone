@@ -3,7 +3,10 @@ import { atomFamily, DefaultValue, selectorFamily } from "recoil";
 import * as aggregationAtoms from "../../recoil/aggregations";
 import {
   EMBEDDED_DOCUMENT_FIELD,
+  LABELS_PATH,
+  LABEL_DOC_TYPES,
   VALID_PRIMITIVE_TYPES,
+  withPath,
 } from "../../recoil/constants";
 import * as schemaAtoms from "../../recoil/schema";
 import { State } from "../../recoil/types";
@@ -34,6 +37,14 @@ const prioritySort = (
   );
 };
 
+const RESERVED_GROUPS = new Set([
+  "sample tags",
+  "label tags",
+  "patch tags",
+  "frame tags",
+  "tags",
+]);
+
 const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
   key: "defaultSidebarGroups",
   get: (modal) => ({ get }) => {
@@ -56,8 +67,19 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
       aggregationAtoms.values({ extended: false, modal, path: "tags" })
     );
 
+    const labelTags = get(
+      aggregationAtoms.cumulativeValues({
+        extended: false,
+        modal: false,
+        path: "tags",
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+        embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
+      })
+    );
+
     const groups = {
       tags,
+      "label tags": labelTags,
       labels: sampleLabels,
       primitives: get(
         schemaAtoms.fieldPaths({

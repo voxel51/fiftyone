@@ -57,7 +57,7 @@ export const hasFilters = selectorFamily<boolean, boolean>({
 
 export const matchedTags = selectorFamily<
   Set<string>,
-  { key: string; modal: boolean }
+  { key: State.TagKey; modal: boolean }
 >({
   key: "matchedTags",
   get: ({ key, modal }) => ({ get }) => {

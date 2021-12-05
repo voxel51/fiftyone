@@ -76,7 +76,15 @@ export namespace State {
 
   export interface Filter {}
 
+  export enum TagKey {
+    SAMPLE = "sample",
+    LABEL = "label",
+  }
+
   export interface Filters {
+    tags?: {
+      [key in TagKey]?: string[];
+    };
     [key: string]: Filter;
   }
 

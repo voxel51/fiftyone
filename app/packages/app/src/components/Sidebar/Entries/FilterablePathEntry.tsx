@@ -1,10 +1,9 @@
-import React, { ReactNode, useRef, useState } from "react";
-import { Checkbox, CircularProgress } from "@material-ui/core";
-import { animated, useSpring } from "@react-spring/web";
+import React, { useState } from "react";
+import { Checkbox } from "@material-ui/core";
+import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
+import { useSpring } from "@react-spring/web";
 import { useRecoilState, useRecoilValue } from "recoil";
-import styled from "styled-components";
 
-import * as aggregationAtoms from "../../../recoil/aggregations";
 import * as colorAtoms from "../../../recoil/color";
 import {
   BOOLEAN_FIELD,
@@ -23,14 +22,15 @@ import {
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
-
 import { useTheme } from "../../../utils/hooks";
+
 import {
   BooleanFieldFilter,
   NumericFieldFilter,
   StringFieldFilter,
 } from "../../Filters";
-import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
+
+import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 
 const FILTERS = {
@@ -119,23 +119,17 @@ const FilterableEntry = React.memo(
         }`}
         heading={
           <>
-            <CheckBox
+            <Checkbox
               disableRipple={true}
               checked={active}
               title={`Show ${path}`}
-              onMouseDown={null}
               style={{
                 color: active ? color : theme.fontDark,
                 padding: 0,
               }}
             />
             <span style={{ flexGrow: 1 }}>{path}</span>
-            <EntryCounts
-              path={expandedPath}
-              modal={modal}
-              ftype={ftype}
-              embeddedDocType={embeddedDocType}
-            />
+            <PathEntryCounts modal={modal} path={expandedPath} />
 
             <Arrow
               style={{ cursor: "pointer", margin: 0 }}
@@ -154,6 +148,7 @@ const FilterableEntry = React.memo(
         {...useSpring({
           backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
         })}
+        onClick={() => setActive(!active)}
       >
         {expanded &&
           data.map(({ ftype, ...props }) =>

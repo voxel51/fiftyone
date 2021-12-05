@@ -1,16 +1,20 @@
+import { useSpring } from "@react-spring/core";
 import React from "react";
 
 import { useTheme } from "../../../utils/hooks";
-import { RegularEntry } from "./RegularEntry";
+import RegularEntry from "./RegularEntry";
 
 const EmptyEntry = ({ text }: { text: string }) => {
   const theme = useTheme();
+  const { backgroundColor } = useSpring({
+    backgroundColor: theme.backgroundLight,
+  });
 
   return (
     <RegularEntry
-      heading={<span>{text}</span>}
+      heading={<span style={{ color: theme.fontDarkest }}>{text}</span>}
       title={text}
-      style={{ color: theme.fontDarkest, background: theme.backgroundLight }}
+      backgroundColor={backgroundColor}
     />
   );
 };
