@@ -97,7 +97,13 @@ const SamplesContainer = React.memo(() => {
         return {
           children: (
             <Entries.Empty
-              text={group === "tags" ? `No ${singular} tags` : "No fields"}
+              text={
+                group === "tags"
+                  ? `No ${singular} tags`
+                  : group === "label tags"
+                  ? "No label tags"
+                  : "No fields"
+              }
             />
           ),
           disabled: true,

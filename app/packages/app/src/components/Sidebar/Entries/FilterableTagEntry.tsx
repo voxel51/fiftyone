@@ -19,6 +19,11 @@ const ACTIVE_ATOM = {
   [State.TagKey.SAMPLE]: schemaAtoms.activeTags,
 };
 
+const PREFIX = {
+  [State.TagKey.LABEL]: "_label_tags",
+  [State.TagKey.SAMPLE]: "tags",
+};
+
 const tagIsActive = selectorFamily<
   boolean,
   { key: State.TagKey; tag: string; modal: boolean }
@@ -33,8 +38,8 @@ const tagIsActive = selectorFamily<
     set(
       atom,
       current.includes(tag)
-        ? [key, ...current]
-        : current.filter((k) => k !== key)
+        ? current.filter((t) => t !== tag)
+        : [tag, ...current]
     );
   },
 });
@@ -60,6 +65,10 @@ const MatchEye = ({ elementsName, name, matched, onClick }: MatchEyeProps) => {
         e.preventDefault();
         e.stopPropagation();
         onClick();
+      }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
       }}
       style={{
         cursor: "pointer",
@@ -92,6 +101,7 @@ const FilterableTagEntry = ({
   const [active, setActive] = useRecoilState(
     tagIsActive({ key: tagKey, modal, tag })
   );
+
   const elementsName =
     tagKey === State.TagKey.SAMPLE
       ? useRecoilValue(elementNames).plural
@@ -146,6 +156,7 @@ const FilterableTagEntry = ({
         </>
       }
       onClick={() => setActive(!active)}
+      clickable
     />
   );
 };

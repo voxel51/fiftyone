@@ -15,6 +15,7 @@ const StringFieldFilter = ({
   name?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  title: string;
 }) => {
   return (
     <CategoricalFilter<string | null>

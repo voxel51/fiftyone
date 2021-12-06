@@ -4,10 +4,10 @@ import styled from "styled-components";
 
 import { sidebarEntries, sidebarGroupNames } from "../recoil";
 import { EntryKind } from "../utils";
+import { validateGroupName } from "./utils";
 
 const AddGroupDiv = styled.div`
   box-sizing: border-box;
-  background-color: transparent;
   cursor: pointer;
   font-weight: bold;
   user-select: none;
@@ -15,6 +15,7 @@ const AddGroupDiv = styled.div`
 
   display: flex;
   justify-content: space-between;
+  background: ${({ theme }) => theme.backgroundTransparent};
 
   & > input {
     color: ${({ theme }) => theme.fontDark};
@@ -44,9 +45,13 @@ const AddGroup = () => {
         placeholder={"+ add group"}
         value={value}
         maxLength={140}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => setValue(e.target.value.toLocaleLowerCase())}
         onKeyDown={(e) => {
           if (e.key === "Enter" && value.length) {
+            if (!validateGroupName(value)) {
+              return;
+            }
+
             if (!currentGroups.includes(value)) {
               const newEntries = [...entries];
               newEntries.splice(entries.length - 1, 0, {

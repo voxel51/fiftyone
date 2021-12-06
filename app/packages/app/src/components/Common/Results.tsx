@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { animated } from "@react-spring/web";
 import styled from "styled-components";
 import { summarizeLongStr } from "../../utils/generic";
 
@@ -6,7 +7,7 @@ import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
 import { getValueString } from "../Filters/utils";
 
-export const ResultsContainer = styled.div`
+export const ResultsContainer = styled(animated.div)`
   background-color: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   border-radius: 2px;
@@ -49,8 +50,11 @@ const ScrollResultsContainer = styled.div`
   }
 `;
 
-interface ResultProps {
-  result: ResultValue;
+type ResultValue<T> = [T, number];
+
+interface ResultProps<T> {
+  result: T;
+  count: number;
   highlight: string;
   active: boolean | null;
   onClick: () => void;
@@ -59,23 +63,24 @@ interface ResultProps {
 }
 
 const Result = React.memo(
-  ({
+  <T extends unknown>({
     active,
     highlight,
-    result: [value, count],
     onClick,
     maxLen,
     color,
-  }: ResultProps) => {
+    result,
+    count,
+  }: ResultProps<T>) => {
     const props = useHighlightHover(
       false,
       active ? active : null,
-      value === null ? highlight : null
+      result === null ? highlight : null
     );
     const ref = useRef<HTMLDivElement>();
     const wasActive = useRef(false);
 
-    const [text, coloring] = getValueString(value);
+    const [text, coloring] = getValueString(result);
 
     useEffect(() => {
       if (active && ref.current && !wasActive.current) {
@@ -88,7 +93,7 @@ const Result = React.memo(
 
     return (
       <ResultDiv
-        title={value === null ? "None" : value}
+        title={result === null ? "None" : result}
         {...props}
         onClick={onClick}
         ref={ref}
@@ -102,8 +107,6 @@ const Result = React.memo(
   }
 );
 
-type ResultValue<T> = [T, number];
-
 interface ResultsProps<T> {
   results: ResultValue<T>[];
   highlight: string;
@@ -113,28 +116,31 @@ interface ResultsProps<T> {
   color: string;
 }
 
-const Results = <T extends unknown>({
-  color,
-  onSelect,
-  results,
-  highlight,
-  active = undefined,
-}: ResultsProps<T>) => {
-  return (
-    <ScrollResultsContainer>
-      {results.map((result) => (
-        <Result
-          key={String(result[0])}
-          result={result}
-          highlight={highlight}
-          onClick={() => onSelect(result[0])}
-          active={active === result[0]}
-          maxLen={26 - result[1].toLocaleString().length}
-          color={color}
-        />
-      ))}
-    </ScrollResultsContainer>
-  );
-};
+const Results = React.memo(
+  <T extends unknown>({
+    color,
+    onSelect,
+    results,
+    highlight,
+    active = undefined,
+  }: ResultsProps<T>) => {
+    return (
+      <ScrollResultsContainer>
+        {results.map((result) => (
+          <Result
+            key={String(result[0])}
+            result={result[0]}
+            count={result[1]}
+            highlight={highlight}
+            onClick={() => onSelect(result[0])}
+            active={active === result[0]}
+            maxLen={26 - result[1].toLocaleString().length}
+            color={color}
+          />
+        ))}
+      </ScrollResultsContainer>
+    );
+  }
+);
 
 export default Results;

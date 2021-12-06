@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { Checkbox } from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 
+import * as aggregationAtoms from "../../../recoil/aggregations";
 import * as colorAtoms from "../../../recoil/color";
 import {
   BOOLEAN_FIELD,
@@ -13,11 +14,13 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  LABELS_PATH,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
+  withPath,
 } from "../../../recoil/constants";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
@@ -33,6 +36,13 @@ import {
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 
+const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
+  key: "sidebarCanExpand",
+  get: ({ modal, path }) => ({ get }) => {
+    return get(aggregationAtoms.count({ path, extended: false, modal })) > 0;
+  },
+});
+
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
   [DATE_FIELD]: NumericFieldFilter,
@@ -45,15 +55,31 @@ const FILTERS = {
   [STRING_FIELD]: StringFieldFilter,
 };
 
+export const DETECTION = ["bounding_box"];
+
+const EXCLUDED = {
+  [withPath(LABELS_PATH, "Detection")]: DETECTION,
+  [withPath(LABELS_PATH, "Detections")]: DETECTION,
+};
+
+const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
+
 const getFilterData = (
   path: string,
   modal: boolean,
   parent: State.Field,
   fields: State.Field[]
-): { ftype: string; path: string; modal: boolean; named?: boolean }[] => {
+): {
+  ftype: string;
+  path: string;
+  modal: boolean;
+  named?: boolean;
+  listField: boolean;
+}[] => {
   if (schemaAtoms.meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
     let ftype = parent.ftype;
-    if (ftype === LIST_FIELD) {
+    const listField = ftype === LIST_FIELD;
+    if (listField) {
       ftype = parent.subfield;
     }
 
@@ -63,20 +89,32 @@ const getFilterData = (
         path,
         modal,
         named: false,
+        listField,
       },
     ];
   }
 
-  const label = VALID_LABEL_TYPES.includes(parent.embeddedDocType);
+  const label = LABELS.includes(parent.embeddedDocType);
+  const excluded = EXCLUDED[parent.embeddedDocType] || [];
 
   return fields
-    .filter(({ name }) => !label || name !== "tags")
-    .map(({ ftype, subfield, name }) => ({
-      path: [path, name].join("."),
-      modal,
-      ftype: ftype === LIST_FIELD ? subfield : ftype,
-      named: true,
-    }));
+    .filter(
+      ({ name }) => !label || (name !== "tags" && !excluded.includes(name))
+    )
+    .map(({ ftype, subfield, name }) => {
+      const listField = ftype === LIST_FIELD;
+
+      if (listField) {
+        ftype = subfield;
+      }
+      return {
+        path: [path, name].join("."),
+        modal,
+        ftype,
+        named: true,
+        listField,
+      };
+    });
 };
 
 const FilterableEntry = React.memo(
@@ -111,6 +149,7 @@ const FilterableEntry = React.memo(
     const [active, setActive] = useRecoilState(
       schemaAtoms.activeField({ modal, path })
     );
+    const expandable = useRecoilValue(canExpand({ modal, path }));
 
     return (
       <RegularEntry
@@ -131,18 +170,20 @@ const FilterableEntry = React.memo(
             <span style={{ flexGrow: 1 }}>{path}</span>
             <PathEntryCounts modal={modal} path={expandedPath} />
 
-            <Arrow
-              style={{ cursor: "pointer", margin: 0 }}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setExpanded(!expanded);
-              }}
-              onMouseDown={(event) => {
-                event.stopPropagation();
-                event.preventDefault();
-              }}
-            />
+            {expandable && (
+              <Arrow
+                style={{ cursor: "pointer", margin: 0 }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setExpanded(!expanded);
+                }}
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                }}
+              />
+            )}
           </>
         }
         {...useSpring({
@@ -151,14 +192,15 @@ const FilterableEntry = React.memo(
         onClick={() => setActive(!active)}
       >
         {expanded &&
-          data.map(({ ftype, ...props }) =>
-            React.createElement(FILTERS[ftype], {
+          data.map(({ ftype, listField, ...props }) => {
+            return React.createElement(FILTERS[ftype], {
               key: props.path,
               onFocus,
               onBlur,
+              title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
               ...props,
-            })
-          )}
+            });
+          })}
       </RegularEntry>
     );
   }

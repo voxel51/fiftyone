@@ -17,7 +17,6 @@ import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as viewAtoms from "../recoil/view";
 import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
-import { LIST_LIMIT } from "./Filters/stringState";
 import { meetsType } from "../recoil/schema";
 import { DATE_FIELD, DATE_TIME_FIELD } from "../recoil/constants";
 
@@ -29,6 +28,8 @@ const Container = styled.div`
   height: 100%;
   padding-left: 1rem;
 `;
+
+const LIMIT = 200;
 
 const PlotTooltip = ({ title, count }) => {
   return (
@@ -98,7 +99,7 @@ const Distribution = ({ distribution }) => {
     key: isDateTime || isDate ? key : prettify(key, false),
   }));
 
-  const hasMore = data.length >= LIST_LIMIT;
+  const hasMore = data.length >= LIMIT;
 
   const map = strData.reduce(
     (acc, cur) => ({
@@ -203,12 +204,12 @@ const Distributions = ({ group }: { group: string }) => {
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
 
-  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
-    JSON.stringify(view),
-    JSON.stringify(filters),
-    datasetName,
-    refresh,
-  ]);
+  useSendMessage(
+    "distributions",
+    { group: group.toLowerCase(), limit: LIMIT },
+    null,
+    [JSON.stringify(view), JSON.stringify(filters), datasetName, refresh]
+  );
 
   useMessageHandler("distributions", ({ results }) => {
     setLoading(false);

@@ -23,6 +23,7 @@ const Header = styled.div`
 
 type RegularEntryProps = {
   backgroundColor?: SpringValue<string>;
+  clickable?: boolean;
   children?: ReactNode;
   heading: ReactNode;
   onClick?: MouseEventHandler;
@@ -31,10 +32,20 @@ type RegularEntryProps = {
 
 const RegularEntry = React.forwardRef(
   (
-    { backgroundColor, children, heading, onClick, title }: RegularEntryProps,
+    {
+      backgroundColor,
+      children,
+      heading,
+      onClick,
+      title,
+      clickable,
+    }: RegularEntryProps,
     ref
   ) => {
     const canCommit = useRef(false);
+
+    const style = backgroundColor ? { backgroundColor } : {};
+    style.cursor = clickable ? "pointer" : "unset";
 
     return (
       <Container
@@ -42,7 +53,7 @@ const RegularEntry = React.forwardRef(
         onMouseDown={() => (canCommit.current = true)}
         onMouseMove={() => (canCommit.current = false)}
         onMouseUp={(event) => canCommit.current && onClick && onClick(event)}
-        style={backgroundColor ? { backgroundColor } : null}
+        style={style}
         title={title}
       >
         <Header>{heading}</Header>

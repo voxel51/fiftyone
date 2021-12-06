@@ -93,6 +93,7 @@ type Props = {
   named?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  title: string;
 };
 
 const NumericFieldFilter = ({
@@ -100,6 +101,7 @@ const NumericFieldFilter = ({
   modal,
   path,
   named = true,
+  title,
 }: Props) => {
   const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
   const name = path.split(".").slice(-1)[0];
@@ -127,8 +129,10 @@ const NumericFieldFilter = ({
     filterAtoms.fieldIsFiltered({ modal, path })
   );
 
+  if (!hasBounds && nonfinites.length < 2) return null;
+
   return (
-    <NamedRangeSliderContainer>
+    <NamedRangeSliderContainer title={title}>
       {named && name && (
         <NamedRangeSliderHeader>
           {name.replaceAll("_", " ")}

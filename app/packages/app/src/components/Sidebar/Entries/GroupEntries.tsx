@@ -25,7 +25,7 @@ import { PillButton } from "../../utils";
 
 import { groupShown, sidebarGroup, sidebarGroups } from "../recoil";
 
-import { MATCH_LABEL_TAGS } from "./utils";
+import { MATCH_LABEL_TAGS, validateGroupName } from "./utils";
 import { elementNames } from "../../../recoil/view";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
@@ -96,6 +96,12 @@ const numGroupFieldsActive = selectorFamily<
 export const useRenameGroup = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) => async (newName: string) => {
+      newName = newName.toLowerCase();
+
+      if (!validateGroupName(newName)) {
+        return;
+      }
+
       const groups = await snapshot.getPromise(sidebarGroups(modal));
       set(
         sidebarGroups(modal),
@@ -203,6 +209,7 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
             lineHeight: "1rem",
             color: theme.font,
             padding: "0.25rem 0.5rem",
+            margin: "0 0.25rem",
           }}
           key={i}
         />
@@ -264,18 +271,29 @@ const GroupEntry = ({
       {...rest}
       onMouseEnter={() => !hovering && setHovering(true)}
       onMouseLeave={() => hovering && setHovering(false)}
+      onMouseDown={(event) => {
+        editing && event.stopPropagation();
+      }}
+      style={{ cursor: "unset" }}
     >
       <GroupInput
         ref={ref}
         maxLength={40}
         value={localValue}
         focus={editing}
-        style={{ flexGrow: 1, pointerEvents: editing ? "unset" : "none" }}
-        onChange={(event) => setLocalValue(event.target.value)}
+        style={{
+          flexGrow: 1,
+          pointerEvents: editing ? "unset" : "none",
+          textOverflow: "ellipsis",
+        }}
+        onChange={(event) => setLocalValue(event.target.value.toLowerCase())}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             setValue(event.target.value);
             setEditing(false);
+          }
+          if (event.key === "Escape") {
+            event.target.blur();
           }
         }}
         onFocus={() => !editing && setEditing(true)}
@@ -287,7 +305,7 @@ const GroupEntry = ({
         }}
       />
       {hovering && !editing && setValue && (
-        <span title={"Rename group"}>
+        <span title={"Rename group"} style={{ margin: "0 0.25rem" }}>
           <Edit
             onMouseDown={(event) => {
               event.preventDefault();
@@ -305,7 +323,7 @@ const GroupEntry = ({
       )}
       {pills}
       {onDelete && !editing && (
-        <span title={"Delete group"}>
+        <span title={"Delete group"} style={{ margin: "0 0.25rem" }}>
           <Close
             onMouseDown={(event) => {
               event.preventDefault();
@@ -342,10 +360,10 @@ export const TagGroupEntry = React.memo(
     const allTags = useRecoilValue(getTags(false, false));
     const matchedAtom = filterAtoms.matchedTags({ key: tagKey, modal });
 
-    const name = `${plural} tags`;
+    const name = `${tagKey === State.TagKey.SAMPLE ? plural : "label"} tags`;
     return (
       <GroupEntry
-        title={name}
+        title={name.toUpperCase()}
         onClick={() => setExpanded(!expanded)}
         expanded={expanded}
         pills={
@@ -386,7 +404,7 @@ export const PathGroupEntry = React.memo(
 
     return (
       <GroupEntry
-        title={name}
+        title={name.toUpperCase()}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         setValue={modal ? null : (value) => renameGroup(value)}

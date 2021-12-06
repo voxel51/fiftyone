@@ -476,11 +476,12 @@ const InteractiveSidebar = ({
 
       if (delta < 24) {
         container.current.scroll({
-          top: scroll - Math.abs(delta),
+          top: scroll - 1,
+          behavior: "smooth",
         });
-        return -1 * Math.abs(delta);
+        return -1 * 2;
       }
-    } else if (direction === Direction.DOWN) {
+    } else if (direction === Direction.DOWN && false) {
       const {
         height,
       } = container.current.parentElement.getBoundingClientRect();

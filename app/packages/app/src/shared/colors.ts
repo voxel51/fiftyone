@@ -27,7 +27,7 @@ const black0a25 = "hsla(0, 0%, 0%, 0.25)";
 const grey11 = "hsl(210, 11%, 11%)";
 const grey15 = "hsl(210, 11%, 15%)";
 const grey19 = "hsl(214, 7%, 19%)";
-const grey19a50 = "hsla(214, 7%, 19%, 0.5)";
+const grey19a70 = "hsla(214, 7%, 19%, 0.7)";
 const grey24 = "hsl(210, 5%, 24%)";
 const grey37 = "hsl(200, 2%, 37%)";
 const grey60 = "hsl(230, 3%, 60%)";
@@ -87,7 +87,7 @@ export const darkTheme: ColorTheme = {
   backgroundLight: grey24,
   backgroundLightBorder: grey15,
   backgroundDarkBorder: grey11,
-  backgroundTransparent: grey19a50,
+  backgroundTransparent: grey19a70,
   border: grey37,
   borderLight: grey24,
   button: grey37,

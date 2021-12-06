@@ -45,7 +45,10 @@ const DropdownHandle = ({
   return (
     <Body
       {...rest}
-      onMouseDown={() => (canCommit.current = true)}
+      onMouseDown={(event) => {
+        rest.onMouseDown && rest.onMouseDown(event);
+        canCommit.current = true;
+      }}
       onMouseMove={() => (canCommit.current = false)}
       onMouseUp={() => canCommit.current && onClick()}
     >

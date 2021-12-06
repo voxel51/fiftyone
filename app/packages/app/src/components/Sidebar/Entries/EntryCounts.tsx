@@ -28,7 +28,7 @@ const EntryCounts = ({
           color: theme.font,
           height: 16,
           width: 16,
-          minWidth: 16,
+          margin: 4,
         }}
       />
     );

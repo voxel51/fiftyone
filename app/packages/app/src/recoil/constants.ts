@@ -36,51 +36,6 @@ export const VALID_LABEL_TYPES = [
   ...VALID_MASK_TYPES,
 ];
 
-export const HIDDEN_LABEL_ATTRS = {
-  Classification: ["logits"],
-  Detection: ["bounding_box", "attributes", "mask"],
-  Polyline: ["points", "attributes"],
-  Keypoint: ["points", "attributes"],
-  Segmentation: ["mask"],
-};
-
-export const OBJECT_TYPES = [
-  "Detection",
-  "Detections",
-  "Keypoints",
-  "Keypoint",
-  "Polylines",
-  "Polyline",
-];
-
-export const FILTERABLE_TYPES = [
-  "Classification",
-  "Classifications",
-  "Detection",
-  "Detections",
-  "Keypoints",
-  "Keypoint",
-  "Polylines",
-  "Polyline",
-  "TemporalDetection",
-  "TemporalDetections",
-];
-
-export const CONFIDENCE_LABELS = [
-  "Classification",
-  "Classifications",
-  "Detection",
-  "Detections",
-  "Keypoint",
-  "Keypoints",
-  "Polyline",
-  "Polylines",
-  "TemporalDetection",
-  "TemporalDetections",
-];
-
-export const SUPPORT_LABELS = ["TemporalDetection", "TemporalDetections"];
-
 export const LABEL_LISTS = [
   "Classifications",
   "Detections",
@@ -88,8 +43,6 @@ export const LABEL_LISTS = [
   "Polylines",
   "TemporalDetections",
 ];
-
-export const UNSUPPORTED_IMAGE = ["TemporalDetection", "TemporalDetections"];
 
 export const LABEL_LIST = {
   Classifications: "classifications",
@@ -154,21 +107,12 @@ export const RESERVED_FIELDS = [
   "tags",
   "frames",
 ];
-export const RESERVED_DETECTION_FIELDS = [
-  "label",
-  "index",
-  "bounding_box",
-  "confidence",
-  "attributes",
-  "mask",
-  "target",
-];
 
 export const LABELS_PATH = "fiftyone.core.labels";
 
-export const withPath = (path, types: string | string[]) => {
-  if (!Array.isArray(types)) {
-    types = [types];
+export const withPath = (path, types) => {
+  if (typeof types === "string") {
+    return [path, types].join(".");
   }
 
   return types.map((type) => [path, type].join("."));

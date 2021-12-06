@@ -37,14 +37,6 @@ const prioritySort = (
   );
 };
 
-const RESERVED_GROUPS = new Set([
-  "sample tags",
-  "label tags",
-  "patch tags",
-  "frame tags",
-  "tags",
-]);
-
 const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
   key: "defaultSidebarGroups",
   get: (modal) => ({ get }) => {

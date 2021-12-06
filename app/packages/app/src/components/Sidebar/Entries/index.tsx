@@ -5,7 +5,7 @@ import FilterableTag from "./FilterableTagEntry";
 import {
   PathGroupEntry as PathGroup,
   TagGroupEntry as TagGroup,
-} from "./GroupEntry";
+} from "./GroupEntries";
 import PathValue from "./PathValueEntry";
 import TagValue from "./TagValueEntry";
 

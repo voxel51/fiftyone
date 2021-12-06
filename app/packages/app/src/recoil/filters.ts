@@ -4,6 +4,8 @@ import socket from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 
 import * as atoms from "./atoms";
+import { VALID_PRIMITIVE_TYPES } from "./constants";
+import { expandPath, fields } from "./schema";
 import { State } from "./types";
 
 export const modalFilters = atom<State.Filters>({
@@ -92,8 +94,18 @@ export const fieldIsFiltered = selectorFamily<
 >({
   key: "stringFieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
-    const atom = modal ? modalFilters : filters;
+    const f = get(modal ? modalFilters : filters);
 
-    return Boolean(get(atom)[path]);
+    const expandedPath = get(expandPath(path));
+    const paths = get(
+      fields({
+        path: expandedPath,
+        ftype: VALID_PRIMITIVE_TYPES,
+      })
+    );
+
+    return (
+      Boolean(f[path]) || paths.some(({ name }) => f[`${expandedPath}.${name}`])
+    );
   },
 });

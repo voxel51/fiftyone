@@ -15,6 +15,7 @@ const BooleanFieldFilter = ({
   named?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  title: string;
 }) => {
   return (
     <CategoricalFilter<boolean | null>

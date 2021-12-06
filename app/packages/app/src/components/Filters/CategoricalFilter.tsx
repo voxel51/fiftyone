@@ -22,13 +22,13 @@ import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "../utils";
-import { LIST_LIMIT } from "./stringState";
 import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
 import { genSort } from "../../utils/generic";
 import ExcludeOption from "./Exclude";
+import { useSpring } from "@react-spring/core";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -226,41 +226,47 @@ const ResultsWrapper = <T extends unknown>({
 }: ResultsWrapperProps<T>) => {
   const theme = useTheme();
 
+  const style = useSpring({
+    opacity: shown ? 1 : 0,
+  });
+
+  if (!shown) {
+    return null;
+  }
+
   return (
-    <>
-      {shown && results && (
-        <ResultsContainer
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-        >
-          {results && (
-            <Results<T>
-              color={color}
-              active={active}
-              onSelect={onSelect}
-              results={results}
-              highlight={color}
-            />
-          )}
-          <PopoutSectionTitle />
-          <ItemAction
-            style={{
-              cursor: "default",
-              textAlign: "right",
-              color: theme.font,
-            }}
-          >
-            {results && subCount !== null && results.length > 0 && (
-              <>
-                {results.length !== subCount && <>{results.length} of</>}
-                {subCount.toLocaleString()} results
-              </>
-            )}
-            {results && results.length === 0 && <>No results</>}
-          </ItemAction>
-        </ResultsContainer>
+    <ResultsContainer
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={style}
+    >
+      {results && (
+        <Results<T>
+          color={color}
+          active={active}
+          onSelect={onSelect}
+          results={results}
+          highlight={color}
+        />
       )}
-    </>
+      <PopoutSectionTitle />
+      <ItemAction
+        style={{
+          cursor: "default",
+          textAlign: "right",
+          color: theme.font,
+        }}
+      >
+        {results && subCount !== null && results.length > 0 && (
+          <>
+            {results.length !== subCount && <>{results.length} of</>}
+            {subCount.toLocaleString()} results
+          </>
+        )}
+        {results && results.length === 0 && <>No results</>}
+        {!results && <>Loading...</>}
+      </ItemAction>
+    </ResultsContainer>
   );
 };
 
@@ -319,7 +325,6 @@ const useSearch = <T extends unknown>() => {
             path,
             search,
             selected,
-            limit: LIST_LIMIT,
             uuid: id,
             sample_id: sampleId,
             ...sorting,
@@ -356,6 +361,7 @@ interface Props<T> {
   named?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  title: string;
 }
 
 const CategoricalFilter = <T extends unknown>({
@@ -367,6 +373,7 @@ const CategoricalFilter = <T extends unknown>({
   named = true,
   onFocus,
   onBlur,
+  title,
 }: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
@@ -410,8 +417,10 @@ const CategoricalFilter = <T extends unknown>({
     return results[index][1];
   };
 
+  if (count === 0) return null;
+
   return (
-    <NamedCategoricalFilterContainer>
+    <NamedCategoricalFilterContainer title={title}>
       <NamedCategoricalFilterHeader>
         {named && name && <>{name.replaceAll("_", " ")}</>}
       </NamedCategoricalFilterHeader>

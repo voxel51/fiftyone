@@ -7,8 +7,6 @@ import {
 
 import * as filterAtoms from "../../recoil/filters";
 
-export const LIST_LIMIT = 200;
-
 interface StringFilter {
   values: string[];
   exclude: boolean;
