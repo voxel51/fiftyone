@@ -1,23 +1,22 @@
-import React, { Suspense, useRef } from "react";
+import React, { useRef } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import Actions from "./Actions";
 import FieldsSidebar, {
+  Entries,
   EntryKind,
   sidebarEntries,
   SidebarEntry,
-} from "./Sidebar/Sidebar";
+} from "./Sidebar";
 import Looker from "./Looker";
 import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useMessageHandler, useTheme } from "../utils/hooks";
-import { formatMetadata } from "../utils/labels";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
 import { Controller } from "@react-spring/core";
-import { TextEntry } from "./Sidebar/Entries";
 
 const Container = styled.div`
   position: relative;
@@ -242,7 +241,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
       case EntryKind.PATH:
         return {
           children: (
-            <FilterEntry
+            <Entries.FilterablePath
               modal={false}
               path={entry.path}
               group={group}
@@ -258,13 +257,13 @@ const SampleModal = ({ onClose }: Props, ref) => {
         };
       case EntryKind.GROUP:
         return {
-          children: <InteractiveGroupEntry name={entry.name} modal={true} />,
+          children: <Entries.PathGroup name={entry.name} modal={true} />,
           disabled: false,
         };
 
       case EntryKind.EMPTY:
         return {
-          children: <TextEntry text={"No fields"} />,
+          children: <Entries.Empty text={"No fields"} />,
           disabled: true,
         };
       default:

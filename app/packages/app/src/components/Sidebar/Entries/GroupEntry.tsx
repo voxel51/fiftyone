@@ -26,6 +26,8 @@ import { PillButton } from "../../utils";
 import { groupShown, sidebarGroup, sidebarGroups } from "../recoil";
 
 import { MATCH_LABEL_TAGS } from "./utils";
+import { elementNames } from "../../../recoil/view";
+import { useSpring } from "@react-spring/core";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
@@ -220,7 +222,7 @@ const GroupHeader = styled(DropdownHandle)`
   vertical-align: middle;
   align-items: center;
   color: ${({ theme }) => theme.fontDark};
-  background: transparent;
+  background: ${({ theme }) => theme.backgroundTransparent};
 `;
 
 const GroupInput = styled.input`
@@ -240,7 +242,7 @@ type GroupEntryProps = {
   onDelete?: () => void;
 } & DropdownHandleProps;
 
-export const GroupEntry = ({
+const GroupEntry = ({
   title,
   icon,
   pills,
@@ -319,29 +321,31 @@ export const GroupEntry = ({
 };
 
 export const TagGroupEntry = React.memo(
-  ({ key, modal }: { key: State.TagKey; modal: boolean }) => {
+  ({ tagKey, modal }: { tagKey: State.TagKey; modal: boolean }) => {
     const [expanded, setExpanded] = useRecoilState(
-      groupShown({ name: TAGS[key], modal })
+      groupShown({ name: TAGS[tagKey], modal })
     );
+    const { plural } = useRecoilValue(elementNames);
 
     const getTags = useCallback(
       (modal, extended) =>
-        key === State.TagKey.LABEL
+        tagKey === State.TagKey.LABEL
           ? aggregationAtoms.cumulativeValues({
               extended,
               modal,
               ...MATCH_LABEL_TAGS,
             })
           : aggregationAtoms.values({ extended, modal, path: "tags" }),
-      [key]
+      [tagKey]
     );
 
     const tags = useRecoilValue(getTags(modal, false));
     const allTags = useRecoilValue(getTags(false, false));
-    const matchedAtom = filterAtoms.matchedTags({ key, modal });
+    const matchedAtom = filterAtoms.matchedTags({ key: tagKey, modal });
 
+    const name = `${plural} tags`;
     return (
-      <GroupHeader
+      <GroupEntry
         title={name}
         onClick={() => setExpanded(!expanded)}
         expanded={expanded}
@@ -349,18 +353,18 @@ export const TagGroupEntry = React.memo(
           <Pills
             entries={[
               {
-                count: useRecoilValue(numMatchedTags({ modal, key })),
+                count: useRecoilValue(numMatchedTags({ modal, key: tagKey })),
                 onClick: useClearMatched(tags, allTags, matchedAtom),
                 icon: <Visibility />,
-                title: "Clear matched",
+                title: `Clear matched ${name}`,
               },
               {
                 count: useRecoilValue(
-                  numGroupFieldsActive({ modal, group: TAGS[key] })
+                  numGroupFieldsActive({ modal, group: TAGS[tagKey] })
                 ),
-                onClick: useClearActive(modal, TAGS[key]),
+                onClick: useClearActive(modal, TAGS[tagKey]),
                 icon: <Check />,
-                title: "Clear shown",
+                title: `Clear shown ${name}`,
               },
             ]
               .filter(({ count }) => count > 0)
@@ -382,7 +386,7 @@ export const PathGroupEntry = React.memo(
     const onDelete = useDeleteGroup(modal, name);
 
     return (
-      <GroupHeader
+      <GroupEntry
         title={name}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
@@ -397,7 +401,7 @@ export const PathGroupEntry = React.memo(
                 ),
                 onClick: useClearFiltered(modal, name),
                 icon: <FilterList />,
-                title: "Clear filters",
+                title: `Clear ${name} filters`,
               },
               {
                 count: useRecoilValue(
@@ -405,7 +409,7 @@ export const PathGroupEntry = React.memo(
                 ),
                 onClick: useClearActive(modal, name),
                 icon: <Check />,
-                title: "Clear shown",
+                title: `Clear shown ${name}`,
               },
             ]
               .filter(({ count }) => count > 0)

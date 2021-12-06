@@ -65,7 +65,7 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
 
     const tags = get(
       aggregationAtoms.values({ extended: false, modal, path: "tags" })
-    );
+    ).map((tag) => `tags.${tag}`);
 
     const labelTags = get(
       aggregationAtoms.cumulativeValues({
@@ -75,7 +75,7 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
         ftype: EMBEDDED_DOCUMENT_FIELD,
         embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
       })
-    );
+    ).map((tag) => `_label_tags.${tag}`);
 
     const groups = {
       tags,
@@ -119,7 +119,7 @@ export const sidebarGroups = atomFamily<SidebarGroups, boolean>({
 export const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
   key: "sidebarEntries",
   get: (modal) => ({ get }) => {
-    return [
+    const entries = [
       ...get(sidebarGroups(modal))
         .map(([groupName, paths]) => {
           const group: GroupEntry = { name: groupName, kind: EntryKind.GROUP };
@@ -140,8 +140,13 @@ export const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
           ];
         })
         .flat(),
-      { kind: EntryKind.TAIL } as TailEntry,
     ];
+
+    if (modal) {
+      return entries;
+    }
+
+    return [...entries, { kind: EntryKind.TAIL } as TailEntry];
   },
   set: (modal) => ({ get, set }, value) => {
     if (value instanceof DefaultValue) {

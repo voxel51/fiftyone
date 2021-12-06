@@ -79,7 +79,7 @@ const fn = (
     }
 
     results[key] = {
-      cursor: dragging ? "grabbing" : "unset",
+      cursor: dragging ? "grabbing" : "pointer",
       top: dragging ? currentY[key] + delta : y,
       zIndex: dragging ? 1 : 0,
       left: shown ? "unset" : -3000,
@@ -122,7 +122,7 @@ const isShown = (entry: SidebarEntry) => {
     return false;
   }
 
-  if (entry.kind === EntryKind.TAIL || entry.kind === EntryKind.EMPTY) {
+  if (entry.kind === EntryKind.TAIL) {
     return false;
   }
 
@@ -204,10 +204,9 @@ const getAfterKey = (
     ? measureGroups(items, order)
     : measureEntries(items, order);
 
-  const { height: activeHeight } = data.filter(
-    ({ key }) => key === activeKey
-  )[0];
-  const { top } = items[activeKey].el.getBoundingClientRect();
+  const { top, height: activeHeight } = items[
+    activeKey
+  ].el.getBoundingClientRect();
   let y = top - baseTop;
 
   if (!up) {
@@ -500,7 +499,9 @@ const InteractiveSidebar = ({
             group = entry.name;
           }
 
-          const { shadow, ...springs } = items.current[key].controller.springs;
+          const { shadow, cursor, ...springs } = items.current[
+            key
+          ].controller.springs;
           const { children, disabled } = render(
             group,
             entry,
@@ -523,6 +524,7 @@ const InteractiveSidebar = ({
                 boxShadow: shadow.to(
                   (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
                 ),
+                cursor: disabled ? "unset" : cursor,
               }}
             >
               {children}

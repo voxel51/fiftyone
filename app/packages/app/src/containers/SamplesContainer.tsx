@@ -5,16 +5,17 @@ import styled from "styled-components";
 
 import FieldsSidebar, {
   EntryKind,
-  sidebarEntries,
+  Entries,
   SidebarEntry,
-} from "../components/Sidebar/Sidebar";
+  sidebarEntries,
+} from "../components/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
 import ViewBar from "../components/ViewBar/ViewBar";
 
 import * as atoms from "../recoil/atoms";
+import { State } from "../recoil/types";
 import { elementNames } from "../recoil/view";
-import { TextEntry } from "../components/Sidebar/Entries";
 
 const SidebarContainer = styled.div`
   display: block;
@@ -45,36 +46,57 @@ const SamplesContainer = React.memo(() => {
   ) => {
     switch (entry.kind) {
       case EntryKind.PATH:
+        const isTag = entry.path.startsWith("tags.");
+        const isLabelTag = entry.path.startsWith("_label_tags.");
+
         return {
-          children: (
-            <FilterEntry
-              modal={false}
-              path={entry.path}
-              group={group}
-              onFocus={() => {
-                controller.set({ zIndex: "1" });
-              }}
-              onBlur={() => {
-                controller.set({ zIndex: "0" });
-              }}
-            />
-          ),
-          disabled: false,
+          children:
+            isTag || isLabelTag ? (
+              <Entries.FilterableTag
+                modal={false}
+                tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
+                tag={entry.path.split(".").slice(1).join(".")}
+              />
+            ) : (
+              <Entries.FilterablePath
+                modal={false}
+                path={entry.path}
+                group={group}
+                onFocus={() => {
+                  controller.set({ zIndex: "1" });
+                }}
+                onBlur={() => {
+                  controller.set({ zIndex: "0" });
+                }}
+              />
+            ),
+          disabled: isTag,
         };
       case EntryKind.GROUP:
+        const isTags = entry.name === "tags";
+        const isLabelTags = entry.name === "label tags";
+
         return {
-          children: <InteractiveGroupEntry name={entry.name} modal={false} />,
+          children:
+            isTags || isLabelTags ? (
+              <Entries.TagGroup
+                tagKey={isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE}
+                modal={false}
+              />
+            ) : (
+              <Entries.PathGroup name={entry.name} modal={false} />
+            ),
           disabled: false,
         };
       case EntryKind.TAIL:
         return {
-          children: <AddGridGroup />,
+          children: <Entries.AddGroup />,
           disabled: true,
         };
       case EntryKind.EMPTY:
         return {
           children: (
-            <TextEntry
+            <Entries.Empty
               text={group === "tags" ? `No ${singular} tags` : "No fields"}
             />
           ),

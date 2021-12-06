@@ -12,6 +12,7 @@ import { useTheme } from "../../../utils/hooks";
 
 import { LabelTagCounts, PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
+import { useSpring } from "@react-spring/core";
 
 const ACTIVE_ATOM = {
   [State.TagKey.LABEL]: schemaAtoms.activeLabelTags,
@@ -79,29 +80,37 @@ const MatchEye = ({ elementsName, name, matched, onClick }: MatchEyeProps) => {
 };
 
 const FilterableTagEntry = ({
-  key,
+  tagKey,
   tag,
   modal,
 }: {
-  key: State.TagKey;
+  tagKey: State.TagKey;
   tag: string;
   modal: boolean;
 }) => {
   const theme = useTheme();
-  const [active, setActive] = useRecoilState(tagIsActive({ key, modal, tag }));
+  const [active, setActive] = useRecoilState(
+    tagIsActive({ key: tagKey, modal, tag })
+  );
   const elementsName =
-    key === State.TagKey.SAMPLE
+    tagKey === State.TagKey.SAMPLE
       ? useRecoilValue(elementNames).plural
       : "labels";
 
-  const [matched, setMatched] = useRecoilState(matchedTags({ key, modal }));
-  const color = useRecoilValue(
-    colorAtoms.pathColor({ path: tag, modal, tag: key })
+  const [matched, setMatched] = useRecoilState(
+    matchedTags({ key: tagKey, modal })
   );
+  const color = useRecoilValue(
+    colorAtoms.pathColor({ path: tag, modal, tag: tagKey })
+  );
+  const { backgroundColor } = useSpring({
+    backgroundColor: theme.backgroundLight,
+  });
 
   return (
     <RegularEntry
       title={tag}
+      backgroundColor={backgroundColor}
       heading={
         <>
           <Checkbox
@@ -114,7 +123,7 @@ const FilterableTagEntry = ({
             }}
           />
           <span style={{ flexGrow: 1 }}>{tag}</span>
-          {key === State.TagKey.LABEL ? (
+          {tagKey === State.TagKey.LABEL ? (
             <LabelTagCounts modal={modal} tag={tag} />
           ) : (
             <PathEntryCounts path={`tags.${tag}`} modal={modal} />
