@@ -3,21 +3,25 @@ import React, { useCallback } from "react";
 import { RecoilValue, selectorFamily, useRecoilValue } from "recoil";
 
 import * as aggregationAtoms from "../../../recoil/aggregations";
+import { fieldIsFiltered } from "../../../recoil/filters";
 import { useTheme } from "../../../utils/hooks";
 import { MATCH_LABEL_TAGS } from "./utils";
 
 const EntryCounts = ({
   getAtom,
+  filteredAtom,
 }: {
   getAtom: (subcount: boolean) => RecoilValue<number>;
+  filteredAtom: RecoilValue<boolean>;
 }) => {
   const theme = useTheme();
   const [count, subcount] = [
     useRecoilValue(getAtom(false)),
     useRecoilValue(getAtom(true)),
   ];
+  const filtered = useRecoilValue(filteredAtom);
 
-  if (typeof count !== "number" || typeof subcount !== "number") {
+  if (typeof count !== "number" || (typeof subcount !== "number" && filtered)) {
     return (
       <CircularProgress
         style={{
@@ -30,10 +34,15 @@ const EntryCounts = ({
     );
   }
 
-  if (count === subcount) {
+  if (!filtered || count === subcount) {
+    return <span>{count.toLocaleString()}</span>;
   }
 
-  return <span>{count.toLocaleString()}</span>;
+  return (
+    <span>
+      {subcount.toLocaleString()} of {count.toLocaleString()}
+    </span>
+  );
 };
 
 export const PathEntryCounts = ({
@@ -52,8 +61,9 @@ export const PathEntryCounts = ({
       }),
     [modal, path]
   );
+  const filteredAtom = fieldIsFiltered({ modal, path });
 
-  return <EntryCounts getAtom={getAtom} />;
+  return <EntryCounts getAtom={getAtom} filteredAtom={filteredAtom} />;
 };
 
 const labelTagCount = selectorFamily<
@@ -82,6 +92,7 @@ export const LabelTagCounts = ({
     (extended: boolean) => labelTagCount({ modal, tag, extended }),
     [modal]
   );
+  const filteredAtom = m;
 
   return <EntryCounts getAtom={getAtom} />;
 };

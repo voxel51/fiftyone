@@ -130,11 +130,16 @@ const isShown = (entry: SidebarEntry) => {
 };
 
 const measureEntries = (
+  activeKey: string,
   items: InteractiveItems,
   order: string[]
-): { top: number; height: number; key: string }[] => {
+): {
+  data: { top: number; height: number; key: string }[];
+  activeHeight: number;
+} => {
   const data = [];
-  let previous = { top: MARGIN, height: 0 };
+  let previous = { top: -MARGIN, height: 0 };
+  let activeHeight = 0;
 
   for (let i = 0; i < order.length; i++) {
     const key = order[i];
@@ -142,25 +147,31 @@ const measureEntries = (
 
     if (!isShown(entry)) continue;
 
-    let height = Math.round(
-      items[key].el.getBoundingClientRect().height /
-        items[key].controller.springs.scale.get()
-    );
+    let height = items[key].el.getBoundingClientRect().height;
+
+    if (key === activeKey) activeHeight = height;
+
+    height /= items[key].controller.springs.scale.get();
 
     const top = previous.top + previous.height + MARGIN;
     data.push({ key, height, top });
     previous = { top, height };
   }
 
-  return data;
+  return { data, activeHeight };
 };
 
 const measureGroups = (
+  activeKey: string,
   items: InteractiveItems,
   order: string[]
-): { top: number; height: number; key: string }[] => {
+): {
+  data: { top: number; height: number; key: string }[];
+  activeHeight: number;
+} => {
   const data = [];
-  let current = { top: MARGIN, height: 0, key: null };
+  let current = { top: -MARGIN, height: 0, key: null };
+  let activeHeight = -MARGIN;
 
   for (let i = 0; i < order.length; i++) {
     const key = order[i];
@@ -176,15 +187,28 @@ const measureGroups = (
 
     if (!isShown(entry)) continue;
 
+    const height = items[key].el.getBoundingClientRect().height;
+    if (current.key === activeKey) {
+      activeHeight += MARGIN + height;
+    }
+
     current.height +=
-      items[key].el.getBoundingClientRect().height /
-        items[key].controller.springs.scale.get() +
-      MARGIN;
+      height / items[key].controller.springs.scale.get() + MARGIN;
   }
 
   data.push(current);
 
-  return data;
+  return { data, activeHeight };
+};
+
+const isTagEntry = (entry: SidebarEntry) => {
+  if (entry.kind === EntryKind.PATH) {
+    return (
+      entry.path.startsWith("tags.") || entry.path.startsWith("_label_tags.")
+    );
+  }
+
+  return false;
 };
 
 const getAfterKey = (
@@ -200,13 +224,11 @@ const getAfterKey = (
   const up = direction === Direction.UP;
   const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
   const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
-  const data = isGroup
-    ? measureGroups(items, order)
-    : measureEntries(items, order);
+  const { data, activeHeight } = isGroup
+    ? measureGroups(activeKey, items, order)
+    : measureEntries(activeKey, items, order);
 
-  const { top, height: activeHeight } = items[
-    activeKey
-  ].el.getBoundingClientRect();
+  const { top } = items[activeKey].el.getBoundingClientRect();
   let y = top - baseTop;
 
   if (!up) {
@@ -222,7 +244,10 @@ const getAfterKey = (
       };
     })
     .sort((a, b) => a.delta - b.delta)
-    .filter(({ delta, key }) => delta >= 0 || key === activeKey);
+    .filter(
+      ({ delta, key }) =>
+        delta >= 0 || (key === activeKey && !isTagEntry(items[key].entry))
+    );
 
   if (!filtered.length) {
     return up ? data.slice(-1)[0].key : data[0].key;
