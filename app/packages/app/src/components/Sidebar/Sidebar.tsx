@@ -113,6 +113,22 @@ const InteractiveSidebarContainer = styled.div`
   }
 `;
 
+const getEntryKey = (entry: SidebarEntry) => {
+  if (entry.kind === EntryKind.GROUP) {
+    return JSON.stringify([entry.name]);
+  }
+
+  if (entry.kind === EntryKind.PATH) {
+    return JSON.stringify(["", entry.path]);
+  }
+
+  if (entry.kind === EntryKind.EMPTY) {
+    return JSON.stringify([entry.group, ""]);
+  }
+
+  return "tail";
+};
+
 const isShown = (entry: SidebarEntry) => {
   if (entry.kind === EntryKind.PATH && !entry.shown) {
     return false;
@@ -201,11 +217,19 @@ const measureGroups = (
   return { data, activeHeight };
 };
 
-const isTagEntry = (entry: SidebarEntry) => {
+const isTagEntry = (entry: SidebarEntry, excludeGroups: boolean = false) => {
   if (entry.kind === EntryKind.PATH) {
     return (
       entry.path.startsWith("tags.") || entry.path.startsWith("_label_tags.")
     );
+  }
+
+  if (entry.kind === EntryKind.EMPTY) {
+    return entry.group === "tags" || entry.group === "label tags";
+  }
+
+  if (excludeGroups && entry.kind === EntryKind.GROUP) {
+    return entry.name === "tags" || entry.name === "label tags";
   }
 
   return false;
@@ -224,9 +248,13 @@ const getAfterKey = (
   const up = direction === Direction.UP;
   const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
   const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
-  const { data, activeHeight } = isGroup
+  let { data, activeHeight } = isGroup
     ? measureGroups(activeKey, items, order)
     : measureEntries(activeKey, items, order);
+
+  data = data.filter(
+    ({ key }) => !key || !isTagEntry(items[key].entry, !isGroup)
+  );
 
   const { top } = items[activeKey].el.getBoundingClientRect();
   let y = top - baseTop;
@@ -244,10 +272,7 @@ const getAfterKey = (
       };
     })
     .sort((a, b) => a.delta - b.delta)
-    .filter(
-      ({ delta, key }) =>
-        delta >= 0 || (key === activeKey && !isTagEntry(items[key].entry))
-    );
+    .filter(({ delta, key }) => delta >= 0 || key === activeKey);
 
   if (!filtered.length) {
     return up ? data.slice(-1)[0].key : data[0].key;
@@ -271,27 +296,13 @@ const getAfterKey = (
     return order[index];
   }
 
-  if (order.indexOf(result) === 0) {
-    return order[1];
+  const first = order.filter((key) => !isTagEntry(items[key].entry, true))[0];
+  if (order.indexOf(result) <= order.indexOf(first)) {
+    if (up) return order[order.indexOf(first) + 1];
+    return first;
   }
 
   return result;
-};
-
-const getEntryKey = (entry: SidebarEntry) => {
-  if (entry.kind === EntryKind.GROUP) {
-    return JSON.stringify([entry.name]);
-  }
-
-  if (entry.kind === EntryKind.PATH) {
-    return JSON.stringify(["", entry.path]);
-  }
-
-  if (entry.kind === EntryKind.EMPTY) {
-    return JSON.stringify([entry.group, ""]);
-  }
-
-  return "tail";
 };
 
 type InteractiveItems = {
@@ -454,15 +465,33 @@ const InteractiveSidebar = ({
   });
 
   const scrollWith = useCallback((direction: Direction, event: MouseEvent) => {
-    const { top } = container.current.getBoundingClientRect();
+    const {
+      top,
+      height: scrollHeight,
+    } = container.current.getBoundingClientRect();
     const scroll = container.current.scrollTop;
     if (direction === Direction.UP) {
       if (scroll === 0) return 0;
       const delta = event.clientY - top;
 
-      if (delta < 0) {
-        // container.current.scrollBy({ top: delta, behavior: "smooth" });
-        return delta;
+      if (delta < 24) {
+        container.current.scroll({
+          top: scroll - Math.abs(delta),
+        });
+        return -1 * Math.abs(delta);
+      }
+    } else if (direction === Direction.DOWN) {
+      const {
+        height,
+      } = container.current.parentElement.getBoundingClientRect();
+      if (scroll === scrollHeight - height) return 0;
+      const delta = event.clientY - top - height;
+
+      if (delta < 24) {
+        container.current.scroll({
+          top: scroll + Math.abs(delta),
+        });
+        return Math.abs(delta);
       }
     }
 

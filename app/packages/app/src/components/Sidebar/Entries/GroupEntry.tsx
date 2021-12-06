@@ -27,7 +27,6 @@ import { groupShown, sidebarGroup, sidebarGroups } from "../recoil";
 
 import { MATCH_LABEL_TAGS } from "./utils";
 import { elementNames } from "../../../recoil/view";
-import { useSpring } from "@react-spring/core";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
