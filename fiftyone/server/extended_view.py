@@ -109,6 +109,18 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     return view
 
 
+def get_field(keys, schema):
+    for field_name in keys[:-1]:
+        field = schema[field_name]
+        if isinstance(field, (fof.ListField)):
+            field = field.field
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            schema = field.get_field_schema()
+
+    return schema[keys[-1]]
+
+
 def _make_filter_stages(
     view, filters, label_tags=None, hide_result=False, only_matches=True
 ):
@@ -125,24 +137,24 @@ def _make_filter_stages(
     stages = []
     cleanup = set()
     filtered_labels = set()
-    fields_map = view._get_db_fields_map()
     for path, args in filters.items():
         if path == "tags":
             continue
 
-        keys = path.split(".")
         frames = path.startswith(view._FRAMES_PREFIX)
+        keys = path.split(".")
         if frames:
-            schema = frame_field_schema
-            field = schema[keys[1]]
-            path = ".".join(keys[:2])
+            parent = frame_field_schema[keys[1]]
+            keys = keys[2:]
         else:
-            schema = field_schema
-            path = keys[0]
-            field = schema[path]
+            parent = field_schema[keys[0]]
+            keys = keys[1:]
 
-        if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_scalar_expression(F(keys[-1]), args, field)
+        field = get_field(keys, parent.get_field_schema())
+        if _is_label(parent):
+            key = field.db_field if field.db_field else field.name
+            view_field = F(key)
+            expr = _make_scalar_expression(view_field, args, field)
             if expr is not None:
                 if hide_result:
                     new_field = "__%s" % path.split(".")[0]
@@ -152,7 +164,7 @@ def _make_filter_stages(
                     new_field = None
                 stages.append(
                     fosg.FilterLabels(
-                        path,
+                        parent.name,
                         expr,
                         _new_field=new_field,
                         only_matches=only_matches,
@@ -163,8 +175,8 @@ def _make_filter_stages(
                 if new_field:
                     cleanup.add(new_field)
         else:
-            view_field = get_view_field(fields_map, path)
-
+            key = field.db_field if field.db_field else field.name
+            view_field = F(f"{path.split('.')[:-1]}.{key}")
             if isinstance(field, fof.ListField) and not isinstance(
                 field, fof.FrameSupportField
             ):
@@ -235,15 +247,15 @@ def _is_datetime(field):
     return isinstance(field, (fof.DateField, fof.DateTimeField))
 
 
-def _is_float(field):
-    return isinstance(field, fof.FloatField)
+def _is_label(field):
+    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, fol.Label
+    )
 
 
 def _make_scalar_expression(f, args, field):
     expr = None
-    cls = args["_CLS"]
-
-    if cls == _BOOL_FILTER:
+    if isinstance(field, fof.BooleanField):
         true, false = args["true"], args["false"]
         if true and false:
             expr = f.is_in([True, False])
@@ -257,21 +269,23 @@ def _make_scalar_expression(f, args, field):
         if not true and not false:
             expr = (f != True) & (f != False)
 
-    elif cls == _NUMERIC_FILTER and _is_support(field):
+    elif _is_support(field):
         mn, mx = args["range"]
         expr = (f[0] >= mn) & (f[1] <= mx)
-    elif cls == _NUMERIC_FILTER and _is_datetime(field):
+    elif _is_datetime(field):
         mn, mx = args["range"]
         p = fou.timestamp_to_datetime
         expr = (f >= p(mn)) & (f <= p(mx))
-    elif cls == _NUMERIC_FILTER:
+    elif isinstance(field, (fof.FloatField, fof.IntField)):
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
-
-    elif cls == _STR_FILTER:
+    else:
         values = args["values"]
         if not values:
             return None
+
+        if isinstance(field, fof.ObjectIdField):
+            f = f.to_string()
 
         none = any(map(lambda v: v is None, values))
         values = filter(lambda v: v is not None, values)
