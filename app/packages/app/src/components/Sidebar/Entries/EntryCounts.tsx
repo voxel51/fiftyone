@@ -3,7 +3,7 @@ import React, { useCallback } from "react";
 import { RecoilValue, selectorFamily, useRecoilValue } from "recoil";
 
 import * as aggregationAtoms from "../../../recoil/aggregations";
-import { fieldIsFiltered, matchedTags } from "../../../recoil/filters";
+import { matchedTags } from "../../../recoil/filters";
 import { State } from "../../../recoil/types";
 
 import { useTheme } from "../../../utils/hooks";
@@ -28,7 +28,6 @@ const EntryCounts = ({
 }: {
   getAtom: (subcount: boolean) => RecoilValue<number>;
 }) => {
-  const theme = useTheme();
   const [count, subcount] = [
     useRecoilValue(getAtom(false)),
     useRecoilValue(getAtom(true)),
@@ -44,9 +43,7 @@ const EntryCounts = ({
 
   if (typeof subcount !== "number") {
     return (
-      <span style={{ whiteSpace: "nowrap" }}>
-        <Loading /> of {count.toLocaleString()}
-      </span>
+      <span style={{ whiteSpace: "nowrap" }}>... {count.toLocaleString()}</span>
     );
   }
 

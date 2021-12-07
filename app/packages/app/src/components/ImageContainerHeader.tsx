@@ -31,7 +31,7 @@ const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
   overflow: visible;
-  margin-left: 1rem;
+  margin-left: 1.25rem;
   margin-right: -1rem;
   margin-bottom: -0.5rem;
   flex-grow: 1;

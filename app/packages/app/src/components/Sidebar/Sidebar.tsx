@@ -102,7 +102,6 @@ const fn = (
 
 const InteractiveSidebarContainer = styled.div`
   position: relative;
-  height: auto;
   overflow: visible;
 
   & > div {
@@ -334,6 +333,8 @@ const SidebarColumn = styled.div`
   scrollbar-color: ${({ theme }) => theme.fontDarkest}
     ${({ theme }) => theme.background};
 
+  height: 100%;
+
   ${scrollbarStyles}
 
   & > * {
@@ -352,7 +353,8 @@ const InteractiveSidebar = ({
   render: (
     group: string,
     entry: SidebarEntry,
-    controller: Controller
+    controller: Controller,
+    dragging: boolean
   ) => { children: React.ReactNode; disabled: boolean };
 }) => {
   const [entries, setEntries] = useRecoilState(entriesAtom);
@@ -365,6 +367,8 @@ const InteractiveSidebar = ({
   const items = useRef<InteractiveItems>({});
   const container = useRef<HTMLDivElement>();
   const [isDragging, setIsDragging] = useState(false);
+  const scroll = useRef<number>(0);
+  const maxScrollHeight = useRef<number>();
 
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
@@ -473,55 +477,35 @@ const InteractiveSidebar = ({
     });
   });
 
-  const scrollWith = useCallback((direction: Direction, event: MouseEvent) => {
-    const {
-      top,
-      height: scrollHeight,
-    } = container.current.getBoundingClientRect();
-    const scroll = container.current.scrollTop;
-    if (direction === Direction.UP) {
-      if (scroll === 0) return 0;
-      const delta = event.clientY - top;
+  const scrollWith = (direction: Direction, y: number) => {
+    const { top, bottom, height } = container.current.getBoundingClientRect();
+    const up = direction === Direction.UP;
+    let delta = up ? y - top : bottom - y;
+    const canScroll = up
+      ? scroll.current > 0
+      : scroll.current + height < maxScrollHeight.current;
 
-      if (delta < 24) {
-        container.current.scroll({
-          top: scroll - 1,
-          behavior: "smooth",
-        });
-        return -1 * 2;
-      }
-    } else if (direction === Direction.DOWN && false) {
-      const {
-        height,
-      } = container.current.parentElement.getBoundingClientRect();
-      if (scroll === scrollHeight - height) return 0;
-      const delta = event.clientY - top - height;
-
-      if (delta < 24) {
-        container.current.scroll({
-          top: scroll + Math.abs(delta),
-        });
-        return Math.abs(delta);
-      }
+    if (down.current && canScroll && delta < 24) {
+      container.current.scroll(0, container.current.scrollTop + (up ? -1 : 1));
+      requestAnimationFrame(() => scrollWith(direction, y));
     }
+  };
 
-    return 0;
-  }, []);
-
-  useEventHandler(document.body, "mousemove", (event) => {
+  const animate = useCallback((y) => {
     if (down.current == null) return;
-
-    const delta = event.clientY - last.current;
-    if (Math.abs(delta) <= 1) return;
-
     const entry = items.current[down.current].entry;
-    lastDirection.current =
-      event.clientY - last.current > 0 ? Direction.DOWN : Direction.UP;
+
+    const d = y - last.current;
+
+    if (d > 0) {
+      lastDirection.current = Direction.DOWN;
+    } else if (d < 0 || !lastDirection.current) {
+      lastDirection.current = Direction.UP;
+    }
 
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
     requestAnimationFrame(() => {
-      start.current -= scrollWith(lastDirection.current, event);
-      const realDelta = event.clientY - start.current;
+      const realDelta = y - start.current;
       const newOrder = getNewOrder(lastDirection.current);
       const results = fn(
         items.current,
@@ -533,9 +517,14 @@ const InteractiveSidebar = ({
       for (const key of order.current)
         items.current[key].controller.start(results[key]);
 
-      last.current = event.clientY;
+      last.current = y;
       lastOrder.current = newOrder;
     });
+  }, []);
+
+  useEventHandler(document.body, "mousemove", ({ clientY }) => {
+    animate(clientY);
+    down.current && scrollWith(lastDirection.current, clientY);
   });
 
   const trigger = useCallback((event) => {
@@ -545,6 +534,7 @@ const InteractiveSidebar = ({
     start.current = event.clientY;
     last.current = start.current;
     lastOrder.current = order.current;
+    maxScrollHeight.current = container.current.scrollHeight;
     setIsDragging(true);
   }, []);
 
@@ -555,7 +545,17 @@ const InteractiveSidebar = ({
   useLayoutEffect(placeItems, [entries]);
 
   return (
-    <SidebarColumn ref={container}>
+    <SidebarColumn
+      ref={container}
+      onScroll={({ target }) => {
+        if (start.current !== null) {
+          start.current += scroll.current - target.scrollTop;
+        }
+
+        scroll.current = target.scrollTop;
+        down.current && animate(last.current);
+      }}
+    >
       {before}
       <InteractiveSidebarContainer key={"interactive-fields"}>
         {order.current.map((key) => {

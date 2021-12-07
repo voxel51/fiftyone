@@ -227,8 +227,8 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
 };
 
 const GroupHeader = styled(DropdownHandle)`
-  border-radius: 2px;
   border-width: 0 0 1px 0;
+  border-radius: 0;
   padding: 0.25rem;
   text-transform: uppercase;
   display: flex;
