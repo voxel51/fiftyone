@@ -61,7 +61,7 @@ _notebook_clients = {}
 _deactivated_clients = set()
 _DISCONNECT_TIMEOUT = 1  # seconds
 _DEFAULT_NUM_HISTOGRAM_BINS = 25
-_LIST_LIMIT = 200
+_LIST_LIMIT = 25
 
 
 class RequestHandler(tornado.web.RequestHandler):
@@ -1048,13 +1048,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    async def on_distributions(cls, self, group):
+    async def on_distributions(cls, self, group, limit=200):
         """Sends distribution data with respect to a group to the requesting
         client.
 
         Args:
             group: the distribution group. Valid groups are 'labels', 'scalars',
                 and 'tags'.
+            limit: the number of enumerable results to limit to
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
@@ -1094,7 +1095,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             results = await _gather_results(aggs, fields, view)
 
         elif group == "sample tags" and results is None:
-            aggs = [foa.CountValues("tags", _first=_LIST_LIMIT)]
+            aggs = [foa.CountValues("tags", _first=limit)]
             try:
                 fields = [view.get_field_schema()["tags"]]
                 results = await _gather_results(aggs, fields, view)

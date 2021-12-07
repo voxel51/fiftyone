@@ -9,6 +9,7 @@ import {
   withPath,
 } from "../../recoil/constants";
 import * as schemaAtoms from "../../recoil/schema";
+import { isVideoDataset } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 
 import {
@@ -68,6 +69,7 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
         embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
       })
     ).map((tag) => `_label_tags.${tag}`);
+    const video = get(isVideoDataset);
 
     const groups = {
       tags,
@@ -78,7 +80,7 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
           ftype: VALID_PRIMITIVE_TYPES,
           space: State.SPACE.SAMPLE,
         })
-      ),
+      ).filter((field) => field !== "tags" && (!video || field !== "frames")),
       ...otherSampleFields.reduce((other, current) => {
         other[current] = get(
           schemaAtoms.fieldPaths({

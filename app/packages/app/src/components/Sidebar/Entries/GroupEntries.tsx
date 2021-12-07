@@ -1,4 +1,11 @@
-import { Check, Close, Edit, FilterList, Visibility } from "@material-ui/icons";
+import {
+  Check,
+  Close,
+  Edit,
+  FilterList,
+  LocalOffer,
+  Visibility,
+} from "@material-ui/icons";
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   RecoilState,
@@ -173,13 +180,14 @@ const useClearMatched = (
 const useClearFiltered = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) => async () => {
-      const paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
+      let paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
       const filters = await snapshot.getPromise(
         modal ? filterAtoms.modalFilters : filterAtoms.filters
       );
+
       set(
         modal ? filterAtoms.modalFilters : filterAtoms.filters,
-        removeKeys(filters, paths)
+        removeKeys(filters, paths, true)
       );
     },
     [modal, group]
@@ -246,6 +254,7 @@ type GroupEntryProps = {
   title: string;
   setValue?: (name: string) => void;
   onDelete?: () => void;
+  before?: React.ReactNode;
 } & DropdownHandleProps;
 
 const GroupEntry = ({
@@ -254,6 +263,7 @@ const GroupEntry = ({
   pills,
   onDelete,
   setValue,
+  before,
   ...rest
 }: GroupEntryProps) => {
   const [localValue, setLocalValue] = useState(() => title);
@@ -275,7 +285,11 @@ const GroupEntry = ({
         editing && event.stopPropagation();
       }}
       style={{ cursor: "unset" }}
+      onClick={(event) => {
+        !editing && rest.onClick && rest.onClick(event);
+      }}
     >
+      {before}
       <GroupInput
         ref={ref}
         maxLength={40}
@@ -363,6 +377,7 @@ export const TagGroupEntry = React.memo(
     const name = `${tagKey === State.TagKey.SAMPLE ? plural : "label"} tags`;
     return (
       <GroupEntry
+        before={<LocalOffer style={{ marginRight: "0.5rem" }} />}
         title={name.toUpperCase()}
         onClick={() => setExpanded(!expanded)}
         expanded={expanded}

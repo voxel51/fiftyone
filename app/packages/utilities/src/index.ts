@@ -52,10 +52,17 @@ type KeyValue<T> = {
 
 export const removeKeys = <T>(
   obj: KeyValue<T>,
-  keys: Iterable<string>
+  keys: Iterable<string>,
+  startsWith: boolean = false
 ): KeyValue<T> => {
   const set = new Set(keys);
+  const values = Array.from(keys);
+
   return Object.fromEntries(
-    Object.entries(obj).filter(([key]) => !set.has(key))
+    Object.entries(obj).filter(
+      startsWith
+        ? ([key]) => values.every((k) => !key.startsWith(k))
+        : ([key]) => !set.has(key)
+    )
   );
 };

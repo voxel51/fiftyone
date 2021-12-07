@@ -263,7 +263,7 @@ const getAfterKey = (
     y += activeHeight;
   }
 
-  const filtered = data
+  let filtered = data
     .map(({ key, top, height }) => {
       const midpoint = up ? top + height / 2 : top + height - height / 2;
       return {
@@ -276,6 +276,13 @@ const getAfterKey = (
 
   if (!filtered.length) {
     return up ? data.slice(-1)[0].key : data[0].key;
+  }
+
+  if (up && !isGroup) {
+    filtered = filtered.filter(({ key }) => {
+      const prev = order[order.indexOf(key) - 1];
+      return !prev || !isTagEntry(items[prev].entry);
+    });
   }
 
   let result = filtered[0].key;
