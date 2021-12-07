@@ -15,9 +15,14 @@ const Header = styled.div`
   vertical-align: middle;
   display: flex;
   font-weight: bold;
+  width: 100%;
+  text-overflow: ellipses;
+  white-space: nowrap;
 
   & > * {
     margin: 0 6px;
+    white-space: nowrap;
+    text-overflow: ellipses;
   }
 `;
 

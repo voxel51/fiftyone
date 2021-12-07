@@ -59,6 +59,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     ) {
       return this.element;
     }
+    return this.element;
 
     const elements = activePaths.reduce<TagData[]>((elements, path) => {
       if (

@@ -93,7 +93,7 @@ const flashlightLookerOptions = selector({
     return {
       coloring: get(colorAtoms.coloring(false)),
       filter: () => true,
-      activePaths: [],
+      activePaths: get(schemaAtoms.activeFields({ modal: false })),
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
@@ -314,8 +314,6 @@ export default React.memo(() => {
   const [error, setError] = useState<Error>(null);
   const flashlight = useRef<Flashlight<number>>();
   const cropToContent = useRecoilValue(atoms.cropToContent(false));
-  const active = useRecoilValue(schemaAtoms.activeFields(false));
-
   const filters = useRecoilValue(filterAtoms.filters);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(viewAtoms.view);
@@ -469,7 +467,6 @@ export default React.memo(() => {
         const looker = lookers.get(sampleId);
         looker &&
           looker.updateOptions({
-            activePaths: active,
             ...lookerOptions,
             selected: selected.has(sampleId),
             inSelectionMode: selected.size > 0,

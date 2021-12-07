@@ -1,27 +1,21 @@
 import React from "react";
 import { Checkbox } from "@material-ui/core";
 import { Visibility } from "@material-ui/icons";
+import { useSpring } from "@react-spring/core";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 
 import * as colorAtoms from "../../../recoil/color";
-import { matchedTags } from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
 import { elementNames } from "../../../recoil/view";
 import { useTheme } from "../../../utils/hooks";
 
-import { LabelTagCounts, PathEntryCounts } from "./EntryCounts";
+import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
-import { useSpring } from "@react-spring/core";
 
 const ACTIVE_ATOM = {
   [State.TagKey.LABEL]: schemaAtoms.activeLabelTags,
   [State.TagKey.SAMPLE]: schemaAtoms.activeTags,
-};
-
-const PREFIX = {
-  [State.TagKey.LABEL]: "_label_tags",
-  [State.TagKey.SAMPLE]: "tags",
 };
 
 const tagIsActive = selectorFamily<
@@ -48,14 +42,14 @@ type MatchEyeProps = {
   name: string;
   elementsName: string;
   onClick: () => void;
-  matched: Set<string>;
+  matched: boolean;
 };
 
 const MatchEye = ({ elementsName, name, matched, onClick }: MatchEyeProps) => {
   const theme = useTheme();
-  const color = matched.has(name) ? theme.font : theme.fontDark;
+  const color = matched ? theme.font : theme.fontDark;
   const title = `Only show ${elementsName} with the "${name}" tag ${
-    matched.size ? "or other selected tags" : ""
+    matched ? "or other selected tags" : ""
   }`;
 
   return (
@@ -108,13 +102,13 @@ const FilterableTagEntry = ({
       : "labels";
 
   const [matched, setMatched] = useRecoilState(
-    matchedTags({ key: tagKey, modal })
+    tagIsMatched({ key: tagKey, modal, tag })
   );
   const color = useRecoilValue(
     colorAtoms.pathColor({ path: tag, modal, tag: tagKey })
   );
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.backgroundLight,
+    backgroundColor: matched ? "#6C757D" : theme.backgroundLight,
   });
 
   return (
@@ -142,15 +136,7 @@ const FilterableTagEntry = ({
           <MatchEye
             name={tag}
             elementsName={elementsName}
-            onClick={() =>
-              setMatched(
-                new Set(
-                  matched.has(tag)
-                    ? Array.from(matched).filter((t) => t !== tag)
-                    : [tag, ...matched]
-                )
-              )
-            }
+            onClick={() => setMatched(!matched)}
             matched={matched}
           />
         </>

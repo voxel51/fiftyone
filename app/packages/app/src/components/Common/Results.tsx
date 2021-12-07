@@ -84,7 +84,6 @@ const Result = React.memo(
 
     useEffect(() => {
       if (active && ref.current && !wasActive.current) {
-        ref.current.scrollIntoView(true);
         wasActive.current = true;
       } else if (!active) {
         wasActive.current = false;

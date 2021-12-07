@@ -145,6 +145,10 @@ export const filtersAreEqual = (filtersOne, filtersTwo) => {
 export const extendedAggregations = selector({
   key: "extendedAggregations",
   get: ({ get }) => {
+    if (!get(filterAtoms.hasFilters(false))) {
+      return get(aggregations);
+    }
+
     let { view, filters, data } = get(extendedAggregationsRaw);
     if (!view) {
       return null;
@@ -187,6 +191,10 @@ const modalAggregations = selector<AggregationsData>({
 const extendedModalAggregations = selector<AggregationsData>({
   key: "extendedModalAggregations",
   get: async ({ get }) => {
+    if (!get(filterAtoms.hasFilters(true))) {
+      return get(modalAggregations);
+    }
+
     const id = uuid();
     const { data } = await request({
       type: "modal_statistics",

@@ -364,6 +364,7 @@ const InteractiveSidebar = ({
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
   const container = useRef<HTMLDivElement>();
+  const [isDragging, setIsDragging] = useState(false);
 
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
@@ -455,6 +456,7 @@ const InteractiveSidebar = ({
   }, []);
 
   useEventHandler(document.body, "mouseup", (event) => {
+    setIsDragging(false);
     if (start.current === event.clientY || down.current == null) {
       down.current = null;
       start.current = null;
@@ -543,6 +545,7 @@ const InteractiveSidebar = ({
     start.current = event.clientY;
     last.current = start.current;
     lastOrder.current = order.current;
+    setIsDragging(true);
   }, []);
 
   const [observer] = useState<ResizeObserver>(
@@ -567,7 +570,8 @@ const InteractiveSidebar = ({
           const { children, disabled } = render(
             group,
             entry,
-            items.current[key].controller
+            items.current[key].controller,
+            isDragging
           );
 
           return (

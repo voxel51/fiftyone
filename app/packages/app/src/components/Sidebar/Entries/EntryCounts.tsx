@@ -3,43 +3,55 @@ import React, { useCallback } from "react";
 import { RecoilValue, selectorFamily, useRecoilValue } from "recoil";
 
 import * as aggregationAtoms from "../../../recoil/aggregations";
-import { fieldIsFiltered } from "../../../recoil/filters";
+import { fieldIsFiltered, matchedTags } from "../../../recoil/filters";
+import { State } from "../../../recoil/types";
+
 import { useTheme } from "../../../utils/hooks";
 import { MATCH_LABEL_TAGS } from "./utils";
 
+const Loading = () => {
+  const theme = useTheme();
+  return (
+    <CircularProgress
+      style={{
+        color: theme.font,
+        height: 16,
+        width: 16,
+        margin: 4,
+      }}
+    />
+  );
+};
+
 const EntryCounts = ({
   getAtom,
-  filteredAtom,
 }: {
   getAtom: (subcount: boolean) => RecoilValue<number>;
-  filteredAtom: RecoilValue<boolean>;
 }) => {
   const theme = useTheme();
   const [count, subcount] = [
     useRecoilValue(getAtom(false)),
     useRecoilValue(getAtom(true)),
   ];
-  const filtered = useRecoilValue(filteredAtom);
 
-  if (typeof count !== "number" || (typeof subcount !== "number" && filtered)) {
-    return (
-      <CircularProgress
-        style={{
-          color: theme.font,
-          height: 16,
-          width: 16,
-          margin: 4,
-        }}
-      />
-    );
+  if (typeof count !== "number") {
+    return <Loading />;
   }
 
-  if (!filtered || count === subcount) {
+  if (count === subcount) {
     return <span>{count.toLocaleString()}</span>;
   }
 
+  if (typeof subcount !== "number") {
+    return (
+      <span style={{ whiteSpace: "nowrap" }}>
+        <Loading /> of {count.toLocaleString()}
+      </span>
+    );
+  }
+
   return (
-    <span>
+    <span style={{ whiteSpace: "nowrap" }}>
       {subcount.toLocaleString()} of {count.toLocaleString()}
     </span>
   );
@@ -61,9 +73,8 @@ export const PathEntryCounts = ({
       }),
     [modal, path]
   );
-  const filteredAtom = fieldIsFiltered({ modal, path });
 
-  return <EntryCounts getAtom={getAtom} filteredAtom={filteredAtom} />;
+  return <EntryCounts getAtom={getAtom} />;
 };
 
 const labelTagCount = selectorFamily<
@@ -81,6 +92,26 @@ const labelTagCount = selectorFamily<
     )[tag],
 });
 
+export const tagIsMatched = selectorFamily<
+  boolean,
+  { key: State.TagKey; tag: string; modal: boolean }
+>({
+  key: "tagIsActive",
+  get: ({ key, tag, modal }) => ({ get }) =>
+    get(matchedTags({ key, modal })).has(tag),
+  set: ({ key, tag, modal }) => ({ get, set }, toggle) => {
+    const atom = matchedTags({ key, modal });
+    const current = get(atom);
+
+    set(
+      atom,
+      toggle
+        ? new Set([tag, ...current])
+        : new Set([...current].filter((t) => t !== tag))
+    );
+  },
+});
+
 export const LabelTagCounts = ({
   modal,
   tag,
@@ -92,7 +123,6 @@ export const LabelTagCounts = ({
     (extended: boolean) => labelTagCount({ modal, tag, extended }),
     [modal]
   );
-  const filteredAtom = m;
 
   return <EntryCounts getAtom={getAtom} />;
 };

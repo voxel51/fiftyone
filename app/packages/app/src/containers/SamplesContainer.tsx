@@ -42,7 +42,8 @@ const SamplesContainer = React.memo(() => {
   const renderGridEntry = (
     group: string,
     entry: SidebarEntry,
-    controller: Controller
+    controller: Controller,
+    dragging: boolean
   ) => {
     switch (entry.kind) {
       case EntryKind.PATH:
@@ -84,7 +85,11 @@ const SamplesContainer = React.memo(() => {
                 modal={false}
               />
             ) : (
-              <Entries.PathGroup name={entry.name} modal={false} />
+              <Entries.PathGroup
+                name={entry.name}
+                modal={false}
+                dragging={dragging}
+              />
             ),
           disabled: false,
         };
