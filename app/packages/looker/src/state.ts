@@ -4,6 +4,8 @@
 
 import { Overlay } from "./overlays/base";
 
+import { Schema } from "@fiftyone/utilities";
+
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
@@ -71,10 +73,7 @@ export interface ControlMap<State extends BaseState> {
 interface BaseOptions {
   activePaths: string[];
   filter: {
-    [fieldName: string]: (label: {
-      label?: string;
-      confidence?: number;
-    }) => boolean;
+    [path: string]: (value) => boolean;
   };
   coloring: Coloring;
   selectedLabels: string[];
@@ -90,7 +89,6 @@ interface BaseOptions {
   fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
-  fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
   timeZone: string;
   mimetype: string;
@@ -102,18 +100,6 @@ export type BoundingBox = [number, number, number, number];
 export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
-
-interface SchemaEntry {
-  name: string;
-  ftype: string;
-  subfield?: string;
-  embedded_doc_type?: string;
-  db_field: string;
-}
-
-interface Schema {
-  [name: string]: SchemaEntry;
-}
 
 interface BaseConfig {
   thumbnail: boolean;
@@ -133,6 +119,7 @@ export interface ImageConfig extends BaseConfig {}
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
   support?: [number, number];
+  frameFieldSchema: Schema;
 }
 
 export interface FrameOptions extends BaseOptions {
@@ -150,7 +137,6 @@ export interface VideoOptions extends BaseOptions {
   playbackRate: number;
   useFrameNumber: boolean;
   volume: number;
-  frameFieldsMap?: { [key: string]: string };
 }
 
 export interface TooltipOverlay {
@@ -279,7 +265,6 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   fullscreen: false,
   zoomPad: 0.1,
   selected: false,
-  fieldsMap: {},
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",
@@ -304,7 +289,6 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
-  frameFieldsMap: {},
 };
 
 export interface FrameSample {

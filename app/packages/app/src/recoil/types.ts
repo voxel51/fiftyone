@@ -1,4 +1,5 @@
 import { RGB } from "@fiftyone/looker/src/state";
+import { Field } from "@fiftyone/utilities";
 
 export namespace State {
   export enum SPACE {
@@ -59,19 +60,6 @@ export namespace State {
     sampleFields: Field[];
     version: string;
     _id: ID;
-  }
-
-  export interface Field {
-    ftype: string;
-    dbField: string;
-    name: string;
-    embeddedDocType: string;
-    subfield: string;
-    fields: Schema;
-  }
-
-  export interface Schema {
-    [key: string]: Field;
   }
 
   export interface Filter {}

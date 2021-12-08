@@ -1670,7 +1670,7 @@ __metadata:
     "@fiftyone/utilities": "*"
     "@material-ui/core": 4.11.4
     "@material-ui/icons": ^4.9.1
-    "@react-spring/web": latest
+    "@react-spring/web": ^9.3.1
     "@types/mime": ^2.0.3
     "@types/react": ^17.0.0
     "@types/react-dom": ^17.0.0
@@ -1977,7 +1977,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-spring/web@npm:latest":
+"@react-spring/web@npm:^9.3.1":
   version: 9.3.1
   resolution: "@react-spring/web@npm:9.3.1"
   dependencies:

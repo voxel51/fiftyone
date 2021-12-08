@@ -66,3 +66,16 @@ export const removeKeys = <T>(
     )
   );
 };
+
+export interface Field {
+  ftype: string;
+  dbField: string;
+  name: string;
+  embeddedDocType: string;
+  subfield: string;
+  fields: Schema;
+}
+
+export interface Schema {
+  [key: string]: Field;
+}

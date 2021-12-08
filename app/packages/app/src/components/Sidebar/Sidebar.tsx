@@ -523,8 +523,11 @@ const InteractiveSidebar = ({
   }, []);
 
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
+    if (down.current) {
+      !isDragging && setIsDragging(true);
+      scrollWith(lastDirection.current, clientY);
+    }
     animate(clientY);
-    down.current && scrollWith(lastDirection.current, clientY);
   });
 
   const trigger = useCallback((event) => {
@@ -535,7 +538,6 @@ const InteractiveSidebar = ({
     last.current = start.current;
     lastOrder.current = order.current;
     maxScrollHeight.current = container.current.scrollHeight;
-    setIsDragging(true);
   }, []);
 
   const [observer] = useState<ResizeObserver>(

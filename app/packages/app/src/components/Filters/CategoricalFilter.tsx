@@ -260,7 +260,7 @@ const ResultsWrapper = <T extends unknown>({
         {results && subCount !== null && results.length > 0 && (
           <>
             {results.length !== subCount && <>{results.length} of</>}
-            {subCount.toLocaleString()} results
+            {subCount.toLocaleString()} result{results.length > 1 ? "s" : null}
           </>
         )}
         {results && results.length === 0 && <>No results</>}

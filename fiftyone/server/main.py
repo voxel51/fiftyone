@@ -316,7 +316,7 @@ def _catch_errors(func):
             StateHandler.prev_state = StateHandler.state
             result = await func(self, *args, **kwargs)
             return result
-        except Exception:
+        except Exception as e:
             StateHandler.state = StateHandler.prev_state
             clients = list(StateHandler.clients)
             if isinstance(self, PollingHandler):

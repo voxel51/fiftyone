@@ -41,6 +41,7 @@ import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
+import { State } from "../recoil/types";
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
@@ -99,6 +100,8 @@ const flashlightLookerOptions = selector({
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
+      fieldSchema: get(schemaAtoms.fieldSchema(State.SPACE.SAMPLE)),
+      frameFieldSchema: get(schemaAtoms.fieldSchema(State.SPACE.FRAME)),
       disabled: false,
     };
   },

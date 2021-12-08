@@ -144,14 +144,15 @@ def _make_filter_stages(
         frames = path.startswith(view._FRAMES_PREFIX)
         keys = path.split(".")
         if frames:
-            parent = frame_field_schema[keys[1]]
+            field = frame_field_schema[keys[1]]
             keys = keys[2:]
         else:
-            parent = field_schema[keys[0]]
+            field = field_schema[keys[0]]
             keys = keys[1:]
 
-        field = get_field(keys, parent.get_field_schema())
-        if _is_label(parent):
+        if _is_label(field):
+            parent = field
+            field = get_field(keys, field.get_field_schema())
             key = field.db_field if field.db_field else field.name
             view_field = F(key)
             expr = _make_scalar_expression(view_field, args, field)
@@ -175,8 +176,13 @@ def _make_filter_stages(
                 if new_field:
                     cleanup.add(new_field)
         else:
-            key = field.db_field if field.db_field else field.name
-            view_field = F(f"{path.split('.')[:-1]}.{key}")
+            if keys:
+                field = get_field(keys, field.get_field_schema())
+                key = field.db_field if field.db_field else field.name
+                view_field = F(f"{'.'.join(path.split('.')[:-1])}.{key}")
+            else:
+                key = field.db_field if field.db_field else field.name
+                view_field = F(key)
             if isinstance(field, fof.ListField) and not isinstance(
                 field, fof.FrameSupportField
             ):
@@ -186,6 +192,7 @@ def _make_filter_stages(
             else:
                 expr = _make_scalar_expression(view_field, args, field)
 
+            print(expr)
             if expr is not None:
                 stages.append(fosg.Match(expr))
 

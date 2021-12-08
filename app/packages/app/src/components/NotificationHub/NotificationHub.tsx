@@ -152,9 +152,9 @@ const NotificationHub = ({
 
   return (
     <Container>
-      {transitions(({ life, ...style }, { key, ...item }) => {
+      {transitions(({ life, ...style }, item) => {
         return (
-          <Message key={key} style={style}>
+          <Message key={item.key} style={style}>
             <Content ref={(ref) => ref && refMap.set(item, ref)}>
               {true ? <Life style={{ right: life }} /> : null}
               <Header>
