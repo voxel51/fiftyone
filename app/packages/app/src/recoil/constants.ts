@@ -110,10 +110,17 @@ export const RESERVED_FIELDS = [
 
 export const LABELS_PATH = "fiftyone.core.labels";
 
-export const withPath = (path, types) => {
-  if (typeof types === "string") {
-    return [path, types].join(".");
+export function withPath(path: string, types: string): string;
+export function withPath(path: string, types: string[]): string[];
+export function withPath(
+  path: string,
+  types: string | string[]
+): string | string[] {
+  if (Array.isArray(types)) {
+    return types.map((type) => [path, type].join("."));
   }
 
-  return types.map((type) => [path, type].join("."));
-};
+  return [path, types].join(".");
+}
+
+export const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);

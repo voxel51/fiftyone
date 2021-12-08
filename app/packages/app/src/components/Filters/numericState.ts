@@ -193,3 +193,47 @@ export const isDefaultRange = selectorFamily<
     return get(boundsAtom(params)).every((b, i) => b === range[i]);
   },
 });
+
+export const filter = selectorFamily<
+  (value: number | null) => boolean,
+  { modal: boolean; path: string; defaultRange?: Range }
+>({
+  key: "numericFilter",
+  get: (params) => ({ get }) => {
+    if (!get(filterAtoms.filter(params))) {
+      return (value) => true;
+    }
+    const exclude = get(excludeAtom(params));
+    const [start, end] = get(rangeAtom(params));
+    const none = get(nonfiniteAtom({ ...params, key: "none" }));
+    const inf = get(nonfiniteAtom({ ...params, key: "inf" }));
+    const ninf = get(nonfiniteAtom({ ...params, key: "ninf" }));
+    const nan = get(nonfiniteAtom({ ...params, key: "ninf" }));
+
+    return (value) => {
+      if (typeof value === "number") {
+        return exclude
+          ? value >= start && value <= end
+          : value < start || value > end;
+      }
+
+      if (nan && value === "nan") {
+        return !exclude;
+      }
+
+      if (inf && value === "inf") {
+        return !exclude;
+      }
+
+      if (ninf && value === "-inf") {
+        return !exclude;
+      }
+
+      if ((value === null || value === undefined) && none) {
+        return !exclude;
+      }
+
+      return false;
+    };
+  },
+});

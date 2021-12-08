@@ -4,15 +4,8 @@ import socket from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 
 import * as atoms from "./atoms";
-import {
-  BOOLEAN_FIELD,
-  FLOAT_FIELD,
-  INT_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  VALID_PRIMITIVE_TYPES,
-} from "./constants";
-import { expandPath, field, fields } from "./schema";
+import { VALID_PRIMITIVE_TYPES } from "./constants";
+import { expandPath, fields } from "./schema";
 import { State } from "./types";
 
 export const modalFilters = atom<State.Filters>({
@@ -114,24 +107,5 @@ export const fieldIsFiltered = selectorFamily<
     return (
       Boolean(f[path]) || paths.some(({ name }) => f[`${expandedPath}.${name}`])
     );
-  },
-});
-
-export const pathFilter = selectorFamily<
-  (value: any) => boolean,
-  { modal: boolean; path: string }
->({
-  key: "filter",
-  get: ({ path }) => ({ get }) => {
-    const { ftype } = get(field(path));
-    switch (ftype) {
-      case BOOLEAN_FIELD:
-      case INT_FIELD:
-      case FLOAT_FIELD:
-      case OBJECT_ID_FIELD:
-      case STRING_FIELD:
-      default:
-        throw new Error("unresolved path filter");
-    }
   },
 });

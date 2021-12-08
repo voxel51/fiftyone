@@ -459,7 +459,7 @@ const InteractiveSidebar = ({
     }
   }, []);
 
-  useEventHandler(document.body, "mouseup", (event) => {
+  const exit = useCallback((event) => {
     setIsDragging(false);
     if (start.current === event.clientY || down.current == null) {
       down.current = null;
@@ -475,9 +475,12 @@ const InteractiveSidebar = ({
       start.current = null;
       lastDirection.current = null;
     });
-  });
+  }, []);
 
-  const scrollWith = (direction: Direction, y: number) => {
+  useEventHandler(document.body, "mouseup", exit);
+  useEventHandler(document.body, "mouseleave", exit);
+
+  const scrollWith = useCallback((direction: Direction, y: number) => {
     const { top, bottom, height } = container.current.getBoundingClientRect();
     const up = direction === Direction.UP;
     let delta = up ? y - top : bottom - y;
@@ -489,7 +492,7 @@ const InteractiveSidebar = ({
       container.current.scroll(0, container.current.scrollTop + (up ? -1 : 1));
       requestAnimationFrame(() => scrollWith(direction, y));
     }
-  };
+  }, []);
 
   const animate = useCallback((y) => {
     if (down.current == null) return;

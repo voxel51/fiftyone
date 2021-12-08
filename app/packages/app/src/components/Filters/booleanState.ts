@@ -148,3 +148,35 @@ export const selectedValuesAtom = selectorFamily<
     }
   },
 });
+
+export const filter = selectorFamily<
+  (value: boolean | null) => boolean,
+  { modal: boolean; path: string }
+>({
+  key: "booleanFilter",
+  get: (params) => ({ get }) => {
+    if (!get(filterAtoms.filter(params))) {
+      return (value) => true;
+    }
+
+    const trueValue = get(trueAtom(params));
+    const falseValue = get(falseAtom(params));
+    const noneValue = get(noneAtom(params));
+
+    return (value) => {
+      if (value === true && trueValue) {
+        return true;
+      }
+
+      if (value === false && falseValue) {
+        return true;
+      }
+
+      if ((value === null || value === undefined) && noneValue) {
+        return true;
+      }
+
+      return false;
+    };
+  },
+});

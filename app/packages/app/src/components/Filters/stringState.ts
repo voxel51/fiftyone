@@ -70,3 +70,22 @@ export const excludeAtom = selectorFamily<
   set: ({ modal, path }) => ({ get, set }, value) =>
     setFilter(get, set, modal, path, "exclude", value),
 });
+
+export const filter = selectorFamily<
+  (value: string | null) => boolean,
+  { modal: boolean; path: string }
+>({
+  key: "stringFilter",
+  get: (params) => ({ get }) => {
+    if (!get(filterAtoms.filter(params))) {
+      return (value) => true;
+    }
+    const exclude = get(excludeAtom(params));
+    const values = get(selectedValuesAtom(params));
+
+    return (value) => {
+      const result = values.includes(value);
+      return exclude ? !result : result;
+    };
+  },
+});

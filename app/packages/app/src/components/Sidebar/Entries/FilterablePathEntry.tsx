@@ -18,13 +18,11 @@ import {
   LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
-  VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "../../../recoil/constants";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
-import { State } from "../../../recoil/types";
 import { useTheme } from "../../../utils/hooks";
 
 import {
@@ -35,6 +33,8 @@ import {
 
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
+import { Field } from "@fiftyone/utilities";
+import { LABELS } from "@fiftyone/looker/src/constants";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -62,13 +62,11 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, "Detections")]: DETECTION,
 };
 
-const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
-
 const getFilterData = (
   path: string,
   modal: boolean,
-  parent: State.Field,
-  fields: State.Field[]
+  parent: Field,
+  fields: Field[]
 ): {
   ftype: string;
   path: string;
