@@ -71,7 +71,7 @@ const SamplesContainer = React.memo(() => {
                 }}
               />
             ),
-          disabled: isTag,
+          disabled: isTag || isLabelTag,
         };
       case EntryKind.GROUP:
         const isTags = entry.name === "tags";

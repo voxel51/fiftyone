@@ -17,6 +17,7 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
 import { Controller } from "@react-spring/core";
 import { elementNames } from "../recoil/view";
+import { State } from "../recoil/types";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -136,34 +137,62 @@ const SampleModal = ({ onClose }: Props, ref) => {
   ) => {
     switch (entry.kind) {
       case EntryKind.PATH:
+        const isTag = entry.path.startsWith("tags.");
+        const isLabelTag = entry.path.startsWith("_label_tags.");
+
         return {
           children: (
-            <Entries.FilterablePath
-              modal={true}
-              path={entry.path}
-              group={group}
-              onFocus={() => {
-                controller.set({ zIndex: "1" });
-              }}
-              onBlur={() => {
-                controller.set({ zIndex: "0" });
-              }}
-            />
+            <>
+              {isLabelTag && (
+                <Entries.FilterableTag
+                  modal={false}
+                  tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
+                  tag={entry.path.split(".").slice(1).join(".")}
+                />
+              )}
+              {isTag && (
+                <Entries.TagValue
+                  tag={entry.path.slice("tags.".length)}
+                  path={entry.path}
+                />
+              )}
+              {!isTag && !isLabelTag && (
+                <Entries.FilterablePath
+                  modal={false}
+                  path={entry.path}
+                  group={group}
+                  onFocus={() => {
+                    controller.set({ zIndex: "1" });
+                  }}
+                  onBlur={() => {
+                    controller.set({ zIndex: "0" });
+                  }}
+                />
+              )}
+            </>
           ),
-          disabled: false,
+          disabled: isTag || isLabelTag,
         };
       case EntryKind.GROUP:
+        const isTags = entry.name === "tags";
+        const isLabelTags = entry.name === "label tags";
+
         return {
-          children: (
-            <Entries.PathGroup
-              name={entry.name}
-              modal={true}
-              dragging={dragging}
-            />
-          ),
+          children:
+            isTags || isLabelTags ? (
+              <Entries.TagGroup
+                tagKey={isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE}
+                modal={false}
+              />
+            ) : (
+              <Entries.PathGroup
+                name={entry.name}
+                modal={false}
+                dragging={dragging}
+              />
+            ),
           disabled: false,
         };
-
       case EntryKind.EMPTY:
         return {
           children: (
@@ -200,12 +229,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
           style={{ borderRight: `2px solid ${theme.border}` }}
         />
         <FieldsSidebar
-          before={
-            <>
-              <Section>Info</Section>
-              <Section>Filters</Section>
-            </>
-          }
           entriesAtom={sidebarEntries(true)}
           render={renderEntry}
         />

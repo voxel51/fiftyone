@@ -113,7 +113,7 @@ const Wrapper = <T extends unknown>({
     counts[String(value)] ?? 0,
   ]);
 
-  if (totalCount <= CHECKBOX_LIMIT) {
+  if (results.length <= CHECKBOX_LIMIT) {
     allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
   }
 
@@ -419,6 +419,7 @@ const CategoricalFilter = <T extends unknown>({
 
   if (count === 0) return null;
 
+  console.log(count);
   return (
     <NamedCategoricalFilterContainer title={title}>
       <NamedCategoricalFilterHeader>
@@ -427,7 +428,7 @@ const CategoricalFilter = <T extends unknown>({
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {count > CHECKBOX_LIMIT && (
+        {results.length > CHECKBOX_LIMIT && (
           <>
             <Input
               key={"input"}

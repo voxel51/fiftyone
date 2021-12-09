@@ -585,7 +585,7 @@ const InteractiveSidebar = ({
             group,
             entry,
             items.current[key].controller,
-            false
+            isDragging
           );
 
           return (
