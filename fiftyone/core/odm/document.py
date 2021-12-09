@@ -33,6 +33,21 @@ class SerializableDocument(object):
 
         return self.to_dict() == other.to_dict()
 
+    def __getattr__(self, name):
+        try:
+            return object.__getattr__(self, name)
+        except AttributeError:
+            pass
+
+        return self.get_field(name)
+
+    def __setattr__(self, name, value):
+        try:
+            object.__getattr__(self, name)
+            object.__setattr__(self, name, value)
+        except AttributeError:
+            self.set_field(name, value)
+
     def fancy_repr(
         self,
         class_name=None,
@@ -60,7 +75,7 @@ class SerializableDocument(object):
                 continue
 
             if not f.startswith("_"):
-                value = getattr(self, f)
+                value = self.get_field(f)
                 if isinstance(value, ObjectId):
                     d[f] = str(value)
                 else:
@@ -208,37 +223,44 @@ class MongoEngineBaseDocument(SerializableDocument):
     subclasses that implements the :class:`SerializableDocument` interface.
     """
 
-    def __delattr__(self, field_name):
-        self.clear_field(field_name)
+    def __delattr__(self, name):
+        self.clear_field(name)
 
-    def __delitem__(self, field_name):
-        self.clear_field(field_name)
+    def __delitem__(self, name):
+        self.clear_field(name)
 
     def __deepcopy__(self, memo):
         # pylint: disable=no-member, unsubscriptable-object
         kwargs = {
-            f: deepcopy(self[f], memo)
+            f: deepcopy(self.get_field(f), memo)
             for f in self._fields_ordered
             if f not in ("_cls", "_id", "id")
         }
         return self.__class__(**kwargs)
 
     def has_field(self, field_name):
-        return field_name in self._fields_ordered
+        return field_name in self._fields
 
     def get_field(self, field_name):
+        # return self._data[field_name]
         return getattr(self, field_name)
 
     def set_field(self, field_name, value, create=False):
         if not create and not self.has_field(field_name):
-            raise AttributeError("Document has no field '%s'" % field_name)
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
 
+        # self._data[field_name] = value
         setattr(self, field_name, value)
 
     def clear_field(self, field_name):
         if not self.has_field(field_name):
-            raise AttributeError("Document has no field '%s'" % field_name)
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
 
+        # self._data.pop(field_name)
         super().__delattr__(field_name)
 
         # pylint: disable=no-member
