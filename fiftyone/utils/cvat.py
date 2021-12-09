@@ -5346,7 +5346,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # Insert new shapes into track
         for ind, shape in new_shapes[::-1]:
-            shapes.insert(ind, shape)
+            shapes.insert(ind + 1, shape)
 
         # Remove non-keyframes if necessary
         if only_keyframes:
