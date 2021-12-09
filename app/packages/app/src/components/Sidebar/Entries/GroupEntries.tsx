@@ -257,99 +257,101 @@ type GroupEntryProps = {
   before?: React.ReactNode;
 } & DropdownHandleProps;
 
-const GroupEntry = ({
-  title,
-  icon,
-  pills,
-  onDelete,
-  setValue,
-  before,
-  ...rest
-}: GroupEntryProps) => {
-  const [localValue, setLocalValue] = useState(() => title);
-  useLayoutEffect(() => {
-    setLocalValue(title);
-  }, [title]);
-  const [editing, setEditing] = useState(false);
-  const [hovering, setHovering] = useState(false);
-  const ref = useRef<HTMLInputElement>();
+const GroupEntry = React.memo(
+  ({
+    title,
+    icon,
+    pills,
+    onDelete,
+    setValue,
+    before,
+    ...rest
+  }: GroupEntryProps) => {
+    const [localValue, setLocalValue] = useState(() => title);
+    useLayoutEffect(() => {
+      setLocalValue(title);
+    }, [title]);
+    const [editing, setEditing] = useState(false);
+    const [hovering, setHovering] = useState(false);
+    const ref = useRef<HTMLInputElement>();
 
-  return (
-    <GroupHeader
-      title={title}
-      icon={PlusMinusButton}
-      {...rest}
-      onMouseEnter={() => !hovering && setHovering(true)}
-      onMouseLeave={() => hovering && setHovering(false)}
-      onMouseDown={(event) => {
-        editing && event.stopPropagation();
-      }}
-      style={{ cursor: "unset" }}
-      onClick={(event) => {
-        !editing && rest.onClick && rest.onClick(event);
-      }}
-    >
-      {before}
-      <GroupInput
-        ref={ref}
-        maxLength={40}
-        value={localValue}
-        focus={editing}
-        style={{
-          flexGrow: 1,
-          pointerEvents: editing ? "unset" : "none",
-          textOverflow: "ellipsis",
+    return (
+      <GroupHeader
+        title={title}
+        icon={PlusMinusButton}
+        {...rest}
+        onMouseEnter={() => !hovering && setHovering(true)}
+        onMouseLeave={() => hovering && setHovering(false)}
+        onMouseDown={(event) => {
+          editing && event.stopPropagation();
         }}
-        onChange={(event) => setLocalValue(event.target.value.toLowerCase())}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            setValue(event.target.value);
-            setEditing(false);
-          }
-          if (event.key === "Escape") {
-            event.target.blur();
-          }
+        style={{ cursor: "unset" }}
+        onClick={(event) => {
+          !editing && rest.onClick && rest.onClick(event);
         }}
-        onFocus={() => !editing && setEditing(true)}
-        onBlur={() => {
-          if (editing) {
-            setLocalValue(title);
-            setEditing(false);
-          }
-        }}
-      />
-      {hovering && !editing && setValue && (
-        <span title={"Rename group"} style={{ margin: "0 0.25rem" }}>
-          <Edit
-            onMouseDown={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}
-            onClick={() => {
-              setEditing(true);
-              if (ref.current) {
-                ref.current.setSelectionRange(0, ref.current.value.length);
-                ref.current.focus();
-              }
-            }}
-          />
-        </span>
-      )}
-      {pills}
-      {onDelete && !editing && (
-        <span title={"Delete group"} style={{ margin: "0 0.25rem" }}>
-          <Close
-            onMouseDown={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}
-            onClick={() => onDelete()}
-          />
-        </span>
-      )}
-    </GroupHeader>
-  );
-};
+      >
+        {before}
+        <GroupInput
+          ref={ref}
+          maxLength={40}
+          value={localValue}
+          focus={editing}
+          style={{
+            flexGrow: 1,
+            pointerEvents: editing ? "unset" : "none",
+            textOverflow: "ellipsis",
+          }}
+          onChange={(event) => setLocalValue(event.target.value.toLowerCase())}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              setValue(event.target.value);
+              setEditing(false);
+            }
+            if (event.key === "Escape") {
+              event.target.blur();
+            }
+          }}
+          onFocus={() => !editing && setEditing(true)}
+          onBlur={() => {
+            if (editing) {
+              setLocalValue(title);
+              setEditing(false);
+            }
+          }}
+        />
+        {hovering && !editing && setValue && (
+          <span title={"Rename group"} style={{ margin: "0 0.25rem" }}>
+            <Edit
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={() => {
+                setEditing(true);
+                if (ref.current) {
+                  ref.current.setSelectionRange(0, ref.current.value.length);
+                  ref.current.focus();
+                }
+              }}
+            />
+          </span>
+        )}
+        {pills}
+        {onDelete && !editing && (
+          <span title={"Delete group"} style={{ margin: "0 0.25rem" }}>
+            <Close
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={() => onDelete()}
+            />
+          </span>
+        )}
+      </GroupHeader>
+    );
+  }
+);
 
 export const TagGroupEntry = React.memo(
   ({ tagKey, modal }: { tagKey: State.TagKey; modal: boolean }) => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Checkbox } from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
@@ -140,7 +140,10 @@ const FilterableEntry = React.memo(
       })
     );
     const field = useRecoilValue(schemaAtoms.field(path));
-    const data = getFilterData(expandedPath, modal, field, fields);
+    const data = useMemo(
+      () => getFilterData(expandedPath, modal, field, fields),
+      [field, fields, expandedPath, modal]
+    );
     const fieldIsFiltered = useRecoilValue(
       filterAtoms.fieldIsFiltered({ path, modal })
     );
@@ -165,12 +168,16 @@ const FilterableEntry = React.memo(
                 color: active ? color : theme.fontDark,
                 padding: 0,
               }}
+              key="checkbox"
             />
-            <span style={{ flexGrow: 1 }}>{path}</span>
-            <PathEntryCounts modal={modal} path={expandedPath} />
+            <span key="path" style={{ flexGrow: 1 }}>
+              {path}
+            </span>
+            <PathEntryCounts key="count" modal={modal} path={expandedPath} />
 
             {expandable && (
               <Arrow
+                key="arrow"
                 style={{ cursor: "pointer", margin: 0 }}
                 onClick={(event) => {
                   event.preventDefault();

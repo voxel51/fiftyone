@@ -145,7 +145,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
             <>
               {isLabelTag && (
                 <Entries.FilterableTag
-                  modal={false}
+                  modal={true}
                   tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
                   tag={entry.path.split(".").slice(1).join(".")}
                 />
@@ -158,7 +158,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
               )}
               {!isTag && !isLabelTag && (
                 <Entries.FilterablePath
-                  modal={false}
+                  modal={true}
                   path={entry.path}
                   group={group}
                   onFocus={() => {
@@ -182,12 +182,12 @@ const SampleModal = ({ onClose }: Props, ref) => {
             isTags || isLabelTags ? (
               <Entries.TagGroup
                 tagKey={isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE}
-                modal={false}
+                modal={true}
               />
             ) : (
               <Entries.PathGroup
                 name={entry.name}
-                modal={false}
+                modal={true}
                 dragging={dragging}
               />
             ),
