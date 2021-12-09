@@ -1,5 +1,7 @@
 import { atomFamily, selectorFamily } from "recoil";
 
+import { Field, Schema } from "@fiftyone/utilities";
+
 import * as atoms from "./atoms";
 import {
   EMBEDDED_DOCUMENT_FIELD,
@@ -14,18 +16,15 @@ import {
 import { State } from "./types";
 import * as viewAtoms from "./view";
 
-const schemaReduce = (
-  schema: State.Schema,
-  field: State.Field
-): State.Schema => {
+const schemaReduce = (schema: Schema, field: Field): Schema => {
   schema[field.name] = {
     ...field,
-    fields: ((field.fields || []) as State.Field[]).reduce(schemaReduce, {}),
+    fields: ((field.fields || []) as Field[]).reduce(schemaReduce, {}),
   };
   return schema;
 };
 
-export const fieldSchema = selectorFamily<State.Schema, State.SPACE>({
+export const fieldSchema = selectorFamily<Schema, State.SPACE>({
   key: "fieldSchema",
   get: (space) => ({ get }) => {
     const state = get(atoms.stateDescription);
@@ -126,7 +125,7 @@ export const fieldPaths = selectorFamily<
 });
 
 export const fields = selectorFamily<
-  State.Field[],
+  Field[],
   {
     path?: string;
     space?: State.SPACE;
@@ -142,13 +141,13 @@ export const fields = selectorFamily<
   },
 });
 
-export const field = selectorFamily<State.Field, string>({
+export const field = selectorFamily<Field, string>({
   key: "field",
   get: (path) => ({ get }) => {
     if (path.startsWith("frames.")) {
       const framePath = path.slice("frames.".length);
 
-      let field: State.Field = null;
+      let field: Field = null;
       let schema = get(fieldSchema(State.SPACE.FRAME));
       for (const name of framePath.split(".")) {
         if (schema[name]) {
@@ -162,7 +161,7 @@ export const field = selectorFamily<State.Field, string>({
       }
     }
 
-    let field: State.Field = null;
+    let field: Field = null;
     let schema = get(fieldSchema(State.SPACE.SAMPLE));
     for (const name of path.split(".")) {
       if (schema[name]) {
@@ -374,7 +373,7 @@ export const fieldType = selectorFamily<
 });
 
 export const meetsFieldType = (
-  field: State.Field,
+  field: Field,
   {
     ftype,
     embeddedDocType,

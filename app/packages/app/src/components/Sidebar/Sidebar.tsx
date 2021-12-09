@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { animated, Controller } from "@react-spring/web";
 import styled from "styled-components";
@@ -99,18 +99,6 @@ const fn = (
 
   return results;
 };
-
-const InteractiveSidebarContainer = styled.div`
-  position: relative;
-  overflow: visible;
-
-  & > div {
-    position: absolute;
-    transform-origin: 50% 50% 0px;
-    touch-action: none;
-    width: 100%;
-  }
-`;
 
 const getEntryKey = (entry: SidebarEntry) => {
   if (entry.kind === EntryKind.GROUP) {
@@ -326,20 +314,41 @@ enum Direction {
 }
 
 const SidebarColumn = styled.div`
+  position: relative;
   max-height: 100%;
   height: 100%;
+  width: 100%;
+
   overflow-y: scroll;
   overflow-x: hidden;
+
   scrollbar-color: ${({ theme }) => theme.fontDarkest}
     ${({ theme }) => theme.background};
-
-  height: 100%;
-
+  background: ${({ theme }) => theme.background};
   ${scrollbarStyles}
 
-  & > * {
-    margin-left: 1rem;
-    margin-right: 0.5rem;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+`;
+
+const Container = styled.div`
+  position: relative;
+  overflow: visible;
+  margin: 0 1rem;
+
+  & > div {
+    position: absolute;
+    transform-origin: 50% 50% 0px;
+    touch-action: none;
+    width: 100%;
   }
 `;
 
@@ -369,7 +378,6 @@ const InteractiveSidebar = ({
   const [isDragging, setIsDragging] = useState(false);
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
-
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
   for (const entry of entries) {
@@ -424,6 +432,9 @@ const InteractiveSidebar = ({
     do {
       section.push(lastOrder.current[from]);
       from++;
+
+      if (from >= order.current.length) break;
+
       entry = items.current[lastOrder.current[from]].entry;
     } while (entry.kind !== EntryKind.GROUP && entry.kind !== EntryKind.TAIL);
 
@@ -547,8 +558,6 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
 
-  useLayoutEffect(placeItems, [entries]);
-
   return (
     <SidebarColumn
       ref={container}
@@ -562,7 +571,7 @@ const InteractiveSidebar = ({
       }}
     >
       {before}
-      <InteractiveSidebarContainer key={"interactive-fields"}>
+      <Container>
         {order.current.map((key) => {
           const entry = items.current[key].entry;
           if (entry.kind === EntryKind.GROUP) {
@@ -576,7 +585,7 @@ const InteractiveSidebar = ({
             group,
             entry,
             items.current[key].controller,
-            isDragging
+            false
           );
 
           return (
@@ -602,9 +611,9 @@ const InteractiveSidebar = ({
             </animated.div>
           );
         })}
-      </InteractiveSidebarContainer>
+      </Container>
     </SidebarColumn>
   );
 };
 
-export default InteractiveSidebar;
+export default React.memo(InteractiveSidebar);

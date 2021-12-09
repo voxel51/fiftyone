@@ -7,7 +7,7 @@ import {
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
-import { Range } from "./RangeSlider";
+import { Range } from "../Common/RangeSlider";
 
 type NumericFilter = {
   range: Range;

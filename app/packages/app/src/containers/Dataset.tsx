@@ -5,15 +5,8 @@ import styled from "styled-components";
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
-import { ModalWrapper } from "../components/utils";
-import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import {
-  useOutsideClick,
-  useScreenshot,
-  useGA,
-  useTheme,
-} from "../utils/hooks";
+import { useOutsideClick, useScreenshot, useGA } from "../utils/hooks";
 import Loading from "../components/Loading";
 import * as schemaAtoms from "../recoil/schema";
 import { useClearModal } from "../recoil/utils";
@@ -36,7 +29,9 @@ const Body = styled.div`
 
 const useResetPaths = () => {
   const dataset = useRecoilValue(selectors.datasetName);
-  const resetPaths = useResetRecoilState(schemaAtoms.activeFields(false));
+  const resetPaths = useResetRecoilState(
+    schemaAtoms.activeFields({ modal: false })
+  );
   useEffect(() => {
     resetPaths();
   }, [dataset]);
@@ -45,11 +40,6 @@ const useResetPaths = () => {
 function Dataset() {
   const ref = useRef();
   const isModalActive = useRecoilValue(selectors.isModalActive);
-  const theme = useTheme();
-
-  const fullscreen = useRecoilValue(atoms.fullscreen)
-    ? { background: theme.backgroundDark }
-    : {};
   const hasDataset = useRecoilValue(selectors.hasDataset);
 
   useGA();
@@ -65,17 +55,15 @@ function Dataset() {
 
   return (
     <>
-      {isModalActive ? (
-        <ModalWrapper key={0} style={fullscreen}>
-          <SampleModal onClose={clearModal} ref={ref} />
-        </ModalWrapper>
-      ) : null}
+      {isModalActive && <SampleModal onClose={clearModal} ref={ref} />}
       <Container key={1}>
-        {hasDataset && <HorizontalNav entries={PLOTS} key={"nav"} />}
         {hasDataset ? (
-          <Body key={"body"}>
-            <SamplesContainer key={"samples"} />
-          </Body>
+          <>
+            <HorizontalNav entries={PLOTS} key={"nav"} />
+            <Body key={"body"}>
+              <SamplesContainer key={"samples"} />
+            </Body>
+          </>
         ) : (
           <Loading text={"No dataset selected"} key={"loading"} />
         )}

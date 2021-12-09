@@ -11,7 +11,7 @@ export namespace State {
     colorPool: string[];
     colorscale: string;
     gridZoom: number;
-    loopVideos: string;
+    loopVideos: boolean;
     notebookHeight: number;
     showConfidence: boolean;
     showIndex: boolean;

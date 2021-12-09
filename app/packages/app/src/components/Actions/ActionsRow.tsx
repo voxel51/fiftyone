@@ -208,7 +208,6 @@ const Selected = ({
       <PillButton
         icon={loading ? <Loading /> : <Check />}
         open={open}
-        style={{ cursor: loading ? "default" : "pointer" }}
         onClick={() => {
           if (loading) {
             return;
@@ -221,6 +220,10 @@ const Selected = ({
         title={`Manage selected ${modal ? "label" : "sample"}${
           numItems > 1 ? "s" : ""
         }`}
+        style={{
+          flexDirection: modal ? "column" : "row",
+          cursor: loading ? "default" : "pointer",
+        }}
       />
       {open && (
         <Selector
@@ -249,6 +252,7 @@ const Options = ({ modal }) => {
         highlight={open}
         ref={mRef}
         title={"Display options"}
+        style={{ flexDirection: modal ? "column" : "row" }}
       />
       {open && <OptionsActions modal={modal} bounds={bounds} />}
     </ActionDiv>
@@ -270,6 +274,7 @@ const Hidden = () => {
       onClick={() => setHiddenObjects({})}
       highlight={true}
       text={`${count}`}
+      style={{ flexDirection: "column" }}
       title={"Clear hidden labels"}
     />
   );
@@ -313,21 +318,11 @@ const ActionsRowDiv = styled.div`
 type ActionsRowProps = {
   modal: boolean;
   lookerRef?: MutableRefObject<VideoLooker>;
+  style?: React.CSSProperties;
 };
 
-const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
+const ActionsRow = ({ modal, lookerRef, style }: ActionsRowProps) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
-  const style = modal
-    ? {
-        overflowX: "auto",
-        overflowY: "hidden",
-        margin: "0 -1em",
-        padding: "0 1em",
-        flexWrap: "wrap",
-      }
-    : {
-        flexWrap: "no-wrap",
-      };
   return (
     <ActionsRowDiv style={style}>
       <Options modal={modal} />

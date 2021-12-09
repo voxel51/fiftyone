@@ -4,6 +4,8 @@ import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 
+import { Field } from "@fiftyone/utilities";
+
 import * as aggregationAtoms from "../../../recoil/aggregations";
 import * as colorAtoms from "../../../recoil/color";
 import {
@@ -14,6 +16,7 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  LABELS,
   LABELS_PATH,
   LIST_FIELD,
   OBJECT_ID_FIELD,
@@ -33,8 +36,6 @@ import {
 
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
-import { Field } from "@fiftyone/utilities";
-import { LABELS } from "@fiftyone/looker/src/constants";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",

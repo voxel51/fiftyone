@@ -1,5 +1,5 @@
 import { CircularProgress } from "@material-ui/core";
-import React, { useCallback } from "react";
+import React, { Suspense, useCallback } from "react";
 import { RecoilValue, selectorFamily, useRecoilValue } from "recoil";
 
 import * as aggregationAtoms from "../../../recoil/aggregations";
@@ -24,13 +24,15 @@ const Loading = () => {
 };
 
 const EntryCounts = ({
-  getAtom,
+  countAtom,
+  subcountAtom,
 }: {
-  getAtom: (subcount: boolean) => RecoilValue<number>;
+  countAtom: RecoilValue<number>;
+  subcountAtom?: RecoilValue<number>;
 }) => {
   const [count, subcount] = [
-    useRecoilValue(getAtom(false)),
-    useRecoilValue(getAtom(true)),
+    useRecoilValue(countAtom),
+    subcountAtom ? useRecoilValue(subcountAtom) : null,
   ];
 
   if (typeof count !== "number") {
@@ -54,6 +56,20 @@ const EntryCounts = ({
   );
 };
 
+const SuspenseEntryCounts = ({
+  countAtom,
+  subcountAtom,
+}: {
+  countAtom: RecoilValue<number>;
+  subcountAtom: RecoilValue<number>;
+}) => {
+  return (
+    <Suspense fallback={<EntryCounts countAtom={countAtom} />}>
+      <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />
+    </Suspense>
+  );
+};
+
 export const PathEntryCounts = ({
   modal,
   path,
@@ -71,7 +87,9 @@ export const PathEntryCounts = ({
     [modal, path]
   );
 
-  return <EntryCounts getAtom={getAtom} />;
+  return (
+    <EntryCounts countAtom={getAtom(false)} subcountAtom={getAtom(true)} />
+  );
 };
 
 const labelTagCount = selectorFamily<
@@ -116,10 +134,10 @@ export const LabelTagCounts = ({
   modal: boolean;
   tag: string;
 }) => {
-  const getAtom = useCallback(
-    (extended: boolean) => labelTagCount({ modal, tag, extended }),
-    [modal]
+  return (
+    <SuspenseEntryCounts
+      countAtom={labelTagCount({ modal, tag, extended: false })}
+      subcountAtom={labelTagCount({ modal, tag, extended: true })}
+    />
   );
-
-  return <EntryCounts getAtom={getAtom} />;
 };

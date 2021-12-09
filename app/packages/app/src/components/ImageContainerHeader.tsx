@@ -12,7 +12,7 @@ import { useTheme } from "./../utils/hooks";
 import Actions from "./Actions";
 import DropdownHandle from "./DropdownHandle";
 import { gridZoomRange } from "./Flashlight";
-import { Slider } from "./Filters/RangeSlider";
+import { Slider } from "./Common/RangeSlider";
 
 type Props = {
   showSidebar: boolean;
@@ -94,7 +94,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
         Filters
       </DropdownHandle>
       <SamplesHeader>
-        <Actions modal={false} />
+        <Actions modal={false} style={{ flexWrap: "nowrap" }} />
         <RightContainer>
           {countStr !== null ? (
             <CountDiv>
@@ -120,7 +120,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
                 color={theme.brand}
                 showBounds={false}
                 persistValue={false}
-                style={{ padding: 0 }}
+                style={{ padding: 0, margin: 0 }}
               />
             </div>
             <div

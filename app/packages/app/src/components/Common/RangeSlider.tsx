@@ -284,6 +284,7 @@ type SliderProps = {
   showBounds?: boolean;
   onChange?: boolean;
   int?: boolean;
+  style?: React.CSSProperties;
 };
 
 export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {

@@ -10,7 +10,7 @@ import { PopoutSectionTitle, TabOption } from "../utils";
 
 import { Button } from "../utils";
 import Popout from "./Popout";
-import { Slider } from "../Filters/RangeSlider";
+import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "../../utils/hooks";
 
 export const RefreshButton = ({ modal }) => {

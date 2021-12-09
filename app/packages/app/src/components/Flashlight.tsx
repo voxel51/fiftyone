@@ -7,7 +7,9 @@ import React, {
 } from "react";
 import {
   atom,
+  RecoilState,
   selector,
+  Snapshot,
   useRecoilCallback,
   useRecoilValue,
   useSetRecoilState,
@@ -29,27 +31,56 @@ import * as colorAtoms from "../recoil/color";
 import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
+import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
-import {
-  getSampleSrc,
-  lookerType,
-  setModal,
-  useClearModal,
-} from "../recoil/utils";
+import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
-import { State } from "../recoil/types";
+import { pathFilter } from "./Filters";
+import { sidebarEntries } from "./Sidebar";
+
+const setModal = async (
+  snapshot: Snapshot,
+  set: <T>(
+    recoilVal: RecoilState<T>,
+    valOrUpdater: T | ((currVal: T) => T)
+  ) => void
+) => {
+  const data = [
+    [filterAtoms.modalFilters, filterAtoms.filters],
+    [atoms.colorByLabel(true), atoms.colorByLabel(false)],
+    [
+      schemaAtoms.activeFields({ modal: true }),
+      schemaAtoms.activeFields({ modal: false }),
+    ],
+    [atoms.cropToContent(true), atoms.cropToContent(false)],
+    [atoms.colorSeed(true), atoms.colorSeed(false)],
+    [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
+    [atoms.alpha(true), atoms.alpha(false)],
+    [sidebarEntries(true), sidebarEntries(false)],
+  ];
+
+  const results = Promise.all(
+    data.map(([_, get]) => snapshot.getPromise(get as RecoilState<any>))
+  );
+
+  for (const i in results) {
+    set(data[i][0], results[i]);
+  }
+};
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
   default: [0, 10],
 });
 
-const createLookerCache = () => {
-  return new LRU<string, FrameLooker | ImageLooker | VideoLooker>({
+type Lookers = FrameLooker | ImageLooker | VideoLooker;
+
+const createLookerCache = <L extends Lookers>() => {
+  return new LRU<string, L>({
     max: 500,
     dispose: (id, looker) => looker.destroy(),
   });
@@ -93,15 +124,14 @@ const flashlightLookerOptions = selector({
   get: ({ get }) => {
     return {
       coloring: get(colorAtoms.coloring(false)),
-      filter: () => true,
+      filter: (path: string, value) =>
+        get(pathFilter({ modal: false, path }))(value),
       activePaths: get(schemaAtoms.activeFields({ modal: false })),
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
-      fieldSchema: get(schemaAtoms.fieldSchema(State.SPACE.SAMPLE)),
-      frameFieldSchema: get(schemaAtoms.fieldSchema(State.SPACE.FRAME)),
       disabled: false,
     };
   },
@@ -281,6 +311,12 @@ export default React.memo(() => {
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
   const isClips = useRecoilValue(viewAtoms.isClipsView);
+  const fieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema(State.SPACE.SAMPLE)
+  );
+  const frameFieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema(State.SPACE.FRAME)
+  );
   lookerGeneratorRef.current = ({
     sample,
     dimensions,
@@ -289,20 +325,22 @@ export default React.memo(() => {
   }: atoms.SampleData) => {
     const constructor = getLookerType(getMimeType(sample));
     const etc = isClips ? { support: sample.support } : {};
+    const config = {
+      src: getSampleSrc(sample.filepath, sample._id),
+      thumbnail: true,
+      dimensions,
+      sampleId: sample._id,
+      frameRate,
+      frameNumber: constructor === FrameLooker ? frameNumber : null,
+      fieldSchema,
+      frameFieldSchema,
+      ...etc,
+    };
 
-    return new constructor(
-      sample,
-      {
-        src: getSampleSrc(sample.filepath, sample._id),
-        thumbnail: true,
-        dimensions,
-        sampleId: sample._id,
-        frameRate,
-        frameNumber: constructor === FrameLooker ? frameNumber : null,
-        ...etc,
-      },
-      { ...lookerOptions, selected: selected.has(sample._id) }
-    );
+    return new constructor(sample, config, {
+      ...lookerOptions,
+      selected: selected.has(sample._id),
+    });
   };
   const aspectRatioGenerator = useRef<any>();
   aspectRatioGenerator.current = ({

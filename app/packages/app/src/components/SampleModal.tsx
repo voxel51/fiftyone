@@ -10,160 +10,50 @@ import FieldsSidebar, {
   SidebarEntry,
 } from "./Sidebar";
 import Looker from "./Looker";
-import { ModalFooter } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useMessageHandler, useTheme } from "../utils/hooks";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
 import { Controller } from "@react-spring/core";
+import { elementNames } from "../recoil/view";
 
-const Container = styled.div`
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 296px;
-  width: 90vw;
-  height: 80vh;
-  max-height: 80vh;
-  background-color: ${({ theme }) => theme.backgroundDark};
-
-  h2 {
-    margin: 0.5rem -1rem;
-    padding: 0 1rem;
-    border-bottom: 2px solid ${({ theme }) => theme.backgroundLight};
-    clear: both;
-  }
-
-  h2,
-  h2 span {
-    display: flex;
-    align-items: center;
-  }
-
-  h2 .push-right {
-    margin-left: auto;
-  }
-
-  h2 svg {
-    cursor: pointer;
-    margin-left: 5px;
-  }
-
-  h2 .close-wrapper {
-    position: absolute;
-    top: 1em;
-    right: 1em;
-    background-color: ${({ theme }) => theme.backgroundTransparent};
-  }
-
-  .nav-button {
-    position: absolute;
-    z-index: 1000;
-    top: 50%;
-    width: 2em;
-    height: 5em;
-    margin-top: -2.5em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: ${({ theme }) => theme.overlayButton};
-    cursor: pointer;
-    font-size: 150%;
-    font-weight: bold;
-    user-select: none;
-
-    &.left {
-      left: 0;
-    }
-    &.right {
-      right: 0;
-    }
-    &:hover {
-      background-color: ${({ theme }) => theme.overlayButtonHover};
-    }
-  }
-
-  .sidebar {
-    position: relative;
-    height: 100%;
-    max-height: 100%;
-    overflow-y: scroll;
-    height: 100%;
-    background: ${({ theme }) => theme.background};
-    border-left: 2px solid ${({ theme }) => theme.border};
-    scrollbar-width: none;
-
-    .sidebar-content {
-      padding-left: 1rem;
-      padding-right: 1rem;
-      flex-grow: 1;
-    }
-  }
-
-  .sidebar::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  .sidebar::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-
-  .row {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    flex-wrap: wrap;
-
-    > label {
-      font-weight: bold;
-      display: block;
-      padding-right: 0.5rem;
-      width: auto;
-    }
-    > div {
-      display: block;
-      max-width: 100%;
-    }
-    span {
-      flex-grow: 2;
-      overflow-wrap: break-word;
-      vertical-align: middle;
-    }
-  }
-
-  .select-objects-wrapper {
-    margin-top: -1em;
-  }
-
-  .looker-element {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    max-height: 100%;
-    max-width: 100%;
-    overflow: hidden;
-    background: ${({ theme }) => theme.backgroundDark};
-  }
+export const ModalWrapper = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: ${({ theme }) => theme.overlay};
 `;
 
-type RowProps = {
-  name: string;
-  value: string;
-  style?: any;
-  children?: React.ReactElement<any>[];
-};
+export const ModalFooter = styled.div`
+  display: block;
+  border-top: 2px solid ${({ theme }) => theme.border};
+  padding: 1em;
+  background-color: ${({ theme }) => theme.backgroundLight};
+  z-index: 9000;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  min-height: 64.5px;
+`;
 
-const Row = ({ name, value, children, ...rest }: RowProps) => (
-  <div className="row" {...rest}>
-    <label>{name}&nbsp;</label>
-    <div>
-      <span title={value}>{value}</span>
-    </div>
-    {children}
-  </div>
-);
+const Container = styled.div`
+  overflow: hidden;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 296px 64px;
+  width: 95vw;
+  height: 90vh;
+  max-height: 80vh;
+  background-color: ${({ theme }) => theme.backgroundDark};
+`;
 
 type Props = {
   onClose: () => void;
@@ -176,6 +66,11 @@ interface SelectEvent {
     frameNumber?: number;
   };
 }
+
+const Section = styled.h2`
+  padding: 0 1rem;
+  border-bottom: 2px solid ${({ theme }) => theme.backgroundLight};
+`;
 
 const useOnSelectLabel = () => {
   return useRecoilCallback(
@@ -225,6 +120,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
     getIndex,
   } = useRecoilValue(atoms.modal);
 
+  const { singular } = useRecoilValue(elementNames);
   const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
@@ -235,14 +131,15 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const renderEntry = (
     group: string,
     entry: SidebarEntry,
-    controller: Controller
+    controller: Controller,
+    dragging: boolean
   ) => {
     switch (entry.kind) {
       case EntryKind.PATH:
         return {
           children: (
             <Entries.FilterablePath
-              modal={false}
+              modal={true}
               path={entry.path}
               group={group}
               onFocus={() => {
@@ -257,23 +154,42 @@ const SampleModal = ({ onClose }: Props, ref) => {
         };
       case EntryKind.GROUP:
         return {
-          children: <Entries.PathGroup name={entry.name} modal={true} />,
+          children: (
+            <Entries.PathGroup
+              name={entry.name}
+              modal={true}
+              dragging={dragging}
+            />
+          ),
           disabled: false,
         };
 
       case EntryKind.EMPTY:
         return {
-          children: <Entries.Empty text={"No fields"} />,
+          children: (
+            <Entries.Empty
+              text={
+                group === "tags"
+                  ? `No ${singular} tags`
+                  : group === "label tags"
+                  ? "No label tags"
+                  : "No fields"
+              }
+            />
+          ),
           disabled: true,
         };
       default:
         throw new Error("invalid entry");
     }
   };
+  const fullscreen = useRecoilValue(atoms.fullscreen)
+    ? { background: theme.backgroundDark }
+    : {};
 
   return (
-    <Container style={{ zIndex: 10001 }} ref={ref}>
-      <div className={`looker-element`}>
+    <ModalWrapper key={0} style={fullscreen}>
+      <Container style={{ zIndex: 10001 }} ref={ref}>
         <Looker
           key={`modal-${sampleSrc}`} // force re-render when this changes
           lookerRef={lookerRef}
@@ -281,27 +197,31 @@ const SampleModal = ({ onClose }: Props, ref) => {
           onClose={onClose}
           onPrevious={index > 0 ? () => getIndex(index - 1) : null}
           onNext={() => getIndex(index + 1)}
+          style={{ borderRight: `2px solid ${theme.border}` }}
         />
-      </div>
-      <div className={`sidebar`}>
-        <ModalFooter
+        <FieldsSidebar
+          before={
+            <>
+              <Section>Info</Section>
+              <Section>Filters</Section>
+            </>
+          }
+          entriesAtom={sidebarEntries(true)}
+          render={renderEntry}
+        />
+        <Actions
+          modal={true}
+          lookerRef={lookerRef}
           style={{
-            width: "100%",
-            borderTop: "none",
-            borderBottom: `2px solid ${theme.border}`,
-            position: "relative",
+            borderLeft: `2px solid ${theme.border}`,
+            flexDirection: "column",
+            background: theme.backgroundLight,
+            padding: "0.5em",
+            margin: 0,
           }}
-        >
-          <Actions modal={true} lookerRef={lookerRef} />
-        </ModalFooter>
-        <div className="sidebar-content">
-          <FieldsSidebar
-            entriesAtom={sidebarEntries(true)}
-            render={renderEntry}
-          />
-        </div>
-      </div>
-    </Container>
+        />
+      </Container>
+    </ModalWrapper>
   );
 };
 

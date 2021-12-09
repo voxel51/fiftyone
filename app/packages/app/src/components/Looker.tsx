@@ -5,15 +5,18 @@ import { useRecoilValue, useRecoilCallback, selector } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
-import * as labelAtoms from "./Filters/utils";
 import { ContentDiv, ContentHeader } from "./utils";
 import { useEventHandler, useTheme } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
+import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
+import { State } from "../recoil/types";
+import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType } from "../recoil/utils";
+import { pathFilter } from "./Filters";
 
 const TagBlock = styled.div`
   margin: 0;
@@ -317,9 +320,6 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
 
 type EventCallback = (event: CustomEvent) => void;
 
-const reverse = (obj) =>
-  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
-
 const lookerOptions = selector({
   key: "lookerOptions",
   get: ({ get }) => {
@@ -331,11 +331,12 @@ const lookerOptions = selector({
     const video = get(selectors.isVideoDataset)
       ? { loop: get(selectors.appConfig).loopVideos }
       : {};
-    const zoom = get(selectors.isPatchesView)
+    const zoom = get(viewAtoms.isPatchesView)
       ? get(atoms.cropToContent(true))
       : false;
 
     return {
+      activePaths: get(schemaAtoms.activeFields({ modal: true })),
       showConfidence,
       showIndex,
       showLabel,
@@ -343,7 +344,7 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      filter: () => true,
+      filter: (path, value) => get(pathFilter({ modal: true, path }))(value),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
@@ -401,15 +402,19 @@ const Looker = ({
     atoms.modal
   );
   const fullscreen = useRecoilValue(atoms.fullscreen);
-  const isClips = useRecoilValue(selectors.isClipsView);
+  const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-  const schema = useRecoilValue(selectors.fieldSchema("sample"));
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
   const options = useRecoilValue(lookerOptions);
-  const activePaths = useRecoilValue(labelAtoms.activeModalFields);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
+  const fieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema(State.SPACE.SAMPLE)
+  );
+  const frameFieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema(State.SPACE.FRAME)
+  );
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
@@ -424,11 +429,11 @@ const Looker = ({
         frameNumber,
         sampleId: sample._id,
         thumbnail: false,
-        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
+        fieldSchema,
+        frameFieldSchema,
         ...etc,
       },
       {
-        activePaths,
         ...options,
         hasNext: Boolean(onNext),
         hasPrevious: Boolean(onPrevious),
@@ -437,8 +442,8 @@ const Looker = ({
   });
 
   useEffect(() => {
-    !initialRef.current && looker.updateOptions({ ...options, activePaths });
-  }, [options, activePaths]);
+    !initialRef.current && looker.updateOptions(options);
+  }, [options]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);

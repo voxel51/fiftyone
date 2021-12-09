@@ -19,32 +19,6 @@ export const VerticalSpacer = styled.div`
     opaque ? theme.background : undefined};
 `;
 
-export const ModalWrapper = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: ${({ theme }) => theme.overlay};
-`;
-
-export const ModalFooter = styled.div`
-  display: block;
-  border-top: 2px solid ${({ theme }) => theme.border};
-  padding: 1em;
-  background-color: ${({ theme }) => theme.backgroundLight};
-  z-index: 9000;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  min-height: 64.5px;
-`;
-
 export const scrollbarStyles = ({ theme }) => `
 ::-webkit-scrollbar {
   width: 16px;
@@ -95,7 +69,6 @@ const PillButtonDiv = animated(styled.div`
   padding: 0.25rem 0.75rem;
   cursor: pointer;
   background-color: ${({ theme }) => theme.button};
-  height: 2rem;
   border-radius: 1rem;
   border: none;
   font-weight: bold;
@@ -104,10 +77,9 @@ const PillButtonDiv = animated(styled.div`
   opacity: 1;
 
   & > span {
-    margin: 0 0.25rem;
+    text-align: center;
   }
   & > svg {
-    display: inline-block;
     height: 100%;
   }
 `);

@@ -14,7 +14,7 @@ import * as filterAtoms from "../../recoil/filters";
 
 import * as numericAtoms from "./numericState";
 import ExcludeOption from "./Exclude";
-import RangeSlider from "./RangeSlider";
+import RangeSlider from "../Common/RangeSlider";
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 import { FLOAT_FIELD } from "../../recoil/constants";
