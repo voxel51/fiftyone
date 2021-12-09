@@ -5,11 +5,77 @@ FiftyOne server utils.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import tornado.web
+
 from fiftyone import ViewField as F
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+
+
+class RequestHandler(tornado.web.RequestHandler):
+    """"Base class for HTTP request handlers"""
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+
+    async def get(self):
+        self.write(self.get_response())
+
+    def get_response(self):
+        """Returns the serializable GET response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement get_response()")
+
+    async def post(self):
+        self.write(self.post_response())
+
+    def post_response(self):
+        """Returns the serializable POST response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement post_response()")
+
+
+class AsyncRequestHandler(tornado.web.RequestHandler):
+    """"Base class for Async HTTP request handlers"""
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+
+    async def get(self):
+        self.write(await self.get_response())
+
+    async def get_response(self):
+        """Returns the serializable GET response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement get_response()")
+
+    async def post(self):
+        self.write(self.post_response())
+
+    async def post_response(self):
+        """Returns the serializable POST response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement post_response()")
 
 
 def change_sample_tags(sample_collection, changes):

@@ -7,12 +7,39 @@ FiftyOne Server aggregations.
 """
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.view as fov
 
-from fiftyone.server.utils import meets_type
+from fiftyone.server.extended_view import get_extended_view
 from fiftyone.server.json_util import convert
+from fiftyone.server.utils import AsyncRequestHandler, meets_type
+
+
+class AggregationsHandler(AsyncRequestHandler):
+    async def post_response(self):
+        filters = self.get_argument("filters", None)
+        dataset = self.get_argument("dataset", None)
+        stages = self.get_argument("view", None)
+        sample_id = self.get_argument("sample_id", None)
+
+        dataset = fod.load_dataset("dataset")
+
+        if stages:
+            view = fov.DatasetView._build(dataset, stages)
+
+        view = dataset
+        if filters is not None:
+            view = get_extended_view(
+                view, filters, count_labels_tags=False, only_matches=False
+            )
+
+        view = view.select(sample_id)
+        result = await get_app_statistics(view, filters)
+
+        return result
 
 
 def build_label_tag_aggregations(view: foc.SampleCollection):
