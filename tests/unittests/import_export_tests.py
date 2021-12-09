@@ -1013,24 +1013,30 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         export_dir = self._new_dir()
 
-        dataset.export(
-            export_dir=export_dir,
-            dataset_type=fo.types.YOLOv4Dataset,
-            label_field="predictions",
-        )
+        for with_confidence in [False, True]:
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=fo.types.YOLOv4Dataset,
+                label_field="predictions",
+                include_confidence=with_confidence,
+            )
 
-        dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.YOLOv4Dataset,
-            label_field="predictions",
-            include_all_data=True,
-        )
+            dataset2 = fo.Dataset.from_dir(
+                dataset_dir=export_dir,
+                dataset_type=fo.types.YOLOv4Dataset,
+                label_field="predictions",
+                include_all_data=True,
+            )
 
-        self.assertEqual(len(dataset), len(dataset2))
-        self.assertEqual(
-            dataset.count("predictions.detections"),
-            dataset2.count("predictions.detections"),
-        )
+            self.assertEqual(len(dataset), len(dataset2))
+            self.assertEqual(
+                dataset.count("predictions.detections"),
+                dataset2.count("predictions.detections"),
+            )
+            self.assertEqual(
+                dataset.bounds("predictions.detections.confidence") if with_confidence else (None, None),
+                dataset2.bounds("predictions.detections.confidence"),
+            )
 
         # Labels-only
 
@@ -1065,21 +1071,27 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         export_dir = self._new_dir()
 
-        dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.YOLOv5Dataset,
-        )
+        for with_confidence in [False, True]:
+            dataset.export(
+                export_dir=export_dir, dataset_type=fo.types.YOLOv5Dataset,
+                include_confidence=with_confidence,
+            )
 
-        dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir,
-            dataset_type=fo.types.YOLOv5Dataset,
-            label_field="predictions",
-        )
+            dataset2 = fo.Dataset.from_dir(
+                dataset_dir=export_dir,
+                dataset_type=fo.types.YOLOv5Dataset,
+                label_field="predictions",
+            )
 
-        self.assertEqual(len(dataset), len(dataset2))
-        self.assertEqual(
-            dataset.count("predictions.detections"),
-            dataset2.count("predictions.detections"),
-        )
+            self.assertEqual(len(dataset), len(dataset2))
+            self.assertEqual(
+                dataset.count("predictions.detections"),
+                dataset2.count("predictions.detections"),
+            )
+            self.assertEqual(
+                dataset.bounds("predictions.detections.confidence") if with_confidence else (None, None),
+                dataset2.bounds("predictions.detections.confidence"),
+            )
 
 
 class ImageSegmentationDatasetTests(ImageDatasetTests):
