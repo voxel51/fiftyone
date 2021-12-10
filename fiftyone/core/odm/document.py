@@ -232,7 +232,6 @@ class MongoEngineBaseDocument(SerializableDocument):
         return field_name in self._fields
 
     def get_field(self, field_name):
-        # return self._data[field_name]
         return getattr(self, field_name)
 
     def set_field(self, field_name, value, create=False):
@@ -241,7 +240,6 @@ class MongoEngineBaseDocument(SerializableDocument):
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
 
-        # self._data[field_name] = value
         setattr(self, field_name, value)
 
     def clear_field(self, field_name):
@@ -250,7 +248,6 @@ class MongoEngineBaseDocument(SerializableDocument):
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
 
-        # self._data.pop(field_name)
         super().__delattr__(field_name)
 
         # pylint: disable=no-member
