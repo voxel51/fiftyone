@@ -562,13 +562,13 @@ def _parse_env_value(value):
     except:
         pass
 
-    if value in {"True", "true"}:
+    if value in ("True", "true"):
         return True
 
-    if value in {"False", "false"}:
+    if value in ("False", "false"):
         return False
 
-    if value == "None":
+    if value in ("None", ""):
         return None
 
     if "," in value:

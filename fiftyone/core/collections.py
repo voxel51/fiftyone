@@ -1115,9 +1115,7 @@ class SampleCollection(object):
             to_mongo = lambda _id: ObjectId(_id)
         else:
             field_type = self._get_field_type(
-                field_name,
-                is_frame_field=is_frame_field,
-                ignore_primitives=True,
+                field_name, is_frame_field=is_frame_field
             )
             if field_type is not None:
                 to_mongo = field_type.to_mongo
