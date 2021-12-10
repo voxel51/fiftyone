@@ -222,6 +222,12 @@ class DatasetMixin(object):
     # Subtypes must declare this
     _is_frames_doc = None
 
+    def __setattr__(self, name, value):
+        if self.has_field(name):
+            self.set_field(name, value)
+        else:
+            super().__setattr__(name, value)
+
     @property
     def collection_name(self):
         return self.__class__.__name__

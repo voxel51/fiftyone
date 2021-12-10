@@ -60,11 +60,7 @@ class SerializableDocument(object):
                 continue
 
             if not f.startswith("_"):
-                try:
-                    value = self.get_field(f)
-                except AttributeError:
-                    value = getattr(self, f)
-
+                value = getattr(self, f)
                 if isinstance(value, ObjectId):
                     d[f] = str(value)
                 else:
