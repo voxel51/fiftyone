@@ -259,6 +259,12 @@ class DatasetMixin(object):
         return super().get_field(field_name)
 
     def set_field(self, field_name, value, create=False):
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name '%s'. Field names cannot start with '_'"
+                % field_name
+            )
+
         if not self.has_field(field_name):
             if create:
                 self.add_implied_field(field_name, value)
@@ -269,7 +275,7 @@ class DatasetMixin(object):
         elif value is not None:
             self._fields[field_name].validate(value)
 
-        super().set_field(field_name, value)
+        super().__setattr__(field_name, value)
 
     def clear_field(self, field_name):
         self.set_field(field_name, None)
@@ -951,6 +957,20 @@ class NoDatasetMixin(object):
     # Subtypes must declare this
     _is_frames_doc = None
 
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            pass
+
+        return self.get_field(name)
+
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+        else:
+            self.set_field(name, value)
+
     def _get_field_names(self, include_private=False):
         if include_private:
             return tuple(self._data.keys())
@@ -1017,6 +1037,12 @@ class NoDatasetMixin(object):
         if not create and not self.has_field(field_name):
             raise ValueError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
+            )
+
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name '%s'. Field names cannot start with '_'"
+                % field_name
             )
 
         self._data[field_name] = value

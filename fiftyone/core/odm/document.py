@@ -33,21 +33,6 @@ class SerializableDocument(object):
 
         return self.to_dict() == other.to_dict()
 
-    def __getattr__(self, name):
-        try:
-            return object.__getattr__(self, name)
-        except AttributeError:
-            pass
-
-        return self.get_field(name)
-
-    def __setattr__(self, name, value):
-        try:
-            object.__getattr__(self, name)
-            object.__setattr__(self, name, value)
-        except AttributeError:
-            self.set_field(name, value)
-
     def fancy_repr(
         self,
         class_name=None,
@@ -75,7 +60,11 @@ class SerializableDocument(object):
                 continue
 
             if not f.startswith("_"):
-                value = self.get_field(f)
+                try:
+                    value = self.get_field(f)
+                except AttributeError:
+                    value = getattr(self, f)
+
                 if isinstance(value, ObjectId):
                     d[f] = str(value)
                 else:
@@ -239,6 +228,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         return self.__class__(**kwargs)
 
     def has_field(self, field_name):
+        # pylint: disable=no-member
         return field_name in self._fields
 
     def get_field(self, field_name):
