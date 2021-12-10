@@ -38,49 +38,38 @@ const prioritySort = (
   );
 };
 
-const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
+const defaultSidebarGroups = selectorFamily<
+  SidebarGroups,
+  { modal: boolean; loadingTags: boolean }
+>({
   key: "defaultSidebarGroups",
-  get: (modal) => ({ get }) => {
+  get: ({ modal, loadingTags }) => ({ get }) => {
+    const video = get(isVideoDataset);
     const frameLabels = get(
       schemaAtoms.labelFields({ space: State.SPACE.FRAME })
     );
     const sampleLabels = get(
       schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })
     );
-    const labels = [...frameLabels, ...sampleLabels];
+    const primitives = get(
+      schemaAtoms.fieldPaths({
+        ftype: VALID_PRIMITIVE_TYPES,
+        space: State.SPACE.SAMPLE,
+      })
+    ).filter((field) => field !== "tags" && (!video || field !== "frames"));
 
     const otherSampleFields = get(
       schemaAtoms.fieldPaths({
         space: State.SPACE.SAMPLE,
         ftype: EMBEDDED_DOCUMENT_FIELD,
       })
-    ).filter((path) => !labels.includes(path));
-
-    const tags = get(
-      aggregationAtoms.values({ extended: false, modal, path: "tags" })
-    ).map((tag) => `tags.${tag}`);
-
-    const labelTags = get(
-      aggregationAtoms.cumulativeValues({
-        extended: false,
-        modal: false,
-        path: "tags",
-        ftype: EMBEDDED_DOCUMENT_FIELD,
-        embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
-      })
-    ).map((tag) => `_label_tags.${tag}`);
-    const video = get(isVideoDataset);
+    ).filter((path) => ![...frameLabels, ...sampleLabels].includes(path));
 
     const groups = {
-      tags,
-      "label tags": labelTags,
+      tags: [],
+      "label tags": [],
       labels: sampleLabels,
-      primitives: get(
-        schemaAtoms.fieldPaths({
-          ftype: VALID_PRIMITIVE_TYPES,
-          space: State.SPACE.SAMPLE,
-        })
-      ).filter((field) => field !== "tags" && (!video || field !== "frames")),
+      primitives,
       ...otherSampleFields.reduce((other, current) => {
         other[current] = get(
           schemaAtoms.fieldPaths({
@@ -96,6 +85,21 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
       groups["frame labels"] = frameLabels;
     }
 
+    if (!loadingTags) {
+      groups.tags = get(
+        aggregationAtoms.values({ extended: false, modal, path: "tags" })
+      ).map((tag) => `tags.${tag}`);
+      groups["label tags"] = get(
+        aggregationAtoms.cumulativeValues({
+          extended: false,
+          modal: false,
+          path: "tags",
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
+        })
+      ).map((tag) => `_label_tags.${tag}`);
+    }
+
     return prioritySort(groups, [
       "metadata",
       "labels",
@@ -105,19 +109,27 @@ const defaultSidebarGroups = selectorFamily<SidebarGroups, boolean>({
   },
 });
 
-export const sidebarGroups = atomFamily<SidebarGroups, boolean>({
+export const sidebarGroups = atomFamily<
+  SidebarGroups,
+  { loadingTags: boolean; modal: boolean }
+>({
   key: "sidebarGroups",
   default: defaultSidebarGroups,
 });
 
-export const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
+export const sidebarEntries = selectorFamily<
+  SidebarEntry[],
+  { modal: boolean; loadingTags: boolean }
+>({
   key: "sidebarEntries",
-  get: (modal) => ({ get }) => {
+  get: (params) => ({ get }) => {
     const entries = [
-      ...get(sidebarGroups(modal))
+      ...get(sidebarGroups(params))
         .map(([groupName, paths]) => {
           const group: GroupEntry = { name: groupName, kind: EntryKind.GROUP };
-          const shown = get(groupShown({ name: groupName, modal }));
+          const shown = get(
+            groupShown({ name: groupName, modal: params.modal })
+          );
 
           return [
             group,
@@ -136,7 +148,10 @@ export const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
         .flat(),
     ];
 
-    if (modal) {
+    if (params.loadingTags) {
+    }
+
+    if (params.modal) {
       return entries;
     }
 
@@ -170,19 +185,19 @@ export const sidebarEntries = selectorFamily<SidebarEntry[], boolean>({
 
 export const sidebarGroup = selectorFamily<
   string[],
-  { modal: boolean; group: string }
+  { modal: boolean; group: string; loadingTags: boolean }
 >({
   key: "sidebarGroup",
-  get: (params) => ({ get }) => {
-    return get(sidebarGroups(params.modal)).filter(
-      ([name]) => name === params.group
-    )[0][1];
+  get: ({ group, ...params }) => ({ get }) => {
+    return get(sidebarGroups(params)).filter(([name]) => name === group)[0][1];
   },
 });
 
 export const sidebarGroupNames = selectorFamily<string[], boolean>({
   key: "sidebarGroupNames",
   get: (modal) => ({ get }) => {
-    return get(sidebarGroups(modal)).map(([name]) => name);
+    return get(sidebarGroups({ modal, loadingTags: true })).map(
+      ([name]) => name
+    );
   },
 });

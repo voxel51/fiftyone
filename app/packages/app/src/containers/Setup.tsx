@@ -100,7 +100,7 @@ const NotebookInstructions = () => {
 };
 
 const SetupContainer = styled.div`
-  width: 800px;
+  min-width: 800px;
   padding: 3rem 1rem;
   margin: 0 auto;
 `;

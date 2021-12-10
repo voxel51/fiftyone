@@ -1695,7 +1695,7 @@ __metadata:
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: 2.0.9
-    recoil: ^0.4.1
+    recoil: ^0.5.2
     reconnecting-websocket: ^4.4.0
     resize-observer-polyfill: ^1.5.1
     rollup-plugin-polyfill-node: ^0.6.2
@@ -6457,9 +6457,9 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"recoil@npm:^0.4.1":
-  version: 0.4.1
-  resolution: "recoil@npm:0.4.1"
+"recoil@npm:^0.5.2":
+  version: 0.5.2
+  resolution: "recoil@npm:0.5.2"
   dependencies:
     hamt_plus: 1.0.2
   peerDependencies:
@@ -6469,7 +6469,7 @@ fsevents@~2.3.2:
       optional: true
     react-native:
       optional: true
-  checksum: 99e157d803b6423d24816f34debe5a1c9d7b8e0978e2bb6f85570b9a4e758b70a99c962196c49e9d35493c91699eee1b9b462294e05a9784b70b2420c5227e46
+  checksum: cc912f770d992933d2db8c543af69b7650790d185f994e75e8f4a814510e7499ea72cc175cba6f0abea12b45d90b2f8b736704fa8cd8bced00915dee1ce7b78e
   languageName: node
   linkType: hard
 

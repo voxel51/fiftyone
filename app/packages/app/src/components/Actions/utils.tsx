@@ -93,7 +93,7 @@ export const tagStatistics = selectorFamily<
   get: ({ modal, labels }) => async ({ get }) => {
     get(atoms.stateDescription);
     get(atoms.selectedSamples);
-    const activeLabels = get(schemaAtoms.activeLabelFields(modal));
+    const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
 
     const id = uuid();
     const { count, tags } = await request<{

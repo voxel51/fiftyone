@@ -83,6 +83,8 @@ def convert(d):
             elif _is_invalid_number(i):
                 d[idx] = str(i)
 
+    return d
+
 
 class FiftyOneJSONEncoder(JSONEncoder):
     """JSON encoder for the FiftyOne server.

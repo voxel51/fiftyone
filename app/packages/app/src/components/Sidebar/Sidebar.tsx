@@ -1,5 +1,4 @@
 import React, { useCallback, useRef, useState } from "react";
-import { RecoilState, useRecoilState } from "recoil";
 import { animated, Controller } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -326,23 +325,12 @@ const SidebarColumn = styled.div`
     ${({ theme }) => theme.background};
   background: ${({ theme }) => theme.background};
   ${scrollbarStyles}
-
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
 `;
 
 const Container = styled.div`
   position: relative;
   overflow: visible;
-  margin: 0 1rem;
+  margin: 0 0.5rem 0 1rem;
 
   & > div {
     position: absolute;
@@ -352,21 +340,24 @@ const Container = styled.div`
   }
 `;
 
+type RenderEntry = (
+  group: string,
+  entry: SidebarEntry,
+  controller: Controller,
+  dragging: boolean
+) => { children: React.ReactNode; disabled: boolean };
+
 const InteractiveSidebar = ({
   before,
-  entriesAtom,
+  entries,
+  setEntries,
   render,
 }: {
   before?: React.ReactNode;
-  entriesAtom: RecoilState<SidebarEntry[]>;
-  render: (
-    group: string,
-    entry: SidebarEntry,
-    controller: Controller,
-    dragging: boolean
-  ) => { children: React.ReactNode; disabled: boolean };
+  entries: SidebarEntry[];
+  setEntries: (entries: SidebarEntry[]) => void;
+  render: RenderEntry;
 }) => {
-  const [entries, setEntries] = useRecoilState(entriesAtom);
   const order = useRef<string[]>([]);
   const lastOrder = useRef<string[]>([]);
   const down = useRef<string>(null);
@@ -378,6 +369,7 @@ const InteractiveSidebar = ({
   const [isDragging, setIsDragging] = useState(false);
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
+
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
   for (const entry of entries) {

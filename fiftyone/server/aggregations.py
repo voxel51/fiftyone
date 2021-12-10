@@ -5,6 +5,8 @@ FiftyOne Server aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import tornado
+
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
@@ -20,12 +22,14 @@ from fiftyone.server.utils import AsyncRequestHandler, meets_type
 
 class AggregationsHandler(AsyncRequestHandler):
     async def post_response(self):
-        filters = self.get_argument("filters", None)
-        dataset = self.get_argument("dataset", None)
-        stages = self.get_argument("view", None)
-        sample_id = self.get_argument("sample_id", None)
+        data = tornado.escape.json_decode(self.request.body)
 
-        dataset = fod.load_dataset("dataset")
+        filters = data.get("filters", None)
+        dataset = data.get("dataset", None)
+        stages = data.get("view", None)
+        sample_id = data.get("sample_id", None)
+
+        dataset = fod.load_dataset(dataset)
 
         if stages:
             view = fov.DatasetView._build(dataset, stages)
@@ -36,10 +40,11 @@ class AggregationsHandler(AsyncRequestHandler):
                 view, filters, count_labels_tags=False, only_matches=False
             )
 
-        view = view.select(sample_id)
-        result = await get_app_statistics(view, filters)
+        if sample_id:
+            view = fov.make_optimized_select_view(view, sample_id)
 
-        return result
+        result = await get_app_statistics(view, filters)
+        return convert(result)
 
 
 def build_label_tag_aggregations(view: foc.SampleCollection):

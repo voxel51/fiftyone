@@ -166,6 +166,7 @@ const HorizontalNav = ({ entries }: Props) => {
             icon={<Assessment />}
             highlight={!expanded}
             arrow={true}
+            style={{ height: "2rem" }}
           />
         </NavButtons>
       </Nav>

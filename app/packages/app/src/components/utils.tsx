@@ -78,8 +78,10 @@ const PillButtonDiv = animated(styled.div`
 
   & > span {
     text-align: center;
+    margin: 0 0.25rem;
   }
   & > svg {
+    display: inline-block;
     height: 100%;
   }
 `);
@@ -91,7 +93,7 @@ type PillButton = {
   text?: string;
   icon?: any;
   arrow?: boolean;
-  style?: object;
+  style?: React.CSSProperties;
   title?: string;
 };
 

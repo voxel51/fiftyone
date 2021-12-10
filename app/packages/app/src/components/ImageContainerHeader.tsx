@@ -1,5 +1,4 @@
-import React from "react";
-import { CircularProgress } from "@material-ui/core";
+import React, { Suspense } from "react";
 import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -13,6 +12,7 @@ import Actions from "./Actions";
 import DropdownHandle from "./DropdownHandle";
 import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Common/RangeSlider";
+import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 type Props = {
   showSidebar: boolean;
@@ -62,28 +62,28 @@ const SliderContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
-  const totalCount = useRecoilValue(
+const Count = () => {
+  const element = useRecoilValue(viewAtoms.elementNames);
+  const total = useRecoilValue(
     aggregationAtoms.count({ path: "", extended: false, modal: false })
   );
-  const filteredCount = useRecoilValue(
-    aggregationAtoms.count({ path: "", modal: false, extended: true })
+
+  return (
+    <CountDiv>
+      <div>
+        <PathEntryCounts modal={false} path={""} />
+        &nbsp;
+        {total === 1 ? element.singular : element.plural}
+      </div>
+    </CountDiv>
   );
-  const element = useRecoilValue(viewAtoms.elementNames);
+};
+
+const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const setGridZoom = useSetRecoilState(selectors.gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
-  let countStr = null;
 
-  if (
-    typeof filteredCount === "number" &&
-    filteredCount !== totalCount &&
-    typeof totalCount === "number"
-  ) {
-    countStr = `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
-  } else if (typeof totalCount === "number") {
-    countStr = totalCount.toLocaleString();
-  }
   return (
     <Wrapper>
       <DropdownHandle
@@ -96,22 +96,9 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       <SamplesHeader>
         <Actions modal={false} style={{ flexWrap: "nowrap" }} />
         <RightContainer>
-          {countStr !== null ? (
-            <CountDiv>
-              {countStr} {totalCount === 1 ? element.singular : element.plural}
-            </CountDiv>
-          ) : (
-            <CountDiv>
-              <CircularProgress
-                style={{
-                  color: theme.font,
-                  height: 16,
-                  width: 16,
-                  minWidth: 16,
-                }}
-              />
-            </CountDiv>
-          )}
+          <Suspense fallback={"Loading..."}>
+            <Count />
+          </Suspense>
           <SliderContainer>
             <div style={{ flexGrow: 1 }} title={"Zoom"}>
               <Slider

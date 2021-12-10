@@ -44,7 +44,6 @@ const Loading = React.memo(
     const props = useSpring({
       from: { transform: "rotate(0deg)" },
       transform: "rotate(360deg)",
-      onRest: () => setResetOrbit((state) => !state),
       reset: resetOrbit,
       config: {
         duration: 3000,

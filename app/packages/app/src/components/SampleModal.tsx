@@ -6,8 +6,9 @@ import Actions from "./Actions";
 import FieldsSidebar, {
   Entries,
   EntryKind,
-  sidebarEntries,
   SidebarEntry,
+  useEntries,
+  useTagText,
 } from "./Sidebar";
 import Looker from "./Looker";
 import * as atoms from "../recoil/atoms";
@@ -16,7 +17,6 @@ import { useMessageHandler, useTheme } from "../utils/hooks";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
 import { Controller } from "@react-spring/core";
-import { elementNames } from "../recoil/view";
 import { State } from "../recoil/types";
 
 export const ModalWrapper = styled.div`
@@ -120,11 +120,11 @@ const SampleModal = ({ onClose }: Props, ref) => {
     index,
     getIndex,
   } = useRecoilValue(atoms.modal);
-
-  const { singular } = useRecoilValue(elementNames);
   const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
+  const [entries, setEntries] = useEntries(true);
+  const tagText = useTagText();
 
   useSampleUpdate(lookerRef);
   const theme = useTheme();
@@ -199,9 +199,9 @@ const SampleModal = ({ onClose }: Props, ref) => {
             <Entries.Empty
               text={
                 group === "tags"
-                  ? `No ${singular} tags`
+                  ? tagText.sample
                   : group === "label tags"
-                  ? "No label tags"
+                  ? tagText.label
                   : "No fields"
               }
             />
@@ -229,7 +229,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
           style={{ borderRight: `2px solid ${theme.border}` }}
         />
         <FieldsSidebar
-          entriesAtom={sidebarEntries(true)}
+          entries={entries}
+          setEntries={setEntries}
           render={renderEntry}
         />
         <Actions

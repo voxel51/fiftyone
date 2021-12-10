@@ -5,6 +5,7 @@ FiftyOne server utils.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import tornado
 import tornado.web
 
 from fiftyone import ViewField as F
@@ -13,13 +14,17 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 
+from fiftyone.server.json_util import convert
+
 
 class RequestHandler(tornado.web.RequestHandler):
     """"Base class for HTTP request handlers"""
 
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header(
+            "Access-Control-Allow-Headers", "content-type, x-requested-with"
+        )
         self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
@@ -45,15 +50,12 @@ class RequestHandler(tornado.web.RequestHandler):
         """
         raise NotImplementedError("subclass must implement post_response()")
 
+    def options(self):
+        self.clear_header("Content-Type")
 
-class AsyncRequestHandler(tornado.web.RequestHandler):
+
+class AsyncRequestHandler(RequestHandler):
     """"Base class for Async HTTP request handlers"""
-
-    def set_default_headers(self, *args, **kwargs):
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-        self.set_header("x-colab-notebook-cache-control", "no-cache")
 
     async def get(self):
         self.write(await self.get_response())
@@ -67,7 +69,7 @@ class AsyncRequestHandler(tornado.web.RequestHandler):
         raise NotImplementedError("subclass must implement get_response()")
 
     async def post(self):
-        self.write(self.post_response())
+        self.write(await self.post_response())
 
     async def post_response(self):
         """Returns the serializable POST response

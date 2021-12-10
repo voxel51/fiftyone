@@ -1,17 +1,11 @@
-import { atom, GetRecoilValue, selector, selectorFamily } from "recoil";
-import { v4 as uuid } from "uuid";
-
-import { request } from "../utils/socket";
-import { viewsAreEqual } from "../utils/view";
+import { GetRecoilValue, selectorFamily, useRecoilValueLoadable } from "recoil";
 
 import * as atoms from "./atoms";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "./constants";
 import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
-import * as viewAtoms from "./view";
-import { State } from "./types";
-import { modalFilters } from "./filters";
+import { http } from "../shared/connection";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -48,11 +42,6 @@ type Aggregations = CategoricalAggregations | NumericAggregations;
 
 type AggregationsData = {
   [path: string]: Aggregations;
-};
-
-type AggregationsResult = {
-  view: State.Stage[];
-  data: AggregationsData;
 };
 
 export const addNoneCounts = (
@@ -94,44 +83,6 @@ export const addNoneCounts = (
   }
 };
 
-export const aggregationsRaw = atom<AggregationsResult>({
-  key: "aggregationsRaw",
-  default: {
-    view: null,
-    data: {},
-  },
-});
-
-export const aggregations = selector<AggregationsData>({
-  key: "aggregations",
-  get: ({ get }) => {
-    let { data, view } = get(aggregationsRaw);
-    if (!view) {
-      return null;
-    }
-
-    if (viewsAreEqual(view, get(viewAtoms.view))) {
-      data = { ...data };
-      data && addNoneCounts(data);
-      return data;
-    }
-    return null;
-  },
-});
-
-type ExtendedAggregationsResult = {
-  filters: State.Filters;
-} & AggregationsResult;
-
-export const extendedAggregationsRaw = atom<ExtendedAggregationsResult>({
-  key: "extendedAggregationsStatsRaw",
-  default: {
-    view: null,
-    data: null,
-    filters: null,
-  },
-});
-
 const normalizeFilters = (filters) => {
   const names = Object.keys(filters).sort();
   const list = names.map((n) => filters[n]);
@@ -142,68 +93,32 @@ export const filtersAreEqual = (filtersOne, filtersTwo) => {
   return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
 };
 
-export const extendedAggregations = selector({
-  key: "extendedAggregations",
-  get: ({ get }) => {
-    if (!get(filterAtoms.hasFilters(false))) {
-      return get(aggregations);
+const aggregations = selectorFamily<
+  AggregationsData,
+  { modal: boolean; extended: boolean }
+>({
+  key: "aggregations",
+  get: ({ modal, extended }) => async ({ get }) => {
+    let filters = null;
+    if (extended) {
+      filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
     }
 
-    let { view, filters, data } = get(extendedAggregationsRaw);
-    if (!view) {
-      return null;
-    }
-    if (!viewsAreEqual(view, get(viewAtoms.view))) {
-      return null;
-    }
-    if (!filtersAreEqual(filters, get(filterAtoms.filters))) {
-      return null;
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    data = { ...data };
-    addNoneCounts(data);
-    return data;
-  },
-});
-
-const modalAggregations = selector<AggregationsData>({
-  key: "modalAggregations",
-  get: async ({ get }) => {
-    const id = uuid();
-    const { data } = await request({
-      type: "modal_statistics",
-      uuid: id,
-      args: {
-        sample_id: get(atoms.modal).sample._id,
-      },
-    });
-
-    data && addNoneCounts(data, get(selectors.isVideoDataset));
-
-    return data;
-  },
-});
-
-const extendedModalAggregations = selector<AggregationsData>({
-  key: "extendedModalAggregations",
-  get: async ({ get }) => {
-    if (!get(filterAtoms.hasFilters(true))) {
-      return get(modalAggregations);
-    }
-
-    const id = uuid();
-    const { data } = await request({
-      type: "modal_statistics",
-      uuid: id,
-      args: {
-        sample_id: get(atoms.modal).sample._id,
-        filters: get(modalFilters),
-      },
-    });
+    const data = (await (
+      await fetch(`${http}/aggregations`, {
+        cache: "no-cache",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "cors",
+        body: JSON.stringify({
+          filters,
+          sample_id: modal ? get(atoms.modal).sample._id : null,
+          dataset: get(selectors.datasetName),
+        }),
+      })
+    ).json()) as AggregationsData;
 
     data && addNoneCounts(data, get(selectors.isVideoDataset));
 
@@ -217,15 +132,7 @@ export const noneCount = selectorFamily<
 >({
   key: "noneCount",
   get: ({ extended, path, modal }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
-
-    return get(atom)[path].None;
+    return get(aggregations({ modal, extended }))[path].None;
   },
 });
 
@@ -235,14 +142,7 @@ export const labelTagCounts = selectorFamily<
 >({
   key: "labelTagCounts",
   get: ({ modal, extended }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
-    const data = get(atom);
+    const data = get(aggregations({ modal, extended }));
     const paths = get(schemaAtoms.labelPaths({})).map((path) => `${path}.tags`);
     const result = {};
 
@@ -267,14 +167,8 @@ export const sampleTagCounts = selectorFamily<
 >({
   key: "sampleTagCounts",
   get: ({ modal, extended }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
-    const data = get(atom).tags as CategoricalAggregations;
+    const data = get(aggregations({ modal, extended }))
+      .tags as CategoricalAggregations;
     return Object.fromEntries(data.CountValues[1]);
   },
 });
@@ -286,15 +180,9 @@ const makeCountResults = <T>(key) =>
   >({
     key,
     get: ({ extended, path, modal }) => ({ get }) => {
-      const atom = modal
-        ? extended
-          ? extendedModalAggregations
-          : modalAggregations
-        : extended
-        ? extendedAggregations
-        : aggregations;
-
-      const data = get(atom)[path] as CategoricalAggregations<T>;
+      const data = get(aggregations({ modal, extended }))[
+        path
+      ] as CategoricalAggregations<T>;
 
       return {
         count: data.Count + data.None,
@@ -314,16 +202,8 @@ export const stringCountResults = makeCountResults<string | null>(
 export const labelCount = selectorFamily<number | null, boolean>({
   key: "labelCount",
   get: (modal) => ({ get }) => {
-    const atom = get(filterAtoms.hasFilters(modal))
-      ? modal
-        ? extendedModalAggregations
-        : extendedAggregations
-      : modal
-      ? modalAggregations
-      : aggregations;
-
     let sum = 0;
-    const data = get(atom);
+    const data = get(aggregations({ modal, extended: false }));
 
     for (const label of get(schemaAtoms.activeLabelPaths({ modal }))) {
       sum += data[label].Count;
@@ -338,15 +218,7 @@ export const values = selectorFamily<
 >({
   key: "values",
   get: ({ extended, path, modal }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
-
-    const data = get(atom);
+    const data = get(aggregations({ modal, extended }));
 
     if (data) {
       const agg = data[path] as CategoricalAggregations<string>;
@@ -368,18 +240,8 @@ export const count = selectorFamily<
   }
 >({
   key: "count",
-  get: (params) => ({ get }) => {
-    const { extended, modal, path } = params;
-
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
-
-    const data = get(atom);
+  get: ({ extended, path, modal }) => ({ get }) => {
+    const data = get(aggregations({ modal, extended }));
     if (!data) {
       return null;
     }
@@ -411,15 +273,8 @@ export const counts = selectorFamily<
 >({
   key: "counts",
   get: ({ extended, modal, path }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
+    const data = get(aggregations({ modal, extended }));
 
-    const data = get(atom);
     return data
       ? Object.fromEntries(
           (data[path] as CategoricalAggregations).CountValues[1]
@@ -512,15 +367,10 @@ export const bounds = selectorFamily<
 >({
   key: "bounds",
   get: ({ extended, modal, path }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
+    const data = get(aggregations({ modal, extended }))[
+      path
+    ] as NumericAggregations;
 
-    const data = get(atom)[path] as NumericAggregations;
     const isDateOrDateTime = get(
       schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
     );
@@ -556,15 +406,10 @@ export const nonfiniteCounts = selectorFamily<
 >({
   key: "nonfiniteCounts",
   get: ({ extended, modal, path }) => ({ get }) => {
-    const atom = modal
-      ? extended
-        ? extendedModalAggregations
-        : modalAggregations
-      : extended
-      ? extendedAggregations
-      : aggregations;
+    const data = get(aggregations({ modal, extended }))[
+      path
+    ] as NumericAggregations;
 
-    const data = get(atom)[path] as NumericAggregations;
     const isFloatField = get(
       schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
     );
@@ -584,3 +429,9 @@ export const nonfiniteCounts = selectorFamily<
     return result;
   },
 });
+
+export const useLoading = (params: { extended: boolean; modal: boolean }) => {
+  const { state } = useRecoilValueLoadable(aggregations(params));
+
+  return state === "loading";
+};

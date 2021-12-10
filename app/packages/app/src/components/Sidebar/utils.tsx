@@ -1,3 +1,9 @@
+import { useRecoilStateLoadable, useRecoilValue } from "recoil";
+
+import { useLoading } from "../../recoil/aggregations";
+import { elementNames } from "../../recoil/view";
+import { sidebarEntries } from "./recoil";
+
 export enum EntryKind {
   EMPTY = "EMPTY",
   GROUP = "GROUP",
@@ -29,3 +35,31 @@ export interface PathEntry {
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | TailEntry;
 
 export type SidebarGroups = [string, string[]][];
+
+export const useTagText = () => {
+  const { singular } = useRecoilValue(elementNames);
+  const loadingTags = useLoading({ extended: false, modal: false });
+
+  if (loadingTags) {
+    return {
+      sample: `Loading ${singular} tags...`,
+      label: "Loading label tags",
+    };
+  }
+
+  return { sample: `No ${singular} tags`, label: "No label tags" };
+};
+
+export const useEntries = (
+  modal: boolean
+): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
+  const loading = useLoading({ modal, extended: false });
+  const [entries, setEntries] = useRecoilStateLoadable(
+    sidebarEntries({ modal, loadingTags: true })
+  );
+  const loadingEntries = useRecoilValue(
+    sidebarEntries({ modal, loadingTags: true })
+  );
+
+  return [loading ? loadingEntries : entries.contents, setEntries];
+};

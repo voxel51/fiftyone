@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -7,7 +7,8 @@ import FieldsSidebar, {
   EntryKind,
   Entries,
   SidebarEntry,
-  sidebarEntries,
+  useTagText,
+  useEntries,
 } from "../components/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
@@ -15,7 +16,6 @@ import ViewBar from "../components/ViewBar/ViewBar";
 
 import * as atoms from "../recoil/atoms";
 import { State } from "../recoil/types";
-import { elementNames } from "../recoil/view";
 
 const SidebarContainer = styled.div`
   display: block;
@@ -37,7 +37,8 @@ const Container = styled.div`
 
 const SamplesContainer = React.memo(() => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
-  const { singular } = useRecoilValue(elementNames);
+  const tagText = useTagText();
+  const [entries, setEntries] = useEntries(false);
 
   const renderGridEntry = (
     group: string,
@@ -104,9 +105,9 @@ const SamplesContainer = React.memo(() => {
             <Entries.Empty
               text={
                 group === "tags"
-                  ? `No ${singular} tags`
+                  ? tagText.sample
                   : group === "label tags"
-                  ? "No label tags"
+                  ? tagText.label
                   : "No fields"
               }
             />
@@ -130,7 +131,8 @@ const SamplesContainer = React.memo(() => {
         {showSidebar && (
           <SidebarContainer>
             <FieldsSidebar
-              entriesAtom={sidebarEntries(false)}
+              entries={entries}
+              setEntries={setEntries}
               render={renderGridEntry}
             />
           </SidebarContainer>
