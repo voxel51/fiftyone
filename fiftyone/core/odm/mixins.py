@@ -223,10 +223,10 @@ class DatasetMixin(object):
     _is_frames_doc = None
 
     def __setattr__(self, name, value):
-        if self.has_field(name):
-            self.set_field(name, value)
-        else:
-            super().__setattr__(name, value)
+        if name in self._fields and value is not None:
+            self._fields[name].validate(value)
+
+        super().__setattr__(name, value)
 
     @property
     def collection_name(self):
