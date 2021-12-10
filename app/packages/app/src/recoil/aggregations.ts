@@ -100,8 +100,10 @@ const aggregations = selectorFamily<
   key: "aggregations",
   get: ({ modal, extended }) => async ({ get }) => {
     let filters = null;
-    if (extended) {
+    if (extended && get(filterAtoms.hasFilters(modal))) {
       filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
+    } else if (extended) {
+      return get(aggregations({ extended: false, modal })) as AggregationsData;
     }
 
     const data = (await (

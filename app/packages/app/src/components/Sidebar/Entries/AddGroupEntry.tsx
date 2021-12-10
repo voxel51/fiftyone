@@ -34,7 +34,9 @@ const AddGroupDiv = styled.div`
 `;
 
 const AddGroup = () => {
-  const [entries, setEntries] = useRecoilState(sidebarEntries(false));
+  const [entries, setEntries] = useRecoilState(
+    sidebarEntries({ modal: false, loadingTags: true })
+  );
   const [value, setValue] = useState("");
   const currentGroups = useRecoilValue(sidebarGroupNames(false));
 

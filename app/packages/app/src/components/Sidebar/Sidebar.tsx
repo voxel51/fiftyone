@@ -276,7 +276,7 @@ const getAfterKey = (
     if (result === null) return null;
 
     let index = order.indexOf(result) + (up ? -1 : 1);
-    if (result === activeKey) index--;
+    if (result === activeKey) up ? index++ : index--;
     if (index <= 0) return null;
 
     if (order[index] === activeKey) return activeKey;

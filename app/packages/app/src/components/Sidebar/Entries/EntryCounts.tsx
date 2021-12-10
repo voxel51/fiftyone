@@ -27,11 +27,11 @@ const EntryCounts = ({
   countAtom,
   subcountAtom,
 }: {
-  countAtom: RecoilValue<number>;
+  countAtom?: RecoilValue<number>;
   subcountAtom?: RecoilValue<number>;
 }) => {
   const [count, subcount] = [
-    useRecoilValue(countAtom),
+    countAtom ? useRecoilValue(countAtom) : null,
     subcountAtom ? useRecoilValue(subcountAtom) : null,
   ];
 
@@ -64,8 +64,10 @@ const SuspenseEntryCounts = ({
   subcountAtom: RecoilValue<number>;
 }) => {
   return (
-    <Suspense fallback={<EntryCounts countAtom={countAtom} />}>
-      <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />
+    <Suspense fallback={<EntryCounts />}>
+      <Suspense fallback={<EntryCounts countAtom={countAtom} />}>
+        <EntryCounts countAtom={countAtom} subcountAtom={subcountAtom} />
+      </Suspense>
     </Suspense>
   );
 };
@@ -88,7 +90,10 @@ export const PathEntryCounts = ({
   );
 
   return (
-    <EntryCounts countAtom={getAtom(false)} subcountAtom={getAtom(true)} />
+    <SuspenseEntryCounts
+      countAtom={getAtom(false)}
+      subcountAtom={getAtom(true)}
+    />
   );
 };
 

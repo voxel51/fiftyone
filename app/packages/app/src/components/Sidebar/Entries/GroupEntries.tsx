@@ -13,6 +13,7 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
+  useRecoilValueLoadable,
 } from "recoil";
 import styled from "styled-components";
 
@@ -37,7 +38,8 @@ import { elementNames } from "../../../recoil/view";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
-  get: (params) => ({ get }) => get(sidebarGroup(params)).length,
+  get: (params) => ({ get }) =>
+    get(sidebarGroup({ ...params, loadingTags: true })).length,
 });
 
 const TAGS = {
@@ -55,7 +57,11 @@ const numMatchedTags = selectorFamily<
     const active = new Set(get(filterAtoms.matchedTags(params)));
 
     for (const path of get(
-      sidebarGroup({ group: TAGS[params.key], modal: params.modal })
+      sidebarGroup({
+        group: TAGS[params.key],
+        modal: params.modal,
+        loadingTags: true,
+      })
     )) {
       if (active.has(path)) count++;
     }
@@ -72,7 +78,7 @@ const numGroupFieldsFiltered = selectorFamily<
   get: (params) => ({ get }) => {
     let count = 0;
 
-    for (const path of get(sidebarGroup(params))) {
+    for (const path of get(sidebarGroup({ ...params, loadingTags: true }))) {
       if (get(filterAtoms.fieldIsFiltered({ path, modal: params.modal })))
         count++;
     }
@@ -92,7 +98,7 @@ const numGroupFieldsActive = selectorFamily<
       get(schemaAtoms.activeFields({ modal: params.modal }))
     );
 
-    for (const path of get(sidebarGroup(params))) {
+    for (const path of get(sidebarGroup({ ...params, loadingTags: true }))) {
       if (active.has(path)) count++;
     }
 
@@ -109,9 +115,11 @@ export const useRenameGroup = (modal: boolean, group: string) => {
         return;
       }
 
-      const groups = await snapshot.getPromise(sidebarGroups(modal));
+      const groups = await snapshot.getPromise(
+        sidebarGroups({ modal, loadingTags: true })
+      );
       set(
-        sidebarGroups(modal),
+        sidebarGroups({ modal, loadingTags: true }),
         groups.map<[string, string[]]>(([name, paths]) => [
           name === group ? newName : name,
           paths,
@@ -126,9 +134,11 @@ export const useDeleteGroup = (modal: boolean, group: string) => {
   const numFields = useRecoilValue(groupLength({ modal, group }));
   const onDelete = useRecoilCallback(
     ({ set, snapshot }) => async () => {
-      const groups = await snapshot.getPromise(sidebarGroups(modal));
+      const groups = await snapshot.getPromise(
+        sidebarGroups({ modal, loadingTags: true })
+      );
       set(
-        sidebarGroups(modal),
+        sidebarGroups({ modal, loadingTags: true }),
         groups.filter(([name]) => name !== group)
       );
     },
@@ -145,7 +155,9 @@ export const useDeleteGroup = (modal: boolean, group: string) => {
 const useClearActive = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) => async () => {
-      const paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
+      const paths = await snapshot.getPromise(
+        sidebarGroup({ modal, group, loadingTags: true })
+      );
       const active = await snapshot.getPromise(
         schemaAtoms.activeFields({ modal })
       );
@@ -159,28 +171,49 @@ const useClearActive = (modal: boolean, group: string) => {
   );
 };
 
-const useClearMatched = (
-  tags: string[],
-  allTags: string[],
-  matched: RecoilState<Set<string>>
-) => {
-  const [matchedTags, setMatchedTags] = useRecoilState(matched);
+const getTags = (modal, tagKey) =>
+  tagKey === State.TagKey.LABEL
+    ? aggregationAtoms.cumulativeValues({
+        extended: false,
+        modal,
+        ...MATCH_LABEL_TAGS,
+      })
+    : aggregationAtoms.values({ extended: false, modal, path: "tags" });
+
+const useClearMatched = ({
+  modal,
+  tagKey,
+}: {
+  modal: boolean;
+  tagKey: State.TagKey;
+}) => {
+  const [matched, setMatched] = useRecoilState(
+    filterAtoms.matchedTags({ key: tagKey, modal })
+  );
+
+  const current = useRecoilValueLoadable(getTags(modal, tagKey));
+  const all = useRecoilValueLoadable(getTags(modal, tagKey));
+
   useLayoutEffect(() => {
+    if (current.state === "loading" || all.state === "loading") return;
+
     const newMatches = new Set<string>();
-    matchedTags.forEach((tag) => {
-      tags.includes(tag) && newMatches.add(tag);
+    matched.forEach((tag) => {
+      current.contents.includes(tag) && newMatches.add(tag);
     });
 
-    newMatches.size !== matchedTags.size && setMatchedTags(newMatches);
-  }, [matchedTags, allTags]);
+    newMatches.size !== matched.size && setMatched(newMatches);
+  }, [matched, current, all]);
 
-  return () => setMatchedTags(new Set());
+  return () => setMatched(new Set());
 };
 
 const useClearFiltered = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) => async () => {
-      let paths = await snapshot.getPromise(sidebarGroup({ modal, group }));
+      let paths = await snapshot.getPromise(
+        sidebarGroup({ modal, group, loadingTags: true })
+      );
       const filters = await snapshot.getPromise(
         modal ? filterAtoms.modalFilters : filterAtoms.filters
       );
@@ -359,23 +392,6 @@ export const TagGroupEntry = React.memo(
       groupShown({ name: TAGS[tagKey], modal })
     );
     const { plural } = useRecoilValue(elementNames);
-
-    const getTags = useCallback(
-      (modal, extended) =>
-        tagKey === State.TagKey.LABEL
-          ? aggregationAtoms.cumulativeValues({
-              extended,
-              modal,
-              ...MATCH_LABEL_TAGS,
-            })
-          : aggregationAtoms.values({ extended, modal, path: "tags" }),
-      [tagKey]
-    );
-
-    const tags = useRecoilValue(getTags(modal, false));
-    const allTags = useRecoilValue(getTags(false, false));
-    const matchedAtom = filterAtoms.matchedTags({ key: tagKey, modal });
-
     const name = `${tagKey === State.TagKey.SAMPLE ? plural : "label"} tags`;
     return (
       <GroupEntry
@@ -388,7 +404,7 @@ export const TagGroupEntry = React.memo(
             entries={[
               {
                 count: useRecoilValue(numMatchedTags({ modal, key: tagKey })),
-                onClick: useClearMatched(tags, allTags, matchedAtom),
+                onClick: useClearMatched({ modal, tagKey }),
                 icon: <Visibility />,
                 title: `Clear matched ${name}`,
               },

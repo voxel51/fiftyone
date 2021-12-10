@@ -2,7 +2,12 @@ import React, { useMemo, useState } from "react";
 import { Checkbox } from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
-import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
+import {
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 
 import { Field } from "@fiftyone/utilities";
 
@@ -151,7 +156,7 @@ const FilterableEntry = React.memo(
     const [active, setActive] = useRecoilState(
       schemaAtoms.activeField({ modal, path })
     );
-    const expandable = useRecoilValue(canExpand({ modal, path }));
+    const expandable = useRecoilValueLoadable(canExpand({ modal, path }));
 
     return (
       <RegularEntry
@@ -175,7 +180,7 @@ const FilterableEntry = React.memo(
             </span>
             <PathEntryCounts key="count" modal={modal} path={expandedPath} />
 
-            {expandable && (
+            {expandable.state !== "loading" && expandable.contents && (
               <Arrow
                 key="arrow"
                 style={{ cursor: "pointer", margin: 0 }}

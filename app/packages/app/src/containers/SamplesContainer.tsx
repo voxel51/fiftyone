@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { useRecoilState } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
@@ -130,11 +130,13 @@ const SamplesContainer = React.memo(() => {
       <Container>
         {showSidebar && (
           <SidebarContainer>
-            <FieldsSidebar
-              entries={entries}
-              setEntries={setEntries}
-              render={renderGridEntry}
-            />
+            <Suspense fallback={"WW"}>
+              <FieldsSidebar
+                entries={entries}
+                setEntries={setEntries}
+                render={renderGridEntry}
+              />
+            </Suspense>
           </SidebarContainer>
         )}
         <ContentColumn style={{ paddingLeft: showSidebar ? 0 : "1rem" }}>
