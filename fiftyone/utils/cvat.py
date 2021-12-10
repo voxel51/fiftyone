@@ -2496,6 +2496,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         url (None): the url of the CVAT server
         username (None): the CVAT username
         password (None): the CVAT password
+        headers (None): an optional dict of headers to add to all CVAT API
+            requests
         segment_size (None): maximum number of images per job. Not applicable
             to videos
         image_quality (75): an int in `[0, 100]` determining the image quality
@@ -2520,6 +2522,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             default, no project is used
         project_id (None): an optional ID of an existing CVAT project to which
             to upload the annotation tasks. By default, no project is used
+        occluded_attr (None): an optional attribute name containing existing
+            occluded values and/or in which to store downloaded occluded values
+            for all objects in the annotation run
     """
 
     def __init__(
@@ -2530,6 +2535,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         url=None,
         username=None,
         password=None,
+        headers=None,
         segment_size=None,
         image_quality=75,
         use_cache=True,
@@ -2540,6 +2546,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_reviewers=None,
         project_name=None,
         project_id=None,
+        occluded_attr=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -2554,10 +2561,12 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.job_reviewers = job_reviewers
         self.project_name = project_name
         self.project_id = project_id
+        self.occluded_attr = occluded_attr
 
         # store privately so these aren't serialized
         self._username = username
         self._password = password
+        self._headers = headers
 
     @property
     def username(self):
@@ -2574,6 +2583,14 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     @password.setter
     def password(self, value):
         self._password = value
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @headers.setter
+    def headers(self, value):
+        self._headers = value
 
 
 class CVATBackend(foua.AnnotationBackend):
@@ -2643,6 +2660,7 @@ class CVATBackend(foua.AnnotationBackend):
             self.config.url,
             username=self.config.username,
             password=self.config.password,
+            headers=self.config.headers,
         )
 
     def upload_annotations(self, samples, launch_editor=False):
@@ -2694,7 +2712,9 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
 
-    def load_credentials(self, url=None, username=None, password=None):
+    def load_credentials(
+        self, url=None, username=None, password=None, headers=None
+    ):
         """Load the CVAT credentials from the given keyword arguments or the
         FiftyOne annotation config.
 
@@ -2702,9 +2722,11 @@ class CVATAnnotationResults(foua.AnnotationResults):
             url (None): the url of the CVAT server
             username (None): the CVAT username
             password (None): the CVAT password
+            headers (None): an optional dict of headers to add to all CVAT API
+                requests
         """
         self._load_config_parameters(
-            url=url, username=username, password=password
+            url=url, username=username, password=password, headers=headers
         )
 
     def connect_to_api(self):
@@ -2887,13 +2909,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         url: url of the CVAT server
         username (None): the CVAT username
         password (None): the CVAT password
+        headers (None): an optional dict of headers to add to all requests
     """
 
-    def __init__(self, name, url, username=None, password=None):
+    def __init__(self, name, url, username=None, password=None, headers=None):
         self._name = name
         self._url = url
         self._username = username
         self._password = password
+        self._headers = headers
 
         self._session = None
         self._user_id_map = {}
@@ -2990,6 +3014,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         self._session = requests.Session()
+
+        if self._headers:
+            self._session.headers.update(self._headers)
+
         response = self.post(
             self.login_url, data={"username": username, "password": password}
         )
@@ -3365,7 +3393,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # IMPORTANT: CVAT organizes media within a task alphabetically by
             # filename, so we must give CVAT filenames whose alphabetical order
             # matches the order of `paths`
-            filename = "%06d%s" % (idx, os.path.splitext(path)[1])
+            filename = "%06d_%s" % (idx, os.path.basename(path))
             files["client_files[%d]" % idx] = (filename, open(path, "rb"))
 
         self.post(self.task_data_url(task_id), data=data, files=files)
@@ -3414,6 +3442,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         config = backend.config
         label_schema = config.label_schema
+        occluded_attr = config.occluded_attr
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
@@ -3439,11 +3468,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             assign_scalar_attrs,
             occluded_attrs,
             _,
-        ) = self._get_cvat_schema(label_schema, project_id=project_id)
+        ) = self._get_cvat_schema(
+            label_schema, project_id=project_id, occluded_attr=occluded_attr
+        )
 
         # When adding to an existing project, its label schema is inherited, so
         # we need to store the updated one
-        if project_id is not None:
+        if project_id is not None or occluded_attr is not None:
             config.label_schema = label_schema
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
@@ -3544,6 +3575,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the annotations dict
         """
         label_schema = results.config.label_schema
+        occluded_attr = results.config.occluded_attr
         id_map = results.id_map
         server_id_map = results.server_id_map
         task_ids = results.task_ids
@@ -3564,7 +3596,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             assigned_scalar_attrs,
             occluded_attrs,
             label_field_classes,
-        ) = self._get_cvat_schema(label_schema, project_id=project_id)
+        ) = self._get_cvat_schema(
+            label_schema, project_id=project_id, occluded_attr=occluded_attr
+        )
 
         labels_task_map_rev = defaultdict(list)
         for lf, tasks in labels_task_map.items():
@@ -3730,13 +3764,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return project_name, project_id
 
-    def _get_cvat_schema(self, label_schema, project_id=None):
+    def _get_cvat_schema(
+        self, label_schema, project_id=None, occluded_attr=None
+    ):
         if project_id is not None:
-            return self._convert_cvat_schema(label_schema, project_id)
+            return self._convert_cvat_schema(
+                label_schema, project_id, occluded_attr=occluded_attr
+            )
 
-        return self._build_cvat_schema(label_schema)
+        return self._build_cvat_schema(
+            label_schema, occluded_attr=occluded_attr
+        )
 
-    def _convert_cvat_schema(self, label_schema, project_id):
+    def _convert_cvat_schema(
+        self, label_schema, project_id, occluded_attr=None
+    ):
         labels = self._get_project_labels(project_id)
 
         cvat_schema = {}
@@ -3770,6 +3812,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if values and values[0] != "":
                         label_attrs[attr_name]["values"] = values
 
+            if occluded_attr is not None:
+                label_attrs[occluded_attr] = {}
+
             classes_and_attrs.append(
                 {"classes": [name], "attributes": label_attrs,}
             )
@@ -3792,6 +3837,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 assign_scalar_attrs[label_field] = None
 
             label_field_classes[label_field] = deepcopy(class_names)
+            if occluded_attr is not None:
+                occluded_attrs[label_field] = {
+                    c: occluded_attr for c in class_names.keys()
+                }
 
         if labels_to_update:
             self._add_project_label_ids(project_id, list(labels_to_update))
@@ -3979,10 +4028,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             id_map = {}
             for anno in anno_list:
                 server_id = anno["id"]
-                label_attr_id = label_id_map[anno["label_id"]]
-                for attr in anno["attributes"]:
-                    if attr["spec_id"] == label_attr_id:
-                        id_map[server_id] = attr["value"]
+                label_id = anno["label_id"]
+                if label_id in label_id_map:
+                    label_attr_id = label_id_map[label_id]
+                    for attr in anno["attributes"]:
+                        if attr["spec_id"] == label_attr_id:
+                            id_map[server_id] = attr["value"]
 
             server_id_map[anno_type] = id_map
 
@@ -4468,22 +4519,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return arg
 
-    def _build_cvat_schema(self, label_schema):
+    def _build_cvat_schema(self, label_schema, occluded_attr=None):
         cvat_schema = {}
         assign_scalar_attrs = {}
         occluded_attrs = defaultdict(dict)
         label_field_classes = defaultdict(dict)
 
         _class_label_fields = {}
-        _duplicate_classes = []
+        _duplicate_classes = set()
+        _prev_field_classes = set()
 
         for label_field, label_info in label_schema.items():
+            _field_classes = set()
             label_type = label_info["type"]
             is_existing_field = label_info["existing_field"]
             classes = label_info["classes"]
             attributes, occluded_attr_name = self._to_cvat_attributes(
                 label_info["attributes"]
             )
+            if occluded_attr_name is None and occluded_attr is not None:
+                occluded_attr_name = occluded_attr
+                label_schema[label_field]["attributes"][occluded_attr] = {}
 
             # Must track label IDs for existing label fields
             if is_existing_field and label_type != "scalar":
@@ -4526,8 +4582,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for name in _classes:
                     # If two label fields share a class name, we must append
                     # `label_field` to all instances of `name` to disambiguate
-                    if name in cvat_schema:
-                        _duplicate_classes.append(name)
+                    if (
+                        name in _prev_field_classes
+                        and name not in _duplicate_classes
+                    ):
+                        _duplicate_classes.add(name)
 
                         prev_field = _class_label_fields[name]
 
@@ -4539,6 +4598,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         if name in occluded_attrs[label_field]:
                             attr_name = occluded_attrs[label_field].pop(name)
                             occluded_attrs[label_field][new_name] = attr_name
+
+                    _field_classes.add(name)
 
                     if name in _duplicate_classes:
                         new_name = "%s_%s" % (name, label_field)
@@ -4552,6 +4613,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = occluded_attr_name
 
+            _prev_field_classes |= _field_classes
+
             # Class-specific attributes
             for _class in classes:
                 if etau.is_str(_class):
@@ -4561,6 +4624,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 _attrs, _occluded_attr_name = self._to_cvat_attributes(
                     _class["attributes"]
                 )
+                if _occluded_attr_name is None and occluded_attr is not None:
+                    _occluded_attr_name = occluded_attr
 
                 if "label_id" in _attrs:
                     raise ValueError(
@@ -5888,15 +5953,6 @@ def _from_int_bool(value):
 
 
 def _parse_value(value):
-    if value in (None, "None", ""):
-        return None
-
-    if value in {"True", "true"}:
-        return True
-
-    if value in {"False", "false"}:
-        return False
-
     try:
         return int(value)
     except:
@@ -5906,6 +5962,16 @@ def _parse_value(value):
         return float(value)
     except:
         pass
+
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
+
+        if value in ("False", "false"):
+            return False
+
+        if value in ("None", ""):
+            return None
 
     return value
 

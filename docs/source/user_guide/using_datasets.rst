@@ -166,6 +166,7 @@ Datasets can also store more specific types of ancillary information such as
 :ref:`mask targets <storing-mask-targets>`.
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 

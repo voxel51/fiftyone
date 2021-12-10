@@ -182,6 +182,7 @@ def annotate(
 
     config = _parse_config(backend, None, media_field, **kwargs)
     anno_backend = config.build()
+    anno_backend.ensure_requirements()
 
     label_schema, samples = _build_label_schema(
         samples,
@@ -376,6 +377,8 @@ def _build_label_schema(
 
     _label_schema = {}
 
+    is_video = samples.media_type == fom.VIDEO
+
     for _label_field, _label_info in label_schema.items():
         (
             _label_type,
@@ -401,6 +404,14 @@ def _build_label_schema(
         # Converting to return type normalizes for single vs multiple labels
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
+
+        if is_video and _return_type in _SPATIAL_TYPES and not _is_frame_field:
+            raise ValueError(
+                "Invalid label field '%s'. Spatial labels of type '%s' being "
+                "annotated on a video must be stored in a frame-level field, "
+                "i.e., one that starts with 'frames.'"
+                % (_label_field, _label_type)
+            )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
@@ -1097,7 +1108,11 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     if label_type != "scalar":
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
-    _, is_frame_field = samples._handle_frame_field(label_field)
+    if label_field is not None:
+        _, is_frame_field = samples._handle_frame_field(label_field)
+    else:
+        is_frame_field = samples.media_type == fom.VIDEO
+
     if is_frame_field:
         schema = samples.get_frame_field_schema()
     else:
@@ -1916,6 +1931,7 @@ class AnnotationResults(foa.AnnotationResults):
     def __init__(self, samples, config, id_map, backend=None):
         if backend is None:
             backend = config.build()
+            backend.ensure_requirements()
 
         self._samples = samples
         self.id_map = id_map

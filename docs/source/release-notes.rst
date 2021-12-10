@@ -3,6 +3,139 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.2:
+
+FiftyOne 0.14.2
+---------------
+*Released November 24, 2021*
+
+App
+
+- Improved mask loading times for |Segmentation|, |Heatmap|, and |Detection|
+  labels with instance masks
+
+Core
+
+- Optimized image metadata calculation to read only the bare minimum byte
+  content of each image
+- Improved handling of relative paths and user paths in config settings and
+  environment variables
+- Optimized database I/O and improved the helpfulness of warnings/errors that
+  are generated when applying models via
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
+  and
+  :meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
+- Resolved a `memory leak <https://github.com/voxel51/fiftyone/issues/1442>`_
+  that could occur when computing predictions/embeddings for very large
+  datasets with Torch models
+
+Brain
+
+- Added the `points` keyword argument to
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>` for
+  providing your own manually computed low-dimensional representation for use
+  with interactive embeddings plots
+- Graceful handling of missing/uncomputable embeddings in
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>` and
+  :func:`compute_similarity() <fiftyone.brain.compute_similarity>`
+- Added checks that occur at the start of all methods to ensure that any
+  required dependencies are installed prior to performing any expensive
+  computations
+
+Annotation
+
+- Changed CVAT uploads to retain original filenames
+- A helpful error is now raised when the `"frames."` prefix is omitted from
+  label fields when requesting spatial annotations on video datasets
+
+Zoo
+
+- Patched an issue that prevented downloading the
+  :ref:`VOC-2007 <dataset-zoo-voc-2007>` and
+  :ref:`VOC-2012 <dataset-zoo-voc-2012>` datasets from the zoo
+
+.. _release-notes-v0.14.1:
+
+FiftyOne 0.14.1
+---------------
+*Released November 15, 2021*
+
+App
+
+- Optimized grid loading for collections that do not have metadata computed
+- Fixed filtering by label for Colab notebooks
+- Fixed a bug where the App would crash if an image or video MIME type could not
+  be inferred from the filepath, e.g. without an extension
+- Fixed first pixel coloring for segmentations
+- Added graceful handling of nonfinites (`-inf`, `inf`, and `nan`)
+
+Core
+
+- Fixed :meth:`clone() <fiftyone.core.view.DatasetView>` for views with a
+  parent dataset that has brain runs
+- Fixed sampling frames when using
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
+- Fixed importing of
+  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
+  with run results
+- Added a :class:`Regression <fiftyone.core.labels.Regression>` label type
+- Added a :func:`random_split() <fiftyone.utils.splits.random_split>` method
+- Added support for negating
+  :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels()>`
+  queries
+- Added a :class:`MaxResize <fiftyone.utils.torch.MaxResize>` transform
+- Added `image_max_size` and `image_max_dim` parameters to
+  :class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`
+- Added support for non-sequential updates in
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+- Added a
+  :meth:`compute_max_ious() <fiftyone.utils.eval.detection.compute_max_ious>`
+  utility
+- Added support for labels-only exports when working with
+  :class:`YOLOv4Dataset <fiftyone.types.dataset_types.YOLOv4Dataset>` and
+  :class:`YOLOv5Dataset <fiftyone.types.dataset_types.YOLOv5Dataset>`
+  formats
+- Added :mod:`fiftyone.utils.beam` for parallel import, merge, and export
+  operations with `Apache Beam <https://beam.apache.org>`_
+- Added an  :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
+  utility that provides support for adding YOLO-formatted model predictions to
+  an existing dataset
+- Added support for importing/exporting multilabel classifications when using
+  :ref:`FiftyOneImageClassificationDataset format <FiftyOneImageClassificationDataset-import>`
+- Fixed the `force_reencode` flag for
+  :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
+- Converted COCO and Open Images dataset downloads to use multithreading
+  rather than multiprocessing
+- Updated evalution confusion matrices to always include rows and columns for
+  missing/other
+
+Annotation
+
+- Added support for annotating multiple label fields in one CVAT task
+- Added an `allow_index_edits` parameter to
+  :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+  for disallowing video track index changes
+- Improved label ID tracking in CVAT by leveraging CVAT's server IDs in
+  addition to `label_id` attributes
+- Fixed a bug when annotating videos in CVAT with `None` label fields
+- Fixed a bug when annotating new fields in CVAT
+- Fixed a bug when annotating non-continuous tracks in CVAT
+- Fixed a bug when annotating a track in CVAT that is present on the last frame
+  of a video
+- Fixed a bug when annotating with `allow_additions=False`
+
+Docs
+
+- Added a section on :ref:`adding model predictions <model-predictions>` to
+  existing datasets to the user guide
+- Added explicit examples of labels-only
+  :ref:`imports <loading-datasets-from-disk>` and
+  :ref:`exports <exporting-datasets>` for all relevant datasets to the docs
+- Documented how class lists are computed when exporting in formats like YOLO
+  and COCO that require explicit class lists
+- Documented the supported label types for all exporters
+
 .. _release-notes-v0.14.0:
 
 FiftyOne 0.14.0

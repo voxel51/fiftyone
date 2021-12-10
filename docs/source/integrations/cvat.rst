@@ -223,6 +223,7 @@ You can also store your credentials in your
     {
         "backends": {
             "cvat": {
+                ...
                 "username": ...,
                 "password": ...
             }
@@ -247,12 +248,7 @@ that require connections to CVAT:
 .. code:: python
     :linenos:
 
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        username=...,
-        password=...,
-    )
+    view.annotate(anno_key, ..., username=..., password=...)
 
 **Command line prompt**
 
@@ -296,7 +292,8 @@ you can configure the URL of your server in any of the following ways:
     {
         "backends": {
             "cvat": {
-                "url": "http://localhost:8080"
+                "url": "http://localhost:8080",
+                ...
             }
         }
     }
@@ -307,13 +304,39 @@ you can configure the URL of your server in any of the following ways:
 .. code:: python
     :linenos:
 
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        url="http://localhost:8080",
-        username=...,
-        password=...,
-    )
+    view.annotate(anno_key, ..., url="http://localhost:8080")
+
+If your self-hosted server requires additional headers in order to make HTTP
+requests, you can provide them in either of the following ways:
+
+-   Store your custom headers in a `headers` key of your
+    :ref:`annotation config <annotation-config>` at
+    `~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "backends": {
+            "cvat": {
+                ...
+                "headers": {
+                    "<name>": "<value>",
+                    ...
+                }
+            }
+        }
+    }
+
+-   Pass the `headers` parameter manually each time you call
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    and
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(anno_key, ... headers=...)
+    view.load_annotations(anno_key, ... headers=...)
 
 .. _cvat-requesting-annotations:
 
@@ -463,6 +486,9 @@ provided:
     otherwise a new project is created. By default, no project is used
 -   **project_id** (*None*): an optional ID of an existing CVAT project to
     which to upload the annotation tasks. By default, no project is used
+-   **occluded_attr** (*None*): an optional attribute name containing existing
+    occluded values and/or in which to store downloaded occluded values for all
+    objects in the annotation run
 
 .. _cvat-label-schema:
 
@@ -1497,6 +1523,9 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     will receieve command line prompt(s) at import time to provide label
     field(s) in which to store the annotations.
 
+    You can also use the `occluded_attr` argument to link the state of CVAT's
+    occlusion widget to a specified attribute of your objects.
+
 .. code:: python
     :linenos:
 
@@ -1771,6 +1800,46 @@ linked to the occlusion widget.
     }
 
     view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Mark occlusions in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+You can also use the `occluded_attr` parameter to sync the state of CVAT's
+occlusion widet with a specified attribute of all spatial fields that are being
+annotated that did not explicitly have an occluded attribute defined in the
+label schema.
+
+This parameter is especially useful when working with existing CVAT projects,
+since CVAT project schemas are not able to retain information about occluded
+attributes between annotation runs.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_occluded_widget_project"
+    project_name = "example_occluded_widget"
+    label_field = "ground_truth"
+
+    # Create project
+    view.annotate("new_proj", label_field=label_field, project_name=project_name)
+
+    # Upload to existing project
+    view.annotate(
+        anno_key,
+        label_field=label_field,
+        occluded_attr="is_occluded",
+        project_name=project_name,
+        launch_editor=True,
+    )
     print(dataset.get_annotation_info(anno_key))
 
     # Mark occlusions in CVAT...
