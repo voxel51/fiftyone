@@ -11,7 +11,7 @@ import { elementNames } from "../../../recoil/view";
 import { useTheme } from "../../../utils/hooks";
 
 import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
-import RegularEntry from "./RegularEntry";
+import RegularEntry, { HeaderTextContainer } from "./RegularEntry";
 
 const ACTIVE_ATOM = {
   [State.TagKey.LABEL]: schemaAtoms.activeLabelTags,
@@ -126,19 +126,21 @@ const FilterableTagEntry = ({
               padding: 0,
             }}
           />
-          <span style={{ flexGrow: 1 }}>{tag}</span>
-          {tagKey === State.TagKey.LABEL ? (
-            <LabelTagCounts modal={modal} tag={tag} />
-          ) : (
-            <PathEntryCounts path={`tags.${tag}`} modal={modal} />
-          )}
+          <HeaderTextContainer>
+            <span>{tag}</span>
+            {tagKey === State.TagKey.LABEL ? (
+              <LabelTagCounts modal={modal} tag={tag} />
+            ) : (
+              <PathEntryCounts path={`tags.${tag}`} modal={modal} />
+            )}
 
-          <MatchEye
-            name={tag}
-            elementsName={elementsName}
-            onClick={() => setMatched(!matched)}
-            matched={matched}
-          />
+            <MatchEye
+              name={tag}
+              elementsName={elementsName}
+              onClick={() => setMatched(!matched)}
+              matched={matched}
+            />
+          </HeaderTextContainer>
         </>
       }
       onClick={() => setActive(!active)}

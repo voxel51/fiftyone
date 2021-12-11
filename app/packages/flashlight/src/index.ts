@@ -1,7 +1,6 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-
 import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
 import {
@@ -200,7 +199,7 @@ export default class Flashlight<K> {
         this.state.currentRowRemainder = [];
       }
 
-      this.state.height = 0;
+      this.state.height = 60;
       this.state.sections = [];
       this.state.shownSections = new Set();
       this.state.clean = new Set();
@@ -219,6 +218,12 @@ export default class Flashlight<K> {
         this.state.height += sectionElement.getHeight();
       });
       newContainer.style.height = `${this.state.height}px`;
+
+      if (this.container.parentElement.scrollTop === 0) {
+        this.render();
+        return;
+      }
+
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
           this.container.parentElement.scrollTop = section.getTop();
@@ -468,7 +473,7 @@ export default class Flashlight<K> {
       currentRequestKey: config.initialRequestKey,
       containerHeight: null,
       width: null,
-      height: 0,
+      height: 60,
       ...config,
       currentRemainder: [],
       currentRowRemainder: [],
@@ -510,7 +515,7 @@ export default class Flashlight<K> {
 
   private resetResize(): void {
     this.state.resized = new Set();
-    this.state.height = 0;
+    this.state.height = 60;
     this.state.resizing = true;
     this.resizeTimeout && clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {

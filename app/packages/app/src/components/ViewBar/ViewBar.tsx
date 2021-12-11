@@ -14,15 +14,9 @@ import ExternalLink from "../ExternalLink";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
-const ViewBarContainer = styled.div`
-  display: block;
-  position: relative;
-  width: 100%;
-  background-color: ${({ theme }) => theme.background};
-  padding: 1rem 0;
-`;
-
 const ViewBarDiv = styled.div`
+  position: relative;
+  margin: 1rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
@@ -48,7 +42,6 @@ const ViewBarDiv = styled.div`
 const IconsContainer = styled.div`
   position: absolute;
   z-index: 904;
-  top: 1rem;
   padding: 14px 0.5rem;
   height: 52px;
   border-radius: 3px;
@@ -117,59 +110,57 @@ const ViewBar = React.memo(() => {
   );
 
   return (
-    <div style={{ padding: "0 1rem" }}>
-      <ViewBarContainer>
-        <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
-        <ViewBarDiv
-          onClick={() =>
-            state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
-          }
-          ref={barRef}
-        >
-          {state.matches("running")
-            ? stages.map((stage, i) => {
-                return (
-                  <React.Fragment key={stage.id}>
-                    {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
-                      <AddViewStage
-                        key={`insert-button-${stage.id}`}
-                        send={send}
-                        index={i}
-                        active={
-                          activeStage === i - 0.5 &&
-                          state.matches("running.focus.focused")
-                        }
-                      />
-                    ) : null}
-                    <ViewStage
-                      key={stage.id}
-                      stageRef={stage.ref}
-                      barRef={barRef}
+    <>
+      <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
+      <ViewBarDiv
+        onClick={() =>
+          state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
+        }
+        ref={barRef}
+      >
+        {state.matches("running")
+          ? stages.map((stage, i) => {
+              return (
+                <React.Fragment key={stage.id}>
+                  {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
+                    <AddViewStage
+                      key={`insert-button-${stage.id}`}
+                      send={send}
+                      index={i}
+                      active={
+                        activeStage === i - 0.5 &&
+                        state.matches("running.focus.focused")
+                      }
                     />
-                  </React.Fragment>
-                );
-              })
-            : null}
-          {state.matches("running") && stages[stages.length - 1].submitted ? (
-            <AddViewStage
-              key={`insert-button-tail`}
-              send={send}
-              index={stages.length}
-              active={
-                activeStage === stages.length - 0.5 &&
-                state.matches("running.focus.focused")
-              }
-            />
-          ) : null}
-          <div
-            style={{
-              display: "block",
-              minWidth: 64,
-              maxWidth: 64,
-              height: "100%",
-            }}
-          ></div>
-        </ViewBarDiv>
+                  ) : null}
+                  <ViewStage
+                    key={stage.id}
+                    stageRef={stage.ref}
+                    barRef={barRef}
+                  />
+                </React.Fragment>
+              );
+            })
+          : null}
+        {state.matches("running") && stages[stages.length - 1].submitted ? (
+          <AddViewStage
+            key={`insert-button-tail`}
+            send={send}
+            index={stages.length}
+            active={
+              activeStage === stages.length - 0.5 &&
+              state.matches("running.focus.focused")
+            }
+          />
+        ) : null}
+        <div
+          style={{
+            display: "block",
+            minWidth: 64,
+            maxWidth: 64,
+            height: "100%",
+          }}
+        ></div>
 
         <IconsContainer>
           <Close
@@ -182,8 +173,8 @@ const ViewBar = React.memo(() => {
             <Help />
           </ExternalLink>
         </IconsContainer>
-      </ViewBarContainer>
-    </div>
+      </ViewBarDiv>
+    </>
   );
 });
 

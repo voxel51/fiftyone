@@ -419,7 +419,6 @@ const CategoricalFilter = <T extends unknown>({
 
   if (count === 0) return null;
 
-  console.log(count);
   return (
     <NamedCategoricalFilterContainer title={title}>
       <NamedCategoricalFilterHeader>

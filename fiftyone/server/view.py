@@ -5,42 +5,65 @@ FiftyOne extended view.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fosg
-import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.view as fov
+
 from fiftyone.server.utils import iter_label_fields
 
-
-_BOOL_FILTER = "bool"
-_NUMERIC_FILTER = "numeric"
-_STR_FILTER = "str"
 
 _LABEL_TAGS = "_label_tags"
 
 
-def get_view_field(fields_map, path):
-    """Returns the proper view field, even for special paths like "id"
+def get_view(
+    dataset_name,
+    stages=None,
+    filters=None,
+    count_label_tags=False,
+    only_matches=True,
+):
+    """Get the view from request paramters
 
-    Returns:
-        :class:`fiftyone.core.expressions.ViewField`
+    Args:
+        dataset_names: the dataset name
+        stages (None): an optional list of serialized
+            :class:`fiftyone.core.stages.ViewStage`s
+        filters (None): an optional `dict` of App defined filters
+        count_labels_tags (False): whether to set the hidden `_label_tags` field
+            with counts of tags with respect to all label fields
+        only_matches (True): whether to filter unmatches samples when filtering
+            labels
     """
-    if path in fields_map:
-        return F(fields_map[path]).to_string()
+    dataset = fod.load_dataset(dataset_name)
 
-    return F(path)
+    if stages:
+        view = fov.DatasetView._build(dataset, stages)
+
+    view = dataset
+    if filters is not None:
+        view = get_extended_view(
+            view,
+            filters,
+            count_labels_tags=count_label_tags,
+            only_matches=only_matches,
+        )
+
+    return view
 
 
 def get_extended_view(
-    view, filters, count_labels_tags=False, only_matches=True
+    view, filters=None, count_labels_tags=False, only_matches=True
 ):
     """Create an extended view with the provided filters.
+
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
-        filters: a `dict` of App defined filters
+        filters: an optional `dict` of App defined filters
         count_labels_tags (False): whether to set the hidden `_label_tags` field
             with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
@@ -107,6 +130,18 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     view = _count_list_items(_LABEL_TAGS, view)
 
     return view
+
+
+def get_view_field(fields_map, path):
+    """Returns the proper view field, even for special paths like "id"
+
+    Returns:
+        :class:`fiftyone.core.expressions.ViewField`
+    """
+    if path in fields_map:
+        return F(fields_map[path]).to_string()
+
+    return F(path)
 
 
 def get_field(keys, schema):
@@ -192,7 +227,6 @@ def _make_filter_stages(
             else:
                 expr = _make_scalar_expression(view_field, args, field)
 
-            print(expr)
             if expr is not None:
                 stages.append(fosg.Match(expr))
 

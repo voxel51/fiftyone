@@ -37,7 +37,7 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.aggregations import AggregationsHandler
 from fiftyone.server.colorscales import ColorscalesHandler
-from fiftyone.server.extended_view import get_extended_view
+import fiftyone.server.view as fosv
 from fiftyone.server.json_util import convert
 import fiftyone.server.metadata as fosm
 from fiftyone.server.notebook import NotebookHandler
@@ -156,28 +156,15 @@ class FramesHandler(tornado.web.RequestHandler):
 
 
 class PageHandler(fosu.AsyncRequestHandler):
-    """Page requests
+    async def post_response(self):
+        data = tornado.escape.json_decode(self.request.body)
+        filters = data.get("filters", None)
+        dataset = data.get("dataset", None)
+        stages = data.get("view", None)
+        page = data.get("page", 1)
+        page_length = data.get("page_length", 20)
 
-    Args:
-        page: the page number
-        page_length (20): the number of items to return
-    """
-
-    async def get_response(self):
-        # pylint: disable=no-value-for-parameter
-        page = int(self.get_argument("page", 1))
-        page_length = int(self.get_argument("page_length", 20))
-
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset
-        else:
-            self.write({"results": [], "more": False})
-            return
-
-        view = get_extended_view(view, state.filters, count_labels_tags=True)
+        view = fosv.get_view(dataset, stages, filters, count_label_tags=True)
         if view.media_type == fom.VIDEO:
             if isinstance(view, focl.ClipsView):
                 expr = F("frame_number") == F("$support")[0]

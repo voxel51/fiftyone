@@ -265,9 +265,14 @@ export const getContainingBox = (points: Coordinates[]): BoundingBox => {
 };
 
 export const getFitRect = (
+  thumbnail: boolean,
   [mw, mh]: Dimensions,
   [tlx, tly, w, h]: BoundingBox
 ): BoundingBox => {
+  if (!thumbnail) {
+    tly += 60;
+    h -= 60;
+  }
   if (mw / mh > w / h) {
     const fitHeight = (w * mh) / mw;
     tly += (h - fitHeight) / 2;

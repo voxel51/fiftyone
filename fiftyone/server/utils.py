@@ -14,8 +14,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 
-from fiftyone.server.json_util import convert
-
 
 class RequestHandler(tornado.web.RequestHandler):
     """"Base class for HTTP request handlers"""

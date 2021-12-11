@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
-import SampleModal from "../components/SampleModal";
+import SampleModal from "./SampleModal";
 import * as selectors from "../recoil/selectors";
 import { useOutsideClick, useScreenshot, useGA } from "../utils/hooks";
 import Loading from "../components/Loading";
@@ -14,7 +14,7 @@ import { useClearModal } from "../recoil/utils";
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
 const Container = styled.div`
-  height: calc(100% - 74px);
+  height: calc(100% - 84px);
   display: flex;
   flex-direction: column;
 `;
@@ -25,6 +25,7 @@ const Body = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 `;
 
 const useResetPaths = () => {

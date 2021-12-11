@@ -8,7 +8,7 @@ import { useEventHandler } from "../../utils/hooks";
 import { scrollbarStyles } from "../utils";
 import { EntryKind, SidebarEntry } from "./utils";
 
-const MARGIN = 4;
+const MARGIN = 3;
 
 const fn = (
   items: InteractiveItems,
@@ -330,7 +330,7 @@ const SidebarColumn = styled.div`
 const Container = styled.div`
   position: relative;
   overflow: visible;
-  margin: 0 0.5rem 0 1rem;
+  margin: 0 0.25rem 0 1.25rem;
 
   & > div {
     position: absolute;
@@ -484,17 +484,23 @@ const InteractiveSidebar = ({
   useEventHandler(document.body, "mouseleave", exit);
 
   const scrollWith = useCallback((direction: Direction, y: number) => {
-    const { top, bottom, height } = container.current.getBoundingClientRect();
-    const up = direction === Direction.UP;
-    let delta = up ? y - top : bottom - y;
-    const canScroll = up
-      ? scroll.current > 0
-      : scroll.current + height < maxScrollHeight.current;
+    requestAnimationFrame(() => {
+      const { top, bottom, height } = container.current.getBoundingClientRect();
+      const up = direction === Direction.UP;
+      let delta = up ? y - top : bottom - y;
+      const canScroll = up
+        ? scroll.current > 0
+        : scroll.current + height < maxScrollHeight.current;
 
-    if (down.current && canScroll && delta < 24) {
-      container.current.scroll(0, container.current.scrollTop + (up ? -1 : 1));
-      requestAnimationFrame(() => scrollWith(direction, y));
-    }
+      if (down.current && canScroll && delta < 24) {
+        container.current.scroll(
+          0,
+          container.current.scrollTop + (up ? -1 : 1)
+        );
+        animate(y);
+        scrollWith(direction, y);
+      }
+    });
   }, []);
 
   const animate = useCallback((y) => {
@@ -510,35 +516,35 @@ const InteractiveSidebar = ({
     }
 
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
-    requestAnimationFrame(() => {
-      const realDelta = y - start.current;
-      const newOrder = getNewOrder(lastDirection.current);
-      const results = fn(
-        items.current,
-        order.current,
-        newOrder,
-        down.current,
-        realDelta
-      );
-      for (const key of order.current)
-        items.current[key].controller.start(results[key]);
+    const realDelta = y - start.current;
+    const newOrder = getNewOrder(lastDirection.current);
+    const results = fn(
+      items.current,
+      order.current,
+      newOrder,
+      down.current,
+      realDelta
+    );
+    for (const key of order.current)
+      items.current[key].controller.start(results[key]);
 
-      last.current = y;
-      lastOrder.current = newOrder;
-    });
+    last.current = y;
+    lastOrder.current = newOrder;
   }, []);
 
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
-    if (down.current) {
-      !isDragging && setIsDragging(true);
+    if (!down.current) return;
+
+    requestAnimationFrame(() => {
+      animate(clientY);
       scrollWith(lastDirection.current, clientY);
-    }
-    animate(clientY);
+    });
   });
 
   const trigger = useCallback((event) => {
     if (event.button !== 0) return;
 
+    setIsDragging(true);
     down.current = event.currentTarget.dataset.key;
     start.current = event.clientY;
     last.current = start.current;

@@ -55,7 +55,7 @@ export const useEntries = (
 ): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const loading = useLoading({ modal, extended: false });
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal, loadingTags: true })
+    sidebarEntries({ modal, loadingTags: false })
   );
   const loadingEntries = useRecoilValue(
     sidebarEntries({ modal, loadingTags: true })

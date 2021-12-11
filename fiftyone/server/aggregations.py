@@ -15,9 +15,9 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.view as fov
 
-from fiftyone.server.extended_view import get_extended_view
 from fiftyone.server.json_util import convert
 from fiftyone.server.utils import AsyncRequestHandler, meets_type
+import fiftyone.server.view as fosv
 
 
 class AggregationsHandler(AsyncRequestHandler):
@@ -29,16 +29,7 @@ class AggregationsHandler(AsyncRequestHandler):
         stages = data.get("view", None)
         sample_id = data.get("sample_id", None)
 
-        dataset = fod.load_dataset(dataset)
-
-        if stages:
-            view = fov.DatasetView._build(dataset, stages)
-
-        view = dataset
-        if filters is not None:
-            view = get_extended_view(
-                view, filters, count_labels_tags=False, only_matches=False
-            )
+        view = fosv.get_view(dataset, stages, filters)
 
         if sample_id:
             view = fov.make_optimized_select_view(view, sample_id)

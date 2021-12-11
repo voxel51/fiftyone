@@ -20,7 +20,7 @@ import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 
 import fiftyone.server.aggregations as fosa
-from fiftyone.server.extended_view import get_extended_view, get_view_field
+from fiftyone.server.view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.notebook as fosn
 import fiftyone.server.utils as fosu

@@ -1,11 +1,6 @@
 import React, { useState } from "react";
 import { capitalize } from "@material-ui/core";
-import {
-  Assessment,
-  DragHandle,
-  Fullscreen,
-  FullscreenExit,
-} from "@material-ui/icons";
+import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
@@ -20,17 +15,6 @@ import { Resizable } from "re-resizable";
 export type Props = {
   entries: string[];
 };
-
-const Drag = styled(DragHandle)`
-  position: absolute;
-  bottom: -0.8rem;
-  height: 1rem;
-  width: 1rem;
-  left: 50%;
-  margin-left: -0.5rem;
-  z-index: 1000;
-  pointer-events: none;
-`;
 
 const Container = styled(Resizable)`
   padding: 1rem 0 0;
@@ -171,7 +155,6 @@ const HorizontalNav = ({ entries }: Props) => {
         </NavButtons>
       </Nav>
       {expanded && <Distributions key={activePlot} group={activePlot} />}
-      {expanded && !maximized && <Drag />}
     </Container>
   );
 };

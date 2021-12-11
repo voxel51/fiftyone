@@ -6,9 +6,8 @@ import {
   LocalOffer,
   Visibility,
 } from "@material-ui/icons";
-import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import {
-  RecoilState,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,

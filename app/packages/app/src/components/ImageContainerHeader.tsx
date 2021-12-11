@@ -8,8 +8,7 @@ import * as selectors from "../recoil/selectors";
 import * as viewAtoms from "../recoil/view";
 import { useTheme } from "./../utils/hooks";
 
-import Actions from "./Actions";
-import DropdownHandle from "./DropdownHandle";
+import { GridActionsRow } from "./Actions";
 import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
@@ -19,23 +18,20 @@ type Props = {
   onShowSidebar: (show: boolean) => void;
 };
 
-const Wrapper = styled.div`
-  background: ${({ theme }) => theme.background};
-  display: flex;
-  margin-bottom: 0.5rem;
-  flex-shrink: 0;
-  padding: 0 1rem;
-`;
-
 const SamplesHeader = styled.div`
+  position: absolute;
+  top: 0;
   display: flex;
+  padding: 0.5rem;
   justify-content: space-between;
   overflow: visible;
-  margin-left: 1.25rem;
-  margin-right: -1rem;
-  margin-bottom: -0.5rem;
-  flex-grow: 1;
-  height: 37px;
+  width: 100%;
+  background-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0),
+    30%,
+    ${({ theme }) => theme.backgroundDark}
+  );
 `;
 
 const CountDiv = styled.div`
@@ -79,50 +75,41 @@ const Count = () => {
   );
 };
 
-const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
+const ImageContainerHeader = () => {
   const setGridZoom = useSetRecoilState(selectors.gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
 
   return (
-    <Wrapper>
-      <DropdownHandle
-        expanded={showSidebar}
-        onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
-        style={{ width: 248, padding: "0.25rem 0.5rem" }}
-      >
-        Filters
-      </DropdownHandle>
-      <SamplesHeader>
-        <Actions modal={false} style={{ flexWrap: "nowrap" }} />
-        <RightContainer>
-          <Suspense fallback={"Loading..."}>
-            <Count />
-          </Suspense>
-          <SliderContainer>
-            <div style={{ flexGrow: 1 }} title={"Zoom"}>
-              <Slider
-                valueAtom={selectors.gridZoom}
-                boundsAtom={gridZoomRange}
-                color={theme.brand}
-                showBounds={false}
-                persistValue={false}
-                style={{ padding: 0, margin: 0 }}
-              />
-            </div>
-            <div
-              title={"Reset zoom"}
-              onClick={() => {
-                setGridZoom(Math.max(gridZoomRangeValue[0], 5));
-              }}
-              style={{ cursor: "pointer" }}
-            >
-              <Apps style={{ marginTop: 2.5 }} />
-            </div>
-          </SliderContainer>
-        </RightContainer>
-      </SamplesHeader>
-    </Wrapper>
+    <SamplesHeader>
+      <GridActionsRow />
+      <RightContainer>
+        <Suspense fallback={"Loading..."}>
+          <Count />
+        </Suspense>
+        <SliderContainer>
+          <div style={{ flexGrow: 1 }} title={"Zoom"}>
+            <Slider
+              valueAtom={selectors.gridZoom}
+              boundsAtom={gridZoomRange}
+              color={theme.brand}
+              showBounds={false}
+              persistValue={false}
+              style={{ padding: 0, margin: 0 }}
+            />
+          </div>
+          <div
+            title={"Reset zoom"}
+            onClick={() => {
+              setGridZoom(Math.max(gridZoomRangeValue[0], 5));
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            <Apps style={{ marginTop: 2.5 }} />
+          </div>
+        </SliderContainer>
+      </RightContainer>
+    </SamplesHeader>
   );
 };
 

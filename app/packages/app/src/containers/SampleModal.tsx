@@ -1,16 +1,16 @@
 import React, { useRef } from "react";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilCallback } from "recoil";
+import { useRecoilValue, useRecoilCallback, useRecoilState } from "recoil";
 
-import Actions from "./Actions";
+import { ModalActionsRow } from "../components/Actions";
 import FieldsSidebar, {
   Entries,
   EntryKind,
   SidebarEntry,
   useEntries,
   useTagText,
-} from "./Sidebar";
-import Looker from "./Looker";
+} from "../components/Sidebar";
+import Looker from "../components/Looker";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useMessageHandler, useTheme } from "../utils/hooks";
@@ -18,6 +18,15 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
 import { Controller } from "@react-spring/core";
 import { State } from "../recoil/types";
+import { Resizable } from "re-resizable";
+
+const SidebarContainer = styled(Resizable)`
+  display: block;
+  height: 100%;
+  overflow: visible;
+  position: relative;
+  border-left: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+`;
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -32,28 +41,24 @@ export const ModalWrapper = styled.div`
   background-color: ${({ theme }) => theme.overlay};
 `;
 
-export const ModalFooter = styled.div`
-  display: block;
-  border-top: 2px solid ${({ theme }) => theme.border};
-  padding: 1em;
-  background-color: ${({ theme }) => theme.backgroundLight};
-  z-index: 9000;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  min-height: 64.5px;
-`;
-
 const Container = styled.div`
   overflow: hidden;
   position: relative;
-  display: grid;
-  grid-template-columns: auto 296px 64px;
+  display: flex;
+  justify-content: space-between;
   width: 95vw;
   height: 90vh;
-  max-height: 80vh;
+  max-height: 95vh;
   background-color: ${({ theme }) => theme.backgroundDark};
+  border-radius: 3px;
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+`;
+
+const ContentColumn = styled.div`
+  flex-grow: 1;
+  width: 1px;
+  position: relative;
+  overflow: visible;
 `;
 
 type Props = {
@@ -67,11 +72,6 @@ interface SelectEvent {
     frameNumber?: number;
   };
 }
-
-const Section = styled.h2`
-  padding: 0 1rem;
-  border-bottom: 2px solid ${({ theme }) => theme.backgroundLight};
-`;
 
 const useOnSelectLabel = () => {
   return useRecoilCallback(
@@ -114,6 +114,23 @@ export const useSampleUpdate = (lookerRef) => {
   useMessageHandler("samples_update", handler);
 };
 
+const Header = styled.div`
+  position: absolute;
+  top: 0;
+  display: flex;
+  padding: 0.5rem;
+  flex-direction: row-reverse;
+  overflow: visible;
+  width: 100%;
+
+  background-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0),
+    30%,
+    ${({ theme }) => theme.backgroundDark}
+  );
+`;
+
 const SampleModal = ({ onClose }: Props, ref) => {
   const {
     sample: { filepath, _id },
@@ -125,6 +142,10 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const onSelectLabel = useOnSelectLabel();
   const [entries, setEntries] = useEntries(true);
   const tagText = useTagText();
+  const [sidebarWidth, setSidebarWidth] = useRecoilState(
+    atoms.sidebarWidth(false)
+  );
+  const showSidebar = useRecoilValue(atoms.sidebarVisible(true));
 
   useSampleUpdate(lookerRef);
   const theme = useTheme();
@@ -219,31 +240,44 @@ const SampleModal = ({ onClose }: Props, ref) => {
   return (
     <ModalWrapper key={0} style={fullscreen}>
       <Container style={{ zIndex: 10001 }} ref={ref}>
-        <Looker
-          key={`modal-${sampleSrc}`} // force re-render when this changes
-          lookerRef={lookerRef}
-          onSelectLabel={onSelectLabel}
-          onClose={onClose}
-          onPrevious={index > 0 ? () => getIndex(index - 1) : null}
-          onNext={() => getIndex(index + 1)}
-          style={{ borderRight: `2px solid ${theme.border}` }}
-        />
-        <FieldsSidebar
-          entries={entries}
-          setEntries={setEntries}
-          render={renderEntry}
-        />
-        <Actions
-          modal={true}
-          lookerRef={lookerRef}
-          style={{
-            borderLeft: `2px solid ${theme.border}`,
-            flexDirection: "column",
-            background: theme.backgroundLight,
-            padding: "0.5em",
-            margin: 0,
-          }}
-        />
+        <ContentColumn>
+          <Looker
+            key={`modal-${sampleSrc}`}
+            lookerRef={lookerRef}
+            onSelectLabel={onSelectLabel}
+            onClose={onClose}
+            onPrevious={index > 0 ? () => getIndex(index - 1) : null}
+            onNext={() => getIndex(index + 1)}
+          />
+          <Header>
+            <ModalActionsRow lookerRef={lookerRef} />
+          </Header>
+        </ContentColumn>
+        {showSidebar && (
+          <SidebarContainer
+            defaultSize={{ width: sidebarWidth }}
+            minWidth={200}
+            enable={{
+              top: false,
+              right: false,
+              bottom: false,
+              left: true,
+              topRight: false,
+              bottomRight: false,
+              bottomLeft: false,
+              topLeft: false,
+            }}
+            onResizeStop={(e, direction, ref, { width }) => {
+              setSidebarWidth(width);
+            }}
+          >
+            <FieldsSidebar
+              entries={entries}
+              setEntries={setEntries}
+              render={renderEntry}
+            />
+          </SidebarContainer>
+        )}
       </Container>
     </ModalWrapper>
   );

@@ -92,7 +92,6 @@ let nextIndex = 0;
 let lookers = createLookerCache();
 
 const url = (() => {
-  let origin = window.location.origin;
   try {
     // @ts-ignore
     if (import.meta.env.DEV) {
@@ -304,6 +303,32 @@ export const useSampleUpdate = () => {
   useMessageHandler("samples_update", handler);
 };
 
+interface PageParameters {
+  filters: State.Filters;
+  dataset: string;
+  view: State.Stage[];
+}
+
+const pageParameters = selector<PageParameters>({
+  key: "pageParameters",
+  get: ({ get }) => {
+    return {
+      filters: get(filterAtoms.filters),
+      view: get(viewAtoms.view),
+      dataset: get(selectors.datasetName),
+    };
+  },
+});
+
+const getPageParameters = selector<() => Promise<PageParameters>>({
+  key: "getPageParameters",
+  get: ({ getCallback }) => {
+    return getCallback(({ snapshot }) => async () => {
+      return await snapshot.getPromise(pageParameters);
+    });
+  },
+});
+
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
@@ -359,6 +384,7 @@ export default React.memo(() => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(viewAtoms.view);
   const refresh = useRecoilValue(selectors.refresh);
+  const getPageParams = useRecoilValue(getPageParameters);
 
   const selected = useRecoilValue(atoms.selectedSamples);
   const onThumbnailClick = useThumbnailClick(flashlight);
@@ -440,10 +466,17 @@ export default React.memo(() => {
           lookers.has(id) && lookers.get(id).resize(dimensions);
         },
         get: async (page) => {
+          const params = await getPageParams();
           try {
-            const { results, more } = await fetch(
-              `${url}page=${page}`
-            ).then((response) => response.json());
+            const { results, more } = await fetch(url, {
+              method: "POST",
+              cache: "no-cache",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              mode: "cors",
+              body: JSON.stringify({ ...params, page }),
+            }).then((response) => response.json());
             const itemData = results.map((result) => {
               const data: atoms.SampleData = {
                 sample: result.sample,

@@ -476,6 +476,7 @@ export abstract class Looker<
       this.state.config.dimensions
     );
     this.state.mediaBBox = getFitRect(
+      this.state.config.thumbnail,
       this.state.config.dimensions,
       this.state.windowBBox
     );
@@ -487,6 +488,7 @@ export abstract class Looker<
     ];
 
     this.state.transformedMediaBBox = getFitRect(
+      this.state.config.thumbnail,
       this.state.config.dimensions,
       this.state.transformedWindowBBox
     );

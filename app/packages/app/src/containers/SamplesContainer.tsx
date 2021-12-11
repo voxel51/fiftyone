@@ -1,7 +1,8 @@
-import React, { Suspense } from "react";
-import { useRecoilState } from "recoil";
+import React from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
+import { Resizable } from "re-resizable";
 
 import FieldsSidebar, {
   EntryKind,
@@ -12,33 +13,40 @@ import FieldsSidebar, {
 } from "../components/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
-import ViewBar from "../components/ViewBar/ViewBar";
 
 import * as atoms from "../recoil/atoms";
 import { State } from "../recoil/types";
 
-const SidebarContainer = styled.div`
+const SidebarContainer = styled(Resizable)`
   display: block;
   height: 100%;
-  width 286px;
   overflow: visible;
+  position: relative;
+  border-right: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
 `;
 
 const ContentColumn = styled.div`
   flex-grow: 1;
   width: 1px;
+  position: relative;
+  padding-left: 1rem;
 `;
+
 const Container = styled.div`
   display: flex;
   justify-content: space-between;
   flex-grow: 1;
   overflow: hidden;
+  background: ${({ theme }) => theme.backgroundDark};
 `;
 
 const SamplesContainer = React.memo(() => {
-  const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const tagText = useTagText();
   const [entries, setEntries] = useEntries(false);
+  const [sidebarWidth, setSidebarWidth] = useRecoilState(
+    atoms.sidebarWidth(false)
+  );
+  const showSidebar = useRecoilValue(atoms.sidebarVisible(false));
 
   const renderGridEntry = (
     group: string,
@@ -120,30 +128,37 @@ const SamplesContainer = React.memo(() => {
   };
 
   return (
-    <>
-      <ViewBar key={"bar"} />
-      <ContainerHeader
-        showSidebar={showSidebar}
-        onShowSidebar={setShowSidebar}
-        key={"header"}
-      />
-      <Container>
-        {showSidebar && (
-          <SidebarContainer>
-            <Suspense fallback={"WW"}>
-              <FieldsSidebar
-                entries={entries}
-                setEntries={setEntries}
-                render={renderGridEntry}
-              />
-            </Suspense>
-          </SidebarContainer>
-        )}
-        <ContentColumn style={{ paddingLeft: showSidebar ? 0 : "1rem" }}>
-          <Flashlight />
-        </ContentColumn>
-      </Container>
-    </>
+    <Container>
+      {showSidebar && (
+        <SidebarContainer
+          defaultSize={{ width: sidebarWidth }}
+          minWidth={200}
+          enable={{
+            top: false,
+            right: true,
+            bottom: false,
+            left: false,
+            topRight: false,
+            bottomRight: false,
+            bottomLeft: false,
+            topLeft: false,
+          }}
+          onResizeStop={(e, direction, ref, { width }) => {
+            setSidebarWidth(width);
+          }}
+        >
+          <FieldsSidebar
+            entries={entries}
+            setEntries={setEntries}
+            render={renderGridEntry}
+          />
+        </SidebarContainer>
+      )}
+      <ContentColumn>
+        <Flashlight key={"flashlight"} />
+        <ContainerHeader key={"header"} />
+      </ContentColumn>
+    </Container>
   );
 });
 

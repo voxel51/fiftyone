@@ -16,13 +16,27 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
-  text-overflow: ellipses;
-  white-space: nowrap;
+  justify-content: space-between;
+`;
 
-  & > * {
-    margin: 0 6px;
+export const HeaderTextContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: calc(100% - 31px);
+  margin-left: 6px;
+  flex: 1;
+  min-width: 0;
+
+  & > span:first-child {
+    flex: 1;
     white-space: nowrap;
-    text-overflow: ellipses;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 6px;
+  }
+
+  & span {
+    margin-right: 6px;
   }
 `;
 

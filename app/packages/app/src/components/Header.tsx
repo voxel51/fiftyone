@@ -16,6 +16,7 @@ import { ThemeContext } from "styled-components";
 import { Close, Group } from "@material-ui/icons";
 import { GitHub, MenuBook } from "@material-ui/icons";
 
+import ViewBar from "./ViewBar/ViewBar";
 import { BestMatchDiv } from "./ViewBar/ViewStage/BestMatch";
 import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
 import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
@@ -60,7 +61,7 @@ const DatasetInput = styled(AuosizeInput)`
 `;
 
 const HeaderDiv = styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.background};
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;
@@ -663,6 +664,7 @@ const Header = ({ addNotification }) => {
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });
 
+  const dataset = useRecoilValue(selectors.hasDataset);
   return (
     <HeaderDiv>
       <LeftDiv>
@@ -672,6 +674,7 @@ const Header = ({ addNotification }) => {
         </TitleDiv>
         <DatasetSelector />
       </LeftDiv>
+      {dataset && <ViewBar key={"bar"} />}
       <RightDiv>
         <IconWrapper>
           <Suspense fallback={null}>

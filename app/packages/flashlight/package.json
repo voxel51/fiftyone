@@ -19,7 +19,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@fiftyone/looker": "*"
+    "@fiftyone/looker": "*",
+    "simplebar": "^5.3.6"
   },
   "devDependencies": {
     "@fiftyone/prettier-config": "*",

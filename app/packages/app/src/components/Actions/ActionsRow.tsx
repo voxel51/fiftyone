@@ -6,9 +6,13 @@ import React, {
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
+  ArrowLeft,
+  ArrowRight,
   Bookmark,
   Check,
   FlipToBack,
+  KeyboardArrowLeft,
+  KeyboardArrowRight,
   LocalOffer,
   Settings,
   VisibilityOff,
@@ -221,7 +225,6 @@ const Selected = ({
           numItems > 1 ? "s" : ""
         }`}
         style={{
-          flexDirection: modal ? "column" : "row",
           cursor: loading ? "default" : "pointer",
         }}
       />
@@ -307,7 +310,38 @@ const SaveFilters = () => {
   ) : null;
 };
 
+const ToggleSidebar = ({ modal }: { modal: boolean }) => {
+  const [visible, setVisible] = useRecoilState(atoms.sidebarVisible(modal));
+
+  const style = modal ? { right: "-3.5rem" } : { left: "-3.5rem" };
+  return (
+    <PillButton
+      onClick={() => {
+        setVisible(!visible);
+      }}
+      title={`${visible ? "Hide" : "Show"} sidebar`}
+      open={visible}
+      icon={
+        visible ? (
+          modal ? (
+            <KeyboardArrowRight />
+          ) : (
+            <KeyboardArrowLeft />
+          )
+        ) : modal ? (
+          <KeyboardArrowLeft />
+        ) : (
+          <KeyboardArrowRight />
+        )
+      }
+      highlight={!visible}
+      style={{ height: "2rem", position: "absolute", ...style, zIndex: 1000 }}
+    />
+  );
+};
+
 const ActionsRowDiv = styled.div`
+  position: relative;
   display: flex;
   justify-content: ltr;
   margin-top: 2.5px;
@@ -315,25 +349,43 @@ const ActionsRowDiv = styled.div`
   column-gap: 0.5rem;
 `;
 
-type ActionsRowProps = {
-  modal: boolean;
-  lookerRef?: MutableRefObject<VideoLooker>;
-  style?: React.CSSProperties;
-};
-
-const ActionsRow = ({ modal, lookerRef, style }: ActionsRowProps) => {
+export const GridActionsRow = () => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   return (
-    <ActionsRowDiv style={style}>
-      <Options modal={modal} />
-      <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
-      {!modal && <Patches />}
-      {!isVideo && <Similarity modal={modal} />}
-      {modal && <Hidden />}
-      {!modal && <SaveFilters />}
-      <Selected modal={modal} lookerRef={lookerRef} />
+    <ActionsRowDiv style={{ marginLeft: "1rem" }}>
+      <ToggleSidebar modal={false} />
+      <Options modal={false} />
+      <Tag modal={false} />
+      <Patches />
+      {!isVideo && <Similarity modal={false} />}
+      <SaveFilters />
+      <Selected modal={false} />
     </ActionsRowDiv>
   );
 };
 
-export default React.memo(ActionsRow);
+export const ModalActionsRow = ({
+  lookerRef,
+}: {
+  lookerRef?: MutableRefObject<VideoLooker>;
+}) => {
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
+  return (
+    <ActionsRowDiv
+      style={{
+        marginRight: "2rem",
+        flexDirection: "row-reverse",
+        justifyContent: "rtl",
+        right: 0,
+      }}
+    >
+      <Hidden />
+      <Selected modal={true} lookerRef={lookerRef} />
+      {!isVideo && <Similarity modal={true} />}
+      <Tag modal={true} lookerRef={lookerRef} />
+      <Options modal={true} />
+
+      <ToggleSidebar modal={true} />
+    </ActionsRowDiv>
+  );
+};

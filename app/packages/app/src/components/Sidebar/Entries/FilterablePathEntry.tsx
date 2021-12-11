@@ -1,6 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Checkbox } from "@material-ui/core";
-import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
+import {
+  ArrowDropDown,
+  ArrowDropUp,
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+} from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
 import {
   selectorFamily,
@@ -40,7 +45,7 @@ import {
 } from "../../Filters";
 
 import { PathEntryCounts } from "./EntryCounts";
-import RegularEntry from "./RegularEntry";
+import RegularEntry, { HeaderTextContainer } from "./RegularEntry";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -135,7 +140,7 @@ const FilterableEntry = React.memo(
     onBlur?: () => void;
   }) => {
     const [expanded, setExpanded] = useState(false);
-    const Arrow = expanded ? ArrowDropUp : ArrowDropDown;
+    const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
     const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
     const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
     const fields = useRecoilValue(
@@ -175,26 +180,25 @@ const FilterableEntry = React.memo(
               }}
               key="checkbox"
             />
-            <span key="path" style={{ flexGrow: 1 }}>
-              {path}
-            </span>
-            <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-
-            {expandable.state !== "loading" && expandable.contents && (
-              <Arrow
-                key="arrow"
-                style={{ cursor: "pointer", margin: 0 }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setExpanded(!expanded);
-                }}
-                onMouseDown={(event) => {
-                  event.stopPropagation();
-                  event.preventDefault();
-                }}
-              />
-            )}
+            <HeaderTextContainer>
+              <span key="path">{path}</span>
+              <PathEntryCounts key="count" modal={modal} path={expandedPath} />
+              {expandable.state !== "loading" && expandable.contents && (
+                <Arrow
+                  key="arrow"
+                  style={{ cursor: "pointer", margin: 0 }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setExpanded(!expanded);
+                  }}
+                  onMouseDown={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                  }}
+                />
+              )}
+            </HeaderTextContainer>
           </>
         }
         {...useSpring({

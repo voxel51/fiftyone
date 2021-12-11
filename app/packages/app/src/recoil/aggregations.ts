@@ -1,4 +1,9 @@
-import { GetRecoilValue, selectorFamily, useRecoilValueLoadable } from "recoil";
+import {
+  GetRecoilValue,
+  RecoilValueReadOnly,
+  selectorFamily,
+  useRecoilValueLoadable,
+} from "recoil";
 
 import * as atoms from "./atoms";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "./constants";
@@ -6,6 +11,7 @@ import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import { http } from "../shared/connection";
+import { t } from "@fiftyone/looker/src/overlays/util";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -126,7 +132,10 @@ const aggregations = selectorFamily<
 
     return data;
   },
-});
+}) as (param: {
+  modal: boolean;
+  extended: boolean;
+}) => RecoilValueReadOnly<AggregationsData>;
 
 export const noneCount = selectorFamily<
   number,
@@ -185,10 +194,16 @@ const makeCountResults = <T>(key) =>
       const data = get(aggregations({ modal, extended }))[
         path
       ] as CategoricalAggregations<T>;
+      if (!data) console.log(path, get(aggregations({ modal, extended })));
+
+      const results = [...data.CountValues[1]];
+      if (data.None) {
+        results.push([null, data.None]);
+      }
 
       return {
         count: data.Count + data.None,
-        results: [...data.CountValues[1], [null, data.None]],
+        results,
       };
     },
   });
@@ -329,9 +344,8 @@ export const cumulativeCounts = selectorFamily<
         }
 
         result[value] += data[value];
-
-        return result;
       }
+      return result;
     }, {}),
 });
 

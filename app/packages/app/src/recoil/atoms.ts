@@ -20,6 +20,11 @@ interface ModalSample extends SampleData {
   getIndex: (index: number) => void;
 }
 
+export const sidebarWidth = atomFamily<number, boolean>({
+  key: "sidebarWidth",
+  default: 300,
+});
+
 export const modal = atom<ModalSample | null>({
   key: "modal",
   default: null,
@@ -117,7 +122,7 @@ export const stageInfo = atom({
   default: undefined,
 });
 
-export const sidebarVisible = atom({
+export const sidebarVisible = atomFamily<boolean, boolean>({
   key: "sidebarVisible",
   default: true,
 });
