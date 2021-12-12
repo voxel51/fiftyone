@@ -58,7 +58,6 @@ interface ResultProps<T> {
   highlight: string;
   active: boolean | null;
   onClick: () => void;
-  maxLen?: number;
   color: string;
 }
 
@@ -67,7 +66,6 @@ const Result = React.memo(
     active,
     highlight,
     onClick,
-    maxLen,
     color,
     result,
     count,
@@ -97,9 +95,7 @@ const Result = React.memo(
         onClick={onClick}
         ref={ref}
       >
-        <span style={coloring ? { color } : {}}>
-          {maxLen ? summarizeLongStr(text, maxLen, "middle") : text}
-        </span>
+        <span style={coloring ? { color } : {}}>{text}</span>
         {typeof count === "number" && <span>{count.toLocaleString()}</span>}
       </ResultDiv>
     );
@@ -133,7 +129,6 @@ const Results = React.memo(
             highlight={highlight}
             onClick={() => onSelect(result[0])}
             active={active === result[0]}
-            maxLen={26 - result[1].toLocaleString().length}
             color={color}
           />
         ))}

@@ -72,9 +72,7 @@ const CheckboxName = ({
 
   return (
     <CheckboxNameDiv>
-      <span style={color ? { color } : {}}>
-        {summarizeLongStr(text, 28 - countStr.length, "middle")}
-      </span>
+      <span style={color ? { color } : {}}>{text}</span>
       {count && <span>{countStr}</span>}
     </CheckboxNameDiv>
   );

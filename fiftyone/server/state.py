@@ -39,23 +39,20 @@ def catch_errors(func):
             return result
         except Exception as e:
             StateHandler.state = StateHandler.prev_state
-            clients = list(StateHandler.clients)
+            clients = list(StateHandler.app_clients)
             if isinstance(self, PollingHandler):
                 clients.append(self)
 
             for client in clients:
                 client.write_message(
                     {
-                        "type": "notification",
+                        "type": "error",
                         "kind": "Server Error",
                         "message": (
                             "An exception has been raised by the server. Your session "
                             "has been reverted to its previous state."
                         ),
-                        "session_items": [traceback.format_exc()],
-                        "app_items": [
-                            "A traceback has been printed to your Python shell."
-                        ],
+                        "stack": [traceback.format_exc()],
                     }
                 )
 
@@ -175,12 +172,6 @@ class PollingHandler(tornado.web.RequestHandler):
 
         elif event == "deactivate":
             self.write_message({"type": "deactivate"})
-
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        else:
-            view = state.dataset
 
     def write_message(self, message):
         message = StateHandler.dumps(message)
@@ -348,7 +339,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
         StateHandler.state = fos.StateDescription.from_dict(state).serialize()
-        active_handle = state["active_handle"]
+        active_handle = state.get("active_handle", None)
         global _deactivated_clients
         _deactivated_clients.discard(active_handle)
 

@@ -49,7 +49,7 @@ const LogoImg = styled.img`
   display: block;
 `;
 
-const Error = ({ resetErrorBoundary }) => {
+const Error = ({ resetErrorBoundary, error = null }) => {
   return (
     <ErrorContainer>
       <ErrorDiv>
@@ -65,6 +65,7 @@ const Error = ({ resetErrorBoundary }) => {
             </ReloadButton>{" "}
             to try again.
           </div>
+          {error.stack && <Code>{error.stack}</Code>}
         </ErrorMessage>
       </ErrorDiv>
     </ErrorContainer>

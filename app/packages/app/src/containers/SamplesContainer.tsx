@@ -16,13 +16,13 @@ import Flashlight from "../components/Flashlight";
 
 import * as atoms from "../recoil/atoms";
 import { State } from "../recoil/types";
+import { useTheme } from "../utils/hooks";
 
 const SidebarContainer = styled(Resizable)`
   display: block;
   height: 100%;
   overflow: visible;
   position: relative;
-  border-right: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
 `;
 
 const ContentColumn = styled.div`
@@ -41,6 +41,7 @@ const Container = styled.div`
 `;
 
 const SamplesContainer = React.memo(() => {
+  const theme = useTheme();
   const tagText = useTagText();
   const [entries, setEntries] = useEntries(false);
   const [sidebarWidth, setSidebarWidth] = useRecoilState(
@@ -146,6 +147,7 @@ const SamplesContainer = React.memo(() => {
           onResizeStop={(e, direction, ref, { width }) => {
             setSidebarWidth(width);
           }}
+          handleComponent={() => <div>HELLO</div>}
         >
           <FieldsSidebar
             entries={entries}

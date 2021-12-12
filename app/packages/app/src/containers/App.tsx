@@ -85,7 +85,7 @@ function App() {
   useEventHandler(socket, "close", useClose());
   useMessageHandler("update", useStateUpdate());
 
-  useMessageHandler("notification", (data) => addNotification.current(data));
+  useMessageHandler("error", (data) => console.log(data));
   useSendMessage("as_app", {
     notebook: isNotebook,
     handle: handleId,
