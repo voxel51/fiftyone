@@ -7,6 +7,8 @@ export namespace State {
     SAMPLE,
   }
 
+  export type SidebarGroups = [string, string[]][];
+
   export interface Config {
     colorPool: string[];
     colorscale: string;
@@ -59,7 +61,7 @@ export namespace State {
     sampleCollectionName: string;
     sampleFields: Field[];
     version: string;
-    appSidebarGroups?: string[];
+    appSidebarGroups?: SidebarGroups;
     _id: ID;
   }
 

@@ -2,6 +2,8 @@ import React, { useState, useRef, Suspense } from "react";
 import { useRecoilCallback } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 
+import { toCamelCase } from "@fiftyone/utilities";
+
 import "../app.global.css";
 
 import { patching } from "../components/Actions/Patcher";
@@ -15,18 +17,16 @@ import { State } from "../recoil/types";
 import { useClearModal } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import socket, { handleId, isNotebook } from "../shared/connection";
-
 import {
   useEventHandler,
   useMessageHandler,
   useSendMessage,
 } from "../utils/hooks";
+import { viewsAreEqual } from "../utils/view";
 
 import Dataset from "./Dataset";
 import Error from "./Error";
 import Setup from "./Setup";
-import { toCamelCase } from "@fiftyone/utilities";
-import { viewsAreEqual } from "../utils/view";
 
 const useStateUpdate = () => {
   return useRecoilCallback(
@@ -51,10 +51,23 @@ const useStateUpdate = () => {
       }
 
       if (state.dataset) {
-        let groups = state.dataset.appSidebarGroups;
+        const [newGroups, deletedFields] = resolveGroups(state.dataset);
+
+        const groups = [
+          ...(state.dataset.appSidebarGroups || []).map(([group, fields]) => [
+            group,
+            fields.filter((f) => !deletedFields.has(f)),
+          ]),
+          ...newGroups,
+        ];
+        if (newGroups.length || deletedFields.size) {
+        }
+        if (!state.data) const groups = state.dataset.appSidebarGroups || [];
+
+        const { newFields, deletedFields } = resolveGroups(state.dataset);
 
         if (!groups) {
-          groups = getDefaultGroups();
+          groups = resolveGrou;
         }
       }
 

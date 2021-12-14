@@ -8,7 +8,7 @@ import { useEventHandler } from "../../utils/hooks";
 import { scrollbarStyles } from "../utils";
 import { EntryKind, SidebarEntry } from "./utils";
 import { Resizable } from "re-resizable";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
 
 const MARGIN = 3;

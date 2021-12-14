@@ -34,8 +34,6 @@ export interface PathEntry {
 
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | TailEntry;
 
-export type SidebarGroups = [string, string[]][];
-
 export const useTagText = () => {
   const { singular } = useRecoilValue(elementNames);
   const loadingTags = useLoading({ extended: false, modal: false });

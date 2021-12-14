@@ -1,15 +1,17 @@
-import { atomFamily, DefaultValue, selectorFamily } from "recoil";
+import { Field } from "@fiftyone/utilities";
+import { atom, atomFamily, DefaultValue, selectorFamily } from "recoil";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
+  LIST_FIELD,
+  VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "../../recoil/constants";
 import * as schemaAtoms from "../../recoil/schema";
-import { isVideoDataset } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 
 import {
@@ -18,7 +20,6 @@ import {
   GroupEntry,
   PathEntry,
   SidebarEntry,
-  SidebarGroups,
   TailEntry,
 } from "./utils";
 
@@ -29,67 +30,144 @@ export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   }
 );
 
-const prioritySort = (
-  groups: { [key: string]: string[] },
-  priorities: string[]
-): SidebarGroups => {
-  return Object.entries(groups).sort(
-    ([a], [b]) => priorities.indexOf(a) - priorities.indexOf(b)
-  );
+const datasetFieldsReducer = (ftypes: string[], docTypes: string[]) => (
+  acc: string[],
+  { ftype, subfield, embeddedDocType, name, fields }: Field
+): string[] => {
+  if (ftype === LIST_FIELD) {
+    ftype = subfield;
+  }
+
+  if (ftypes.includes(ftype)) {
+    return [...acc, name];
+  }
+
+  if (ftype === EMBEDDED_DOCUMENT_FIELD) {
+    if (docTypes.includes(embeddedDocType)) {
+      return [...acc, name];
+    }
+
+    return [
+      ...acc,
+      ...Object.entries(fields).reduce((p, [subfieldName, f]) => {
+        let subftype = f.ftype;
+
+        if (subftype === LIST_FIELD) {
+          subftype = f.subfield;
+        }
+
+        if (ftypes.includes(subftype)) {
+          return [...p, `${name}.${subfieldName}`];
+        }
+
+        return p;
+      }, []),
+    ];
+  }
+
+  return acc;
 };
 
-const defaultSidebarGroups = selectorFamily<
-  SidebarGroups,
+const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
+
+const DEFAULT_IMAGE_GROUPS = [
+  ["tags", []],
+  ["label tags", []],
+  ["metadata", []],
+  ["labels", []],
+  ["primitives", []],
+];
+
+const DEFAULT_VIDEO_GROUPS = [
+  ["tags", []],
+  ["label tags", []],
+  ["metadata", []],
+  ["labels", []],
+  ["frame labels", []],
+  ["primitives", []],
+];
+
+export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
+  const sidebarPaths = new Set<string>(
+    (dataset.appSidebarGroups || []).reduce(
+      (acc, [_, fields]) => [...acc, ...fields],
+      []
+    )
+  );
+
+  const primitves = dataset.sampleFields.reduce(
+    datasetFieldsReducer(VALID_PRIMITIVE_TYPES, []),
+    []
+  );
+
+  const labels = dataset.sampleFields.reduce(
+    datasetFieldsReducer([], LABELS),
+    []
+  );
+
+  const frameLabels = dataset.frameFields
+    .reduce(datasetFieldsReducer([], LABELS), [])
+    .map((path) => `frames.${path}`);
+
+  const groups = [
+    ...(dataset.appSidebarGroups
+      ? dataset.appSidebarGroups
+      : dataset.frameFields.length
+      ? DEFAULT_VIDEO_GROUPS
+      : DEFAULT_IMAGE_GROUPS),
+  ] as State.SidebarGroups;
+
+  const updater = groupUpdater(groups);
+
+  updater("labels", labels);
+  dataset.frameFields.length && updater("frame labels", frameLabels);
+  updater("primitives", primitves);
+
+  return groups;
+};
+
+const groupUpdater = (groups: State.SidebarGroups) => {
+  const groupNames = groups.map(([name]) => name);
+
+  return (name: string, paths: string[]) => {
+    let index = groupNames.indexOf(name);
+
+    if (index < 0) {
+      groups.push(["labels", []]);
+      index = groups.length - 1;
+    }
+
+    groups[index][1] = groups[index][1].filter((name) => paths.includes(name));
+
+    const group = groups[index][1];
+    groups[index][1] = [
+      ...group,
+      ...paths.filter((path) => !group.includes(path)).sort(),
+    ];
+  };
+};
+
+export const sidebarGroupsDefinition = atom<State.SidebarGroups>({
+  key: "sidebarGroupsDefinition",
+  default: [],
+});
+
+const sidebarGroups = selectorFamily<
+  State.SidebarGroups,
   { modal: boolean; loadingTags: boolean }
 >({
   key: "defaultSidebarGroups",
   get: ({ modal, loadingTags }) => ({ get }) => {
-    const video = get(isVideoDataset);
-    const frameLabels = get(
-      schemaAtoms.labelFields({ space: State.SPACE.FRAME })
-    );
-    const sampleLabels = get(
-      schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })
-    );
-    const primitives = get(
-      schemaAtoms.fieldPaths({
-        ftype: VALID_PRIMITIVE_TYPES,
-        space: State.SPACE.SAMPLE,
-      })
-    ).filter((field) => field !== "tags" && (!video || field !== "frames"));
-
-    const otherSampleFields = get(
-      schemaAtoms.fieldPaths({
-        space: State.SPACE.SAMPLE,
-        ftype: EMBEDDED_DOCUMENT_FIELD,
-      })
-    ).filter((path) => ![...frameLabels, ...sampleLabels].includes(path));
-
-    const groups = {
-      tags: [],
-      "label tags": [],
-      labels: sampleLabels,
-      primitives,
-      ...otherSampleFields.reduce((other, current) => {
-        other[current] = get(
-          schemaAtoms.fieldPaths({
-            path: current,
-            ftype: VALID_PRIMITIVE_TYPES,
-          })
-        );
-        return other;
-      }, {}),
-    };
-
-    if (frameLabels.length) {
-      groups["frame labels"] = frameLabels;
-    }
+    const groups = [...get(sidebarGroupsDefinition)];
+    const groupNames = groups.map(([name]) => name);
+    const tagsIndex = groupNames.indexOf("tags");
+    const labelTagsIndex = groupNames.indexOf("label tags");
 
     if (!loadingTags) {
-      groups.tags = get(
+      groups[tagsIndex][1] = get(
         aggregationAtoms.values({ extended: false, modal, path: "tags" })
       ).map((tag) => `tags.${tag}`);
-      groups["label tags"] = get(
+      groups[labelTagsIndex][1] = get(
         aggregationAtoms.cumulativeValues({
           extended: false,
           modal: false,
@@ -100,21 +178,8 @@ const defaultSidebarGroups = selectorFamily<
       ).map((tag) => `_label_tags.${tag}`);
     }
 
-    return prioritySort(groups, [
-      "metadata",
-      "labels",
-      "frame labels",
-      "primitives",
-    ]);
+    return groups;
   },
-});
-
-export const sidebarGroups = atomFamily<
-  SidebarGroups,
-  { loadingTags: boolean; modal: boolean }
->({
-  key: "sidebarGroups",
-  default: [],
 });
 
 export const sidebarEntries = selectorFamily<
