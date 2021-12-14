@@ -585,11 +585,15 @@ class CountValues(Aggregation):
             p = lambda x: x
 
         if self._first is not None:
+            count = d["count"]
+            if not count:
+                return (0, [])
+
             return (
-                d["count"],
+                count[0]["count"],
                 [
                     [p(i["k"]), i["count"]]
-                    for i in d["result"]
+                    for i in d["result"][0]["result"]
                     if i["k"] is not None
                 ],
             )
@@ -628,18 +632,20 @@ class CountValues(Aggregation):
 
             sort[self._sort_by] = self._order
             sort["count" if self._sort_by != "count" else "_id"] = self._order
+            result = [
+                {"$sort": sort},
+                {"$limit": limit},
+                {
+                    "$group": {
+                        "_id": None,
+                        "result": {"$push": {"k": "$_id", "count": "$count"}},
+                    }
+                },
+            ]
 
-            pipeline += [{"$sort": sort}, {"$limit": limit}]
-
-        pipeline += [
-            {
-                "$group": {
-                    "_id": None,
-                    "result": {"$push": {"k": "$_id", "count": "$count"}},
-                    "count": {"$sum": 1},
-                }
-            },
-        ]
+            pipeline += [
+                {"$facet": {"count": [{"$count": "count"}], "result": result}}
+            ]
 
         return pipeline
 

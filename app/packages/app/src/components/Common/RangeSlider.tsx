@@ -5,6 +5,7 @@ import {
   RecoilState,
   RecoilValueReadOnly,
   useRecoilState,
+  useRecoilStateLoadable,
   useRecoilValue,
 } from "recoil";
 import { Slider as SliderUnstyled } from "@material-ui/core";
@@ -314,11 +315,12 @@ type RangeSliderProps = {
 };
 
 export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
-  const [value, setValue] = useRecoilState(valueAtom);
+  const [value, setValue] = useRecoilStateLoadable(valueAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useEffect(() => {
-    JSON.stringify(value) !== JSON.stringify(localValue) &&
-      setLocalValue(value);
+    value.state !== "loading" &&
+      JSON.stringify(value.contents) !== JSON.stringify(localValue) &&
+      setLocalValue(value.contents);
   }, [value]);
 
   return (

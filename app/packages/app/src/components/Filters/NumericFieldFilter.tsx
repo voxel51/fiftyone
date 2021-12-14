@@ -142,7 +142,7 @@ const NumericFieldFilter = ({
         onMouseDown={(event) => event.stopPropagation()}
         style={{ cursor: "default" }}
       >
-        {hasBounds ? (
+        {hasBounds && bounds[0] !== bounds[1] ? (
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
@@ -152,6 +152,15 @@ const NumericFieldFilter = ({
               defaultRange,
             })}
             color={color}
+          />
+        ) : hasBounds ? (
+          <Checkbox
+            key={bounds[0]}
+            color={color}
+            disabled={true}
+            name={bounds[0]}
+            setValue={() => {}}
+            count={0}
           />
         ) : (
           <Checkbox

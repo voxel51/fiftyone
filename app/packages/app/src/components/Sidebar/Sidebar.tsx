@@ -7,6 +7,9 @@ import { move } from "@fiftyone/utilities";
 import { useEventHandler } from "../../utils/hooks";
 import { scrollbarStyles } from "../utils";
 import { EntryKind, SidebarEntry } from "./utils";
+import { Resizable } from "re-resizable";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
 
 const MARGIN = 3;
 
@@ -50,6 +53,12 @@ const fn = (
     }
   }
 
+  let scale = 1;
+  if (activeKey) {
+    const w = items[activeKey].el.parentElement.getBoundingClientRect().width;
+    scale = (w - 8) / (w - 16);
+  }
+
   const results = {};
   y = 0;
   let paths = 0;
@@ -82,7 +91,7 @@ const fn = (
       top: dragging ? currentY[key] + delta : y,
       zIndex: dragging ? 1 : 0,
       left: shown ? "unset" : -3000,
-      scale: dragging ? 1.05 : 1,
+      scale: dragging ? scale : 1,
       shadow: dragging ? 8 : 0,
     };
 
@@ -352,11 +361,13 @@ const InteractiveSidebar = ({
   entries,
   setEntries,
   render,
+  modal,
 }: {
   before?: React.ReactNode;
   entries: SidebarEntry[];
   setEntries: (entries: SidebarEntry[]) => void;
   render: RenderEntry;
+  modal: boolean;
 }) => {
   const order = useRef<string[]>([]);
   const lastOrder = useRef<string[]>([]);
@@ -369,6 +380,8 @@ const InteractiveSidebar = ({
   const [isDragging, setIsDragging] = useState(false);
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
+  const [width, setWidth] = useRecoilState(sidebarWidth(modal));
+  const shown = useRecoilValue(sidebarVisible(modal));
 
   let group = null;
   order.current = entries.map((entry) => getEntryKey(entry));
@@ -556,62 +569,81 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
 
-  return (
-    <SidebarColumn
-      ref={container}
-      onScroll={({ target }) => {
-        if (start.current !== null) {
-          start.current += scroll.current - target.scrollTop;
-        }
-
-        scroll.current = target.scrollTop;
-        down.current && animate(last.current);
+  return shown ? (
+    <Resizable
+      defaultSize={{ width, height: "100%" }}
+      minWidth={200}
+      maxWidth={600}
+      enable={{
+        top: false,
+        right: true,
+        bottom: false,
+        left: false,
+        topRight: false,
+        bottomRight: false,
+        bottomLeft: false,
+        topLeft: false,
+      }}
+      onResizeStop={(e, direction, ref, { width }) => {
+        setWidth(width);
       }}
     >
-      {before}
-      <Container>
-        {order.current.map((key) => {
-          const entry = items.current[key].entry;
-          if (entry.kind === EntryKind.GROUP) {
-            group = entry.name;
+      <SidebarColumn
+        ref={container}
+        onScroll={({ target }) => {
+          if (start.current !== null) {
+            start.current += scroll.current - target.scrollTop;
           }
 
-          const { shadow, cursor, ...springs } = items.current[
-            key
-          ].controller.springs;
-          const { children, disabled } = render(
-            group,
-            entry,
-            items.current[key].controller,
-            isDragging
-          );
+          scroll.current = target.scrollTop;
+          down.current && animate(last.current);
+        }}
+      >
+        {before}
+        <Container>
+          {order.current.map((key) => {
+            const entry = items.current[key].entry;
+            if (entry.kind === EntryKind.GROUP) {
+              group = entry.name;
+            }
 
-          return (
-            <animated.div
-              data-key={key}
-              onMouseDown={disabled ? null : trigger}
-              ref={(node) => {
-                items.current[key].el &&
-                  observer.unobserve(items.current[key].el);
-                node && observer.observe(node);
-                items.current[key].el = node;
-              }}
-              key={key}
-              style={{
-                ...springs,
-                boxShadow: shadow.to(
-                  (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
-                ),
-                cursor: disabled ? "unset" : cursor,
-              }}
-            >
-              {children}
-            </animated.div>
-          );
-        })}
-      </Container>
-    </SidebarColumn>
-  );
+            const { shadow, cursor, ...springs } = items.current[
+              key
+            ].controller.springs;
+            const { children, disabled } = render(
+              group,
+              entry,
+              items.current[key].controller,
+              isDragging
+            );
+
+            return (
+              <animated.div
+                data-key={key}
+                onMouseDown={disabled ? null : trigger}
+                ref={(node) => {
+                  items.current[key].el &&
+                    observer.unobserve(items.current[key].el);
+                  node && observer.observe(node);
+                  items.current[key].el = node;
+                }}
+                key={key}
+                style={{
+                  ...springs,
+                  boxShadow: shadow.to(
+                    (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+                  ),
+                  cursor: disabled ? "unset" : cursor,
+                }}
+              >
+                {children}
+              </animated.div>
+            );
+          })}
+        </Container>
+      </SidebarColumn>
+    </Resizable>
+  ) : null;
 };
 
 export default React.memo(InteractiveSidebar);

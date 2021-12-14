@@ -53,6 +53,7 @@ function Dataset() {
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);
   }, [isModalActive]);
+  const datasets = useRecoilValue(selectors.datasets);
 
   return (
     <>
@@ -66,7 +67,10 @@ function Dataset() {
             </Body>
           </>
         ) : (
-          <Loading text={"No dataset selected"} key={"loading"} />
+          <Loading
+            text={datasets.length ? "No dataset selected" : "No datasets"}
+            key={2}
+          />
         )}
       </Container>
     </>

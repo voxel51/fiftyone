@@ -10,8 +10,10 @@ import { State } from "../../../recoil/types";
 import { elementNames } from "../../../recoil/view";
 import { useTheme } from "../../../utils/hooks";
 
+import { NameAndCountContainer } from "../../utils";
+
 import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
-import RegularEntry, { HeaderTextContainer } from "./RegularEntry";
+import RegularEntry from "./RegularEntry";
 
 const ACTIVE_ATOM = {
   [State.TagKey.LABEL]: schemaAtoms.activeLabelTags,
@@ -126,7 +128,7 @@ const FilterableTagEntry = ({
               padding: 0,
             }}
           />
-          <HeaderTextContainer>
+          <NameAndCountContainer>
             <span>{tag}</span>
             {tagKey === State.TagKey.LABEL ? (
               <LabelTagCounts modal={modal} tag={tag} />
@@ -140,7 +142,7 @@ const FilterableTagEntry = ({
               onClick={() => setMatched(!matched)}
               matched={matched}
             />
-          </HeaderTextContainer>
+          </NameAndCountContainer>
         </>
       }
       onClick={() => setActive(!active)}

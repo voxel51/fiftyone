@@ -41,6 +41,7 @@ import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarEntries } from "./Sidebar";
+import { gridZoom } from "./ImageContainerHeader";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -113,7 +114,7 @@ const flashlightOptions = selector<FlashlightOptions>({
   get: ({ get }) => {
     return {
       rowAspectRatioThreshold:
-        11 - Math.max(get(selectors.gridZoom), get(gridZoomRange)[0]),
+        11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
     };
   },
 });
@@ -392,7 +393,7 @@ export default React.memo(() => {
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   useSampleUpdate();
   const gridZoomRef = useRef<number>();
-  const gridZoomValue = useRecoilValue(selectors.gridZoom);
+  const gridZoomValue = useRecoilValue(gridZoom);
   gridZoomRef.current = gridZoomValue;
 
   useEventHandler(

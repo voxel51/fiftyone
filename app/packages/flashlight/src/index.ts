@@ -219,11 +219,6 @@ export default class Flashlight<K> {
       });
       newContainer.style.height = `${this.state.height}px`;
 
-      if (this.container.parentElement.scrollTop === 0) {
-        this.render();
-        return;
-      }
-
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
           this.container.parentElement.scrollTop = section.getTop();

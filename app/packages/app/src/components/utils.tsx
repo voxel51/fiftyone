@@ -315,3 +315,22 @@ export const Button = ({
     </ButtonDiv>
   );
 };
+
+export const NameAndCountContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+
+  & > span:first-child {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 6px;
+  }
+
+  & span {
+    margin-right: 6px;
+  }
+`;

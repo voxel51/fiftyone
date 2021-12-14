@@ -293,20 +293,22 @@ const SaveFilters = () => {
   const [loading, setLoading] = useRecoilState(savingFilters);
 
   return hasFiltersValue ? (
-    <PillButton
-      open={false}
-      highlight={true}
-      icon={loading ? <Loading /> : <Bookmark />}
-      style={{ cursor: loading ? "default" : "pointer" }}
-      onClick={() => {
-        if (loading) {
-          return;
-        }
-        setLoading(true);
-        socket.send(packageMessage("save_filters", {}));
-      }}
-      title={"Convert current field filters to view stages"}
-    />
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={true}
+        icon={loading ? <Loading /> : <Bookmark />}
+        style={{ cursor: loading ? "default" : "pointer" }}
+        onClick={() => {
+          if (loading) {
+            return;
+          }
+          setLoading(true);
+          socket.send(packageMessage("save_filters", {}));
+        }}
+        title={"Convert current field filters to view stages"}
+      />
+    </ActionDiv>
   ) : null;
 };
 

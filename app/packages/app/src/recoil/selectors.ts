@@ -1,11 +1,10 @@
-import { DefaultValue, selector, selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 
 import socket, { handleId, isNotebook, http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
-import { setState } from "./utils";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -96,24 +95,9 @@ export const isVideoDataset = selector({
   get: ({ get }) => get(mediaType) === "video",
 });
 
-export const gridZoom = selector<number>({
-  key: "gridZoom",
+export const defaultGridZoom = selector<number>({
+  key: "defaultGridZoom",
   get: ({ get }) => get(appConfig)?.gridZoom,
-  set: ({ get, set }, value) => {
-    if (value instanceof DefaultValue) {
-      value = 5;
-    }
-
-    const state = get(atoms.stateDescription);
-
-    setState(set, {
-      ...state,
-      config: {
-        ...state.config,
-        gridZoom: value,
-      },
-    });
-  },
 });
 
 export const timeZone = selector<string>({

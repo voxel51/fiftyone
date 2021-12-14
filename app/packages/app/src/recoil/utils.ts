@@ -1,10 +1,4 @@
-import {
-  RecoilState,
-  selector,
-  SetRecoilState,
-  Snapshot,
-  useRecoilCallback,
-} from "recoil";
+import { selector, SetRecoilState, useRecoilCallback } from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
@@ -12,8 +6,6 @@ import socket, { http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 
 import * as atoms from "./atoms";
-import * as filterAtoms from "./filters";
-import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { State } from "./types";
 import * as viewAtoms from "./view";
@@ -63,7 +55,6 @@ export const useClearModal = () => {
   );
 };
 
-export const setState = (set: SetRecoilState, state: State.Description) => {
-  set(atoms.stateDescription, state);
+export const setState = (state: State.Description) => {
   socket.send(packageMessage("update", { state }));
 };

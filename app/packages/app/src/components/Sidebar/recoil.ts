@@ -114,7 +114,7 @@ export const sidebarGroups = atomFamily<
   { loadingTags: boolean; modal: boolean }
 >({
   key: "sidebarGroups",
-  default: defaultSidebarGroups,
+  default: [],
 });
 
 export const sidebarEntries = selectorFamily<

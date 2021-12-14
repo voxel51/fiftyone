@@ -164,7 +164,9 @@ class PageHandler(fosu.AsyncRequestHandler):
         page = data.get("page", 1)
         page_length = data.get("page_length", 20)
 
-        view = fosv.get_view(dataset, stages, filters, count_label_tags=True)
+        view = fosv.get_view(
+            dataset, stages=stages, filters=filters, count_label_tags=True
+        )
         if view.media_type == fom.VIDEO:
             if isinstance(view, focl.ClipsView):
                 expr = F("frame_number") == F("$support")[0]

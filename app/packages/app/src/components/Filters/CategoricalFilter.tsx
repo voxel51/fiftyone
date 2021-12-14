@@ -10,25 +10,28 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
+  useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
+import { useSpring } from "@react-spring/core";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
-import * as atoms from "../../recoil/atoms";
-import * as colorAtoms from "../../recoil/color";
-import Checkbox from "../Common/Checkbox";
-import Input from "../Common/Input";
-import Results, { ResultsContainer } from "../Common/Results";
-import { Button } from "../utils";
-import { PopoutSectionTitle } from "../utils";
-import { ItemAction } from "../Actions/ItemAction";
 import socket from "../../shared/connection";
+import * as atoms from "../../recoil/atoms";
+import * as aggregationAtoms from "../../recoil/aggregations";
+import * as colorAtoms from "../../recoil/color";
 import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
 import { genSort } from "../../utils/generic";
+
+import { ItemAction } from "../Actions/ItemAction";
+import Checkbox from "../Common/Checkbox";
+import Input from "../Common/Input";
+import Results, { ResultsContainer } from "../Common/Results";
+import { Button, PopoutSectionTitle } from "../utils";
+
 import ExcludeOption from "./Exclude";
-import { useSpring } from "@react-spring/core";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -47,6 +50,7 @@ const NamedCategoricalFilterContainer = styled.div`
 const NamedCategoricalFilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
+  text-overflow: ellipsis;
 `;
 
 const CHECKBOX_LIMIT = 20;
@@ -141,7 +145,7 @@ const Wrapper = <T extends unknown>({
           key={String(value)}
           color={color}
           value={selectedSet.has(value)}
-          disabled={modal && allValues.length === 1}
+          disabled={totalCount === 1}
           name={value}
           count={
             selectedCounts.current.has(value)
@@ -156,6 +160,12 @@ const Wrapper = <T extends unknown>({
             }
             setSelected([...selectedSet].sort());
           }}
+          subcountAtom={aggregationAtoms.count({
+            modal,
+            path,
+            extended: true,
+            value: value as string,
+          })}
         />
       ))}
       {Boolean(selectedSet.size) && (
@@ -259,7 +269,7 @@ const ResultsWrapper = <T extends unknown>({
       >
         {results && subCount !== null && results.length > 0 && (
           <>
-            {results.length !== subCount && <>{results.length} of</>}
+            {results.length !== subCount && <>{results.length} of </>}
             {subCount.toLocaleString()} result{results.length > 1 ? "s" : null}
           </>
         )}
@@ -286,7 +296,6 @@ const useSearch = <T extends unknown>() => {
       setSearchResults,
       setSubCount,
       setActive,
-      noneCount,
     }: {
       modal: boolean;
       search: string;
@@ -295,7 +304,6 @@ const useSearch = <T extends unknown>() => {
       setSearchResults: (value) => void;
       setSubCount: (value) => void;
       setActive: (value) => void;
-      noneCount: number;
     }) => {
       const id = uuid();
 
@@ -310,6 +318,10 @@ const useSearch = <T extends unknown>() => {
         sampleId = (await snapshot.getPromise(atoms.modal)).sample._id;
       }
       const selected = await snapshot.getPromise(selectedValuesAtom);
+
+      const noneCount = await snapshot.getPromise(
+        aggregationAtoms.noneCount({ path, modal, extended: false })
+      );
 
       const promise = new Promise<{
         count: number;
@@ -332,18 +344,22 @@ const useSearch = <T extends unknown>() => {
         );
       });
       currentPromise.current = promise;
-      promise.then(({ count, results }) => {
-        clearTimeout(clear);
-        if (currentPromise.current !== promise) {
-          return;
-        }
-        if (noneCount > 0) {
-          results = [...results, [null, noneCount]];
-        }
-        results.length && setActive(results[0][0]);
-        setSearchResults(results);
-        setSubCount(count);
-      });
+
+      let { count, results } = await promise;
+
+      clearTimeout(clear);
+      if (currentPromise.current !== promise) {
+        return;
+      }
+      if (noneCount > 0 && "None".includes(search)) {
+        results = ([...results, [null, noneCount]] as [T, number][])
+          .sort(nullSort(sorting))
+          .slice(0, 25);
+        count++;
+      }
+      results.length && setActive(results[0][0]);
+      setSearchResults(results);
+      setSubCount(count);
     },
     []
   );
@@ -378,7 +394,7 @@ const CategoricalFilter = <T extends unknown>({
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
   const selected = useRecoilValue(selectedValuesAtom);
-  const { count, results } = useRecoilValue(countsAtom);
+  const countsLoadable = useRecoilValueLoadable(countsAtom);
   const [focused, setFocused] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [search, setSearch] = useState("");
@@ -394,8 +410,6 @@ const CategoricalFilter = <T extends unknown>({
     () => setActive(undefined),
   ]);
 
-  const none = results.filter(([v, c]) => v === null);
-  const noneCount = none.length ? none[0][1] : 0;
   const runSearch = useSearch<T>();
 
   useLayoutEffect(() => {
@@ -408,16 +422,17 @@ const CategoricalFilter = <T extends unknown>({
         setSearchResults,
         setSubCount,
         setActive,
-        noneCount,
       });
-  }, [focused, search, selected, noneCount]);
+  }, [focused, search, selected]);
 
   const getCount = (results, search) => {
     const index = results.map((r) => r[0]).indexOf(search);
     return results[index][1];
   };
 
-  if (count === 0) return null;
+  if (countsLoadable.state === "loading") return null;
+
+  const { count, results } = countsLoadable.contents;
 
   return (
     <NamedCategoricalFilterContainer title={title}>

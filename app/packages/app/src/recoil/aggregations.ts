@@ -5,13 +5,14 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 
+import { http } from "../shared/connection";
+
 import * as atoms from "./atoms";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "./constants";
 import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
-import { http } from "../shared/connection";
-import { t } from "@fiftyone/looker/src/overlays/util";
+import * as viewAtoms from "./view";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -124,6 +125,7 @@ const aggregations = selectorFamily<
           filters,
           sample_id: modal ? get(atoms.modal).sample._id : null,
           dataset: get(selectors.datasetName),
+          view: get(viewAtoms.view),
         }),
       })
     ).json()) as AggregationsData;
@@ -197,12 +199,15 @@ const makeCountResults = <T>(key) =>
       if (!data) console.log(path, get(aggregations({ modal, extended })));
 
       const results = [...data.CountValues[1]];
+
+      let count = data.CountValues[0];
       if (data.None) {
         results.push([null, data.None]);
+        count++;
       }
 
       return {
-        count: data.Count + data.None,
+        count,
         results,
       };
     },
@@ -252,35 +257,41 @@ export const count = selectorFamily<
     extended: boolean;
     path: string;
     modal: boolean;
-    ftype?: string | string[];
-    embeddedDocType?: string | string[];
+    value?: string | null;
   }
 >({
   key: "count",
-  get: ({ extended, path, modal }) => ({ get }) => {
+  get: ({ extended, path, modal, value }) => ({ get }) => {
     const data = get(aggregations({ modal, extended }));
     if (!data) {
       return null;
     }
 
-    if (data[path]) {
-      return data[path]?.Count;
+    const result = data[path];
+    if (!result) {
+      const split = path.split(".");
+
+      if (split.length < 2) {
+        throw new Error(`invalid path ${path}`);
+      }
+
+      const parent = split.slice(0, split.length - 1).join(".");
+      if (data[parent]) {
+        return get(counts({ extended, path: parent, modal }))[
+          split[split.length - 1]
+        ];
+      }
     }
 
-    const split = path.split(".");
-
-    if (split.length < 2) {
-      throw new Error(`invalid path ${path}`);
+    if (value === null) {
+      return result.None;
     }
 
-    const parent = split.slice(0, split.length - 1).join(".");
-    if (data[parent]) {
-      return get(counts({ extended, path: parent, modal }))[
-        split[split.length - 1]
-      ];
+    if (value !== undefined) {
+      return get(counts({ extended, path, modal }))[value] || 0;
     }
 
-    return data ? data[path]?.Count : null;
+    return data[path].Count;
   },
 });
 

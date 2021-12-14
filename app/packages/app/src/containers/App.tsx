@@ -13,6 +13,7 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { useClearModal } from "../recoil/utils";
+import * as viewAtoms from "../recoil/view";
 import socket, { handleId, isNotebook } from "../shared/connection";
 
 import {
@@ -25,29 +26,43 @@ import Dataset from "./Dataset";
 import Error from "./Error";
 import Setup from "./Setup";
 import { toCamelCase } from "@fiftyone/utilities";
+import { viewsAreEqual } from "../utils/view";
 
 const useStateUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async ({ state }) => {
+    ({ snapshot, set }) => async ({ state: { filters, ...data } }) => {
+      const state = toCamelCase(data) as State.Description;
       const newSamples = new Set<string>(state.selected);
       const counter = await snapshot.getPromise(atoms.viewCounter);
+      const view = await snapshot.getPromise(viewAtoms.view);
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
       set(atoms.stateDescription, {
-        ...(toCamelCase(state) as State.Description),
-        filters: state.filters,
-      });
+        ...state,
+        filters: filters as State.Filters,
+      } as State.Description);
       set(selectors.anyTagging, false);
       set(patching, false);
       set(similaritySorting, false);
       set(savingFilters, false);
+      if (!viewsAreEqual(view, state.view || [])) {
+        set(viewAtoms.view, state.view || []);
+      }
+
+      if (state.dataset) {
+        let groups = state.dataset.appSidebarGroups;
+
+        if (!groups) {
+          groups = getDefaultGroups();
+        }
+      }
 
       const colorPool = await snapshot.getPromise(atoms.colorPool);
       if (
-        JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)
+        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
       ) {
-        set(atoms.colorPool, state.config.color_pool);
+        set(atoms.colorPool, state.config.colorPool);
       }
     },
     []

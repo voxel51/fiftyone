@@ -1,11 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import { Checkbox } from "@material-ui/core";
-import {
-  ArrowDropDown,
-  ArrowDropUp,
-  KeyboardArrowDown,
-  KeyboardArrowUp,
-} from "@material-ui/icons";
+import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
 import {
   selectorFamily,
@@ -45,7 +40,8 @@ import {
 } from "../../Filters";
 
 import { PathEntryCounts } from "./EntryCounts";
-import RegularEntry, { HeaderTextContainer } from "./RegularEntry";
+import RegularEntry from "./RegularEntry";
+import { NameAndCountContainer } from "../../utils";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -180,7 +176,7 @@ const FilterableEntry = React.memo(
               }}
               key="checkbox"
             />
-            <HeaderTextContainer>
+            <NameAndCountContainer>
               <span key="path">{path}</span>
               <PathEntryCounts key="count" modal={modal} path={expandedPath} />
               {expandable.state !== "loading" && expandable.contents && (
@@ -198,7 +194,7 @@ const FilterableEntry = React.memo(
                   }}
                 />
               )}
-            </HeaderTextContainer>
+            </NameAndCountContainer>
           </>
         }
         {...useSpring({
@@ -206,16 +202,18 @@ const FilterableEntry = React.memo(
         })}
         onClick={() => setActive(!active)}
       >
-        {expanded &&
-          data.map(({ ftype, listField, ...props }) => {
-            return React.createElement(FILTERS[ftype], {
-              key: props.path,
-              onFocus,
-              onBlur,
-              title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
-              ...props,
-            });
-          })}
+        <Suspense fallback={null}>
+          {expanded &&
+            data.map(({ ftype, listField, ...props }) => {
+              return React.createElement(FILTERS[ftype], {
+                key: props.path,
+                onFocus,
+                onBlur,
+                title: listField ? `${LIST_FIELD}(${ftype})` : ftype,
+                ...props,
+              });
+            })}
+        </Suspense>
       </RegularEntry>
     );
   }

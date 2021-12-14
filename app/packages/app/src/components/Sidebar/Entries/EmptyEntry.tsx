@@ -2,7 +2,8 @@ import { useSpring } from "@react-spring/core";
 import React from "react";
 
 import { useTheme } from "../../../utils/hooks";
-import RegularEntry, { HeaderTextContainer } from "./RegularEntry";
+import { NameAndCountContainer } from "../../utils";
+import RegularEntry from "./RegularEntry";
 
 const EmptyEntry = ({ text }: { text: string }) => {
   const theme = useTheme();
@@ -13,9 +14,9 @@ const EmptyEntry = ({ text }: { text: string }) => {
   return (
     <RegularEntry
       heading={
-        <HeaderTextContainer>
+        <NameAndCountContainer>
           <span style={{ color: theme.fontDarkest }}>{text}</span>
-        </HeaderTextContainer>
+        </NameAndCountContainer>
       }
       title={text}
       backgroundColor={backgroundColor}

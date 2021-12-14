@@ -18,13 +18,6 @@ export const styles = css`
     background-color: ${({ theme }) => theme.background};
   }
 
-  body {
-    ${scrollbarStyles};
-    ::-webkit-scrollbar {
-      background-color: ${({ theme }) => theme.background};
-    }
-  }
-
   input {
     padding: 0;
   }

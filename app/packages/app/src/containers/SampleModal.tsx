@@ -253,31 +253,12 @@ const SampleModal = ({ onClose }: Props, ref) => {
             <ModalActionsRow lookerRef={lookerRef} />
           </Header>
         </ContentColumn>
-        {showSidebar && (
-          <SidebarContainer
-            defaultSize={{ width: sidebarWidth }}
-            minWidth={200}
-            enable={{
-              top: false,
-              right: false,
-              bottom: false,
-              left: true,
-              topRight: false,
-              bottomRight: false,
-              bottomLeft: false,
-              topLeft: false,
-            }}
-            onResizeStop={(e, direction, ref, { width }) => {
-              setSidebarWidth(width);
-            }}
-          >
-            <FieldsSidebar
-              entries={entries}
-              setEntries={setEntries}
-              render={renderEntry}
-            />
-          </SidebarContainer>
-        )}
+        <FieldsSidebar
+          entries={entries}
+          setEntries={setEntries}
+          render={renderEntry}
+          modal={true}
+        />
       </Container>
     </ModalWrapper>
   );

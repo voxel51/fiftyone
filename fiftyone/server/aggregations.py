@@ -29,7 +29,7 @@ class AggregationsHandler(AsyncRequestHandler):
         stages = data.get("view", None)
         sample_id = data.get("sample_id", None)
 
-        view = fosv.get_view(dataset, stages, filters)
+        view = fosv.get_view(dataset, stages=stages, filters=filters)
 
         if sample_id:
             view = fov.make_optimized_select_view(view, sample_id)

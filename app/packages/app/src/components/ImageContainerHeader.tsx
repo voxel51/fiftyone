@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { atom, useRecoilValue, useSetRecoilState } from "recoil";
 
 import * as aggregationAtoms from "../recoil/aggregations";
 import * as selectors from "../recoil/selectors";
@@ -13,10 +13,10 @@ import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
-type Props = {
-  showSidebar: boolean;
-  onShowSidebar: (show: boolean) => void;
-};
+export const gridZoom = atom<number>({
+  key: "gridZoom",
+  default: selectors.defaultGridZoom,
+});
 
 const SamplesHeader = styled.div`
   position: absolute;
@@ -76,7 +76,7 @@ const Count = () => {
 };
 
 const ImageContainerHeader = () => {
-  const setGridZoom = useSetRecoilState(selectors.gridZoom);
+  const setGridZoom = useSetRecoilState(gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
 
@@ -90,11 +90,12 @@ const ImageContainerHeader = () => {
         <SliderContainer>
           <div style={{ flexGrow: 1 }} title={"Zoom"}>
             <Slider
-              valueAtom={selectors.gridZoom}
+              valueAtom={gridZoom}
               boundsAtom={gridZoomRange}
               color={theme.brand}
               showBounds={false}
               persistValue={false}
+              showValue={false}
               style={{ padding: 0, margin: 0 }}
             />
           </div>

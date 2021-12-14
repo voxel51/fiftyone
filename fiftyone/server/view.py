@@ -39,12 +39,10 @@ def get_view(
         only_matches (True): whether to filter unmatches samples when filtering
             labels
     """
-    dataset = fod.load_dataset(dataset_name)
-
+    view = fod.load_dataset(dataset_name)
     if stages:
-        view = fov.DatasetView._build(dataset, stages)
+        view = fov.DatasetView._build(view, stages)
 
-    view = dataset
     if filters is not None:
         view = get_extended_view(
             view,

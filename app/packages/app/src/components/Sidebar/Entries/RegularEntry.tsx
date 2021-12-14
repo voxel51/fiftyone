@@ -19,27 +19,6 @@ const Header = styled.div`
   justify-content: space-between;
 `;
 
-export const HeaderTextContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  width: calc(100% - 31px);
-  margin-left: 6px;
-  flex: 1;
-  min-width: 0;
-
-  & > span:first-child {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-left: 6px;
-  }
-
-  & span {
-    margin-right: 6px;
-  }
-`;
-
 type RegularEntryProps = {
   backgroundColor?: SpringValue<string>;
   clickable?: boolean;

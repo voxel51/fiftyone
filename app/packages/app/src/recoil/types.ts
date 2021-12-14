@@ -59,6 +59,7 @@ export namespace State {
     sampleCollectionName: string;
     sampleFields: Field[];
     version: string;
+    appSidebarGroups?: string[];
     _id: ID;
   }
 

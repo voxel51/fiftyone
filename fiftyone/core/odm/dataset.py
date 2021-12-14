@@ -304,4 +304,6 @@ class DatasetDocument(Document):
     )
     brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
     evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
-    app_groups = ListField(ListField(StringField(unique=True)))
+    app_sidebar_groups = ListField(
+        ListField(StringField(unique=True)), default=None
+    )

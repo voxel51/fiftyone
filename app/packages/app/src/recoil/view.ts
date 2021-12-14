@@ -1,25 +1,30 @@
-import { DefaultValue, selector } from "recoil";
+import { atom, selector } from "recoil";
+import { viewsAreEqual } from "../utils/view";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
 import { setState } from "./utils";
 
-export const view = selector<State.Stage[]>({
+export const view = atom<State.Stage[]>({
   key: "view",
-  get: ({ get }) => get(atoms.stateDescription)?.view || [],
-  set: ({ get, set }, stages) => {
-    if (stages instanceof DefaultValue) {
-      stages = [];
-    }
+  default: [],
+  effects_UNSTABLE: [
+    ({ onSet, getPromise }) => {
+      onSet(async (newValue, oldValue, isReset) => {
+        if (viewsAreEqual(newValue, oldValue)) return;
 
-    setState(set, {
-      ...get(atoms.stateDescription),
-      view: stages,
-      selected: [],
-      selectedLabels: [],
-      filters: {},
-    });
-  },
+        const state = await getPromise(atoms.stateDescription);
+
+        setState({
+          ...state,
+          view: newValue,
+          selected: [],
+          selectedLabels: [],
+          filters: {},
+        });
+      });
+    },
+  ],
 });
 
 export const viewCls = selector<string>({
