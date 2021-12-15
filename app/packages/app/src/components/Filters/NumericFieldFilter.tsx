@@ -70,7 +70,7 @@ const getNonfiniteGetter = (params: {
     key: aggregationAtoms.Nonfinite
   ): [aggregationAtoms.Nonfinite, NonfiniteState] => {
     const [value, setValue] = useRecoilState(
-      numericAtoms.nonfiniteAtom({ ...params, key: "inf" })
+      numericAtoms.nonfiniteAtom({ ...params, key })
     );
 
     return [
@@ -153,7 +153,7 @@ const NumericFieldFilter = ({
   );
   const one = bounds[0] === bounds[1];
 
-  if (!hasBounds && nonfinites.length === 2 && nonfinites[0][0] === "none")
+  if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none")
     return null;
 
   return (

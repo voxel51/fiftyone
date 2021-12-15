@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import styled from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -24,6 +24,7 @@ import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import ExternalLink from "./ExternalLink";
 import { Slack } from "../icons";
 import * as atoms from "../recoil/atoms";
+import * as aggregationAtoms from "../recoil/aggregations";
 import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
 import { packageMessage } from "../utils/socket";
@@ -668,7 +669,11 @@ const Header = ({ addNotification }) => {
   return (
     <HeaderDiv>
       <LeftDiv>
-        <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
+        <TitleDiv
+          onClick={() => {
+            socket.send(packageMessage("refresh", {}));
+          }}
+        >
           <LogoImg style={logoProps} src={Logo} />
           <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
         </TitleDiv>
