@@ -1,5 +1,5 @@
 import React, { useState, useRef, Suspense } from "react";
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 
 import { toCamelCase } from "@fiftyone/utilities";
@@ -30,12 +30,12 @@ import Setup from "./Setup";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 
 const useStateUpdate = () => {
-  return useRecoilCallback(
-    ({ snapshot, set }) => async ({ state: { filters, ...data } }) => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => async ({ state: { filters, ...data } }) => {
       const state = toCamelCase(data) as State.Description;
       const newSamples = new Set<string>(state.selected);
-      const counter = await snapshot.getPromise(atoms.viewCounter);
-      const view = await snapshot.getPromise(viewAtoms.view);
+      const counter = get(atoms.viewCounter);
+      const view = get(viewAtoms.view);
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
@@ -43,7 +43,12 @@ const useStateUpdate = () => {
         ...state,
         filters: filters as State.Filters,
       } as State.Description);
-      set(selectors.anyTagging, false);
+      [true, false].forEach((i) =>
+        [true, false].forEach((j) =>
+          set(atoms.tagging({ modal: i, labels: j }), false)
+        )
+      );
+
       set(patching, false);
       set(similaritySorting, false);
       set(savingFilters, false);
@@ -54,16 +59,14 @@ const useStateUpdate = () => {
       if (state.dataset) {
         const groupDefinition = resolveGroups(state.dataset);
 
-        const current = await snapshot.getPromise(
-          sidebarGroupsDefinition(false)
-        );
+        const current = get(sidebarGroupsDefinition(false));
 
         if (JSON.stringify(groupDefinition) !== JSON.stringify(current)) {
           set(sidebarGroupsDefinition(false), groupDefinition);
         }
       }
 
-      const colorPool = await snapshot.getPromise(atoms.colorPool);
+      const colorPool = get(atoms.colorPool);
       if (
         JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
       ) {

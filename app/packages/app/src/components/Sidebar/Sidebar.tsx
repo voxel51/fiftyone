@@ -6,7 +6,7 @@ import { move } from "@fiftyone/utilities";
 
 import { useEventHandler } from "../../utils/hooks";
 import { scrollbarStyles } from "../utils";
-import { EntryKind, SidebarEntry } from "./utils";
+import { EntryKind, SidebarEntry, useEntries } from "./utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
@@ -358,14 +358,10 @@ type RenderEntry = (
 
 const InteractiveSidebar = ({
   before,
-  entries,
-  setEntries,
   render,
   modal,
 }: {
   before?: React.ReactNode;
-  entries: SidebarEntry[];
-  setEntries: (entries: SidebarEntry[]) => void;
   render: RenderEntry;
   modal: boolean;
 }) => {
@@ -382,6 +378,7 @@ const InteractiveSidebar = ({
   const maxScrollHeight = useRef<number>();
   const [width, setWidth] = useRecoilState(sidebarWidth(modal));
   const shown = useRecoilValue(sidebarVisible(modal));
+  const [entries, setEntries] = useEntries(modal);
 
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
@@ -399,7 +396,7 @@ const InteractiveSidebar = ({
           cursor: "pointer",
           top: 0,
           zIndex: 0,
-          left: "unset",
+          left: -1000,
           scale: 1,
           shadow: 0,
         }),

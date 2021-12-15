@@ -420,6 +420,8 @@ export const bounds = selectorFamily<
   },
 });
 
+export type Nonfinite = "nan" | "ninf" | "inf" | "none";
+
 export interface NonfiniteCounts {
   none: number;
   inf?: number;
@@ -438,7 +440,7 @@ export const nonfiniteCounts = selectorFamily<
     ] as NumericAggregations;
 
     const isFloatField = get(
-      schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
+      schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
     );
 
     const result = { none: data.None };
@@ -454,6 +456,29 @@ export const nonfiniteCounts = selectorFamily<
     }
 
     return result;
+  },
+});
+
+export const nonfiniteCount = selectorFamily<
+  number,
+  { extended: boolean; path: string; modal: boolean; key: Nonfinite }
+>({
+  key: "nonfiniteCount",
+  get: ({ key, ...params }) => ({ get }) => get(nonfiniteCounts(params))[key],
+});
+
+export const boundedCount = selectorFamily<
+  number,
+  { extended: boolean; path: string; modal: boolean }
+>({
+  key: "boundedCount",
+  get: (params) => ({ get }) => {
+    const nonfinites = Object.values(get(nonfiniteCounts(params))).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+    return get(count(params)) - nonfinites;
   },
 });
 

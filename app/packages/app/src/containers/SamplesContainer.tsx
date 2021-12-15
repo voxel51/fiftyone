@@ -8,7 +8,6 @@ import FieldsSidebar, {
   Entries,
   SidebarEntry,
   useTagText,
-  useEntries,
 } from "../components/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
@@ -32,8 +31,7 @@ const Container = styled.div`
 `;
 
 const SamplesContainer = React.memo(() => {
-  const tagText = useTagText();
-  const [entries, setEntries] = useEntries(false);
+  const tagText = useTagText(false);
   const showSidebar = useRecoilValue(atoms.sidebarVisible(false));
 
   const renderGridEntry = useCallback(
@@ -117,19 +115,12 @@ const SamplesContainer = React.memo(() => {
           throw new Error("invalid entry");
       }
     },
-    []
+    [tagText]
   );
 
   return (
     <Container>
-      {showSidebar && (
-        <FieldsSidebar
-          entries={entries}
-          setEntries={setEntries}
-          render={renderGridEntry}
-          modal={false}
-        />
-      )}
+      {showSidebar && <FieldsSidebar render={renderGridEntry} modal={false} />}
       <ContentColumn>
         <Flashlight key={"flashlight"} />
         <ContainerHeader key={"header"} />

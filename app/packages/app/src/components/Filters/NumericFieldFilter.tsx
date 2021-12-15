@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  RecoilValueReadOnly,
   SetterOrUpdater,
   useRecoilState,
   useRecoilValue,
@@ -38,8 +39,6 @@ const RangeSliderContainer = styled.div`
   padding: 0.25rem 0.5rem 0 0.5rem;
 `;
 
-export type Nonfinite = "nan" | "ninf" | "inf" | "none";
-
 const NONFINITES = {
   nan: "nan",
   ninf: "-inf",
@@ -47,43 +46,68 @@ const NONFINITES = {
   none: null,
 };
 
+interface NonfiniteState {
+  value: boolean;
+  setValue: SetterOrUpdater<boolean>;
+  count: number;
+  subcountAtom: RecoilValueReadOnly<number>;
+}
+
+const getNonfiniteGetter = (params: {
+  modal: boolean;
+  path: string;
+  defaultRange?: [number, number];
+}) => {
+  const counts = useRecoilValue(
+    aggregationAtoms.nonfiniteCounts({
+      modal: params.modal,
+      path: params.path,
+      extended: false,
+    })
+  );
+
+  return (
+    key: aggregationAtoms.Nonfinite
+  ): [aggregationAtoms.Nonfinite, NonfiniteState] => {
+    const [value, setValue] = useRecoilState(
+      numericAtoms.nonfiniteAtom({ ...params, key: "inf" })
+    );
+
+    return [
+      key,
+      {
+        count: counts[key],
+        setValue,
+        value,
+        subcountAtom: aggregationAtoms.nonfiniteCount({
+          ...params,
+          extended: true,
+          key,
+        }),
+      },
+    ];
+  };
+};
+
+const FLOAT_NONFINITES: aggregationAtoms.Nonfinite[] = ["inf", "ninf", "nan"];
+
 const useNonfinites = ({
   fieldType,
-  counts,
   ...rest
 }: {
-  counts: aggregationAtoms.NonfiniteCounts;
   fieldType: string;
   defaultRange?: [number, number];
   modal: boolean;
   path: string;
-}): [Nonfinite, [boolean, SetterOrUpdater<boolean>]][] => {
-  const [none, setNone] = useRecoilState(
-    numericAtoms.nonfiniteAtom({ ...rest, key: "none" })
-  );
+}): [aggregationAtoms.Nonfinite, NonfiniteState][] => {
+  const get = getNonfiniteGetter(rest);
+  const data = [get("none")];
 
-  const nonfinite: [Nonfinite, [boolean, SetterOrUpdater<boolean>]][] =
-    fieldType !== FLOAT_FIELD
-      ? [["none", [none, setNone]]]
-      : [
-          [
-            "inf",
-            useRecoilState(numericAtoms.nonfiniteAtom({ ...rest, key: "inf" })),
-          ],
-          [
-            "ninf",
-            useRecoilState(
-              numericAtoms.nonfiniteAtom({ ...rest, key: "ninf" })
-            ),
-          ],
-          [
-            "nan",
-            useRecoilState(numericAtoms.nonfiniteAtom({ ...rest, key: "nan" })),
-          ],
-          ["none", [none, setNone]],
-        ];
+  if (fieldType === FLOAT_FIELD) {
+    FLOAT_NONFINITES.forEach((key) => data.push(get(key)));
+  }
 
-  return nonfinite.filter(([k]) => counts[k] > 0);
+  return data.filter(([_, { count }]) => count > 0);
 };
 
 type Props = {
@@ -115,21 +139,22 @@ const NumericFieldFilter = ({
     numericAtoms.isDefaultRange({ modal, path, defaultRange })
   );
   const hasBounds = bounds.every((b) => b !== null);
-  const nonfiniteCounts = useRecoilValue(
-    aggregationAtoms.nonfiniteCounts({ modal, path, extended: false })
-  );
   const nonfinites = useNonfinites({
     modal,
     path,
-    counts: nonfiniteCounts,
     defaultRange,
     fieldType: ftype,
   });
   const isFiltered = useRecoilValue(
     filterAtoms.fieldIsFiltered({ modal, path })
   );
+  const bounded = useRecoilValue(
+    aggregationAtoms.boundedCount({ modal, path, extended: false })
+  );
+  const one = bounds[0] === bounds[1];
 
-  if (!hasBounds && nonfinites.length < 2) return null;
+  if (!hasBounds && nonfinites.length === 2 && nonfinites[0][0] === "none")
+    return null;
 
   return (
     <NamedRangeSliderContainer title={title}>
@@ -142,7 +167,7 @@ const NumericFieldFilter = ({
         onMouseDown={(event) => event.stopPropagation()}
         style={{ cursor: "default" }}
       >
-        {hasBounds && bounds[0] !== bounds[1] ? (
+        {hasBounds && !one ? (
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
@@ -160,29 +185,28 @@ const NumericFieldFilter = ({
             disabled={true}
             name={bounds[0]}
             setValue={() => {}}
-            count={0}
-          />
-        ) : (
-          <Checkbox
-            key={"No finite results"}
-            color={color}
+            count={bounded}
+            subcountAtom={aggregationAtoms.boundedCount({
+              modal,
+              path,
+              extended: true,
+            })}
             value={false}
-            disabled={true}
-            name={"No finite results"}
-            setValue={() => {}}
           />
-        )}
+        ) : null}
         {(hasDefaultRange ||
-          nonfinites.some(([_, [v]]) => v !== nonfinites[0][1][0])) &&
-          nonfinites.map(([key, [value, setValue]]) => (
+          nonfinites.some(
+            ([_, { value: v }]) => v !== nonfinites[0][1].value
+          ) ||
+          !hasBounds) &&
+          nonfinites.map(([key, props]) => (
             <Checkbox
               key={key}
               color={color}
               name={NONFINITES[key]}
-              value={value}
-              setValue={setValue}
-              count={nonfiniteCounts[key]}
               forceColor={true}
+              disabled={one && nonfinites.length === 1}
+              {...props}
             />
           ))}
         {isFiltered && nonfinites.length > 0 && hasBounds && (

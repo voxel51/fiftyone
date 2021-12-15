@@ -94,7 +94,7 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
 
   const primitves = dataset.sampleFields
     .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
-    .filter((path) => !present.has(path));
+    .filter((path) => path !== "tags" && !present.has(path));
 
   const labels = dataset.sampleFields
     .reduce(fieldsReducer([], LABELS), [])

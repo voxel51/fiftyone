@@ -34,14 +34,14 @@ export interface PathEntry {
 
 export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | TailEntry;
 
-export const useTagText = () => {
+export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(elementNames);
-  const loadingTags = useLoading({ extended: false, modal: false });
+  const loadingTags = useLoading({ extended: false, modal });
 
   if (loadingTags) {
     return {
       sample: `Loading ${singular} tags...`,
-      label: "Loading label tags",
+      label: "Loading label tags...",
     };
   }
 

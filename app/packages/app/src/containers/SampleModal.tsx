@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
 
@@ -7,7 +7,6 @@ import FieldsSidebar, {
   Entries,
   EntryKind,
   SidebarEntry,
-  useEntries,
   useTagText,
 } from "../components/Sidebar";
 import Looker from "../components/Looker";
@@ -18,7 +17,6 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getSampleSrc } from "../recoil/utils";
 import { Controller } from "@react-spring/core";
 import { State } from "../recoil/types";
-import { Resizable } from "re-resizable";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -132,95 +130,102 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
-  const [entries, setEntries] = useEntries(true);
-  const tagText = useTagText();
+  const tagText = useTagText(true);
 
   useSampleUpdate(lookerRef);
   const theme = useTheme();
 
-  const renderEntry = (
-    group: string,
-    entry: SidebarEntry,
-    controller: Controller,
-    dragging: boolean
-  ) => {
-    switch (entry.kind) {
-      case EntryKind.PATH:
-        const isTag = entry.path.startsWith("tags.");
-        const isLabelTag = entry.path.startsWith("_label_tags.");
+  const renderEntry = useCallback(
+    (
+      group: string,
+      entry: SidebarEntry,
+      controller: Controller,
+      dragging: boolean
+    ) => {
+      switch (entry.kind) {
+        case EntryKind.PATH:
+          const isTag = entry.path.startsWith("tags.");
+          const isLabelTag = entry.path.startsWith("_label_tags.");
 
-        return {
-          children: (
-            <>
-              {isLabelTag && (
-                <Entries.FilterableTag
-                  modal={true}
-                  tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
-                  tag={entry.path.split(".").slice(1).join(".")}
-                />
-              )}
-              {isTag && (
-                <Entries.TagValue
-                  tag={entry.path.slice("tags.".length)}
-                  path={entry.path}
-                />
-              )}
-              {!isTag && !isLabelTag && (
-                <Entries.FilterablePath
-                  modal={true}
-                  path={entry.path}
-                  group={group}
-                  onFocus={() => {
-                    controller.set({ zIndex: "1" });
-                  }}
-                  onBlur={() => {
-                    controller.set({ zIndex: "0" });
-                  }}
-                />
-              )}
-            </>
-          ),
-          disabled: isTag || isLabelTag,
-        };
-      case EntryKind.GROUP:
-        const isTags = entry.name === "tags";
-        const isLabelTags = entry.name === "label tags";
+          return {
+            children: (
+              <>
+                {isLabelTag && (
+                  <Entries.FilterableTag
+                    modal={true}
+                    tagKey={
+                      isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                    }
+                    tag={entry.path.split(".").slice(1).join(".")}
+                  />
+                )}
+                {isTag && (
+                  <Entries.TagValue
+                    tag={entry.path.slice("tags.".length)}
+                    path={entry.path}
+                  />
+                )}
+                {!isTag && !isLabelTag && (
+                  <Entries.FilterablePath
+                    modal={true}
+                    path={entry.path}
+                    group={group}
+                    onFocus={() => {
+                      controller.set({ zIndex: "1" });
+                    }}
+                    onBlur={() => {
+                      controller.set({ zIndex: "0" });
+                    }}
+                  />
+                )}
+              </>
+            ),
+            disabled: isTag || isLabelTag,
+          };
+        case EntryKind.GROUP:
+          const isTags = entry.name === "tags";
+          const isLabelTags = entry.name === "label tags";
 
-        return {
-          children:
-            isTags || isLabelTags ? (
-              <Entries.TagGroup
-                tagKey={isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE}
-                modal={true}
-              />
-            ) : (
-              <Entries.PathGroup
-                name={entry.name}
-                modal={true}
-                dragging={dragging}
+          return {
+            children:
+              isTags || isLabelTags ? (
+                <Entries.TagGroup
+                  tagKey={
+                    isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                  }
+                  modal={true}
+                />
+              ) : (
+                <Entries.PathGroup
+                  name={entry.name}
+                  modal={true}
+                  dragging={dragging}
+                />
+              ),
+            disabled: false,
+          };
+        case EntryKind.EMPTY:
+          return {
+            children: (
+              <Entries.Empty
+                text={
+                  group === "tags"
+                    ? tagText.sample
+                    : group === "label tags"
+                    ? tagText.label
+                    : "No fields"
+                }
               />
             ),
-          disabled: false,
-        };
-      case EntryKind.EMPTY:
-        return {
-          children: (
-            <Entries.Empty
-              text={
-                group === "tags"
-                  ? tagText.sample
-                  : group === "label tags"
-                  ? tagText.label
-                  : "No fields"
-              }
-            />
-          ),
-          disabled: true,
-        };
-      default:
-        throw new Error("invalid entry");
-    }
-  };
+            disabled: true,
+          };
+        default:
+          throw new Error("invalid entry");
+      }
+    },
+    [tagText]
+  );
+
   const fullscreen = useRecoilValue(atoms.fullscreen)
     ? { background: theme.backgroundDark }
     : {};
@@ -241,12 +246,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
             <ModalActionsRow lookerRef={lookerRef} />
           </Header>
         </ContentColumn>
-        <FieldsSidebar
-          entries={entries}
-          setEntries={setEntries}
-          render={renderEntry}
-          modal={true}
-        />
+        <FieldsSidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>
   );
