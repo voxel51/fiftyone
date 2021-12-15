@@ -424,10 +424,6 @@ details:
         `values`, and `default` for each attribute
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
--   **classes_as_attrs** (*True*): whether to show every object class at the top
-    level of the editor (False) or whether to show the label field
-    at the top level and annotate the class as a required
-    attribute of each object (True)
 
 
 |br|
@@ -442,6 +438,10 @@ can also be provided:
     not a member of the project's organization, an email invitation will be
     sent to them. The supported roles are
     `["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]`
+-   **classes_as_attrs** (*True*): whether to show every object class at the top
+    level of the editor (False) or whether to show the label field
+    at the top level and annotate the class as a required
+    attribute of each object (True)
 
 .. note::
 
