@@ -254,6 +254,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         current state to the new client.
         """
         StateHandler.clients.add(self)
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        StateHandler.state = state.serialize()
         _write_message(
             {"type": "update", "state": StateHandler.state}, only=self
         )

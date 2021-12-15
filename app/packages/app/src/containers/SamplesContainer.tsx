@@ -2,7 +2,6 @@ import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
-import { Resizable } from "re-resizable";
 
 import FieldsSidebar, {
   EntryKind,

@@ -40,7 +40,7 @@ import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useMessageHandler } from "../utils/hooks";
 import { pathFilter } from "./Filters";
-import { sidebarEntries } from "./Sidebar";
+import { sidebarEntries, sidebarGroupsDefinition } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 
 const setModal = async (
@@ -169,7 +169,8 @@ const useThumbnailClick = (
         Object.entries(itemIndexMap).map(([k, v]) => [v, k])
       );
       let selected = new Set(await snapshot.getPromise(atoms.selectedSamples));
-
+      const groups = await snapshot.getPromise(sidebarGroupsDefinition(false));
+      set(sidebarGroupsDefinition(true), groups);
       const openModal = () => {
         const getIndex = (index) => {
           const promise = sampleIndices.has(index)
@@ -188,7 +189,6 @@ const useThumbnailClick = (
               })
             : clearModal();
         };
-
         set(atoms.modal, {
           ...samples.get(sampleId),
           index: clickedIndex,

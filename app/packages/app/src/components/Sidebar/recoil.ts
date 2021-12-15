@@ -1,5 +1,5 @@
-import { Field } from "@fiftyone/utilities";
-import { atom, atomFamily, DefaultValue, selectorFamily } from "recoil";
+import { StrictField } from "@fiftyone/utilities";
+import { atomFamily, DefaultValue, selectorFamily } from "recoil";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import {
@@ -11,8 +11,9 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "../../recoil/constants";
-import * as schemaAtoms from "../../recoil/schema";
+import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
+import { http } from "../../shared/connection";
 
 import {
   EmptyEntry,
@@ -30,10 +31,14 @@ export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   }
 );
 
-const datasetFieldsReducer = (ftypes: string[], docTypes: string[]) => (
+const fieldsReducer = (ftypes: string[], docTypes: string[] = []) => (
   acc: string[],
-  { ftype, subfield, embeddedDocType, name, fields }: Field
+  { ftype, subfield, embeddedDocType, name }: StrictField
 ): string[] => {
+  if (name.startsWith("_")) {
+    return acc;
+  }
+
   if (ftype === LIST_FIELD) {
     ftype = subfield;
   }
@@ -46,23 +51,6 @@ const datasetFieldsReducer = (ftypes: string[], docTypes: string[]) => (
     if (docTypes.includes(embeddedDocType)) {
       return [...acc, name];
     }
-
-    return [
-      ...acc,
-      ...Object.entries(fields).reduce((p, [subfieldName, f]) => {
-        let subftype = f.ftype;
-
-        if (subftype === LIST_FIELD) {
-          subftype = f.subfield;
-        }
-
-        if (ftypes.includes(subftype)) {
-          return [...p, `${name}.${subfieldName}`];
-        }
-
-        return p;
-      }, []),
-    ];
   }
 
   return acc;
@@ -71,57 +59,72 @@ const datasetFieldsReducer = (ftypes: string[], docTypes: string[]) => (
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
 const DEFAULT_IMAGE_GROUPS = [
-  ["tags", []],
-  ["label tags", []],
-  ["metadata", []],
-  ["labels", []],
-  ["primitives", []],
+  { name: "tags", paths: [] },
+  { name: "label tags", paths: [] },
+  { name: "metadata", paths: [] },
+  { name: "labels", paths: [] },
+  { name: "primitives", paths: [] },
 ];
 
 const DEFAULT_VIDEO_GROUPS = [
-  ["tags", []],
-  ["label tags", []],
-  ["metadata", []],
-  ["labels", []],
-  ["frame labels", []],
-  ["primitives", []],
+  { name: "tags", paths: [] },
+  { name: "label tags", paths: [] },
+  { name: "metadata", paths: [] },
+  { name: "labels", paths: [] },
+  { name: "frame labels", paths: [] },
+  { name: "primitives", paths: [] },
 ];
 
 export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
-  const sidebarPaths = new Set<string>(
-    (dataset.appSidebarGroups || []).reduce(
-      (acc, [_, fields]) => [...acc, ...fields],
-      []
-    )
-  );
+  let source = dataset.appSidebarGroups;
 
-  const primitves = dataset.sampleFields.reduce(
-    datasetFieldsReducer(VALID_PRIMITIVE_TYPES, []),
-    []
-  );
-
-  const labels = dataset.sampleFields.reduce(
-    datasetFieldsReducer([], LABELS),
-    []
-  );
-
-  const frameLabels = dataset.frameFields
-    .reduce(datasetFieldsReducer([], LABELS), [])
-    .map((path) => `frames.${path}`);
-
-  const groups = [
-    ...(dataset.appSidebarGroups
-      ? dataset.appSidebarGroups
-      : dataset.frameFields.length
+  if (!source) {
+    source = dataset.frameFields.length
       ? DEFAULT_VIDEO_GROUPS
-      : DEFAULT_IMAGE_GROUPS),
-  ] as State.SidebarGroups;
+      : DEFAULT_IMAGE_GROUPS;
+  }
+
+  const groups = source.map(({ name, paths }) => [
+    name,
+    paths,
+  ]) as State.SidebarGroups;
+  const present = new Set(groups.map(([_, paths]) => paths).flat());
 
   const updater = groupUpdater(groups);
+
+  const primitves = dataset.sampleFields
+    .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
+    .filter((path) => !present.has(path));
+
+  const labels = dataset.sampleFields
+    .reduce(fieldsReducer([], LABELS), [])
+    .filter((path) => !present.has(path));
+
+  const frameLabels = dataset.frameFields
+    .reduce(fieldsReducer([], LABELS), [])
+    .map((path) => `frames.${path}`)
+    .filter((path) => !present.has(path));
 
   updater("labels", labels);
   dataset.frameFields.length && updater("frame labels", frameLabels);
   updater("primitives", primitves);
+
+  const fields = Object.fromEntries(
+    dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
+  );
+
+  dataset.sampleFields
+    .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
+    .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
+    .forEach((name) =>
+      updater(
+        name,
+        (fields[name].fields || [])
+          .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
+          .map((subfield) => `${name}.${subfield}`)
+          .filter((path) => !present.has(path))
+      )
+    );
 
   return groups;
 };
@@ -132,9 +135,11 @@ const groupUpdater = (groups: State.SidebarGroups) => {
   return (name: string, paths: string[]) => {
     let index = groupNames.indexOf(name);
 
+    if (paths.length === 0) return;
+
     if (index < 0) {
-      groups.push(["labels", []]);
-      index = groups.length - 1;
+      groups.push([name, paths]);
+      return;
     }
 
     groups[index][1] = groups[index][1].filter((name) => paths.includes(name));
@@ -147,19 +152,28 @@ const groupUpdater = (groups: State.SidebarGroups) => {
   };
 };
 
-export const sidebarGroupsDefinition = atom<State.SidebarGroups>({
-  key: "sidebarGroupsDefinition",
-  default: [],
-});
+export const sidebarGroupsDefinition = atomFamily<State.SidebarGroups, boolean>(
+  {
+    key: "sidebarGroupsDefinition",
+    default: [],
+  }
+);
 
-const sidebarGroups = selectorFamily<
+export const sidebarGroups = selectorFamily<
   State.SidebarGroups,
   { modal: boolean; loadingTags: boolean }
 >({
-  key: "defaultSidebarGroups",
+  key: "sidebarGroups",
   get: ({ modal, loadingTags }) => ({ get }) => {
-    const groups = [...get(sidebarGroupsDefinition)];
+    let groups = get(sidebarGroupsDefinition(modal)).map(([name, paths]) => [
+      name,
+      [...paths],
+    ]) as State.SidebarGroups;
+
+    if (!groups.length) return [];
+
     const groupNames = groups.map(([name]) => name);
+
     const tagsIndex = groupNames.indexOf("tags");
     const labelTagsIndex = groupNames.indexOf("label tags");
 
@@ -179,6 +193,31 @@ const sidebarGroups = selectorFamily<
     }
 
     return groups;
+  },
+  set: ({ modal }) => ({ set, get }, groups) => {
+    if (groups instanceof DefaultValue) return;
+
+    groups = groups.map(([name, paths]) => [
+      name,
+      ["tags", "label tags"].includes(name) ? [] : paths,
+    ]);
+
+    set(sidebarGroupsDefinition(modal), groups);
+    !modal &&
+      fetch(`${http}/sidebar`, {
+        method: "POST",
+        cache: "no-cache",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "cors",
+        body: JSON.stringify({
+          dataset: get(datasetName),
+          groups: groups.map(([name, paths]) => ({ name, paths })),
+        }),
+      }).catch((error) => {
+        throw error;
+      });
   },
 });
 
@@ -213,9 +252,6 @@ export const sidebarEntries = selectorFamily<
         .flat(),
     ];
 
-    if (params.loadingTags) {
-    }
-
     if (params.modal) {
       return entries;
     }
@@ -223,11 +259,7 @@ export const sidebarEntries = selectorFamily<
     return [...entries, { kind: EntryKind.TAIL } as TailEntry];
   },
   set: (modal) => ({ get, set }, value) => {
-    if (value instanceof DefaultValue) {
-      set(sidebarGroups(modal), get(defaultSidebarGroups(modal)));
-      return;
-    }
-
+    if (value instanceof DefaultValue) return;
     set(
       sidebarGroups(modal),
       value.reduce((result, entry) => {
@@ -235,7 +267,11 @@ export const sidebarEntries = selectorFamily<
           return [...result, [entry.name, []]];
         }
 
-        if (entry.kind === EntryKind.PATH) {
+        if (
+          entry.kind === EntryKind.PATH &&
+          !entry.path.startsWith("tags.") &&
+          !entry.path.startsWith("_label_tags.")
+        ) {
           result[result.length - 1][1] = [
             ...result[result.length - 1][1],
             entry.path,

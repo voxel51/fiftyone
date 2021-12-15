@@ -27,6 +27,7 @@ import { viewsAreEqual } from "../utils/view";
 import Dataset from "./Dataset";
 import Error from "./Error";
 import Setup from "./Setup";
+import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 
 const useStateUpdate = () => {
   return useRecoilCallback(
@@ -51,23 +52,14 @@ const useStateUpdate = () => {
       }
 
       if (state.dataset) {
-        const [newGroups, deletedFields] = resolveGroups(state.dataset);
+        const groupDefinition = resolveGroups(state.dataset);
 
-        const groups = [
-          ...(state.dataset.appSidebarGroups || []).map(([group, fields]) => [
-            group,
-            fields.filter((f) => !deletedFields.has(f)),
-          ]),
-          ...newGroups,
-        ];
-        if (newGroups.length || deletedFields.size) {
-        }
-        if (!state.data) const groups = state.dataset.appSidebarGroups || [];
+        const current = await snapshot.getPromise(
+          sidebarGroupsDefinition(false)
+        );
 
-        const { newFields, deletedFields } = resolveGroups(state.dataset);
-
-        if (!groups) {
-          groups = resolveGrou;
+        if (JSON.stringify(groupDefinition) !== JSON.stringify(current)) {
+          set(sidebarGroupsDefinition(false), groupDefinition);
         }
       }
 

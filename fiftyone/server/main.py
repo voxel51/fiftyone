@@ -19,6 +19,8 @@ import tornado.websocket
 
 import eta.core.serial as etas
 
+from sidebar import SidebarHandler
+
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
     del os.environ["FIFTYONE_DISABLE_SERVICES"]
 
@@ -280,6 +282,7 @@ class Application(tornado.web.Application):
             (r"/page", PageHandler),
             (r"/polling", PollingHandler),
             (r"/reactivate", ReactivateHandler),
+            (r"/sidebar", SidebarHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
             (r"/teams", TeamsHandler),

@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilCallback, useRecoilState } from "recoil";
+import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import { ModalActionsRow } from "../components/Actions";
 import FieldsSidebar, {
@@ -19,14 +19,6 @@ import { getSampleSrc } from "../recoil/utils";
 import { Controller } from "@react-spring/core";
 import { State } from "../recoil/types";
 import { Resizable } from "re-resizable";
-
-const SidebarContainer = styled(Resizable)`
-  display: block;
-  height: 100%;
-  overflow: visible;
-  position: relative;
-  border-left: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
-`;
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -142,10 +134,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const onSelectLabel = useOnSelectLabel();
   const [entries, setEntries] = useEntries(true);
   const tagText = useTagText();
-  const [sidebarWidth, setSidebarWidth] = useRecoilState(
-    atoms.sidebarWidth(false)
-  );
-  const showSidebar = useRecoilValue(atoms.sidebarVisible(true));
 
   useSampleUpdate(lookerRef);
   const theme = useTheme();

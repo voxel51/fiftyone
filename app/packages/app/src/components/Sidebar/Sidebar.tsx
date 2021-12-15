@@ -384,7 +384,7 @@ const InteractiveSidebar = ({
   const shown = useRecoilValue(sidebarVisible(modal));
 
   let group = null;
-  order.current = entries.map((entry) => getEntryKey(entry));
+  order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {
     if (entry.kind === EntryKind.GROUP) {
       group = entry.name;

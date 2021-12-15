@@ -67,12 +67,19 @@ export const removeKeys = <T>(
   );
 };
 
-export interface Field {
+interface BaseField {
   ftype: string;
   dbField: string;
   name: string;
   embeddedDocType: string;
   subfield: string;
+}
+
+export interface StrictField extends BaseField {
+  fields?: StrictField[];
+}
+
+export interface Field extends BaseField {
   fields: Schema;
 }
 

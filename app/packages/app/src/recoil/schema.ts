@@ -1,6 +1,6 @@
 import { atomFamily, selectorFamily } from "recoil";
 
-import { Field, Schema } from "@fiftyone/utilities";
+import { Field, Schema, StrictField } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
 import {
@@ -16,10 +16,10 @@ import {
 import { State } from "./types";
 import * as viewAtoms from "./view";
 
-const schemaReduce = (schema: Schema, field: Field): Schema => {
+const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
     ...field,
-    fields: ((field.fields || []) as Field[]).reduce(schemaReduce, {}),
+    fields: field.fields.reduce(schemaReduce, {}),
   };
   return schema;
 };

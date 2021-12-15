@@ -1,5 +1,5 @@
 import { RGB } from "@fiftyone/looker/src/state";
-import { Field } from "@fiftyone/utilities";
+import { Field, StrictField } from "@fiftyone/utilities";
 
 export namespace State {
   export enum SPACE {
@@ -50,7 +50,7 @@ export namespace State {
       [key: string]: Evaluation;
     };
     frameCollectionName: string;
-    frameFields: Field[];
+    frameFields: StrictField[];
     info: object;
     lastLoadedAt: DateTime;
     maskTargets: {
@@ -59,9 +59,9 @@ export namespace State {
     mediaType: "image" | "video";
     name: string;
     sampleCollectionName: string;
-    sampleFields: Field[];
+    sampleFields: StrictField[];
     version: string;
-    appSidebarGroups?: SidebarGroups;
+    appSidebarGroups?: { name: string; paths: string[] }[];
     _id: ID;
   }
 

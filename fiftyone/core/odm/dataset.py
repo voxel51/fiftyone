@@ -277,6 +277,13 @@ class SampleFieldDocument(EmbeddedDocument):
         return field_docs + [cls.from_field(value) for value in field.fields]
 
 
+class SidebarGroupDocument(EmbeddedDocument):
+    """Description of a Sidebar Group in the App."""
+
+    name = StringField(unique=True, required=True)
+    paths = ListField(StringField(), default=[])
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -305,5 +312,5 @@ class DatasetDocument(Document):
     brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
     evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
     app_sidebar_groups = ListField(
-        ListField(StringField(unique=True)), default=None
+        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )
