@@ -18,10 +18,10 @@ class MediaHandler(fosb.FileHandler):
 
     @classmethod
     def get_absolute_path(cls, root, path):
-        if media_cache.is_local_or_cached(path):
-            path = media_cache.get_local_path(path)
-        elif os.name != "nt":
+        if media_cache.is_local(path) and os.name != "nt":
             path = os.path.join("/", path)
+
+        if media_cache.is_local_or_cached(path):
             path = media_cache.get_local_path(path)
 
         return path
