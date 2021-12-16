@@ -64,6 +64,13 @@ your datasets and turn your good models into *great models*.
     :tags: Annotation,Dataset-Evaluation
 
 .. customcarditem::
+    :header: Annotating with Labelbox 
+    :description: Unlock the power of the Labelbox annotation platform in just one line of code to improve your FiftyOne Datasets. 
+    :link: labelbox_annotation.html
+    :image: ../_static/images/tutorials/labelbox_square.png
+    :tags: Annotation,Dataset-Evaluation
+
+.. customcarditem::
     :header: Downloading and evaluating Open Images
     :description: Expand your data lake and evaluate your object detection models with Google's Open Images dataset and evaluation protocol, all natively within FiftyOne.
     :link: open_images.html
@@ -119,6 +126,7 @@ your datasets and turn your good models into *great models*.
    Evaluating a classifier <evaluate_classifications.ipynb>
    Using image embeddings <image_embeddings.ipynb>
    Annotating with CVAT <cvat_annotation.ipynb>
+   Annotating with Labelbox <labelbox_annotation.ipynb>
    Working with Open Images <open_images.ipynb>
    Exploring image uniqueness <uniqueness.ipynb>
    Finding class mistakes <classification_mistakes.ipynb>
