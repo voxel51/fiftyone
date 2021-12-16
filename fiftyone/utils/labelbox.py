@@ -160,7 +160,7 @@ class LabelboxBackend(foua.AnnotationBackend):
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
 
-        logger.info("Uploading samples to Labelbox...")
+        logger.info("Uploading media to Labelbox...")
         results = api.upload_samples(samples, self)
         logger.info("Upload complete")
 
@@ -493,11 +493,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         id_map = {}
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
-                # @todo implement this
-                logger.info(
-                    "Uploading existing labels in field '%s' to Labelbox is "
-                    "not yet supported" % label_field
-                )
+                # @todo implement uploading labels for paid accounts
                 id_map[label_field] = self._build_id_map(
                     samples, label_field, label_info["type"]
                 )

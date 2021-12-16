@@ -899,13 +899,15 @@ For free Labelbox users, one possible workflow for editing existing labels is
 the following:
 
 -   :ref:`Tag the labels <app-tagging>` that need editing in FiftyOne
--   Upload the samples containing the tagged labels to Labelbox and configure
-    an annotation run to populate a *new field* with the same schema as the
-    original field containing the tagged labels
+-   Upload the samples containing the tagged labels to Labelbox
+-   Pass in the name of label field containing the tagged labels to the
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    method to automatically construct the necessary schema to
+    annotate labels for that field
 -   Perform the annotation work in Labelbox, and download the results
--   Compare the existing and new label fields in the FiftyOne App to make sure
-    you're happy with the proposed edits
--   Delete the tagged labels and merge the new labels into the original field
+-   Use the FiftyOne App to compare the newly loaded labels with the previously
+    tagged labels to make sure you're happy with the edits
+-   Delete the original tagged labels from the label field
 
 The example snippet below demonstrates this workflow:
 
@@ -927,31 +929,27 @@ The example snippet below demonstrates this workflow:
 
     anno_key = "labelbox_edit_labels"
 
-    # @todo retrieve label schema for existing `ground_truth` field
-    label_schema = {}
-
-    # Create an annotation run to populate a new `ground_truth_edits` field
-    # with the label edits for the samples in `edit_view`
+    # Create an annotation run to manually reannotate the necessary labels in
+    # the `ground_truth` field
     edit_view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth_edits",
+        label_field="ground_truth",
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
 
     # In Labelbox, reannotate the relevant objects
 
-    # Load the edited labels back into FiftyOne
+    # Load the new labels into the `ground_truth` field in FiftyOne
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-    # In the App, compare the original/edited labels
-    session.view = edited_view
+    # In the App, compare all tagged/edited labels in the relevant samples
+    session.view = dataset.select(edit_view).select_fields("ground_truth")
 
-    # Finalize by deleting the tagged labels and merging in the new labels
+    # Finalize by deleting the tagged labels
     dataset.delete_labels(view=edit_view)
-    dataset.merge_labels("ground_truth_edits", "ground_truth")
 
 .. image:: /images/integrations/labelbox_example.png
    :alt: labelbox-example
@@ -966,8 +964,9 @@ Editing existing labels
 
 .. warning::
 
-    Editing existing labels is not yet implemented for the Labelbox backend,
-    but it is coming soon!
+    Uploading existing labels is not yet implemented for the Labelbox backend.
+    Instead, see the workflow in the previous section on editing existing
+    labels with a free Labelbox account.
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
