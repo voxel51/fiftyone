@@ -1001,10 +1001,16 @@ def load_annotations(
             from the annotation backend after loading the annotations
         **kwargs: optional keyword arguments for
             :meth:`AnnotationResults.load_credentials`
+
+    Returns:
+        `None` if no unexpected labels were found, otherwise a dictionary
+        of label field, unexpected label types, and sample ids
     """
     results = samples.load_annotation_results(anno_key, **kwargs)
     label_schema = results.config.label_schema
     annotations = results.backend.download_annotations(results)
+
+    unexpected = defaultdict(dict)
 
     for label_field, label_info in label_schema.items():
         label_type = label_info.get("type", None)
@@ -1062,11 +1068,16 @@ def load_annotations(
                         anno_type,
                         label_field,
                     )
+                    sample_ids = annos.keys()
+                    unexpected[label_field][anno_type] = sample_ids
 
     results.backend.save_run_results(samples, anno_key, results)
 
     if cleanup:
         results.cleanup()
+
+    if unexpected:
+        return unexpected
 
 
 def _parse_attributes(label_info):

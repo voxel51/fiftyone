@@ -6282,8 +6282,12 @@ class SampleCollection(object):
                 run from the annotation backend after loading the annotations
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+
+        Returns:
+            `None` if no unexpected labels were found, otherwise a dictionary
+            of label field, unexpected label types, and sample ids
         """
-        foua.load_annotations(
+        return foua.load_annotations(
             self,
             anno_key,
             skip_unexpected=skip_unexpected,
