@@ -398,11 +398,11 @@ class ServerService(Service):
                 port,
                 address,
             )
-            if server_version != foc.VERSION:
+            if server_version != foc.TEAMS_VERSION:
                 logger.warning(
                     "Server version (%s) does not match client version (%s)",
                     server_version,
-                    foc.VERSION,
+                    foc.TEAMS_VERSION,
                 )
 
     @property
