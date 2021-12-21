@@ -20,6 +20,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.storage as fost
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.utils as fou
@@ -557,7 +558,7 @@ def _populate_frames(
 
         if sample_frames:
             outdir = os.path.splitext(video_path)[0]
-            images_patt = os.path.join(outdir, frames_patt)
+            images_patt = fost.join(outdir, frames_patt)
         else:
             images_patt = None
 
@@ -721,12 +722,9 @@ def _parse_video_frames(
         else:
             sample_frame_numbers = doc_frame_numbers
     else:
-        # @todo is this too expensive?
-        sample_frame_numbers = [
-            fn
-            for fn in doc_frame_numbers
-            if not os.path.isfile(images_patt % fn)
-        ]
+        sample_frame_numbers = _get_non_existent_frame_numbers(
+            images_patt, doc_frame_numbers
+        )
 
         if all_frames and len(sample_frame_numbers) == len(doc_frame_numbers):
             sample_frame_numbers = None  # all frames
@@ -749,3 +747,15 @@ def _parse_video_frames(
             logger.info("Required frames already present for '%s'", video_path)
 
     return doc_frame_numbers, sample_frame_numbers
+
+
+def _get_non_existent_frame_numbers(images_patt, frame_numbers):
+    if fost.is_local(images_patt):
+        return [
+            fn for fn in frame_numbers if not os.path.isfile(images_patt % fn)
+        ]
+
+    images_dir = os.path.dirname(images_patt)
+    frames_patt = os.path.basename(images_patt)
+    existing = set(fost.list_files(images_dir, sort=False))
+    return [fn for fn in frame_numbers if (frames_patt % fn) not in existing]
