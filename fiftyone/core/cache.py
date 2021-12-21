@@ -226,10 +226,7 @@ class MediaCache(object):
         Returns:
             a :class:`fiftyone.core.metadata.Metadata` or ``None``
         """
-        fs = fos.get_file_system(filepath)
-        client = fos.get_client(fs)
-
-        task = (client, filepath, skip_failures)
+        task = (filepath, skip_failures)
         _, metadata = _do_get_metadata(task)
 
         return metadata
@@ -848,18 +845,21 @@ def _get_metadata(tasks, num_workers):
 
 
 def _do_get_metadata(arg):
-    client, remote_path, skip_failures = arg
+    remote_path, skip_failures = arg
 
     mime_type = etau.guess_mime_type(remote_path)
-    url = _get_url(client, remote_path)
 
     try:
         if mime_type.startswith("video"):
-            metadata = fom.VideoMetadata.build_for(url, mime_type=mime_type)
+            metadata = fom.VideoMetadata.build_for(
+                remote_path, mime_type=mime_type
+            )
         elif mime_type.startswith("image"):
-            metadata = fom.ImageMetadata.build_for(url, mime_type=mime_type)
+            metadata = fom.ImageMetadata.build_for(
+                remote_path, mime_type=mime_type
+            )
         else:
-            metadata = fom.Metadata.build_for(url, mime_type=mime_type)
+            metadata = fom.Metadata.build_for(remote_path, mime_type=mime_type)
     except Exception as e:
         if not skip_failures:
             raise
