@@ -9,16 +9,17 @@ from contextlib import contextmanager
 import io
 import json
 import logging
-import multiprocessing
 import multiprocessing.dummy
 import os
 import posixpath
 import re
 import six
+import shutil
 import urllib.parse as urlparse
 
 import ndjson
 from wcmatch import glob
+import yaml
 
 import eta.core.serial as etase
 import eta.core.storage as etast
@@ -135,6 +136,47 @@ def get_file_system(path):
     return FileSystem.LOCAL
 
 
+def split_prefix(path):
+    """Splits the file system prefix from the given path.
+
+    The prefix for local paths is ``""``.
+
+    Example usages::
+
+        import fiftyone.core.storage as fos
+
+        fos.split_prefix("s3://bucket/object")  # ('s3://', 'bucket/object')
+        fos.split_prefix("gs://bucket/object")  # ('g3://', 'bucket/object')
+        fos.split_prefix("/path/to/file")       # ('', '/path/to/file')
+        fos.split_prefix("a/file")              # ('', 'a/file')
+
+    Args:
+        path: a path
+
+    Returns:
+        a ``(prefix, path)`` tuple
+    """
+    # Check MinIO first in case alias/endpoint clashes with another file system
+    if minio_alias_prefix is not None and path.startswith(minio_alias_prefix):
+        prefix = minio_alias_prefix
+    elif minio_endpoint_prefix is not None and path.startswith(
+        minio_endpoint_prefix
+    ):
+        prefix = minio_endpoint_prefix
+    elif path.startswith("s3://"):
+        prefix = "s3://"
+    elif path.startswith("gs://"):
+        prefix = "gs://"
+    elif path.startswith("http://"):
+        prefix = "http://"
+    elif path.startswith("https://"):
+        prefix = "https://"
+    else:
+        prefix = ""
+
+    return prefix, path[len(prefix) :]
+
+
 def is_local(path):
     """Determines whether the given path is local.
 
@@ -145,6 +187,42 @@ def is_local(path):
         True/False
     """
     return get_file_system(path) == FileSystem.LOCAL
+
+
+def ensure_local(path):
+    """Ensures that the given path is local.
+
+    Args:
+        path: a path
+    """
+    if not is_local(path):
+        raise ValueError(
+            "The requested operation requires a local path, but found '%s'"
+            % path
+        )
+
+
+def normalize_path(path):
+    """Normalizes the given path.
+
+    Local paths are sanitized via::
+
+        os.path.abspath(os.path.expanduser(path))
+
+    Remote paths are sanitized via::
+
+        path.rstrip("/")
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    if is_local(path):
+        return os.path.abspath(os.path.expanduser(path))
+
+    return path.rstrip("/")
 
 
 def get_client(fs):
@@ -191,11 +269,582 @@ def get_client(fs):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
+def get_url(path, **kwargs):
+    """Returns a public URL for the given file.
+
+    The provided path must either already be a URL or a path into a filesystem
+    that supports signed URLs.
+
+    Args:
+        path: a path
+        **kwargs: optional keyword arguments for the storage client's
+            ``generate_signed_url(path, **kwargs)`` method
+
+    Returns:
+        a URL
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.HTTP:
+        return path
+
+    client = get_client(fs)
+
+    if not hasattr(client, "generate_signed_url"):
+        raise ValueError(
+            "Cannot get URL for '%s'; file system '%s' does not support "
+            "signed URLs" % (path, fs)
+        )
+
+    return client.generate_signed_url(path, **kwargs)
+
+
+def to_readable(path, **kwargs):
+    """Returns a publicly readable path for the given file.
+
+    The provided path must either already be a URL or be a remote path into a
+    filesystem that supports signed URLs.
+
+    Args:
+        path: a path
+        **kwargs: optional keyword arguments for the storage client's
+            ``generate_signed_url(path, **kwargs)`` method
+
+    Returns:
+        a public path
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return path
+
+    return get_url(path, method="GET", **kwargs)
+
+
+def to_writeable(path, **kwargs):
+    """Returns a publicly writable path for the given file.
+
+    The provided path must either already be a URL or be a remote path into a
+    filesystem that supports signed URLs.
+
+    Args:
+        path: a path
+        **kwargs: optional keyword arguments for the storage client's
+            ``generate_signed_url(path, **kwargs)`` method
+
+    Returns:
+        a public path
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return path
+
+    params = dict(method="PUT", content_type=etau.guess_mime_type(path))
+    params.update(kwargs)
+
+    return get_url(path, **params)
+
+
+def make_temp_dir(basedir=None):
+    """Makes a temporary local directory.
+
+    Args:
+        basedir (None): an optional directory in which to create the new
+            directory. The default is ``fiftyone.config.default_dataset_dir``
+
+    Returns:
+        the temporary directory path
+    """
+    if basedir is None:
+        basedir = fo.config.default_dataset_dir
+
+    return etau.make_temp_dir(basedir=basedir)
+
+
+class TempDir(object):
+    """Context manager that creates and destroys a temporary local directory.
+
+    Args:
+        basedir: an optional directory in which to create the new directory
+    """
+
+    def __init__(self, basedir=None):
+        self._basedir = basedir
+        self._name = None
+
+    def __enter__(self):
+        self._name = make_temp_dir(basedir=self._basedir)
+        return self._name
+
+    def __exit__(self, *args):
+        etau.delete_dir(self._name)
+
+
+class LocalDir(object):
+    """Context manager that allows remote directory paths to be processed as
+    local directory paths that can be passed to methods that don't natively
+    support reading/writing remote locations.
+
+    When a local directory is provided to this context manager, it is simply
+    returned when the context is entered and no other operations are performed.
+
+    When a remote directory is provided, a temporary local directory is
+    returned when the context is entered, which is automatically deleted when
+    the context exits. In addition:
+
+    -   When ``mode == "r"``, the remote directory's contents is downloaded
+        when the context is entered
+    -   When ``mode == "w"``, the local directory's contents is uploaded to the
+        remote directory when the context exits
+
+    Example usage::
+
+        import os
+
+        import fiftyone.core.storage as fos
+
+        with fos.LocalDir("s3://bucket/dir", "w") as local_dir:
+            with open(os.path.join(local_dir, "file1.txt")) as f:
+                f.write("Hello, world!")
+
+            with open(os.path.join(local_dir, "file2.txt")) as f:
+                f.write("Goodbye")
+
+        with fos.LocalDir("s3://bucket/dir", "r") as local_dir:
+            with open(os.path.join(local_dir, "file1.txt")) as f:
+                print(f.read())
+
+            with open(os.path.join(local_dir, "file2.txt")) as f:
+                print(f.read())
+
+    Args:
+        path: a local or remote path
+        mode ("r"): the mode. Supported values are ``("r", "w")``
+        type_str ("files"): the type of file being processed. Used only for
+            log messages
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote upload/download fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of any uploads/downloads. By
+            default, ``fiftyone.config.show_progress_bars`` is used
+        basedir (None): an optional directory in which to create temporary
+            local directories
+    """
+
+    def __init__(
+        self,
+        path,
+        mode="r",
+        type_str="files",
+        skip_failures=False,
+        quiet=None,
+        basedir=None,
+    ):
+        if mode not in ("r", "w"):
+            raise ValueError("Unsupported mode '%s'" % mode)
+
+        self._path = path
+        self._mode = mode
+        self._type_str = type_str
+        self._skip_failures = skip_failures
+        self._quiet = quiet
+        self._basedir = basedir
+        self._dirpath = None
+        self._tmpdir = None
+
+    @property
+    def quiet(self):
+        """Whether this object will log the status of any uploads/downloads."""
+        if self._quiet is None:
+            return fo.config.show_progress_bars
+
+        return self._quiet
+
+    def __enter__(self):
+        if is_local(self._path):
+            return self._path
+
+        tmpdir = make_temp_dir(basedir=self._basedir)
+
+        if os.path.splitext(self._path):
+            dirpath = os.path.dirname(self._path)
+            local_path = os.path.join(tmpdir, os.path.basename(self._path))
+        else:
+            dirpath = self._path
+            local_path = tmpdir
+
+        self._dirpath = dirpath
+        self._tmpdir = tmpdir
+
+        if self._mode == "r":
+            if not self.quiet:
+                logger.info("Uploading %s...", self._type_str)
+
+            copy_dir(
+                self._dirpath,
+                self._tmpdir,
+                skip_failures=self._skip_failures,
+                quiet=self.quiet,
+            )
+
+        return local_path
+
+    def __exit__(self, *args):
+        if self._tmpdir is None:
+            return
+
+        try:
+            if self._mode == "w":
+                if not self.quiet:
+                    logger.info("Downloading %s...", self._type_str)
+
+                copy_dir(
+                    self._tmpdir,
+                    self._dirpath,
+                    skip_failures=self._skip_failures,
+                    quiet=self.quiet,
+                )
+        finally:
+            etau.delete_dir(self._tmpdir)
+
+
+class LocalFile(object):
+    """Context manager that allows remote filepaths to be processed as local
+    filepaths that can be passed to methods that don't natively support
+    reading/writing remote locations.
+
+    When a local filepath is provided to this context manager, it is simply
+    returned when the context is entered and no other operations are performed.
+
+    When a remote filepath is provided, a temporary local filepath is returned
+    when the context is entered, which is automatically deleted when the
+    context exits. In addition:
+
+    -   When ``mode == "r"``, the remote file is downloaded when the context is
+        entered
+    -   When ``mode == "w"``, the local file is uploaded to the remote filepath
+        when the context exits
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        with fos.LocalFile("s3://bucket/file.txt", "w") as local_path:
+            with open(local_path, "w") as f:
+                f.write("Hello, world!")
+
+        with fos.LocalFile("s3://bucket/file.txt", "r") as local_path:
+            with open(local_path, "r") as f:
+                print(r.read())
+
+    Args:
+        path: a local or remote path
+        mode ("r"): the mode. Supported values are ``("r", "w")``
+        basedir (None): an optional directory in which to create temporary
+            local files
+    """
+
+    def __init__(self, path, mode="r", basedir=None):
+        if mode not in ("r", "w"):
+            raise ValueError("Unsupported mode '%s'" % mode)
+
+        self._path = path
+        self._mode = mode
+        self._basedir = basedir
+        self._local_path = None
+        self._tmpdir = None
+
+    def __enter__(self):
+        if is_local(self._path):
+            return self._path
+
+        self._tmpdir = make_temp_dir(basedir=self._basedir)
+        self._local_path = os.path.join(
+            self._tmpdir, os.path.basename(self._path)
+        )
+
+        if self._mode == "r":
+            copy_file(self._path, self._local_path)
+
+        return self._local_path
+
+    def __exit__(self, *args):
+        if self._tmpdir is None:
+            return
+
+        try:
+            if self._mode == "w":
+                copy_file(self._local_path, self._path)
+        finally:
+            etau.delete_dir(self._tmpdir)
+
+
+class LocalFiles(object):
+    """Context manager that allows lists of remote filepaths to be processed as
+    local filepaths that can be passed to methods that don't natively support
+    reading/writing remote locations.
+
+    When local filepaths are provided to this context manager, they are simply
+    returned when the context is entered and no other operations are performed.
+
+    When remote filepaths are provided, temporary local filepaths are returned
+    when the context is entered, which are automatically deleted when the
+    context exits. In addition:
+
+    -   When ``mode == "r"``, remote files are downloaded when the context is
+        entered
+    -   When ``mode == "w"``, local files are uploaded to their corresponding
+        remote filepaths when the context exits
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        remote_paths = [
+            "s3://bucket/file1.txt",
+            "s3://bucket/file2.txt",
+        ]
+
+        with fos.LocalFiles(remote_paths, "w") as local_paths:
+            for local_path in local_paths:
+                with open(local_path, "w") as f:
+                    f.write("Hello, world!")
+
+        with fos.LocalFile(remote_paths, "r") as local_path:
+            for local_path in local_paths:
+                with open(local_path, "r") as f:
+                    print(r.read())
+
+    Args:
+        paths: a list of local or remote paths
+        mode ("r"): the mode. Supported values are ``("r", "w")``
+        type_str ("files"): the type of file being processed. Used only for
+            log messages
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote upload/download fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of any copies. By default,
+            ``fiftyone.config.show_progress_bars`` is used
+        basedir (None): an optional directory in which to create temporary
+            local files
+    """
+
+    def __init__(
+        self,
+        paths,
+        mode="r",
+        type_str="files",
+        skip_failures=False,
+        quiet=None,
+        basedir=None,
+    ):
+        if mode not in ("r", "w"):
+            raise ValueError("Unsupported mode '%s'" % mode)
+
+        self._paths = paths
+        self._mode = mode
+        self._type_str = type_str
+        self._skip_failures = skip_failures
+        self._quiet = quiet
+        self._basedir = basedir
+        self._tmpdir = None
+        self._filename_maker = None
+        self._local_paths = None
+        self._remote_paths = None
+
+    @property
+    def quiet(self):
+        """Whether this object will log the status of any uploads/downloads."""
+        if self._quiet is None:
+            return fo.config.show_progress_bars
+
+        return self._quiet
+
+    def __enter__(self):
+        local_paths = []
+        remote_paths = []
+        _paths = []
+
+        for path in self._paths:
+            if is_local(path):
+                _paths.append(path)
+            else:
+                if self._tmpdir is None:
+                    self._tmpdir = make_temp_dir(basedir=self._basedir)
+                    self._filename_maker = fou.UniqueFilenameMaker()
+
+                local_name = self._filename_maker.get_output_path(path)
+                local_path = os.path.join(self._tmpdir, local_name)
+
+                local_paths.append(local_path)
+                remote_paths.append(path)
+
+                _paths.append(local_path)
+
+        self._local_paths = local_paths
+        self._remote_paths = remote_paths
+
+        if self._mode == "r" and self._remote_paths:
+            if not self.quiet:
+                logger.info("Downloading %s...", self._type_str)
+
+            copy_files(
+                self._remote_paths,
+                self._local_paths,
+                skip_failures=self._skip_failures,
+                quiet=self.quiet,
+            )
+
+        return _paths
+
+    def __exit__(self, *args):
+        if self._tmpdir is None:
+            return
+
+        try:
+            if self._mode == "w" and self._local_paths:
+                if not self.quiet:
+                    logger.info("Uploading %s...", self._type_str)
+
+                copy_files(
+                    self._local_paths,
+                    self._remote_paths,
+                    skip_failures=self._skip_failures,
+                    quiet=self.quiet,
+                )
+        finally:
+            etau.delete_dir(self._tmpdir)
+
+
+class FileWriter(object):
+    """Context manager that allows writing remote files to disk locally first
+    so that they can be efficiently uploaded to the remote destination in a
+    batch.
+
+    When local filepaths are provided to this context manager, they are simply
+    returned verbatim.
+
+    When remote filepaths are provided, temporary local filepaths are returned,
+    which are then uploaded to their corresponding remote filepaths and then
+    cleaned up when the context exits.
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        remote_paths = [
+            "s3://bucket/file1.txt",
+            "s3://bucket/file2.txt",
+        ]
+
+        with fos.FileWriter() as writer:
+            for remote_path in remote_paths:
+                local_path = writer.get_local_path(remote_path)
+                with open(local_path, "w") as f:
+                    f.write("Hello, world!")
+
+    Args:
+        type_str ("files"): the type of file being processed. Used only for
+            log messages
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote upload fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of any uploads. By default,
+            ``fiftyone.config.show_progress_bars`` is used
+        basedir (None): an optional directory in which to create temporary
+            local files
+    """
+
+    def __init__(
+        self, type_str="files", skip_failures=False, quiet=None, basedir=None
+    ):
+        self._type_str = type_str
+        self._skip_failures = skip_failures
+        self._quiet = quiet
+        self._basedir = basedir
+        self._tmpdir = None
+        self._filename_maker = None
+        self._inpaths = None
+        self._outpaths = None
+
+    @property
+    def quiet(self):
+        """Whether this writer will log the status of any uploads."""
+        if self._quiet is None:
+            return fo.config.show_progress_bars
+
+        return self._quiet
+
+    def __enter__(self):
+        self._tmpdir = None
+        self._filename_maker = None
+        self._inpaths = []
+        self._outpaths = []
+        return self
+
+    def __exit__(self, *args):
+        if self._inpaths:
+            if not self.quiet:
+                logger.info("Uploading %s...", self._type_str)
+
+            copy_files(
+                self._inpaths,
+                self._outpaths,
+                skip_failures=self._skip_failures,
+                quiet=self.quiet,
+            )
+
+        if self._tmpdir is not None:
+            etau.delete_dir(self._tmpdir)
+
+    def get_local_path(self, filepath):
+        """Returns a local path on disk to write the given file.
+
+        If the provided path is local, it is directly returned. If the path is
+        remote, a temporary local path is returned.
+
+        Args:
+            filepath: a filepath
+
+        Returns:
+            the local filepath
+        """
+        if is_local(filepath):
+            return filepath
+
+        if self._tmpdir is None:
+            self._tmpdir = make_temp_dir(basedir=self._basedir)
+            self._filename_maker = fou.UniqueFilenameMaker()
+
+        local_name = self._filename_maker.get_output_path(filepath)
+        local_path = os.path.join(self._tmpdir, local_name)
+
+        self._inpaths.append(local_path)
+        self._outpaths.append(filepath)
+
+        return local_path
+
+    def get_local_paths(self, filepaths):
+        """Returns local paths on disk for a list of filepaths.
+
+        See :meth:`get_local_path` for details.
+
+        Args:
+            filepaths: a list of filepaths
+
+        Returns:
+            a list of local paths
+        """
+        return [self.get_local_path(p) for p in filepaths]
+
+
 @contextmanager
 def open_file(path, mode="r"):
     """Opens the given file for reading or writing.
 
-    This function *must* be used as a context manager.
+    This function *must* be used as a context manager, and it assumes that any
+    cloud files being read/written can fit into RAM.
 
     Example usage::
 
@@ -290,38 +939,160 @@ def write_file(str_or_bytes, path):
         f.write(_to_bytes(str_or_bytes))
 
 
-def delete_file(path):
-    """Deletes the file at the given path and recursively deletes any empty
-    directories from the resulting directory tree.
+def sep(path):
+    """Returns the path separator for the given path.
+
+    For local paths, ``os.path.sep`` is returned.
+
+    For remote paths, ``"/"`` is returned.
 
     Args:
         path: the filepath
+
+    Returns:
+        the path separator
     """
     fs = get_file_system(path)
 
     if fs == FileSystem.LOCAL:
-        etau.delete_file(path)
-        return
+        return os.path.sep
+
+    return "/"
+
+
+def join(a, *p):
+    """Joins the given path components into a single path.
+
+    Args:
+        a: the root
+        *p: additional path components
+
+    Returns:
+        the joined path
+    """
+    fs = get_file_system(a)
+
+    if fs == FileSystem.LOCAL:
+        return os.path.join(a, *p)
+
+    return posixpath.join(a, *p)
+
+
+def isabs(path):
+    """Determines whether the given path is absolute.
+
+    Remote paths are always considered absolute.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        True/False
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return os.path.isabs(path)
+
+    return True
+
+
+def abspath(path):
+    """Converts the given path to an absolute path.
+
+    Remote paths are returned unchanged.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        the absolute path
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return os.path.abspath(path)
+
+    return path
+
+
+def normpath(path):
+    """Normalizes the given filepath.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        the normalized path
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return os.path.normpath(path)
+
+    prefix, path = split_prefix(path)
+
+    return prefix + posixpath.normpath(path.replace("\\", "/"))
+
+
+def exists(path):
+    """Determines whether the given file or directory exists.
+
+    Args:
+        path: the file or directory path
+
+    Returns:
+        True/False
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return os.path.exists(path)
 
     client = get_client(fs)
-    client.delete(path)
+
+    if os.path.splitext(path)[1]:
+        return client.is_file(path)
+
+    return client.is_folder(path)
 
 
-def delete_dir(dirpath):
-    """Deletes the given directory and recursively deletes any empty
-    directories from the resulting directory tree.
+def isfile(path):
+    """Determines whether the given file exists.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        True/False
+    """
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return os.path.isfile(path)
+
+    client = get_client(fs)
+    return client.is_file(path)
+
+
+def isdir(dirpath):
+    """Determines whether the given directory exists.
+
+    Cloud "folders" are deemed to exist only if they are non-empty.
 
     Args:
         dirpath: the directory path
+
+    Returns:
+        True/False
     """
     fs = get_file_system(dirpath)
 
     if fs == FileSystem.LOCAL:
-        etau.delete_dir(dirpath)
-        return
+        return os.path.isdir(dirpath)
 
     client = get_client(fs)
-    client.delete_folder(dirpath)
+    return client.is_folder(dirpath)
 
 
 def ensure_empty_dir(dirpath, cleanup=False):
@@ -425,23 +1196,29 @@ def write_ndjson(obj, path):
     write_file(s, path)
 
 
-def join(a, *p):
-    """Generalization of ``os.path.join`` that correctly handles cloud paths on
-    Windows.
+def read_yaml(path):
+    """Reads a YAML file.
 
     Args:
-        a: the root
-        *p: additional path components
+        path: the filepath
 
     Returns:
-        the joined path
+        a list of JSON dicts
     """
-    fs = get_file_system(a)
+    with open_file(path, "r") as f:
+        return yaml.safe_load(f)
 
-    if fs == FileSystem.LOCAL:
-        return os.path.join(a, *p)
 
-    return posixpath.join(a, *p)
+def write_yaml(obj, path, **kwargs):
+    """Writes the object to a YAML file.
+
+    Args:
+        obj: a Python object
+        path: the filepath
+        **kwargs: optional arguments for ``yaml.dump(..., **kwargs)``
+    """
+    with open_file(path, "w") as f:
+        return yaml.dump(obj, stream=f, **kwargs)
 
 
 def list_files(
@@ -451,7 +1228,7 @@ def list_files(
     include_hidden_files=False,
     sort=True,
 ):
-    """Lists the files in the given local or remote directory.
+    """Lists the files in the given directory.
 
     If the directory does not exist, an empty list is returned.
 
@@ -495,6 +1272,38 @@ def list_files(
         filepaths = sorted(filepaths)
 
     return filepaths
+
+
+def list_subdirs(dir_path, abs_paths=False, recursive=False):
+    """Lists the subdirectories in the given directory, sorted alphabetically
+    and excluding hidden directories.
+
+    Args:
+        dir_path: the path to the directory to list
+        abs_paths (False): whether to return absolute paths
+        recursive (False): whether to recursively traverse subdirectories
+
+    Returns:
+        a list of subdirectories
+    """
+    fs = get_file_system(dir_path)
+
+    if fs == FileSystem.LOCAL:
+        return etau.list_subdirs(
+            dir_path, abs_paths=abs_paths, recursive=recursive
+        )
+
+    dirs = {os.path.dirname(p) for p in list_files(dir_path, recursive=True)}
+
+    if not recursive:
+        dirs = {d.split("/", 1)[0] for d in dirs}
+
+    dirs = sorted(d for d in dirs if d and not d.startswith("."))
+
+    if abs_paths:
+        dirs = [join(dir_path, d) for d in dirs]
+
+    return dirs
 
 
 def get_glob_matches(glob_patt):
@@ -547,42 +1356,162 @@ def _parse_cloud_glob_patt(glob_patt):
     return os.path.dirname(root), True
 
 
-def download_files(remote_paths, local_paths, skip_failures=True):
-    """Downloads the given remote files.
+def copy_file(inpath, outpath):
+    """Copies the input file to the output location.
 
     Args:
-        remote_paths: a list of remote paths
-        local_paths: a list of local paths
-        skip_failures (True): whether to gracefully continue without raising an
-            error if a download fails
+        inpath: the input path
+        outpath: the output path
     """
-    tasks = []
-    for remote_path, local_path in zip(remote_paths, local_paths):
-        fs = get_file_system(remote_path)
-        client = get_client(fs)
-        tasks.append((client, remote_path, local_path, skip_failures))
-
-    if tasks:
-        _run_tasks(_do_download_media, tasks)
+    _copy_file(inpath, outpath, cleanup=False)
 
 
-def upload_files(local_paths, remote_paths, skip_failures=True):
-    """Uploads the given files to the remote locations.
+def copy_files(inpaths, outpaths, skip_failures=False, quiet=None):
+    """Copies the files to the given locations.
 
     Args:
-        local_paths: a list of local paths
-        remote_paths: a list of remote paths
-        skip_failures (True): whether to gracefully continue without raising an
-            error if an upload fails
+        inpaths: a list of input paths
+        outpaths: a list of output paths
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote operation fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of the copy. By default,
+            ``fiftyone.config.show_progress_bars`` is used
     """
-    tasks = []
-    for local_path, remote_path in zip(local_paths, remote_paths):
-        fs = get_file_system(remote_path)
-        client = get_client(fs)
-        tasks.append((client, local_path, remote_path, skip_failures))
-
+    tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
-        _run_tasks(_do_upload_media, tasks)
+        _run_tasks(_do_copy_file, tasks, quiet=quiet)
+
+
+def copy_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
+    """Copies the input directory to the output directory.
+
+    Args:
+        indir: the input directory
+        outdir: the output directory
+        overwrite (True): whether to delete an existing output directory (True)
+            or merge its contents (False)
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote operation fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of the copy. By default,
+            ``fiftyone.config.show_progress_bars`` is used
+    """
+    if overwrite and isdir(outdir):
+        delete_dir(outdir)
+
+    files = list_files(
+        indir, include_hidden_files=True, recursive=True, sort=False
+    )
+    inpaths = [join(indir, f) for f in files]
+    outpaths = [join(outdir, f) for f in files]
+    copy_files(inpaths, outpaths, skip_failures=skip_failures, quiet=quiet)
+
+
+def move_file(inpath, outpath):
+    """Moves the given file to a new location.
+
+    Args:
+        inpath: the input path
+        outpath: the output path
+    """
+    _copy_file(inpath, outpath, cleanup=True)
+
+
+def move_files(inpaths, outpaths, skip_failures=False, quiet=None):
+    """Moves the files to the given locations.
+
+    Args:
+        inpaths: a list of input paths
+        outpaths: a list of output paths
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote operation fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of the move. By default,
+            ``fiftyone.config.show_progress_bars`` is used
+    """
+    tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
+    if tasks:
+        _run_tasks(_do_move_file, tasks, quiet=quiet)
+
+
+def move_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
+    """Moves the contents of the given directory into the given output
+    directory.
+
+    Args:
+        indir: the input directory
+        outdir: the output directory
+        overwrite (True): whether to delete an existing output directory (True)
+            or merge its contents (False)
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote operation fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of the move. By default,
+            ``fiftyone.config.show_progress_bars`` is used
+    """
+    if overwrite and isdir(outdir):
+        delete_dir(outdir)
+
+    if overwrite and is_local(indir) and is_local(outdir):
+        etau.ensure_basedir(outdir)
+        shutil.move(indir, outdir)
+        return
+
+    files = list_files(
+        indir, include_hidden_files=True, recursive=True, sort=False
+    )
+    inpaths = [join(indir, f) for f in files]
+    outpaths = [join(outdir, f) for f in files]
+    move_files(inpaths, outpaths, skip_failures=skip_failures, quiet=quiet)
+
+
+def delete_file(path):
+    """Deletes the file at the given path.
+
+    For local paths, any empty directories are also recursively deleted from
+    the resulting directory tree.
+
+    Args:
+        path: the filepath
+    """
+    _delete_file(path)
+
+
+def delete_files(paths, skip_failures=False, quiet=None):
+    """Deletes the files from the given locations.
+
+    For local paths, any empty directories are also recursively deleted from
+    the resulting directory tree.
+
+    Args:
+        paths: a list of paths
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote operation fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of the deletions. By default,
+            ``fiftyone.config.show_progress_bars`` is used
+    """
+    tasks = [(p, skip_failures) for p in paths]
+    if tasks:
+        _run_tasks(_do_delete_file, tasks, quiet=quiet)
+
+
+def delete_dir(dirpath):
+    """Deletes the given directory and recursively deletes any empty
+    directories from the resulting directory tree.
+
+    Args:
+        dirpath: the directory path
+    """
+    fs = get_file_system(dirpath)
+
+    if fs == FileSystem.LOCAL:
+        etau.delete_dir(dirpath)
+        return
+
+    client = get_client(fs)
+    client.delete_folder(dirpath)
 
 
 def upload_media(
@@ -591,7 +1520,7 @@ def upload_media(
     rel_dir=None,
     update_filepaths=False,
     overwrite=True,
-    skip_failures=True,
+    skip_failures=False,
 ):
     """Uploads the source media files for the given collection to the given
     remote "folder".
@@ -610,8 +1539,8 @@ def upload_media(
             sample in the collection to its remote path
         overwrite (True): whether to overwrite (True) or skip (False) existing
             remote files
-        skip_failures (True): whether to gracefully continue without raising an
-            error if an upload fails
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote operation fails
 
     Returns:
         the list of remote paths
@@ -647,10 +1576,10 @@ def upload_media(
     tasks = []
     for filepath, remote_path in zip(filepaths, remote_paths):
         if remote_path not in existing_files:
-            tasks.append((client, filepath, remote_path, skip_failures))
+            tasks.append((filepath, remote_path, skip_failures))
 
     if tasks:
-        _run_tasks(_do_upload_media, tasks)
+        _run_tasks(_do_copy_file, tasks)
 
     if update_filepaths:
         sample_collection.set_values("filepath", remote_paths)
@@ -708,43 +1637,136 @@ def _load_minio_credentials():
     return credentials
 
 
-def _run_tasks(fcn, tasks, num_workers=None):
+def _map(fcn, tasks, quiet=None, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
+    try:
+        num_tasks = len(tasks)
+    except:
+        num_tasks = None
+
+    kwargs = dict(total=num_tasks, iters_str="files")
+    if quiet is not None:
+        kwargs["quiet"] = quiet
+
     if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(**kwargs) as pb:
+            results = [fcn(task) for task in pb(tasks)]
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(**kwargs) as pb:
+                results = list(pb(pool.imap(fcn, tasks)))
+
+    return results
+
+
+def _run_tasks(fcn, tasks, quiet=None, num_workers=None):
+    if num_workers is None:
+        num_workers = fo.media_cache_config.num_workers
+
+    try:
+        num_tasks = len(tasks)
+    except:
+        num_tasks = None
+
+    kwargs = dict(total=num_tasks, iters_str="files")
+    if quiet is not None:
+        kwargs["quiet"] = quiet
+
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar(**kwargs) as pb:
             for task in pb(tasks):
                 fcn(task)
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks)) as pb:
+            with fou.ProgressBar(**kwargs) as pb:
                 for _ in pb(pool.imap_unordered(fcn, tasks)):
                     pass
 
 
-def _do_download_media(arg):
-    client, remote_path, local_path, skip_failures = arg
+def _do_copy_file(arg):
+    inpath, outpath, skip_failures = arg
 
     try:
-        client.download(remote_path, local_path)
+        _copy_file(inpath, outpath, cleanup=False)
     except Exception as e:
         if not skip_failures:
             raise
 
-        logger.warning(e)
+        if skip_failures != "ignore":
+            logger.warning(e)
 
 
-def _do_upload_media(arg):
-    client, local_path, remote_path, skip_failures = arg
+def _do_move_file(arg):
+    inpath, outpath, skip_failures = arg
 
     try:
-        client.upload(local_path, remote_path)
+        _copy_file(inpath, outpath, cleanup=True)
     except Exception as e:
         if not skip_failures:
             raise
 
-        logger.warning(e)
+        if skip_failures != "ignore":
+            logger.warning(e)
+
+
+def _do_delete_file(arg):
+    filepath, skip_failures = arg
+
+    try:
+        _delete_file(filepath)
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        if skip_failures != "ignore":
+            logger.warning(e)
+
+
+def _copy_file(inpath, outpath, cleanup=False):
+    fsi = get_file_system(inpath)
+    fso = get_file_system(outpath)
+
+    if fsi == FileSystem.LOCAL:
+        if fso == FileSystem.LOCAL:
+            # Local -> local
+            etau.ensure_basedir(outpath)
+            if cleanup:
+                shutil.move(inpath, outpath)
+            else:
+                shutil.copy(inpath, outpath)
+        else:
+            # Local -> remote
+            client = get_client(fso)
+            client.upload(inpath, outpath)
+            if cleanup:
+                os.remove(inpath)
+    elif fso == FileSystem.LOCAL:
+        # Remote -> local
+        client = get_client(fsi)
+        client.download(inpath, outpath)
+        if cleanup:
+            client.delete(inpath)
+    else:
+        # Remote -> remote
+        clienti = get_client(fsi)
+        b = clienti.download_bytes(inpath)
+        cliento = get_client(fso)
+        cliento.upload_bytes(b, outpath)
+        if cleanup:
+            clienti.delete(inpath)
+
+
+def _delete_file(filepath):
+    fs = get_file_system(filepath)
+
+    if fs == FileSystem.LOCAL:
+        etau.delete_file(filepath)
+        return
+
+    client = get_client(fs)
+    client.delete(filepath)
 
 
 class _BytesIO(io.BytesIO):
