@@ -6,11 +6,13 @@ Dataset ingestors.
 |
 """
 import logging
+import os
 
 import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 from .importers import (
@@ -31,6 +33,9 @@ class ImageIngestor(object):
 
     Args:
         dataset_dir: the directory where input images will be ingested into
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
     def __init__(self, dataset_dir, image_format=None):
@@ -39,7 +44,11 @@ class ImageIngestor(object):
 
         self.dataset_dir = dataset_dir
         self.image_format = image_format
+
         self._filename_maker = None
+        self._tmpdir = None
+        self._inpaths = []
+        self._outpaths = []
 
     def _ingest_image(self, sample_parser):
         if sample_parser.has_image_path:
@@ -56,20 +65,47 @@ class ImageIngestor(object):
 
     def _ingest_image_from_path(self, sample_parser):
         image_path = sample_parser.get_image_path()
-        output_image_path = self._filename_maker.get_output_path(image_path)
-        etau.copy_file(image_path, output_image_path)
-        return output_image_path
+        out_image_path = self._filename_maker.get_output_path(image_path)
+
+        if fos.is_local(image_path) and fos.is_local(out_image_path):
+            etau.copy_file(image_path, out_image_path)
+        else:
+            self._inpaths.append(image_path)
+            self._outpaths.append(out_image_path)
+
+        return out_image_path
 
     def _ingest_in_memory_image(self, sample_parser):
         img = sample_parser.get_image()
         image_path = self._filename_maker.get_output_path()
-        etai.write(img, image_path)
+        if fos.is_local(image_path):
+            etai.write(img, image_path)
+        else:
+            if self._tmpdir is None:
+                self._tmpdir = fos.make_temp_dir()
+
+            local_path = os.path.join(
+                self._tmpdir, os.path.basename(image_path)
+            )
+
+            self._inpaths.append(local_path)
+            self._outpaths.append(image_path)
+
+            etai.write(img, local_path)
+
         return image_path
 
     def _setup(self):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=self.dataset_dir, default_ext=self.image_format
         )
+
+    def _close(self):
+        if self._inpaths:
+            fos.copy_files(self._inpaths, self._outpaths)
+
+        if self._tmpdir is not None:
+            etau.delete_dir(self._tmpdir)
 
 
 class UnlabeledImageDatasetIngestor(
@@ -179,6 +215,9 @@ class UnlabeledImageDatasetIngestor(
                 self._num_samples = min(self._num_samples, self.max_samples)
         except:
             pass
+
+    def close(self, *args):
+        self._close()
 
 
 class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
@@ -293,6 +332,9 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         except:
             pass
 
+    def close(self, *args):
+        self._close()
+
 
 class VideoIngestor(object):
     """Mixin for :class:`fiftyone.utils.data.importers.DatasetImporter`
@@ -305,18 +347,31 @@ class VideoIngestor(object):
 
     def __init__(self, dataset_dir):
         self.dataset_dir = dataset_dir
+
         self._filename_maker = None
+        self._inpaths = []
+        self._outpaths = []
 
     def _ingest_video(self, sample_parser):
         video_path = sample_parser.get_video_path()
-        output_video_path = self._filename_maker.get_output_path(video_path)
-        etau.copy_file(video_path, output_video_path)
-        return output_video_path
+        out_video_path = self._filename_maker.get_output_path(video_path)
+
+        if fos.is_local(video_path) and fos.is_local(out_video_path):
+            etau.copy_file(video_path, out_video_path)
+        else:
+            self._inpaths.append(video_path)
+            self._outpaths.append(out_video_path)
+
+        return out_video_path
 
     def _setup(self):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=self.dataset_dir
         )
+
+    def _close(self):
+        if self._inpaths:
+            fos.copy_files(self._inpaths, self._outpaths)
 
 
 class UnlabeledVideoDatasetIngestor(
@@ -406,6 +461,9 @@ class UnlabeledVideoDatasetIngestor(
                 self._num_samples = min(self._num_samples, self.max_samples)
         except:
             pass
+
+    def close(self, *args):
+        self._close()
 
 
 class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
@@ -506,3 +564,6 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
                 self._num_samples = min(self._num_samples, self.max_samples)
         except:
             pass
+
+    def close(self, *args):
+        self._close()

@@ -9,19 +9,19 @@ import os
 
 import numpy as np
 
-import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 
+foui = fou.lazy_import("fiftyone.utils.image")
 fouv = fou.lazy_import("fiftyone.utils.video")
 
 
@@ -75,7 +75,7 @@ def add_images(dataset, samples, sample_parser, tags=None):
         else:
             metadata = None
 
-        return fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
+        return Sample(filepath=image_path, metadata=metadata, tags=tags)
 
     try:
         num_samples = len(samples)
@@ -166,7 +166,7 @@ def add_labeled_images(
 
         label = sample_parser.get_label()
 
-        sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
+        sample = Sample(filepath=image_path, metadata=metadata, tags=tags)
 
         if isinstance(label, dict):
             sample.update_fields({label_key(k): v for k, v in label.items()})
@@ -241,7 +241,7 @@ def add_videos(dataset, samples, sample_parser, tags=None):
         else:
             metadata = None
 
-        return fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
+        return Sample(filepath=video_path, metadata=metadata, tags=tags)
 
     try:
         num_samples = len(samples)
@@ -328,7 +328,7 @@ def add_labeled_videos(
         label = sample_parser.get_label()
         frames = sample_parser.get_frame_labels()
 
-        sample = fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
+        sample = Sample(filepath=video_path, metadata=metadata, tags=tags)
 
         if isinstance(label, dict):
             sample.update_fields({label_key(k): v for k, v in label.items()})
@@ -562,7 +562,7 @@ class ImageSampleParser(UnlabeledImageSampleParser):
     def get_image(self):
         image_or_path = self.current_sample
         if etau.is_str(image_or_path):
-            return etai.read(image_or_path)
+            return foui.read(image_or_path)
 
         return np.asarray(image_or_path)
 
@@ -884,7 +884,7 @@ class LabeledImageTupleSampleParser(LabeledImageSampleParser):
 
     def _parse_image(self, image_or_path):
         if etau.is_str(image_or_path):
-            return etai.read(image_or_path)
+            return foui.read(image_or_path)
 
         return np.asarray(image_or_path)
 
@@ -1074,7 +1074,7 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
             return None
 
         if etau.is_str(target):
-            target = etas.load_json(target)
+            target = fos.read_json(target)
 
         return fol.Detections(
             detections=[self._parse_detection(obj, img=img) for obj in target]
@@ -1230,6 +1230,10 @@ class FiftyOneTemporalDetectionSampleParser(LabeledVideoSampleParser):
     @property
     def frame_labels_cls(self):
         return None
+
+    def with_sample(self, sample, metadata=None):
+        super().with_sample(sample)
+        self._current_metadata = metadata
 
     def get_video_path(self):
         return self.current_sample[0]
@@ -1479,7 +1483,7 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return etai.read(self.current_sample.local_path)
+        return foui.read(self.current_sample.local_path)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)
@@ -1532,7 +1536,7 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return etai.read(self.current_sample.local_path)
+        return foui.read(self.current_sample.local_path)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)
@@ -1611,7 +1615,7 @@ class ExtractClipsMixin(object):
 
         if self.export_media:
             if self.clip_dir is None:
-                self.clip_dir = etau.make_temp_dir()
+                self.clip_dir = fos.make_temp_dir()
 
             dirname = self.clip_dir
             ext = self.video_format
