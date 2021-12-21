@@ -11,12 +11,12 @@ import logging
 import os
 import warnings
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 
@@ -170,7 +170,7 @@ class BDDDatasetImporter(
             self.data_path, recursive=True
         )
 
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
+        if self.labels_path is not None:
             self._anno_dict_map = load_bdd_annotations(self.labels_path)
         else:
             self._anno_dict_map = {}
@@ -186,7 +186,7 @@ class BDDDatasetImporter(
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etau.list_files(os.path.join(dataset_dir, "data")))
+        return len(fos.list_files(fos.join(dataset_dir, "data")))
 
 
 class BDDDatasetExporter(
@@ -329,7 +329,7 @@ class BDDDatasetExporter(
         self._annotations.append(annotation)
 
     def close(self, *args):
-        etas.write_json(self._annotations, self.labels_path)
+        fos.write_json(self._annotations, self.labels_path)
         self._media_exporter.close()
 
 
@@ -344,7 +344,7 @@ def load_bdd_annotations(json_path):
     Returns:
         a dict mapping filenames to BDD annotation dicts
     """
-    annotations = etas.load_json(json_path)
+    annotations = fos.read_json(json_path)
     return {d["name"]: d for d in annotations}
 
 

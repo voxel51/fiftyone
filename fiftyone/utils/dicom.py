@@ -13,8 +13,9 @@ import numpy as np
 
 import eta.core.utils as etau
 
-import fiftyone.utils.data as foud
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
+import fiftyone.utils.data as foud
 
 fou.ensure_package("pydicom")
 import pydicom
@@ -112,7 +113,8 @@ class DICOMSampleParser(foud.LabeledImageSampleParser):
             if isinstance(self.current_sample, FileInstance):
                 self._ds = self.current_sample.load()
             else:
-                self._ds = pydicom.dcmread(self.current_sample)
+                with fos.open_file(self.current_sample, "r") as f:
+                    self._ds = pydicom.dcmread(f)
 
 
 class DICOMDatasetImporter(
@@ -175,7 +177,7 @@ class DICOMDatasetImporter(
         )
 
         if images_dir is None:
-            images_dir = os.path.abspath(os.path.dirname(dicom_path))
+            images_dir = os.path.dirname(dicom_path)
             logger.warning(
                 "No `images_dir` provided. Images will be unpacked to '%s'",
                 images_dir,
@@ -197,6 +199,7 @@ class DICOMDatasetImporter(
         self._sample_parser = DICOMSampleParser(
             keywords=keywords, parsers=parsers
         )
+        self._local_files = None
         self._dataset_ingestor = None
         self._iter_dataset_ingestor = None
         self._num_samples = None
@@ -224,20 +227,29 @@ class DICOMDatasetImporter(
         return self._sample_parser.has_image_metadata
 
     def setup(self):
-        if os.path.isfile(self.dicom_path):
+        is_glob_patt = False
+
+        if fos.isfile(self.dicom_path):
             if not os.path.splitext(self.dicom_path)[1]:
                 # DICOMDIR file
-                ds = pydicom.dcmread(self.dicom_path)
+                with fos.open_file(self.dicom_path, "r") as f:
+                    ds = pydicom.dcmread(f)
+
                 samples = list(FileSet(ds))
             else:
                 # Single DICOM file
                 samples = [self.dicom_path]
         else:
             # Glob pattern of DICOM files
-            samples = etau.get_glob_matches(self.dicom_path)
+            samples = fos.get_glob_matches(self.dicom_path)
+            is_glob_patt = True
 
         samples = self._preprocess_list(samples)
         self._num_samples = len(samples)
+
+        if is_glob_patt:
+            self._local_files = fos.LocalFiles(samples)
+            samples = self._local_files.__enter__()
 
         self._dataset_ingestor = foud.LabeledImageDatasetIngestor(
             self.images_dir,
@@ -249,6 +261,8 @@ class DICOMDatasetImporter(
 
     def close(self, *args):
         self._dataset_ingestor.close(*args)
+        if self._local_files is not None:
+            self._local_files.__exit__(*args)
 
 
 def _get_image(ds):

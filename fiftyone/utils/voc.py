@@ -16,6 +16,7 @@ import eta.core.utils as etau
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -115,6 +116,7 @@ class VOCDetectionDatasetImporter(
 
         self._image_paths_map = None
         self._labels_paths_map = None
+        self._local_files = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -161,6 +163,7 @@ class VOCDetectionDatasetImporter(
             detections = annotation.to_detections(extra_attrs=self.extra_attrs)
         else:
             # Unlabeled image
+            # @todo batch metadata calculation for cloud paths
             image_path = self._image_paths_map[uuid]
             image_metadata = fom.ImageMetadata.build_for(image_path)
             detections = None
@@ -180,25 +183,39 @@ class VOCDetectionDatasetImporter(
         return fol.Detections
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
+        image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None and os.path.isdir(self.labels_path):
-            self._labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
-            }
-        else:
-            self._labels_paths_map = {}
+        if self.labels_path is not None:
+            label_paths = fos.list_files(self.labels_path, recursive=True)
 
-        uuids = set(self._labels_paths_map.keys())
+            uuids = [os.path.splitext(p)[0] for p in label_paths]
+            label_paths = [fos.join(self.labels_path, p) for p in label_paths]
+
+            local_files = fos.LocalFiles(label_paths, "r", type_str="labels")
+            local_paths = local_files.__enter__()
+
+            labels_paths_map = {u: p for u, p in zip(uuids, local_paths)}
+        else:
+            labels_paths_map = {}
+            local_files = None
+
+        uuids = set(labels_paths_map.keys())
 
         if self.include_all_data:
-            uuids.update(self._image_paths_map.keys())
+            uuids.update(image_paths_map.keys())
 
-        self._uuids = self._preprocess_list(sorted(uuids))
-        self._num_samples = len(self._uuids)
+        uuids = self._preprocess_list(sorted(uuids))
+
+        self._local_files = local_files
+        self._image_paths_map = image_paths_map
+        self._labels_paths_map = labels_paths_map
+        self._uuids = uuids
+        self._num_samples = len(uuids)
+
+    def close(self, *args):
+        self._local_files.__exit__(*args)
 
 
 class VOCDetectionDatasetExporter(
@@ -318,7 +335,7 @@ class VOCDetectionDatasetExporter(
         )
         self._media_exporter.setup()
 
-        etau.ensure_dir(self.labels_path)
+        fos.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path, filename = self._media_exporter.export(image_or_path)
@@ -723,7 +740,7 @@ class VOCAnnotationWriter(object):
                 "objects": annotation.objects,
             }
         )
-        etau.write_file(xml_str, xml_path)
+        fos.write_file(xml_str, xml_path)
 
 
 def load_voc_detection_annotations(xml_path):

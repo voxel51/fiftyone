@@ -29,6 +29,7 @@ import eta.core.web as etaw
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.eta as foue
@@ -164,7 +165,7 @@ def add_coco_labels(
         )
 
     if etau.is_str(labels_or_path):
-        labels = etas.load_json(labels_or_path)
+        labels = fos.read_json(labels_or_path)
         if isinstance(labels, dict):
             labels = labels["annotations"]
     else:
@@ -521,7 +522,7 @@ class COCODetectionDatasetImporter(
             self.data_path, recursive=True
         )
 
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
+        if self.labels_path is not None:
             (
                 info,
                 classes,
@@ -864,7 +865,7 @@ class COCODetectionDatasetExporter(
         if self._has_labels:
             labels["annotations"] = self._annotations
 
-        etas.write_json(labels, self.labels_path)
+        fos.write_json(labels, self.labels_path)
 
         self._media_exporter.close()
 
@@ -1264,7 +1265,7 @@ def load_coco_detection_annotations(json_path, extra_attrs=True):
         -   annotations: a dict mapping image IDs to list of
             :class:`COCOObject` instances, or ``None`` for unlabeled datasets
     """
-    d = etas.load_json(json_path)
+    d = fos.read_json(json_path)
     return _parse_coco_detection_annotations(d, extra_attrs=extra_attrs)
 
 
@@ -1948,7 +1949,7 @@ def _load_image_ids_csv(csv_path):
 
 
 def _load_image_ids_json(json_path):
-    return [_id for _id in etas.load_json(json_path)]
+    return [_id for _id in etas.read_json(json_path)]
 
 
 def _make_images_list(images_dir):
