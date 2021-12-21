@@ -17,6 +17,7 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.core.clips as foc
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -72,13 +73,16 @@ def extract_clip(
     start_time = timestamps[0]
     duration = timestamps[1] - start_time
 
-    etav.extract_clip(
-        video_path,
-        output_path,
-        start_time=start_time,
-        duration=duration,
-        fast=fast,
-    )
+    with fos.FileWriter() as f:
+        inpath = fos.to_readable(video_path)
+        outpath = f.get_local_path(output_path)
+        etav.extract_clip(
+            inpath,
+            outpath,
+            start_time=start_time,
+            duration=duration,
+            fast=fast,
+        )
 
 
 def reencode_videos(
@@ -555,11 +559,11 @@ def _transform_videos(
 
             if sample_frames:
                 outdir = os.path.splitext(inpath)[0]
-                outpath = os.path.join(outdir, frames_patt)
+                outpath = fos.join(outdir, frames_patt)
 
                 # If sampling was not forced and the first frame exists, assume
                 # that all frames exist
-                if not force_reencode and os.path.exists(outpath % 1):
+                if not force_reencode and fos.isfile(outpath % 1):
                     continue
             elif reencode:
                 root, ext = os.path.splitext(inpath)
@@ -611,8 +615,8 @@ def _transform_video(
     verbose=False,
     **kwargs
 ):
-    inpath = os.path.abspath(os.path.expanduser(inpath))
-    outpath = os.path.abspath(os.path.expanduser(outpath))
+    inpath = fos.normalize_path(inpath)
+    outpath = fos.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
@@ -671,23 +675,28 @@ def _transform_video(
 
     if (inpath == outpath) and should_reencode:
         _inpath = inpath
-        inpath = etau.make_unique_path(inpath, suffix="-original")
-        etau.move_file(_inpath, inpath)
+        root, ext = os.path.splitext(inpath)
+        inpath = root + "-original" + ext
+        fos.move_file(_inpath, inpath)
 
     diff_path = inpath != outpath
 
     if frames is not None:
-        etav.sample_select_frames(
-            inpath, frames, output_patt=outpath, size=size, fast=True
-        )
+        inpath = fos.to_readable(inpath)
+        with fos.LocalDir(outpath, "w", quiet=True) as local_path:
+            etav.sample_select_frames(
+                inpath, frames, output_patt=local_path, size=size, fast=True,
+            )
     elif should_reencode:
+        inpath = fos.to_readable(inpath)
+        outpath = fos.to_writeable(outpath)
         with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
             ffmpeg.run(inpath, outpath, verbose=verbose)
     elif diff_path:
-        etau.copy_file(inpath, outpath)
+        fos.copy_file(inpath, outpath)
 
     if delete_original and diff_path:
-        etau.delete_file(inpath)
+        fos.delete_file(inpath)
 
 
 def _parse_parameters(
@@ -701,11 +710,11 @@ def _parse_parameters(
     sample_frames,
     original_frame_numbers,
 ):
-    video_metadata = etav.VideoMetadata.build_for(video_path)
+    metadata = fom.VideoMetadata.build_for(video_path)
 
-    ifps = video_metadata.frame_rate
-    isize = video_metadata.frame_size
-    iframe_count = video_metadata.total_frame_count
+    ifps = metadata.frame_rate
+    isize = (metadata.frame_width, metadata.frame_height)
+    iframe_count = metadata.total_frame_count
 
     ofps = fps or -1
     min_fps = min_fps or -1
