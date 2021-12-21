@@ -36,6 +36,7 @@ import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fosa
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -5828,9 +5829,9 @@ class SampleCollection(object):
         Returns:
             the list of paths to the rendered media
         """
-        if os.path.isdir(output_dir):
+        if fost.isdir(output_dir):
             if overwrite:
-                etau.delete_dir(output_dir)
+                fost.delete_dir(output_dir)
             else:
                 logger.warning(
                     "Directory '%s' already exists; outputs will be merged "
@@ -6031,11 +6032,16 @@ class SampleCollection(object):
                 this can also contain keyword arguments for
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
+        archive_path = None
+        local_archive_path = None
+
         if export_dir is not None and etau.is_archive(export_dir):
             archive_path = export_dir
-            export_dir = etau.split_archive(archive_path)[0]
-        else:
-            archive_path = None
+            export_dir, ext = etau.split_archive(archive_path)
+
+            if not fos.is_local(export_dir):
+                export_dir = fos.make_temp_dir()
+                local_archive_path = export_dir + ext
 
         if dataset_type is None and dataset_exporter is None:
             raise ValueError(
@@ -6099,7 +6105,10 @@ class SampleCollection(object):
         )
 
         # Archive, if requested
-        if archive_path is not None:
+        if local_archive_path is not None:
+            etau.make_archive(export_dir, local_archive_path, cleanup=True)
+            fos.move_file(local_archive_path, archive_path)
+        elif archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
     def annotate(
@@ -7962,9 +7971,9 @@ def _get_non_none_value(values):
 def _handle_existing_dirs(
     export_dir, data_path, labels_path, export_media, overwrite
 ):
-    if export_dir is not None and os.path.isdir(export_dir):
+    if export_dir is not None and fost.isdir(export_dir):
         if overwrite:
-            etau.delete_dir(export_dir)
+            fost.delete_dir(export_dir)
         else:
             logger.warning(
                 "Directory '%s' already exists; export will be merged with "
@@ -7975,39 +7984,43 @@ def _handle_existing_dirs(
     # When `export_media=False`, `data_path` is used as a relative directory
     # for filename purposes, not a sink for writing data
     if data_path is not None and export_media != False:
-        if os.path.isabs(data_path) or export_dir is None:
+        if fost.isabs(data_path) or export_dir is None:
             _data_path = data_path
         else:
-            _data_path = os.path.join(export_dir, data_path)
+            _data_path = fost.join(export_dir, data_path)
 
-        if os.path.isdir(_data_path):
+        if fost.isdir(_data_path):
             if overwrite:
-                etau.delete_dir(_data_path)
+                fost.delete_dir(_data_path)
             else:
                 logger.warning(
                     "Directory '%s' already exists; export will be merged "
                     "with existing files",
                     _data_path,
                 )
-        elif os.path.isfile(_data_path):
-            if overwrite:
-                etau.delete_file(_data_path)
+        elif overwrite:
+            try:
+                fost.delete_file(_data_path)
+            except:
+                pass
 
     if labels_path is not None:
-        if os.path.isabs(labels_path) or export_dir is None:
+        if fost.isabs(labels_path) or export_dir is None:
             _labels_path = labels_path
         else:
-            _labels_path = os.path.join(export_dir, labels_path)
+            _labels_path = fost.join(export_dir, labels_path)
 
-        if os.path.isdir(_labels_path):
+        if fost.isdir(_labels_path):
             if overwrite:
-                etau.delete_dir(_labels_path)
+                fost.delete_dir(_labels_path)
             else:
                 logger.warning(
                     "Directory '%s' already exists; export will be merged "
                     "with existing files",
                     _labels_path,
                 )
-        elif os.path.isfile(_labels_path):
-            if overwrite:
-                etau.delete_file(_labels_path)
+        elif overwrite:
+            try:
+                fost.delete_file(_labels_path)
+            except:
+                pass
