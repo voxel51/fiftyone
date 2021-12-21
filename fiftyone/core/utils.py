@@ -627,7 +627,7 @@ def load_xml_as_json_dict(xml_path):
     Returns:
         a JSON dict
     """
-    with open(xml_path, "rb") as f:
+    with fos.open_file(xml_path, "rb") as f:
         return xmltodict.parse(f.read())
 
 
@@ -768,6 +768,8 @@ class ResourceLimit(object):
 
 
 class ProgressBar(etau.ProgressBar):
+    """.. autoclass:: eta.core.utils.ProgressBar"""
+
     def __init__(self, *args, **kwargs):
         if "quiet" not in kwargs:
             kwargs["quiet"] = not fo.config.show_progress_bars
@@ -946,8 +948,8 @@ class UniqueFilenameMaker(object):
         self._idx = 0
 
         if output_dir:
-            etau.ensure_dir(output_dir)
-            filenames = etau.list_files(output_dir)
+            fos.ensure_dir(output_dir)
+            filenames = fos.list_files(output_dir)
             self._idx = len(filenames)
             for filename in filenames:
                 self._filename_counts[filename] += 1
@@ -993,7 +995,10 @@ class UniqueFilenameMaker(object):
         if count > 1:
             filename = name + ("-%d" % count) + ext
 
-        output_path = os.path.join(self.output_dir, filename)
+        if self.output_dir:
+            output_path = fos.join(self.output_dir, filename)
+        else:
+            output_path = filename
 
         if found_input:
             self._filepath_map[input_path] = output_path
@@ -1016,14 +1021,14 @@ def compute_filehash(filepath, method=None, chunk_size=None):
         the hash
     """
     if method is None:
-        with open(filepath, "rb") as f:
+        with fos.open_file(filepath, "rb") as f:
             return hash(f.read())
 
     if chunk_size is None:
         chunk_size = 65536
 
     hasher = getattr(hashlib, method)()
-    with open(filepath, "rb") as f:
+    with fos.open_file(filepath, "rb") as f:
         while True:
             data = f.read(chunk_size)
             if not data:
@@ -1339,3 +1344,6 @@ class ResponseStream(object):
                 current_position += self._bytes.write(next(self._iterator))
             except StopIteration:
                 break
+
+
+fos = lazy_import("fiftyone.core.storage")

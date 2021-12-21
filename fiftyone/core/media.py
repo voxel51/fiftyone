@@ -22,25 +22,6 @@ IMAGE = "image"
 MEDIA_TYPES = {IMAGE, VIDEO}
 
 
-def normalize_filepath(filepath):
-    """Normalizes the given filepath.
-
-    Local paths are converted to absolute paths via
-    ``os.path.abspath(os.path.expanduser(filepath))``, while remote paths are
-    returned unchanged.
-
-    Args:
-        filepath: a filepath
-
-    Returns:
-        the normalized filepath
-    """
-    if foc.media_cache.is_local(filepath):
-        return os.path.abspath(os.path.expanduser(filepath))
-
-    return filepath
-
-
 def get_media_type(filepath):
     """Gets the media type for the given filepath.
 

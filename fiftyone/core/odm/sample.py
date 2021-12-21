@@ -64,6 +64,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 from .document import Document, SerializableDocument
@@ -122,7 +123,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     )
 
     def __init__(self, **kwargs):
-        filepath = fomm.normalize_filepath(kwargs["filepath"])
+        filepath = fos.normalize_path(kwargs["filepath"])
 
         kwargs["id"] = kwargs.get("id", None)
         kwargs["filepath"] = filepath
