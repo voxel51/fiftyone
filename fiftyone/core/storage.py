@@ -1205,6 +1205,26 @@ def ensure_dir(dirpath):
         etau.ensure_dir(dirpath)
 
 
+def load_json(path_or_str):
+    """Loads JSON from the input argument.
+
+    Args:
+        path_or_str: the JSON path or string any of the above supported formats
+
+    Returns:
+        the loaded JSON
+    """
+    try:
+        return json.loads(path_or_str)
+    except ValueError:
+        pass
+
+    if isfile(path_or_str):
+        return read_json(path_or_str)
+
+    raise ValueError("Unable to load JSON from '%s'" % path_or_str)
+
+
 def read_json(path):
     """Reads a JSON file.
 
