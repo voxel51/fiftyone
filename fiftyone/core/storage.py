@@ -1600,6 +1600,44 @@ def upload_media(
     return remote_paths
 
 
+def map(fcn, tasks, quiet=None, num_workers=None):
+    """Multi-threaded implementation of the builtin ``map()`` function.
+
+    Args:
+        fcn: a function that accepts a single argument
+        tasks: an iterable of function aguments
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of the optiona. By default,
+            ``fiftyone.config.show_progress_bars`` is used
+        num_workers (None): the number of threads to use. By default,
+            ``fiftyone.media_cache_config.num_workers`` is used
+
+    Returns:
+        the list of function outputs
+    """
+    if num_workers is None:
+        num_workers = fo.media_cache_config.num_workers
+
+    try:
+        num_tasks = len(tasks)
+    except:
+        num_tasks = None
+
+    kwargs = dict(total=num_tasks, iters_str="files")
+    if quiet is not None:
+        kwargs["quiet"] = quiet
+
+    if not num_workers or num_workers <= 1:
+        with fou.ProgressBar(**kwargs) as pb:
+            results = [fcn(task) for task in pb(tasks)]
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(**kwargs) as pb:
+                results = list(pb(pool.imap(fcn, tasks)))
+
+    return results
+
+
 def _make_client(fs, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
@@ -1648,30 +1686,6 @@ def _load_minio_credentials():
         profile=fo.media_cache_config.minio_profile,
     )
     return credentials
-
-
-def _map(fcn, tasks, quiet=None, num_workers=None):
-    if num_workers is None:
-        num_workers = fo.media_cache_config.num_workers
-
-    try:
-        num_tasks = len(tasks)
-    except:
-        num_tasks = None
-
-    kwargs = dict(total=num_tasks, iters_str="files")
-    if quiet is not None:
-        kwargs["quiet"] = quiet
-
-    if not num_workers or num_workers <= 1:
-        with fou.ProgressBar(**kwargs) as pb:
-            results = [fcn(task) for task in pb(tasks)]
-    else:
-        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(**kwargs) as pb:
-                results = list(pb(pool.imap(fcn, tasks)))
-
-    return results
 
 
 def _run_tasks(fcn, tasks, quiet=None, num_workers=None):
