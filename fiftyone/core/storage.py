@@ -419,7 +419,7 @@ class LocalDir(object):
                 print(f.read())
 
     Args:
-        path: a local or remote path
+        path: a directory path
         mode ("r"): the mode. Supported values are ``("r", "w")``
         type_str ("files"): the type of file being processed. Used only for
             log messages
@@ -539,7 +539,7 @@ class LocalFile(object):
                 print(r.read())
 
     Args:
-        path: a local or remote path
+        path: a filepath
         mode ("r"): the mode. Supported values are ``("r", "w")``
         basedir (None): an optional directory in which to create temporary
             local files
@@ -617,7 +617,7 @@ class LocalFiles(object):
                     print(r.read())
 
     Args:
-        paths: a list of local or remote paths
+        paths: a list of filepaths, or a dict mapping keys to filepaths
         mode ("r"): the mode. Supported values are ``("r", "w")``
         type_str ("files"): the type of file being processed. Used only for
             log messages
@@ -664,12 +664,21 @@ class LocalFiles(object):
     def __enter__(self):
         local_paths = []
         remote_paths = []
-        _paths = []
 
-        for path in self._paths:
-            if is_local(path):
-                _paths.append(path)
-            else:
+        is_dict = isinstance(self._paths, dict)
+
+        if is_dict:
+            iter_paths = self._paths.items()
+            _paths = {}
+        else:
+            iter_paths = self._paths
+            _paths = []
+
+        for path in iter_paths:
+            if is_dict:
+                key, path = path
+
+            if not is_local(path):
                 if self._tmpdir is None:
                     self._tmpdir = make_temp_dir(basedir=self._basedir)
                     self._filename_maker = fou.UniqueFilenameMaker()
@@ -679,8 +688,12 @@ class LocalFiles(object):
 
                 local_paths.append(local_path)
                 remote_paths.append(path)
+                path = local_path
 
-                _paths.append(local_path)
+            if is_dict:
+                _paths[key] = path
+            else:
+                _paths.append(path)
 
         self._local_paths = local_paths
         self._remote_paths = remote_paths
