@@ -456,10 +456,7 @@ class LocalDir(object):
     @property
     def quiet(self):
         """Whether this object will log the status of any uploads/downloads."""
-        if self._quiet is None:
-            return fo.config.show_progress_bars
-
-        return self._quiet
+        return _parse_quiet(self._quiet)
 
     def __enter__(self):
         if is_local(self._path):
@@ -656,10 +653,7 @@ class LocalFiles(object):
     @property
     def quiet(self):
         """Whether this object will log the status of any uploads/downloads."""
-        if self._quiet is None:
-            return fo.config.show_progress_bars
-
-        return self._quiet
+        return _parse_quiet(self._quiet)
 
     def __enter__(self):
         local_paths = []
@@ -784,10 +778,7 @@ class FileWriter(object):
     @property
     def quiet(self):
         """Whether this writer will log the status of any uploads."""
-        if self._quiet is None:
-            return fo.config.show_progress_bars
-
-        return self._quiet
+        return _parse_quiet(self._quiet)
 
     def __enter__(self):
         self._tmpdir = None
@@ -1876,3 +1867,10 @@ def _to_bytes(val, encoding="utf-8"):
         raise TypeError("Failed to convert %s to bytes" % type(b))
 
     return b
+
+
+def _parse_quiet(quiet):
+    if quiet is None:
+        return fo.config.show_progress_bars
+
+    return quiet

@@ -15,7 +15,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
-import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
@@ -356,8 +355,6 @@ class _SampleMixin(object):
     def _secure_media(self, field_name, value):
         if field_name != "filepath":
             return
-
-        value = fos.normalize_path(value)
 
         new_media_type = fomm.get_media_type(value)
         if self.media_type != new_media_type:

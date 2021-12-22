@@ -372,7 +372,7 @@ def count_documents(coll, pipeline):
 
 
 def export_document(doc, json_path):
-    """Exports the document to disk in JSON format.
+    """Exports the document in JSON format.
 
     Args:
         doc: a BSON document dict
@@ -382,7 +382,7 @@ def export_document(doc, json_path):
 
 
 def export_collection(docs, json_path, key="documents", num_docs=None):
-    """Exports the collection to disk in JSON format.
+    """Exports the collection in JSON format.
 
     Args:
         docs: an iteraable containing the documents to export
@@ -408,7 +408,7 @@ def export_collection(docs, json_path, key="documents", num_docs=None):
 
 
 def import_document(json_path):
-    """Imports a document from JSON on disk.
+    """Imports a document from JSON.
 
     Args:
         json_path: the path to the document
@@ -421,10 +421,10 @@ def import_document(json_path):
 
 
 def import_collection(json_path):
-    """Imports the collection from JSON on disk.
+    """Imports the collection from JSON.
 
     Args:
-        json_path: the path to the collection on disk
+        json_path: the path to the collection
 
     Returns:
         a BSON dict

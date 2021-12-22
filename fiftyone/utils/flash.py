@@ -79,6 +79,9 @@ def apply_flash_model(
         if batch_size is not None:
             data_kwargs["batch_size"] = batch_size
 
+        # @todo add support for cloud-backed datasets
+        # One possibility is to manually pass local paths here
+        # Another is to just natively suppoort Teams installs in the Flash repo
         datamodule = fi.ImageClassificationData.from_fiftyone(
             predict_dataset=samples, **data_kwargs
         )
@@ -144,6 +147,7 @@ def compute_flash_embeddings(
         if batch_size is not None:
             data_kwargs["batch_size"] = batch_size
 
+        # @todo add support for cloud-backed datasets
         datamodule = fi.ImageClassificationData.from_fiftyone(
             predict_dataset=samples, **data_kwargs
         )
