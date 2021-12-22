@@ -6039,8 +6039,8 @@ class SampleCollection(object):
             archive_path = export_dir
             export_dir, ext = etau.split_archive(archive_path)
 
-            if not fos.is_local(export_dir):
-                export_dir = fos.make_temp_dir()
+            if not fost.is_local(export_dir):
+                export_dir = fost.make_temp_dir()
                 local_archive_path = export_dir + ext
 
         if dataset_type is None and dataset_exporter is None:
@@ -6107,7 +6107,7 @@ class SampleCollection(object):
         # Archive, if requested
         if local_archive_path is not None:
             etau.make_archive(export_dir, local_archive_path, cleanup=True)
-            fos.move_file(local_archive_path, archive_path)
+            fost.move_file(local_archive_path, archive_path)
         elif archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
@@ -6594,7 +6594,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                :func:`fiftyone.core.storage.normalize_path`. The typical
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
@@ -6611,10 +6611,7 @@ class SampleCollection(object):
             a JSON dict
         """
         if rel_dir is not None:
-            rel_dir = (
-                os.path.abspath(os.path.expanduser(rel_dir)) + os.path.sep
-            )
-            len_rel_dir = len(rel_dir)
+            rel_dir = fost.normalize_path(rel_dir) + fost.sep(rel_dir)
 
         is_video = self.media_type == fom.VIDEO
         write_frame_labels = is_video and frame_labels_dir is not None
@@ -6645,20 +6642,24 @@ class SampleCollection(object):
 
         # Serialize samples
         samples = []
-        for sample in self.iter_samples(progress=True):
-            sd = sample.to_dict(include_frames=True)
+        with fost.FileWriter() as writer:
+            for sample in self.iter_samples(progress=True):
+                sd = sample.to_dict(include_frames=True)
 
-            if write_frame_labels:
-                frames = {"frames": sd.pop("frames", {})}
-                filename = sample.id + ".json"
-                sd["frames"] = filename
-                frames_path = os.path.join(frame_labels_dir, filename)
-                etas.write_json(frames, frames_path, pretty_print=pretty_print)
+                if write_frame_labels:
+                    frames = {"frames": sd.pop("frames", {})}
+                    filename = sample.id + ".json"
+                    sd["frames"] = filename
+                    frames_path = fost.join(frame_labels_dir, filename)
+                    local_path = writer.get_local_path(frames_path)
+                    etas.write_json(
+                        frames, local_path, pretty_print=pretty_print
+                    )
 
-            if rel_dir and sd["filepath"].startswith(rel_dir):
-                sd["filepath"] = sd["filepath"][len_rel_dir:]
+                if rel_dir and sd["filepath"].startswith(rel_dir):
+                    sd["filepath"] = sd["filepath"][len(rel_dir) :]
 
-            samples.append(sd)
+                samples.append(sd)
 
         d["samples"] = samples
 
@@ -6674,7 +6675,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                :func:`fiftyone.core.storage.normalize_path`. The typical
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
@@ -6710,7 +6711,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                :func:`fiftyone.core.storage.normalize_path`. The typical
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
@@ -6727,7 +6728,7 @@ class SampleCollection(object):
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
-        etas.write_json(d, json_path, pretty_print=pretty_print)
+        fost.write_json(d, json_path, pretty_print=pretty_print)
 
     def _add_view_stage(self, stage):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the

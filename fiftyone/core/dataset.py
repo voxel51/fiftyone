@@ -22,7 +22,6 @@ import numpy as np
 from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -40,6 +39,7 @@ import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singletons import DatasetSingleton
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -3117,7 +3117,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        image_paths = etau.get_glob_matches(images_patt)
+        image_paths = fost.get_glob_matches(images_patt)
         sample_parser = foud.ImageSampleParser()
         return self.add_images(image_paths, sample_parser, tags=tags)
 
@@ -3347,7 +3347,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        video_paths = etau.get_glob_matches(videos_patt)
+        video_paths = fost.get_glob_matches(videos_patt)
         sample_parser = foud.VideoSampleParser()
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
@@ -3948,8 +3948,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
@@ -3962,7 +3961,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = d["name"]
 
         if rel_dir is not None:
-            rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
+            rel_dir = fost.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
         dataset = cls(name)
@@ -3988,15 +3987,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         def parse_sample(sd):
-            if rel_dir and not sd["filepath"].startswith(os.path.sep):
-                sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
+            if rel_dir and not fost.isabs(sd["filepath"]):
+                sd["filepath"] = fost.join(rel_dir, sd["filepath"])
 
             if media_type == fom.VIDEO:
                 frames = sd.pop("frames", {})
 
+                # @todo batch download cloud `frames`
                 if etau.is_str(frames):
-                    frames_path = os.path.join(frame_labels_dir, frames)
-                    frames = etas.load_json(frames_path).get("frames", {})
+                    frames_path = fost.join(frame_labels_dir, frames)
+                    frames = fost.read_json(frames_path).get("frames", {})
 
                 sample = fos.Sample.from_dict(sd)
 
@@ -4010,6 +4010,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples = d["samples"]
         num_samples = len(samples)
         _samples = map(parse_sample, samples)
+
         dataset.add_samples(
             _samples, expand_schema=False, num_samples=num_samples
         )
@@ -4035,13 +4036,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
 
         Returns:
             a :class:`Dataset`
         """
-        d = etas.load_json(path_or_str)
+        d = fost.load_json(path_or_str)
         return cls.from_dict(
             d, name=name, rel_dir=rel_dir, frame_labels_dir=frame_labels_dir
         )
@@ -5836,13 +5836,11 @@ def _parse_field_mapping(field_mapping):
 def _extract_archive_if_necessary(archive_path, cleanup):
     dataset_dir = etau.split_archive(archive_path)[0]
 
-    if not os.path.isdir(dataset_dir):
+    if not fost.isdir(dataset_dir):
         outdir = os.path.dirname(dataset_dir)
-        etau.extract_archive(
-            archive_path, outdir=outdir, delete_archive=cleanup
-        )
+        fost.extract_archive(archive_path, outdir=outdir, cleanup=cleanup)
 
-        if not os.path.isdir(dataset_dir):
+        if not fost.isdir(dataset_dir):
             raise ValueError(
                 "Expected to find a directory '%s' after extracting '%s', "
                 "but it was not found" % (dataset_dir, archive_path)
