@@ -327,7 +327,7 @@ class YOLOv4DatasetImporter(
 
             labels_paths.append(labels_path)
 
-        exists = fos.map(fos.isfile, labels_paths, quiet=True)
+        exists = fos.run(fos.isfile, labels_paths, quiet=True)
 
         labels_paths_map = {
             f: p for f, p, e in zip(image_paths, labels_paths, exists) if e
@@ -508,7 +508,7 @@ class YOLOv5DatasetImporter(
 
         labels_paths = [_get_yolo_v5_labels_path(p) for p in image_paths]
 
-        exists = fos.map(fos.isfile, labels_paths, quiet=True)
+        exists = fos.run(fos.isfile, labels_paths, quiet=True)
 
         labels_paths_map = {
             f: p for f, p, e in zip(image_paths, labels_paths, exists) if e

@@ -1462,7 +1462,7 @@ def copy_files(inpaths, outpaths, skip_failures=False, quiet=None):
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
-        _run_tasks(_do_copy_file, tasks, quiet=quiet)
+        _run(_do_copy_file, tasks, quiet=quiet)
 
 
 def copy_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
@@ -1514,7 +1514,7 @@ def move_files(inpaths, outpaths, skip_failures=False, quiet=None):
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
-        _run_tasks(_do_move_file, tasks, quiet=quiet)
+        _run(_do_move_file, tasks, quiet=quiet)
 
 
 def move_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
@@ -1576,7 +1576,7 @@ def delete_files(paths, skip_failures=False, quiet=None):
     """
     tasks = [(p, skip_failures) for p in paths]
     if tasks:
-        _run_tasks(_do_delete_file, tasks, quiet=quiet)
+        _run(_do_delete_file, tasks, quiet=quiet)
 
 
 def delete_dir(dirpath):
@@ -1661,7 +1661,7 @@ def upload_media(
             tasks.append((filepath, remote_path, skip_failures))
 
     if tasks:
-        _run_tasks(_do_copy_file, tasks)
+        _run(_do_copy_file, tasks)
 
     if update_filepaths:
         sample_collection.set_values("filepath", remote_paths)
@@ -1669,8 +1669,8 @@ def upload_media(
     return remote_paths
 
 
-def map(fcn, tasks, quiet=None, num_workers=None):
-    """Multi-threaded implementation of the builtin ``map()`` function.
+def run(fcn, tasks, quiet=None, num_workers=None):
+    """Applies the given function to each element of the given tasks.
 
     Args:
         fcn: a function that accepts a single argument
@@ -1757,7 +1757,7 @@ def _load_minio_credentials():
     return credentials
 
 
-def _run_tasks(fcn, tasks, quiet=None, num_workers=None):
+def _run(fcn, tasks, quiet=None, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
