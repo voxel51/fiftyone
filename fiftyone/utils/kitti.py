@@ -170,17 +170,11 @@ class KITTIDetectionDatasetImporter(
         )
 
         if self.labels_path is not None:
-            label_paths = fos.list_files(self.labels_path, recursive=True)
-
-            uuids = [os.path.splitext(p)[0] for p in label_paths]
-            label_paths = [fos.join(self.labels_path, p) for p in label_paths]
-
-            local_files = fos.LocalFiles(label_paths, "r", type_str="labels")
-            local_paths = local_files.__enter__()
-
-            labels_paths_map = {uuid: p for uuid, p in zip(uuids, local_paths)}
+            labels_paths_map = {
+                os.path.splitext(p)[0]: fos.join(self.labels_path, p)
+                for p in fos.list_files(self.labels_path, recursive=True)
+            }
         else:
-            local_files = None
             labels_paths_map = {}
 
         uuids = set(labels_paths_map.keys())
@@ -191,6 +185,17 @@ class KITTIDetectionDatasetImporter(
         uuids = self._preprocess_list(sorted(uuids))
 
         metadata_map = self._get_remote_metadata(image_paths_map, keys=uuids)
+
+        if self.max_samples is not None:
+            _uuids = set(uuids)
+            labels_paths_map = {
+                uuid: path
+                for uuid, path in labels_paths_map.items()
+                if uuid in _uuids
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
 
         self._image_paths_map = image_paths_map
         self._metadata_map = metadata_map

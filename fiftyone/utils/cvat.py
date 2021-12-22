@@ -359,18 +359,12 @@ class CVATVideoDatasetImporter(
         )
 
         if self.labels_path is not None:
-            label_paths = fos.list_files(self.labels_path, recursive=True)
-
-            uuids = [os.path.splitext(p)[0] for p in label_paths]
-            label_paths = [fos.join(self.labels_path, p) for p in label_paths]
-
-            local_files = fos.LocalFiles(label_paths, "r", type_str="labels")
-            local_paths = local_files.__enter__()
-
-            labels_paths_map = {u: p for u, p in zip(uuids, local_paths)}
+            labels_paths_map = {
+                os.path.splitext(p)[0]: fos.join(self.labels_path, p)
+                for p in fos.list_files(self.labels_path, recursive=True)
+            }
         else:
             labels_paths_map = {}
-            local_files = None
 
         uuids = set(labels_paths_map.keys())
 
@@ -378,6 +372,17 @@ class CVATVideoDatasetImporter(
             uuids.update(video_paths_map.keys())
 
         uuids = self._preprocess_list(sorted(uuids))
+
+        if self.max_samples is not None:
+            _uuids = set(uuids)
+            labels_paths_map = {
+                uuid: path
+                for uuid, path in labels_paths_map.items()
+                if uuid in _uuids
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
 
         self._info = None
         self._cvat_task_labels = CVATTaskLabels()

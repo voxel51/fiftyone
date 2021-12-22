@@ -2779,7 +2779,7 @@ class ImageSegmentationDirectoryImporter(
         self._local_files = None
         self._image_paths_map = None
         self._metadata_map = None
-        self._mask_paths_map = None
+        self._labels_paths_map = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -2796,7 +2796,7 @@ class ImageSegmentationDirectoryImporter(
 
         image_path = self._image_paths_map[uuid]
         image_metadata = self._metadata_map.get(uuid, None)
-        mask_path = self._mask_paths_map.get(uuid, None)
+        mask_path = self._labels_paths_map.get(uuid, None)
 
         if self.compute_metadata and image_metadata is None:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -2826,18 +2826,13 @@ class ImageSegmentationDirectoryImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        label_paths = fos.list_files(self.labels_path, recursive=True)
+        labels_paths_map = {
+            os.path.splitext(p)[0]: fos.join(self.labels_path, p)
+            for p in fos.list_files(self.labels_path, recursive=True)
+        }
 
-        uuids = [os.path.splitext(p)[0] for p in label_paths]
-        label_paths = [fos.join(self.labels_path, p) for p in label_paths]
+        uuids = set(labels_paths_map.keys())
 
-        # @todo only download after `_preprocess_lists()`
-        local_files = fos.LocalFiles(label_paths, "r", type_str="masks")
-        local_paths = local_files.__enter__()
-
-        mask_paths_map = {u: p for u, p in zip(uuids, local_paths)}
-
-        uuids = set(uuids)
         if self.include_all_data:
             uuids.update(image_paths_map.keys())
 
@@ -2850,9 +2845,20 @@ class ImageSegmentationDirectoryImporter(
         else:
             metadata_map = {}
 
+        if self.max_samples is not None:
+            _uuids = set(uuids)
+            labels_paths_map = {
+                uuid: path
+                for uuid, path in labels_paths_map.items()
+                if uuid in _uuids
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="masks")
+        labels_paths_map = local_files.__enter__()
+
         self._image_paths_map = image_paths_map
         self._metadata_map = metadata_map
-        self._mask_paths_map = mask_paths_map
+        self._labels_paths_map = labels_paths_map
         self._local_files = local_files
         self._uuids = uuids
         self._num_samples = len(uuids)
@@ -2982,16 +2988,23 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
         index = _load_labeled_dataset_index(self.dataset_dir)
 
-        data_paths = [fos.join(self.dataset_dir, r.data) for r in index]
-        label_paths = [fos.join(self.dataset_dir, r.labels) for r in index]
+        description = index.description
+        inds = self._preprocess_list(list(range(len(index))))
+
+        image_paths = []
+        label_paths = []
+        for idx in inds:
+            record = index[idx]
+            image_paths.append(fos.join(self.dataset_dir, record.data))
+            label_paths.append(fos.join(self.dataset_dir, record.labels))
 
         local_files = fos.LocalFiles(label_paths, "r", type_str="labels")
-        local_paths = local_files.__enter__()
+        label_paths = local_files.__enter__()
 
-        samples = self._preprocess_list(list(zip(data_paths, local_paths)))
+        samples = list(zip(image_paths, label_paths))
 
         if self.compute_metadata:
-            metadata_map = self._get_remote_metadata([s[0] for s in samples])
+            metadata_map = self._get_remote_metadata(image_paths)
         else:
             metadata_map = {}
 
@@ -3000,7 +3013,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         self._local_files = local_files
         self._samples = samples
         self._num_samples = len(samples)
-        self._description = index.description
+        self._description = description
 
     def get_dataset_info(self):
         return {"description": self._description}
@@ -3128,16 +3141,23 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
 
         index = _load_labeled_dataset_index(self.dataset_dir)
 
-        data_paths = [fos.join(self.dataset_dir, r.data) for r in index]
-        label_paths = [fos.join(self.dataset_dir, r.labels) for r in index]
+        description = index.description
+        inds = self._preprocess_list(list(range(len(index))))
+
+        video_paths = []
+        label_paths = []
+        for idx in inds:
+            record = index[idx]
+            video_paths.append(fos.join(self.dataset_dir, record.data))
+            label_paths.append(fos.join(self.dataset_dir, record.labels))
 
         local_files = fos.LocalFiles(label_paths, "r", type_str="labels")
-        local_paths = local_files.__enter__()
+        label_paths = local_files.__enter__()
 
-        samples = self._preprocess_list(list(zip(data_paths, local_paths)))
+        samples = list(zip(video_paths, label_paths))
 
         if self.compute_metadata:
-            metadata_map = self._get_remote_metadata([s[0] for s in samples])
+            metadata_map = self._get_remote_metadata(video_paths)
         else:
             metadata_map = {}
 
@@ -3146,7 +3166,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         self._samples = samples
         self._sample_parser = sample_parser
         self._num_samples = len(samples)
-        self._description = index.description
+        self._description = description
 
     def get_dataset_info(self):
         return {"description": self._description}

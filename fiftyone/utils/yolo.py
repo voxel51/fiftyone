@@ -327,13 +327,27 @@ class YOLOv4DatasetImporter(
 
             labels_paths.append(labels_path)
 
-        local_files = fos.LocalFiles(labels_paths, skip_failures="ignore")
-        local_paths = local_files.__enter__()
+        exists = fos.map(fos.isfile, labels_paths, quiet=True)
 
-        labels_paths_map = {}
-        for image_path, local_path in zip(image_paths, local_paths):
-            if os.path.isfile(local_path):
-                labels_paths_map[image_path] = local_path
+        labels_paths_map = {
+            f: p for f, p, e in zip(image_paths, labels_paths, exists) if e
+        }
+
+        filepaths = set(labels_paths_map.keys())
+
+        if self.include_all_data:
+            filepaths.update(image_paths)
+
+        filepaths = self._preprocess_list(sorted(filepaths))
+
+        if self.max_samples is not None:
+            _filepaths = set(filepaths)
+            labels_paths_map = {
+                f: p for f, p in labels_paths_map.items() if f in _filepaths
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
 
         if self.classes is not None:
             classes = self.classes
@@ -345,11 +359,6 @@ class YOLOv4DatasetImporter(
         info = {}
         if classes is not None:
             info["classes"] = classes
-
-        if not self.include_all_data:
-            image_paths = labels_paths_map.keys()
-
-        filepaths = self._preprocess_list(sorted(image_paths))
 
         self._info = info
         self._classes = classes
@@ -387,6 +396,9 @@ class YOLOv5DatasetImporter(
             If None, the parameter will default to ``dataset.yaml``
         split ("val"): the split to load. Typical values are
             ``("train", "val")``
+        include_all_data (False): whether to generate samples for all images in
+            the data directory (True) rather than only creating samples for
+            images with labels (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -399,6 +411,7 @@ class YOLOv5DatasetImporter(
         dataset_dir=None,
         yaml_path=None,
         split="val",
+        include_all_data=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -423,6 +436,7 @@ class YOLOv5DatasetImporter(
 
         self.yaml_path = yaml_path
         self.split = split
+        self.include_all_data = include_all_data
 
         self._info = None
         self._classes = None
@@ -494,19 +508,31 @@ class YOLOv5DatasetImporter(
 
         labels_paths = [_get_yolo_v5_labels_path(p) for p in image_paths]
 
-        local_files = fos.LocalFiles(labels_paths, skip_failures="ignore")
-        local_paths = local_files.__enter__()
+        exists = fos.map(fos.isfile, labels_paths, quiet=True)
 
-        labels_paths_map = {}
-        for image_path, local_path in zip(image_paths, local_paths):
-            if os.path.isfile(local_path):
-                labels_paths_map[image_path] = local_path
+        labels_paths_map = {
+            f: p for f, p, e in zip(image_paths, labels_paths, exists) if e
+        }
+
+        filepaths = set(labels_paths_map.keys())
+
+        if self.include_all_data:
+            filepaths.update(image_paths)
+
+        filepaths = self._preprocess_list(sorted(filepaths))
+
+        if self.max_samples is not None:
+            _filepaths = set(filepaths)
+            labels_paths_map = {
+                f: p for f, p in labels_paths_map.items() if f in _filepaths
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
 
         info = {}
         if classes is not None:
             info["classes"] = classes
-
-        filepaths = self._preprocess_list(sorted(image_paths))
 
         self._info = info
         self._classes = classes
@@ -1046,11 +1072,16 @@ def _get_yolo_v5_labels_path(image_path):
     if len(chunks) == 1:
         raise ValueError(
             "Invalid image path '%s'. YOLOv5 image paths must contain '%s', "
-            "which is replaced with '%s' to locate the labels TXT file"
+            "which is replaced with '%s' to locate the corresponding labels"
             % (image_path, old, new)
         )
 
-    return os.path.splitext(new.join(chunks))[0] + ".txt"
+    root, ext = os.path.splitext(new.join(chunks))
+
+    if ext:
+        ext = ".txt"
+
+    return root + ext
 
 
 def _parse_yolo_row(row, classes):
