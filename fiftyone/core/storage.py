@@ -1594,6 +1594,7 @@ def upload_media(
     update_filepaths=False,
     overwrite=True,
     skip_failures=False,
+    quiet=None,
 ):
     """Uploads the source media files for the given collection to the given
     remote "folder".
@@ -1614,22 +1615,16 @@ def upload_media(
             remote files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
+        quiet (None): whether to display (True) or not display (False) a
+            progress bar tracking the status of the copy. By default,
+            ``fiftyone.config.show_progress_bars`` is used
 
     Returns:
         the list of remote paths
     """
-    fs = get_file_system(remote_dir)
-
-    if fs not in (FileSystem.S3, FileSystem.GCS, FileSystem.MINIO):
-        raise ValueError(
-            "Cannot upload media to '%s'; unsupported file system '%s'"
-            % (remote_dir, fs)
-        )
-
-    client = get_client(fs)
-
     filepaths = sample_collection.values("filepath")
 
+    # @todo handle name clashes and duplicate files
     remote_paths = []
     for filepath in filepaths:
         if rel_dir is not None:
@@ -1637,22 +1632,27 @@ def upload_media(
         else:
             rel_path = os.path.basename(filepath)
 
-        remote_paths.append(os.path.join(remote_dir, rel_path))
+        remote_paths.append(join(remote_dir, rel_path))
 
     if overwrite:
-        existing_files = set()
+        _filepaths = filepaths
+        _remote_paths = remote_paths
     else:
-        existing_files = set(
-            client.list_files_in_folder(remote_dir, recursive=True)
-        )
+        _filepaths = []
+        _remote_paths = []
 
-    tasks = []
-    for filepath, remote_path in zip(filepaths, remote_paths):
-        if remote_path not in existing_files:
-            tasks.append((filepath, remote_path, skip_failures))
+        fs = get_file_system(remote_dir)
+        client = get_client(fs)
+        existing = set(client.list_files_in_folder(remote_dir, recursive=True))
 
-    if tasks:
-        _run(_do_copy_file, tasks)
+        for filepath, remote_path in zip(filepaths, remote_paths):
+            if remote_path not in existing:
+                _filepaths.append(filepath)
+                _remote_paths.append(remote_path)
+
+    copy_files(
+        _filepaths, _remote_paths, skip_failures=skip_failures, quiet=quiet
+    )
 
     if update_filepaths:
         sample_collection.set_values("filepath", remote_paths)
