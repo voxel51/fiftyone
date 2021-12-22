@@ -1779,12 +1779,9 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             _outpaths = ["data/" + os.path.basename(p) for p in outpaths]
         elif self.rel_dir is not None:
             # Remove `rel_dir` prefix from filepaths
-            rel_dir = self.rel_dir
-            rel_dir = fos.normalize_path(rel_dir) + fos.sep(rel_dir)
-            len_rel_dir = len(rel_dir)
-
+            rel_dir = fos.normalize_path(self.rel_dir) + fos.sep(self.rel_dir)
             _outpaths = [
-                p[len_rel_dir:] if p.startswith(rel_dir) else p
+                p[len(rel_dir) :] if p.startswith(rel_dir) else p
                 for p in inpaths
             ]
         else:

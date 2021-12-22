@@ -8,12 +8,12 @@ GeoJSON utilities.
 import logging
 import os
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
@@ -104,7 +104,7 @@ def load_location_data(
     location_cls = samples._get_label_field_type(location_field)
 
     if etau.is_str(geojson_or_path):
-        d = etas.read_json(geojson_or_path)
+        d = fos.read_json(geojson_or_path)
     else:
         d = geojson_or_path
 
@@ -409,7 +409,7 @@ class GeoJSONDatasetImporter(
 
         feature = self._features_map.get(filepath, None)
         if feature is None:
-            return fos.Sample(filepath=filepath)
+            return Sample(filepath=filepath)
 
         properties = feature.get("properties", {})
 
@@ -430,7 +430,7 @@ class GeoJSONDatasetImporter(
 
         fields[self.location_field] = location
 
-        return fos.Sample(filepath=filepath, **fields)
+        return Sample(filepath=filepath, **fields)
 
     @property
     def has_sample_field_schema(self):
@@ -441,24 +441,22 @@ class GeoJSONDatasetImporter(
         return False
 
     def setup(self):
-        self._media_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        media_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         features_map = {}
 
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
-            geojson = etas.load_json(self.labels_path)
+        if self.labels_path is not None and fos.isfile(self.labels_path):
+            geojson = fos.read_json(self.labels_path)
             _ensure_type(geojson, "FeatureCollection")
 
             for feature in geojson.get("features", []):
                 properties = feature["properties"]
                 if "filename" in properties:
                     filename = properties.pop("filename")
-                    if os.path.isabs(filename):
+                    if fos.isabs(filename):
                         filepath = filename
                     else:
-                        filepath = self._media_paths_map.get(filename, None)
+                        filepath = media_paths_map.get(filename, None)
 
                     if filepath is None:
                         if self.skip_missing_media:
@@ -481,11 +479,14 @@ class GeoJSONDatasetImporter(
         filepaths = set(features_map.keys())
 
         if self.include_all_data:
-            filepaths.update(self._media_paths_map.values())
+            filepaths.update(media_paths_map.values())
 
+        filepaths = self._preprocess_list(sorted(filepaths))
+
+        self._media_paths_map = media_paths_map
         self._features_map = features_map
-        self._filepaths = self._preprocess_list(sorted(filepaths))
-        self._num_samples = len(self._filepaths)
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
 
 
 class GeoJSONDatasetExporter(
@@ -642,7 +643,7 @@ class GeoJSONDatasetExporter(
 
     def close(self, *args):
         features = {"type": "FeatureCollection", "features": self._features}
-        etas.write_json(
+        fos.write_json(
             features, self.labels_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()

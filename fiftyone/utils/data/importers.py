@@ -2011,7 +2011,7 @@ class FiftyOneImageClassificationDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None:
+        if self.labels_path is not None and fos.isfile(self.labels_path):
             labels = fos.read_json(self.labels_path)
         else:
             labels = {}
@@ -2448,7 +2448,7 @@ class FiftyOneImageDetectionDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None:
+        if self.labels_path is not None and fos.isfile(self.labels_path):
             labels = fos.read_json(self.labels_path)
         else:
             labels = {}
@@ -2637,7 +2637,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None:
+        if self.labels_path is not None and fos.isfile(self.labels_path):
             labels = fos.read_json(self.labels_path)
         else:
             labels = {}

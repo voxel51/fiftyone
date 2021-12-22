@@ -409,7 +409,7 @@ class COCODetectionDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        if os.path.isabs(filename):
+        if fos.isabs(filename):
             image_path = filename
         else:
             image_path = self._image_paths_map[filename]
@@ -518,11 +518,9 @@ class COCODetectionDatasetImporter(
         return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
-        if self.labels_path is not None:
+        if self.labels_path is not None and fos.isfile(self.labels_path):
             (
                 info,
                 classes,
@@ -575,6 +573,7 @@ class COCODetectionDatasetImporter(
         self._classes = classes
         self._license_map = license_map
         self._supercategory_map = supercategory_map
+        self._image_paths_map = image_paths_map
         self._image_dicts_map = image_dicts_map
         self._annotations = annotations
         self._filenames = filenames
@@ -1926,20 +1925,21 @@ def _parse_image_ids(raw_image_ids, images, split=None):
 
 
 def _load_image_ids_txt(txt_path):
-    with open(txt_path, "r") as f:
+    with fos.open_file(txt_path, "r") as f:
         return [l.strip() for l in f.readlines()]
 
 
 def _load_image_ids_csv(csv_path):
-    with open(csv_path, "r", newline="") as f:
-        dialect = csv.Sniffer().sniff(f.read(10240))
-        f.seek(0)
-        if dialect.delimiter in _CSV_DELIMITERS:
-            reader = csv.reader(f, dialect)
-        else:
-            reader = csv.reader(f)
+    with fos.LocalFile(csv_path, "r") as local_path:
+        with open(local_path, "r", newline="") as f:
+            dialect = csv.Sniffer().sniff(f.read(10240))
+            f.seek(0)
+            if dialect.delimiter in _CSV_DELIMITERS:
+                reader = csv.reader(f, dialect)
+            else:
+                reader = csv.reader(f)
 
-        image_ids = [row for row in reader]
+            image_ids = [row for row in reader]
 
     if isinstance(image_ids[0], list):
         # Flatten list
@@ -1949,7 +1949,7 @@ def _load_image_ids_csv(csv_path):
 
 
 def _load_image_ids_json(json_path):
-    return [_id for _id in etas.read_json(json_path)]
+    return [_id for _id in fos.read_json(json_path)]
 
 
 def _make_images_list(images_dir):
