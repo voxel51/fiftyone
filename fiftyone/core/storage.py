@@ -1108,6 +1108,55 @@ def isdir(dirpath):
     return client.is_folder(dirpath)
 
 
+def make_archive(dirpath, archive_path, cleanup=False):
+    """Makes an archive containing the given directory.
+
+    Supported formats include ``.zip``, ``.tar``, ``.tar.gz``, ``.tgz``,
+    ``.tar.bz`` and ``.tbz``.
+
+    Args:
+        dirpath: the directory to archive
+        archive_path: the archive path to write
+        cleanup (False): whether to delete the directory after archiving it
+    """
+    fsd = get_file_system(dirpath)
+    fsa = get_file_system(archive_path)
+
+    with LocalDir(dirpath, "w") as local_dir:
+        with LocalFile(archive_path, "r") as local_path:
+            etau.make_archive(local_dir, archive_path)
+
+    if cleanup:
+        delete_dir(dirpath)
+
+
+def extract_archive(archive_path, outdir=None, cleanup=False):
+    """Extracts the contents of an archive.
+
+    The following formats are guaranteed to work:
+    ``.zip``, ``.tar``, ``.tar.gz``, ``.tgz``, ``.tar.bz``, ``.tbz``.
+
+    If an archive *not* in the above list is found, extraction will be
+    attempted via the ``patool`` package, which supports many formats but may
+    require that additional system packages be installed.
+
+    Args:
+        archive_path: the archive path
+        outdir (None): the directory into which to extract the archive. By
+            default, the directory containing the archive is used
+        cleanup (False): whether to delete the archive after extraction
+    """
+    if outdir is None:
+        outdir = os.path.dirname(archive_path) or "."
+
+    with LocalFile(archive_path, "r") as local_path:
+        with LocalDir(outdir, "w") as local_dir:
+            etau.extract_archive(local_path, outdir=local_dir)
+
+    if cleanup:
+        delete_file(archive_path)
+
+
 def ensure_empty_dir(dirpath, cleanup=False):
     """Ensures that the given directory exists and is empty.
 
