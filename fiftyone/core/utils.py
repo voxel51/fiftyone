@@ -910,9 +910,9 @@ class UniqueFilenameMaker(object):
     This class provides a :meth:`get_output_path` method that generates unique
     filenames in the specified output directory.
 
-    If an input filename is provided, the filename is maintained, unless a
-    name conflict in ``output_dir`` would occur, in which case an index of the
-    form ``"-%d" % count`` is appended to the base filename.
+    If an input path is provided, its filename is maintained, unless a name
+    conflict in ``output_dir`` would occur, in which case an index of the form
+    ``"-%d" % count`` is appended to the filename.
 
     If no input filename is provided, an output filename of the form
     ``<output_dir>/<count><default_ext>`` is generated, where ``count`` is the
@@ -921,45 +921,57 @@ class UniqueFilenameMaker(object):
     If no ``output_dir`` is provided, then unique filenames with no base
     directory are generated.
 
+    If a ``rel_dir`` is provided, then this path will be stripped from each
+    input path to generate the identifier of each file (rather than just its
+    basename). This argument allows for populating nested subdirectories in
+    ``output_dir`` that match the shape of the input paths.
+
     Args:
         output_dir (None): a directory in which to generate output paths
+        rel_dir (None): an optional relative directory to strip from each path
         default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
     """
 
-    def __init__(self, output_dir=None, default_ext=None, ignore_exts=False):
-        if output_dir is None:
-            output_dir = ""
-
-        if default_ext is None:
-            default_ext = ""
-
+    def __init__(
+        self,
+        output_dir=None,
+        rel_dir=None,
+        default_ext=None,
+        ignore_exts=False,
+    ):
         self.output_dir = output_dir
+        self.rel_dir = rel_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
         self._default_filename_patt = (
-            fo.config.default_sequence_idx + default_ext
+            fo.config.default_sequence_idx + default_ext or ""
         )
         self._idx = 0
 
-        if output_dir:
-            fos.ensure_dir(output_dir)
-            filenames = fos.list_files(output_dir)
-            self._idx = len(filenames)
-            for filename in filenames:
-                self._filename_counts[filename] += 1
+        self._setup()
+
+    def _setup(self):
+        if not self.output_dir:
+            return
+
+        fos.ensure_dir(self.output_dir)
+        filenames = fos.list_files(self.output_dir)
+
+        self._idx = len(filenames)
+        for filename in filenames:
+            self._filename_counts[filename] += 1
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
 
         Args:
-            input_path (None): an input path from which to derive the output
-                path
+            input_path (None): an input path
             output_ext (None): an optional output extension to use
 
         Returns:
@@ -973,9 +985,12 @@ class UniqueFilenameMaker(object):
         self._idx += 1
 
         if not found_input:
-            input_path = self._default_filename_patt % self._idx
+            filename = self._default_filename_patt % self._idx
+        elif self.rel_dir:
+            filename = os.path.relpath(input_path, self.rel_dir)
+        else:
+            filename = os.path.basename(input_path)
 
-        filename = os.path.basename(input_path)
         name, ext = os.path.splitext(filename)
 
         # URL handling

@@ -1110,12 +1110,9 @@ def make_archive(dirpath, archive_path, cleanup=False):
         archive_path: the archive path to write
         cleanup (False): whether to delete the directory after archiving it
     """
-    fsd = get_file_system(dirpath)
-    fsa = get_file_system(archive_path)
-
     with LocalDir(dirpath, "w") as local_dir:
         with LocalFile(archive_path, "r") as local_path:
-            etau.make_archive(local_dir, archive_path)
+            etau.make_archive(local_dir, local_path)
 
     if cleanup:
         delete_dir(dirpath)
@@ -1597,18 +1594,19 @@ def upload_media(
     quiet=None,
 ):
     """Uploads the source media files for the given collection to the given
-    remote "folder".
+    remote directory.
+
+    Providing a ``rel_dir`` enables writing nested subfolders within
+    ``remote_dir`` matching the structure of the input collection's media. By
+    default, the files are written directly to ``remote_dir`` using their
+    basenames.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         remote_dir: a remote "folder" into which to upload
         rel_dir (None): an optional relative directory to strip from each
-            filepath when constructing the corresponding remote path. Providing
-            a ``rel_dir`` enables writing nested subfolders within
-            ``remote_dir`` matching the structure of the input collection's
-            media. By default, the files are written directly to ``remote_dir``
-            using their basenames
+            filepath when constructing the corresponding remote path
         update_filepaths (False): whether to update the ``filepath`` of each
             sample in the collection to its remote path
         overwrite (True): whether to overwrite (True) or skip (False) existing
@@ -1624,35 +1622,25 @@ def upload_media(
     """
     filepaths = sample_collection.values("filepath")
 
-    # @todo handle name clashes and duplicate files
-    remote_paths = []
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=remote_dir, rel_dir=rel_dir
+    )
+
+    paths_map = {}
     for filepath in filepaths:
-        if rel_dir is not None:
-            rel_path = os.path.relpath(filepath, rel_dir)
-        else:
-            rel_path = os.path.basename(filepath)
+        if filepath not in paths_map:
+            paths_map[filepath] = filename_maker.get_output_path(filepath)
 
-        remote_paths.append(join(remote_dir, rel_path))
+    remote_paths = [paths_map[f] for f in filepaths]
 
-    if overwrite:
-        _filepaths = filepaths
-        _remote_paths = remote_paths
-    else:
-        _filepaths = []
-        _remote_paths = []
-
+    if not overwrite:
         fs = get_file_system(remote_dir)
         client = get_client(fs)
         existing = set(client.list_files_in_folder(remote_dir, recursive=True))
+        paths_map = {f: r for f, r in paths_map.items() if r not in existing}
 
-        for filepath, remote_path in zip(filepaths, remote_paths):
-            if remote_path not in existing:
-                _filepaths.append(filepath)
-                _remote_paths.append(remote_path)
-
-    copy_files(
-        _filepaths, _remote_paths, skip_failures=skip_failures, quiet=quiet
-    )
+    inpaths, outpaths = zip(*paths_map.items())
+    copy_files(inpaths, outpaths, skip_failures=skip_failures, quiet=quiet)
 
     if update_filepaths:
         sample_collection.set_values("filepath", remote_paths)
