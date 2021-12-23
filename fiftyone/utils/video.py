@@ -11,11 +11,9 @@ import os
 import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.numutils as etan
-import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
-import fiftyone.core.clips as foc
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou

@@ -11,9 +11,9 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 
 def read(path, include_alpha=False, flag=None):
@@ -85,30 +85,15 @@ def reencode_images(
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
     """
-    if sample_collection.media_type != fom.IMAGE:
-        raise ValueError(
-            "Sample collection '%s' does not contain images (media_type = "
-            "'%s')" % (sample_collection.name, sample_collection.media_type)
-        )
+    fov.validate_image_collection(sample_collection)
 
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    if num_workers == 1:
-        _transform_images(
-            sample_collection,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
-    else:
-        _transform_images_multi(
-            sample_collection,
-            num_workers,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
+    _transform_images(
+        sample_collection,
+        ext=ext,
+        force_reencode=force_reencode,
+        delete_originals=delete_originals,
+        num_workers=num_workers,
+    )
 
 
 def transform_images(
@@ -149,38 +134,18 @@ def transform_images(
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
     """
-    if sample_collection.media_type != fom.IMAGE:
-        raise ValueError(
-            "Sample collection '%s' does not contain images (media_type = "
-            "'%s')" % (sample_collection.name, sample_collection.media_type)
-        )
+    fov.validate_image_collection(sample_collection)
 
-    ext = _parse_ext(ext)
-
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    if num_workers == 1:
-        _transform_images(
-            sample_collection,
-            size=size,
-            min_size=min_size,
-            max_size=max_size,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
-    else:
-        _transform_images_multi(
-            sample_collection,
-            num_workers,
-            size=size,
-            min_size=min_size,
-            max_size=max_size,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
+    _transform_images(
+        sample_collection,
+        size=size,
+        min_size=min_size,
+        max_size=max_size,
+        ext=ext,
+        force_reencode=force_reencode,
+        delete_originals=delete_originals,
+        num_workers=num_workers,
+    )
 
 
 def reencode_image(input_path, output_path):
@@ -219,17 +184,45 @@ def transform_image(
     )
 
 
-def _parse_ext(ext):
-    if ext is None:
-        return None
-
-    if not ext.startswith("."):
-        ext = "." + ext
-
-    return ext.lower()
-
-
 def _transform_images(
+    sample_collection,
+    size=None,
+    min_size=None,
+    max_size=None,
+    ext=None,
+    force_reencode=False,
+    delete_originals=False,
+    num_workers=None,
+):
+    ext = _parse_ext(ext)
+
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    if num_workers == 1:
+        _transform_images_single(
+            sample_collection,
+            size=size,
+            min_size=min_size,
+            max_size=max_size,
+            ext=ext,
+            force_reencode=force_reencode,
+            delete_originals=delete_originals,
+        )
+    else:
+        _transform_images_multi(
+            sample_collection,
+            num_workers,
+            size=size,
+            min_size=min_size,
+            max_size=max_size,
+            ext=ext,
+            force_reencode=force_reencode,
+            delete_originals=delete_originals,
+        )
+
+
+def _transform_images_single(
     sample_collection,
     size=None,
     min_size=None,
@@ -365,3 +358,13 @@ def _parse_parameters(img, size, min_size, max_size):
     osize = etai.clip_frame_size(osize, min_size=min_size, max_size=max_size)
 
     return osize if osize != isize else None
+
+
+def _parse_ext(ext):
+    if ext is None:
+        return None
+
+    if not ext.startswith("."):
+        ext = "." + ext
+
+    return ext.lower()
