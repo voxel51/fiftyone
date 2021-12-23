@@ -779,9 +779,30 @@ class DatasetView(foc.SampleCollection):
             view = stage.load_view(self)
         else:
             view = copy(self)
-            view._stages.append(stage)
+
+            if not self._add_sort_stage(stage, view._stages):
+                view._stages.append(stage)
 
         return view
+
+    @staticmethod
+    def _add_sort_stage(new_stage, stages):
+        if not type(new_stage) == fost.SortBySimilarity:
+            return False
+
+        sort_views = [
+            i for i, x in enumerate(stages) if type(x) == fost.SortBySimilarity
+        ]
+
+        if len(sort_views) > 0:
+            sort_views.reverse()
+            last_sort_view = sort_views[0]
+
+            if stages[last_sort_view].k == new_stage.k:
+                stages[last_sort_view] = new_stage
+                return True
+
+        return False
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:
