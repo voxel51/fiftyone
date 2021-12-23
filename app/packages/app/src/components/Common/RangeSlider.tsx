@@ -10,16 +10,16 @@ import {
 } from "recoil";
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
+import * as selectors from "../../recoil/selectors";
+import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
+import { useTheme } from "../../utils/hooks";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
-} from "../../recoil/constants";
-import * as selectors from "../../recoil/selectors";
-import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
-import { useTheme } from "../../utils/hooks";
+} from "@fiftyone/utilities";
 
 const SliderContainer = styled.div`
   font-weight: bold;

@@ -18,24 +18,6 @@ export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 20;
 export const DATE_TIME = "DateTime";
 
-export const NONFINITES = new Set(["-inf", "inf", "nan"]);
-
-export const CLASSIFICATION = "Classification";
-export const CLASSIFICATIONS = "Classifications";
-export const DETECTION = "Detection";
-export const DETECTIONS = "Detections";
-export const GEOLOCATION = "GeoLocation";
-export const GEOLOCATIONS = "GeoLocations";
-export const HEATMAP = "Heatmap";
-export const KEYPOINT = "Keypoint";
-export const KEYPOINTS = "Keypoints";
-export const POLYLINE = "Polyline";
-export const POLYLINES = "Polylines";
-export const REGRESSION = "Regression";
-export const SEGMENTATION = "Segmentation";
-export const TEMPORAL_DETECTION = "TemporalDetection";
-export const TEMPORAL_DETECTIONS = "TemporalDetections";
-
 export const MOMENT_CLASSIFICATIONS = [
   CLASSIFICATION,
   CLASSIFICATIONS,

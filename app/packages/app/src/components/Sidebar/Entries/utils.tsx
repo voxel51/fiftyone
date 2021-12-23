@@ -3,7 +3,7 @@ import {
   LABELS_PATH,
   LABEL_DOC_TYPES,
   withPath,
-} from "../../../recoil/constants";
+} from "@fiftyone/utilities";
 
 export const MATCH_LABEL_TAGS = {
   path: "tags",

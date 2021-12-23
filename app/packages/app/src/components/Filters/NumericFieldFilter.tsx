@@ -18,7 +18,7 @@ import ExcludeOption from "./Exclude";
 import RangeSlider from "../Common/RangeSlider";
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
-import { FLOAT_FIELD } from "../../recoil/constants";
+import { FLOAT_FIELD } from "@fiftyone/utilities";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;

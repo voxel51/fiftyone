@@ -9,26 +9,21 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 
-import { Field } from "@fiftyone/utilities";
-
-import * as aggregationAtoms from "../../../recoil/aggregations";
-import * as colorAtoms from "../../../recoil/color";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  Field,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
-  LABELS,
-  LABELS_PATH,
-  LIST_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
-  VALID_PRIMITIVE_TYPES,
-  withPath,
-} from "../../../recoil/constants";
+} from "@fiftyone/utilities";
+
+import * as aggregationAtoms from "../../../recoil/aggregations";
+import * as colorAtoms from "../../../recoil/color";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import { useTheme } from "../../../utils/hooks";
@@ -65,7 +60,7 @@ const FILTERS = {
 export const DETECTION = ["bounding_box"];
 
 const EXCLUDED = {
-  [withPath(LABELS_PATH, "Detection")]: DETECTION,
+  [withPath(LABELS_PATH, DETECTION)]: DETECTION,
   [withPath(LABELS_PATH, "Detections")]: DETECTION,
 };
 

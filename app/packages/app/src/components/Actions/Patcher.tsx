@@ -2,17 +2,18 @@ import React, { useState } from "react";
 import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "@react-spring/web";
 
-import * as atoms from "../../recoil/atoms";
-import * as schemaAtoms from "../../recoil/schema";
-import * as selectors from "../../recoil/selectors";
-import * as viewAtoms from "../../recoil/view";
-import socket from "../../shared/connection";
 import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
   PATCHES_FIELDS,
-} from "../../recoil/constants";
+} from "@fiftyone/utilities";
+
+import * as atoms from "../../recoil/atoms";
+import * as schemaAtoms from "../../recoil/schema";
+import * as selectors from "../../recoil/selectors";
+import * as viewAtoms from "../../recoil/view";
+import socket from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import {

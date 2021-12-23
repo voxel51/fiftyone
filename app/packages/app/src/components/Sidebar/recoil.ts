@@ -1,16 +1,16 @@
-import { StrictField } from "@fiftyone/utilities";
 import { atomFamily, DefaultValue, selectorFamily } from "recoil";
-
-import * as aggregationAtoms from "../../recoil/aggregations";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
+  StrictField,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
-} from "../../recoil/constants";
+} from "@fiftyone/utilities";
+
+import * as aggregationAtoms from "../../recoil/aggregations";
 import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import { http } from "../../shared/connection";

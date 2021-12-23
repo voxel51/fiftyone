@@ -1,10 +1,11 @@
 import { atom, DefaultValue, selector, selectorFamily } from "recoil";
 
+import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
+
 import socket from "../shared/connection";
 import { packageMessage } from "../utils/socket";
 
 import * as atoms from "./atoms";
-import { VALID_PRIMITIVE_TYPES } from "./constants";
 import { expandPath, fields } from "./schema";
 import { State } from "./types";
 

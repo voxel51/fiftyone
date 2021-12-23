@@ -8,7 +8,8 @@ import {
   LABELS,
   OBJECT_ID_FIELD,
   STRING_FIELD,
-} from "../../recoil/constants";
+} from "@fiftyone/utilities";
+
 import * as schemaAtoms from "../../recoil/schema";
 
 import { filter as boolean } from "./booleanState";
