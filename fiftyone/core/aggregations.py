@@ -619,35 +619,42 @@ class CountValues(Aggregation):
             {"$group": {"_id": value, "count": {"$sum": 1}}},
         ]
 
-        if self._first is not None:
-            sort = OrderedDict()
-            limit = self._first
-
-            if self._include is not None:
-                limit = max(limit, len(self._include))
-                pipeline += [
-                    {"$set": {"included": {"$in": ["$_id", self._include]}}},
-                ]
-                sort["included"] = -1
-
-            sort[self._sort_by] = self._order
-            sort["count" if self._sort_by != "count" else "_id"] = self._order
-            result = [
-                {"$sort": sort},
-                {"$limit": limit},
+        if self._first is None:
+            return pipeline + [
                 {
                     "$group": {
                         "_id": None,
                         "result": {"$push": {"k": "$_id", "count": "$count"}},
                     }
-                },
+                }
             ]
 
+        sort = OrderedDict()
+        limit = self._first
+
+        if self._include is not None:
+            limit = max(limit, len(self._include))
             pipeline += [
-                {"$facet": {"count": [{"$count": "count"}], "result": result}}
+                {"$set": {"included": {"$in": ["$_id", self._include]}}},
             ]
+            sort["included"] = -1
 
-        return pipeline
+        sort[self._sort_by] = self._order
+        sort["count" if self._sort_by != "count" else "_id"] = self._order
+        result = [
+            {"$sort": sort},
+            {"$limit": limit},
+            {
+                "$group": {
+                    "_id": None,
+                    "result": {"$push": {"k": "$_id", "count": "$count"}},
+                }
+            },
+        ]
+
+        return pipeline + [
+            {"$facet": {"count": [{"$count": "count"}], "result": result}}
+        ]
 
 
 class Distinct(Aggregation):

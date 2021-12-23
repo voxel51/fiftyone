@@ -706,9 +706,8 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             self.fields.append(field)
             self._validation_schema = self.get_field_schema()
 
-        keys = [self.name] + keys
         if self._parent:
-            self._parent._save_field(field, keys)
+            self._parent._save_field(field, [self.name] + keys)
 
     def _set_parent(self, parent):
         self._parent = parent

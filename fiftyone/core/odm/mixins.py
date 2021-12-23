@@ -661,15 +661,11 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
-    def _declare_field(cls, field_or_doc, path=None):
-        if isinstance(field_or_doc, SampleFieldDocument):
-            field = field_or_doc.to_field()
-        else:
-            field = field_or_doc
-
+    def _declare_field(cls, field, path=None):
         if not path:
             cls._fields[field.name] = field
-            cls._fields_ordered += (field.name,)
+            if field.name not in cls._fields_ordered:
+                cls._fields_ordered += (field.name,)
             setattr(cls, field.name, field)
         else:
             parent = getattr(cls, path[0])

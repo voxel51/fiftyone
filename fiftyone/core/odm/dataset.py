@@ -268,19 +268,16 @@ class SampleFieldDocument(EmbeddedDocument):
         if not hasattr(field, "fields"):
             return None
 
-        field_docs = [
+        return [
             cls.from_field(value)
-            for name, value in field.document_type._fields.items()
-            if name != "_cls"
+            for value in field.get_field_schema().values()
         ]
-
-        return field_docs + [cls.from_field(value) for value in field.fields]
 
 
 class SidebarGroupDocument(EmbeddedDocument):
     """Description of a Sidebar Group in the App."""
 
-    name = StringField(unique=True, required=True)
+    name = StringField(required=True)
     paths = ListField(StringField(), default=[])
 
 
