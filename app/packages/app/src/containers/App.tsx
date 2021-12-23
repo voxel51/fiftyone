@@ -12,7 +12,6 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import Header from "../components/Header";
 import NotificationHub from "../components/NotificationHub";
 import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { useClearModal } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -28,6 +27,7 @@ import Dataset from "./Dataset";
 import Error from "./Error";
 import Setup from "./Setup";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
+import { aggregationsTick } from "../recoil/aggregations";
 
 const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
@@ -36,6 +36,7 @@ const useStateUpdate = () => {
       const newSamples = new Set<string>(state.selected);
       const counter = get(atoms.viewCounter);
       const view = get(viewAtoms.view);
+
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
@@ -48,7 +49,6 @@ const useStateUpdate = () => {
           set(atoms.tagging({ modal: i, labels: j }), false)
         )
       );
-
       set(patching, false);
       set(similaritySorting, false);
       set(savingFilters, false);
@@ -57,12 +57,12 @@ const useStateUpdate = () => {
       }
 
       if (state.dataset) {
-        const groupDefinition = resolveGroups(state.dataset);
-
+        const groups = resolveGroups(state.dataset);
         const current = get(sidebarGroupsDefinition(false));
 
-        if (JSON.stringify(groupDefinition) !== JSON.stringify(current)) {
-          set(sidebarGroupsDefinition(false), groupDefinition);
+        if (JSON.stringify(groups) !== JSON.stringify(current)) {
+          set(sidebarGroupsDefinition(false), groups);
+          set(aggregationsTick, get(aggregationsTick) + 1);
         }
       }
 

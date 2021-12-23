@@ -92,7 +92,7 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
 
   const updater = groupUpdater(groups);
 
-  const primitves = dataset.sampleFields
+  const primitives = dataset.sampleFields
     .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
     .filter((path) => path !== "tags" && !present.has(path));
 
@@ -107,7 +107,7 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
 
   updater("labels", labels);
   dataset.frameFields.length && updater("frame labels", frameLabels);
-  updater("primitives", primitves);
+  updater("primitives", primitives);
 
   const fields = Object.fromEntries(
     dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
@@ -116,15 +116,14 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
     .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
-    .forEach((name) =>
-      updater(
-        name,
-        (fields[name].fields || [])
-          .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
-          .map((subfield) => `${name}.${subfield}`)
-          .filter((path) => !present.has(path))
-      )
-    );
+    .forEach((name) => {
+      const fieldPaths = (fields[name].fields || [])
+        .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
+        .map((subfield) => `${name}.${subfield}`)
+        .filter((path) => !present.has(path));
+
+      updater(name, fieldPaths);
+    });
 
   return groups;
 };
@@ -133,22 +132,16 @@ const groupUpdater = (groups: State.SidebarGroups) => {
   const groupNames = groups.map(([name]) => name);
 
   return (name: string, paths: string[]) => {
-    let index = groupNames.indexOf(name);
-
     if (paths.length === 0) return;
 
+    const index = groupNames.indexOf(name);
     if (index < 0) {
       groups.push([name, paths]);
       return;
     }
 
-    groups[index][1] = groups[index][1].filter((name) => paths.includes(name));
-
     const group = groups[index][1];
-    groups[index][1] = [
-      ...group,
-      ...paths.filter((path) => !group.includes(path)).sort(),
-    ];
+    groups[index][1] = [...group, ...paths];
   };
 };
 

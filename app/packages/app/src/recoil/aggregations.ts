@@ -1,4 +1,5 @@
 import {
+  atom,
   GetRecoilValue,
   RecoilValueReadOnly,
   selectorFamily,
@@ -100,6 +101,11 @@ export const filtersAreEqual = (filtersOne, filtersTwo) => {
   return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
 };
 
+export const aggregationsTick = atom<number>({
+  key: "aggregationsTick",
+  default: 0,
+});
+
 const aggregations = selectorFamily<
   AggregationsData,
   { modal: boolean; extended: boolean }
@@ -113,6 +119,7 @@ const aggregations = selectorFamily<
       return get(aggregations({ extended: false, modal })) as AggregationsData;
     }
 
+    get(aggregationsTick);
     const data = (await (
       await fetch(`${http}/aggregations`, {
         cache: "no-cache",
@@ -196,8 +203,6 @@ const makeCountResults = <T>(key) =>
       const data = get(aggregations({ modal, extended }))[
         path
       ] as CategoricalAggregations<T>;
-      if (!data) console.log(path, get(aggregations({ modal, extended })));
-
       const results = [...data.CountValues[1]];
 
       let count = data.CountValues[0];
@@ -302,7 +307,6 @@ export const counts = selectorFamily<
   key: "counts",
   get: ({ extended, modal, path }) => ({ get }) => {
     const data = get(aggregations({ modal, extended }));
-
     return data
       ? Object.fromEntries(
           (data[path] as CategoricalAggregations).CountValues[1]

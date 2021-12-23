@@ -661,6 +661,7 @@ const TeamsButton = ({ addNotification }) => {
 
 const Header = ({ addNotification }) => {
   const refresh = useRecoilValue(selectors.refresh);
+
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });
