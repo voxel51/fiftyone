@@ -36,16 +36,6 @@ export const SEGMENTATION = "Segmentation";
 export const TEMPORAL_DETECTION = "TemporalDetection";
 export const TEMPORAL_DETECTIONS = "TemporalDetections";
 
-export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
-export const DATE_FIELD = "fiftyone.core.fields.DateField";
-export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
-export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";
-export const FRAME_NUMBER_FIELD = "fiftyone.core.fields.FrameNumberField";
-export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
-export const INT_FIELD = "fiftyone.core.fields.IntField";
-export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
-export const STRING_FIELD = "fiftyone.core.fields.StringField";
-
 export const MOMENT_CLASSIFICATIONS = [
   CLASSIFICATION,
   CLASSIFICATIONS,

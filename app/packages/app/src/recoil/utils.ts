@@ -1,4 +1,4 @@
-import { selector, SetRecoilState, useRecoilCallback } from "recoil";
+import { selector, useRecoilCallback } from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 

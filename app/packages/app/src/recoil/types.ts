@@ -1,5 +1,5 @@
 import { RGB } from "@fiftyone/looker/src/state";
-import { Field, StrictField } from "@fiftyone/utilities";
+import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
   export enum SPACE {

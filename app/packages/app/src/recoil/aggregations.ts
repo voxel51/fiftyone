@@ -9,11 +9,11 @@ import {
 import { http } from "../shared/connection";
 
 import * as atoms from "./atoms";
-import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "./constants";
 import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
+import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 
 type DateTimeBound = { datetime: number } | null;
 

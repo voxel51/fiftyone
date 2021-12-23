@@ -10,7 +10,7 @@ export const view = atom<State.Stage[]>({
   default: [],
   effects_UNSTABLE: [
     ({ onSet, getPromise }) => {
-      onSet(async (newValue, oldValue, isReset) => {
+      onSet(async (newValue, oldValue) => {
         if (viewsAreEqual(newValue, oldValue)) return;
 
         const state = await getPromise(atoms.stateDescription);

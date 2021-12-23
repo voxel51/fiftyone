@@ -61,7 +61,10 @@ const setModal = async (
     [atoms.colorSeed(true), atoms.colorSeed(false)],
     [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
     [atoms.alpha(true), atoms.alpha(false)],
-    [sidebarEntries(true), sidebarEntries(false)],
+    [
+      sidebarEntries({ modal: true, loadingTags: false }),
+      sidebarEntries({ modal: false, loadingTags: false }),
+    ],
   ];
 
   const results = Promise.all(

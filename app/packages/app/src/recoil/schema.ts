@@ -1,20 +1,30 @@
 import { atomFamily, selectorFamily } from "recoil";
 
-import { Field, Schema, StrictField } from "@fiftyone/utilities";
-
-import * as atoms from "./atoms";
 import {
-  EMBEDDED_DOCUMENT_FIELD,
+  Field,
+  LABELS,
   LABELS_PATH,
   LABEL_LIST,
   LABEL_LISTS,
   LIST_FIELD,
-  RESERVED_FIELDS,
-  VALID_LABEL_TYPES,
+  meetsFieldType,
+  Schema,
+  StrictField,
   withPath,
-} from "./constants";
+} from "@fiftyone/utilities";
+
+import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
+
+const RESERVED_FIELDS = [
+  "_id",
+  "_rand",
+  "_media_type",
+  "metadata",
+  "tags",
+  "frames",
+];
 
 const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -178,10 +188,9 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get: (params) => ({ get }) => {
     const paths = get(fieldPaths(params));
-    const types = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
     return paths.filter((path) =>
-      types.includes(get(field(path)).embeddedDocType)
+      LABELS.includes(get(field(path)).embeddedDocType)
     );
   },
 });
@@ -371,38 +380,3 @@ export const fieldType = selectorFamily<
     return ftype;
   },
 });
-
-export const meetsFieldType = (
-  field: Field,
-  {
-    ftype,
-    embeddedDocType,
-    acceptLists = true,
-  }: {
-    ftype: string | string[];
-    embeddedDocType?: string | string[];
-    acceptLists?: boolean;
-  }
-) => {
-  if (!Array.isArray(ftype)) {
-    ftype = [ftype];
-  }
-
-  if (!ftype.includes(EMBEDDED_DOCUMENT_FIELD) && embeddedDocType) {
-    throw new Error("invalid parameters");
-  }
-
-  if (!Array.isArray(embeddedDocType)) {
-    embeddedDocType = [embeddedDocType];
-  }
-
-  if (
-    ftype.some(
-      (f) => field.ftype === f || (field.subfield === f && acceptLists)
-    )
-  ) {
-    return embeddedDocType.some((doc) => field.embeddedDocType === doc || !doc);
-  }
-
-  return false;
-};
