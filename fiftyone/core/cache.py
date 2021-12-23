@@ -44,28 +44,6 @@ def init_media_cache(config):
         gc_service = MediaCacheService()
 
 
-def download_media(sample_collection, update=False, skip_failures=True):
-    """Downloads the source media files for all samples in the collection to
-    the media cache.
-
-    Any existing files are not re-downloaded, unless ``update == True`` and
-    their checksums no longer match.
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-        update (False): whether to re-download media whose checksums no longer
-            match
-        skip_failures (True): whether to gracefully continue without
-            raising an error if a remote file cannot be downloaded
-    """
-    filepaths = sample_collection.values("filepath")
-    if update:
-        media_cache.update(filepaths=filepaths, skip_failures=skip_failures)
-    else:
-        media_cache.get_local_paths(filepaths, skip_failures=skip_failures)
-
-
 class MediaCache(object):
     """A cache that automatically manages the downloading of remote media files
     stored in S3, GCS, or web URLs.

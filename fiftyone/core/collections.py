@@ -1494,7 +1494,15 @@ class SampleCollection(object):
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
         """
-        foc.download_media(self, update=update, skip_failures=skip_failures)
+        filepaths = self.values("filepath")
+        if update:
+            foc.media_cache.update(
+                filepaths=filepaths, skip_failures=skip_failures
+            )
+        else:
+            foc.media_cache.get_local_paths(
+                filepaths, download=True, skip_failures=skip_failures
+            )
 
     def get_local_paths(self, download=True, skip_failures=True):
         """Returns a list of local paths to the media files in this collection.
