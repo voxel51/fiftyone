@@ -43,7 +43,7 @@ import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-fost = fou.lazy_import("fiftyone.core.stages")
+fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
 
@@ -5754,14 +5754,14 @@ def _always_select_field(sample_collection, field):
 
     view = sample_collection
 
-    if not any(isinstance(stage, fost.SelectFields) for stage in view._stages):
+    if not any(isinstance(stage, fot.SelectFields) for stage in view._stages):
         return view
 
     # Manually insert `field` into all `SelectFields` stages
     _view = view._base_view
     for stage in view._stages:
-        if isinstance(stage, fost.SelectFields):
-            stage = fost.SelectFields(
+        if isinstance(stage, fot.SelectFields):
+            stage = fot.SelectFields(
                 stage.field_names + [field], _allow_missing=True
             )
 

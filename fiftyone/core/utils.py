@@ -949,8 +949,8 @@ class UniqueFilenameMaker(object):
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
-        self._default_filename_patt = (
-            fo.config.default_sequence_idx + default_ext or ""
+        self._default_filename_patt = fo.config.default_sequence_idx + (
+            default_ext or ""
         )
         self._idx = 0
 

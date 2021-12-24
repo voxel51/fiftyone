@@ -2661,6 +2661,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
 
         self._classes = classes
         self._video_paths_map = video_paths_map
+        self._metadata_map = metadata_map
         self._labels_map = labels_map
         self._has_labels = has_labels
         self._uuids = uuids

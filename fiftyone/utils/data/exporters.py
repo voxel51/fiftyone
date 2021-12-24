@@ -1072,7 +1072,9 @@ class MediaExporter(object):
             if self.export_mode == "manifest":
                 outpath = None
                 self._manifest[uuid] = media_path
-            elif not fos.is_local(outpath) or not fos.is_local(media_path):
+            elif (
+                outpath is not None and not fos.is_local(outpath)
+            ) or not fos.is_local(media_path):
                 if self.export_mode in (True, "move"):
                     self._inpaths.append(media_path)
                     self._outpaths.append(outpath)

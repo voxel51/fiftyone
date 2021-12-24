@@ -113,7 +113,7 @@ class DICOMSampleParser(foud.LabeledImageSampleParser):
             if isinstance(self.current_sample, FileInstance):
                 self._ds = self.current_sample.load()
             else:
-                with fos.open_file(self.current_sample, "r") as f:
+                with fos.open_file(self.current_sample, "rb") as f:
                     self._ds = pydicom.dcmread(f)
 
 
@@ -232,7 +232,7 @@ class DICOMDatasetImporter(
         if fos.isfile(self.dicom_path):
             if not os.path.splitext(self.dicom_path)[1]:
                 # DICOMDIR file
-                with fos.open_file(self.dicom_path, "r") as f:
+                with fos.open_file(self.dicom_path, "rb") as f:
                     ds = pydicom.dcmread(f)
 
                 samples = list(FileSet(ds))
