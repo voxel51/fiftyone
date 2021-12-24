@@ -290,12 +290,13 @@ FiftyOne must connect as a root user.
 
 You can create a root user with the Mongo shell as follows:
 
-.. code-block:: text
+.. code-block:: shell
 
-    use admin
-    db.createUser({user: "username", pwd: passwordPrompt(), roles: ["root"]})
+    mongo --shell
+    > use admin
+    > db.createUser({user: "username", pwd: passwordPrompt(), roles: ["root"]})
 
-Also, you must add `?authSource=admin` to your database URI:
+You must also add `?authSource=admin` to your database URI:
 
 .. code-block:: text
 
