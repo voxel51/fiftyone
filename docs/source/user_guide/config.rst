@@ -285,6 +285,22 @@ or you can set the following environment variable:
 
     export FIFTYONE_DATABASE_URI=mongodb://[username:password@]host[:port]
 
+If your MongoDB deployment is running with authentication enabled (the `--auth`
+flag), FiftyOne must connect with a root user.
+
+A root user can be created with the Mongo shell:
+
+.. code-block:: text
+
+    use admin
+    db.createUser({user: "username", pwd: passwordPrompt(), roles: ["root"]})
+
+Also, you must add `?authSource=admin` to your database URI:
+
+.. code-block:: text
+
+    mongodb://[username:password@]host[:port]/?authSource=admin
+
 .. note::
 
     **Apple Silicon users**: MongoDB does not yet provide a native build for
