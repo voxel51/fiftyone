@@ -1,3 +1,4 @@
+import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { atom, DefaultValue, selector, selectorFamily } from "recoil";
 
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";

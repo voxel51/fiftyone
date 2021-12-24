@@ -18,7 +18,7 @@ import * as viewAtoms from "../recoil/view";
 import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import { meetsType } from "../recoil/schema";
-import { DATE_FIELD, DATE_TIME_FIELD } from "../recoil/constants";
+import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
 const Container = styled.div`
   ${scrollbarStyles}

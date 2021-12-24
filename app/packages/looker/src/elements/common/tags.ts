@@ -4,6 +4,7 @@
 
 import {
   BOOLEAN_FIELD,
+  CLASSIFICATION,
   DATE_FIELD,
   DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -13,15 +14,11 @@ import {
   INT_FIELD,
   LABELS_PATH,
   meetsFieldType,
+  Schema,
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
 import { getColor } from "../../color";
-import {
-  CLASSIFICATION,
-  MOMENT_CLASSIFICATIONS,
-  REGRESSION,
-} from "../../constants";
 import { BaseState, Sample } from "../../state";
 import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
@@ -103,7 +100,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             value,
           });
         }
-      } else if (true) {
+      } else if (meetsFieldType(LABEL)) {
         const cls = sample[path]._cls;
         let show = []
           .filter(
@@ -149,21 +146,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           );
         }
       } else {
-        let schema = fieldSchema;
-        let value = sample;
-        let field: Field = null;
-        for (const key of path.split(".")) {
-          if ([undefined, null].includes(value)) break;
-
-          field = schema[key];
-          value = value[field.dbField || key];
-          schema = field.fields;
-        }
-
-        if ([undefined, null].includes(value)) {
-          continue;
-        }
-
         continue;
 
         const appendElement = (value) => {
@@ -248,4 +230,20 @@ const prettyNumber = (value: number): string => {
     string = value.toFixed(3);
   }
   return Number(string).toLocaleString();
+};
+
+const getFieldAndValue = (
+  sample: Sample,
+  schema: Schema,
+  path: string
+): [Field, unknown] => {
+  let value = sample;
+  let field: Field = null;
+  for (const key of path.split(".")) {
+    field = schema[key];
+    if (![undefined, null].includes(value)) value = value[field.dbField || key];
+    schema = field.fields;
+  }
+
+  return [field, value];
 };

@@ -13,13 +13,21 @@ import {
   BOOLEAN_FIELD,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  DETECTION,
+  DETECTIONS,
   Field,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  LABELS,
+  LABELS_PATH,
+  LIST_FIELD,
+  meetsFieldType,
   OBJECT_ID_FIELD,
   STRING_FIELD,
+  VALID_PRIMITIVE_TYPES,
+  withPath,
 } from "@fiftyone/utilities";
 
 import * as aggregationAtoms from "../../../recoil/aggregations";
@@ -57,11 +65,9 @@ const FILTERS = {
   [STRING_FIELD]: StringFieldFilter,
 };
 
-export const DETECTION = ["bounding_box"];
-
 const EXCLUDED = {
-  [withPath(LABELS_PATH, DETECTION)]: DETECTION,
-  [withPath(LABELS_PATH, "Detections")]: DETECTION,
+  [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
+  [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
 
 const getFilterData = (
@@ -76,7 +82,7 @@ const getFilterData = (
   named?: boolean;
   listField: boolean;
 }[] => {
-  if (schemaAtoms.meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
+  if (meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
     let ftype = parent.ftype;
     const listField = ftype === LIST_FIELD;
     if (listField) {

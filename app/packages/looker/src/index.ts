@@ -6,6 +6,8 @@ import { v4 as uuid } from "uuid";
 import highlightJSON from "json-format-highlight";
 import copyToClipboard from "copy-to-clipboard";
 
+import { HEATMAP, LABEL_LISTS_MAP, MASK_LABELS } from "@fiftyone/utilities";
+
 import {
   FONT_SIZE,
   STROKE_WIDTH,
@@ -14,11 +16,8 @@ import {
   MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
   DASH_LENGTH,
-  LABEL_LISTS,
   JSON_COLORS,
-  MASK_LABELS,
   DATE_TIME,
-  HEATMAP,
   BASE_ALPHA,
 } from "./constants";
 import {
@@ -1296,11 +1295,11 @@ const filterSample = <S extends Sample | FrameSample>(
         continue;
       }
 
-      if (LABEL_LISTS[sample[field]._cls]) {
+      if (LABEL_LISTS_MAP[sample[field]._cls]) {
         sample[field] = {
           ...sample[field],
-          [LABEL_LISTS[sample[field]._cls]]: sample[field][
-            LABEL_LISTS[sample[field]._cls]
+          [LABEL_LISTS_MAP[sample[field]._cls]]: sample[field][
+            LABEL_LISTS_MAP[sample[field]._cls]
           ]
             .filter((label) => state.options.filter[prefix + field](label))
             .map((label) => {

@@ -2,13 +2,10 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
+
 import { getColor } from "../color";
-import {
-  MOMENT_CLASSIFICATIONS,
-  TEMPORAL_DETECTION,
-  INFO_COLOR,
-  REGRESSION,
-} from "../constants";
+import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
 import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
 import {
   CONTAINS,

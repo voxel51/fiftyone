@@ -6,8 +6,6 @@ import React, {
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
-  ArrowLeft,
-  ArrowRight,
   Bookmark,
   Check,
   FlipToBack,

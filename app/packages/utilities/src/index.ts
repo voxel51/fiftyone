@@ -122,18 +122,63 @@ export const meetsFieldType = (
   return false;
 };
 
+export const NONFINITES = new Set(["-inf", "inf", "nan"]);
+
+export const CLASSIFICATION = "Classification";
+export const CLASSIFICATIONS = "Classifications";
+export const DETECTION = "Detection";
+export const DETECTIONS = "Detections";
+export const GEOLOCATION = "GeoLocation";
+export const GEOLOCATIONS = "GeoLocations";
+export const HEATMAP = "Heatmap";
+export const KEYPOINT = "Keypoint";
+export const KEYPOINTS = "Keypoints";
+export const POLYLINE = "Polyline";
+export const POLYLINES = "Polylines";
+export const REGRESSION = "Regression";
+export const SEGMENTATION = "Segmentation";
+export const TEMPORAL_DETECTION = "TemporalDetection";
+export const TEMPORAL_DETECTIONS = "TemporalDetections";
+
+export const LABEL_LISTS_MAP = {
+  [CLASSIFICATIONS]: "classifications",
+  [DETECTIONS]: "detections",
+  [KEYPOINTS]: "Keypoints",
+  [POLYLINES]: "polylines",
+  [TEMPORAL_DETECTIONS]: "detections",
+};
+
+export const LABELS_MAP = {
+  [CLASSIFICATION]: CLASSIFICATION,
+  [CLASSIFICATIONS]: CLASSIFICATIONS,
+  [DETECTION]: DETECTION,
+  [DETECTIONS]: DETECTIONS,
+  [GEOLOCATION]: GEOLOCATION,
+  [GEOLOCATIONS]: GEOLOCATIONS,
+  [HEATMAP]: HEATMAP,
+  [KEYPOINT]: KEYPOINT,
+  [KEYPOINTS]: KEYPOINTS,
+  [POLYLINE]: POLYLINE,
+  [POLYLINES]: POLYLINES,
+  [SEGMENTATION]: SEGMENTATION,
+  [REGRESSION]: REGRESSION,
+  [TEMPORAL_DETECTION]: TEMPORAL_DETECTION,
+  [TEMPORAL_DETECTIONS]: TEMPORAL_DETECTIONS,
+};
+
+export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
+
 export const VALID_OBJECT_TYPES = [
-  "Detection",
-  "Detections",
-  "Keypoint",
-  "Keypoints",
-  "Polyline",
-  "Polylines",
-  "TemporalDetection",
-  "TemporalDetections",
+  DETECTION,
+  DETECTIONS,
+  KEYPOINT,
+  KEYPOINTS,
+  POLYLINE,
+  POLYLINES,
+  TEMPORAL_DETECTION,
+  TEMPORAL_DETECTIONS,
 ];
 
-export const HEATMAP = "Heatmap";
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
 export const VALID_MASK_TYPES = ["Heatmap", "Segmentation"];
 export const VALID_LIST_TYPES = [

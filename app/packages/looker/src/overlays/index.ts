@@ -1,7 +1,8 @@
 /**
  * Copyright 2017-2021, Voxel51, Inc.
  */
-import { LABEL_LISTS, LABEL_TAGS_CLASSES } from "../constants";
+import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
+import { LABEL_TAGS_CLASSES } from "../constants";
 import { BaseState } from "../state";
 import { Overlay } from "./base";
 import {
@@ -65,7 +66,9 @@ export const loadOverlays = <State extends BaseState>(
     } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
       classifications.push([
         field,
-        label._cls in LABEL_LISTS ? label[LABEL_LISTS[label._cls]] : [label],
+        label._cls in LABEL_LISTS_MAP
+          ? label[LABEL_LISTS_MAP[label._cls]]
+          : [label],
       ]);
     }
   }
