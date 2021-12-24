@@ -330,7 +330,7 @@ class YOLOv4DatasetImporter(
         exists = fos.run(fos.isfile, labels_paths, quiet=True)
 
         labels_paths_map = {
-            f: p for f, p, e in zip(image_paths, labels_paths, exists) if e
+            i: l for i, l, e in zip(image_paths, labels_paths, exists) if e
         }
 
         filepaths = set(labels_paths_map.keys())
@@ -343,7 +343,7 @@ class YOLOv4DatasetImporter(
         if self.max_samples is not None:
             _filepaths = set(filepaths)
             labels_paths_map = {
-                f: p for f, p in labels_paths_map.items() if f in _filepaths
+                i: l for i, l in labels_paths_map.items() if i in _filepaths
             }
 
         local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
@@ -511,7 +511,7 @@ class YOLOv5DatasetImporter(
         exists = fos.run(fos.isfile, labels_paths, quiet=True)
 
         labels_paths_map = {
-            f: p for f, p, e in zip(image_paths, labels_paths, exists) if e
+            i: l for i, l, e in zip(image_paths, labels_paths, exists) if e
         }
 
         filepaths = set(labels_paths_map.keys())
@@ -524,7 +524,7 @@ class YOLOv5DatasetImporter(
         if self.max_samples is not None:
             _filepaths = set(filepaths)
             labels_paths_map = {
-                f: p for f, p in labels_paths_map.items() if f in _filepaths
+                i: l for i, l in labels_paths_map.items() if i in _filepaths
             }
 
         local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")

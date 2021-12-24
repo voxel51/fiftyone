@@ -181,7 +181,7 @@ class VOCDetectionDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None and fos.isfile(self.labels_path):
+        if self.labels_path is not None and fos.isdir(self.labels_path):
             labels_paths_map = {
                 os.path.splitext(p)[0]: fos.join(self.labels_path, p)
                 for p in fos.list_files(self.labels_path, recursive=True)
