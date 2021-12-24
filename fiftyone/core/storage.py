@@ -313,9 +313,7 @@ def to_readable(path, **kwargs):
     Returns:
         a public path
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return path
 
     return get_url(path, method="GET", **kwargs)
@@ -335,9 +333,7 @@ def to_writeable(path, **kwargs):
     Returns:
         a public path
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return path
 
     params = dict(method="PUT", content_type=etau.guess_mime_type(path))
@@ -347,7 +343,7 @@ def to_writeable(path, **kwargs):
 
 
 def make_temp_dir(basedir=None):
-    """Makes a temporary local directory.
+    """Makes a temporary directory.
 
     Args:
         basedir (None): an optional directory in which to create the new
@@ -359,14 +355,21 @@ def make_temp_dir(basedir=None):
     if basedir is None:
         basedir = fo.config.default_dataset_dir
 
-    return etau.make_temp_dir(basedir=basedir)
+    fs = get_file_system(basedir)
+
+    if fs == FileSystem.LOCAL:
+        return etau.make_temp_dir(basedir=basedir)
+
+    client = get_client(fs)
+    raise NotImplementedError()
 
 
 class TempDir(object):
-    """Context manager that creates and destroys a temporary local directory.
+    """Context manager that creates and destroys a temporary directory.
 
     Args:
-        basedir: an optional directory in which to create the new directory
+        basedir (None): an optional directory in which to create the new
+            directory. The default is ``fiftyone.config.default_dataset_dir``
     """
 
     def __init__(self, basedir=None):
@@ -378,7 +381,7 @@ class TempDir(object):
         return self._name
 
     def __exit__(self, *args):
-        etau.delete_dir(self._name)
+        delete_dir(self._name)
 
 
 class LocalDir(object):
@@ -956,9 +959,7 @@ def sep(path):
     Returns:
         the path separator
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return os.path.sep
 
     return "/"
@@ -974,9 +975,7 @@ def join(a, *p):
     Returns:
         the joined path
     """
-    fs = get_file_system(a)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(a):
         return os.path.join(a, *p)
 
     return posixpath.join(a, *p)
@@ -993,9 +992,7 @@ def isabs(path):
     Returns:
         True/False
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return os.path.isabs(path)
 
     return True
@@ -1012,9 +1009,7 @@ def abspath(path):
     Returns:
         the absolute path
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return os.path.abspath(path)
 
     return path
@@ -1029,9 +1024,7 @@ def normpath(path):
     Returns:
         the normalized path
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return os.path.normpath(path)
 
     prefix, path = split_prefix(path)
@@ -1175,9 +1168,7 @@ def ensure_basedir(path):
     Args:
         path: the filepath
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         etau.ensure_basedir(path)
 
 
@@ -1187,9 +1178,7 @@ def ensure_dir(dirpath):
     Args:
         dirpath: the directory path
     """
-    fs = get_file_system(dirpath)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(dirpath):
         etau.ensure_dir(dirpath)
 
 
@@ -1292,7 +1281,7 @@ def write_yaml(obj, path, **kwargs):
 
 
 def list_files(
-    dir_path,
+    dirpath,
     abs_paths=False,
     recursive=False,
     include_hidden_files=False,
@@ -1303,7 +1292,7 @@ def list_files(
     If the directory does not exist, an empty list is returned.
 
     Args:
-        dir_path: the path to the directory to list
+        dirpath: the path to the directory to list
         abs_paths (False): whether to return the absolute paths to the files
         recursive (False): whether to recursively traverse subdirectories
         include_hidden_files (False): whether to include dot files
@@ -1312,14 +1301,14 @@ def list_files(
     Returns:
         a list of filepaths
     """
-    fs = get_file_system(dir_path)
+    fs = get_file_system(dirpath)
 
     if fs == FileSystem.LOCAL:
-        if not os.path.isdir(dir_path):
+        if not os.path.isdir(dirpath):
             return []
 
         return etau.list_files(
-            dir_path,
+            dirpath,
             abs_paths=abs_paths,
             recursive=recursive,
             include_hidden_files=include_hidden_files,
@@ -1328,10 +1317,10 @@ def list_files(
 
     client = get_client(fs)
 
-    filepaths = client.list_files_in_folder(dir_path, recursive=recursive)
+    filepaths = client.list_files_in_folder(dirpath, recursive=recursive)
 
     if not abs_paths:
-        filepaths = [os.path.relpath(f, dir_path) for f in filepaths]
+        filepaths = [os.path.relpath(f, dirpath) for f in filepaths]
 
     if not include_hidden_files:
         filepaths = [
@@ -1344,26 +1333,24 @@ def list_files(
     return filepaths
 
 
-def list_subdirs(dir_path, abs_paths=False, recursive=False):
+def list_subdirs(dirpath, abs_paths=False, recursive=False):
     """Lists the subdirectories in the given directory, sorted alphabetically
     and excluding hidden directories.
 
     Args:
-        dir_path: the path to the directory to list
+        dirpath: the path to the directory to list
         abs_paths (False): whether to return absolute paths
         recursive (False): whether to recursively traverse subdirectories
 
     Returns:
         a list of subdirectories
     """
-    fs = get_file_system(dir_path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(dirpath):
         return etau.list_subdirs(
-            dir_path, abs_paths=abs_paths, recursive=recursive
+            dirpath, abs_paths=abs_paths, recursive=recursive
         )
 
-    dirs = {os.path.dirname(p) for p in list_files(dir_path, recursive=True)}
+    dirs = {os.path.dirname(p) for p in list_files(dirpath, recursive=True)}
 
     if not recursive:
         dirs = {d.split("/", 1)[0] for d in dirs}
@@ -1371,7 +1358,7 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
     dirs = sorted(d for d in dirs if d and not d.startswith("."))
 
     if abs_paths:
-        dirs = [join(dir_path, d) for d in dirs]
+        dirs = [join(dirpath, d) for d in dirs]
 
     return dirs
 
