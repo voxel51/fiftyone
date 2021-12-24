@@ -1073,6 +1073,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset_dir=export_dir,
             dataset_type=fo.types.YOLOv5Dataset,
             label_field="predictions",
+            include_all_data=True,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
