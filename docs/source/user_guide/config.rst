@@ -285,10 +285,10 @@ or you can set the following environment variable:
 
     export FIFTYONE_DATABASE_URI=mongodb://[username:password@]host[:port]
 
-If your MongoDB deployment is running with authentication enabled (the `--auth`
-flag), FiftyOne must connect with a root user.
+If you are running MongoDB with authentication enabled (the `--auth` flag),
+FiftyOne must connect as a root user.
 
-A root user can be created with the Mongo shell:
+You can create a root user with the Mongo shell as follows:
 
 .. code-block:: text
 
