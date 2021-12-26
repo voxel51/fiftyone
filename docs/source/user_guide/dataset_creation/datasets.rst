@@ -1973,16 +1973,17 @@ omitted, in which case the `data/` directory is listed to determine the
 available images.
 
 The TXT files in `data/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in one the following formats:
+to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
-where `<target>` is the zero-based integer index of the object class
-label from `obj.names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+where `<target>` is the zero-based integer index of the object class label from
+`obj.names`, the bounding box coordinates are expressed as relative coordinates
+in `[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
+`[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
@@ -2215,7 +2216,7 @@ specific split being imported or exported is specified by the `split` argument
 to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in one the following formats:
+to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
@@ -2223,8 +2224,9 @@ to an object in the image of the same name, in one the following formats:
     <target> <x-center> <y-center> <width> <height> <confidence>
 
 where `<target>` is the zero-based integer index of the object class label from
-`names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+`names`, the bounding box coordinates are expressed as relative coordinates in
+`[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
+`[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `labels/`.
 
