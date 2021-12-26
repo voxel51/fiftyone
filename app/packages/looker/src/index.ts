@@ -6,7 +6,15 @@ import { v4 as uuid } from "uuid";
 import highlightJSON from "json-format-highlight";
 import copyToClipboard from "copy-to-clipboard";
 
-import { HEATMAP, LABEL_LISTS_MAP, MASK_LABELS } from "@fiftyone/utilities";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  HEATMAP,
+  LABEL_LISTS_MAP,
+  LIST_FIELD,
+  MASK_LABELS,
+  Schema,
+} from "@fiftyone/utilities";
 
 import {
   FONT_SIZE,
@@ -31,7 +39,7 @@ import {
   VIDEO_SHORTCUTS,
 } from "./elements/common";
 import processOverlays from "./processOverlays";
-import { ClassificationsOverlay, FROM_FO, loadOverlays } from "./overlays";
+import { ClassificationsOverlay, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
@@ -224,7 +232,6 @@ export abstract class Looker<
 
       this.previousState = this.state;
       this.state = mergeUpdates(this.state, updates);
-
       if (
         !this.state.windowBBox ||
         this.state.destroyed ||
@@ -364,9 +371,7 @@ export abstract class Looker<
   getSample(): Promise<Sample> {
     let sample = { ...this.sample };
 
-    return Promise.resolve(
-      filterSample(this.state, sample, this.state.options.fieldsMap)
-    );
+    return Promise.resolve(f(this.state, sam, this.state.config.fieldSchema));
   }
 
   getCurrentSampleLabels(): LabelData[] {
@@ -548,6 +553,7 @@ export abstract class Looker<
       }
     };
     worker.addEventListener("message", listener);
+
     worker.postMessage({
       method: "processSample",
       coloring: this.state.options.coloring,
@@ -1139,10 +1145,10 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
             frames: [
               {
                 frame_number: this.frameNumber,
-                ...filterSample(
+                ...filter(
                   this.state,
                   { ...this.frames.get(this.frameNumber).deref().sample },
-                  this.state.options.frameFieldsMap,
+                  this.state.config.frameFieldSchema,
                   "frames."
                 ),
               },
@@ -1265,81 +1271,50 @@ const toggleZoom = <State extends FrameState | ImageState | VideoState>(
   state.zoomToContent = false;
 };
 
-const filterSample = <S extends Sample | FrameSample>(
-  state: Readonly<BaseState>,
-  sample: S,
-  fieldsMap: { [key: string]: string },
-  prefix = ""
-): S => {
-  for (let field in sample) {
-    if (fieldsMap.hasOwnProperty(field)) {
-      sample[fieldsMap[field]] = sample[field];
-      if (field !== fieldsMap[field]) {
-        delete sample[field];
-      }
-    } else if (field.startsWith("_")) {
-      delete sample[field];
-    } else if (sample[field] && sample[field]._cls === DATE_TIME) {
-      sample[field] = new Date(sample[field].datetime);
-    } else if (Array.isArray(sample[field])) {
-      sample[field] = sample[field].map((v) =>
-        v && v._cls === DATE_TIME ? new Date(sample[field].datetime) : v
-      );
-    } else if (
-      sample[field] &&
-      sample[field]._cls &&
-      FROM_FO.hasOwnProperty(sample[field]._cls)
-    ) {
-      if (!state.options.activePaths.includes(prefix + field)) {
-        delete sample[field];
-        continue;
-      }
+const f = <T extends {}>({
+  schema,
+  filter,
+  value,
+  keys,
+}: {
+  value: T;
+  schema: Schema;
+  keys: string[];
+  filter: (path: string, value) => boolean;
+}): T => {
+  const result = {};
+  for (let fieldName in schema) {
+    const field = schema[fieldName];
+    const path = [...keys, fieldName].join(".");
+    if (fieldName.startsWith("_")) continue;
 
-      if (LABEL_LISTS_MAP[sample[field]._cls]) {
-        sample[field] = {
-          ...sample[field],
-          [LABEL_LISTS_MAP[sample[field]._cls]]: sample[field][
-            LABEL_LISTS_MAP[sample[field]._cls]
-          ]
-            .filter((label) => state.options.filter[prefix + field](label))
-            .map((label) => {
-              if (MASK_LABELS.has(label._cls) && label.mask) {
-                label.mask = {
-                  shape: label.mask.shape,
-                };
-              }
+    result[fieldName] = value[fieldName];
 
-              return label;
-            }),
-        };
-      } else if (!state.options.filter[prefix + field](sample[field])) {
-        delete sample[field];
-      } else if (
-        MASK_LABELS.has(sample[field]._cls) &&
-        sample[field].mask &&
-        sample[field].mask.data
-      ) {
-        sample[field] = {
-          ...sample[field],
-          mask: {
-            shape: sample[field].mask.data.shape,
-          },
-        };
-      } else if (
-        sample[field]._cls === HEATMAP &&
-        sample[field].map &&
-        sample[field].map.data
-      ) {
-        sample[field] = {
-          ...sample[field],
-          map: {
-            shape: sample[field].map.data.shape,
-          },
-        };
-      }
+    if (field.dbField && field.dbField !== fieldName) {
+      result[fieldName] = value[field.dbField];
+      delete value[field.dbField];
+      fieldName = field.dbField;
     }
+
+    if (result[fieldName] === undefined) continue;
+
+    if ([DATE_TIME_FIELD, DATE_FIELD].includes(field.ftype)) {
+      value[fieldName] = new Date(value[fieldName].datetime);
+      continue;
+    }
+
+    if (
+      field.ftype === LIST_FIELD &&
+      [DATE_TIME_FIELD, DATE_FIELD].includes(field.subfield) &&
+      value[fieldName]
+    ) {
+      value[fieldName] = value[fieldName].map((v) => new Date(v.datetime));
+      continue;
+    }
+
+    if (!filter(path, value)) continue;
   }
-  return sample;
+  return result as T;
 };
 
 const shouldReloadSample = (

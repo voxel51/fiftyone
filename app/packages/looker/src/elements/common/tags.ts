@@ -5,6 +5,7 @@
 import {
   BOOLEAN_FIELD,
   CLASSIFICATION,
+  CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -13,12 +14,13 @@ import {
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LABELS_PATH,
-  meetsFieldType,
   Schema,
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
+
 import { getColor } from "../../color";
+import { Classification } from "../../overlays/classifications";
 import { BaseState, Sample } from "../../state";
 import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
@@ -63,17 +65,117 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const elements: TagData[] = [];
 
-    const FIELD_RENDERERS = {
-      [BOOLEAN_FIELD]: (value) => (value ? "True" : "False"),
-      [INT_FIELD]: (value) => prettyNumber(value),
-      [DATE_FIELD]: (value) => formatDate(value),
-      [DATE_TIME_FIELD]: (value) => formatDateTime(value, timeZone),
-      [FRAME_NUMBER_FIELD]: (value) => prettyNumber(value),
-      [FRAME_SUPPORT_FIELD]: (value) => `[${value.join(", ")}]`,
-      [STRING_FIELD]: (value) => value,
-      [EMBEDDED_DOCUMENT_FIELD]: {
-        [withPath(LABELS_PATH, CLASSIFICATION)]: (value) => value,
+    const PRIMITIVE_RENDERERS: {
+      [key: string]: (
+        path: string,
+        value: unknown
+      ) => { color: string; value: string; title: string };
+    } = {
+      [BOOLEAN_FIELD]: (path, value: boolean) => {
+        const v = value ? "True" : "False";
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
       },
+      [INT_FIELD]: (path, value: number) => {
+        const v = prettyNumber(value);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
+      },
+      [DATE_FIELD]: (path, value: number) => {
+        const v = formatDate(value);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
+      },
+      [DATE_TIME_FIELD]: (path: string, value: number) => {
+        const v = formatDateTime(value, timeZone);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
+      },
+      [FRAME_NUMBER_FIELD]: (path, value: number) => {
+        const v = prettyNumber(value);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
+      },
+      [FRAME_SUPPORT_FIELD]: (path, value: [number, number]) => {
+        const v = `[${value.join(", ")}]`;
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? v : path
+          ),
+        };
+      },
+      [STRING_FIELD]: (path, value: string) => ({
+        value,
+        title: `${path}: ${value}`,
+        color: getColor(
+          coloring.pool,
+          coloring.seed,
+          coloring.byLabel ? value : path
+        ),
+      }),
+    };
+
+    const LABEL_RENDERERS: {
+      [key: string]: (
+        path: string,
+        value: unknown
+      ) => { color: string; value: string; title: string };
+    } = {
+      [withPath(LABELS_PATH, CLASSIFICATION)]: (
+        path,
+        { label, confidence }: Classification
+      ) => ({
+        value: label,
+        title: `${path}: ${label}`,
+        color: getColor(
+          coloring.pool,
+          coloring.seed,
+          coloring.byLabel ? label : path
+        ),
+      }),
     };
 
     for (let index = 0; index < activePaths.length; index++) {
@@ -89,7 +191,11 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           title: tag,
           value: tag,
         });
-      } else if (path.startsWith("_label_tags.")) {
+
+        continue;
+      }
+
+      if (path.startsWith("_label_tags.")) {
         const tag = path.slice("_label_tags.".length);
         const count = sample._label_tags[tag] || 0;
         if (count > 0) {
@@ -100,95 +206,20 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             value,
           });
         }
-      } else if (meetsFieldType(LABEL)) {
-        const cls = sample[path]._cls;
-        let show = []
-          .filter(
-            (label) =>
-              filter[path](label) &&
-              (mimetype.includes("video") ||
-                MOMENT_CLASSIFICATIONS.includes(label._cls))
-          )
-          .map((label) =>
-            label._cls === REGRESSION ? label.value : label.label
-          );
 
-        if (cls !== REGRESSION) {
-          show = Object.entries(
-            show.reduce((acc, cur) => {
-              if (!acc[cur]) {
-                acc[cur] = 0;
-              }
-              acc[cur] += 1;
-              return acc;
-            }, {})
-          );
-          elements.push(
-            ...show.map(([label, count]) => ({
-              color: getColor(
-                coloring.pool,
-                coloring.seed,
-                coloring.byLabel ? label : path
-              ),
-              title: `${path}: ${label}`,
-              value: isList
-                ? `${prettify(label)}: ${count.toLocaleString()}`
-                : prettify(label),
-            }))
-          );
-        } else {
-          elements.push(
-            ...show.map((label) => ({
-              color: getColor(coloring.pool, coloring.seed, path),
-              title: `${path}: ${label}`,
-              value: prettify(label),
-            }))
-          );
-        }
-      } else {
         continue;
+      }
 
-        const appendElement = (value) => {
-          if (isDateTime && value) {
-            value = formatDateTime(value, timeZone);
-          } else if (isDate && value) {
-            value = formatDate(value);
-          } else if (isSupport && Array.isArray(value)) {
-            value = `[${value.map(prettify).join(", ")}]`;
-          }
+      const [field, value] = getFieldAndValue(sample, fieldSchema, path);
 
-          const pretty = prettify(value);
-          elements.push({
-            color: getColor(
-              coloring.pool,
-              coloring.seed,
-              coloring.byLabel ? value : path
-            ),
-            title: value,
-            value: pretty,
-          });
-        };
+      if (value === undefined) continue;
 
-        if (!Array.isArray(value) || isSupport) {
-          if (!isSupport || typeof value[0] === "number") {
-            value = [value];
-          }
-        }
+      if (LABEL_RENDERERS[field.embeddedDocType]) {
+        elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
+      }
 
-        if (isDateTime || isDate) {
-          value = value.map((d) => d.datetime);
-        }
-
-        const filtered =
-          filter[path] && !isSupport && !isDateTime && !isDate
-            ? value.filter((v) => filter[path](v))
-            : value;
-
-        const shown = [...filtered].sort().slice(0, 3);
-        shown.forEach((v) => appendElement(v));
-
-        const more = filtered.length - shown.length;
-        more > 0 && appendElement(`+${more} more`);
+      if (PRIMITIVE_RENDERERS[field.embeddedDocType]) {
+        elements.push(PRIMITIVE_RENDERERS[field.embeddedDocType](path, value));
       }
     }
 

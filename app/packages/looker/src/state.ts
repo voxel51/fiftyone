@@ -72,7 +72,7 @@ export interface ControlMap<State extends BaseState> {
 
 interface BaseOptions {
   activePaths: string[];
-  filter: (path: string, value) => boolean;
+  filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   selectedLabels: string[];
   showConfidence: boolean;

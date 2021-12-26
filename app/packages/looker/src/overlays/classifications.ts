@@ -19,7 +19,7 @@ import { sizeBytes } from "./util";
 
 export interface Classification extends RegularLabel {}
 
-interface ClassificationLabel extends Classification {
+export interface ClassificationLabel extends Classification {
   _cls: "Classification" | "Regression";
 }
 

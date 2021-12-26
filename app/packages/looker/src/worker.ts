@@ -2,10 +2,11 @@
  * Copyright 2017-2021, Voxel51, Inc.
  */
 
+import { LABELS, LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
-import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
+import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
-import { Coloring, FrameChunk, MaskTargets } from "./state";
+import { Coloring, FrameChunk } from "./state";
 
 interface ResolveColor {
   key: string | number;
@@ -138,10 +139,10 @@ const processLabels = (
     }
 
     if (label._cls in LABELS) {
-      if (label._cls in LABEL_LISTS) {
-        const list = label[LABEL_LISTS[label._cls]];
+      if (label._cls in LABEL_LISTS_MAP) {
+        const list = label[LABEL_LISTS_MAP[label._cls]];
         if (Array.isArray(list)) {
-          label[LABEL_LISTS[label._cls]] = list.map(mapId);
+          label[LABEL_LISTS_MAP[label._cls]] = list.map(mapId);
         }
       } else {
         mapId(label);

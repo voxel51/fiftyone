@@ -3,7 +3,7 @@
  */
 
 import { BIG_ENDIAN } from "./constants";
-import { MaskTargets, RGB, RGBA } from "./state";
+import { RGB, RGBA } from "./state";
 
 const bitColorCache: { [color: string]: number } = {};
 
@@ -154,7 +154,7 @@ export const createColorGenerator = (() => {
   return (
     colorPool: string[],
     seed: number
-  ): ((value: string | number) => string) => {
+  ): ((value: string | number | boolean | null) => string) => {
     if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
       colorMaps = {};
       poolCache = colorPool;
@@ -190,7 +190,7 @@ export const createColorGenerator = (() => {
 export const getColor = (
   pool: string[],
   seed: number,
-  fieldOrValue: string | number
+  fieldOrValue: string | number | boolean | null
 ) => {
   return createColorGenerator(pool, seed)(fieldOrValue);
 };

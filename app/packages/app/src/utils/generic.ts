@@ -13,12 +13,10 @@ export const isFloat = (n: number): boolean => {
 };
 
 export const prettify = (
-  v: boolean | string | null | undefined | number | number[],
-  summarize: boolean = true,
-  maxStrLen: number = 27
+  v: boolean | string | null | undefined | number | number[]
 ): string => {
   if (typeof v === "string") {
-    return summarize ? summarizeLongStr(v, maxStrLen) : v;
+    return v;
   } else if (typeof v === "number") {
     return Number(v.toFixed(3)).toLocaleString();
   } else if (v === true) {
@@ -28,8 +26,7 @@ export const prettify = (
   } else if ([undefined, null].includes(v)) {
     return "None";
   } else if (Array.isArray(v)) {
-    v = `[${v.join(", ")}]`;
-    return summarize ? summarizeLongStr(v, maxStrLen) : v;
+    return `[${v.join(", ")}]`;
   }
   return null;
 };

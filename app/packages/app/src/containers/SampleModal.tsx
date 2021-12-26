@@ -1,6 +1,9 @@
 import React, { useCallback, useRef } from "react";
+import { Controller } from "@react-spring/core";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
+
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 import { ModalActionsRow } from "../components/Actions";
 import FieldsSidebar, {
@@ -12,11 +15,11 @@ import FieldsSidebar, {
 import Looker from "../components/Looker";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useMessageHandler, useTheme } from "../utils/hooks";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { getSampleSrc } from "../recoil/utils";
-import { Controller } from "@react-spring/core";
+import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
+import { getSampleSrc } from "../recoil/utils";
+import { useMessageHandler, useTheme } from "../utils/hooks";
+import PathValueEntry from "../components/Sidebar/Entries/PathValueEntry";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -131,6 +134,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
   const tagText = useTagText(true);
+  const labelPaths = useRecoilValue(schemaAtoms.labelPaths({}));
 
   useSampleUpdate(lookerRef);
   const theme = useTheme();
@@ -146,6 +150,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
         case EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
+          const isLabel = labelPaths.includes(entry.path);
+          const isFieldPrimitive = !isTag && !isLabelTag && !isLabel;
 
           return {
             children: (
@@ -165,7 +171,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
                     path={entry.path}
                   />
                 )}
-                {!isTag && !isLabelTag && (
+                {isLabel && (
                   <Entries.FilterablePath
                     modal={true}
                     path={entry.path}
@@ -178,6 +184,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
                     }}
                   />
                 )}
+                {isFieldPrimitive && <PathValueEntry path={entry.path} />}
               </>
             ),
             disabled: isTag || isLabelTag,
