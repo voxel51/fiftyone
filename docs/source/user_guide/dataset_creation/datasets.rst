@@ -1973,11 +1973,12 @@ omitted, in which case the `data/` directory is listed to determine the
 available images.
 
 The TXT files in `data/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in the following format:
+to an object in the image of the same name, in one the following formats:
 
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
 where `<target>` is the zero-based integer index of the object class
 label from `obj.names` and the bounding box coordinates are expressed as
@@ -2214,11 +2215,12 @@ specific split being imported or exported is specified by the `split` argument
 to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in the following format:
+to an object in the image of the same name, in one the following formats:
 
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
 where `<target>` is the zero-based integer index of the object class label from
 `names` and the bounding box coordinates are expressed as
