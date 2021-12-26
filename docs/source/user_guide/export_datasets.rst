@@ -2064,11 +2064,13 @@ formats:
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
-    <target> <x-center> <y-center> <width> <height> <confidence> # if include_confidence=True
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
-where `<target>` is the zero-based integer index of the object class
-label from `obj.names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+where `<target>` is the zero-based integer index of the object class label from
+`obj.names`, the bounding box coordinates are expressed as relative coordinates
+in `[0, 1] x [0, 1]`, and `<confidence>` is the detection confidence, which
+will be included only if you pass the optional `include_confidence=True` flag
+to the export.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
@@ -2230,11 +2232,13 @@ to an object in the image of the same name, in one of the following formats:
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
-    <target> <x-center> <y-center> <width> <height> <confidence> # if include_confidence=True
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
 where `<target>` is the zero-based integer index of the object class label from
-`names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+`names`, the bounding box coordinates are expressed as relative coordinates in
+`[0, 1] x [0, 1]`, and `<confidence>` is the detection confidence, which will
+be included only if you pass the optional `include_confidence=True` flag to
+the export.
 
 Unlabeled images have no corresponding TXT file in `labels/`.
 

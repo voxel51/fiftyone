@@ -573,11 +573,7 @@ class YOLOv4DatasetExporter(
             this list will be extracted when :meth:`log_collection` is called,
             if possible
         include_confidence (False): whether to include detection confidences in
-            the export. The supported values are:
-
-            -   ``False``: (default) do not include confidences
-            -   ``True``: always include confidences
-
+            the export, if they exist
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -788,11 +784,7 @@ class YOLOv5DatasetExporter(
             this list will be extracted when :meth:`log_collection` is called,
             if possible
         include_confidence (False): whether to include detection confidences in
-            the export. The supported values are:
-
-            -   ``False``: (default) do not include confidences
-            -   ``True``: always include confidences
-
+            the export, if they exist
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -935,7 +927,12 @@ class YOLOAnnotationWriter(object):
     """Class for writing annotations in YOLO-style TXT format."""
 
     def write(
-        self, detections, txt_path, labels_map_rev, dynamic_classes=False, include_confidence=False
+        self,
+        detections,
+        txt_path,
+        labels_map_rev,
+        dynamic_classes=False,
+        include_confidence=False,
     ):
         """Writes the detections to disk.
 
@@ -946,7 +943,8 @@ class YOLOAnnotationWriter(object):
                 integers
             dynamic_classes (False): whether to dynamically add new labels to
                 ``labels_map_rev``
-            include_confidence (False): whether to include confidence in exported file
+            include_confidence (False): whether to include confidences in the
+                export, if they exist
         """
         rows = []
         for detection in detections.detections:
@@ -965,8 +963,14 @@ class YOLOAnnotationWriter(object):
             else:
                 target = labels_map_rev[label]
 
-            row = _make_yolo_row(detection.bounding_box, target,
-                                 confidence=detection.confidence if include_confidence else None)
+            if include_confidence:
+                confidence = detection.confidence
+            else:
+                confidence = None
+
+            row = _make_yolo_row(
+                detection.bounding_box, target, confidence=confidence
+            )
             rows.append(row)
 
         _write_file_lines(rows, txt_path)
@@ -1036,13 +1040,7 @@ def _get_yolo_v5_labels_path(image_path):
 
 def _parse_yolo_row(row, classes):
     row_vals = row.split()
-    if len(row_vals) == 5:
-        (target, xc, yc, w, h), conf = row_vals, None
-    elif len(row_vals) == 6:
-        target, xc, yc, w, h, conf = row_vals
-        conf = float(conf)
-    else:
-        raise NotImplementedError(f"rows with length {len(row_vals)} are not supported")
+    target, xc, yc, w, h = row_vals[:5]
 
     try:
         label = classes[int(target)]
@@ -1056,17 +1054,26 @@ def _parse_yolo_row(row, classes):
         float(h),
     ]
 
-    return fol.Detection(label=label, bounding_box=bounding_box, confidence=conf)
+    if len(row_vals) > 5:
+        confidence = float(row_vals[5])
+    else:
+        confidence = None
+
+    return fol.Detection(
+        label=label, bounding_box=bounding_box, confidence=confidence
+    )
 
 
 def _make_yolo_row(bounding_box, target, confidence=None):
     xtl, ytl, w, h = bounding_box
     xc = xtl + 0.5 * w
     yc = ytl + 0.5 * h
-    if confidence is None:
-        return "%d %f %f %f %f" % (target, xc, yc, w, h)
-    else:
-        return "%d %f %f %f %f %f" % (target, xc, yc, w, h, confidence)
+    row = "%d %f %f %f %f" % (target, xc, yc, w, h)
+
+    if confidence is not None:
+        row += " %f" % confidence
+
+    return row
 
 
 def _read_yaml_file(path):
