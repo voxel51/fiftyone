@@ -691,7 +691,7 @@ class BinaryClassificationResults(ClassificationResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        precision, recall, _ = skm.precision_recall_curve(
+        precision, recall, thresholds = skm.precision_recall_curve(
             self.ytrue,
             self.scores,
             pos_label=self._pos_label,
@@ -701,7 +701,12 @@ class BinaryClassificationResults(ClassificationResults):
         label = "AP = %.2f" % avg_precision
 
         return fop.plot_pr_curve(
-            precision, recall, label=label, backend=backend, **kwargs
+            precision,
+            recall,
+            thresholds=thresholds,
+            label=label,
+            backend=backend,
+            **kwargs,
         )
 
     def plot_roc_curve(self, backend="plotly", **kwargs):
@@ -724,7 +729,7 @@ class BinaryClassificationResults(ClassificationResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        fpr, tpr, _ = skm.roc_curve(
+        fpr, tpr, thresholds = skm.roc_curve(
             self.ytrue,
             self.scores,
             pos_label=self._pos_label,
@@ -733,7 +738,12 @@ class BinaryClassificationResults(ClassificationResults):
         roc_auc = skm.auc(fpr, tpr)
 
         return fop.plot_roc_curve(
-            fpr, tpr, roc_auc=roc_auc, backend=backend, **kwargs
+            fpr,
+            tpr,
+            thresholds=thresholds,
+            roc_auc=roc_auc,
+            backend=backend,
+            **kwargs,
         )
 
     def _parse_classes(self, classes):
