@@ -1,4 +1,6 @@
+import React from "react";
 import mime from "mime";
+import styled from "styled-components";
 
 export const isElectron = (): boolean => {
   return (
@@ -12,10 +14,62 @@ export const isFloat = (n: number): boolean => {
   return Number(n) === n && n % 1 !== 0;
 };
 
+const Link = styled.a`
+  color: ${({ theme }) => theme.font};
+`;
+
+export const useExternalLink = (href) => {
+  let openExternal;
+  if (isElectron()) {
+    try {
+      openExternal = require("electron").shell.openExternal;
+    } catch {}
+  }
+
+  return openExternal
+    ? (e) => {
+        e.preventDefault();
+        openExternal(href);
+      }
+    : null;
+};
+
+export const ExternalLink = ({ href, ...props }) => {
+  const onClick = useExternalLink(href);
+  return <Link {...props} href={href} target="_blank" onClick={onClick} />;
+};
+
+function isURL(str) {
+  const pattern = new RegExp(
+    "^(https?:\\/\\/)?" + // protocol
+    "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" + // domain name
+    "((\\d{1,3}\\.){3}\\d{1,3}))" + // OR ip (v4) address
+    "(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*" + // port and path
+    "(\\?[;&a-z\\d%_.~+=-]*)?" + // query string
+      "(\\#[-a-z\\d_]*)?$",
+    "i"
+  ); // fragment locator
+  return !!pattern.test(str);
+}
+
 export const prettify = (
   v: boolean | string | null | undefined | number | number[]
-): string => {
+): React.ReactNode => {
   if (typeof v === "string") {
+    if (isURL(v)) {
+      let url: URL;
+      try {
+        try {
+          url = new URL(v);
+        } catch {
+          url = new URL(`https://${v}`);
+        }
+      } catch {
+        return v;
+      }
+
+      return <ExternalLink href={url.toString()}>{v}</ExternalLink>;
+    }
     return v;
   } else if (typeof v === "number") {
     return Number(v.toFixed(3)).toLocaleString();

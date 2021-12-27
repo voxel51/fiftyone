@@ -2,7 +2,7 @@ import React from "react";
 import { Launch } from "@material-ui/icons";
 
 import { useHighlightHover } from "./utils";
-import { useExternalLink } from "../ExternalLink";
+import { useExternalLink } from "../../utils/generic";
 import { ItemAction } from "./ItemAction";
 
 type ActionOptionProps = {

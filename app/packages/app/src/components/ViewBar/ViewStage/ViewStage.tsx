@@ -7,7 +7,7 @@ import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
 
 import { BestMatchDiv } from "./BestMatch";
 import ErrorMessage from "./ErrorMessage";
-import ExternalLink from "../../ExternalLink";
+import { ExternalLink } from "../../../utils/generic";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 import { getMatch } from "./utils";

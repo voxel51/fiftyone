@@ -9,8 +9,8 @@ import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
 import { http } from "../../shared/connection";
 import { useOutsideClick } from "../../utils/hooks";
+import { ExternalLink } from "../../utils/generic";
 
-import ExternalLink from "../ExternalLink";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
