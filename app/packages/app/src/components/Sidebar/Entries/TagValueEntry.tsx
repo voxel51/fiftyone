@@ -19,10 +19,10 @@ const TagValueEntry = ({ tag, path }: { tag: string; path: string }) => {
     <RegularEntry
       title={tag}
       heading={
-        <>
+        <span>
           <LocalOffer style={{ margin: "0 0.5rem", color }} />
           <span style={{ marginRight: "0.5rem" }}>{tag}</span>
-        </>
+        </span>
       }
       backgroundColor={backgroundColor}
     />

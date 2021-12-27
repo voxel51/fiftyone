@@ -195,9 +195,12 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   },
 });
 
-export const labelPaths = selectorFamily<string[], { space?: State.SPACE }>({
+export const labelPaths = selectorFamily<
+  string[],
+  { space?: State.SPACE; expanded?: boolean }
+>({
   key: "labelPaths",
-  get: (params) => ({ get }) => {
+  get: ({ expanded = true, ...params }) => ({ get }) => {
     const fields = get(labelFields(params));
     return fields.map((path) => {
       const labelField = get(field(path));
@@ -205,7 +208,7 @@ export const labelPaths = selectorFamily<string[], { space?: State.SPACE }>({
       const typePath = labelField.embeddedDocType.split(".");
       const type = typePath[typePath.length - 1];
 
-      if (type in LABEL_LIST) {
+      if (expanded && type in LABEL_LIST) {
         return `${path}.${LABEL_LIST[type]}`;
       }
 

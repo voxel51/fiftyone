@@ -134,7 +134,9 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
   const tagText = useTagText(true);
-  const labelPaths = useRecoilValue(schemaAtoms.labelPaths({}));
+  const labelPaths = useRecoilValue(
+    schemaAtoms.labelPaths({ expanded: false })
+  );
 
   useSampleUpdate(lookerRef);
   const theme = useTheme();
