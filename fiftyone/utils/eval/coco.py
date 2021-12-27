@@ -207,9 +207,13 @@ class COCOEvaluation(DetectionEvaluation):
                 samples=samples,
             )
 
-        precision, recall, iou_threshs, classes = _compute_pr_curves(
-            samples, config, classes=classes
-        )
+        (
+            precision,
+            recall,
+            thresholds,
+            iou_threshs,
+            classes,
+        ) = _compute_pr_curves(samples, config, classes=classes)
 
         return COCODetectionResults(
             matches,
@@ -217,6 +221,7 @@ class COCOEvaluation(DetectionEvaluation):
             recall,
             iou_threshs,
             classes,
+            thresholds=thresholds,
             eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
@@ -238,6 +243,8 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
+        thresholds (None): an optional array of decision thresholds of shape
+            ``num_iou_threshs x num_classes x num_recall``
         eval_key (None): the evaluation key for this evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
@@ -254,6 +261,7 @@ class COCODetectionResults(DetectionResults):
         recall,
         iou_threshs,
         classes,
+        thresholds=None,
         eval_key=None,
         gt_field=None,
         pred_field=None,
@@ -269,9 +277,14 @@ class COCODetectionResults(DetectionResults):
             missing=missing,
             samples=samples,
         )
+
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
         self.iou_threshs = np.asarray(iou_threshs)
+        self.thresholds = (
+            np.asarray(thresholds) if thresholds is not None else None
+        )
+
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
     def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
@@ -300,12 +313,25 @@ class COCODetectionResults(DetectionResults):
             classes = self.classes[inds]
 
         precisions = []
+
+        has_thresholds = self.thresholds is not None
+        thresholds = [] if has_thresholds else None
+
         for c in classes:
             class_ind = self._get_class_index(c)
             precisions.append(np.mean(self.precision[:, class_ind], axis=0))
+            if has_thresholds:
+                thresholds.append(
+                    np.mean(self.thresholds[:, class_ind], axis=0)
+                )
 
         return fop.plot_pr_curves(
-            precisions, self.recall, classes, backend=backend, **kwargs
+            precisions,
+            self.recall,
+            classes,
+            thresholds=thresholds,
+            backend=backend,
+            **kwargs,
         )
 
     def mAP(self, classes=None):
@@ -335,13 +361,18 @@ class COCODetectionResults(DetectionResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
+        precision = d["precision"]
+        recall = d["recall"]
+        iou_threshs = d["iou_threshs"]
+        thresholds = d.get("thresholds", None)
         return super()._from_dict(
             d,
             samples,
             config,
-            precision=d["precision"],
-            recall=d["recall"],
-            iou_threshs=d["iou_threshs"],
+            precision=precision,
+            recall=recall,
+            iou_threshs=iou_threshs,
+            thresholds=thresholds,
             **kwargs,
         )
 
@@ -643,6 +674,7 @@ def _compute_pr_curves(samples, config, classes=None):
     # Compute precision-recall
     # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
     precision = -np.ones((num_threshs, num_classes, 101))
+    thresholds = -np.ones((num_threshs, num_classes, 101))
     recall = np.linspace(0, 1, 101)
     for idx, _thresh_matches in enumerate(thresh_matches):
         for c, matches in _thresh_matches.items():
@@ -654,8 +686,8 @@ def _compute_pr_curves(samples, config, classes=None):
 
             tp = matches["tp"]
             fp = matches["fp"]
-            tp_fp = [1] * len(tp) + [0] * len(fp)
-            confs = [m[3] for m in tp] + [m[3] for m in fp]
+            tp_fp = np.array([1] * len(tp) + [0] * len(fp))
+            confs = np.array([m[3] for m in tp] + [m[3] for m in fp])
             if None in confs:
                 raise ValueError(
                     "All predicted objects must have their `confidence` "
@@ -663,30 +695,36 @@ def _compute_pr_curves(samples, config, classes=None):
                     "curves"
                 )
 
-            inds = np.argsort(-np.array(confs), kind="mergesort")
-            tp_fp = np.array(tp_fp)[inds]
+            inds = np.argsort(-confs, kind="mergesort")
+            tp_fp = tp_fp[inds]
+            confs = confs[inds]
+
             tp_sum = np.cumsum(tp_fp).astype(dtype=float)
             total = np.arange(1, len(tp_fp) + 1).astype(dtype=float)
 
             pre = tp_sum / total
             rec = tp_sum / num_gt
 
-            q = np.zeros(101)
             for i in range(len(pre) - 1, 0, -1):
                 if pre[i] > pre[i - 1]:
                     pre[i - 1] = pre[i]
+
+            q = np.zeros(101)
+            t = np.zeros(101)
 
             inds = np.searchsorted(rec, recall, side="left")
 
             try:
                 for ri, pi in enumerate(inds):
                     q[ri] = pre[pi]
+                    t[ri] = confs[pi]
             except:
                 pass
 
             precision[idx][c_idx] = q
+            thresholds[idx][c_idx] = t
 
-    return precision, recall, iou_threshs, classes
+    return precision, recall, thresholds, iou_threshs, classes
 
 
 def _copy_labels(labels):
