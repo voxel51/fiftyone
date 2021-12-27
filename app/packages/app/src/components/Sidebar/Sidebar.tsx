@@ -10,6 +10,7 @@ import { EntryKind, SidebarEntry, useEntries } from "./utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
+import { disabledPaths } from "./recoil";
 
 const MARGIN = 3;
 
@@ -214,11 +215,14 @@ const measureGroups = (
 
 const isDisabledEntry = (
   entry: SidebarEntry,
+  disabled: Set<string>,
   excludeGroups: boolean = false
 ) => {
   if (entry.kind === EntryKind.PATH) {
     return (
-      entry.path.startsWith("tags.") || entry.path.startsWith("_label_tags.")
+      entry.path.startsWith("tags.") ||
+      entry.path.startsWith("_label_tags.") ||
+      disabled.has(entry.path)
     );
   }
 
@@ -227,7 +231,11 @@ const isDisabledEntry = (
   }
 
   if (excludeGroups && entry.kind === EntryKind.GROUP) {
-    return entry.name === "tags" || entry.name === "label tags";
+    return (
+      entry.name === "tags" ||
+      entry.name === "label tags" ||
+      entry.name === "other"
+    );
   }
 
   return false;
@@ -237,7 +245,8 @@ const getAfterKey = (
   activeKey: string,
   items: InteractiveItems,
   order: string[],
-  direction: Direction
+  direction: Direction,
+  disabled: Set<string>
 ): string | null => {
   if (!items[activeKey]) {
     return;
@@ -251,7 +260,7 @@ const getAfterKey = (
     : measureEntries(activeKey, items, order);
 
   data = data.filter(
-    ({ key }) => !key || !isDisabledEntry(items[key].entry, !isGroup)
+    ({ key }) => !key || !isDisabledEntry(items[key].entry, disabled, !isGroup)
   );
 
   const { top } = items[activeKey].el.getBoundingClientRect();
@@ -279,7 +288,7 @@ const getAfterKey = (
   if (up && !isGroup) {
     filtered = filtered.filter(({ key }) => {
       const prev = order[order.indexOf(key) - 1];
-      return !prev || !isDisabledEntry(items[prev].entry);
+      return !prev || !isDisabledEntry(items[prev].entry, disabled);
     });
   }
 
@@ -302,7 +311,7 @@ const getAfterKey = (
   }
 
   const first = order.filter(
-    (key) => !isDisabledEntry(items[key].entry, true)
+    (key) => !isDisabledEntry(items[key].entry, disabled, true)
   )[0];
   if (order.indexOf(result) <= order.indexOf(first)) {
     if (up) return order[order.indexOf(first) + 1];
@@ -384,6 +393,7 @@ const InteractiveSidebar = ({
   const [width, setWidth] = useRecoilState(sidebarWidth(modal));
   const shown = useRecoilValue(sidebarVisible(modal));
   const [entries, setEntries] = useEntries(modal);
+  const disabled = modal ? new Set<string>() : useRecoilValue(disabledPaths);
 
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
@@ -418,7 +428,8 @@ const InteractiveSidebar = ({
       down.current,
       items.current,
       lastOrder.current,
-      direction
+      direction,
+      disabled
     );
 
     let entry = items.current[down.current].entry;

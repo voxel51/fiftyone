@@ -43,16 +43,13 @@ const RegularEntry = React.forwardRef(
   ) => {
     const canCommit = useRef(false);
 
-    const style = backgroundColor ? { backgroundColor } : {};
-    style.cursor = clickable ? "pointer" : "unset";
-
     return (
       <Container
         ref={ref}
         onMouseDown={() => (canCommit.current = true)}
         onMouseMove={() => (canCommit.current = false)}
         onMouseUp={(event) => canCommit.current && onClick && onClick(event)}
-        style={style}
+        style={{ backgroundColor, cursor: clickable ? "poointer" : "unser" }}
         title={title}
       >
         <Header style={{ justifyContent: left ? "left" : "space-between" }}>

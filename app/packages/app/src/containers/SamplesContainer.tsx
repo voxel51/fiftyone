@@ -61,7 +61,7 @@ const SamplesContainer = React.memo(() => {
                   modal={false}
                   path={entry.path}
                   group={group}
-                  disabled={disabled.includes(entry.path)}
+                  disabled={disabled.has(entry.path)}
                   onFocus={() => {
                     controller.set({ zIndex: "1" });
                   }}
@@ -70,7 +70,7 @@ const SamplesContainer = React.memo(() => {
                   }}
                 />
               ),
-            disabled: isTag || isLabelTag || disabled.includes(entry.path),
+            disabled: isTag || isLabelTag || disabled.has(entry.path),
           };
         case EntryKind.GROUP:
           const isTags = entry.name === "tags";

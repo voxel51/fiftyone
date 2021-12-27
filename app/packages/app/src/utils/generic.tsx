@@ -68,7 +68,11 @@ export const prettify = (
         return v;
       }
 
-      return <ExternalLink href={url.toString()}>{v}</ExternalLink>;
+      return (
+        <ExternalLink title={v} href={url.toString()}>
+          {v}
+        </ExternalLink>
+      );
     }
     return v;
   } else if (typeof v === "number") {

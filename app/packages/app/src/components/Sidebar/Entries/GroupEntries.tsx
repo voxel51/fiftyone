@@ -32,8 +32,8 @@ import { PillButton } from "../../utils";
 
 import { groupShown, sidebarGroup, sidebarGroups } from "../recoil";
 
-import { MATCH_LABEL_TAGS, validateGroupName } from "./utils";
 import { elementNames } from "../../../recoil/view";
+import { MATCH_LABEL_TAGS, validateGroupName } from "../utils";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",

@@ -24,11 +24,11 @@ const ScalarDiv = styled.div`
 `;
 
 const ScalarValueEntry = ({
-  path,
   value,
+  path,
 }: {
   path: string;
-  children: React.ReactNode;
+  value: unknown;
 }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
@@ -42,7 +42,7 @@ const ScalarValueEntry = ({
       heading={null}
     >
       <ScalarDiv>
-        <div>{value}</div>
+        <div>{prettify(value as string)}</div>
         <div
           style={{
             fontSize: "0.8rem",
@@ -73,7 +73,6 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
     return data ? data.map((value) => prettify(value as string)) : [];
   }, [data]);
   const expandable = values && values.length;
-
   const count = prettify(values.length);
 
   return (
@@ -116,11 +115,16 @@ const PathValueEntry = ({ path }: { path: string }) => {
   const field = useRecoilValue(schemaAtoms.field(path));
   let { sample: data } = useRecoilValue(atoms.modal);
 
-  path.split(".").forEach((key) => (data = data[key]));
+  for (const key of path.split(".")) {
+    if (data === undefined) {
+      break;
+    }
+
+    data = data[key];
+  }
 
   if (field.ftype !== LIST_FIELD) {
-    const value = prettify((data as unknown) as string);
-    return <ScalarValueEntry path={path}>{value}</ScalarValueEntry>;
+    return <ScalarValueEntry path={path} value={data as unknown} />;
   }
 
   return <ListValueEntry path={path} data={(data as unknown) as unknown[]} />;

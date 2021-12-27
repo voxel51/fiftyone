@@ -58,7 +58,6 @@ const useStateUpdate = () => {
 
       if (state.dataset) {
         const groups = resolveGroups(state.dataset);
-        console.log(groups);
         const current = get(sidebarGroupsDefinition(false));
 
         if (JSON.stringify(groups) !== JSON.stringify(current)) {

@@ -25,6 +25,7 @@ import {
   SidebarEntry,
   TailEntry,
 } from "./utils";
+import { modal } from "../../recoil/atoms";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   {
@@ -304,7 +305,7 @@ export const sidebarEntries = selectorFamily<
   },
 });
 
-export const disabledPaths = selector<string[]>({
+export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
     const paths = get(fieldPaths({ ftype: DICT_FIELD }));
@@ -319,8 +320,7 @@ export const disabledPaths = selector<string[]>({
           .forEach(({ name }) => paths.push(`${prefix}.${name}`));
       }
     );
-
-    return paths;
+    return new Set(paths);
   },
 });
 

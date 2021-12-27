@@ -3,8 +3,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { sidebarEntries, sidebarGroupNames } from "../recoil";
-import { EntryKind } from "../utils";
-import { validateGroupName } from "./utils";
+import { EntryKind, validateGroupName } from "../utils";
 
 const AddGroupDiv = styled.div`
   box-sizing: border-box;

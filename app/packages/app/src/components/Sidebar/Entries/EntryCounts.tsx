@@ -6,8 +6,7 @@ import { matchedTags } from "../../../recoil/filters";
 import { State } from "../../../recoil/types";
 
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
-
-import { MATCH_LABEL_TAGS } from "./utils";
+import { MATCH_LABEL_TAGS } from "../utils";
 
 export const PathEntryCounts = ({
   modal,
