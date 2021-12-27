@@ -539,8 +539,6 @@ def plot_pr_curves(
         avg_precision = avg_precisions[idx]
         label = "%s (AP = %.3f)" % (_class, avg_precision)
 
-        params = {}
-
         if thresholds is not None:
             customdata = thresholds[idx]
         else:
@@ -628,7 +626,11 @@ def plot_roc_curve(
 
     figure.add_trace(
         go.Scatter(
-            x=fpr, y=tpr, hovertemplate=hovertemplate, customdata=thresholds
+            x=fpr,
+            y=tpr,
+            hovertemplate=hovertemplate,
+            customdata=thresholds,
+            **params,
         )
     )
 

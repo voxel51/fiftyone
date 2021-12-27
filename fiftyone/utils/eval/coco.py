@@ -10,6 +10,8 @@ from collections import defaultdict
 
 import numpy as np
 
+import eta.core.utils as etau
+
 import fiftyone.core.plots as fop
 
 from .detection import (
@@ -241,7 +243,7 @@ class COCODetectionResults(DetectionResults):
         precision: an array of precision values of shape
             ``num_iou_threshs x num_classes x num_recall``
         recall: an array of recall values
-        iou_threshs: the list of IoU thresholds
+        iou_threshs: an array of IoU thresholds
         classes: the list of possible classes
         thresholds (None): an optional array of decision thresholds of shape
             ``num_iou_threshs x num_classes x num_recall``
@@ -287,12 +289,19 @@ class COCODetectionResults(DetectionResults):
 
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
-    def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
+    def plot_pr_curves(
+        self, classes=None, iou_thresh=None, backend="plotly", **kwargs
+    ):
         """Plots precision-recall (PR) curves for the results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
-                default, top 3 AP classes will be plotted
+                default, the top 3 AP classes will be plotted
+            iou_thresh (None): an optional IoU threshold or list of IoU
+                thresholds for which to plot curves. If multiple thresholds are
+                provided, precision data is averaged across these thresholds.
+                By default, precition data is averaged over all IoU thresholds.
+                Refer to :attr:`iou_threshs` to see the available thresholds
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
@@ -308,9 +317,11 @@ class COCODetectionResults(DetectionResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        if not classes:
+        if classes is None:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
             classes = self.classes[inds]
+
+        thresh_inds = self._get_iou_thresh_inds(iou_thresh=iou_thresh)
 
         precisions = []
 
@@ -319,10 +330,12 @@ class COCODetectionResults(DetectionResults):
 
         for c in classes:
             class_ind = self._get_class_index(c)
-            precisions.append(np.mean(self.precision[:, class_ind], axis=0))
+            precisions.append(
+                np.mean(self.precision[thresh_inds, class_ind], axis=0)
+            )
             if has_thresholds:
                 thresholds.append(
-                    np.mean(self.thresholds[:, class_ind], axis=0)
+                    np.mean(self.thresholds[thresh_inds, class_ind], axis=0)
                 )
 
         return fop.plot_pr_curves(
@@ -359,6 +372,35 @@ class COCODetectionResults(DetectionResults):
 
         return np.mean(classwise_AP)
 
+    def _get_iou_thresh_inds(self, iou_thresh=None):
+        if iou_thresh is None:
+            return np.arange(len(self.iou_threshs))
+
+        if etau.is_numeric(iou_thresh):
+            iou_threshs = [iou_thresh]
+        else:
+            iou_threshs = iou_thresh
+
+        thresh_inds = []
+        for iou_thresh in iou_threshs:
+            inds = np.where(np.abs(iou_thresh - self.iou_threshs) < 1e-6)[0]
+            if inds.size == 0:
+                raise ValueError(
+                    "Invalid IoU threshold %f. Refer to `results.iou_threshs` "
+                    "to see the available values" % iou_thresh
+                )
+
+            thresh_inds.append(inds[0])
+
+        return thresh_inds
+
+    def _get_class_index(self, label):
+        inds = np.where(self.classes == label)[0]
+        if inds.size == 0:
+            raise ValueError("Class '%s' not found" % label)
+
+        return inds[0]
+
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
         precision = d["precision"]
@@ -375,13 +417,6 @@ class COCODetectionResults(DetectionResults):
             thresholds=thresholds,
             **kwargs,
         )
-
-    def _get_class_index(self, label):
-        inds = np.where(self.classes == label)[0]
-        if inds.size == 0:
-            raise ValueError("Class '%s' not found" % label)
-
-        return inds[0]
 
 
 _NO_MATCH_ID = ""

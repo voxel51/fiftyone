@@ -323,7 +323,7 @@ class OpenImagesDetectionResults(DetectionResults):
 
         Args:
             classes (None): a list of classes to generate curves for. By
-                default, top 3 AP classes will be plotted
+                default, the top 3 AP classes will be plotted
             num_points (101): the number of linearly spaced recall values to
                 plot
             backend ("plotly"): the plotting backend to use. Supported values
@@ -753,11 +753,13 @@ def _compute_pr_curves(matches, classes=None):
 
         pre = tp_sum / total
         rec = tp_sum / num_gt
-        conf0 = confs[0] if confs.size > 0 else 1
 
-        pre = np.concatenate([[0], pre, [0]])
-        rec = np.concatenate([[0], rec, [1]])
+        pre0 = pre[0] if pre.size > 0 else 1
+        conf0 = max(1, confs[0]) if confs.size > 0 else 1
+
+        pre = np.concatenate([[pre0], pre, [0]])
         confs = np.concatenate([[conf0], confs, [0]])
+        rec = np.concatenate([[0], rec, [1]])
 
         # Ensure precision is nondecreasing
         for i in range(len(pre) - 1, 0, -1):

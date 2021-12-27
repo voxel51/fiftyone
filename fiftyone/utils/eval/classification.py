@@ -697,6 +697,7 @@ class BinaryClassificationResults(ClassificationResults):
             pos_label=self._pos_label,
             sample_weight=self.weights,
         )
+        thresholds = np.concatenate([thresholds, [max(1, thresholds[-1])]])
         avg_precision = self.average_precision(average=average)
         label = "AP = %.2f" % avg_precision
 
@@ -735,6 +736,7 @@ class BinaryClassificationResults(ClassificationResults):
             pos_label=self._pos_label,
             sample_weight=self.weights,
         )
+        thresholds[0] = max(1, thresholds[1])
         roc_auc = skm.auc(fpr, tpr)
 
         return fop.plot_roc_curve(
