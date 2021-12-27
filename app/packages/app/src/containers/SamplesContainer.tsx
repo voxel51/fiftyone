@@ -8,6 +8,7 @@ import FieldsSidebar, {
   Entries,
   SidebarEntry,
   useTagText,
+  disabledPaths,
 } from "../components/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
@@ -33,6 +34,7 @@ const Container = styled.div`
 const SamplesContainer = React.memo(() => {
   const tagText = useTagText(false);
   const showSidebar = useRecoilValue(atoms.sidebarVisible(false));
+  const disabled = useRecoilValue(disabledPaths);
 
   const renderGridEntry = useCallback(
     (
@@ -59,6 +61,7 @@ const SamplesContainer = React.memo(() => {
                   modal={false}
                   path={entry.path}
                   group={group}
+                  disabled={disabled.includes(entry.path)}
                   onFocus={() => {
                     controller.set({ zIndex: "1" });
                   }}
@@ -67,7 +70,7 @@ const SamplesContainer = React.memo(() => {
                   }}
                 />
               ),
-            disabled: isTag || isLabelTag,
+            disabled: isTag || isLabelTag || disabled.includes(entry.path),
           };
         case EntryKind.GROUP:
           const isTags = entry.name === "tags";
@@ -87,6 +90,7 @@ const SamplesContainer = React.memo(() => {
                   name={entry.name}
                   modal={false}
                   dragging={dragging}
+                  mutable={entry.name !== "other"}
                 />
               ),
             disabled: false,

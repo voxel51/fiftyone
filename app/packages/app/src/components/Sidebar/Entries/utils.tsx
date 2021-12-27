@@ -12,10 +12,11 @@ export const MATCH_LABEL_TAGS = {
 };
 
 const RESERVED_GROUPS = new Set([
-  "sample tags",
-  "label tags",
-  "patch tags",
   "frame tags",
+  "label tags",
+  "other",
+  "patch tags",
+  "sample tags",
   "tags",
 ]);
 

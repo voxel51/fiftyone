@@ -16,7 +16,6 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
-  justify-content: space-between;
 `;
 
 type RegularEntryProps = {
@@ -25,6 +24,7 @@ type RegularEntryProps = {
   children?: ReactNode;
   heading: ReactNode;
   onClick?: MouseEventHandler;
+  left?: boolean;
   title: string;
 };
 
@@ -37,6 +37,7 @@ const RegularEntry = React.forwardRef(
       onClick,
       title,
       clickable,
+      left = false,
     }: RegularEntryProps,
     ref
   ) => {
@@ -54,7 +55,9 @@ const RegularEntry = React.forwardRef(
         style={style}
         title={title}
       >
-        <Header>{heading}</Header>
+        <Header style={{ justifyContent: left ? "left" : "space-between" }}>
+          {heading}
+        </Header>
         {children}
       </Container>
     );

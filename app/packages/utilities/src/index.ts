@@ -235,6 +235,7 @@ export const AGGS = {
 export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 export const DATE_FIELD = "fiftyone.core.fields.DateField";
 export const DATE_TIME_FIELD = "fiftyone.core.fields.DateTimeField";
+export const DICT_FIELD = "fiftyone.core.fields.DictField";
 export const EMBEDDED_DOCUMENT_FIELD =
   "fiftyone.core.fields.EmbeddedDocumentField";
 export const FLOAT_FIELD = "fiftyone.core.fields.FloatField";

@@ -129,12 +129,14 @@ const FilterableEntry = React.memo(
     path,
     onFocus,
     onBlur,
+    disabled = false,
   }: {
     modal: boolean;
     path: string;
     group: string;
     onFocus?: () => void;
     onBlur?: () => void;
+    disabled?: boolean;
   }) => {
     const [expanded, setExpanded] = useState(false);
     const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
@@ -162,46 +164,50 @@ const FilterableEntry = React.memo(
 
     return (
       <RegularEntry
-        title={`${path}: ${
+        title={`${path} (${
           field.embeddedDocType ? field.embeddedDocType : field.ftype
-        }`}
+        })`}
         heading={
           <>
-            <Checkbox
-              disableRipple={true}
-              checked={active}
-              title={`Show ${path}`}
-              style={{
-                color: active ? color : theme.fontDark,
-                padding: 0,
-              }}
-              key="checkbox"
-            />
+            {!disabled && (
+              <Checkbox
+                disableRipple={true}
+                checked={active}
+                title={`Show ${path}`}
+                style={{
+                  color: active ? color : theme.fontDark,
+                  padding: 0,
+                }}
+                key="checkbox"
+              />
+            )}
             <NameAndCountContainer>
               <span key="path">{path}</span>
               <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-              {expandable.state !== "loading" && expandable.contents && (
-                <Arrow
-                  key="arrow"
-                  style={{ cursor: "pointer", margin: 0 }}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setExpanded(!expanded);
-                  }}
-                  onMouseDown={(event) => {
-                    event.stopPropagation();
-                    event.preventDefault();
-                  }}
-                />
-              )}
+              {!disabled &&
+                expandable.state !== "loading" &&
+                expandable.contents && (
+                  <Arrow
+                    key="arrow"
+                    style={{ cursor: "pointer", margin: 0 }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setExpanded(!expanded);
+                    }}
+                    onMouseDown={(event) => {
+                      event.stopPropagation();
+                      event.preventDefault();
+                    }}
+                  />
+                )}
             </NameAndCountContainer>
           </>
         }
         {...useSpring({
           backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
         })}
-        onClick={() => setActive(!active)}
+        onClick={!disabled ? () => setActive(!active) : null}
       >
         <Suspense fallback={null}>
           {expanded &&

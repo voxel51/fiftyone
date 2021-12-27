@@ -1,5 +1,6 @@
-import { atomFamily, DefaultValue, selectorFamily } from "recoil";
+import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
 import {
+  DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
@@ -11,6 +12,7 @@ import {
 } from "@fiftyone/utilities";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
+import { field, fieldPaths, fields } from "../../recoil/schema";
 import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import { http } from "../../shared/connection";
@@ -64,6 +66,7 @@ const DEFAULT_IMAGE_GROUPS = [
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
+  { name: "other", paths: [] },
 ];
 
 const DEFAULT_VIDEO_GROUPS = [
@@ -73,6 +76,7 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "labels", paths: [] },
   { name: "frame labels", paths: [] },
   { name: "primitives", paths: [] },
+  { name: "other", paths: [] },
 ];
 
 export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
@@ -113,6 +117,8 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
     dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
   );
 
+  let other = dataset.sampleFields.reduce(fieldsReducer([DICT_FIELD]), []);
+
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
     .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
@@ -122,8 +128,28 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
         .map((subfield) => `${name}.${subfield}`)
         .filter((path) => !present.has(path));
 
+      other = [
+        ...other,
+        ...(fields[name].fields || [])
+          .reduce(fieldsReducer([DICT_FIELD]), [])
+          .map((subfield) => `${name}.${subfield}`),
+      ];
+
       updater(name, fieldPaths);
     });
+
+  other = [
+    ...other,
+    ...dataset.frameFields.reduce(
+      fieldsReducer([...VALID_PRIMITIVE_TYPES, DICT_FIELD]),
+      []
+    ),
+  ];
+
+  updater(
+    "other",
+    other.filter((path) => !present.has(path))
+  );
 
   return groups;
 };
@@ -158,10 +184,11 @@ export const sidebarGroups = selectorFamily<
 >({
   key: "sidebarGroups",
   get: ({ modal, loadingTags }) => ({ get }) => {
-    let groups = get(sidebarGroupsDefinition(modal)).map(([name, paths]) => [
-      name,
-      [...paths],
-    ]) as State.SidebarGroups;
+    let groups = get(sidebarGroupsDefinition(modal))
+      .map(([name, paths]) => [name, [...paths]])
+      .filter(
+        ([name, entries]) => entries.length || name !== "other"
+      ) as State.SidebarGroups;
 
     if (!groups.length) return [];
 
@@ -251,7 +278,7 @@ export const sidebarEntries = selectorFamily<
 
     return [...entries, { kind: EntryKind.TAIL } as TailEntry];
   },
-  set: (modal) => ({ get, set }, value) => {
+  set: (modal) => ({ set }, value) => {
     if (value instanceof DefaultValue) return;
     set(
       sidebarGroups(modal),
@@ -274,6 +301,26 @@ export const sidebarEntries = selectorFamily<
         return result;
       }, [])
     );
+  },
+});
+
+export const disabledPaths = selector<string[]>({
+  key: "disabledPaths",
+  get: ({ get }) => {
+    const paths = get(fieldPaths({ ftype: DICT_FIELD }));
+
+    get(fields({ ftype: EMBEDDED_DOCUMENT_FIELD })).forEach(
+      ({ fields, name: prefix }) => {
+        Object.values(fields)
+          .filter(
+            ({ ftype, subfield }) =>
+              ftype === DICT_FIELD || subfield === DICT_FIELD
+          )
+          .forEach(({ name }) => paths.push(`${prefix}.${name}`));
+      }
+    );
+
+    return paths;
   },
 });
 

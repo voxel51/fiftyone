@@ -212,7 +212,10 @@ const measureGroups = (
   return { data, activeHeight };
 };
 
-const isTagEntry = (entry: SidebarEntry, excludeGroups: boolean = false) => {
+const isDisabledEntry = (
+  entry: SidebarEntry,
+  excludeGroups: boolean = false
+) => {
   if (entry.kind === EntryKind.PATH) {
     return (
       entry.path.startsWith("tags.") || entry.path.startsWith("_label_tags.")
@@ -248,7 +251,7 @@ const getAfterKey = (
     : measureEntries(activeKey, items, order);
 
   data = data.filter(
-    ({ key }) => !key || !isTagEntry(items[key].entry, !isGroup)
+    ({ key }) => !key || !isDisabledEntry(items[key].entry, !isGroup)
   );
 
   const { top } = items[activeKey].el.getBoundingClientRect();
@@ -276,7 +279,7 @@ const getAfterKey = (
   if (up && !isGroup) {
     filtered = filtered.filter(({ key }) => {
       const prev = order[order.indexOf(key) - 1];
-      return !prev || !isTagEntry(items[prev].entry);
+      return !prev || !isDisabledEntry(items[prev].entry);
     });
   }
 
@@ -298,7 +301,9 @@ const getAfterKey = (
     return order[index];
   }
 
-  const first = order.filter((key) => !isTagEntry(items[key].entry, true))[0];
+  const first = order.filter(
+    (key) => !isDisabledEntry(items[key].entry, true)
+  )[0];
   if (order.indexOf(result) <= order.indexOf(first)) {
     if (up) return order[order.indexOf(first) + 1];
     return first;

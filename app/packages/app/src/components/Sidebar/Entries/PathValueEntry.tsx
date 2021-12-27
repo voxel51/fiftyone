@@ -23,7 +23,13 @@ const ScalarDiv = styled.div`
   }
 `;
 
-const ScalarValueEntry = ({ path, value }: { path: string; value: string }) => {
+const ScalarValueEntry = ({
+  path,
+  value,
+}: {
+  path: string;
+  children: React.ReactNode;
+}) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
@@ -114,7 +120,7 @@ const PathValueEntry = ({ path }: { path: string }) => {
 
   if (field.ftype !== LIST_FIELD) {
     const value = prettify((data as unknown) as string);
-    return <ScalarValueEntry path={path} value={value} />;
+    return <ScalarValueEntry path={path}>{value}</ScalarValueEntry>;
   }
 
   return <ListValueEntry path={path} data={(data as unknown) as unknown[]} />;
