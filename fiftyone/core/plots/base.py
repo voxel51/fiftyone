@@ -177,12 +177,15 @@ def plot_regressions(
     )
 
 
-def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
+def plot_pr_curve(
+    precision, recall, scores=None, label=None, backend="plotly", **kwargs,
+):
     """Plots a precision-recall (PR) curve.
 
     Args:
         precision: an array of precision values
         recall: an array of recall values
+        scores (None): an optional array of confidence thresholds
         label (None): a label for the curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -202,13 +205,23 @@ def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curve as _plot_pr_curve
+
+        if scores is not None:
+            logger.warning(
+                "Ignoring unsupported argument `scores` for the 'matplotlib' "
+                "backend"
+            )
     else:
         from .plotly import plot_pr_curve as _plot_pr_curve
+
+        kwargs.update(dict(scores=scores))
 
     return _plot_pr_curve(precision, recall, label=label, **kwargs)
 
 
-def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
+def plot_pr_curves(
+    precisions, recall, classes, scores=None, backend="plotly", **kwargs
+):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -216,6 +229,8 @@ def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
             precision values
         recall: an array of recall values
         classes: the list of classes
+        scores (None): an optional ``num_classes x num_recalls`` array of
+            confidence thresholds
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
@@ -234,18 +249,29 @@ def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curves as _plot_pr_curves
+
+        if scores is not None:
+            logger.warning(
+                "Ignoring unsupported argument `scores` for the 'matplotlib' "
+                "backend"
+            )
     else:
         from .plotly import plot_pr_curves as _plot_pr_curves
+
+        kwargs.update(dict(scores=scores))
 
     return _plot_pr_curves(precisions, recall, classes, **kwargs)
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
+def plot_roc_curve(
+    fpr, tpr, scores=None, roc_auc=None, backend="plotly", **kwargs
+):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
         fpr: an array of false postive rates
         tpr: an array of true postive rates
+        scores (None): an optional array of confidence thresholds
         roc_auc (None): the area under the ROC curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -265,8 +291,16 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_roc_curve as _plot_roc_curve
+
+        if scores is not None:
+            logger.warning(
+                "Ignoring unsupported argument `scores` for the 'matplotlib' "
+                "backend"
+            )
     else:
         from .plotly import plot_roc_curve as _plot_roc_curve
+
+        kwargs.update(dict(scores=scores))
 
     return _plot_roc_curve(fpr, tpr, roc_auc=roc_auc, **kwargs)
 
