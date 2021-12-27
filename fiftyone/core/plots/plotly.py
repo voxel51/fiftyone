@@ -399,7 +399,7 @@ def plot_regressions(
 def plot_pr_curve(
     precision,
     recall,
-    scores=None,
+    thresholds=None,
     label=None,
     style="area",
     figure=None,
@@ -410,7 +410,7 @@ def plot_pr_curve(
     Args:
         precision: an array of precision values
         recall: an array of recall values
-        scores (None): an optional array of confidence thresholds
+        thresholds (None): an optional array of decision thresholds
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
@@ -443,7 +443,7 @@ def plot_pr_curve(
         "precision: %{y:.3f}",
     ]
 
-    if scores is not None:
+    if thresholds is not None:
         hover_lines.append("threshold: %{customdata:.3f}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
@@ -453,7 +453,7 @@ def plot_pr_curve(
             x=recall,
             y=precision,
             hovertemplate=hovertemplate,
-            customdata=scores,
+            customdata=thresholds,
             **params,
         )
     )
@@ -485,7 +485,7 @@ def plot_pr_curve(
 
 
 def plot_pr_curves(
-    precisions, recall, classes, scores=None, figure=None, **kwargs
+    precisions, recall, classes, thresholds=None, figure=None, **kwargs
 ):
     """Plots a set of per-class precision-recall (PR) curves.
 
@@ -494,8 +494,8 @@ def plot_pr_curves(
             precision values
         recall: an array of recall values
         classes: the list of classes
-        scores (None): an optional ``num_classes x num_recalls`` array of
-            confidence thresholds
+        thresholds (None): an optional ``num_classes x num_recalls`` array of
+            decision thresholds
         figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
             to which to add the plots
         **kwargs: optional keyword arguments for
@@ -522,7 +522,7 @@ def plot_pr_curves(
         "precision: %{y:.3f}",
     ]
 
-    if scores is not None:
+    if thresholds is not None:
         hover_lines.append("threshold: %{customdata:.3f}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
@@ -541,8 +541,8 @@ def plot_pr_curves(
 
         params = {}
 
-        if scores is not None:
-            customdata = scores[idx]
+        if thresholds is not None:
+            customdata = thresholds[idx]
         else:
             customdata = None
 
@@ -578,14 +578,20 @@ def plot_pr_curves(
 
 
 def plot_roc_curve(
-    fpr, tpr, scores=None, roc_auc=None, style="area", figure=None, **kwargs
+    fpr,
+    tpr,
+    thresholds=None,
+    roc_auc=None,
+    style="area",
+    figure=None,
+    **kwargs,
 ):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
         fpr: an array of false postive rates
         tpr: an array of true postive rates
-        scores (None): an optional array of confidence thresholds
+        thresholds (None): an optional array of decision thresholds
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
@@ -615,14 +621,14 @@ def plot_roc_curve(
 
     hover_lines = ["fpr: %{x:.3f}", "tpr: %{y:.3f}"]
 
-    if scores is not None:
+    if thresholds is not None:
         hover_lines.append("threshold: %{customdata:.3f}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
     figure.add_trace(
         go.Scatter(
-            x=fpr, y=tpr, hovertemplate=hovertemplate, customdata=scores
+            x=fpr, y=tpr, hovertemplate=hovertemplate, customdata=thresholds
         )
     )
 
