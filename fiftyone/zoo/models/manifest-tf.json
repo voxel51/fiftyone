@@ -1333,6 +1333,44 @@
             },
             "tags": ["detection", "coco", "tf2"],
             "date_added": "2021-01-6 11:01:34"
+        },
+        {
+            "base_name": "centernet-hg104-1024-coco-tf2",
+            "base_filename": "centernet_hg104_1024x1024_coco17_tpu-32",
+            "version": null,
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 1024x1024",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 1600851968,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/centernet_hg104_1024x1024_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-26 07:04:23"
         }
     ]
 }
