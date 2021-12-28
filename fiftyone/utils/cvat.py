@@ -3658,7 +3658,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         for task_id in task_ids:
             if task_id not in existing_tasks:
-                # if not self.task_exists(task_id):
                 deleted_tasks.append(task_id)
                 logger.warning(
                     "Skipping task %d, which no longer exists", task_id
