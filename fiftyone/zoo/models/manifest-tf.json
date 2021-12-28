@@ -1340,7 +1340,7 @@
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 1024x1024",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
-            "size_bytes": 1600851968,
+            "size_bytes": 1426460092,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -1371,6 +1371,538 @@
             },
             "tags": ["detection", "coco", "tf2"],
             "date_added": "2021-12-26 07:04:23"
+        },
+        {
+            "base_name": "centernet-resnet50-v1-fpn-512-coco-tf2",
+            "base_filename": "centernet_resnet50_v1_fpn_512x512_coco17_tpu-8",
+            "version": null,
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Resnet-50-v1 backbone + FPN trained on COCO resized to 512x512",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 204067969,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/centernet_resnet50_v1_fpn_512x512_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 14:45:23"
+        },
+                {
+            "base_name": "centernet-resnet101-v1-fpn-512-coco-tf2",
+            "base_filename": "centernet_resnet101_v1_fpn_512x512_coco17_tpu-8",
+            "version": null,
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Resnet-101v1 backbone + FPN trained on COCO resized to 512x512",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 345992335,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/centernet_resnet101_v1_fpn_512x512_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 14:55:13"
+        },
+        {
+            "base_name": "centernet-resnet50-v2-512-coco-tf2",
+            "base_filename": "centernet_resnet50_v2_512x512_coco17_tpu-8",
+            "version": null,
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Resnet-50v2 backbone trained on COCO resized to 512x512",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 237977273,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/centernet_resnet50_v2_512x512_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 14:59:23"
+        },
+         {
+            "base_name": "centernet-mobilenet-v2-fpn-512-coco-tf2",
+            "base_filename": "centernet_mobilenetv2fpn_512x512_coco17_od",
+            "version": null,
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Mobilenet v2 backbone trained on COCO resized to 512x512",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 44016454,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20210210/centernet_mobilenetv2fpn_512x512_coco17_od.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 17:05:20"
+        },
+        {
+            "base_name": "efficientdet-d0-512-coco-tf2",
+            "base_filename": "efficientdet_d0_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 512x512",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 30736482,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d0_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 18:25:10"
+        },
+        {
+            "base_name": "efficientdet-d1-640-coco-tf2",
+            "base_filename": "efficientdet_d1_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 640x640",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 51839363,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d1_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 18:25:10"
+        },
+        {
+            "base_name": "efficientdet-d2-768-coco-tf2",
+            "base_filename": "efficientdet_d2_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 768x768",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 62929273,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d2_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 18:40:20"
+        },
+        {
+            "base_name": "efficientdet-d3-896-coco-tf2",
+            "base_filename": "efficientdet_d3_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 896x896",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 92858658 ,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d3_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 18:42:30"
+        },
+        {
+            "base_name": "efficientdet-d4-896-coco-tf2",
+            "base_filename": "efficientdet_d4_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 896x896",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 158496448,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d4_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 18:42:30"
+        },
+        {
+            "base_name": "efficientdet-d5-1024-coco-tf2",
+            "base_filename": "efficientdet_d5_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1024x1024",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 256286417,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d5_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 18:50:20"
+        },
+        {
+            "base_name": "efficientdet-d6-1280-coco-tf2",
+            "base_filename": "efficientdet_d6_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1280x1280",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 393872877 ,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d6_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 19:00:20"
+        },
+        {
+            "base_name": "efficientdet-d7-1536-coco-tf2",
+            "base_filename": "efficientdet_d7_coco17_tpu-32",
+            "version": null,
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1536x1536",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 394474998,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d7_coco17_tpu-32.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 19:05:20"
+        },
+        {
+            "base_name": "ssd-mobilenet-v2-320-coco17",
+            "base_filename": "ssd_mobilenet_v2_320x320_coco17_tpu-8",
+            "version": null,
+            "description": "MobileNetV2: Inverted Residuals and Linear Bottlenecks<https://arxiv.org/pdf/1801.04381.pdf> images are resized 320x320",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 46042990,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_mobilenet_v2_320x320_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 20:01:40"
+        },
+        {
+            "base_name": "ssd-mobilenet-v1-fpn-640-coco17",
+            "base_filename": "ssd_mobilenet_v1_fpn_640x640_coco17_tpu-8",
+            "version": null,
+            "description": "MobileNetV2: Inverted Residuals and Linear Bottlenecks<https://arxiv.org/pdf/1801.04381.pdf> images are resized 640x640",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 46042990,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_mobilenet_v1_fpn_640x640_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.eta.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-12-27 20:05:20"
         }
     ]
 }
