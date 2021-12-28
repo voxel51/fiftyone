@@ -1336,7 +1336,7 @@
         },
         {
             "base_name": "centernet-hg104-1024-coco-tf2",
-            "base_filename": "centernet_hg104_1024x1024_coco17_tpu-32",
+            "base_filename": "centernet_hg104_1024x1024_coco17_tpu-32.tar.gz",
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 1024x1024",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
