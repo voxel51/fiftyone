@@ -1255,7 +1255,7 @@ can be used to annotate new classes and/or attributes:
     with the shape's contents. See :ref:`this section <cvat-limitations>` for
     details.
 
-.. _cvat-restricting-edits:
+.. _cvat-restricting-label-edits:
 
 Restricting label edits
 -----------------------
