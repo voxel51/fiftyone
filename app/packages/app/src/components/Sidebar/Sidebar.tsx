@@ -589,9 +589,9 @@ const InteractiveSidebar = ({
       maxWidth={600}
       enable={{
         top: false,
-        right: true,
+        right: !modal,
         bottom: false,
-        left: false,
+        left: modal,
         topRight: false,
         bottomRight: false,
         bottomLeft: false,

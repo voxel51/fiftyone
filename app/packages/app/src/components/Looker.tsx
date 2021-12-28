@@ -17,6 +17,25 @@ import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType } from "../recoil/utils";
 import { pathFilter } from "./Filters";
+import { ModalActionsRow } from "./Actions";
+
+const Header = styled.div`
+  position: absolute;
+  top: 0;
+  display: flex;
+  padding: 0.5rem;
+  flex-direction: row-reverse;
+  overflow: visible;
+  width: 100%;
+  z-index: 1000;
+
+  background-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0),
+    30%,
+    ${({ theme }) => theme.backgroundDark}
+  );
+`;
 
 const TagBlock = styled.div`
   margin: 0;
@@ -401,7 +420,6 @@ const Looker = ({
   const { sample, dimensions, frameRate, frameNumber } = useRecoilValue(
     atoms.modal
   );
-  const fullscreen = useRecoilValue(atoms.fullscreen);
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
@@ -415,6 +433,7 @@ const Looker = ({
   const frameFieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema(State.SPACE.FRAME)
   );
+  const [showControls, setShowControls] = useState(true);
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
@@ -461,13 +480,15 @@ const Looker = ({
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
+  useEventHandler(looker, "controls", (event) => setShowControls(event.detail));
+
   useEffect(() => {
     initialRef.current = false;
   }, []);
 
   useEffect(() => {
-    looker.attach(fullscreen ? "root" : id);
-  }, [id, fullscreen]);
+    looker.attach(id);
+  }, [id]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
 
@@ -481,6 +502,11 @@ const Looker = ({
         ...style,
       }}
     >
+      {showControls && (
+        <Header>
+          <ModalActionsRow lookerRef={lookerRef} />
+        </Header>
+      )}
       {<TooltipInfo looker={looker} />}
     </div>
   );

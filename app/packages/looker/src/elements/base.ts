@@ -27,7 +27,7 @@ export abstract class BaseElement<
 > {
   children: BaseElement<State>[] = [];
   element: Element;
-  protected events: LoadedEvents = {};
+  protected readonly events: LoadedEvents = {};
 
   constructor(
     config: Readonly<State["config"]>,
@@ -88,16 +88,14 @@ export abstract class BaseElement<
   }
 
   protected removeEvents() {
-    for (const [eventType, handler] of Object.entries(this.events)) {
-      // @ts-ignore
-      this.element.removeEventListener(eventType, handler);
+    for (const eventType in this.events) {
+      this.element.removeEventListener(eventType, this.events[eventType]);
     }
   }
 
   protected attachEvents() {
-    for (const [eventType, handler] of Object.entries(this.events)) {
-      // @ts-ignore
-      this.element.addEventListener(eventType, handler);
+    for (const eventType in this.events) {
+      this.element.addEventListener(eventType, this.events[eventType]);
     }
   }
 }

@@ -5,7 +5,6 @@ import { useRecoilValue, useRecoilCallback } from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
-import { ModalActionsRow } from "../components/Actions";
 import FieldsSidebar, {
   Entries,
   EntryKind,
@@ -39,11 +38,7 @@ const Container = styled.div`
   position: relative;
   display: flex;
   justify-content: space-between;
-  width: 95vw;
-  height: 90vh;
-  max-height: 95vh;
   background-color: ${({ theme }) => theme.backgroundDark};
-  border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
 `;
 
@@ -106,23 +101,6 @@ export const useSampleUpdate = (lookerRef) => {
   );
   useMessageHandler("samples_update", handler);
 };
-
-const Header = styled.div`
-  position: absolute;
-  top: 0;
-  display: flex;
-  padding: 0.5rem;
-  flex-direction: row-reverse;
-  overflow: visible;
-  width: 100%;
-
-  background-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0),
-    30%,
-    ${({ theme }) => theme.backgroundDark}
-  );
-`;
 
 const SampleModal = ({ onClose }: Props, ref) => {
   const {
@@ -235,13 +213,13 @@ const SampleModal = ({ onClose }: Props, ref) => {
     [tagText]
   );
 
-  const fullscreen = useRecoilValue(atoms.fullscreen)
-    ? { background: theme.backgroundDark }
-    : {};
+  const screen = useRecoilValue(atoms.fullscreen)
+    ? { width: "100%", height: "100%" }
+    : { width: "95%", height: "90%", borderRadius: "3px" };
 
   return (
-    <ModalWrapper key={0} style={fullscreen}>
-      <Container style={{ zIndex: 10001 }} ref={ref}>
+    <ModalWrapper key={0}>
+      <Container ref={ref} style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
           <Looker
             key={`modal-${sampleSrc}`}
@@ -251,9 +229,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
             onPrevious={index > 0 ? () => getIndex(index - 1) : null}
             onNext={() => getIndex(index + 1)}
           />
-          <Header>
-            <ModalActionsRow lookerRef={lookerRef} />
-          </Header>
         </ContentColumn>
         <FieldsSidebar render={renderEntry} modal={true} />
       </Container>

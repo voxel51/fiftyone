@@ -261,7 +261,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   hasNext: false,
   hasPrevious: false,
   fullscreen: false,
-  zoomPad: 0.1,
+  zoomPad: 0.2,
   selected: false,
   inSelectionMode: false,
   timeZone: "UTC",

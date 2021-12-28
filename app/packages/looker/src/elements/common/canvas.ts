@@ -16,12 +16,11 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 > {
   private width: number = 0;
   private height: number = 0;
+  private hide: boolean = true;
   private mousedownCoordinates?: Coordinates;
   private mousedown: boolean = false;
-  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   private start: Coordinates = [0, 0];
   private wheelTimeout: ReturnType<typeof setTimeout> | null = null;
-  private hide: boolean = true;
   private cursor: string;
 
   getEvents(): Events<State> {
@@ -50,20 +49,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         dispatchEvent("tooltip", null);
       },
       mousemove: ({ event, update, dispatchEvent }) => {
-        if (this.hideControlsTimeout) {
-          clearTimeout(this.hideControlsTimeout);
-        }
-        this.hideControlsTimeout = setTimeout(
-          () =>
-            update(({ showOptions, hoveringControls }) => {
-              this.hideControlsTimeout = null;
-              if (!showOptions && !hoveringControls) {
-                return { showControls: false };
-              }
-              return {};
-            }),
-          3500
-        );
         update((state) => {
           if (state.config.thumbnail) {
             return {};
@@ -181,29 +166,18 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     };
   }
 
-  createHTMLElement(update) {
+  createHTMLElement() {
     const element = document.createElement("canvas");
     element.classList.add(lookerCanvas, invisible);
-    this.hideControlsTimeout = setTimeout(
-      () =>
-        update(({ showOptions, hoveringControls }) => {
-          this.hideControlsTimeout = null;
-          if (!showOptions && !hoveringControls) {
-            return { showControls: false };
-          }
-          return {};
-        }),
-      3500
-    );
     return element;
   }
 
   renderSelf({
     loaded,
-    error,
-    config: { thumbnail },
-    disabled,
     reloading,
+    error,
+    disabled,
+    config: { thumbnail },
     panning,
     windowBBox: [_, __, width, height],
     mouseIsOnOverlay,
@@ -235,14 +209,13 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = this.cursor;
     }
 
-    const hide = !loaded || disabled || reloading || error;
+    const hide = Boolean(!loaded || disabled || reloading || error);
     if (this.hide !== hide) {
       this.hide = hide;
       this.hide
         ? this.element.classList.add(invisible)
         : this.element.classList.remove(invisible);
     }
-
     return this.element;
   }
 

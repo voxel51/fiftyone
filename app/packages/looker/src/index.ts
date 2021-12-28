@@ -79,6 +79,7 @@ import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
 import { getColor } from "./color";
+import { Events } from "./elements/base";
 
 export { zoomAspectRatio } from "./zoom";
 export { freeVideos } from "./elements/util";
@@ -135,11 +136,13 @@ export abstract class Looker<
   S extends Sample = Sample
 > {
   private eventTarget: EventTarget;
+  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
+  private readonly rootEvents: Events<State>;
 
   protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
@@ -176,6 +179,29 @@ export abstract class Looker<
           windowBBox: box,
         });
     });
+
+    this.rootEvents = {};
+    const events = this.getRootEvents();
+    for (const eventType in events) {
+      this.rootEvents[eventType] = (event) =>
+        events[eventType]({
+          event,
+          update: this.updater,
+          dispatchEvent: this.dispatchEvent,
+        });
+    }
+
+    this.hideControlsTimeout = setTimeout(
+      () =>
+        this.updater(({ showOptions, hoveringControls }) => {
+          this.hideControlsTimeout = null;
+          if (!showOptions && !hoveringControls) {
+            return { showControls: false };
+          }
+          return {};
+        }),
+      3500
+    );
   }
 
   loadOverlays(sample: Sample): void {
@@ -197,7 +223,11 @@ export abstract class Looker<
   protected dispatchImpliedEvents(
     previousState: Readonly<State>,
     state: Readonly<State>
-  ): void {}
+  ): void {
+    if (previousState.showControls !== state.showControls) {
+      this.dispatchEvent("controls", state.showControls);
+    }
+  }
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
@@ -324,6 +354,45 @@ export abstract class Looker<
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
+  getRootEvents(): Events<State> {
+    return {
+      mouseenter: ({ update }) =>
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return { hovering: true };
+          }
+          return {
+            hovering: true,
+            showControls: true,
+          };
+        }),
+      mouseleave: ({ update }) =>
+        update({
+          hovering: false,
+          disableControls: false,
+          showControls: false,
+          showOptions: false,
+          panning: false,
+        }),
+      mousemove: ({ update }) => {
+        if (this.hideControlsTimeout) {
+          clearTimeout(this.hideControlsTimeout);
+        }
+        this.hideControlsTimeout = setTimeout(
+          () =>
+            update(({ showOptions, hoveringControls }) => {
+              this.hideControlsTimeout = null;
+              if (!showOptions && !hoveringControls) {
+                return { showControls: false };
+              }
+              return {};
+            }),
+          3500
+        );
+      },
+    };
+  }
+
   attach(element: HTMLElement | string, dimensions?: Dimensions): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
@@ -335,12 +404,18 @@ export abstract class Looker<
     }
 
     if (this.lookerElement.element.parentElement) {
+      const parent = this.lookerElement.element.parentElement;
       this.resizeObserver.disconnect();
-      this.lookerElement.element.parentElement.removeChild(
-        this.lookerElement.element
-      );
+      parent.removeChild(this.lookerElement.element);
+
+      for (const eventType in this.rootEvents) {
+        parent.removeEventListener(eventType, this.rootEvents[eventType]);
+      }
     }
 
+    for (const eventType in this.rootEvents) {
+      element.addEventListener(eventType, this.rootEvents[eventType]);
+    }
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
     });
@@ -371,7 +446,13 @@ export abstract class Looker<
   getSample(): Promise<Sample> {
     let sample = { ...this.sample };
 
-    return Promise.resolve(f(this.state, sam, this.state.config.fieldSchema));
+    return Promise.resolve(
+      f({
+        value: sample,
+        filter: this.state.options.filter,
+        schema: this.state.config.fieldSchema,
+      })
+    );
   }
 
   getCurrentSampleLabels(): LabelData[] {
@@ -480,7 +561,6 @@ export abstract class Looker<
       this.state.config.dimensions
     );
     this.state.mediaBBox = getFitRect(
-      this.state.config.thumbnail,
       this.state.config.dimensions,
       this.state.windowBBox
     );
@@ -492,7 +572,6 @@ export abstract class Looker<
     ];
 
     this.state.transformedMediaBBox = getFitRect(
-      this.state.config.thumbnail,
       this.state.config.dimensions,
       this.state.transformedWindowBBox
     );
@@ -923,6 +1002,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     previousState: Readonly<VideoState>,
     state: Readonly<VideoState>
   ): void {
+    super.dispatchImpliedEvents(previousState, state);
     const previousPlaying = previousState.playing && !previousState.buffering;
     const playing = state.playing && !state.buffering;
 
@@ -1145,12 +1225,14 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
             frames: [
               {
                 frame_number: this.frameNumber,
-                ...filter(
-                  this.state,
-                  { ...this.frames.get(this.frameNumber).deref().sample },
-                  this.state.config.frameFieldSchema,
-                  "frames."
-                ),
+                ...f({
+                  filter: this.state.options.filter,
+                  value: {
+                    ...this.frames.get(this.frameNumber).deref().sample,
+                  },
+                  schema: this.state.config.frameFieldSchema,
+                  keys: ["frames"],
+                }),
               },
             ],
           });
@@ -1275,11 +1357,11 @@ const f = <T extends {}>({
   schema,
   filter,
   value,
-  keys,
+  keys = [],
 }: {
   value: T;
   schema: Schema;
-  keys: string[];
+  keys?: string[];
   filter: (path: string, value) => boolean;
 }): T => {
   const result = {};
