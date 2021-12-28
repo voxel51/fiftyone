@@ -312,6 +312,7 @@ class GeoJSONDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
