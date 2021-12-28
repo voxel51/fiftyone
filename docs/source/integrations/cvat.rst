@@ -2058,86 +2058,56 @@ every 10th frame as a keyframe to provide a better editing experience in CVAT:
     with the shape's contents. See :ref:`this section <cvat-limitations>` for
     details.
 
-.. _cvat-importing:
+.. _cvat-existing-tasks:
 
-Importing datasets from CVAT
-____________________________
+Importing existing CVAT tasks
+_____________________________
 
-The previous examples showed ways to link existing an FiftyOne |Dataset| to
-annotation tasks and projects in CVAT. However, you may have a CVAT project or
-task that you want to use to create a |Dataset|.
+FiftyOne's CVAT integration is designed to manage the full annotation workflow,
+from task creation to annotation import.
 
-One way to create a |Dataset| using existing data and annotations from
-CVAT is to simply export the CVAT dataset to disk and import it using the
-:ref:`CVATImageDataset <CVATImageDataset-import>`
-or 
-:ref:`CVATVideoDataset <CVATVideoDataset-import>`
-types.
-
-Alternatively, you can use the
-:func:`import_dataset() <fiftyone.utils.cvat.import_dataset>` CVAT utility to provide
-paths to local data and the name of a CVAT project or list of CVAT task IDs
-to automatically create a |Dataset|.
-
-The following parameters are supported by :func:`import_dataset() <fiftyone.utils.cvat.import_dataset>`:
-
--   **data_path**: a parameter that enables explicit control
-    over the location of the media. Can be any of the following:
-
-    -   an absolute directory path where the media files reside, filenames 
-        on disk must match those in CVAT
-    -   an absolute filepath specifying the location of the JSON data
-        manifest containing a mapping of CVAT filenames to absolute
-        filepaths on disk
--   **project_name** (*None*): the name of the CVAT project  containing labels to
-    load into the dataset. Required if `task_ids` is `None`
--   **task_ids** (*None*): a list of integer IDs of CVAT tasks containing
-    labels to load into the dataset. Required if `project_name` is
-    `None`
--   **dataset_name** (*None*): an optional name to give to the dataset
-
+However, if you have created CVAT tasks outside of FiftyOne, you can use the
+:func:`import_dataset() <fiftyone.utils.cvat.import_dataset>` utility to import
+a CVAT project or individual task(s) into a new or existing FiftyOne dataset:
 
 .. code:: python
     :linenos:
 
-    import json
     import os
 
     import fiftyone as fo
     import fiftyone.utils.cvat as fouc
     import fiftyone.zoo as foz
 
-    ex_dataset = foz.load_zoo_dataset("quickstart", max_samples=3).clone()
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=3).clone()
 
-    project_name = "example_import"
-
-    # Create a CVAT project for this example
-    anno_key = "create_project"
-    results = ex_dataset.annotate(
+    # Create a pre-existing CVAT project
+    anno_key = "example_import"
+    results = dataset.annotate(
         anno_key,
         label_field="ground_truth",
-        project_name=project_name,
+        project_name="example_import",
     )
 
-    # Path to the directory containing your media files
-    # Or path to a JSON file containing a mapping from CVAT filename to
-    # filepath on disk
-    data_path = "/tmp/cvat_import_example.json"
-    paths = ex_dataset.values("filepath")
-    filepath_map = {
-        "%06d_%s" % (idx, os.path.basename(p)): p for idx, p in enumerate(paths)
+    # Create a mapping between filenames in the pre-existing CVAT project and
+    # the locations of the media locally on disk for the FiftyOne dataset
+    filepaths = dataset.values("filepath")
+    data_path = {
+        "%06d_%s" % (idx, os.path.basename(p)): p
+        for idx, p in enumerate(filepaths)
     }
-    with open(data_path, "w") as f:
-        json.dump(filepath_map, f)
 
-    # Create Dataset from CVAT project
-    dataset = fouc.import_dataset(
-        data_path,
-        project_name=project_name,
-        dataset_name="example_dataset",
-    )
+    # Create dataset from pre-existing CVAT project
+    dataset = fouc.import_dataset(data_path, project_name=project_name)
 
     session = fo.launch_app(dataset)
+
+.. note::
+
+    Another strategy for importing existing CVAT annotations into FiftyOne is
+    to simply export the annotations from the CVAT UI and then import them via
+    the :ref:`CVATImageDataset <CVATImageDataset-import>` or
+    :ref:`CVATVideoDataset <CVATVideoDataset-import>` types.
 
 .. _cvat-utils:
 
