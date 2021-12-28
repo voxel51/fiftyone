@@ -1677,10 +1677,10 @@
             "date_added": "2021-12-27 18:42:30"
         },
         {
-            "base_name": "efficientdet-d4-896-coco-tf2",
+            "base_name": "efficientdet-d4-1024-coco-tf2",
             "base_filename": "efficientdet_d4_coco17_tpu-32",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 896x896",
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1024x1024",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 158496448,
             "manager": {
@@ -1715,10 +1715,10 @@
             "date_added": "2021-12-27 18:42:30"
         },
         {
-            "base_name": "efficientdet-d5-1024-coco-tf2",
+            "base_name": "efficientdet-d5-1280-coco-tf2",
             "base_filename": "efficientdet_d5_coco17_tpu-32",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1024x1024",
+            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1280x1280",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 256286417,
             "manager": {
