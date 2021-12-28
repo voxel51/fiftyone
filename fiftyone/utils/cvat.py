@@ -2762,13 +2762,22 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return self._get_status()
 
     def print_status(self):
-        """Print the status of the assigned tasks and jobs."""
+        """Prints the status of the assigned tasks and jobs."""
         self._get_status(log=True)
 
-    def cleanup(self):
-        """Deletes all tasks associated with this annotation run and any created
-        projects from the CVAT server.
+    def delete_tasks(self, task_ids):
+        """Deletes the given tasks from both the CVAT server and this run.
+
+        Args:
+            task_ids: an iterable of task IDs
         """
+        api = self.connect_to_api()
+        api.delete_tasks(task_ids)
+
+        self._forget_tasks(task_ids)
+
+    def cleanup(self):
+        """Deletes all tasks and created projects associated with this run."""
         api = self.connect_to_api()
 
         if self.task_ids:
@@ -2781,10 +2790,21 @@ class CVATAnnotationResults(foua.AnnotationResults):
                 logger.info("Deleting projects...")
                 api.delete_projects(self.project_ids)
 
-        # @todo save updated results to DB?
         self.project_ids = []
         self.task_ids = []
         self.job_ids = {}
+        self.id_map = {}
+        self.frame_id_map = {}
+
+    def _forget_tasks(self, task_ids):
+        for task_id in task_ids:
+            _frame_id_map = self.frame_id_map.pop(task_id, {})
+            sample_ids = set(fd["sample_id"] for fd in _frame_id_map.values())
+            for _id_map in self.id_map.values():
+                for sample_id in sample_ids:
+                    _id_map.pop(sample_id, None)
+
+        self.task_ids = [_id for _id in self.task_ids if _id not in task_ids]
 
     def _get_status(self, log=False):
         api = self.connect_to_api()
@@ -3100,35 +3120,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._validate(response, kwargs)
         return response
 
-    def _get_value_from_search(
-        self, search_url_fcn, target, target_key, value_key
-    ):
-        search_url = search_url_fcn(target)
-        resp = self.get(search_url).json()
-        for info in resp["results"]:
-            if info[target_key] == target:
-                return info[value_key]
-
-        return None
-
-    def _get_value_update_map(
-        self, name, id_map, result_name, search_url_fcn, name_type
-    ):
-        if name is None:
-            return None
-
-        if name in id_map:
-            return id_map[name]
-
-        _id = self._get_value_from_search(
-            search_url_fcn, name, result_name, "id"
-        )
-
-        if _id is not None:
-            id_map[name] = _id
-
-        return _id
-
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.
 
@@ -3229,6 +3220,49 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_resp = self.post(self.projects_url, json=project_json).json()
         return project_resp["id"]
 
+    def list_projects(self):
+        """Returns the list of project IDs.
+
+        Returns:
+            the list of project IDs
+        """
+        return self._get_paginated_results(self.projects_url, value="id")
+
+    def project_exists(self, project_id):
+        """Checks if the given project exists.
+
+        Args:
+            project_id: the project ID
+
+        Returns:
+            True/False
+        """
+        return (
+            self._get_value_from_search(
+                self.project_id_search_url, project_id, "id", "id",
+            )
+            is not None
+        )
+
+    def delete_project(self, project_id):
+        """Deletes the given project from the CVAT server.
+
+        Args:
+            project_id: the project ID
+        """
+        if self.project_exists(project_id):
+            self.delete(self.project_url(project_id))
+
+    def delete_projects(self, project_ids):
+        """Deletes the given projects from the CVAT server.
+
+        Args:
+            project_ids: an iterable of project IDs
+        """
+        with fou.ProgressBar() as pb:
+            for project_id in pb(list(project_ids)):
+                self.delete_project(project_id)
+
     def create_task(
         self,
         name,
@@ -3302,40 +3336,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return task_id, class_id_map, attr_id_map
 
-    def project_exists(self, project_id):
-        """Checks if the given project exists.
-
-        Args:
-            project_id: the project ID
-        """
-        return (
-            self._get_value_from_search(
-                self.project_id_search_url, project_id, "id", "id",
-            )
-            is not None
-        )
-
-    def delete_project(self, project_id):
-        """Deletes the given project from the CVAT server.
-
-        Args:
-            project_id: the project ID
+    def list_tasks(self):
+        """Returns the list of task IDs.
 
         Returns:
-            boolean indicating if the project exists
+            the list of task IDs
         """
-        if self.project_exists(project_id):
-            self.delete(self.project_url(project_id))
-
-    def delete_projects(self, project_ids):
-        """Deletes the given projects from the CVAT server.
-
-        Args:
-            project_ids: an iterable of project IDs
-        """
-        with fou.ProgressBar() as pb:
-            for project_id in pb(list(project_ids)):
-                self.delete_project(project_id)
+        return self._get_paginated_results(self.tasks_url, value="id")
 
     def task_exists(self, task_id):
         """Checks if the given task exists.
@@ -3344,7 +3351,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             task_id: the task ID
 
         Returns:
-            boolean indicating if the task exists
+            True/False
         """
         return (
             self._get_value_from_search(
@@ -3643,24 +3650,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 labels_task_map_rev[task].append(lf)
 
         annotations = {}
+        deleted_tasks = []
+
+        existing_tasks = set(self.list_tasks())
 
         for task_id in task_ids:
-            label_fields = labels_task_map_rev[task_id]
-            # Download task data
-            if not self.task_exists(task_id):
-                logger.warning("Warning: Task %d does not exist.", task_id)
-                # Setting allow_deletions to False to avoid deleting labels
-                # from this task
-                for label_field in label_fields:
-                    logger.warning(
-                        "Warning: Setting `allow_deletions=False` for label field `%s`",
-                        label_field,
-                    )
-                    results.config.label_schema[label_field][
-                        "allow_deletions"
-                    ] = False
+            if task_id not in existing_tasks:
+                # if not self.task_exists(task_id):
+                deleted_tasks.append(task_id)
+                logger.warning(
+                    "Skipping task %d, which no longer exists", task_id
+                )
                 continue
 
+            # Download task data
             task_json = self.get(self.task_url(task_id)).json()
             attr_id_map = {}
             _class_map = {}
@@ -3681,6 +3684,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data_resp = self.get(self.task_data_meta_url(task_id)).json()
             frames = data_resp["frames"]
 
+            label_fields = labels_task_map_rev[task_id]
             label_types = self._get_return_label_types(
                 label_schema, label_fields
             )
@@ -3796,7 +3800,54 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     annotations, {label_field: label_field_results}
                 )
 
+        if deleted_tasks:
+            results._forget_tasks(deleted_tasks)
+
         return annotations
+
+    def _get_paginated_results(self, url, value=None):
+        results = []
+        page = url
+        while page is not None:
+            response = self.get(page).json()
+            for result in response["results"]:
+                if value is not None:
+                    results.append(result[value])
+                else:
+                    results.append(result)
+
+            page = response["next"]
+
+        return results
+
+    def _get_value_from_search(
+        self, search_url_fcn, target, target_key, value_key
+    ):
+        search_url = search_url_fcn(target)
+        resp = self.get(search_url).json()
+        for info in resp["results"]:
+            if info[target_key] == target:
+                return info[value_key]
+
+        return None
+
+    def _get_value_update_map(
+        self, name, id_map, result_name, search_url_fcn, name_type
+    ):
+        if name is None:
+            return None
+
+        if name in id_map:
+            return id_map[name]
+
+        _id = self._get_value_from_search(
+            search_url_fcn, name, result_name, "id"
+        )
+
+        if _id is not None:
+            id_map[name] = _id
+
+        return _id
 
     def _get_project_labels(self, project_id):
         if not self.project_exists(project_id):
