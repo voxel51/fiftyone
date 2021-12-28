@@ -36,7 +36,9 @@ In order to use the Lightning Flash integration, you'll need to
 
 .. code-block:: shell
 
-    pip install lightning-flash
+    # This integration currently requires these versions explicitly
+    pip install lightning-flash==0.4.0
+    pip install pytorch-lightning==1.3.6
 
 Depending on the type of Flash tasks that you intend to use, you will also need
 to install some package extras:
