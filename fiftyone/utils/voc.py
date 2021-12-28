@@ -46,6 +46,7 @@ class VOCDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -800,13 +801,14 @@ def _parse_attribute(value):
     except:
         pass
 
-    if value in {"True", "true"}:
-        return True
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
 
-    if value in {"False", "false"}:
-        return False
+        if value in ("False", "false"):
+            return False
 
-    if value == "None":
-        return None
+        if value in ("None", ""):
+            return None
 
     return value

@@ -182,6 +182,7 @@ def annotate(
 
     config = _parse_config(backend, None, media_field, **kwargs)
     anno_backend = config.build()
+    anno_backend.ensure_requirements()
 
     label_schema, samples = _build_label_schema(
         samples,
@@ -376,6 +377,8 @@ def _build_label_schema(
 
     _label_schema = {}
 
+    is_video = samples.media_type == fom.VIDEO
+
     for _label_field, _label_info in label_schema.items():
         (
             _label_type,
@@ -401,6 +404,14 @@ def _build_label_schema(
         # Converting to return type normalizes for single vs multiple labels
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
+
+        if is_video and _return_type in _SPATIAL_TYPES and not _is_frame_field:
+            raise ValueError(
+                "Invalid label field '%s'. Spatial labels of type '%s' being "
+                "annotated on a video must be stored in a frame-level field, "
+                "i.e., one that starts with 'frames.'"
+                % (_label_field, _label_type)
+            )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
@@ -970,7 +981,7 @@ def _format_attributes(backend, attributes):
 
 
 def load_annotations(
-    samples, anno_key, skip_unexpected=False, cleanup=False, **kwargs
+    samples, anno_key, unexpected="prompt", cleanup=False, **kwargs
 ):
     """Downloads the labels from the given annotation run from the annotation
     backend and merges them into the collection.
@@ -982,18 +993,29 @@ def load_annotations(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         anno_key: an annotation key
-        skip_unexpected (False): whether to skip any unexpected labels that
-            don't match the run's label schema when merging. If False and
-            unexpected labels are encountered, you will be presented an
-            interactive prompt to deal with them
+        unexpected ("prompt"): how to deal with any unexpected labels that
+            don't match the run's label schema when importing. The supported
+            values are:
+
+            -   ``"prompt"``: present an interactive prompt to direct/discard
+                unexpected labels
+            -   ``"ignore"``: automatically ignore any unexpected labels
+            -   ``"return"``: return a dict containing all unexpected labels,
+                or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
         **kwargs: optional keyword arguments for
             :meth:`AnnotationResults.load_credentials`
+
+    Returns:
+        ``None``, unless ``unexpected=="return"`` and unexpected labels are
+        found, in which case a dict containing the extra labels is returned
     """
     results = samples.load_annotation_results(anno_key, **kwargs)
-    label_schema = results.config.label_schema
     annotations = results.backend.download_annotations(results)
+    label_schema = results.config.label_schema
+
+    unexpected_annos = defaultdict(dict)
 
     for label_field, label_info in label_schema.items():
         label_type = label_info.get("type", None)
@@ -1030,12 +1052,12 @@ def load_annotations(
                     )
             else:
                 # Unexpected labels
-                if skip_unexpected or not allow_additions:
-                    new_field = None
-                else:
+                if unexpected == "prompt" and allow_additions:
                     new_field = _prompt_field(
                         samples, anno_type, label_field, label_schema
                     )
+                else:
+                    new_field = None
 
                 if new_field:
                     if anno_type == "scalar":
@@ -1052,10 +1074,16 @@ def load_annotations(
                         label_field,
                     )
 
+                    if unexpected == "return":
+                        unexpected_annos[label_field][anno_type] = annos
+
     results.backend.save_run_results(samples, anno_key, results)
 
     if cleanup:
         results.cleanup()
+
+    if unexpected == "return":
+        return dict(unexpected_annos) if unexpected_annos else None
 
 
 def _parse_attributes(label_info):
@@ -1920,6 +1948,7 @@ class AnnotationResults(foa.AnnotationResults):
     def __init__(self, samples, config, id_map, backend=None):
         if backend is None:
             backend = config.build()
+            backend.ensure_requirements()
 
         self._samples = samples
         self.id_map = id_map

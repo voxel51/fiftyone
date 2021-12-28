@@ -273,6 +273,7 @@ class CVATImageDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -444,6 +445,7 @@ class CVATVideoDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2708,6 +2710,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         url (None): the url of the CVAT server
         username (None): the CVAT username
         password (None): the CVAT password
+        headers (None): an optional dict of headers to add to all CVAT API
+            requests
         segment_size (None): maximum number of images per job. Not applicable
             to videos
         image_quality (75): an int in `[0, 100]` determining the image quality
@@ -2745,6 +2749,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         url=None,
         username=None,
         password=None,
+        headers=None,
         segment_size=None,
         image_quality=75,
         use_cache=True,
@@ -2775,6 +2780,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         # store privately so these aren't serialized
         self._username = username
         self._password = password
+        self._headers = headers
 
     @property
     def username(self):
@@ -2791,6 +2797,14 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     @password.setter
     def password(self, value):
         self._password = value
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @headers.setter
+    def headers(self, value):
+        self._headers = value
 
 
 class CVATBackend(foua.AnnotationBackend):
@@ -2860,6 +2874,7 @@ class CVATBackend(foua.AnnotationBackend):
             self.config.url,
             username=self.config.username,
             password=self.config.password,
+            headers=self.config.headers,
         )
 
     def upload_annotations(self, samples, launch_editor=False):
@@ -2911,7 +2926,9 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
 
-    def load_credentials(self, url=None, username=None, password=None):
+    def load_credentials(
+        self, url=None, username=None, password=None, headers=None
+    ):
         """Load the CVAT credentials from the given keyword arguments or the
         FiftyOne annotation config.
 
@@ -2919,9 +2936,11 @@ class CVATAnnotationResults(foua.AnnotationResults):
             url (None): the url of the CVAT server
             username (None): the CVAT username
             password (None): the CVAT password
+            headers (None): an optional dict of headers to add to all CVAT API
+                requests
         """
         self._load_config_parameters(
-            url=url, username=username, password=password
+            url=url, username=username, password=password, headers=headers
         )
 
     def connect_to_api(self):
@@ -2957,13 +2976,22 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return self._get_status()
 
     def print_status(self):
-        """Print the status of the assigned tasks and jobs."""
+        """Prints the status of the assigned tasks and jobs."""
         self._get_status(log=True)
 
-    def cleanup(self):
-        """Deletes all tasks associated with this annotation run and any created
-        projects from the CVAT server.
+    def delete_tasks(self, task_ids):
+        """Deletes the given tasks from both the CVAT server and this run.
+
+        Args:
+            task_ids: an iterable of task IDs
         """
+        api = self.connect_to_api()
+        api.delete_tasks(task_ids)
+
+        self._forget_tasks(task_ids)
+
+    def cleanup(self):
+        """Deletes all tasks and created projects associated with this run."""
         api = self.connect_to_api()
 
         if self.task_ids:
@@ -2976,10 +3004,23 @@ class CVATAnnotationResults(foua.AnnotationResults):
                 logger.info("Deleting projects...")
                 api.delete_projects(self.project_ids)
 
-        # @todo save updated results to DB?
         self.project_ids = []
         self.task_ids = []
         self.job_ids = {}
+        self.id_map = {}
+        self.frame_id_map = {}
+
+    def _forget_tasks(self, task_ids):
+        for task_id in task_ids:
+            self.job_ids.pop(task_id, None)
+            _frame_id_map = self.frame_id_map.pop(task_id, {})
+            sample_ids = set(fd["sample_id"] for fd in _frame_id_map.values())
+            for _id_map in self.id_map.values():
+                for sample_id in sample_ids:
+                    _id_map.pop(sample_id, None)
+
+        task_ids = set(task_ids)
+        self.task_ids = [_id for _id in self.task_ids if _id not in task_ids]
 
     def _get_status(self, log=False):
         api = self.connect_to_api()
@@ -3104,13 +3145,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         url: url of the CVAT server
         username (None): the CVAT username
         password (None): the CVAT password
+        headers (None): an optional dict of headers to add to all requests
     """
 
-    def __init__(self, name, url, username=None, password=None):
+    def __init__(self, name, url, username=None, password=None, headers=None):
         self._name = name
         self._url = url
         self._username = username
         self._password = password
+        self._headers = headers
 
         self._session = None
         self._user_id_map = {}
@@ -3181,6 +3224,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
+    def task_id_search_url(self, task_id):
+        return "%s/tasks?id=%d" % (self.base_api_url, task_id)
+
     def user_search_url(self, username):
         return "%s/users?search=%s" % (self.base_api_url, username)
 
@@ -3207,6 +3253,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         self._session = requests.Session()
+
+        if self._headers:
+            self._session.headers.update(self._headers)
+
         response = self.post(
             self.login_url, data={"username": username, "password": password}
         )
@@ -3285,35 +3335,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         response = self._session.delete(url, verify=False, **kwargs)
         self._validate(response, kwargs)
         return response
-
-    def _get_value_from_search(
-        self, search_url_fcn, target, target_key, value_key
-    ):
-        search_url = search_url_fcn(target)
-        resp = self.get(search_url).json()
-        for info in resp["results"]:
-            if info[target_key] == target:
-                return info[value_key]
-
-        return None
-
-    def _get_value_update_map(
-        self, name, id_map, result_name, search_url_fcn, name_type
-    ):
-        if name is None:
-            return None
-
-        if name in id_map:
-            return id_map[name]
-
-        _id = self._get_value_from_search(
-            search_url_fcn, name, result_name, "id"
-        )
-
-        if _id is not None:
-            id_map[name] = _id
-
-        return _id
 
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.
@@ -3415,6 +3436,49 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_resp = self.post(self.projects_url, json=project_json).json()
         return project_resp["id"]
 
+    def list_projects(self):
+        """Returns the list of project IDs.
+
+        Returns:
+            the list of project IDs
+        """
+        return self._get_paginated_results(self.projects_url, value="id")
+
+    def project_exists(self, project_id):
+        """Checks if the given project exists.
+
+        Args:
+            project_id: the project ID
+
+        Returns:
+            True/False
+        """
+        return (
+            self._get_value_from_search(
+                self.project_id_search_url, project_id, "id", "id",
+            )
+            is not None
+        )
+
+    def delete_project(self, project_id):
+        """Deletes the given project from the CVAT server.
+
+        Args:
+            project_id: the project ID
+        """
+        if self.project_exists(project_id):
+            self.delete(self.project_url(project_id))
+
+    def delete_projects(self, project_ids):
+        """Deletes the given projects from the CVAT server.
+
+        Args:
+            project_ids: an iterable of project IDs
+        """
+        with fou.ProgressBar() as pb:
+            for project_id in pb(list(project_ids)):
+                self.delete_project(project_id)
+
     def create_task(
         self,
         name,
@@ -3488,23 +3552,29 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return task_id, class_id_map, attr_id_map
 
-    def delete_project(self, project_id):
-        """Deletes the given project from the CVAT server.
+    def list_tasks(self):
+        """Returns the list of task IDs.
+
+        Returns:
+            the list of task IDs
+        """
+        return self._get_paginated_results(self.tasks_url, value="id")
+
+    def task_exists(self, task_id):
+        """Checks if the given task exists.
 
         Args:
-            project_id: the project ID
-        """
-        self.delete(self.project_url(project_id))
+            task_id: the task ID
 
-    def delete_projects(self, project_ids):
-        """Deletes the given projects from the CVAT server.
-
-        Args:
-            project_ids: an iterable of project IDs
+        Returns:
+            True/False
         """
-        with fou.ProgressBar() as pb:
-            for project_id in pb(list(project_ids)):
-                self.delete_project(project_id)
+        return (
+            self._get_value_from_search(
+                self.task_id_search_url, task_id, "id", "id",
+            )
+            is not None
+        )
 
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
@@ -3512,7 +3582,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_id: the task ID
         """
-        self.delete(self.task_url(task_id))
+        if self.task_exists(task_id):
+            self.delete(self.task_url(task_id))
 
     def delete_tasks(self, task_ids):
         """Deletes the given tasks from the CVAT server.
@@ -3795,8 +3866,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 labels_task_map_rev[task].append(lf)
 
         annotations = {}
+        deleted_tasks = []
+
+        existing_tasks = set(self.list_tasks())
 
         for task_id in task_ids:
+            if task_id not in existing_tasks:
+                deleted_tasks.append(task_id)
+                logger.warning(
+                    "Skipping task %d, which no longer exists", task_id
+                )
+                continue
+
             # Download task data
             task_json = self.get(self.task_url(task_id)).json()
             attr_id_map = {}
@@ -3934,10 +4015,57 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     annotations, {label_field: label_field_results}
                 )
 
+        if deleted_tasks:
+            results._forget_tasks(deleted_tasks)
+
         return annotations
 
+    def _get_paginated_results(self, url, value=None):
+        results = []
+        page = url
+        while page is not None:
+            response = self.get(page).json()
+            for result in response["results"]:
+                if value is not None:
+                    results.append(result[value])
+                else:
+                    results.append(result)
+
+            page = response["next"]
+
+        return results
+
+    def _get_value_from_search(
+        self, search_url_fcn, target, target_key, value_key
+    ):
+        search_url = search_url_fcn(target)
+        resp = self.get(search_url).json()
+        for info in resp["results"]:
+            if info[target_key] == target:
+                return info[value_key]
+
+        return None
+
+    def _get_value_update_map(
+        self, name, id_map, result_name, search_url_fcn, name_type
+    ):
+        if name is None:
+            return None
+
+        if name in id_map:
+            return id_map[name]
+
+        _id = self._get_value_from_search(
+            search_url_fcn, name, result_name, "id"
+        )
+
+        if _id is not None:
+            id_map[name] = _id
+
+        return _id
+
     def _get_project_labels(self, project_id):
-        if self.get_project_name(project_id) is None:
+        if not self.project_exists(project_id):
             raise ValueError("Project '%s' not found" % project_id)
 
         return self.get(self.project_url(project_id)).json()["labels"]
@@ -5557,7 +5685,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         # Insert new shapes into track
         for ind, shape in new_shapes[::-1]:
-            shapes.insert(ind, shape)
+            shapes.insert(ind + 1, shape)
 
         # Remove non-keyframes if necessary
         if only_keyframes:
@@ -6164,15 +6292,6 @@ def _from_int_bool(value):
 
 
 def _parse_value(value):
-    if value in (None, "None", ""):
-        return None
-
-    if value in {"True", "true"}:
-        return True
-
-    if value in {"False", "false"}:
-        return False
-
     try:
         return int(value)
     except:
@@ -6182,6 +6301,16 @@ def _parse_value(value):
         return float(value)
     except:
         pass
+
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
+
+        if value in ("False", "false"):
+            return False
+
+        if value in ("None", ""):
+            return None
 
     return value
 

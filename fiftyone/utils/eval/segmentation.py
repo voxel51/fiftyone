@@ -101,6 +101,8 @@ def evaluate_segmentations(
 
     config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
+    eval_method.ensure_requirements()
+
     eval_method.register_run(samples, eval_key)
 
     results = eval_method.evaluate_samples(
