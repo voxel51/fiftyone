@@ -2060,15 +2060,16 @@ every 10th frame as a keyframe to provide a better editing experience in CVAT:
 
 .. _cvat-existing-tasks:
 
-Importing existing CVAT tasks
-_____________________________
+Importing existing tasks
+________________________
 
 FiftyOne's CVAT integration is designed to manage the full annotation workflow,
 from task creation to annotation import.
 
 However, if you have created CVAT tasks outside of FiftyOne, you can use the
 :func:`import_dataset() <fiftyone.utils.cvat.import_dataset>` utility to import
-a CVAT project or individual task(s) into a new or existing FiftyOne dataset:
+individual task(s) or an entire project into a new or existing FiftyOne
+dataset:
 
 .. code:: python
     :linenos:
