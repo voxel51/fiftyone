@@ -464,6 +464,8 @@ In addition, the following CVAT-specific parameters from
 :class:`CVATBackendConfig <fiftyone.utils.cvat.CVATBackendConfig>` can also be
 provided:
 
+-   **task_size** (*None*): an optional maximum number of images to upload per
+    task. Videos are always uploaded one per task
 -   **segment_size** (*None*): the maximum number of images to upload per job.
     Not applicable to videos
 -   **image_quality** (*75*): an int in `[0, 100]` determining the image
@@ -489,10 +491,6 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
--   **task_size** (*None*): an optional integer specifying the maximum number of
-    images to upload per CVAT task. Videos are always uploaded one per
-    task
-
 
 .. _cvat-label-schema:
 
@@ -1855,60 +1853,57 @@ attributes between annotation runs.
    :alt: cvat-occ-widget
    :align: center
 
+.. _cvat-large-runs:
+
 Large annotation runs
 ---------------------
 
-The CVAT REST API imposes a limit on the size of requests. This can cause
-errors when uploading annotation runs for sample collections with many
-images or labels to CVAT.
+The CVAT API imposes a limit on the size of all requests. By default, all
+images are uploaded to a single CVAT task, which can result in errors when
+uploading annotation runs for large sample collections.
 
 .. note::
 
-    The CVAT maintainers are working on 
+    The CVAT maintainers are working on
     `an update <https://github.com/openvinotoolkit/cvat/pull/3692>`_
-    to resolve this issue natively. For the time being, the following workflow
-    is our recommended approach to circumvent this issue.
+    to resolve this issue natively. In the meantime, the following workflow is
+    our recommended approach to circumvent this issue.
 
-In order to break an annotation run into smaller segments, we provide a
-`task_size` parameter that limits the number of samples that can be uploaded to
-a single task in CVAT. Due to the creation of multiple tasks when `task_size`
-is provided, we recommend providing a `project_name` to group the created tasks
-together.
+You can use the `task_size` parameter to break image annotation runs into
+multiple CVAT tasks, each with a specified maximum number of images. Note that
+we recommend providing a `project_name` whenever you use the `task_size`
+pararmeter so that the created tasks will be grouped together.
 
-The `task_size` parameter can be used in conjunction with `segment_size` to
-both define the number of images per task and the number of images per job
-within each task.
+The `task_size` parameter can also be used in conjunction with the
+`segment_size` parameter to configure both the number of images per task as
+well as the number of images per job within each task.
 
 .. code:: python
     :linenos:
 
-    import fiftyone.zoo as foz
     import fiftyone as fo
+    import fiftyone.zoo as foz
     
     dataset = foz.load_zoo_dataset("quickstart", max_samples=20).clone()
     
     anno_key = "batch_upload"
-    project_name = "batch_example"
 
-    task_size = 6  # 6 images per task
-    segment_size = 2 # 2 images per job
-    
     results = dataset.annotate(
         anno_key,
         label_field="ground_truth",
-        task_size=task_size,
-        segment_size=segment_size,
-        project_name=project_name,
+        task_size=6,  # 6 images per task
+        segment_size=2,  # 2 images per job
+        project_name="batch_example",
         launch_editor=True,
     )
-    
-    # Annotate in CVAT
-    
+
+    # Annotate in CVAT...
+
     dataset.load_annotations(anno_key, cleanup=True) 
 
 .. note::
 
-    The `task_size` parameter only applies to image datasets since videos are
+    The `task_size` parameter only applies to image datasets, since videos are
     always uploaded one per task.
 
 .. _cvat-annotating-videos:

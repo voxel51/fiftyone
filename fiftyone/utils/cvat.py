@@ -2498,6 +2498,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         password (None): the CVAT password
         headers (None): an optional dict of headers to add to all CVAT API
             requests
+        task_size (None): an optional maximum number of images to upload per
+            task. Videos are always uploaded one per task
         segment_size (None): maximum number of images per job. Not applicable
             to videos
         image_quality (75): an int in `[0, 100]` determining the image quality
@@ -2525,9 +2527,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
-        task_size (None): an optional integer specifying the maximum number of
-            images to upload per CVAT task. Videos are always uploaded one per
-            task
     """
 
     def __init__(
@@ -2539,6 +2538,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         username=None,
         password=None,
         headers=None,
+        task_size=None,
         segment_size=None,
         image_quality=75,
         use_cache=True,
@@ -2550,11 +2550,11 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         project_id=None,
         occluded_attr=None,
-        task_size=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
         self.url = url
+        self.task_size = task_size
         self.segment_size = segment_size
         self.image_quality = image_quality
         self.use_cache = use_cache
@@ -2566,7 +2566,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.project_id = project_id
         self.occluded_attr = occluded_attr
-        self.task_size = task_size
 
         # store privately so these aren't serialized
         self._username = username
@@ -3903,11 +3902,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             return 1
 
         num_samples = len(samples)
+
         if task_size is None:
             # Put all image samples in one task
             return num_samples
-        else:
-            return min(task_size, num_samples)
+
+        return min(task_size, num_samples)
 
     def _create_task_upload_data(
         self,
