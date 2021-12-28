@@ -6263,7 +6263,7 @@ class SampleCollection(object):
         )
 
     def load_annotations(
-        self, anno_key, skip_unexpected=False, cleanup=False, **kwargs
+        self, anno_key, unexpected="prompt", cleanup=False, **kwargs
     ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
@@ -6274,21 +6274,26 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
-            skip_unexpected (False): whether to skip any unexpected labels that
-                don't match the run's label schema when merging. If False and
-                unexpected labels are encountered, you will be presented an
-                interactive prompt to deal with them
+            unexpected ("prompt"): how to deal with any unexpected labels that
+                don't match the run's label schema when importing. The
+                supported values are:
+
+                -   ``"prompt"``: present an interactive prompt to
+                    direct/discard unexpected labels
+                -   ``"ignore"``: automatically ignore any unexpected labels
+                -   ``"return"``: return a dict containing all unexpected
+                    labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+
+        Returns:
+            ``None``, unless ``unexpected=="return"`` and unexpected labels are
+            found, in which case a dict containing the extra labels is returned
         """
-        foua.load_annotations(
-            self,
-            anno_key,
-            skip_unexpected=skip_unexpected,
-            cleanup=cleanup,
-            **kwargs,
+        return foua.load_annotations(
+            self, anno_key, unexpected=unexpected, cleanup=cleanup, **kwargs,
         )
 
     def delete_annotation_run(self, anno_key):
