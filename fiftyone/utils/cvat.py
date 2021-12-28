@@ -2798,12 +2798,14 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
     def _forget_tasks(self, task_ids):
         for task_id in task_ids:
+            self.job_ids.pop(task_id, None)
             _frame_id_map = self.frame_id_map.pop(task_id, {})
             sample_ids = set(fd["sample_id"] for fd in _frame_id_map.values())
             for _id_map in self.id_map.values():
                 for sample_id in sample_ids:
                     _id_map.pop(sample_id, None)
 
+        task_ids = set(task_ids)
         self.task_ids = [_id for _id in self.task_ids if _id not in task_ids]
 
     def _get_status(self, log=False):
