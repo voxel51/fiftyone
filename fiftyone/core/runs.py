@@ -473,7 +473,7 @@ class Run(Configurable):
         results_str = run_doc.results.read().decode()
 
         try:
-            run_results = RunResults.from_str(results_str, view, config)
+            run_results = RunResults.from_str(results_str, view, config, key)
         except Exception as e:
             if run_doc.version == foc.VERSION:
                 raise e
@@ -636,7 +636,7 @@ class RunResults(etas.Serializable):
         return ["cls"] + super().attributes()
 
     @classmethod
-    def from_dict(cls, d, samples, config):
+    def from_dict(cls, d, samples, config, key):
         """Builds a :class:`RunResults` from a JSON dict representation of it.
 
         Args:
@@ -644,6 +644,7 @@ class RunResults(etas.Serializable):
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
             config: the :class:`RunConfig` for the run
+            key: the run key
 
         Returns:
             a :class:`RunResults`
@@ -652,10 +653,10 @@ class RunResults(etas.Serializable):
             return None
 
         run_results_cls = etau.get_class(d["cls"])
-        return run_results_cls._from_dict(d, samples, config)
+        return run_results_cls._from_dict(d, samples, config, key)
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, key):
         """Subclass implementation of :meth:`from_dict`.
 
         Args:
@@ -663,6 +664,7 @@ class RunResults(etas.Serializable):
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
             config: the :class:`RunConfig` for the run
+            key: the run key
 
         Returns:
             a :class:`RunResults`

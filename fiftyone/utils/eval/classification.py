@@ -140,7 +140,7 @@ class ClassificationEvaluation(foe.EvaluationMethod):
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            eval_key (None): an evaluation key for this evaluation
+            eval_key (None): the evaluation key
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
@@ -581,7 +581,7 @@ class ClassificationResults(BaseEvaluationResults):
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
+        eval_key (None): the evaluation key
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
@@ -609,7 +609,7 @@ class BinaryClassificationResults(ClassificationResults):
         confs: a list of confidences for the predictions
         classes: the ``(neg_label, pos_label)`` label strings for the task
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
+        eval_key (None): the evaluation key
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
@@ -743,13 +743,12 @@ class BinaryClassificationResults(ClassificationResults):
         return self.classes
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d["confs"]
         classes = d["classes"]
         weights = d.get("weights", None)
-        eval_key = d.get("eval_key", None)
         gt_field = d.get("gt_field", None)
         pred_field = d.get("pred_field", None)
         ytrue_ids = d.get("ytrue_ids", None)

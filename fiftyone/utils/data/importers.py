@@ -1650,7 +1650,7 @@ def _import_run_results(dataset, run_dir, run_cls, keys=None):
             view = run_cls.load_run_view(dataset, key)
             run_info = run_cls.get_run_info(dataset, key)
             config = run_info.config
-            results = fors.RunResults.from_json(json_path, view, config)
+            results = fors.RunResults.from_json(json_path, view, config, key)
             run_cls.save_run_results(dataset, key, results, cache=False)
 
 

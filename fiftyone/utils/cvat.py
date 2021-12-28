@@ -2663,11 +2663,11 @@ class CVATBackend(foua.AnnotationBackend):
             headers=self.config.headers,
         )
 
-    def upload_annotations(self, samples, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, launch_editor=False):
         api = self.connect_to_api()
 
         logger.info("Uploading samples to CVAT...")
-        results = api.upload_samples(samples, self)
+        results = api.upload_samples(samples, anno_key, self)
         logger.info("Upload complete")
 
         if launch_editor:
@@ -2694,6 +2694,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self,
         samples,
         config,
+        anno_key,
         id_map,
         server_id_map,
         project_ids,
@@ -2703,7 +2704,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         labels_task_map,
         backend=None,
     ):
-        super().__init__(samples, config, id_map, backend=backend)
+        super().__init__(samples, config, anno_key, id_map, backend=backend)
 
         self.server_id_map = server_id_map
         self.project_ids = project_ids
@@ -2868,7 +2869,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return status
 
     @classmethod
-    def _from_dict(cls, d, samples, config):
+    def _from_dict(cls, d, samples, config, anno_key):
         # int keys were serialized as strings...
         job_ids = {int(task_id): ids for task_id, ids in d["job_ids"].items()}
         frame_id_map = {
@@ -2882,6 +2883,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return cls(
             samples,
             config,
+            anno_key,
             d["id_map"],
             d.get("server_id_map", {}),
             d.get("project_ids", []),
@@ -3428,13 +3430,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return job_ids
 
-    def upload_samples(self, samples, backend):
+    def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's
         annotation and server configuration.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` to
                 upload to CVAT
+            anno_key: the annotation key
             backend: a :class:`CVATBackend` to use to perform the upload
 
         Returns:
@@ -3554,6 +3557,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return CVATAnnotationResults(
             samples,
             config,
+            anno_key,
             id_map,
             server_id_map,
             project_ids,

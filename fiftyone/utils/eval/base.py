@@ -22,7 +22,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         ypred: a list of predicted labels
         confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
-        eval_key (None): the evaluation key of the evaluation
+        eval_key (None): the evaluation key
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         ytrue_ids (None): a list of IDs for the ground truth labels
@@ -363,12 +363,11 @@ class BaseEvaluationResults(foe.EvaluationResults):
         return cmat, labels, ids
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)
         weights = d.get("weights", None)
-        eval_key = d.get("eval_key", None)
         gt_field = d.get("gt_field", None)
         pred_field = d.get("pred_field", None)
         ytrue_ids = d.get("ytrue_ids", None)

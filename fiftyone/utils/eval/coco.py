@@ -146,7 +146,7 @@ class COCOEvaluation(DetectionEvaluation):
         Args:
             sample_or_frame: a :class:`fiftyone.core.Sample` or
                 :class:`fiftyone.core.frame.Frame`
-            eval_key (None): the evaluation key for this evaluation
+            eval_key (None): the evaluation key
 
         Returns:
             a list of matched
@@ -182,7 +182,7 @@ class COCOEvaluation(DetectionEvaluation):
                 ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
-            eval_key (None): the evaluation key for this evaluation
+            eval_key (None): the evaluation key
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
@@ -238,7 +238,7 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
-        eval_key (None): the evaluation key for this evaluation
+        eval_key (None): the evaluation key
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         missing (None): a missing label string. Any unmatched objects are
@@ -334,11 +334,12 @@ class COCODetectionResults(DetectionResults):
         return np.mean(classwise_AP)
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         return super()._from_dict(
             d,
             samples,
             config,
+            eval_key,
             precision=d["precision"],
             recall=d["recall"],
             iou_threshs=d["iou_threshs"],

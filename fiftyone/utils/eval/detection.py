@@ -335,7 +335,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         Args:
             sample_or_frame: a :class:`fiftyone.core.Sample` or
                 :class:`fiftyone.core.frame.Frame`
-            eval_key (None): the evaluation key for this evaluation
+            eval_key (None): the evaluation key
 
         Returns:
             a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
@@ -357,7 +357,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
                 ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
-            eval_key (None): the evaluation key for this evaluation
+            eval_key (None): the evaluation key
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
@@ -465,7 +465,7 @@ class DetectionResults(BaseEvaluationResults):
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
-        eval_key (None): the evaluation key for this evaluation
+        eval_key (None): the evaluation key
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         classes (None): the list of possible classes. If not provided, the
@@ -514,7 +514,7 @@ class DetectionResults(BaseEvaluationResults):
         self.ious = np.array(ious)
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         ious = d["ious"]
@@ -531,7 +531,6 @@ class DetectionResults(BaseEvaluationResults):
         if ypred_ids is None:
             ypred_ids = itertools.repeat(None)
 
-        eval_key = d.get("eval_key", None)
         gt_field = d.get("gt_field", None)
         pred_field = d.get("pred_field", None)
         classes = d.get("classes", None)

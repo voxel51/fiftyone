@@ -338,7 +338,7 @@ class SegmentationResults(BaseEvaluationResults):
     Args:
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
-        eval_key (None): the evaluation key for the evaluation
+        eval_key (None): the evaluation key
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         missing (None): a missing (background) class
@@ -387,14 +387,17 @@ class SegmentationResults(BaseEvaluationResults):
         ]
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
+        gt_field = d.get("gt_field", None)
+        pred_field = d.get("pred_field", None)
+        missing = d.get("missing", None)
         return cls(
             d["pixel_confusion_matrix"],
             d["classes"],
-            eval_key=d.get("eval_key", None),
-            gt_field=d.get("gt_field", None),
-            pred_field=d.get("pred_field", None),
-            missing=d.get("missing", None),
+            eval_key=eval_key,
+            gt_field=gt_field,
+            pred_field=pred_field,
+            missing=missing,
             samples=samples,
             **kwargs,
         )

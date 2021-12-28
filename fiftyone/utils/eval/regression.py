@@ -121,7 +121,7 @@ class RegressionEvaluation(foe.EvaluationMethod):
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            eval_key (None): an evaluation key for this evaluation
+            eval_key (None): the evaluation key
             missing (None): a missing value. Any None-valued regressions are
                 given this value for results purposes
 
@@ -290,7 +290,7 @@ class RegressionResults(foe.EvaluationResults):
         ytrue: a list of ground truth values
         ypred: a list of predicted values
         confs (None): an optional list of confidences for the predictions
-        eval_key (None): the evaluation key of the evaluation
+        eval_key (None): the evaluation key
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         ids (None): a list of sample or frame IDs corresponding to the
@@ -451,11 +451,10 @@ class RegressionResults(foe.EvaluationResults):
         )
 
     @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
+    def _from_dict(cls, d, samples, config, eval_key, **kwargs):
         ytrue = d["ytrue"]
         ypred = d["ypred"]
         confs = d.get("confs", None)
-        eval_key = d.get("eval_key", None)
         gt_field = d.get("gt_field", None)
         pred_field = d.get("pred_field", None)
         ids = d.get("ids", None)
