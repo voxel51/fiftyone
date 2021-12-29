@@ -6,7 +6,13 @@ import { REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
 
 import { getColor } from "../color";
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
-import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
+import {
+  BaseState,
+  BoundingBox,
+  Coordinates,
+  NONFINITE,
+  VideoState,
+} from "../state";
 import {
   CONTAINS,
   isShown,
@@ -19,9 +25,12 @@ import { sizeBytes } from "./util";
 
 export interface Classification extends RegularLabel {}
 
-export interface ClassificationLabel extends Classification {
-  _cls: "Classification" | "Regression";
+export interface Regression {
+  confidence?: number | NONFINITE;
+  value?: number | NONFINITE;
 }
+
+type ClassificationLabel = Classification & Regression;
 
 export type Labels<T> = [string, T[]][];
 

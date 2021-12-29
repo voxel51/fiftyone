@@ -8,20 +8,22 @@ import {
   CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
-  EMBEDDED_DOCUMENT_FIELD,
   Field,
+  FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LABELS_PATH,
+  OBJECT_ID_FIELD,
+  REGRESSION,
   Schema,
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
 
 import { getColor } from "../../color";
-import { Classification } from "../../overlays/classifications";
-import { BaseState, Sample } from "../../state";
+import { Classification, Regression } from "../../overlays/classifications";
+import { BaseState, NONFINITE, Sample } from "../../state";
 import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
 
@@ -109,12 +111,25 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ),
         };
       },
-      [DATE_TIME_FIELD]: (path: string, value: number) => {
+      [DATE_TIME_FIELD]: (path, value: number) => {
         const v = formatDateTime(value, timeZone);
 
         return {
           value: v,
           title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
+      },
+      [FLOAT_FIELD]: (path: string, value: number) => {
+        const v = prettyNumber(value);
+
+        return {
+          value: v,
+          title: `${path}: ${value}`,
           color: getColor(
             coloring.pool,
             coloring.seed,
@@ -147,6 +162,17 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ),
         };
       },
+      [OBJECT_ID_FIELD]: (path, value: string) => {
+        return {
+          value,
+          title: `${path}: ${value}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
+      },
       [STRING_FIELD]: (path, value: string) => ({
         value,
         title: `${path}: ${value}`,
@@ -166,7 +192,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     } = {
       [withPath(LABELS_PATH, CLASSIFICATION)]: (
         path,
-        { label, confidence }: Classification
+        { label }: Classification
       ) => ({
         value: label,
         title: `${path}: ${label}`,
@@ -176,6 +202,30 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           coloring.byLabel ? label : path
         ),
       }),
+      [withPath(LABELS_PATH, CLASSIFICATIONS)]: (
+        path,
+        { label }: Classification
+      ) => ({
+        value: label,
+        title: `${path}: ${label}`,
+        color: getColor(
+          coloring.pool,
+          coloring.seed,
+          coloring.byLabel ? label : path
+        ),
+      }),
+      [withPath(LABELS_PATH, REGRESSION)]: (path, { value }: Regression) => {
+        const v = prettyNumber(value);
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.byLabel ? value : path
+          ),
+        };
+      },
     };
 
     for (let index = 0; index < activePaths.length; index++) {
@@ -218,8 +268,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
       }
 
-      if (PRIMITIVE_RENDERERS[field.embeddedDocType]) {
-        elements.push(PRIMITIVE_RENDERERS[field.embeddedDocType](path, value));
+      if (PRIMITIVE_RENDERERS[field.ftype]) {
+        elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
       }
     }
 
@@ -251,7 +301,11 @@ const arraysAreEqual = (a: any[], b: any[]): boolean => {
   return true;
 };
 
-const prettyNumber = (value: number): string => {
+const prettyNumber = (value: number | NONFINITE): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+
   let string = null;
   if (value % 1 === 0) {
     string = value.toFixed(0);
@@ -272,6 +326,7 @@ const getFieldAndValue = (
   let field: Field = null;
   for (const key of path.split(".")) {
     field = schema[key];
+    key === "id" && console.log(key, field.dbField || key, value);
     if (![undefined, null].includes(value)) value = value[field.dbField || key];
     schema = field.fields;
   }
