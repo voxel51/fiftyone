@@ -2938,7 +2938,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def __init__(self, name, url, username=None, password=None, headers=None):
         self._name = name
-        self._url = url
+        self._url = url.rstrip("/")
         self._username = username
         self._password = password
         self._headers = headers
