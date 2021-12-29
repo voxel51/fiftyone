@@ -106,7 +106,7 @@ const fn = (
     }
   }
 
-  return results;
+  return { results, minHeight: y };
 };
 
 const getEntryKey = (entry: SidebarEntry) => {
@@ -350,7 +350,7 @@ const SidebarColumn = styled.div`
   ${scrollbarStyles}
 `;
 
-const Container = styled.div`
+const Container = animated(styled.div`
   position: relative;
   overflow: visible;
   margin: 0 0.25rem 0 1.25rem;
@@ -361,7 +361,7 @@ const Container = styled.div`
     touch-action: none;
     width: 100%;
   }
-`;
+`);
 
 type RenderEntry = (
   group: string,
@@ -371,11 +371,9 @@ type RenderEntry = (
 ) => { children: React.ReactNode; disabled: boolean };
 
 const InteractiveSidebar = ({
-  before,
   render,
   modal,
 }: {
-  before?: React.ReactNode;
   render: RenderEntry;
   modal: boolean;
 }) => {
@@ -394,6 +392,7 @@ const InteractiveSidebar = ({
   const shown = useRecoilValue(sidebarVisible(modal));
   const [entries, setEntries] = useEntries(modal);
   const disabled = modal ? new Set<string>() : useRecoilValue(disabledPaths);
+  const [containerContoller] = useState(() => new Controller({ minHeight: 0 }));
 
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
@@ -440,7 +439,6 @@ const InteractiveSidebar = ({
 
     let from = lastOrder.current.indexOf(down.current);
     let to = after ? lastOrder.current.indexOf(after) : 0;
-
     if (entry.kind === EntryKind.PATH) {
       to = Math.max(to, 1);
       return move(lastOrder.current, from, to);
@@ -476,7 +474,12 @@ const InteractiveSidebar = ({
   };
 
   const placeItems = useCallback(() => {
-    const placements = fn(items.current, order.current, order.current);
+    const { results: placements, minHeight } = fn(
+      items.current,
+      order.current,
+      order.current
+    );
+    containerContoller.set({ minHeight });
     for (const key of order.current) {
       const item = items.current[key];
       if (item.active) {
@@ -544,13 +547,15 @@ const InteractiveSidebar = ({
     if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
     const realDelta = y - start.current;
     const newOrder = getNewOrder(lastDirection.current);
-    const results = fn(
+    const { results, minHeight } = fn(
       items.current,
       order.current,
       newOrder,
       down.current,
       realDelta
     );
+    containerContoller.set({ minHeight });
+
     for (const key of order.current)
       items.current[key].controller.start(results[key]);
 
@@ -584,7 +589,7 @@ const InteractiveSidebar = ({
 
   return shown ? (
     <Resizable
-      defaultSize={{ width, height: "100%" }}
+      size={{ height: "100%", width }}
       minWidth={200}
       maxWidth={600}
       enable={{
@@ -597,8 +602,8 @@ const InteractiveSidebar = ({
         bottomLeft: false,
         topLeft: false,
       }}
-      onResizeStop={(e, direction, ref, { width }) => {
-        setWidth(width);
+      onResizeStop={(e, direction, ref, { width: delta }) => {
+        setWidth(width + delta);
       }}
     >
       <SidebarColumn
@@ -612,8 +617,7 @@ const InteractiveSidebar = ({
           down.current && animate(last.current);
         }}
       >
-        {before}
-        <Container>
+        <Container style={containerContoller.springs}>
           {order.current.map((key) => {
             const entry = items.current[key].entry;
             if (entry.kind === EntryKind.GROUP) {

@@ -1,6 +1,6 @@
 import React, { useState, useRef, Suspense } from "react";
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary, useErrorHandler } from "react-error-boundary";
 
 import { toCamelCase } from "@fiftyone/utilities";
 
@@ -24,7 +24,7 @@ import {
 import { viewsAreEqual } from "../utils/view";
 
 import Dataset from "./Dataset";
-import Error from "./Error";
+import ErrorPage from "./Error";
 import Setup from "./Setup";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 import { aggregationsTick } from "../recoil/aggregations";
@@ -100,33 +100,47 @@ const useClose = () => {
   );
 };
 
-function App() {
+const Container = () => {
   const addNotification = useRef(null);
-  const [reset, setReset] = useState(false);
   useEventHandler(socket, "open", useOpen());
 
   useEventHandler(socket, "close", useClose());
   useMessageHandler("update", useStateUpdate());
 
-  useMessageHandler("error", (data) => console.log(data));
   useSendMessage("as_app", {
     notebook: isNotebook,
     handle: handleId,
   });
 
+  const handleError = useErrorHandler();
+
+  useMessageHandler("error", (data) => {
+    handleError(data);
+  });
+
   return (
-    <ErrorBoundary
-      FallbackComponent={Error}
-      onReset={() => setReset(true)}
-      resetKeys={[reset]}
-    >
+    <>
       <Header addNotification={addNotification} />
       <Suspense fallback={<Setup />}>
         <Dataset />
       </Suspense>
       <NotificationHub children={(add) => (addNotification.current = add)} />
+    </>
+  );
+};
+
+const App = () => {
+  const [reset, setReset] = useState(false);
+
+  return (
+    <ErrorBoundary
+      FallbackComponent={ErrorPage}
+      onReset={() => setReset(true)}
+      resetKeys={[reset]}
+    >
+      <Container />
     </ErrorBoundary>
   );
-}
+};
 
 export default App;

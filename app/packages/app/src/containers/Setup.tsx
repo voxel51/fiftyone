@@ -4,6 +4,7 @@ import { animated, useSpring } from "@react-spring/web";
 
 import { port, isNotebook } from "../shared/connection";
 import { useTheme } from "../utils/hooks";
+import { scrollbarStyles } from "../components/utils";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -99,8 +100,15 @@ const NotebookInstructions = () => {
   );
 };
 
+const SetupWrapper = styled.div`
+  width: 100%;
+  overflow: auto;
+
+  ${scrollbarStyles}
+`;
+
 const SetupContainer = styled.div`
-  min-width: 800px;
+  width: 80%;
   padding: 3rem 1rem;
   margin: 0 auto;
 `;
@@ -151,29 +159,31 @@ const Setup = () => {
   });
 
   return (
-    <SetupContainer>
-      <Title>Welcome to FiftyOne!</Title>
-      <Subtitle>It looks like you are not connected to a session</Subtitle>
-      {isNotebook ? (
-        <NotebookInstructions />
-      ) : (
-        <>
-          <TabsContainer>
-            <Tab onClick={() => setActiveTab("local")} style={localProps}>
-              Local sessions
-            </Tab>
-            <Tab onClick={() => setActiveTab("remote")} style={remoteProps}>
-              Remote sessions
-            </Tab>
-          </TabsContainer>
-          {activeTab === "remote" ? (
-            <RemoteInstructions />
-          ) : (
-            <LocalInstructions />
-          )}
-        </>
-      )}
-    </SetupContainer>
+    <SetupWrapper>
+      <SetupContainer>
+        <Title>Welcome to FiftyOne!</Title>
+        <Subtitle>It looks like you are not connected to a session</Subtitle>
+        {isNotebook ? (
+          <NotebookInstructions />
+        ) : (
+          <>
+            <TabsContainer>
+              <Tab onClick={() => setActiveTab("local")} style={localProps}>
+                Local sessions
+              </Tab>
+              <Tab onClick={() => setActiveTab("remote")} style={remoteProps}>
+                Remote sessions
+              </Tab>
+            </TabsContainer>
+            {activeTab === "remote" ? (
+              <RemoteInstructions />
+            ) : (
+              <LocalInstructions />
+            )}
+          </>
+        )}
+      </SetupContainer>
+    </SetupWrapper>
   );
 };
 

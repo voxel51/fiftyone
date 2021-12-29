@@ -709,4 +709,64 @@ const Header = ({ addNotification }) => {
   );
 };
 
+const EmptyText = styled.div`
+  color: ${({ theme }) => theme.font};
+  height: 40px;
+  font-size: 1.2rem;
+  border: none;
+  align-items: center;
+  font-weight: bold;
+  font-weight: bold;
+  padding-left: 1rem;
+  border-left-width: 1px;
+  border-color: ${({ theme }) => theme.backgroundDarkBorder};
+  border-left-style: solid;
+`;
+
+export const EmptyHeader = ({ text }) => {
+  const refresh = useRecoilValue(selectors.refresh);
+
+  const logoProps = useSpring({
+    transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
+  });
+  return (
+    <HeaderDiv>
+      <LeftDiv>
+        <TitleDiv
+          style={logoProps}
+          onClick={() => {
+            socket.send(packageMessage("refresh", {}));
+          }}
+        >
+          <LogoImg src={Logo} />
+          <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
+        </TitleDiv>
+      </LeftDiv>
+      <EmptyText>{text}</EmptyText>
+      <RightDiv>
+        <IconWrapper>
+          <ExternalLink
+            title="Slack"
+            href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ"
+          >
+            <Slack />
+          </ExternalLink>
+          <ExternalLink
+            title="GitHub"
+            href="https://github.com/voxel51/fiftyone"
+          >
+            <GitHub />
+          </ExternalLink>
+          <ExternalLink
+            title="Documentation"
+            href="https://voxel51.com/docs/fiftyone/user_guide/app.html"
+          >
+            <MenuBook />
+          </ExternalLink>
+        </IconWrapper>
+      </RightDiv>
+    </HeaderDiv>
+  );
+};
+
 export default Header;

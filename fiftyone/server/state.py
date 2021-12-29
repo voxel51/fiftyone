@@ -48,11 +48,7 @@ def catch_errors(func):
                     {
                         "type": "error",
                         "kind": "Server Error",
-                        "message": (
-                            "An exception has been raised by the server. Your session "
-                            "has been reverted to its previous state."
-                        ),
-                        "stack": [traceback.format_exc()],
+                        "stack": traceback.format_exc(),
                     }
                 )
 

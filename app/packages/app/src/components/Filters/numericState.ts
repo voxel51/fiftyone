@@ -28,15 +28,13 @@ const getFilter = (
   const bounds = get(boundsAtom({ path, defaultRange }));
   const result = {
     _CLS: "numeric",
-    ...{
-      range: bounds,
-      none: true,
-      nan: true,
-      inf: true,
-      ninf: true,
-      exclude: false,
-    },
-    ...get(filterAtoms.filter({ modal, path })),
+    range: bounds,
+    none: true,
+    nan: true,
+    inf: true,
+    ninf: true,
+    exclude: false,
+    ...get(modal ? filterAtoms.modalFilters : filterAtoms.filters)[path],
   };
 
   return result;
@@ -200,9 +198,6 @@ export const filter = selectorFamily<
 >({
   key: "numericFilter",
   get: (params) => ({ get }) => {
-    if (!get(filterAtoms.filter(params))) {
-      return (value) => true;
-    }
     const exclude = get(excludeAtom(params));
     const [start, end] = get(rangeAtom(params));
     const none = get(nonfiniteAtom({ ...params, key: "none" }));
@@ -213,8 +208,8 @@ export const filter = selectorFamily<
     return (value) => {
       if (typeof value === "number") {
         return exclude
-          ? value >= start && value <= end
-          : value < start || value > end;
+          ? value < start || value > end
+          : value >= start && value <= end;
       }
 
       if (nan && value === "nan") {

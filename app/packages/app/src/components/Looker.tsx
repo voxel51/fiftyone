@@ -11,6 +11,7 @@ import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
+import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
@@ -341,7 +342,7 @@ type EventCallback = (event: CustomEvent) => void;
 
 const lookerOptions = selector({
   key: "lookerOptions",
-  get: ({ get }) => {
+  get: ({ get, getCallback }) => {
     const showConfidence = get(selectors.appConfig).showConfidence;
     const showIndex = get(selectors.appConfig).showIndex;
     const showLabel = get(selectors.appConfig).showLabel;
@@ -354,6 +355,13 @@ const lookerOptions = selector({
       ? get(atoms.cropToContent(true))
       : false;
 
+    const filters = Object.fromEntries(
+      get(schemaAtoms.labelPaths({ expanded: false })).map((path) => [
+        path,
+        get(pathFilter({ modal: true, path })),
+      ])
+    );
+
     return {
       activePaths: get(schemaAtoms.activeFields({ modal: true })),
       showConfidence,
@@ -363,7 +371,9 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      filter: (path, value) => get(pathFilter({ modal: true, path }))(value),
+      filter: (path, value) => {
+        return filters[path](value);
+      },
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),

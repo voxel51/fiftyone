@@ -1,13 +1,16 @@
-import React from "react";
-import { RecoilValueReadOnly, selectorFamily } from "recoil";
+import "react";
+import { selectorFamily } from "recoil";
 
 import {
   BOOLEAN_FIELD,
   FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LABELS,
   OBJECT_ID_FIELD,
   STRING_FIELD,
+  VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 
 import * as schemaAtoms from "../../recoil/schema";
@@ -19,8 +22,39 @@ import { filter as numeric } from "./numericState";
 import BooleanFieldFilter from "./BooleanFieldFilter";
 import NumericFieldFilter from "./NumericFieldFilter";
 import StringFieldFilter from "./StringFieldFilter";
+import { filters, modalFilters } from "../../recoil/filters";
 
 export { BooleanFieldFilter, NumericFieldFilter, StringFieldFilter };
+
+const primitiveFilter = selectorFamily<
+  (value: any) => boolean,
+  { modal: boolean; path: string }
+>({
+  key: "primitiveFilter",
+  get: ({ modal, path }) => ({ get }) => {
+    const { ftype } = get(schemaAtoms.field(path));
+    if (ftype === BOOLEAN_FIELD) {
+      return get(boolean({ modal, path }));
+    }
+
+    if (
+      [
+        FLOAT_FIELD,
+        FRAME_NUMBER_FIELD,
+        FRAME_SUPPORT_FIELD,
+        INT_FIELD,
+      ].includes(ftype)
+    ) {
+      return get(numeric({ modal, path }));
+    }
+
+    if ([OBJECT_ID_FIELD, STRING_FIELD].includes(ftype)) {
+      return get(string({ modal, path }));
+    }
+
+    return (value) => true;
+  },
+});
 
 export const pathFilter = selectorFamily<
   (value: any) => boolean,
@@ -28,37 +62,25 @@ export const pathFilter = selectorFamily<
 >({
   key: "pathFilter",
   get: ({ path, modal }) => ({ get }) => {
-    let { ftype, embeddedDocType } = get(schemaAtoms.field(path));
+    // force updates
+    get(modal ? modalFilters : filters);
+    const { embeddedDocType } = get(schemaAtoms.field(path));
 
     if (LABELS.includes(embeddedDocType)) {
       const expandedPath = get(schemaAtoms.expandPath(path));
-      const labelFields = get(schemaAtoms.fields({ path: expandedPath }));
+      const labelFields = get(
+        schemaAtoms.fields({ path: expandedPath, ftype: VALID_PRIMITIVE_TYPES })
+      );
 
-      const resolve = (name, value) =>
-        (get(pathFilter({ modal, path: `${expandedPath}.${name}` })) as (
-          value: any
-        ) => boolean)(value);
       return (value: any) => {
-        return labelFields.every(({ name }) => resolve(name, value));
+        return labelFields.every(({ name, dbField }) => {
+          return get(
+            primitiveFilter({ modal, path: `${expandedPath}.${name}` })
+          )(value[dbField || name]);
+        });
       };
     }
 
-    switch (ftype) {
-      case BOOLEAN_FIELD:
-        return get(boolean({ modal, path }));
-      case INT_FIELD:
-        return get(numeric({ modal, path }));
-      case FLOAT_FIELD:
-        return get(numeric({ modal, path }));
-      case OBJECT_ID_FIELD:
-        return get(string({ modal, path }));
-      case STRING_FIELD:
-        return get(string({ modal, path }));
-      default:
-        throw new Error("unresolved path filter");
-    }
+    return get(primitiveFilter({ modal, path }));
   },
-}) as (param: {
-  modal: boolean;
-  path: string;
-}) => RecoilValueReadOnly<(value: any) => boolean>;
+});

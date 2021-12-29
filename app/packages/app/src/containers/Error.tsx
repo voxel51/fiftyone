@@ -1,7 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-
-import Logo from "../images/logo.png";
+import { EmptyHeader } from "../components/Header";
 
 const ErrorContainer = styled.div`
   display: flex;
@@ -42,33 +41,45 @@ const ReloadButton = styled.button`
   }
 `;
 
-const LogoImg = styled.img`
-  width: 5rem;
-  height: 5rem;
-  margin: 0 auto 1rem;
-  display: block;
+const Stack = styled.div`
+  background: ${({ theme }) => theme.backgroundDark};
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem 0 0.5rem;
+  text-align: left;
 `;
 
 const Error = ({ resetErrorBoundary, error = null }) => {
+  console.log(error.stack);
   return (
-    <ErrorContainer>
-      <ErrorDiv>
-        <LogoImg src={Logo} />
-        <ErrorMessage>
-          <p>Oops! Something went wrong.</p>
-          <p>If you just changed your view, try reverting your changes:</p>
-          <Code>session.view = old_view</Code>
-          <div>
-            And then{" "}
-            <ReloadButton onClick={resetErrorBoundary}>
-              Reload the App
-            </ReloadButton>{" "}
-            to try again.
-          </div>
-          {error.stack && <Code>{error.stack}</Code>}
-        </ErrorMessage>
-      </ErrorDiv>
-    </ErrorContainer>
+    <>
+      <EmptyHeader text={"Oops! Something went wrong."} />
+      <ErrorContainer>
+        <ErrorDiv>
+          <ErrorMessage>
+            <p></p>
+            <p>If you just changed your view, try reverting your changes:</p>
+            <Code>session.view = old_view</Code>
+            <div>
+              And then{" "}
+              <ReloadButton onClick={resetErrorBoundary}>
+                Reload the App
+              </ReloadButton>{" "}
+              to try again.
+            </div>
+            {error.stack && (
+              <Stack>
+                {error.stack.split("\n").map((line) => (
+                  <div>{line}</div>
+                ))}
+              </Stack>
+            )}
+          </ErrorMessage>
+        </ErrorDiv>
+      </ErrorContainer>
+    </>
   );
 };
 

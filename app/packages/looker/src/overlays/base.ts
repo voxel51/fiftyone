@@ -51,12 +51,8 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   field: string,
   label: Label
 ) => {
-  if (state.options.activePaths && !state.options.activePaths.includes(field)) {
-    return false;
-  }
-
-  if (state.options.filter && state.options.filter[field]) {
-    return state.options.filter[field](label);
+  if (state.options.filter) {
+    return state.options.filter(field, label);
   }
 
   return true;

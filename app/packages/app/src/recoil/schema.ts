@@ -120,17 +120,12 @@ export const fieldPaths = selectorFamily<
       return f(sampleLabels.concat(frameLabels).sort());
     }
 
-    return Object.keys(get(field(path)).fields)
-      .map((name) => [path, name].join("."))
-      .filter((path) => {
-        return get(
-          meetsType({
-            path,
-            embeddedDocType,
-            ftype,
-          })
-        );
-      });
+    return Object.entries(get(field(path)).fields)
+      .filter(
+        ([_, field]) =>
+          !ftype || meetsFieldType(field, { ftype, embeddedDocType })
+      )
+      .map(([name]) => name);
   },
 });
 

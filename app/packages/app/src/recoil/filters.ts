@@ -39,8 +39,15 @@ export const filter = selectorFamily<
   { path: string; modal: boolean }
 >({
   key: "filter",
-  get: ({ path, modal }) => ({ get }) =>
-    get(modal ? modalFilters : filters)?.[path] ?? {},
+  get: ({ path, modal }) => ({ get }) => {
+    const f = get(modal ? modalFilters : filters);
+
+    if (f[path]) {
+      return f[path];
+    }
+
+    return null;
+  },
   set: ({ path, modal }) => ({ get, set }, filter) => {
     const atom = modal ? modalFilters : filters;
     const newFilters = Object.assign({}, get(atom));

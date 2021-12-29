@@ -196,17 +196,6 @@ class HasClient(object):
     def _reload(self):
         raise NotImplementedError("subclasses must implement _reload()")
 
-    def on_notification(self, data):
-        if not _is_leader(self):
-            return
-
-        print(data["kind"])
-        print()
-        print(data["message"])
-        print()
-        for value in data["session_items"]:
-            print(value)
-
     @property
     def has_listeners(self):
         return bool(self._listeners)

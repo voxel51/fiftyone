@@ -65,9 +65,11 @@ const setModal = async (
       sidebarEntries({ modal: true, loadingTags: false }),
       sidebarEntries({ modal: false, loadingTags: false }),
     ],
+    [atoms.sidebarWidth(true), atoms.sidebarWidth(false)],
+    [atoms.sidebarVisible(true), atoms.sidebarVisible(false)],
   ];
 
-  const results = Promise.all(
+  const results = await Promise.all(
     data.map(([_, get]) => snapshot.getPromise(get as RecoilState<any>))
   );
 
@@ -127,8 +129,9 @@ const flashlightLookerOptions = selector({
   get: ({ get }) => {
     return {
       coloring: get(colorAtoms.coloring(false)),
-      filter: (path: string, value) =>
-        get(pathFilter({ modal: false, path }))(value),
+      filter: (path: string, value) => {
+        return get(pathFilter({ modal: false, path }))(value);
+      },
       activePaths: get(schemaAtoms.activeFields({ modal: false })),
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,

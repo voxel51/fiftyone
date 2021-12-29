@@ -234,8 +234,10 @@ export default class Flashlight<K> {
       });
       this.container.style.height = `${this.state.height}px`;
       const activeSection = this.state.sections[this.state.activeSection];
-      activeSection &&
-        (this.container.parentElement.scrollTop = activeSection.getTop());
+      if (activeSection) {
+        this.container.parentElement.scrollTop =
+          this.state.activeSection === 0 ? 0 : activeSection.getTop();
+      }
 
       this.render();
     }
