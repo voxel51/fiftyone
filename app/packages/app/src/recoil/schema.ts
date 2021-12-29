@@ -142,7 +142,9 @@ export const fields = selectorFamily<
   get: (params) => ({ get }) => {
     return [...get(fieldPaths(params))]
       .sort()
-      .map((name) => get(field([params.path, name].join("."))));
+      .map((name) =>
+        get(field(params.path ? [params.path, name].join(".") : name))
+      );
   },
 });
 

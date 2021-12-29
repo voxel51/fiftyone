@@ -12,7 +12,7 @@ import {
 } from "@fiftyone/utilities";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
-import { field, fieldPaths, fields } from "../../recoil/schema";
+import { fieldPaths, fields } from "../../recoil/schema";
 import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import { http } from "../../shared/connection";
@@ -25,7 +25,6 @@ import {
   SidebarEntry,
   TailEntry,
 } from "./utils";
-import { modal } from "../../recoil/atoms";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   {
