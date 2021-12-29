@@ -2500,6 +2500,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         password (None): the CVAT password
         headers (None): an optional dict of headers to add to all CVAT API
             requests
+        task_size (None): an optional maximum number of images to upload per
+            task. Videos are always uploaded one per task
         segment_size (None): maximum number of images per job. Not applicable
             to videos
         image_quality (75): an int in `[0, 100]` determining the image quality
@@ -2538,6 +2540,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         username=None,
         password=None,
         headers=None,
+        task_size=None,
         segment_size=None,
         image_quality=75,
         use_cache=True,
@@ -2553,6 +2556,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
         self.url = url
+        self.task_size = task_size
         self.segment_size = segment_size
         self.image_quality = image_quality
         self.use_cache = use_cache
@@ -3491,6 +3495,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         config = backend.config
         label_schema = config.label_schema
         occluded_attr = config.occluded_attr
+        task_size = config.task_size
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
@@ -3509,7 +3514,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         labels_task_map = {}
 
         num_samples = len(samples)
-        batch_size = self._get_batch_size(samples)
+        batch_size = self._get_batch_size(samples, task_size)
 
         (
             cvat_schema,
@@ -3990,7 +3995,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label_field,
                 )
 
-    def _get_batch_size(self, samples):
+    def _get_batch_size(self, samples, task_size):
+        samples.compute_metadata()
+
         if samples.media_type == fom.VIDEO:
             # The current implementation (both upload and download) requires
             # frame IDs for all frames that might get labels
@@ -3999,10 +4006,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # CVAT only allows for one video per task
             return 1
 
-        samples.compute_metadata()
+        num_samples = len(samples)
 
-        # Put all image samples in one task
-        return len(samples)
+        if task_size is None:
+            # Put all image samples in one task
+            return num_samples
+
+        return min(task_size, num_samples)
 
     def _create_task_upload_data(
         self,
