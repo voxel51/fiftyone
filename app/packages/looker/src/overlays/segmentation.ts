@@ -142,13 +142,13 @@ export default class SegmentationOverlay<State extends BaseState>
 
   getSelectData(): SelectData {
     return {
-      id: this.label.id,
+      id: this.label._id,
       field: this.field,
     };
   }
 
   isSelected(state: Readonly<State>): boolean {
-    return state.options.selectedLabels.includes(this.label.id);
+    return state.options.selectedLabels.includes(this.label._id);
   }
 
   isShown(state: Readonly<State>): boolean {

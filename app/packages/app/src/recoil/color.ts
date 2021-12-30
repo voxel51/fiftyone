@@ -27,17 +27,23 @@ export const coloring = selectorFamily<Coloring, boolean>({
         .map((_, i) => getColor(pool, seed, i)),
     };
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
   get: (modal) => ({ get }) => {
-    const colorByLabel = get(atoms.colorByLabel(modal));
+    get(atoms.colorByLabel(modal));
     let pool = get(atoms.colorPool);
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
 
     return createColorGenerator(pool, seed);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -66,5 +72,8 @@ export const pathColor = selectorFamily<
     }
 
     return map(path);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });

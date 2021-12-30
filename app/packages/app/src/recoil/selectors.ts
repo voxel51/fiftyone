@@ -11,11 +11,17 @@ export const isModalActive = selector<boolean>({
   get: ({ get }) => {
     return Boolean(get(atoms.modal));
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const refresh = selector<boolean>({
   key: "refresh",
   get: ({ get }) => get(atoms.stateDescription)?.refresh,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const deactivated = selector({
@@ -26,6 +32,9 @@ export const deactivated = selector({
       return handleId !== activeHandle && typeof activeHandle === "string";
     }
     return false;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -41,6 +50,9 @@ export const fiftyone = selector({
       await new Promise((r) => setTimeout(r, 2000));
     } while (response === null);
     return response;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -66,11 +78,17 @@ export const showTeamsButton = selector({
     }
     return "shown";
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => get(atoms.stateDescription)?.dataset?.name,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const datasets = selector({
@@ -78,26 +96,41 @@ export const datasets = selector({
   get: ({ get }) => {
     return get(atoms.stateDescription)?.datasets ?? [];
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const hasDataset = selector({
   key: "hasDataset",
   get: ({ get }) => Boolean(get(datasetName)),
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const mediaType = selector({
   key: "mediaType",
   get: ({ get }) => get(atoms.stateDescription)?.dataset?.mediaType,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const isVideoDataset = selector({
   key: "isVideoDataset",
   get: ({ get }) => get(mediaType) === "video",
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
   get: ({ get }) => get(appConfig)?.gridZoom,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const timeZone = selector<string>({
@@ -105,11 +138,17 @@ export const timeZone = selector<string>({
   get: ({ get }) => {
     return get(appConfig)?.timezone || "UTC";
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const appConfig = selector<State.Config>({
   key: "appConfig",
   get: ({ get }) => get(atoms.stateDescription)?.config,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const defaultTargets = selector({
@@ -120,6 +159,9 @@ export const defaultTargets = selector({
     return Object.fromEntries(
       Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
     );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -134,6 +176,9 @@ export const targets = selector({
       fields: labelTargets,
     };
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const getTarget = selector({
@@ -147,6 +192,9 @@ export const getTarget = selector({
       return defaults[target];
     };
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const selectedLabelIds = selector<Set<string>>({
@@ -154,6 +202,9 @@ export const selectedLabelIds = selector<Set<string>>({
   get: ({ get }) => {
     const labels = get(selectedLabels);
     return new Set(Object.keys(labels));
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -175,12 +226,18 @@ export const anyTagging = selector<boolean>({
       })
     );
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const hiddenLabelIds = selector({
   key: "hiddenLabelIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenLabels)));
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -208,23 +265,30 @@ export const selectedLabels = selector<atoms.SelectedLabelMap>({
     );
     set(atoms.stateDescription, newState);
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const hiddenFieldLabels = selectorFamily<string[], string>({
   key: "hiddenFieldLabels",
   get: (fieldName) => ({ get }) => {
     const labels = get(atoms.hiddenLabels);
-    const { sampleId } = get(atoms.modal);
+    const {
+      sample: { _id },
+    } = get(atoms.modal);
 
-    if (sampleId) {
+    if (_id) {
       return Object.entries(labels)
         .filter(
-          ([_, { sample_id: id, field }]) =>
-            sampleId === id && field === fieldName
+          ([_, { sample_id: id, field }]) => _id === id && field === fieldName
         )
         .map(([label_id]) => label_id);
     }
     return [];
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -275,5 +339,16 @@ export const similarityKeys = selector<{
         },
         { patches: [], samples: [] }
       );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const connected = selector<boolean>({
+  key: "connected",
+  get: ({ get }) => Boolean(get(atoms.stateDescription)),
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });

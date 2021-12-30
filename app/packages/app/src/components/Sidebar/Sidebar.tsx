@@ -12,7 +12,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
 import { disabledPaths } from "./recoil";
 
-const MARGIN = 3;
+const MARGIN = 5;
 
 const fn = (
   items: InteractiveItems,

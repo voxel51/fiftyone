@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useLayoutEffect, useMemo, useState } from "react";
 import { Checkbox } from "@material-ui/core";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
@@ -161,6 +161,13 @@ const FilterableEntry = React.memo(
       schemaAtoms.activeField({ modal, path })
     );
     const expandable = useRecoilValueLoadable(canExpand({ modal, path }));
+
+    useLayoutEffect(() => {
+      expandable.state !== "loading" &&
+        !expandable.contents &&
+        !expanded &&
+        setExpanded(false);
+    }, [expandable, expanded]);
 
     return (
       <RegularEntry

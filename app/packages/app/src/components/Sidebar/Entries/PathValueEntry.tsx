@@ -6,6 +6,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import * as atoms from "../../../recoil/atoms";
+import * as colorAtoms from "../../../recoil/color";
 import * as schemaAtoms from "../../../recoil/schema";
 import { prettify } from "../../../utils/generic";
 import { useTheme } from "../../../utils/hooks";
@@ -34,11 +35,13 @@ const ScalarValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
   });
+  const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
 
   return (
     <RegularEntry
       title={`${path}: ${value}`}
       backgroundColor={backgroundColor}
+      borderTop={color}
       heading={null}
     >
       <ScalarDiv>
@@ -74,12 +77,14 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
   }, [data]);
   const expandable = values && values.length;
   const count = prettify(values.length);
+  const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
 
   return (
     <RegularEntry
       title={`${path}: ${count}`}
+      borderTop={color}
       heading={
-        <NameAndCountContainer>
+        <NameAndCountContainer style={{ borderTop: "black 3px solid" }}>
           <span key="path">{path}</span>
           <span key="value">{values.length}</span>
           {expandable && (

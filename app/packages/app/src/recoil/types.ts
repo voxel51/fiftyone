@@ -3,8 +3,8 @@ import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
   export enum SPACE {
-    FRAME,
-    SAMPLE,
+    FRAME = "FRAME",
+    SAMPLE = "SAMPLE",
   }
 
   export type SidebarGroups = [string, string[]][];

@@ -132,14 +132,7 @@ class PollingHandler(tornado.web.RequestHandler):
 
             if event in {
                 "count_values",
-                "distinct",
                 "distributions",
-                "get_video_data",
-                "all_tags",
-                "selected_statistics",
-                "tag_modal",
-                "modal_statistics",
-                "tag_statistics",
             }:
                 caller = self
             elif event in {"capture", "update"}:
@@ -545,16 +538,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             tags = view.count_values("tags")
             count = sum(tags.values())
-
-        _write_message(
-            {
-                "type": "tag_statistics",
-                "count": count,
-                "tags": tags,
-                "uuid": uuid,
-            },
-            only=caller,
-        )
 
     @classmethod
     async def send_samples(

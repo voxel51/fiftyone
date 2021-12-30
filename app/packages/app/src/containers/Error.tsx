@@ -1,74 +1,108 @@
+import { FileCopy, Refresh } from "@material-ui/icons";
 import React from "react";
+import { useCopyToClipboard } from "react-use";
+import { useRecoilState } from "recoil";
 import styled from "styled-components";
-import { EmptyHeader } from "../components/Header";
 
-const ErrorContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
+import Header from "../components/Header";
+import { scrollbarStyles } from "../components/utils";
+
+import * as selectors from "../recoil/selectors";
+import { useRefresh, useTheme } from "../utils/hooks";
+
+const ErrorWrapper = styled.div`
   width: 100%;
+  overflow: auto;
+
+  ${scrollbarStyles}
 `;
 
-const ErrorDiv = styled.div``;
+const ErrorContainer = styled.div`
+  width: 80%;
+  padding: 3rem 1rem;
+  margin: 0 auto;
+`;
+
+const ErrorHeading = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.4rem;
+  color: ${({ theme }) => theme.font};
+  font-weight: bold;
+
+  & > div {
+    display: flex;
+    justify-content: lrt;
+  }
+  & > div > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-left: 0.5rem;
+  }
+
+  & svg {
+    cursor: pointer;
+  }
+`;
 
 const ErrorMessage = styled.div`
   font-weight: bold;
   text-align: center;
 `;
 
-const Code = styled.code`
-  background: ${({ theme }) => theme.backgroundDark};
-  border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
-  color: ${({ theme }) => theme.secondary};
-  padding: 0.5rem;
-`;
-
-const ReloadButton = styled.button`
-  display: inline-block;
-  margin: 1rem 0.5rem;
-  padding: 0.5rem;
-  background: ${({ theme }) => theme.backgroundDark};
-  color: ${({ theme }) => theme.fontDark};
-  border: none;
-  border-radius: 2px;
-  font-weight: bold;
-  color: ${({ theme }) => theme.font};
-  cursor: pointer;
-
-  &:focus {
-    outline: none;
-  }
-`;
-
 const Stack = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
   border: 1px solid #191c1f;
+  border-top: 2px solid ${({ theme }) => theme.brand};
+  background: ${({ theme }) => theme.backgroundDark};
   border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.font};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem 0 0.5rem;
   text-align: left;
+  font-weight: normal;
+  font-size: 1rem;
+
+  overflow: auto;
+  text-wrap: nowrap;
+  ${scrollbarStyles}
+
+  & > div {
+    white-space: nowrap;
+  }
 `;
 
-const Error = ({ resetErrorBoundary, error = null }) => {
-  console.log(error.stack);
+const Error = ({ error = null, resetErrorBoundary }) => {
+  const [_, copy] = useCopyToClipboard();
+
+  const refresh = useRefresh();
   return (
     <>
-      <EmptyHeader text={"Oops! Something went wrong."} />
-      <ErrorContainer>
-        <ErrorDiv>
-          <ErrorMessage>
-            <p></p>
-            <p>If you just changed your view, try reverting your changes:</p>
-            <Code>session.view = old_view</Code>
+      <Header error={true} />
+      <ErrorWrapper>
+        <ErrorContainer>
+          <ErrorHeading>
+            <div>{error.kind ? error.kind : "App Error"}</div>
             <div>
-              And then{" "}
-              <ReloadButton onClick={resetErrorBoundary}>
-                Reload the App
-              </ReloadButton>{" "}
-              to try again.
+              <div>
+                <span
+                  title={"Refresh page"}
+                  onClick={() => {
+                    refresh();
+                    resetErrorBoundary();
+                  }}
+                >
+                  <Refresh />
+                </span>
+              </div>
+              <div>
+                <span title={"Copy stack"} onClick={() => copy(error.stack)}>
+                  <FileCopy />
+                </span>
+              </div>
             </div>
+          </ErrorHeading>
+          <ErrorMessage>
             {error.stack && (
               <Stack>
                 {error.stack.split("\n").map((line) => (
@@ -77,8 +111,8 @@ const Error = ({ resetErrorBoundary, error = null }) => {
               </Stack>
             )}
           </ErrorMessage>
-        </ErrorDiv>
-      </ErrorContainer>
+        </ErrorContainer>
+      </ErrorWrapper>
     </>
   );
 };

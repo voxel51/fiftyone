@@ -67,10 +67,10 @@ export class ClassificationsOverlay<
 
   getSelectData(state: Readonly<State>): SelectData {
     const {
-      label: { id },
+      label: { _id },
       field,
     } = this.getPointInfo(state);
-    return { id, field };
+    return { id: _id, field };
   }
 
   getMouseDistance(state: Readonly<State>): number {
@@ -94,7 +94,7 @@ export class ClassificationsOverlay<
     let result: PointInfo<Label>;
 
     for (const [field, label] of filtered) {
-      const box = this.labelBoundingBoxes[label.id];
+      const box = this.labelBoundingBoxes[label._id];
 
       if (box) {
         let [bx, by, bw, bh] = box;
@@ -137,7 +137,7 @@ export class ClassificationsOverlay<
       );
       top = result.top;
       if (result.box) {
-        newBoxes[label.id] = result.box;
+        newBoxes[label._id] = result.box;
       }
     });
 
@@ -216,7 +216,7 @@ export class ClassificationsOverlay<
   }
 
   isSelected(state: Readonly<State>, label: Label): boolean {
-    return state.options.selectedLabels.includes(label.id);
+    return state.options.selectedLabels.includes(label._id);
   }
 
   private strokeClassification(

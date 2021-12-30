@@ -42,6 +42,8 @@ import { useEventHandler, useMessageHandler } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarEntries, sidebarGroupsDefinition } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
+import { useErrorHandler } from "react-error-boundary";
+import { EMBEDDED_DOCUMENT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -337,6 +339,7 @@ const getPageParameters = selector<() => Promise<PageParameters>>({
 });
 
 export default React.memo(() => {
+  const handleError = useErrorHandler();
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
@@ -364,15 +367,26 @@ export default React.memo(() => {
       sampleId: sample._id,
       frameRate,
       frameNumber: constructor === FrameLooker ? frameNumber : null,
-      fieldSchema,
-      frameFieldSchema,
+      fieldSchema: {
+        ...fieldSchema,
+        frames: {
+          name: "frames",
+          ftype: LIST_FIELD,
+          subfield: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: "fiftyone.core.frames.FrameSample",
+          fields: frameFieldSchema,
+        },
+      },
       ...etc,
     };
 
-    return new constructor(sample, config, {
+    const looker = new constructor(sample, config, {
       ...lookerOptions,
       selected: selected.has(sample._id),
     });
+    looker.addEventListener("error", (event) => handleError(event.detail));
+
+    return looker;
   };
   const aspectRatioGenerator = useRef<any>();
   aspectRatioGenerator.current = ({
@@ -384,7 +398,6 @@ export default React.memo(() => {
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
   };
-  const [error, setError] = useState<Error>(null);
   const flashlight = useRef<Flashlight<number>>();
   const cropToContent = useRecoilValue(atoms.cropToContent(false));
   const filters = useRecoilValue(filterAtoms.filters);
@@ -441,10 +454,6 @@ export default React.memo(() => {
     refresh,
     cropToContent,
   ]);
-
-  if (error) {
-    throw error;
-  }
 
   useLayoutEffect(() => {
     if (!flashlight.current) {
@@ -510,7 +519,7 @@ export default React.memo(() => {
               nextRequestKey: more ? page + 1 : null,
             };
           } catch (error) {
-            setError(error);
+            handleError(error);
           }
         },
         render: (sampleId, element, dimensions, soft, hide) => {
@@ -537,7 +546,7 @@ export default React.memo(() => {
 
             return null;
           } catch (error) {
-            setError(error);
+            handleError(error);
           }
         },
       });

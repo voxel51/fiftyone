@@ -53,11 +53,6 @@ export const fullscreen = atom<boolean>({
   default: false,
 });
 
-export const connected = atom({
-  key: "connected",
-  default: false,
-});
-
 export const closeTeams = atom({
   key: "closeTeams",
   default: null,

@@ -95,8 +95,12 @@ def create_field(
                 if issubclass(subfield, EmbeddedDocumentField):
                     fields = fields or []
                     fields += get_embedded_document_fields(embedded_doc_type)
-                    subfield = subfield(
-                        fields=fields, document_type=embedded_doc_type
+                    subfield = create_field(
+                        name,
+                        ftype,
+                        embedded_doc_type=embedded_doc_type,
+                        fields=fields,
+                        parent=parent,
                     )
                 else:
                     subfield = subfield()
@@ -175,7 +179,7 @@ class SampleFieldDocument(EmbeddedDocument):
         if self.fields is not None:
             fields = [field_doc.to_field() for field_doc in self.fields]
 
-        return create_field(
+        ee = create_field(
             self.name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -183,6 +187,11 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=self.db_field,
             fields=fields,
         )
+
+        if "type" in [f.name for f in fields]:
+            print(ee.field.get_field_schema())
+
+        return ee
 
     @classmethod
     def from_field(cls, field):

@@ -92,6 +92,7 @@ export const tagStatistics = selectorFamily<
   key: "tagStatistics",
   get: ({ modal, labels }) => async ({ get }) => {
     get(atoms.stateDescription);
+
     get(atoms.selectedSamples);
     const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
 

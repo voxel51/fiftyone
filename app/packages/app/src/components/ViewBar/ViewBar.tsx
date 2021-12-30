@@ -16,17 +16,17 @@ import viewBarMachine from "./viewBarMachine";
 
 const ViewBarDiv = styled.div`
   position: relative;
-  margin: 1rem;
+  margin: 1rem 0.5rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;
   height: 52px;
   width: 100%;
-  padding: 0 0.25rem;
   display: flex;
   overflow-x: scroll;
   scrollbar-width: none;
+  min-width: 200px;
 
   &::-webkit-scrollbar {
     width: 0px;

@@ -30,6 +30,9 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           return {};
         });
       },
+      mouseenter: ({ update }) => {
+        update({ hovering: true });
+      },
     };
   }
 

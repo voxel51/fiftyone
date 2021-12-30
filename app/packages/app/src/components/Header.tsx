@@ -2,6 +2,7 @@ import React, {
   Suspense,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -29,14 +30,20 @@ import { packageMessage } from "../utils/socket";
 import { ExternalLink } from "../utils/generic";
 
 import Logo from "../images/logo.png";
+import { useRefresh } from "../utils/hooks";
 
 const DatasetContainerInput = styled.div`
   font-size: 1.2rem;
   display: flex;
+  overflow: hidden;
   border-bottom: 1px ${({ theme }) => theme.brand} solid;
+  & > div:last-child {
+    display: none;
+  }
 `;
 
 const DatasetInput = styled(AuosizeInput)`
+  overflow: hidden;
   & input {
     background-color: transparent;
     border: none;
@@ -46,6 +53,8 @@ const DatasetInput = styled(AuosizeInput)`
     border: none;
     align-items: center;
     font-weight: bold;
+    text-overflow: ellipsis;
+    max-width: 300px;
   }
 
   & input:focus {
@@ -109,6 +118,7 @@ const DatasetDiv = styled.div`
   border-left-width: 1px;
   border-color: ${({ theme }) => theme.backgroundDarkBorder};
   border-left-style: solid;
+  overflow: hidden;
 `;
 
 const IconWrapper = styled.div`
@@ -323,6 +333,8 @@ const Input = styled.input`
   border: none;
   border-bottom: 1px solid ${({ theme }) => theme.brand};
   font-weight: bold;
+  text-overflow: ellipsis;
+  overflow: hidden;
 
   &:focus {
     border-bottom: 1px solid ${({ theme }) => theme.brand};
@@ -483,14 +495,14 @@ const TeamsForm = () => {
   );
 };
 
-const DatasetSelector = () => {
+const DatasetSelector = ({ error }: { error: boolean }) => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
-  const connected = useRecoilValue(atoms.connected);
+  const connected = useRecoilValue(selectors.connected);
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
-  useEffect(() => {
+  useLayoutEffect(() => {
     send({
       type: "SET_VALUES",
       value: datasetName ?? "",
@@ -502,20 +514,26 @@ const DatasetSelector = () => {
   }, [datasetName, datasets, socket]);
 
   const isEditing = state.matches("editing");
-  useEffect(() => {
+  useLayoutEffect(() => {
     isEditing && inputRef.current && inputRef.current.focus();
     !isEditing && inputRef.current && inputRef.current.blur();
   }, [isEditing, inputRef.current]);
 
+  const title =
+    connected && !error
+      ? value
+      : error
+      ? "Oops! Something went wrong"
+      : "Not connected";
   return (
-    <DatasetDiv>
+    <DatasetDiv title={title}>
       <DatasetContainerInput>
         <DatasetInput
           placeholder={
             datasets.length > 0 ? "Select a dataset" : "No datasets available"
           }
-          disabled={!datasets.length}
-          value={connected ? value : "Not connected"}
+          disabled={!datasets.length || error}
+          value={title}
           onFocus={() => state.matches("reading") && send("EDIT")}
           onBlur={(e) => {
             state.matches("editing.searchResults.notHovering") && send("BLUR");
@@ -658,93 +676,37 @@ const TeamsButton = ({ addNotification }) => {
   ) : null;
 };
 
-const Header = ({ addNotification }) => {
+const Header = ({
+  addNotification,
+  error,
+}: {
+  error?: boolean;
+  addNotification?: React.MutableRefObject<any>;
+}) => {
   const refresh = useRecoilValue(selectors.refresh);
-
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });
+  const refreshState = useRefresh();
 
   const dataset = useRecoilValue(selectors.hasDataset);
   return (
     <HeaderDiv>
       <LeftDiv>
-        <TitleDiv
-          onClick={() => {
-            socket.send(packageMessage("refresh", {}));
-          }}
-        >
+        <TitleDiv onClick={refreshState}>
           <LogoImg style={logoProps} src={Logo} />
           <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
         </TitleDiv>
-        <DatasetSelector />
+        <DatasetSelector error={error} />
       </LeftDiv>
-      {dataset && <ViewBar key={"bar"} />}
+      {dataset && !error && <ViewBar key={"bar"} />}
       <RightDiv>
         <IconWrapper>
-          <Suspense fallback={null}>
-            <TeamsButton addNotification={addNotification} />
-          </Suspense>
-          <ExternalLink
-            title="Slack"
-            href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ"
-          >
-            <Slack />
-          </ExternalLink>
-          <ExternalLink
-            title="GitHub"
-            href="https://github.com/voxel51/fiftyone"
-          >
-            <GitHub />
-          </ExternalLink>
-          <ExternalLink
-            title="Documentation"
-            href="https://voxel51.com/docs/fiftyone/user_guide/app.html"
-          >
-            <MenuBook />
-          </ExternalLink>
-        </IconWrapper>
-      </RightDiv>
-    </HeaderDiv>
-  );
-};
-
-const EmptyText = styled.div`
-  color: ${({ theme }) => theme.font};
-  height: 40px;
-  font-size: 1.2rem;
-  border: none;
-  align-items: center;
-  font-weight: bold;
-  font-weight: bold;
-  padding-left: 1rem;
-  border-left-width: 1px;
-  border-color: ${({ theme }) => theme.backgroundDarkBorder};
-  border-left-style: solid;
-`;
-
-export const EmptyHeader = ({ text }) => {
-  const refresh = useRecoilValue(selectors.refresh);
-
-  const logoProps = useSpring({
-    transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
-  });
-  return (
-    <HeaderDiv>
-      <LeftDiv>
-        <TitleDiv
-          style={logoProps}
-          onClick={() => {
-            socket.send(packageMessage("refresh", {}));
-          }}
-        >
-          <LogoImg src={Logo} />
-          <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
-        </TitleDiv>
-      </LeftDiv>
-      <EmptyText>{text}</EmptyText>
-      <RightDiv>
-        <IconWrapper>
+          {addNotification && (
+            <Suspense fallback={null}>
+              <TeamsButton addNotification={addNotification} />
+            </Suspense>
+          )}
           <ExternalLink
             title="Slack"
             href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ"

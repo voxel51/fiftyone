@@ -44,6 +44,7 @@ from fiftyone.server.json_util import convert
 import fiftyone.server.metadata as fosm
 from fiftyone.server.notebook import NotebookHandler
 from fiftyone.server.state import (
+    catch_errors,
     PollingHandler,
     ReactivateHandler,
     StateHandler,
@@ -119,6 +120,7 @@ class FramesHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
+    @catch_errors
     async def get(self):
         # pylint: disable=no-value-for-parameter
         sample_id = self.get_argument("sampleId", None)
@@ -158,6 +160,7 @@ class FramesHandler(tornado.web.RequestHandler):
 
 
 class PageHandler(fosu.AsyncRequestHandler):
+    @catch_errors
     async def post_response(self):
         data = tornado.escape.json_decode(self.request.body)
         filters = data.get("filters", None)

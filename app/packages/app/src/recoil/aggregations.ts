@@ -6,6 +6,8 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 
+import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
+
 import { http } from "../shared/connection";
 
 import * as atoms from "./atoms";
@@ -13,7 +15,6 @@ import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
-import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -141,6 +142,9 @@ const aggregations = selectorFamily<
 
     return data;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 }) as (param: {
   modal: boolean;
   extended: boolean;
@@ -153,6 +157,9 @@ export const noneCount = selectorFamily<
   key: "noneCount",
   get: ({ extended, path, modal }) => ({ get }) => {
     return get(aggregations({ modal, extended }))[path].None;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -179,6 +186,9 @@ export const labelTagCounts = selectorFamily<
 
     return result;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const sampleTagCounts = selectorFamily<
@@ -190,6 +200,9 @@ export const sampleTagCounts = selectorFamily<
     const data = get(aggregations({ modal, extended }))
       .tags as CategoricalAggregations;
     return Object.fromEntries(data.CountValues[1]);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -216,6 +229,9 @@ const makeCountResults = <T>(key) =>
         results,
       };
     },
+    cachePolicy_UNSTABLE: {
+      eviction: "most-recent",
+    },
   });
 
 export const booleanCountResults = makeCountResults<boolean | null>(
@@ -238,6 +254,9 @@ export const labelCount = selectorFamily<number | null, boolean>({
 
     return sum;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 export const values = selectorFamily<
   string[],
@@ -253,6 +272,9 @@ export const values = selectorFamily<
     }
 
     return [];
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -298,6 +320,9 @@ export const count = selectorFamily<
 
     return data[path].Count;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const counts = selectorFamily<
@@ -312,6 +337,9 @@ export const counts = selectorFamily<
           (data[path] as CategoricalAggregations).CountValues[1]
         )
       : null;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -362,6 +390,9 @@ export const cumulativeCounts = selectorFamily<
       }
       return result;
     }, {}),
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const cumulativeValues = selectorFamily<
@@ -389,6 +420,9 @@ export const cumulativeValues = selectorFamily<
         )
       )
     ).sort();
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -421,6 +455,9 @@ export const bounds = selectorFamily<
     }
 
     return data.Bounds as [Bound, Bound];
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -461,6 +498,9 @@ export const nonfiniteCounts = selectorFamily<
 
     return result;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const nonfiniteCount = selectorFamily<
@@ -469,6 +509,9 @@ export const nonfiniteCount = selectorFamily<
 >({
   key: "nonfiniteCount",
   get: ({ key, ...params }) => ({ get }) => get(nonfiniteCounts(params))[key],
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const boundedCount = selectorFamily<
@@ -483,6 +526,9 @@ export const boundedCount = selectorFamily<
     );
 
     return get(count(params)) - nonfinites;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 

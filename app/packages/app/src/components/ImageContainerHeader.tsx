@@ -84,7 +84,7 @@ const ImageContainerHeader = () => {
     <SamplesHeader>
       <GridActionsRow />
       <RightContainer>
-        <Suspense fallback={"Loading..."}>
+        <Suspense fallback={<CountDiv>{"Loading..."}</CountDiv>}>
           <Count />
         </Suspense>
         <SliderContainer>

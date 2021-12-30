@@ -31,6 +31,9 @@ const Code = styled.pre`
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   color: ${({ theme }) => theme.font};
   border-radius: 3px;
+  overflow: auto;
+
+  ${scrollbarStyles}
 `;
 
 const remoteSnippet = `import fiftyone as fo

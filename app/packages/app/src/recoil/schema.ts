@@ -78,6 +78,9 @@ export const fieldSchema = selectorFamily<Schema, State.SPACE>({
 
     return fields;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const fieldPaths = selectorFamily<
@@ -127,6 +130,9 @@ export const fieldPaths = selectorFamily<
       )
       .map(([name]) => name);
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const fields = selectorFamily<
@@ -140,11 +146,18 @@ export const fields = selectorFamily<
 >({
   key: "fields",
   get: (params) => ({ get }) => {
+    if (!params.path && !params.space) {
+      throw new Error("invalid parameters");
+    }
+
     return [...get(fieldPaths(params))]
       .sort()
       .map((name) =>
         get(field(params.path ? [params.path, name].join(".") : name))
       );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -179,6 +192,9 @@ export const field = selectorFamily<Field, string>({
 
     return field;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
@@ -189,6 +205,9 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     return paths.filter((path) =>
       LABELS.includes(get(field(path)).embeddedDocType)
     );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -211,6 +230,9 @@ export const labelPaths = selectorFamily<
 
       return path;
     });
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -243,6 +265,9 @@ export const labelPath = selectorFamily<string, string>({
 
     return path;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const activeFields = atomFamily<
@@ -268,6 +293,9 @@ export const activeField = selectorFamily<
       active ? [path, ...fields] : fields.filter((field) => field !== path)
     );
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const activeTags = selectorFamily<string[], boolean>({
@@ -289,6 +317,9 @@ export const activeTags = selectorFamily<string[], boolean>({
       }
       set(activeFields({ modal }), active);
     }
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -312,6 +343,9 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
       set(activeFields({ modal }), active);
     }
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const activeLabelFields = selectorFamily<
@@ -322,6 +356,9 @@ export const activeLabelFields = selectorFamily<
   get: ({ modal, space }) => ({ get }) => {
     const active = new Set(get(activeFields({ modal, space })));
     return get(labelFields({ space })).filter((field) => active.has(field));
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -335,6 +372,9 @@ export const activeLabelPaths = selectorFamily<
     return get(labelFields({}))
       .filter((field) => active.has(field))
       .map((field) => get(labelPath(field)));
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -364,6 +404,9 @@ export const meetsType = selectorFamily<
 
     return meetsFieldType(fieldValue, { ftype, embeddedDocType, acceptLists });
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const fieldType = selectorFamily<
@@ -378,5 +421,8 @@ export const fieldType = selectorFamily<
     }
 
     return ftype;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });

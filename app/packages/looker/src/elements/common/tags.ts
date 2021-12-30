@@ -53,7 +53,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   renderSelf(
     {
       config: { fieldSchema },
-      options: { filter, activePaths, coloring, mimetype, timeZone },
+      options: { activePaths, coloring, timeZone },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
@@ -326,7 +326,6 @@ const getFieldAndValue = (
   let field: Field = null;
   for (const key of path.split(".")) {
     field = schema[key];
-    key === "id" && console.log(key, field.dbField || key, value);
     if (![undefined, null].includes(value)) value = value[field.dbField || key];
     schema = field.fields;
   }

@@ -9,10 +9,7 @@ import copyToClipboard from "copy-to-clipboard";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
-  HEATMAP,
-  LABEL_LISTS_MAP,
   LIST_FIELD,
-  MASK_LABELS,
   Schema,
 } from "@fiftyone/utilities";
 
@@ -25,7 +22,6 @@ import {
   CHUNK_SIZE,
   DASH_LENGTH,
   JSON_COLORS,
-  DATE_TIME,
   BASE_ALPHA,
 } from "./constants";
 import {
@@ -213,10 +209,6 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
-    if (eventType === "error") {
-      this.updater({ error: detail.error || true });
-    }
-
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
@@ -239,7 +231,7 @@ export abstract class Looker<
       }
 
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, this.sample.id);
+        this.dispatchEvent(eventType, this.sample._id);
         return;
       }
 
@@ -249,92 +241,97 @@ export abstract class Looker<
 
   private makeUpdate(): StateUpdate<State> {
     return (stateOrUpdater, postUpdate) => {
-      const updates =
-        stateOrUpdater instanceof Function
-          ? stateOrUpdater(this.state)
-          : stateOrUpdater;
-      if (
-        !this.lookerElement ||
-        (Object.keys(updates).length === 0 && !postUpdate)
-      ) {
-        return;
+      try {
+        const updates =
+          stateOrUpdater instanceof Function
+            ? stateOrUpdater(this.state)
+            : stateOrUpdater;
+        if (
+          !this.lookerElement ||
+          (Object.keys(updates).length === 0 && !postUpdate)
+        ) {
+          return;
+        }
+
+        this.previousState = this.state;
+        this.state = mergeUpdates(this.state, updates);
+        if (
+          !this.state.windowBBox ||
+          this.state.destroyed ||
+          !this.state.overlaysPrepared ||
+          this.state.disabled
+        ) {
+          return;
+        }
+
+        this.pluckedOverlays = this.pluckOverlays(this.state);
+        this.state = this.postProcess();
+
+        [this.currentOverlays, this.state.rotate] = processOverlays(
+          this.state,
+          this.pluckedOverlays
+        );
+
+        this.state.mouseIsOnOverlay =
+          Boolean(this.currentOverlays.length) &&
+          this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
+        postUpdate && postUpdate(this.state, this.currentOverlays);
+
+        this.dispatchImpliedEvents(this.previousState, this.state);
+
+        if (this.state.options.showJSON) {
+          const pre = this.lookerElement.element.querySelectorAll("pre")[0];
+          this.getSample().then((sample) => {
+            pre.innerHTML = highlightJSON(sample, JSON_COLORS);
+          });
+        }
+        const ctx = this.ctx;
+        this.lookerElement.render(this.state, this.sample);
+
+        if (!this.state.loaded || this.state.destroyed || this.waiting) {
+          return;
+        }
+
+        ctx.lineWidth = this.state.strokeWidth;
+        ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.imageSmoothingEnabled = false;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const dpr = getDPR();
+        ctx.clearRect(
+          0,
+          0,
+          this.state.windowBBox[2] * dpr,
+          this.state.windowBBox[3] * dpr
+        );
+
+        ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
+        const scale = this.state.scale * dpr;
+        ctx.scale(scale, scale);
+
+        const [tlx, tly, w, h] = this.state.canvasBBox;
+        ctx.drawImage(
+          this.getImageSource(),
+          0,
+          0,
+          this.state.config.dimensions[0],
+          this.state.config.dimensions[1],
+          tlx,
+          tly,
+          w,
+          h
+        );
+
+        ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
+        const numOverlays = this.currentOverlays.length;
+        for (let index = numOverlays - 1; index >= 0; index--) {
+          this.currentOverlays[index].draw(ctx, this.state);
+        }
+        ctx.globalAlpha = 1;
+      } catch (error) {
+        this.dispatchEvent("error", error);
       }
-
-      this.previousState = this.state;
-      this.state = mergeUpdates(this.state, updates);
-      if (
-        !this.state.windowBBox ||
-        this.state.destroyed ||
-        !this.state.overlaysPrepared
-      ) {
-        return;
-      }
-
-      this.pluckedOverlays = this.pluckOverlays(this.state);
-      this.state = this.postProcess();
-
-      [this.currentOverlays, this.state.rotate] = processOverlays(
-        this.state,
-        this.pluckedOverlays
-      );
-
-      this.state.mouseIsOnOverlay =
-        Boolean(this.currentOverlays.length) &&
-        this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
-      postUpdate && postUpdate(this.state, this.currentOverlays);
-
-      this.dispatchImpliedEvents(this.previousState, this.state);
-
-      if (this.state.options.showJSON) {
-        const pre = this.lookerElement.element.querySelectorAll("pre")[0];
-        this.getSample().then((sample) => {
-          pre.innerHTML = highlightJSON(sample, JSON_COLORS);
-        });
-      }
-      const ctx = this.ctx;
-      this.lookerElement.render(this.state, this.sample);
-
-      if (!this.state.loaded || this.state.destroyed || this.waiting) {
-        return;
-      }
-
-      ctx.lineWidth = this.state.strokeWidth;
-      ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      ctx.imageSmoothingEnabled = false;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      const dpr = getDPR();
-      ctx.clearRect(
-        0,
-        0,
-        this.state.windowBBox[2] * dpr,
-        this.state.windowBBox[3] * dpr
-      );
-
-      ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
-      const scale = this.state.scale * dpr;
-      ctx.scale(scale, scale);
-
-      const [tlx, tly, w, h] = this.state.canvasBBox;
-      ctx.drawImage(
-        this.getImageSource(),
-        0,
-        0,
-        this.state.config.dimensions[0],
-        this.state.config.dimensions[1],
-        tlx,
-        tly,
-        w,
-        h
-      );
-
-      ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
-      const numOverlays = this.currentOverlays.length;
-      for (let index = numOverlays - 1; index >= 0; index--) {
-        this.currentOverlays[index].draw(ctx, this.state);
-      }
-      ctx.globalAlpha = 1;
     };
   }
 
@@ -462,13 +459,13 @@ export abstract class Looker<
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label.id,
-            sample_id: this.sample.id,
+            label_id: label._id,
+            sample_id: this.sample._id,
           });
         });
       } else {
         const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample.id });
+        labels.push({ label_id, field, sample_id: this.sample._id });
       }
     });
 
@@ -1019,13 +1016,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label.id,
-            sample_id: this.sample.id,
+            label_id: label._id,
+            sample_id: this.sample._id,
           });
         });
       } else {
         const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample.id });
+        labels.push({ label_id, field, sample_id: this.sample._id });
       }
     });
 
@@ -1041,9 +1038,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
             labels.push({
               field: field,
-              label_id: label.id,
+              label_id: label._id,
               frame_number: this.frameNumber,
-              sample_id: this.sample.id,
+              sample_id: this.sample._id,
             });
           });
         } else {
@@ -1051,7 +1048,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           labels.push({
             label_id,
             field,
-            sample_id: this.sample.id,
+            sample_id: this.sample._id,
             frame_number: this.frameNumber,
           });
         }
@@ -1230,7 +1227,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
                   value: {
                     ...this.frames.get(this.frameNumber).deref().sample,
                   },
-                  schema: this.state.config.frameFieldSchema,
+                  schema: this.state.config.fieldSchema.frames.fields,
                   keys: ["frames"],
                 }),
               },

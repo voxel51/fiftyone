@@ -92,7 +92,7 @@ async def get_stream_info(path):
     Returns:
         a :class:`eta.core.video.VideoStreamInfo`
     """
-    if _FFPROBE_BINARY_PATH is None or True:
+    if _FFPROBE_BINARY_PATH is None:
         raise RuntimeError(
             "You must have ffmpeg installed on your machine in order to view "
             "video datasets in the App, but we failed to find it"

@@ -18,7 +18,6 @@ import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import { useMessageHandler, useTheme } from "../utils/hooks";
-import PathValueEntry from "../components/Sidebar/Entries/PathValueEntry";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -164,7 +163,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
                     }}
                   />
                 )}
-                {isFieldPrimitive && <PathValueEntry path={entry.path} />}
+                {isFieldPrimitive && <Entries.PathValue path={entry.path} />}
               </>
             ),
             disabled: isTag || isLabelTag,

@@ -19,6 +19,7 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType } from "../recoil/utils";
 import { pathFilter } from "./Filters";
 import { ModalActionsRow } from "./Actions";
+import { useErrorHandler } from "react-error-boundary";
 
 const Header = styled.div`
   position: absolute;
@@ -482,6 +483,7 @@ const Looker = ({
     return () => looker && looker.destroy();
   }, [looker]);
 
+  const handleError = useErrorHandler();
   lookerRef && (lookerRef.current = looker);
 
   useEventHandler(looker, "options", useLookerOptionsUpdate());
@@ -491,6 +493,7 @@ const Looker = ({
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEventHandler(looker, "controls", (event) => setShowControls(event.detail));
+  useEventHandler(looker, "error", (event) => handleError(event.detail));
 
   useEffect(() => {
     initialRef.current = false;

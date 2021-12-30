@@ -29,11 +29,11 @@
   box-sizing: content-box;
   height: 1em;
   margin: 0 2px 0;
-  padding: 3px 12px 3px 12px;
+  padding: 3px;
   color: white;
   font-size: 14px;
   line-height: 12px;
-  border-radius: 10px;
+  border-radius: 3px;
   font-weight: bold;
   text-align: center;
   vertical-align: bottom;

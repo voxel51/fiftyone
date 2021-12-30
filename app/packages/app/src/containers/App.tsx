@@ -1,10 +1,12 @@
 import React, { useState, useRef, Suspense } from "react";
-import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import { ErrorBoundary, useErrorHandler } from "react-error-boundary";
 
 import { toCamelCase } from "@fiftyone/utilities";
-
-import "../app.global.css";
 
 import { patching } from "../components/Actions/Patcher";
 import { similaritySorting } from "../components/Actions/Similar";
@@ -12,6 +14,7 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import Header from "../components/Header";
 import NotificationHub from "../components/NotificationHub";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { useClearModal } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -25,9 +28,10 @@ import { viewsAreEqual } from "../utils/view";
 
 import Dataset from "./Dataset";
 import ErrorPage from "./Error";
-import Setup from "./Setup";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 import { aggregationsTick } from "../recoil/aggregations";
+import Loading from "../components/Loading";
+import Setup from "./Setup";
 
 const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
@@ -77,23 +81,11 @@ const useStateUpdate = () => {
   );
 };
 
-const useOpen = () => {
-  return useRecoilCallback(
-    ({ set, snapshot }) => async () => {
-      set(atoms.loading, true);
-      const loading = await snapshot.getPromise(atoms.loading);
-      !loading && set(atoms.connected, true);
-    },
-    []
-  );
-};
-
 const useClose = () => {
   const clearModal = useClearModal();
   return useRecoilCallback(
-    ({ reset, set }) => async () => {
+    ({ reset }) => async () => {
       clearModal();
-      set(atoms.connected, false);
       reset(atoms.stateDescription);
     },
     []
@@ -102,7 +94,7 @@ const useClose = () => {
 
 const Container = () => {
   const addNotification = useRef(null);
-  useEventHandler(socket, "open", useOpen());
+  const connected = useRecoilValue(selectors.connected);
 
   useEventHandler(socket, "close", useClose());
   useMessageHandler("update", useStateUpdate());
@@ -121,9 +113,14 @@ const Container = () => {
   return (
     <>
       <Header addNotification={addNotification} />
-      <Suspense fallback={<Setup />}>
-        <Dataset />
-      </Suspense>
+      {connected ? (
+        <Suspense fallback={<Loading text={"Loading..."} />}>
+          <Dataset />
+        </Suspense>
+      ) : (
+        <Setup />
+      )}
+
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </>
   );

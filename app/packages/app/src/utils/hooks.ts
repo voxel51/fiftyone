@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
@@ -10,6 +10,14 @@ import { ColorTheme } from "../shared/colors";
 import socket, { appContext, handleId, isColab } from "../shared/connection";
 import { packageMessage } from "./socket";
 import gaConfig from "../constants/ga";
+import { aggregationsTick } from "../recoil/aggregations";
+
+export const useRefresh = () => {
+  return useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
+    socket.send(packageMessage("refresh", {}));
+    set(aggregationsTick, get(aggregationsTick) + 1);
+  });
+};
 
 export const useEventHandler = (targets, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often

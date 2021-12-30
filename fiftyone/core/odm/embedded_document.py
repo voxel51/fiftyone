@@ -148,7 +148,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             subfield=subfield,
             **kwargs,
         )
-        print(field.name, field)
         self._declare_field(field)
 
     def _declare_field(self, field):

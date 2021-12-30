@@ -433,6 +433,7 @@ const CategoricalFilter = <T extends unknown>({
   if (countsLoadable.state === "loading") return null;
 
   const { count, results } = countsLoadable.contents;
+  console.log(path, countsLoadable.contents);
 
   return (
     <NamedCategoricalFilterContainer title={title}>

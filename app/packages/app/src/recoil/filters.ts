@@ -1,4 +1,3 @@
-import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { atom, DefaultValue, selector, selectorFamily } from "recoil";
 
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
@@ -32,6 +31,9 @@ export const filters = selector<State.Filters>({
     socket.send(packageMessage("filters_update", { filters }));
     set(atoms.stateDescription, state);
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const filter = selectorFamily<
@@ -58,12 +60,18 @@ export const filter = selectorFamily<
     }
     set(atom, newFilters);
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const hasFilters = selectorFamily<boolean, boolean>({
   key: "hasFilters",
   get: (modal) => ({ get }) =>
     Object.keys(get(modal ? modalFilters : filters)).length > 0,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const matchedTags = selectorFamily<
@@ -95,13 +103,16 @@ export const matchedTags = selectorFamily<
     }
     set(atom, stages);
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const fieldIsFiltered = selectorFamily<
   boolean,
   { path: string; modal?: boolean }
 >({
-  key: "stringFieldIsFiltered",
+  key: "fieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
     const f = get(modal ? modalFilters : filters);
 
@@ -116,5 +127,8 @@ export const fieldIsFiltered = selectorFamily<
     return (
       Boolean(f[path]) || paths.some(({ name }) => f[`${expandedPath}.${name}`])
     );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });

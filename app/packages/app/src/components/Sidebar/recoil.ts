@@ -140,10 +140,9 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
 
   other = [
     ...other,
-    ...dataset.frameFields.reduce(
-      fieldsReducer([...VALID_PRIMITIVE_TYPES, DICT_FIELD]),
-      []
-    ),
+    ...dataset.frameFields
+      .reduce(fieldsReducer([...VALID_PRIMITIVE_TYPES, DICT_FIELD]), [])
+      .map((path) => `frames.${path}`),
   ];
 
   updater(
@@ -307,18 +306,29 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    const paths = get(fieldPaths({ ftype: DICT_FIELD }));
+    const paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
 
-    get(fields({ ftype: EMBEDDED_DOCUMENT_FIELD })).forEach(
-      ({ fields, name: prefix }) => {
-        Object.values(fields)
-          .filter(
-            ({ ftype, subfield }) =>
-              ftype === DICT_FIELD || subfield === DICT_FIELD
-          )
-          .forEach(({ name }) => paths.push(`${prefix}.${name}`));
+    get(
+      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
+    ).forEach(({ fields, name: prefix }) => {
+      Object.values(fields)
+        .filter(
+          ({ ftype, subfield }) =>
+            ftype === DICT_FIELD || subfield === DICT_FIELD
+        )
+        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
+    });
+
+    get(fields({ space: State.SPACE.FRAME })).forEach(
+      ({ name, embeddedDocType }) => {
+        if (LABELS.includes(embeddedDocType)) {
+          return;
+        }
+
+        paths.push(`frames.${name}`);
       }
     );
+
     return new Set(paths);
   },
 });

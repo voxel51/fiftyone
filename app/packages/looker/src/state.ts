@@ -26,7 +26,7 @@ export interface Sample {
     width: number;
     height: number;
   };
-  id: string;
+  _id: string;
   media_type: "image" | "image";
   filepath: string;
   tags: string[];
@@ -117,7 +117,6 @@ export interface ImageConfig extends BaseConfig {}
 export interface VideoConfig extends BaseConfig {
   frameRate: number;
   support?: [number, number];
-  frameFieldSchema: Schema;
 }
 
 export interface FrameOptions extends BaseOptions {

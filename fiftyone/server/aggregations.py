@@ -16,23 +16,44 @@ import fiftyone.core.media as fom
 import fiftyone.core.view as fov
 
 from fiftyone.server.json_util import convert
+from fiftyone.server.state import catch_errors
 from fiftyone.server.utils import AsyncRequestHandler, meets_type
 import fiftyone.server.view as fosv
 
 
 class AggregationsHandler(AsyncRequestHandler):
+    @catch_errors
     async def post_response(self):
         data = tornado.escape.json_decode(self.request.body)
 
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
-        sample_id = data.get("sample_id", None)
+        sample_ids = data.get("sample_ids", None)
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
 
-        if sample_id:
-            view = fov.make_optimized_select_view(view, sample_id)
+        if sample_ids:
+            view = fov.make_optimized_select_view(view, sample_ids)
+
+        result = await get_app_statistics(view, filters)
+        return convert(result)
+
+
+class TagAggregationsHandler(AsyncRequestHandler):
+    @catch_errors
+    async def post_response(self):
+        data = tornado.escape.json_decode(self.request.body)
+
+        filters = data.get("filters", None)
+        dataset = data.get("dataset", None)
+        stages = data.get("view", None)
+        sample_ids = data.get("sample_ids", None)
+
+        view = fosv.get_view(dataset, stages=stages, filters=filters)
+
+        if sample_ids:
+            view = fov.make_optimized_select_view(view, sample_ids)
 
         result = await get_app_statistics(view, filters)
         return convert(result)
@@ -92,7 +113,9 @@ async def get_app_statistics(view, filters):
     return aggregations
 
 
-def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
+def _build_field_aggregations(
+    path: str, field: fof.Field, filters: dict, depth=0
+):
     aggregations = []
     if meets_type(field, fof.FloatField):
         aggregations.append(
@@ -114,14 +137,17 @@ def _build_field_aggregations(path: str, field: fof.Field, filters: dict):
         }
     }
 
-    if meets_type(field, fof.EmbeddedDocumentField):
+    if meets_type(field, fof.EmbeddedDocumentField) and depth < 2:
         if isinstance(field, (fof.ListField)):
             field = field.field
 
         for subfield_name, subfield in field.get_field_schema().items():
             aggregations.update(
                 _build_field_aggregations(
-                    ".".join([path, subfield_name]), subfield, filters
+                    ".".join([path, subfield_name]),
+                    subfield,
+                    filters,
+                    depth + 1,
                 )
             )
 
