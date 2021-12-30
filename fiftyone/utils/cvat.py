@@ -40,187 +40,122 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def import_dataset(
-    data_path, project_name=None, task_ids=None, dataset_name=None
+def import_annotations(
+    sample_collection,
+    project_name=None,
+    project_id=None,
+    task_ids=None,
+    data_path=None,
+    label_types=None,
+    insert_new=True,
+    backend="cvat",
 ):
-    """Create a FiftyOne dataset given a local directory of media and the name of a
-    project or list of tasks containing corresponding annotations in CVAT.
+    """Imports annotations from the specified CVAT task(s) or project into a
+    new or existing FiftyOne dataset.
 
-    Instead of a local directory, a JSON file can be provided that maps the
-    filenames of media in CVAT to the corresponding filepaths on disk::
-
-        data_map = {
-            "000000_00880.jpg": "/path/to/data/dir/00880.jpg",
-            "cvat_filename.ext": "/path/to/data/dir2/local_filename.jpg",
-            ...
-        }
-
-    Ex::
-
-        dataset = fouc.import_dataset("/path/to/data", project_name="project_name")
-        
-        dataset = fouc.import_dataset("/path/to/data.json", task_ids=[1,42,51])
-
-
-    Any files that provided in `data_path` that do not exist in CVAT will
-    remain unlabeled, and any files that exist in CVAT that are not found in
-    `data_path` will be excluded. 
+    Provide one of ``project_name``, ``project_id``, or ``task_ids`` to perform
+    an import.
 
     Args:
-        data_path: a parameter that enables explicit control
-            over the location of the media. Can be any of the following:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        project_name (None): the name of a CVAT project to import
+        project_id (None): the ID of a CVAT project to import
+        task_ids (None): a CVAT task ID or iterable of CVAT task IDs to import
+        data_path (None): a parameter that defines the correspondence between
+            the filenames
 
-            -   an absolute directory path where the media files reside,
-                filenames on disk must match those in CVAT
-            -   an absolute filepath specifying the location of the JSON data
-                manifest containing a mapping of CVAT filenames to absolute
-                filepaths on disk
+            -   a directory on disk where the media files reside. In this case,
+                the filenames must match those in CVAT
+            -   a dict mapping CVAT filenames to absolute filepaths to the
+                corresponding media on disk
+            -   the path to a JSON manifest on disk containing a mapping
+                between CVAT filenames and absolute filepaths to the media on
+                disk
 
-        project_name (None): the name of the CVAT project  containing labels to
-            load into the dataset. Required if `task_ids` is `None`
-        task_ids (None): a list of integer IDs of CVAT tasks containing
-            labels to load into the dataset. Required if `project_name` is
-            `None`
-        dataset_name (None): an optional name to give to the dataset
-    
-    Returns:
-        a :class:`fiftyone.core.dataset.Dataset`
+            By default, only annotations whose filename matches an existing
+            sample in ``sample_collection`` will be imported
+        label_types (None): a dict mapping label types to field names of
+            ``sample_collection`` in which to store the labels. By default,
+            the label types will be stored in fields of the same names
+        insert_new (False): whether to create new samples for any media for
+            which annotations are found in the CVAT tasks/project
+        backend ("cvat"): the name of the CVAT backend to use
     """
-    if project_name is None and task_ids is None:
+    if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
         raise ValueError(
-            "Either `project_name` or `task_ids` must be provided."
-        )
-    if project_name is not None and task_ids is not None:
-        raise ValueError(
-            "Only one of `project_name` or `task_ids` is allowed."
+            "Exactly one of {'project_name', 'project_id', 'task_ids'} must "
+            "be provided"
         )
 
-    filename_map = foud.ImportPathsMixin._load_data_map(data_path)
-    filepaths = list(filename_map.values())
+    existing_filepaths = set(sample_collection.values("filepath"))
 
-    dataset = fod.Dataset(dataset_name)
-    dataset.add_samples([fos.Sample(filepath=fp) for fp in filepaths])
-    dataset.ensure_frames()
+    if data_path is None:
+        data_map = {os.path.basename(f): f for f in existing_filepaths}
+    elif etau.is_str(data_path):
+        data_map = {
+            os.path.basename(f): f
+            for f in etau.list_files(data_path, abs_paths=True, recursive=True)
+        }
+    else:
+        data_map = data_path
 
-    # Construct temporary annotation run and config
-    anno_key = "tmp_" + str(ObjectId())
-    label_schema = {None: {"type": "tmp"}}
-
+    label_schema = {None: {}}
     config = foua._parse_config(
-        "cvat", label_schema, "filepath", project_name=project_name
+        backend, label_schema, occluded_attr="occluded"
     )
     anno_backend = config.build()
-    anno_backend.register_run(dataset, anno_key, overwrite=False)
-
     api = anno_backend.connect_to_api()
-    project_id = api.get_project_id(project_name)
 
-    # Parse CVAT schemas and load annotations into dataset
+    if project_name is not None:
+        project_id = api.get_project_id(project_name)
+
     if project_id is not None:
-        _parse_and_load_project(
-            project_id,
-            api,
-            filename_map,
-            dataset,
-            anno_backend,
-            config,
-            anno_key,
-            label_schema,
-        )
+        task_ids = api.get_project_tasks(project_id)
 
+    if etau.is_str(task_ids):
+        task_ids = [task_ids]
     else:
-        _parse_and_load_tasks(
-            task_ids,
-            api,
-            filename_map,
-            dataset,
-            anno_backend,
-            config,
-            anno_key,
-        )
+        task_ids = list(task_ids)
 
-    dataset.delete_annotation_run(anno_key)
-
-    return dataset
-
-
-def _parse_and_load_project(
-    project_id,
-    api,
-    filename_map,
-    dataset,
-    anno_backend,
-    config,
-    anno_key,
-    label_schema,
-):
-    frame_id_map = {}
-    # Parse classes and attributes from project to label schema
-    api._convert_cvat_schema(
-        label_schema, project_id=project_id, update_server=False
-    )
-    project_json = api.get(api.project_url(project_id)).json()
-    task_ids = [task["id"] for task in project_json["tasks"]]
+    # Determine what filepaths we have annotations for
+    task_id_map = {}
     for task_id in task_ids:
-        frame_id_map[task_id] = _build_frame_id_map_for_task(
-            dataset, task_id, api, filename_map
-        )
+        task_id_map[task_id] = _build_task_id_map(api, task_id, data_map)
 
-    _load_tasks_annotations(
-        dataset,
-        task_ids,
-        label_schema,
-        anno_backend,
-        config,
-        anno_key,
-        frame_id_map,
+    filepaths = set(itertools.chain(i.keys() for i in task_id_map.values()))
+
+    if not insert_new:
+        task_filepaths = filepaths.copy()
+        filepaths &= existing_filepaths
+        if len(filepaths) < len(task_filepaths):
+            new_filepaths = task_filepaths - filepaths
+            logger.warning(
+                "Ignoring annotations for %d filepaths (eg %s) that do not "
+                "appear in the input collection",
+                len(new_filepaths),
+                new_filepaths[0],
+            )
+
+    dataset = fod.Dataset()
+    sample_ids = dataset.add_samples(
+        [fos.Sample(filepath=fp) for fp in filepaths]
     )
 
+    sample_id_map = {f: _id for f, _id in zip(filepaths, sample_ids)}
 
-def _parse_and_load_tasks(
-    task_ids, api, filename_map, dataset, anno_backend, config, anno_key
-):
+    # Determine CVAT ID -> FiftyOne ID mapping
     frame_id_map = {}
     for task_id in task_ids:
-        label_schema = {None: {"type": "tmp"}}
-        # Parse classes and attributes from task to label schema
-        api._convert_cvat_schema(
-            label_schema, task_id=task_id, update_server=False
-        )
-        frame_id_map[task_id] = _build_frame_id_map_for_task(
-            dataset, task_id, api, filename_map
-        )
-        _load_tasks_annotations(
-            dataset,
-            [task_id],
-            label_schema,
-            anno_backend,
-            config,
-            anno_key,
-            frame_id_map,
-        )
+        id_map = task_id_map[task_id]
+        frame_id_map[task_id] = _build_frame_id_map(id_map, sample_id_map)
 
-
-def _load_tasks_annotations(
-    dataset,
-    task_ids,
-    label_schema,
-    anno_backend,
-    config,
-    anno_key,
-    frame_id_map,
-):
-    label_schema[None].pop("type", None)
-    config.label_schema = label_schema
-    anno_backend.update_run_config(dataset, anno_key, config)
-
-    # All labels are considered new and will be added
     id_map = {}
     server_id_map = {}
-
     project_ids = []
     job_ids = []
     labels_task_map = {None: task_ids}
+
     results = CVATAnnotationResults(
         dataset,
         config,
@@ -234,20 +169,57 @@ def _load_tasks_annotations(
         backend=anno_backend,
     )
 
-    anno_backend.save_run_results(dataset, anno_key, results)
-    dataset.load_annotations(anno_key)
+    annotations = anno_backend.download_annotations(results)
+
+    if label_types is None:
+        label_types = list(annotations.keys())
+
+    for label_type, annos in annotations.items():
+        if label_type not in label_types:
+            continue
+
+        if label_type == "scalar":
+            dataset.set_values(label_type, annos, key_field="id")
+        else:
+            labels = {_id: list(d.values()) for _id, d in annos.items()}
+            dataset.set_values(label_type, labels, key_field="id")
+
+    # @todo remove the need for this
+    sample_collection._dataset.merge_samples(
+        dataset,
+        key_field="filepath",
+        skip_existing=False,
+        insert_new=insert_new,
+        fields=label_types,
+        merge_lists=True,
+        overwrite=True,
+        expand_schema=True,
+        include_info=False,
+    )
+
+    dataset.delete()
 
 
-def _build_frame_id_map_for_task(dataset, task_id, api, filename_map):
-    task_meta_json = api.get(api.task_data_meta_url(task_id)).json()
-    filenames = [frame["name"] for frame in task_meta_json["frames"]]
-    task_filepaths = []
-    for fn in filenames:
-        task_fp = filename_map.get(fn, None)
-        if task_fp:
-            task_filepaths.append(task_fp)
-    view = dataset.select_by("filepath", task_filepaths)
-    return api._build_frame_id_map(view)
+def _build_task_id_map(api, task_id, data_map):
+    resp = api.get(api.task_data_meta_url(task_id)).json()
+
+    id_map = {}
+    for frame in resp["frames"]:
+        filepath = data_map.get(frame["name"], None)
+        if filepath is not None:
+            id_map[filepath] = frame["id"]
+
+    return id_map
+
+
+def _build_frame_id_map(id_map, sample_id_map):
+    frame_id_map = {}
+    for filepath, frame_id in id_map.items():
+        sample_id = sample_id_map.get(filepath, None)
+        if sample_id is not None:
+            frame_id_map[frame_id] = {"sample_id": sample_id}
+
+    return frame_id_map
 
 
 class CVATImageDatasetImporter(
@@ -3479,6 +3451,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for project_id in pb(list(project_ids)):
                 self.delete_project(project_id)
 
+    def get_project_tasks(self, project_id):
+        """Returns the IDs of the tasks in the given project.
+
+        Args:
+            project_id: a project ID
+
+        Returns:
+            the list of task IDs
+        """
+        resp = self.get(self.project_url(project_id)).json()
+        return [task["id"] for task in resp.get("tasks", [])]
+
     def create_task(
         self,
         name,
@@ -4068,7 +4052,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if not self.project_exists(project_id):
             raise ValueError("Project '%s' not found" % project_id)
 
-        return self.get(self.project_url(project_id)).json()["labels"]
+        resp = self.get(self.project_url(project_id)).json()
+        return resp["labels"]
 
     def _get_task_labels(self, task_id):
         resp = self.get(self.task_url(task_id)).json()
@@ -4110,15 +4095,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attr=None,
         update_server=True,
     ):
-        if project_id is None:
-            if task_id is None:
-                raise ValueError(
-                    "Either `project_id` or `task_id` must be provided."
-                )
-            else:
-                labels = self._get_task_labels(task_id)
-        else:
+        if project_id is None and task_id is None:
+            raise ValueError(
+                "Either `project_id` or `task_id` must be provided"
+            )
+
+        if project_id is not None:
             labels = self._get_project_labels(project_id)
+        else:
+            labels = self._get_task_labels(task_id)
 
         cvat_schema = {}
         labels_to_update = []
@@ -5040,6 +5025,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         remapped_attrs = {}
 
         is_video = samples.media_type == fom.VIDEO
+        samples = samples.select_fields(label_field)
 
         if is_video:
             field, _ = samples._handle_frame_field(label_field)
@@ -5694,21 +5680,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return track
 
     def _build_frame_id_map(self, samples):
-        is_video = samples.media_type == fom.VIDEO
+        frame_id_map = {}
         frame_id = -1
 
-        frame_id_map = {}
-        for sample in samples:
-            if is_video:
-                images = sample.frames.values()
-            else:
-                images = [sample]
+        sample_ids = samples.values("id")
 
-            for image in images:
+        if samples.media_type == fom.VIDEO:
+            frame_ids = samples.values("frames.id")
+            for _sample_id, _frame_ids in zip(sample_ids, frame_ids):
+                if not _frame_ids:
+                    continue
+
+                for _frame_id in _frame_ids:
+                    frame_id += 1
+                    frame_id_map[frame_id] = {
+                        "sample_id": _sample_id,
+                        "frame_id": _frame_id,
+                    }
+        else:
+            for _sample_id in sample_ids:
                 frame_id += 1
-                frame_id_map[frame_id] = {"sample_id": sample.id}
-                if is_video:
-                    frame_id_map[frame_id]["frame_id"] = image.id
+                frame_id_map[frame_id] = {"sample_id": _sample_id}
 
         return frame_id_map
 
