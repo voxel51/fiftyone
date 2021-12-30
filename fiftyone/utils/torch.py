@@ -1052,6 +1052,11 @@ class TorchImageDataset(Dataset):
         sample_ids=None,
         include_ids=False,
     ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
         if image_paths is None:
             image_paths = samples.values("filepath")
 
@@ -1168,6 +1173,11 @@ class TorchImageClassificationDataset(Dataset):
         sample_ids=None,
         include_ids=False,
     ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
         if image_paths is None:
             image_paths = samples.values("filepath")
 
