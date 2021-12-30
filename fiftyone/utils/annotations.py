@@ -180,7 +180,7 @@ def annotate(
             % samples.__class__.__name__
         )
 
-    config = _parse_config(backend, None, media_field, **kwargs)
+    config = _parse_config(backend, None, media_field=media_field, **kwargs)
     anno_backend = config.build()
     anno_backend.ensure_requirements()
 
@@ -231,7 +231,7 @@ def _get_patches_view_label_ids(patches_view):
     return ids
 
 
-def _parse_config(name, label_schema, media_field, **kwargs):
+def _parse_config(name, label_schema, **kwargs):
     if name is None:
         name = fo.annotation_config.default_backend
 
@@ -257,7 +257,7 @@ def _parse_config(name, label_schema, media_field, **kwargs):
         config_cls = etau.get_class(config_cls)
 
     params.update(**kwargs)
-    return config_cls(name, label_schema, media_field=media_field, **params)
+    return config_cls(name, label_schema, **params)
 
 
 # The supported label type strings and their corresponding FiftyOne types
