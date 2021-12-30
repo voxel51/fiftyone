@@ -12,9 +12,6 @@ from PIL import Image
 import torch
 import torchvision
 
-import numpy as np
-from PIL import Image
-
 import fiftyone as fo
 import fiftyone.utils.torch as fout
 
