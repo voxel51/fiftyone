@@ -117,6 +117,7 @@ const FilterableTagEntry = ({
     <RegularEntry
       title={tag}
       backgroundColor={backgroundColor}
+      color={color}
       heading={
         <>
           <Checkbox

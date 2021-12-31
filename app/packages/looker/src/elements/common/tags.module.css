@@ -39,8 +39,12 @@
   vertical-align: bottom;
   white-space: nowrap;
   pointer-events: auto;
-  max-width: calc(100% - 32px);
+  max-width: calc(100% - 8px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.lookerTags > div > a {
+  color: white;
 }

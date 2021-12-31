@@ -10,6 +10,9 @@ import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
 import { request } from "../../utils/socket";
+import { datasetName, selectedLabels } from "../../recoil/selectors";
+import { http } from "../../shared/connection";
+import { view } from "../../recoil/view";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -82,6 +85,8 @@ export const allTags = selector<{ sample: string[]; label: string[] } | null>({
   },
 });
 
+const url = `${http}/tags`;
+
 export const tagStatistics = selectorFamily<
   {
     count: number;
@@ -91,25 +96,26 @@ export const tagStatistics = selectorFamily<
 >({
   key: "tagStatistics",
   get: ({ modal, labels }) => async ({ get }) => {
-    get(atoms.stateDescription);
-
-    get(atoms.selectedSamples);
     const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
-
-    const id = uuid();
-    const { count, tags } = await request<{
-      count: number;
-      tags: { [key: string]: number };
-    }>({
-      type: "tag_statistics",
-      uuid: id,
-      args: {
-        active_labels: activeLabels,
-        sample_id: modal ? get(atoms.modal).sample._id : null,
-        filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
-        labels,
+    const { count, tags } = await fetch(url, {
+      method: "POST",
+      cache: "no-cache",
+      headers: {
+        "Content-Type": "application/json",
       },
-    });
+      mode: "cors",
+      body: JSON.stringify({
+        dataset: get(datasetName),
+        view: get(view),
+        active_label_fields: activeLabels,
+        sample_ids: modal
+          ? [get(atoms.modal).sample._id]
+          : [...get(atoms.selectedSamples)],
+        labels: modal ? get(selectedLabels) : [],
+        count_labels: labels,
+        filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
+      }),
+    }).then((response) => response.json());
 
     return { count, tags };
   },
@@ -129,13 +135,9 @@ export const tagStats = selectorFamily<
   key: "tagStats",
   get: ({ modal, labels }) => ({ get }) => {
     const tags = get(allTags);
-    const results = tags
-      ? Object.fromEntries(tags[labels ? "label" : "sample"].map((t) => [t, 0]))
-      : null;
-
-    if (!results) {
-      return null;
-    }
+    const results = Object.fromEntries(
+      tags[labels ? "label" : "sample"].map((t) => [t, 0])
+    );
 
     return {
       ...results,

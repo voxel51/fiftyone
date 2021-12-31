@@ -10,6 +10,7 @@ import { getValueString } from "../Filters/utils";
 import { constSelector, RecoilValueReadOnly } from "recoil";
 import { NameAndCountContainer } from "../utils";
 import { SuspenseEntryCounts } from "./CountSubcount";
+import { prettify } from "../../utils/generic";
 
 interface CheckboxProps<T> {
   color?: string;
@@ -76,7 +77,7 @@ const Checkbox = <T extends unknown>({
 
         <NameAndCountContainer>
           <span style={{ color: coloring || forceColor ? color : "unset" }}>
-            {text}
+            {prettify(text)}
           </span>
           {countAtom && (
             <SuspenseEntryCounts

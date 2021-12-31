@@ -1,7 +1,6 @@
+import { isElectron } from "@fiftyone/utilities";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { v4 as uuid } from "uuid";
-
-import { isElectron } from "../utils/generic";
 
 class HTTPSSocket {
   location: string;

@@ -36,16 +36,19 @@ const ScalarValueEntry = ({
     backgroundColor: theme.backgroundLight,
   });
   const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
+  const none = value === null || value === undefined;
 
   return (
     <RegularEntry
       title={`${path}: ${value}`}
       backgroundColor={backgroundColor}
-      borderTop={color}
+      color={color}
       heading={null}
     >
       <ScalarDiv>
-        <div>{prettify(value as string)}</div>
+        <div style={none ? { color } : {}}>
+          {none ? "None" : prettify(value as string)}
+        </div>
         <div
           style={{
             fontSize: "0.8rem",
@@ -84,7 +87,7 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
       title={`${path}: ${count}`}
       borderTop={color}
       heading={
-        <NameAndCountContainer style={{ borderTop: "black 3px solid" }}>
+        <NameAndCountContainer>
           <span key="path">{path}</span>
           <span key="value">{values.length}</span>
           {expandable && (
@@ -125,7 +128,7 @@ const PathValueEntry = ({ path }: { path: string }) => {
       break;
     }
 
-    data = data[key];
+    data = data[field.dbField || key];
   }
 
   if (field.ftype !== LIST_FIELD) {

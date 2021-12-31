@@ -28,6 +28,7 @@ import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
 
 import { lookerTags } from "./tags.module.css";
+import { prettify } from "./util";
 
 interface TagData {
   color: string;
@@ -280,7 +281,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     elements.forEach(({ value, color, title }) => {
       const div = document.createElement("div");
-      div.innerHTML = value;
+      const child = prettify(value);
+      child instanceof HTMLElement
+        ? div.appendChild(child)
+        : (div.innerHTML = child);
       div.title = title;
       div.style.backgroundColor = color;
       this.element.appendChild(div);

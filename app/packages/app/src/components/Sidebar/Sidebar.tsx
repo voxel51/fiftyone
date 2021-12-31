@@ -12,7 +12,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
 import { disabledPaths } from "./recoil";
 
-const MARGIN = 5;
+const MARGIN = 3;
 
 const fn = (
   items: InteractiveItems,
@@ -78,6 +78,7 @@ const fn = (
 
     const dragging =
       (activeKey === key || groupActive) && entry.kind !== EntryKind.TAIL;
+
     let shown = true;
 
     if (entry.kind === EntryKind.PATH) {
@@ -302,10 +303,17 @@ const getAfterKey = (
 
     if (order[index] === activeKey) return activeKey;
 
-    while (
-      [EntryKind.PATH, EntryKind.GROUP].includes(items[order[index]].entry.kind)
-    )
-      index++;
+    index++;
+    try {
+      while (
+        [EntryKind.PATH, EntryKind.EMPTY].includes(
+          items[order[index]].entry.kind
+        )
+      )
+        index++;
+
+      index--;
+    } catch {}
 
     return order[index];
   }

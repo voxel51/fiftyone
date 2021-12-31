@@ -107,7 +107,7 @@ export const aggregationsTick = atom<number>({
   default: 0,
 });
 
-const aggregations = selectorFamily<
+export const aggregations = selectorFamily<
   AggregationsData,
   { modal: boolean; extended: boolean }
 >({
@@ -131,7 +131,7 @@ const aggregations = selectorFamily<
         mode: "cors",
         body: JSON.stringify({
           filters,
-          sample_id: modal ? get(atoms.modal).sample._id : null,
+          sample_ids: modal ? get(atoms.modal).sample._id : null,
           dataset: get(selectors.datasetName),
           view: get(viewAtoms.view),
         }),
@@ -174,8 +174,8 @@ export const labelTagCounts = selectorFamily<
     const result = {};
 
     for (const path of paths) {
-      const pathData = data[path] as CategoricalAggregations;
-      for (const [tag, count] of Object.entries(pathData.CountValues)) {
+      const pathData = data[path] as CategoricalAggregations<string>;
+      for (const [tag, count] of pathData.CountValues[1]) {
         if (!result[tag]) {
           result[tag] = 0;
         }

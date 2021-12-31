@@ -9,7 +9,9 @@ import { CircularProgress } from "@material-ui/core";
 import {
   RecoilState,
   RecoilValue,
+  useGetRecoilValueInfo_UNSTABLE,
   useRecoilCallback,
+  useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
@@ -29,13 +31,15 @@ import {
   numLabelsInSelectedSamples,
   SwitchDiv,
   SwitcherDiv,
+  tagStatistics,
 } from "./utils";
 import { Button } from "../utils";
-import socket from "../../shared/connection";
+import socket, { http } from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import { PopoutSectionTitle } from "../utils";
 import { VideoLooker } from "@fiftyone/looker";
+import { filters, modalFilters } from "../../recoil/filters";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -332,49 +336,63 @@ const samplePlaceholder = (elementNames) => {
   return `+ tag ${elementNames.singular}`;
 };
 
-const packageGrid = ({ targetLabels, activeLabels, changes }) =>
-  packageMessage("tag", {
-    target_labels: targetLabels,
-    active_labels: activeLabels,
-    changes,
-  });
-
-const packageModal = ({
-  labels,
-  sample_id,
-  changes,
-  activeLabels,
-  frameNumber = null,
-}) =>
-  packageMessage("tag_modal", {
-    changes,
-    labels,
-    sample_id,
-    active_labels: activeLabels,
-    frame_number: frameNumber,
-  });
+const url = `${http}/tag`;
 
 const useTagCallback = (modal, targetLabels, lookerRef = null) => {
+  const refreshExtended = useRecoilRefresher_UNSTABLE(
+    aggregationAtoms.aggregations({ modal, extended: true })
+  );
+  const refresh = useRecoilRefresher_UNSTABLE(
+    aggregationAtoms.aggregations({ modal, extended: false })
+  );
+  const refreshTagStats = useRecoilRefresher_UNSTABLE(
+    tagStatistics({ modal, labels: false })
+  );
+  const refreshTagLabelStats = useRecoilRefresher_UNSTABLE(
+    tagStatistics({ modal, labels: targetLabels })
+  );
+
   return useRecoilCallback(
-    ({ snapshot }) => async ({ changes }) => {
-      const activeLabels = (
-        await snapshot.getPromise(schemaAtoms.activeLabelFields(modal))
-      ).filter((l) => !(l.startsWith("tags.") || l.startsWith("_label_tags.")));
-      if (modal) {
-        socket.send(
-          packageModal({
-            sample_id: (await snapshot.getPromise(atoms.modal)).sample._id,
-            changes,
-            labels: targetLabels,
-            activeLabels,
-            frameNumber:
-              lookerRef && lookerRef.current
-                ? lookerRef.current.frameNumber
-                : null,
-          })
-        );
-      } else {
-        socket.send(packageGrid({ changes, targetLabels, activeLabels }));
+    ({ snapshot, set }) => async ({ changes }) => {
+      const activeLabels = await snapshot.getPromise(
+        schemaAtoms.labelPaths({ expanded: false })
+      );
+      const f = await snapshot.getPromise(modal ? modalFilters : filters);
+      const view = await snapshot.getPromise(viewAtoms.view);
+      const dataset = await snapshot.getPromise(selectors.datasetName);
+      const selectedLabels = (await snapshot.getPromise(atoms.stateDescription))
+        .selectedLabels;
+      const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
+
+      const response = await fetch(url, {
+        method: "POST",
+        cache: "no-cache",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "cors",
+        body: JSON.stringify({
+          filters: f,
+          view,
+          dataset,
+          active_label_fields: activeLabels,
+          target_labels: targetLabels,
+          changes,
+          sample_ids: modal
+            ? null
+            : selectedSamples.size
+            ? [...selectedSamples]
+            : null,
+          labels: modal && selectedLabels.length ? selectedLabels : null,
+        }),
+      });
+
+      if (response.ok) {
+        refresh();
+        refreshExtended();
+        refreshTagStats();
+        refreshTagLabelStats();
+        set(atoms.tagging({ modal, labels: targetLabels }), false);
       }
     },
     [modal, targetLabels, lookerRef]

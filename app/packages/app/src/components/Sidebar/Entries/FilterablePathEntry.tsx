@@ -174,6 +174,7 @@ const FilterableEntry = React.memo(
         title={`${path} (${
           field.embeddedDocType ? field.embeddedDocType : field.ftype
         })`}
+        color={color}
         heading={
           <>
             {!disabled && (

@@ -99,15 +99,7 @@ export let sampleIndices = new Map<number, string>();
 let nextIndex = 0;
 let lookers = createLookerCache();
 
-const url = (() => {
-  try {
-    // @ts-ignore
-    if (import.meta.env.DEV) {
-      origin = "http://localhost:5151";
-    }
-  } catch {}
-  return `${http}/page?`;
-})();
+const url = `${http}/page`;
 
 const Container = styled.div`
   width: 100%;
@@ -414,6 +406,9 @@ export default React.memo(() => {
   const gridZoomRef = useRef<number>();
   const gridZoomValue = useRecoilValue(gridZoom);
   gridZoomRef.current = gridZoomValue;
+  const tagging =
+    useRecoilValue(atoms.tagging({ modal: false, labels: true })) ||
+    useRecoilValue(atoms.tagging({ modal: false, labels: false }));
 
   useEventHandler(
     document,
@@ -436,7 +431,7 @@ export default React.memo(() => {
   );
 
   useLayoutEffect(() => {
-    if (!flashlight.current || !flashlight.current.isAttached()) {
+    if (!flashlight.current || !flashlight.current.isAttached() || tagging) {
       return;
     }
 
@@ -453,6 +448,7 @@ export default React.memo(() => {
     filterView(view),
     refresh,
     cropToContent,
+    tagging,
   ]);
 
   useLayoutEffect(() => {

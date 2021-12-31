@@ -26,13 +26,13 @@ type RegularEntryProps = {
   onClick?: MouseEventHandler;
   left?: boolean;
   title: string;
-  borderTop?: string;
+  color?: string;
 };
 
 const RegularEntry = React.forwardRef(
   (
     {
-      borderTop,
+      color,
       backgroundColor,
       children,
       heading,
@@ -54,7 +54,7 @@ const RegularEntry = React.forwardRef(
         style={{
           backgroundColor,
           cursor: clickable ? "pointer" : "unset",
-          borderBottom: borderTop ? `${borderTop} 3px solid` : null,
+          borderLeft: color ? `${color} 3px solid` : null,
         }}
         title={title}
       >

@@ -285,3 +285,92 @@ export function withPath(
 }
 
 export const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
+
+export const isElectron = (() => {
+  let cache = undefined;
+
+  return (): boolean => {
+    if (cache === undefined) {
+      cache =
+        window.process &&
+        window.process.versions &&
+        Boolean(window.process.versions.electron);
+    }
+
+    return cache;
+  };
+})();
+
+export const useExternalLink = (href) => {
+  let openExternal;
+  if (isElectron()) {
+    try {
+      openExternal = require("electron").shell.openExternal;
+    } catch {}
+  }
+
+  return openExternal
+    ? (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openExternal(href);
+      }
+    : (e) => e.stopPropagation();
+};
+
+const isURL = (() => {
+  const protocolAndDomainRE = /^(?:\w+:)?\/\/(\S+)$/;
+
+  const localhostDomainRE = /^localhost[\:?\d]*(?:[^\:?\d]\S*)?$/;
+  const nonLocalhostDomainRE = /^[^\s\.]+\.\S{2,}$/;
+
+  return (string) => {
+    if (typeof string !== "string") {
+      return false;
+    }
+
+    var match = string.match(protocolAndDomainRE);
+    if (!match) {
+      return false;
+    }
+
+    var everythingAfterProtocol = match[1];
+    if (!everythingAfterProtocol) {
+      return false;
+    }
+
+    if (
+      localhostDomainRE.test(everythingAfterProtocol) ||
+      nonLocalhostDomainRE.test(everythingAfterProtocol)
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+})();
+
+export const prettify = (
+  v: boolean | string | null | undefined | number | number[]
+): URL | string => {
+  if (typeof v === "string") {
+    if (isURL(v)) {
+      try {
+        return new URL(v);
+      } catch {}
+    }
+
+    return v;
+  } else if (typeof v === "number") {
+    return Number(v.toFixed(3)).toLocaleString();
+  } else if (v === true) {
+    return "True";
+  } else if (v === false) {
+    return "False";
+  } else if ([undefined, null].includes(v)) {
+    return "None";
+  } else if (Array.isArray(v)) {
+    return `[${v.join(", ")}]`;
+  }
+  return null;
+};

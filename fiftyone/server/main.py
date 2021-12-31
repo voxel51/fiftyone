@@ -20,6 +20,7 @@ import tornado.websocket
 import eta.core.serial as etas
 
 from sidebar import SidebarHandler
+from tag import TagHandler
 
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
     del os.environ["FIFTYONE_DISABLE_SERVICES"]
@@ -37,7 +38,10 @@ import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
-from fiftyone.server.aggregations import AggregationsHandler
+from fiftyone.server.aggregations import (
+    AggregationsHandler,
+    TagAggregationsHandler,
+)
 from fiftyone.server.colorscales import ColorscalesHandler
 import fiftyone.server.view as fosv
 from fiftyone.server.json_util import convert
@@ -288,6 +292,8 @@ class Application(tornado.web.Application):
             (r"/sidebar", SidebarHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
+            (r"/tag", TagHandler),
+            (r"/tags", TagAggregationsHandler),
             (r"/teams", TeamsHandler),
             (
                 r"/(.*)",

@@ -5,6 +5,8 @@ FiftyOne Server aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
+
 import tornado
 
 import fiftyone.core.aggregations as foa
@@ -49,6 +51,9 @@ class TagAggregationsHandler(AsyncRequestHandler):
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
+        labels = data.get("labels", None)
+        count_labels = data.get("count_labels", False)
+        active_label_fields = data.get("active_label_fields", [])
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
 
@@ -56,7 +61,26 @@ class TagAggregationsHandler(AsyncRequestHandler):
             view = fov.make_optimized_select_view(view, sample_ids)
 
         result = await get_app_statistics(view, filters)
-        return convert(result)
+
+        if count_labels and labels:
+            view = view.select_labels(labels)
+
+        if count_labels:
+            view = view.select_fields(active_label_fields)
+            count_aggs, tag_aggs = build_label_tag_aggregations(view)
+            results = await view._async_aggregate(count_aggs + tag_aggs)
+
+            count = sum(results[: len(count_aggs)])
+            tags = defaultdict(int)
+
+            for result in results[len(count_aggs) :]:
+                for tag, num in result.items():
+                    tags[tag] += num
+        else:
+            tags = view.count_values("tags")
+            count = sum(tags.values())
+
+        return {"count": count, "tags": tags}
 
 
 def build_label_tag_aggregations(view: foc.SampleCollection):
@@ -163,8 +187,6 @@ def _add_to_label_tags_aggregations(path: str, field: fof.Field, counts, tags):
 
     path = _expand_labels_path(path, field)
     counts.append(foa.Count(path))
-
-    path = _expand_labels_path(path, field)
     tags.append(foa.CountValues("%s.tags" % path))
 
 

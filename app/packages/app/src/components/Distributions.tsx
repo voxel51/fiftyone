@@ -96,7 +96,7 @@ const Distribution = ({ distribution }) => {
 
   const strData = data.map(({ key, ...rest }) => ({
     ...rest,
-    key: isDateTime || isDate ? key : prettify(key, false),
+    key: isDateTime || isDate ? key : prettify(key),
   }));
 
   const hasMore = data.length >= LIMIT;

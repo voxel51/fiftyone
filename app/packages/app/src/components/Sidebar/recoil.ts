@@ -256,16 +256,16 @@ export const sidebarEntries = selectorFamily<
 
           return [
             group,
-            ...paths.map<PathEntry>((path) => ({
-              path,
-              kind: EntryKind.PATH,
-              shown,
-            })),
             {
               kind: EntryKind.EMPTY,
               shown: paths.length === 0 && shown,
               group: groupName,
             } as EmptyEntry,
+            ...paths.map<PathEntry>((path) => ({
+              path,
+              kind: EntryKind.PATH,
+              shown,
+            })),
           ];
         })
         .flat(),

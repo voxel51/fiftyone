@@ -6,6 +6,7 @@ import { useRecoilValue, useRecoilCallback } from "recoil";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 import FieldsSidebar, {
+  disabledPaths,
   Entries,
   EntryKind,
   SidebarEntry,
@@ -114,9 +115,10 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const labelPaths = useRecoilValue(
     schemaAtoms.labelPaths({ expanded: false })
   );
+  const disabled = useRecoilValue(disabledPaths);
 
+  console.log(disabled);
   useSampleUpdate(lookerRef);
-  const theme = useTheme();
 
   const renderEntry = useCallback(
     (
@@ -130,7 +132,8 @@ const SampleModal = ({ onClose }: Props, ref) => {
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
           const isLabel = labelPaths.includes(entry.path);
-          const isFieldPrimitive = !isTag && !isLabelTag && !isLabel;
+          const isFieldPrimitive =
+            !isTag && !isLabelTag && !isLabel && !disabled.has(entry.path);
 
           return {
             children: (

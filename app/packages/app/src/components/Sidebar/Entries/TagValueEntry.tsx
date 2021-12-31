@@ -5,6 +5,7 @@ import { useRecoilValue } from "recoil";
 
 import * as colorAtoms from "../../../recoil/color";
 import { useTheme } from "../../../utils/hooks";
+import { NameAndCountContainer } from "../../utils";
 
 import RegularEntry from "./RegularEntry";
 
@@ -18,10 +19,13 @@ const TagValueEntry = ({ tag, path }: { tag: string; path: string }) => {
   return (
     <RegularEntry
       title={tag}
+      color={color}
       heading={
         <>
-          <LocalOffer style={{ margin: "0 0.5rem", color }} />
-          <span style={{ marginRight: "0.5rem" }}>{tag}</span>
+          <LocalOffer style={{ margin: 2, height: 21, width: 21, color }} />
+          <NameAndCountContainer>
+            <span>{tag}</span>
+          </NameAndCountContainer>
         </>
       }
       backgroundColor={backgroundColor}

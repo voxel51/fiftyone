@@ -19,7 +19,6 @@ import fiftyone.core.state as fos
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 
-import fiftyone.server.aggregations as fosa
 from fiftyone.server.view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.notebook as fosn
@@ -409,31 +408,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.on_update(self, StateHandler.state)
 
     @staticmethod
-    async def on_tag(
-        caller, changes, target_labels=False, active_labels=None,
-    ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        else:
-            view = state.dataset
-
-        view = get_extended_view(view, state.filters)
-        if state.selected:
-            view = view.select(state.selected)
-
-        if target_labels:
-            fosu.change_label_tags(view, changes, label_fields=active_labels)
-        else:
-            fosu.change_sample_tags(view, changes)
-
-        StateHandler.state["refresh"] = not state.refresh
-        for clients in PollingHandler.clients.values():
-            clients.update({"update"})
-
-        await StateHandler.on_update(caller, StateHandler.state)
-
-    @staticmethod
     async def on_save_filters(caller, add_stages=[], with_selected=False):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -459,85 +433,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state.filters = {}
 
         await StateHandler.on_update(caller, state.serialize())
-
-    @staticmethod
-    async def on_tag_modal(
-        caller,
-        changes,
-        sample_id=None,
-        labels=False,
-        filters={},
-        active_labels=[],
-        frame_number=None,
-    ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        else:
-            view = state.dataset
-
-        sample_ids = [sample_id]
-        view = get_extended_view(view, filters)
-
-        if labels:
-            if state.selected_labels:
-                labels = state.selected_labels
-                sample_ids = list({label["sample_id"] for label in labels})
-                tag_view = view.select_labels(labels=labels)
-            else:
-                tag_view = view.select(sample_id)
-
-            fosu.change_label_tags(
-                tag_view, changes, label_fields=active_labels
-            )
-        else:
-            tag_view = view.select(sample_id)
-            fosu.change_sample_tags(tag_view, changes)
-
-        for clients in PollingHandler.clients.values():
-            clients.update({"extended_statistics", "statistics"})
-
-        await StateHandler.send_samples(
-            sample_id, sample_ids, current_frame=frame_number
-        )
-
-    @staticmethod
-    async def on_tag_statistics(
-        caller,
-        active_labels=[],
-        filters={},
-        sample_id=None,
-        uuid=None,
-        labels=False,
-    ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        else:
-            view = state.dataset
-
-        view = get_extended_view(view, filters)
-
-        if state.selected_labels and labels:
-            view = view.select_labels(state.selected_labels)
-        elif sample_id:
-            view = view.select(sample_id)
-        elif state.selected:
-            view = view.select(state.selected)
-
-        if labels:
-            view = view.select_fields(active_labels)
-            count_aggs, tag_aggs = fosa.build_label_tag_aggregations(view)
-            results = await view._async_aggregate(count_aggs + tag_aggs)
-
-            count = sum(results[: len(count_aggs)])
-            tags = defaultdict(int)
-            for result in results[len(count_aggs) :]:
-                for tag, num in result.items():
-                    tags[tag] += num
-        else:
-            tags = view.count_values("tags")
-            count = sum(tags.values())
 
     @classmethod
     async def send_samples(
