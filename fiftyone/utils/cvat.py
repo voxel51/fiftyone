@@ -52,8 +52,8 @@ def import_annotations(
     occluded_attr=None,
     backend="cvat",
 ):
-    """Imports annotations from the specified CVAT task(s) or project into a
-    new or existing FiftyOne dataset.
+    """Imports annotations from the specified CVAT project or task(s) into the
+    given sample collection.
 
     Provide one of ``project_name``, ``project_id``, or ``task_ids`` to perform
     an import.
@@ -65,7 +65,8 @@ def import_annotations(
         project_id (None): the ID of a CVAT project to import
         task_ids (None): a CVAT task ID or iterable of CVAT task IDs to import
         data_path (None): a parameter that defines the correspondence between
-            the filenames
+            the filenames in CVAT and the filepaths of ``sample_collection``.
+            Can be any of the following:
 
             -   a directory on disk where the media files reside. In this case,
                 the filenames must match those in CVAT
@@ -76,9 +77,9 @@ def import_annotations(
                 disk
 
             By default, only annotations whose filename matches an existing
-            sample in ``sample_collection`` will be imported
-        label_types (None): an optional specification of label types to import.
-            Can be any of the following:
+            filepath in ``sample_collection`` will be imported
+        label_types (None): an optional parameter specifying the label types to
+            import. Can be any of the following:
 
             -   ``None`` (default): all label types will be stored in fields of
                 the same name on ``sample_collection``
@@ -88,7 +89,7 @@ def import_annotations(
                 ``sample_collection`` in which to store the labels
             -   ``"prompt"``: in this case, you will be prompted for field
                 names in which to store each type of label
-        insert_new (False): whether to create new samples for any media for
+        insert_new (True): whether to create new samples for any media for
             which annotations are found in the CVAT tasks/project
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
@@ -96,12 +97,13 @@ def import_annotations(
     """
     if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
         raise ValueError(
-            "Exactly one of {'project_name', 'project_id', 'task_ids'} must "
+            "Exactly one of 'project_name', 'project_id', or 'task_ids' must "
             "be provided"
         )
 
     existing_filepaths = set(sample_collection.values("filepath"))
 
+    # Build mapping from CVAT filenames to local media filepaths
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
     elif etau.is_str(data_path):
@@ -112,10 +114,7 @@ def import_annotations(
     else:
         data_map = data_path
 
-    label_schema = {None: {}}
-    config = foua._parse_config(
-        backend, label_schema, occluded_attr=occluded_attr
-    )
+    config = foua._parse_config(backend, None, occluded_attr=occluded_attr)
     anno_backend = config.build()
     api = anno_backend.connect_to_api()
 
