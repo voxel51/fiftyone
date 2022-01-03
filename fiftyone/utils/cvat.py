@@ -77,16 +77,17 @@ def import_annotations(
 
             By default, only annotations whose filename matches an existing
             sample in ``sample_collection`` will be imported
-        label_types (None): an optional specification of label types to load.
-            Can be either of the following:
+        label_types (None): an optional specification of label types to import.
+            Can be any of the following:
 
+            -   ``None`` (default): all label types will be stored in fields of
+                the same name on ``sample_collection``
             -   a list of label types to load. In this case, the labels will be
-                stored in fields of the same names
+                stored in fields of the same names in ``sample_collection``
             -   a dict mapping label types to field names of
                 ``sample_collection`` in which to store the labels
-
-            By default, all labels will be stored in fields of the same name
-            on ``sample_collection``
+            -   ``"prompt"``: in this case, you will be prompted for field
+                names in which to store each type of label
         insert_new (False): whether to create new samples for any media for
             which annotations are found in the CVAT tasks/project
         occluded_attr (None): an optional attribute name in which to store the
@@ -148,10 +149,10 @@ def import_annotations(
                 new_filepaths[0],
             )
 
-    dataset = fod.Dataset()
+    tmp_dataset = fod.Dataset()
 
     with fou.SetAttributes(fo.config, show_progress_bars=False):
-        sample_ids = dataset.add_samples(
+        sample_ids = tmp_dataset.add_samples(
             [fos.Sample(filepath=fp) for fp in filepaths]
         )
 
@@ -191,53 +192,84 @@ def import_annotations(
     if label_types is None:
         label_types = list(annotations.keys())
 
-    if not isinstance(label_types, dict):
+    if label_types != "prompt" and not isinstance(label_types, dict):
         label_types = {l: l for l in label_types}
 
     schema = sample_collection.get_field_schema()
+    fields = []
 
+    # Add annotations to temporary dataset
     for label_type, annos in annotations.items():
-        if label_type not in label_types:
+        if label_types == "prompt":
+            field_name = input(
+                "Found labels of type '%s'. Please enter a new or compatible "
+                "existing field name in which to store these annotations, or "
+                "empty to skip: " % label_type
+            )
+            if not field_name:
+                logger.warning(
+                    "Ignoring unrequested labels of type '%s'", label_type
+                )
+                continue
+        elif label_type in label_types:
+            field_name = label_types[label_type]
+        else:
+            logger.warning(
+                "Ignoring unrequested labels of type '%s'", label_type
+            )
             continue
 
-        field = label_types[label_type]
+        fields.append(field_name)
 
         if label_type == "scalar":
             # Scalar field
-            dataset.set_values(field, annos, key_field="id")
-        elif field in schema and not issubclass(
-            schema[field], fol._LABEL_LIST_FIELDS
+            tmp_dataset.set_values(field_name, annos, key_field="id")
+        elif label_type == "segmentation" or (
+            field_name in schema
+            and not issubclass(schema[field_name], fol._LABEL_LIST_FIELDS)
         ):
-            # Existing single label field
+            # Single label field
             labels = {}
             for _id, d in annos.items():
                 try:
-                    labels[_id] = next(iter(d.values()))
+                    _label = next(iter(d.values()))
                 except:
-                    pass
+                    _label = None
 
-            dataset.set_values(field, labels, key_field="id")
+                if _label is not None:
+                    labels[_id] = _label
+
+            tmp_dataset.set_values(field_name, labels, key_field="id")
         else:
-            # New field or existing label list field
-            labels = {_id: list(d.values()) for _id, d in annos.items()}
-            dataset.set_values(field, labels, key_field="id")
+            # Label list field
+            label_cls = foua._LABEL_TYPES_MAP[label_type]
+            labels = {}
+            for _id, d in annos.items():
+                try:
+                    _labels = list(d.values())
+                except:
+                    _labels = None
+
+                if _labels is not None:
+                    labels[_id] = label_cls(
+                        **{label_cls._LABEL_LIST_FIELD: _labels}
+                    )
+
+            tmp_dataset.set_values(field_name, labels, key_field="id")
 
     # Merge annotations into user's dataset
-    sample_collection._dataset.merge_samples(
-        dataset,
-        key_field="filepath",
-        skip_existing=False,
-        insert_new=insert_new,
-        fields=label_types,
-        merge_lists=True,
-        overwrite=True,
-        expand_schema=True,
-        include_info=False,
-    )
-
-    # dataset.delete()
-
-    return annotations, dataset
+    if fields:
+        sample_collection._dataset.merge_samples(
+            tmp_dataset,
+            key_field="filepath",
+            skip_existing=False,
+            insert_new=insert_new,
+            fields=fields,
+            merge_lists=True,
+            overwrite=True,
+            expand_schema=True,
+            include_info=False,
+        )
 
 
 def _build_task_id_map(api, task_id, data_map):
@@ -287,7 +319,8 @@ def _download_annotations(
         backend=anno_backend,
     )
 
-    return anno_backend.download_annotations(results)
+    annotations = anno_backend.download_annotations(results)
+    return annotations.get(None, {})
 
 
 class CVATImageDatasetImporter(
@@ -4142,13 +4175,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _get_label_schema(
         self, project_id=None, task_id=None, occluded_attr=None
     ):
-        label_schema = {None: {}}
+        label_schema = {None: {"type": "tmp"}}
         self._convert_cvat_schema(
             label_schema,
             project_id=project_id,
             task_id=task_id,
             occluded_attr=occluded_attr,
         )
+        label_schema[None].pop("type")
         return label_schema
 
     def _get_cvat_schema(
