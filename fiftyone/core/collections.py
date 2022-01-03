@@ -7527,16 +7527,21 @@ def _get_matching_label_field(label_schema, label_type_or_types):
 
 
 def _parse_values_dict(sample_collection, key_field, values):
+    if key_field == "id":
+        return zip(*values.items())
+
+    if key_field == "_id":
+        sample_ids, values = zip(*values.items())
+        return [str(_id) for _id in sample_ids], values
+
     _key_field = key_field
     (
         key_field,
         is_frame_field,
         list_fields,
         other_list_fields,
-        _,
+        id_to_str,
     ) = sample_collection._parse_field_name(key_field)
-
-    field_type = sample_collection._get_field_type(key_field)
 
     if is_frame_field:
         raise ValueError(
@@ -7548,17 +7553,17 @@ def _parse_values_dict(sample_collection, key_field, values):
             "Invalid key field '%s'; keys cannot be list fields" % _key_field
         )
 
-    if isinstance(field_type, fof.ObjectIdField):
+    keys = list(values.keys())
+
+    if id_to_str:
         keys = [ObjectId(k) for k in keys]
 
-    pipeline = [{"$match": {key_field: {"$in": list(values.keys())}}}]
-    view = sample_collection.mongo(pipeline)
-
+    view = sample_collection.mongo([{"$match": {key_field: {"$in": keys}}}])
     id_map = {k: v for k, v in zip(*view.values([key_field, "id"]))}
 
     sample_ids = []
     bad_keys = []
-    for key in values.keys():
+    for key in keys:
         sample_id = id_map.get(key, None)
         if sample_id is not None:
             sample_ids.append(sample_id)
@@ -7747,6 +7752,9 @@ def _get_field_type(
     else:
         root, field_path = field_name.split(".", 1)
 
+    if root == "_id":
+        root = "id"
+
     if root not in schema:
         return None
 
@@ -7778,6 +7786,9 @@ def _do_get_field_type(field, field_path):
         root, field_path = field_path, None
     else:
         root, field_path = field_path.split(".", 1)
+
+    if root == "id":
+        root = "_id"
 
     try:
         field = getattr(field, root)
