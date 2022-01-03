@@ -84,6 +84,20 @@ export namespace State {
     kwargs: [string, object][];
   }
 
+  export interface SelectedLabelData {
+    sampleId: string;
+    field: string;
+    frameNumber?: number;
+  }
+
+  export interface SelectedLabelMap {
+    [labelId: string]: SelectedLabelData;
+  }
+
+  export interface SelectedLabel extends SelectedLabelData {
+    labelId: string;
+  }
+
   export interface Description {
     activeHandle: string | null;
     colorscale: RGB[];
@@ -95,7 +109,7 @@ export namespace State {
     filters: Filters;
     refresh: boolean;
     selected: string[];
-    selectedLabels: string[];
+    selectedLabels: SelectedLabel[];
     view: Stage[];
     viewCls: string | null;
   }

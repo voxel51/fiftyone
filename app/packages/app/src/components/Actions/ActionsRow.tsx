@@ -275,7 +275,6 @@ const Hidden = () => {
       onClick={() => setHiddenObjects({})}
       highlight={true}
       text={`${count}`}
-      style={{ flexDirection: "column" }}
       title={"Clear hidden labels"}
     />
   );

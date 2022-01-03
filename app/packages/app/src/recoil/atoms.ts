@@ -93,21 +93,7 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export interface SelectedLabelData {
-  sample_id: string;
-  field: string;
-  frame_number?: number;
-}
-
-export interface SelectedLabel extends SelectedLabelData {
-  label_id: string;
-}
-
-export type SelectedLabelMap = {
-  [label_id: string]: SelectedLabelData;
-};
-
-export const hiddenLabels = atom<SelectedLabelMap>({
+export const hiddenLabels = atom<State.SelectedLabelMap>({
   key: "hiddenLabels",
   default: {},
 });

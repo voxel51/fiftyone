@@ -18,7 +18,7 @@ import * as selectors from "../recoil/selectors";
 import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
-import { useMessageHandler, useTheme } from "../utils/hooks";
+import { useMessageHandler } from "../utils/hooks";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -79,6 +79,8 @@ const useOnSelectLabel = () => {
           frame_number: frameNumber,
         };
       }
+
+      console.log(labels);
       set(selectors.selectedLabels, labels);
     },
     []
@@ -117,7 +119,6 @@ const SampleModal = ({ onClose }: Props, ref) => {
   );
   const disabled = useRecoilValue(disabledPaths);
 
-  console.log(disabled);
   useSampleUpdate(lookerRef);
 
   const renderEntry = useCallback(
@@ -132,8 +133,9 @@ const SampleModal = ({ onClose }: Props, ref) => {
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
           const isLabel = labelPaths.includes(entry.path);
+          const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
-            !isTag && !isLabelTag && !isLabel && !disabled.has(entry.path);
+            !isTag && !isLabelTag && !isLabel && !isOther;
 
           return {
             children: (
@@ -153,7 +155,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
                     path={entry.path}
                   />
                 )}
-                {isLabel && (
+                {(isLabel || isOther) && (
                   <Entries.FilterablePath
                     modal={true}
                     path={entry.path}
@@ -164,12 +166,13 @@ const SampleModal = ({ onClose }: Props, ref) => {
                     onBlur={() => {
                       controller.set({ zIndex: "0" });
                     }}
+                    disabled={isOther}
                   />
                 )}
                 {isFieldPrimitive && <Entries.PathValue path={entry.path} />}
               </>
             ),
-            disabled: isTag || isLabelTag,
+            disabled: isTag || isLabelTag || isOther,
           };
         case EntryKind.GROUP:
           const isTags = entry.name === "tags";

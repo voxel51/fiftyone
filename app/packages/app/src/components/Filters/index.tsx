@@ -14,6 +14,7 @@ import {
 } from "@fiftyone/utilities";
 
 import * as schemaAtoms from "../../recoil/schema";
+import * as selectors from "../../recoil/selectors";
 
 import { filter as boolean } from "./booleanState";
 import { filter as string } from "./stringState";
@@ -71,13 +72,16 @@ export const pathFilter = selectorFamily<
       const labelFields = get(
         schemaAtoms.fields({ path: expandedPath, ftype: VALID_PRIMITIVE_TYPES })
       );
+      const hidden = get(selectors.hiddenLabelIds);
 
       return (value: any) => {
-        return labelFields.every(({ name, dbField }) => {
-          return get(
-            primitiveFilter({ modal, path: `${expandedPath}.${name}` })
-          )(value[dbField || name]);
-        });
+        return (
+          labelFields.every(({ name, dbField }) => {
+            return get(
+              primitiveFilter({ modal, path: `${expandedPath}.${name}` })
+            )(value[dbField || name]);
+          }) && !hidden.has(value._id)
+        );
       };
     }
 

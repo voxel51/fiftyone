@@ -1,6 +1,10 @@
 import React, { Suspense, useLayoutEffect, useMemo, useState } from "react";
 import { Checkbox } from "@material-ui/core";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
+import {
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+  VisibilityOff,
+} from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
 import {
   selectorFamily,
@@ -30,10 +34,12 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 
+import * as atoms from "../../../recoil/atoms";
 import * as aggregationAtoms from "../../../recoil/aggregations";
 import * as colorAtoms from "../../../recoil/color";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
+import * as selectors from "../../../recoil/selectors";
 import { useTheme } from "../../../utils/hooks";
 
 import {
@@ -44,7 +50,7 @@ import {
 
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
-import { NameAndCountContainer } from "../../utils";
+import { NameAndCountContainer, PillButton } from "../../utils";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -123,6 +129,45 @@ const getFilterData = (
     });
 };
 
+const hiddenPathLabels = selectorFamily<string[], string>({
+  key: "hiddenPathLabels",
+  get: (path) => ({ get }) => {
+    const data = get(selectors.pathHiddenLabelsMap);
+    const sampleId = get(atoms.modal).sample._id;
+
+    if (data[sampleId]) {
+      return data[sampleId][path] || [];
+    }
+
+    return [];
+  },
+  set: (path) => ({ set, get }, value) => {},
+});
+
+const useHidden = (path: string) => {
+  const [hidden, set] = useRecoilState(hiddenPathLabels(path));
+
+  const num = hidden.length;
+
+  console.log(path, num);
+
+  return num ? (
+    <PillButton
+      text={num.toLocaleString()}
+      icon={<VisibilityOff />}
+      onClick={() => set([])}
+      open={false}
+      highlight={false}
+      style={{
+        height: "1.5rem",
+        lineHeight: "1rem",
+        padding: "0.25rem 0.5rem",
+        margin: "0 0.25rem",
+      }}
+    />
+  ) : null;
+};
+
 const FilterableEntry = React.memo(
   ({
     modal,
@@ -139,9 +184,12 @@ const FilterableEntry = React.memo(
     disabled?: boolean;
   }) => {
     const [expanded, setExpanded] = useState(false);
+    const theme = useTheme();
     const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
     const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
-    const color = useRecoilValue(colorAtoms.pathColor({ path, modal }));
+    const color = disabled
+      ? theme.backgroundDark
+      : useRecoilValue(colorAtoms.pathColor({ path, modal }));
     const fields = useRecoilValue(
       schemaAtoms.fields({
         path: expandedPath,
@@ -156,11 +204,11 @@ const FilterableEntry = React.memo(
     const fieldIsFiltered = useRecoilValue(
       filterAtoms.fieldIsFiltered({ path, modal })
     );
-    const theme = useTheme();
     const [active, setActive] = useRecoilState(
       schemaAtoms.activeField({ modal, path })
     );
     const expandable = useRecoilValueLoadable(canExpand({ modal, path }));
+    const hidden = modal ? useHidden(path) : null;
 
     useLayoutEffect(() => {
       expandable.state !== "loading" &&
@@ -191,6 +239,7 @@ const FilterableEntry = React.memo(
             )}
             <NameAndCountContainer>
               <span key="path">{path}</span>
+              {hidden}
               <PathEntryCounts key="count" modal={modal} path={expandedPath} />
               {!disabled &&
                 expandable.state !== "loading" &&

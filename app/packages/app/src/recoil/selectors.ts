@@ -241,24 +241,67 @@ export const hiddenLabelIds = selector({
   },
 });
 
-export const selectedLabels = selector<atoms.SelectedLabelMap>({
+export const pathHiddenLabelsMap = selector<{
+  [sampleId: string]: { [field: string]: string[] };
+}>({
+  key: "pathHiddenLabelsMap",
+  get: ({ get }) => {
+    const hidden = get(atoms.hiddenLabels);
+
+    const result = {};
+
+    Object.entries(hidden).forEach(([labelId, { sampleId, field }]) => {
+      if (!result[sampleId]) {
+        result[sampleId] = {};
+      }
+
+      if (!result[sampleId][field]) {
+        result[sampleId][field] = [];
+      }
+
+      result[sampleId][field].push(labelId);
+    });
+
+    return result;
+  },
+  set: ({ get, set }, value) => {
+    const labels = get(atoms.hiddenLabels);
+    const newLabels: State.SelectedLabelMap = {};
+
+    for (let sampleId in value) {
+      for (let field in value[sampleId]) {
+        for (let i = 0; i < value[sampleId][field].length; i++) {
+          const labelId = value[sampleId][field][i];
+          newLabels[labelId] = labels[labelId];
+        }
+      }
+    }
+
+    set(atoms.hiddenLabels, newLabels);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const selectedLabels = selector<State.SelectedLabelMap>({
   key: "selectedLabels",
   get: ({ get }) => {
-    const labels = get(atoms.stateDescription)?.selectedLabels || [];
-    if (labels) {
-      return Object.fromEntries(labels.map((l) => [l.labelId, l]));
-    }
-    return {};
+    const labels: State.SelectedLabel[] =
+      get(atoms.stateDescription)?.selectedLabels || [];
+    return Object.fromEntries(labels.map((l) => [l.labelId, l]));
   },
   set: ({ get, set }, value) => {
     const state = get(atoms.stateDescription);
-    const labels = Object.entries(value).map(([label_id, label]) => ({
-      ...label,
-      label_id,
-    }));
-    const newState = {
+    const labels: State.SelectedLabel[] = Object.entries(value).map(
+      ([labelId, label]) => ({
+        ...label,
+        labelId,
+      })
+    );
+    const newState: State.Description = {
       ...state,
-      selected_labels: labels,
+      selectedLabels: labels,
     };
     socket.send(
       packageMessage("set_selected_labels", { selected_labels: labels })
@@ -281,9 +324,9 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
     if (_id) {
       return Object.entries(labels)
         .filter(
-          ([_, { sample_id: id, field }]) => _id === id && field === fieldName
+          ([_, { sampleId: id, field }]) => _id === id && field === fieldName
         )
-        .map(([label_id]) => label_id);
+        .map(([labelId]) => labelId);
     }
     return [];
   },
