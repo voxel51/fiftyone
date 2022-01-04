@@ -712,6 +712,44 @@ class SetValuesTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.dataset.set_values("str_field", values, key_field="int_field")
 
+    def test_set_values_frames_dicts(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="video1.mp4"),
+                fo.Sample(filepath="video2.mp4"),
+                fo.Sample(filepath="video3.mp4"),
+            ]
+        )
+
+        filepaths = dataset.values("filepath")
+        values = {
+            filepaths[0]: {2: 3, 4: 5},
+            filepaths[1]: {3: 4, 5: 6, 7: 8},
+            filepaths[2]: {4: 5},
+        }
+
+        dataset.set_values("frames.int_field", values, key_field="filepath")
+
+        frame_numbers = dataset.values("frames.frame_number", unwind=True)
+        self.assertListEqual(frame_numbers, [2, 4, 3, 5, 7, 4])
+
+        int_fields = dataset.values("frames.int_field", unwind=True)
+        self.assertListEqual(int_fields, [3, 5, 4, 6, 8, 5])
+
+        values = {
+            filepaths[0]: {2: -1, 3: 4, 4: -1},
+            filepaths[2]: {1: 2, 4: -1, 5: 6},
+        }
+
+        dataset.set_values("frames.int_field", values, key_field="filepath")
+
+        frame_numbers = dataset.values("frames.frame_number", unwind=True)
+        self.assertListEqual(frame_numbers, [2, 3, 4, 3, 5, 7, 1, 4, 5])
+
+        int_fields = dataset.values("frames.int_field", unwind=True)
+        self.assertListEqual(int_fields, [-1, 4, -1, 4, 6, 8, 2, -1, 6])
+
     def test_set_values_dataset(self):
         n = len(self.dataset)
 
