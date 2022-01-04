@@ -4616,6 +4616,7 @@ def _do_to_mongo(val, prefix):
         return [_do_to_mongo(v, prefix) for v in val]
 
     if isinstance(val, (date, datetime)):
+        # The arg needs must be float (not int) to avoid errors near the epoch
         return {"$toDate": fou.datetime_to_timestamp(val)}
 
     if isinstance(val, timedelta):

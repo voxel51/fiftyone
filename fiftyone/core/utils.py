@@ -1267,7 +1267,7 @@ def timestamp_to_datetime(ts):
     Returns:
         a `datetime.datetime`
     """
-    dt = datetime.utcfromtimestamp(ts / 1000)
+    dt = datetime.utcfromtimestamp(ts / 1000.0)
 
     if fo.config.timezone is None:
         return dt
@@ -1285,7 +1285,9 @@ def timedelta_to_ms(td):
     Returns:
         the float number of milliseconds
     """
-    return 86400000.0 * td.days + 1000.0 * td.seconds + td.microseconds / 1000
+    return (
+        86400000.0 * td.days + 1000.0 * td.seconds + td.microseconds / 1000.0
+    )
 
 
 class ResponseStream(object):
