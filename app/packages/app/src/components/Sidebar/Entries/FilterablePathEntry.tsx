@@ -7,6 +7,7 @@ import {
 } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
 import {
+  DefaultValue,
   selectorFamily,
   useRecoilState,
   useRecoilValue,
@@ -141,15 +142,24 @@ const hiddenPathLabels = selectorFamily<string[], string>({
 
     return [];
   },
-  set: (path) => ({ set, get }, value) => {},
+  set: (path) => ({ set, get }, value) => {
+    const data = get(selectors.pathHiddenLabelsMap);
+    const sampleId = get(atoms.modal).sample._id;
+
+    set(selectors.pathHiddenLabelsMap, {
+      ...data,
+      [sampleId]: {
+        ...data[sampleId],
+        [path]: value instanceof DefaultValue ? [] : value,
+      },
+    });
+  },
 });
 
 const useHidden = (path: string) => {
   const [hidden, set] = useRecoilState(hiddenPathLabels(path));
 
   const num = hidden.length;
-
-  console.log(path, num);
 
   return num ? (
     <PillButton
@@ -162,7 +172,7 @@ const useHidden = (path: string) => {
         height: "1.5rem",
         lineHeight: "1rem",
         padding: "0.25rem 0.5rem",
-        margin: "0 0.25rem",
+        margin: "0 0.5rem",
       }}
     />
   ) : null;
@@ -213,9 +223,9 @@ const FilterableEntry = React.memo(
     useLayoutEffect(() => {
       expandable.state !== "loading" &&
         !expandable.contents &&
-        !expanded &&
+        expanded &&
         setExpanded(false);
-    }, [expandable, expanded]);
+    }, [expandable.state, expandable.contents, expanded]);
 
     return (
       <RegularEntry

@@ -55,10 +55,6 @@ const Patches = () => {
   useOutsideClick(ref, () => open && setOpen(false));
   const fields = useRecoilValue(patchesFields);
 
-  useLayoutEffect(() => {
-    close && setOpen(false);
-  }, [close]);
-
   return (
     <ActionDiv ref={ref}>
       <PillButton

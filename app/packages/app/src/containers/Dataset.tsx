@@ -6,10 +6,9 @@ import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "./SampleModal";
 import * as selectors from "../recoil/selectors";
-import { useOutsideClick, useScreenshot, useGA } from "../utils/hooks";
+import { useScreenshot, useGA } from "../utils/hooks";
 import Loading from "../components/Loading";
 import * as schemaAtoms from "../recoil/schema";
-import { useClearModal } from "../recoil/utils";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
@@ -39,16 +38,12 @@ const useResetPaths = () => {
 };
 
 function Dataset() {
-  const ref = useRef();
   const isModalActive = useRecoilValue(selectors.isModalActive);
   const hasDataset = useRecoilValue(selectors.hasDataset);
 
   useGA();
   useScreenshot();
   useResetPaths();
-
-  const clearModal = useClearModal();
-  useOutsideClick(ref, clearModal);
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);
@@ -57,7 +52,7 @@ function Dataset() {
 
   return (
     <>
-      {isModalActive && <SampleModal onClose={clearModal} ref={ref} />}
+      {isModalActive && <SampleModal />}
       <Container key={1}>
         {hasDataset ? (
           <>

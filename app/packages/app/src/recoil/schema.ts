@@ -1,4 +1,4 @@
-import { atomFamily, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 
 import {
   Field,
@@ -16,6 +16,7 @@ import {
 import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
+import { isVideoDataset } from "./selectors";
 
 const RESERVED_FIELDS = [
   "_id",
@@ -80,6 +81,28 @@ export const fieldSchema = selectorFamily<Schema, State.SPACE>({
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const fullSchema = selector<Schema>({
+  key: "fullSchema",
+  get: ({ get }) => {
+    const schema = get(fieldSchema(State.SPACE.SAMPLE));
+
+    const frames = get(fieldSchema(State.SPACE.FRAME));
+
+    if (Boolean(Object.keys(frames).length)) {
+      return {
+        ...schema,
+        frames: {
+          ftype: LIST_FIELD,
+          name: "frames",
+          fields: frames,
+        },
+      } as Schema;
+    }
+
+    return schema;
   },
 });
 

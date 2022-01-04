@@ -14,6 +14,7 @@ import {
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
   LABELS_PATH,
+  LIST_FIELD,
   OBJECT_ID_FIELD,
   REGRESSION,
   Schema,
@@ -27,8 +28,9 @@ import { BaseState, NONFINITE, Sample } from "../../state";
 import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
 
-import { lookerTags } from "./tags.module.css";
 import { prettify } from "./util";
+
+import { lookerTags } from "./tags.module.css";
 
 interface TagData {
   color: string;
@@ -271,6 +273,34 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
       if (PRIMITIVE_RENDERERS[field.ftype]) {
         elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+      } else if (
+        field.ftype === LIST_FIELD &&
+        PRIMITIVE_RENDERERS[field.subfield] &&
+        value
+      ) {
+        let count = 0;
+        let rest = 0;
+        for (let index = 0; index < (value as Array<unknown>).length; index++) {
+          if (
+            PRIMITIVE_RENDERERS[field.subfield](path, value[index]) &&
+            count < 3
+          ) {
+            count++;
+            elements.push(
+              PRIMITIVE_RENDERERS[field.subfield](path, value[index])
+            );
+          } else {
+            rest++;
+          }
+        }
+
+        if (rest > 0) {
+          elements.push({
+            color: getColor(coloring.pool, coloring.seed, path),
+            title: `${path}: and ${rest} more`,
+            value: `and ${rest} more`,
+          });
+        }
       }
     }
 

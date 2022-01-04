@@ -8,6 +8,7 @@ import { packageMessage } from "../utils/socket";
 import * as atoms from "./atoms";
 import { expandPath, fields } from "./schema";
 import { State } from "./types";
+import { hiddenLabelIds } from "./selectors";
 
 export const modalFilters = atom<State.Filters>({
   key: "modalFilters",
@@ -67,8 +68,12 @@ export const filter = selectorFamily<
 
 export const hasFilters = selectorFamily<boolean, boolean>({
   key: "hasFilters",
-  get: (modal) => ({ get }) =>
-    Object.keys(get(modal ? modalFilters : filters)).length > 0,
+  get: (modal) => ({ get }) => {
+    const f = Object.keys(get(modal ? modalFilters : filters)).length > 0;
+    const hidden = Boolean(!modal || get(hiddenLabelIds).size);
+
+    return f || hidden;
+  },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },

@@ -1,6 +1,6 @@
 import React from "react";
 import { Checkbox } from "@material-ui/core";
-import { Visibility } from "@material-ui/icons";
+import { LocalOffer, Visibility } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 
@@ -120,15 +120,19 @@ const FilterableTagEntry = ({
       color={color}
       heading={
         <>
-          <Checkbox
-            disableRipple={true}
-            title={`Show ${elementsName} with the "${tag}" tag`}
-            checked={active}
-            style={{
-              color: active ? color : theme.fontDark,
-              padding: 0,
-            }}
-          />
+          {modal ? (
+            <LocalOffer style={{ margin: 2, height: 21, width: 21, color }} />
+          ) : (
+            <Checkbox
+              disableRipple={true}
+              title={`Show ${elementsName} with the "${tag}" tag`}
+              checked={active}
+              style={{
+                color: active ? color : theme.fontDark,
+                padding: 0,
+              }}
+            />
+          )}
           <NameAndCountContainer>
             <span>{tag}</span>
             {tagKey === State.TagKey.LABEL ? (

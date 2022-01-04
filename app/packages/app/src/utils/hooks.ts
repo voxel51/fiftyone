@@ -19,27 +19,21 @@ export const useRefresh = () => {
   });
 };
 
-export const useEventHandler = (targets, eventType, handler) => {
+export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
   const handlerRef = useRef(handler);
-  useEffect(() => {
-    handlerRef.current = handler;
-  });
+  handlerRef.current = handler;
 
   useEffect(() => {
-    if (!targets) return;
-
-    if (!Array.isArray(targets)) targets = [targets];
+    if (!target) return;
 
     const wrapper = (e) => handlerRef.current(e);
-    for (const target of targets)
-      target && target.addEventListener(eventType, wrapper);
+    target && target.addEventListener(eventType, wrapper);
 
     return () => {
-      for (const target of targets)
-        target && target.removeEventListener(eventType, wrapper);
+      target && target.removeEventListener(eventType, wrapper);
     };
-  }, [targets, eventType]);
+  }, [target, eventType]);
 };
 
 export const useMessageHandler = (type, handler) => {
@@ -95,13 +89,16 @@ export const useKeydownHandler = (handler) =>
   useEventHandler(document.body, "keydown", handler);
 
 export const useOutsideClick = (ref, handler) => {
-  const handleClickOutside = (event) => {
-    if (ref.current && !ref.current.contains(event.target)) {
-      handler(event);
-    }
-  };
+  const handleClickOutside = useCallback(
+    (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        handler(event);
+      }
+    },
+    [handler]
+  );
 
-  useEventHandler(document, "mousedown", handleClickOutside);
+  useEventHandler(document, "click", handleClickOutside);
 };
 
 export const useFollow = (leaderRef, followerRef, set) => {

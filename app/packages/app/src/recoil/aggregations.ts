@@ -6,7 +6,13 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 
-import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  FLOAT_FIELD,
+  Schema,
+  toSnakeCase,
+} from "@fiftyone/utilities";
 
 import { http } from "../shared/connection";
 
@@ -120,6 +126,12 @@ export const aggregations = selectorFamily<
       return get(aggregations({ extended: false, modal })) as AggregationsData;
     }
 
+    const dataset = get(selectors.datasetName);
+
+    if (!dataset) {
+      return {};
+    }
+
     get(aggregationsTick);
     const data = (await (
       await fetch(`${http}/aggregations`, {
@@ -132,8 +144,12 @@ export const aggregations = selectorFamily<
         body: JSON.stringify({
           filters,
           sample_ids: modal ? get(atoms.modal).sample._id : null,
-          dataset: get(selectors.datasetName),
+          dataset,
           view: get(viewAtoms.view),
+          hidden_labels:
+            modal && extended
+              ? toSnakeCase(get(selectors.hiddenLabelsArray))
+              : null,
         }),
       })
     ).json()) as AggregationsData;
@@ -242,11 +258,14 @@ export const stringCountResults = makeCountResults<string | null>(
   "stringCountResults"
 );
 
-export const labelCount = selectorFamily<number | null, boolean>({
+export const labelCount = selectorFamily<
+  number | null,
+  { modal: boolean; extended: boolean }
+>({
   key: "labelCount",
-  get: (modal) => ({ get }) => {
+  get: ({ modal, extended }) => ({ get }) => {
     let sum = 0;
-    const data = get(aggregations({ modal, extended: false }));
+    const data = get(aggregations({ modal, extended }));
 
     for (const label of get(schemaAtoms.activeLabelPaths({ modal }))) {
       sum += data[label].Count;

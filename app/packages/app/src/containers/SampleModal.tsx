@@ -17,7 +17,7 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
-import { getSampleSrc } from "../recoil/utils";
+import { getSampleSrc, useClearModal } from "../recoil/utils";
 import { useMessageHandler } from "../utils/hooks";
 
 export const ModalWrapper = styled.div`
@@ -75,12 +75,11 @@ const useOnSelectLabel = () => {
       } else {
         labels[id] = {
           field,
-          sample_id: sample._id,
-          frame_number: frameNumber,
+          sampleId: sample._id,
+          frameNumber,
         };
       }
 
-      console.log(labels);
       set(selectors.selectedLabels, labels);
     },
     []
@@ -104,7 +103,7 @@ export const useSampleUpdate = (lookerRef) => {
   useMessageHandler("samples_update", handler);
 };
 
-const SampleModal = ({ onClose }: Props, ref) => {
+const SampleModal = () => {
   const {
     sample: { filepath, _id },
     index,
@@ -117,6 +116,7 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const labelPaths = useRecoilValue(
     schemaAtoms.labelPaths({ expanded: false })
   );
+  const clearModal = useClearModal();
   const disabled = useRecoilValue(disabledPaths);
 
   useSampleUpdate(lookerRef);
@@ -221,16 +221,21 @@ const SampleModal = ({ onClose }: Props, ref) => {
   const screen = useRecoilValue(atoms.fullscreen)
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
+  const wrapperRef = useRef();
 
   return (
-    <ModalWrapper key={0}>
-      <Container ref={ref} style={{ ...screen, zIndex: 10001 }}>
+    <ModalWrapper
+      ref={wrapperRef}
+      key={0}
+      onClick={(event) => event.target === wrapperRef.current && clearModal()}
+    >
+      <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
           <Looker
             key={`modal-${sampleSrc}`}
             lookerRef={lookerRef}
             onSelectLabel={onSelectLabel}
-            onClose={onClose}
+            onClose={clearModal}
             onPrevious={index > 0 ? () => getIndex(index - 1) : null}
             onNext={() => getIndex(index + 1)}
           />
@@ -241,4 +246,4 @@ const SampleModal = ({ onClose }: Props, ref) => {
   );
 };
 
-export default React.forwardRef(SampleModal);
+export default React.memo(SampleModal);

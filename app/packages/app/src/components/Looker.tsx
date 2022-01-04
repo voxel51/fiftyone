@@ -485,6 +485,18 @@ const Looker = ({
 
   const handleError = useErrorHandler();
   lookerRef && (lookerRef.current = looker);
+  const moveRef = useRef<HTMLElement>();
+  const headerRef = useRef<HTMLElement>();
+  useEventHandler(looker, "controls", (event) => {
+    if (event.detail) {
+      setShowControls(event.detail);
+    } else if (
+      headerRef.current &&
+      !headerRef.current.contains(moveRef.current)
+    ) {
+      setShowControls(false);
+    }
+  });
 
   useEventHandler(looker, "options", useLookerOptionsUpdate());
   useEventHandler(looker, "fullscreen", useFullscreen());
@@ -492,7 +504,6 @@ const Looker = ({
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
-  useEventHandler(looker, "controls", (event) => setShowControls(event.detail));
   useEventHandler(looker, "error", (event) => handleError(event.detail));
 
   useEffect(() => {
@@ -514,9 +525,10 @@ const Looker = ({
         background: theme.backgroundDark,
         ...style,
       }}
+      onMouseMove={(event) => (moveRef.current = event.target as HTMLElement)}
     >
       {showControls && (
-        <Header>
+        <Header ref={headerRef}>
           <ModalActionsRow lookerRef={lookerRef} />
         </Header>
       )}

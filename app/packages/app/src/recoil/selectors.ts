@@ -231,6 +231,19 @@ export const anyTagging = selector<boolean>({
   },
 });
 
+export const hiddenLabelsArray = selector({
+  key: "hiddenLabelsArray",
+  get: ({ get }) => {
+    return Object.entries(get(atoms.hiddenLabels)).map(([labelId, data]) => ({
+      labelId,
+      ...data,
+    }));
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 export const hiddenLabelIds = selector({
   key: "hiddenLabelIds",
   get: ({ get }) => {

@@ -26,6 +26,7 @@ class TagHandler(fosu.AsyncRequestHandler):
         labels = data.get("labels", None)
         target_labels = data.get("target_labels", False)
         active_label_fields = data.get("active_label_fields", [])
+        hidden_labels = data.get("hidden_labels", None)
         changes = data.get("changes", {})
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
@@ -33,10 +34,12 @@ class TagHandler(fosu.AsyncRequestHandler):
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
-        if labels:
-            view = view.select_labels(labels)
-
         if target_labels:
+            if labels:
+                view = view.select_labels(labels)
+            elif hidden_labels:
+                view = view.exclude_labels(hidden_labels)
+
             fosu.change_label_tags(
                 view, changes, label_fields=active_label_fields
             )

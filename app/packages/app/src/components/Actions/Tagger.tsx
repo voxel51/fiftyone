@@ -9,7 +9,6 @@ import { CircularProgress } from "@material-ui/core";
 import {
   RecoilState,
   RecoilValue,
-  useGetRecoilValueInfo_UNSTABLE,
   useRecoilCallback,
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
@@ -34,12 +33,12 @@ import {
   tagStatistics,
 } from "./utils";
 import { Button } from "../utils";
-import socket, { http } from "../../shared/connection";
+import { http } from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
 import { PopoutSectionTitle } from "../utils";
 import { VideoLooker } from "@fiftyone/looker";
 import { filters, modalFilters } from "../../recoil/filters";
+import { toSnakeCase } from "@fiftyone/utilities";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -360,9 +359,15 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
       const f = await snapshot.getPromise(modal ? modalFilters : filters);
       const view = await snapshot.getPromise(viewAtoms.view);
       const dataset = await snapshot.getPromise(selectors.datasetName);
-      const selectedLabels = (await snapshot.getPromise(atoms.stateDescription))
-        .selectedLabels;
+      const selectedLabels =
+        modal && targetLabels
+          ? (await snapshot.getPromise(atoms.stateDescription)).selectedLabels
+          : null;
       const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
+      const hiddenLabels =
+        modal && targetLabels
+          ? await snapshot.getPromise(selectors.hiddenLabelsArray)
+          : null;
 
       const response = await fetch(url, {
         method: "POST",
@@ -383,7 +388,8 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
             : selectedSamples.size
             ? [...selectedSamples]
             : null,
-          labels: modal && selectedLabels.length ? selectedLabels : null,
+          labels: selectedLabels.length ? selectedLabels : null,
+          hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
         }),
       });
 
@@ -422,7 +428,9 @@ const usePlaceHolder = (
       const labelCount =
         selection > 0
           ? selection
-          : useRecoilValue(aggregationAtoms.labelCount(modal));
+          : useRecoilValue(
+              aggregationAtoms.labelCount({ modal: true, extended: true })
+            );
       return [labelCount, labelsModalPlaceholder(selection, labelCount)];
     } else if (modal) {
       return [1, samplePlaceholder(elementNames)];
@@ -437,7 +445,9 @@ const usePlaceHolder = (
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
       const labelCount = selection
         ? selectedLabelCount
-        : useRecoilValue(aggregationAtoms.labelCount(modal));
+        : useRecoilValue(
+            aggregationAtoms.labelCount({ modal: true, extended: true })
+          );
       if (labels) {
         return [
           labelCount,

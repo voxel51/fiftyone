@@ -10,9 +10,14 @@ import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
 import { request } from "../../utils/socket";
-import { datasetName, selectedLabels } from "../../recoil/selectors";
+import {
+  datasetName,
+  hiddenLabelsArray,
+  selectedLabels,
+} from "../../recoil/selectors";
 import { http } from "../../shared/connection";
 import { view } from "../../recoil/view";
+import { toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -114,6 +119,8 @@ export const tagStatistics = selectorFamily<
         labels: modal ? get(selectedLabels) : [],
         count_labels: labels,
         filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
+        hidden_labels:
+          modal && labels ? toSnakeCase(get(hiddenLabelsArray)) : null,
       }),
     }).then((response) => response.json());
 
