@@ -982,7 +982,7 @@ class SampleCollection(object):
                 sample.embedded.field.name = value
                 sample.save()
 
-        When modifying a sample field that contains an array, say
+        When setting an embedded field that contains an array, say
         ``embedded.array.field.name``, this function is an efficient
         implementation of the following loop::
 
@@ -1001,7 +1001,7 @@ class SampleCollection(object):
 
                 sample.save()
 
-        When modifying a frame field that contains an array, say
+        When setting an embedded frame field that contains an array, say
         ``frames.embedded.array.field.name``, this function is an efficient
         implementation of the following loop::
 
@@ -1089,13 +1089,14 @@ class SampleCollection(object):
         Args:
             field_name: a field or ``embedded.field.name``
             values: an iterable of values, one for each sample in the
-                collection. When setting frame fields, each element should
-                itself be an iterable of values, one for each frame of the
-                sample. If ``field_name`` contains array fields, the elements
-                of ``values`` must be arrays of the same lengths. This argument
-                can also be a dict mapping keys to values (each value as
-                described previously), in which case the keys are used to match
-                samples by their ``key_field``
+                collection. When setting frame fields, each element can either
+                be an iterable of values (one for each existing frame of the
+                sample) or a dict mapping frame numbers to values. If
+                ``field_name`` contains array fields, the corresponding
+                elements of ``values`` must be arrays of the same lengths. This
+                argument can also be a dict mapping keys to values (each value
+                as described previously), in which case the keys are used to
+                match samples by their ``key_field``
             key_field (None): a key field to use when choosing which samples to
                 update when ``values`` is a dict
             skip_none (False): whether to treat None data in ``values`` as
@@ -7623,15 +7624,8 @@ def _parse_values_dict(sample_collection, key_field, values):
 
 
 def _parse_frame_values_dicts(sample_collection, sample_ids, values):
-    found_dict = False
-    for value in values:
-        if isinstance(values, dict):
-            found_dict = True
-            break
-        elif values is not None:
-            break
-
-    if not found_dict:
+    value = _get_non_none_value(values)
+    if not isinstance(value, dict):
         return None, values
 
     if sample_ids is not None:
