@@ -1246,7 +1246,7 @@ def datetime_to_timestamp(dt):
         dt: a `datetime.date` or `datetime.datetime`
 
     Returns:
-        the number of milliseconds since epoch
+        the float number of milliseconds since epoch
     """
     if type(dt) is date:
         dt = datetime(dt.year, dt.month, dt.day)
@@ -1254,7 +1254,7 @@ def datetime_to_timestamp(dt):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
 
-    return int(1000 * dt.timestamp())
+    return 1000.0 * dt.timestamp()
 
 
 def timestamp_to_datetime(ts):
@@ -1283,11 +1283,9 @@ def timedelta_to_ms(td):
         td: a `datetime.timedelta`
 
     Returns:
-        the number of milliseconds
+        the float number of milliseconds
     """
-    return int(
-        86400000 * td.days + 1000 * td.seconds + td.microseconds // 1000
-    )
+    return 86400000.0 * td.days + 1000.0 * td.seconds + td.microseconds / 1000
 
 
 class ResponseStream(object):
