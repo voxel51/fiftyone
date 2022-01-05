@@ -1065,8 +1065,10 @@ def load_annotations(
                 elif unexpected == "keep":
                     new_field = anno_type
                 elif isinstance(unexpected, dict):
+                    # Undocumented: allow dict mapping to field names
                     new_field = unexpected.get(anno_type, None)
                 elif etau.is_container(unexpected) and anno_type in unexpected:
+                    # Undocumented: allow list of label types to keep
                     new_field = anno_type
                 else:
                     new_field = None

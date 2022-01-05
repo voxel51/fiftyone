@@ -57,6 +57,12 @@ def import_annotations(
     Provide one of ``project_name``, ``project_id``, or ``task_ids`` to perform
     an import.
 
+    In order to use this method, FiftyOne must know how to associate media
+    filenames in CVAT with local filepaths to the same media. You can specify
+    this mapping via the ``data_path`` argument; otherwise, it is assumed that
+    the CVAT filenames correspond to the base filenames of existing sample
+    filepaths in the provided ``sample_collection``.
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -86,14 +92,16 @@ def import_annotations(
                 stored in fields of the same names in ``sample_collection``
             -   a dict mapping label types to field names of
                 ``sample_collection`` in which to store the labels
-            -   ``"prompt"``: in this case, you will be prompted for field
-                names in which to store each type of label
+            -   ``"prompt"``: present an interactive prompt to decide/discard
+                field names in which to store each label type
         insert_new (True): whether to create new samples for any media for
-            which annotations are found in the CVAT tasks/project
+            which annotations are found in CVAT but which do not exist in
+            ``sample_collection``
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
         backend ("cvat"): the name of the CVAT backend to use
-        **kwargs: additional keyword arguments for :class:`CVATBackendConfig`
+        **kwargs: CVAT authentication credentials to pass to
+            :class:`CVATBackendConfig`
     """
     if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
         raise ValueError(
@@ -119,6 +127,7 @@ def import_annotations(
         task_ids = list(task_ids)
 
     # Build mapping from CVAT filenames to local filepaths
+    only_existing = data_path is None
     existing_filepaths = sample_collection.values("filepath")
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
@@ -132,13 +141,26 @@ def import_annotations(
 
     # Determine what filepaths we have annotations for
     filepaths_map = {}
+    ignored_filenames = []
     for task_id in task_ids:
-        filepaths_map[task_id] = _get_task_filepaths(api, task_id, data_map)
+        filepaths_map[task_id] = _get_task_filepaths(
+            api, task_id, data_map, ignored_filenames
+        )
+
+    if ignored_filenames:
+        dstr = "input collection" if only_existing else "provided data map"
+        logger.warning(
+            "Ignoring annotations for %d files in CVAT (eg %s) that do not "
+            "appear in the %s",
+            len(ignored_filenames),
+            ignored_filenames[0],
+            dstr,
+        )
 
     task_filepaths = itertools.chain.from_iterable(filepaths_map.values())
     new_filepaths = set(task_filepaths) - set(existing_filepaths)
 
-    # Insert samples for new filepaths, if necessary and allowed
+    # Insert samples for new filepaths, if necessary and we're allowed to
     if new_filepaths:
         if insert_new:
             dataset = sample_collection._dataset
@@ -166,20 +188,15 @@ def import_annotations(
                 project_id=project_id, occluded_attr=occluded_attr
             )
 
-            frame_id_map = {}
-            for task_id in task_ids:
-                filepaths = filepaths_map[task_id]
-                task_view = sample_collection.select_by("filepath", filepaths)
-                frame_id_map[task_id] = api._build_frame_id_map(task_view)
-
             _download_annotations(
                 sample_collection,
                 task_ids,
+                filepaths_map,
                 label_schema,
                 label_types,
-                frame_id_map,
                 anno_backend,
                 anno_key,
+                api,
                 **kwargs,
             )
         else:
@@ -190,25 +207,22 @@ def import_annotations(
                     task_id=task_id, occluded_attr=occluded_attr
                 )
 
-                filepaths = filepaths_map[task_id]
-                task_view = sample_collection.select_by("filepath", filepaths)
-                frame_id_map = {task_id: api._build_frame_id_map(task_view)}
-
                 _download_annotations(
                     sample_collection,
                     [task_id],
+                    filepaths_map,
                     label_schema,
                     label_types,
-                    frame_id_map,
                     anno_backend,
                     anno_key,
+                    api,
                     **kwargs,
                 )
     finally:
         anno_backend.delete_run(sample_collection, anno_key)
 
 
-def _get_task_filepaths(api, task_id, data_map):
+def _get_task_filepaths(api, task_id, data_map, ignored_filenames):
     resp = api.get(api.task_data_meta_url(task_id)).json()
     filenames = [frame["name"] for frame in resp["frames"]]
 
@@ -217,6 +231,8 @@ def _get_task_filepaths(api, task_id, data_map):
         filepath = data_map.get(filename, None)
         if filepath is not None:
             filepaths.append(filepath)
+        else:
+            ignored_filenames.append(filename)
 
     return filepaths
 
@@ -224,13 +240,20 @@ def _get_task_filepaths(api, task_id, data_map):
 def _download_annotations(
     sample_collection,
     task_ids,
+    filepaths_map,
     label_schema,
     label_types,
-    frame_id_map,
     anno_backend,
     anno_key,
+    api,
     **kwargs,
 ):
+    frame_id_map = {}
+    for task_id in task_ids:
+        filepaths = filepaths_map[task_id]
+        task_view = sample_collection.select_by("filepath", filepaths)
+        frame_id_map[task_id] = api._build_frame_id_map(task_view)
+
     config = anno_backend.config
     config.label_schema = label_schema
     anno_backend.update_run_config(sample_collection, anno_key, config)
