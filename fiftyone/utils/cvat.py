@@ -25,9 +25,7 @@ import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -51,6 +49,7 @@ def import_annotations(
     insert_new=True,
     occluded_attr=None,
     backend="cvat",
+    **kwargs,
 ):
     """Imports annotations from the specified CVAT project or task(s) into the
     given sample collection.
@@ -94,6 +93,7 @@ def import_annotations(
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
         backend ("cvat"): the name of the CVAT backend to use
+        **kwargs: additional keyword arguments for :class:`CVATBackendConfig`
     """
     if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
         raise ValueError(
@@ -101,20 +101,9 @@ def import_annotations(
             "be provided"
         )
 
-    existing_filepaths = set(sample_collection.values("filepath"))
-
-    # Build mapping from CVAT filenames to local media filepaths
-    if data_path is None:
-        data_map = {os.path.basename(f): f for f in existing_filepaths}
-    elif etau.is_str(data_path):
-        data_map = {
-            os.path.basename(f): f
-            for f in etau.list_files(data_path, abs_paths=True, recursive=True)
-        }
-    else:
-        data_map = data_path
-
-    config = foua._parse_config(backend, None, occluded_attr=occluded_attr)
+    config = foua._parse_config(
+        backend, None, occluded_attr=occluded_attr, **kwargs
+    )
     anno_backend = config.build()
     api = anno_backend.connect_to_api()
 
@@ -129,18 +118,35 @@ def import_annotations(
     else:
         task_ids = list(task_ids)
 
+    # Build mapping from CVAT filenames to local filepaths
+    existing_filepaths = sample_collection.values("filepath")
+    if data_path is None:
+        data_map = {os.path.basename(f): f for f in existing_filepaths}
+    elif etau.is_str(data_path):
+        data_map = {
+            os.path.basename(f): f
+            for f in etau.list_files(data_path, abs_paths=True, recursive=True)
+        }
+    else:
+        data_map = data_path
+
     # Determine what filepaths we have annotations for
-    task_id_map = {}
+    filepaths_map = {}
     for task_id in task_ids:
-        task_id_map[task_id] = _build_task_id_map(api, task_id, data_map)
+        filepaths_map[task_id] = _get_task_filepaths(api, task_id, data_map)
 
-    filepaths = set(itertools.chain(*[i.keys() for i in task_id_map.values()]))
+    task_filepaths = itertools.chain.from_iterable(filepaths_map.values())
+    new_filepaths = set(task_filepaths) - set(existing_filepaths)
 
-    if not insert_new:
-        task_filepaths = filepaths.copy()
-        filepaths &= existing_filepaths
-        if len(filepaths) < len(task_filepaths):
-            new_filepaths = task_filepaths - filepaths
+    # Insert samples for new filepaths, if necessary and allowed
+    if new_filepaths:
+        if insert_new:
+            dataset = sample_collection._dataset
+            dataset.add_samples(
+                [fos.Sample(filepath=fp) for fp in new_filepaths]
+            )
+            sample_collection = dataset
+        else:
             logger.warning(
                 "Ignoring annotations for %d filepaths (eg %s) that do not "
                 "appear in the input collection",
@@ -148,208 +154,87 @@ def import_annotations(
                 new_filepaths[0],
             )
 
-    tmp_dataset = fod.Dataset()
-    filepaths = list(filepaths)
-
-    with fou.SetAttributes(fo.config, show_progress_bars=False):
-        sample_ids = tmp_dataset.add_samples(
-            [fos.Sample(filepath=fp) for fp in filepaths]
-        )
-
-    is_video = tmp_dataset.media_type == fom.VIDEO
-    sample_id_map = {f: _id for f, _id in zip(filepaths, sample_ids)}
-
-    # Determine CVAT ID -> FiftyOne ID mappings
-    if is_video:
-        tmp_dataset.ensure_frames()
-
-        frame_ids = tmp_dataset.values("frames.id")
-        frame_ids_map = {f: fids for f, fids in zip(filepaths, frame_ids)}
-        frame_numbers_map = {
-            _id: {fid: fn for fn, fid in enumerate(fids, 1)}
-            for _id, fids in zip(sample_ids, frame_ids)
-        }
-
-        frame_id_map = {}
-        for task_id in task_ids:
-            id_map = task_id_map[task_id]
-            frame_id_map[task_id] = _build_video_frame_id_map(
-                id_map, sample_id_map, frame_ids_map
-            )
-    else:
-        frame_id_map = {}
-        for task_id in task_ids:
-            id_map = task_id_map[task_id]
-            frame_id_map[task_id] = _build_image_frame_id_map(
-                id_map, sample_id_map
-            )
+    anno_key = "tmp_" + str(ObjectId())
+    anno_backend.register_run(sample_collection, anno_key, overwrite=False)
 
     # Download annotations
-    if project_id is not None:
-        # CVAT projects share a label schema, so we can download all tasks in
-        # one batch
-        label_schema = api._get_label_schema(
-            project_id=project_id, occluded_attr=occluded_attr
-        )
-        annotations = _download_annotations(
-            anno_backend, config, task_ids, frame_id_map, label_schema
-        )
-    else:
-        annotations = {}
-
-        # Each task may have a different label schema, so we must download each
-        # task separately
-        for task_id in task_ids:
-            label_schema = api._get_label_schema(
-                task_id=task_id, occluded_attr=occluded_attr
-            )
-
-            annos = _download_annotations(
-                anno_backend, config, [task_id], frame_id_map, label_schema
-            )
-            annotations.update(annos)
-
-    if label_types is None:
-        label_types = list(annotations.keys())
-
-    if label_types != "prompt" and not isinstance(label_types, dict):
-        label_types = {l: l for l in label_types}
-
-    if is_video:
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        schema = sample_collection.get_field_schema()
-
-    fields = []
-
-    # Add annotations to temporary dataset
-    for label_type, annos in annotations.items():
-        if label_types == "prompt":
-            field_name = input(
-                "Found labels of type '%s'. Please enter a new or compatible "
-                "existing field name in which to store these annotations, or "
-                "empty to skip: " % label_type
-            )
-            if not field_name:
-                logger.warning(
-                    "Ignoring unrequested labels of type '%s'", label_type
-                )
-                continue
-        elif label_type in label_types:
-            field_name = label_types[label_type]
-        else:
-            logger.warning(
-                "Ignoring unrequested labels of type '%s'", label_type
-            )
-            continue
-
-        if is_video:
-            # Convert from frame IDs to frame numbers
-            annos = _to_frame_numbers(annos, frame_numbers_map)
-
-            if not field_name.startswith("frames."):
-                field_name = "frames." + field_name
-
-            _field_name = field_name[len("frames.") :]
-        else:
-            _field_name = field_name
-
-        fields.append(field_name)
-
-        if label_type == "scalar":
-            # Scalar field
-            tmp_dataset.set_values(field_name, annos, key_field="id")
-        elif label_type == "segmentation" or (
-            _field_name in schema
-            and not issubclass(schema[_field_name], fol._LABEL_LIST_FIELDS)
-        ):
-            # Single label field
-            labels = _to_single_labels(annos, is_video=is_video)
-            tmp_dataset.set_values(field_name, labels, key_field="id")
-        else:
-            # Label list field
-            labels = _to_list_labels(annos, label_type, is_video=is_video)
-            tmp_dataset.set_values(field_name, labels, key_field="id")
-
-    # Merge annotations into user's dataset
-    if fields:
-        sample_collection._dataset.merge_samples(
-            tmp_dataset,
-            key_field="filepath",
-            skip_existing=False,
-            insert_new=insert_new,
-            fields=fields,
-            merge_lists=True,
-            overwrite=True,
-            expand_schema=True,
-            include_info=False,
-        )
-
-
-def _build_task_id_map(api, task_id, data_map):
-    resp = api.get(api.task_data_meta_url(task_id)).json()
-
     try:
-        filename = resp["frames"][0]["name"]
-        is_video_task = fom.get_media_type(filename) == fom.VIDEO
-    except:
-        is_video_task = False
+        if project_id is not None:
+            # CVAT projects share a label schema, so we can download all tasks
+            # in one batch
+            label_schema = api._get_label_schema(
+                project_id=project_id, occluded_attr=occluded_attr
+            )
 
-    id_map = {}
+            frame_id_map = {}
+            for task_id in task_ids:
+                filepaths = filepaths_map[task_id]
+                task_view = sample_collection.select_by("filepath", filepaths)
+                frame_id_map[task_id] = api._build_frame_id_map(task_view)
 
-    if is_video_task:
+            _download_annotations(
+                sample_collection,
+                task_ids,
+                label_schema,
+                label_types,
+                frame_id_map,
+                anno_backend,
+                anno_key,
+                **kwargs,
+            )
+        else:
+            # Each task may have a different label schema, so we must download
+            # each task separately
+            for task_id in task_ids:
+                label_schema = api._get_label_schema(
+                    task_id=task_id, occluded_attr=occluded_attr
+                )
+
+                filepaths = filepaths_map[task_id]
+                task_view = sample_collection.select_by("filepath", filepaths)
+                frame_id_map = {task_id: api._build_frame_id_map(task_view)}
+
+                _download_annotations(
+                    sample_collection,
+                    [task_id],
+                    label_schema,
+                    label_types,
+                    frame_id_map,
+                    anno_backend,
+                    anno_key,
+                    **kwargs,
+                )
+    finally:
+        anno_backend.delete_run(sample_collection, anno_key)
+
+
+def _get_task_filepaths(api, task_id, data_map):
+    resp = api.get(api.task_data_meta_url(task_id)).json()
+    filenames = [frame["name"] for frame in resp["frames"]]
+
+    filepaths = []
+    for filename in filenames:
         filepath = data_map.get(filename, None)
         if filepath is not None:
-            id_map[filepath] = (resp["start_frame"], resp["stop_frame"])
-    else:
-        for frame_id, frame in enumerate(resp["frames"]):
-            filepath = data_map.get(frame["name"], None)
-            if filepath is not None:
-                id_map[filepath] = frame_id
+            filepaths.append(filepath)
 
-    return id_map
-
-
-def _build_video_frame_id_map(id_map, sample_id_map, frame_ids_map):
-    filepath = next(iter(id_map.keys()))
-
-    sample_id = sample_id_map.get(filepath, None)
-    if sample_id is None:
-        return {}
-
-    start, stop = id_map[filepath]
-    frame_ids = frame_ids_map[filepath]
-
-    frame_id_map = {}
-    for fid in range(start, stop + 1):
-        try:
-            frame_id_map[fid] = {
-                "sample_id": sample_id,
-                "frame_id": frame_ids[fid],
-            }
-        except IndexError:
-            # FiftyOne thinks video has fewer frames than CVAT does...
-            pass
-
-    return frame_id_map
-
-
-def _build_image_frame_id_map(id_map, sample_id_map):
-    frame_id_map = {}
-    for filepath, frame_id in id_map.items():
-        sample_id = sample_id_map.get(filepath, None)
-        if sample_id is not None:
-            frame_id_map[frame_id] = {"sample_id": sample_id}
-
-    return frame_id_map
+    return filepaths
 
 
 def _download_annotations(
-    anno_backend, config, task_ids, frame_id_map, label_schema
+    sample_collection,
+    task_ids,
+    label_schema,
+    label_types,
+    frame_id_map,
+    anno_backend,
+    anno_key,
+    **kwargs,
 ):
+    config = anno_backend.config
     config.label_schema = label_schema
+    anno_backend.update_run_config(sample_collection, anno_key, config)
 
-    dataset = None
     id_map = {}
     server_id_map = {}
     project_ids = []
@@ -357,7 +242,7 @@ def _download_annotations(
     labels_task_map = {None: task_ids}
 
     results = CVATAnnotationResults(
-        dataset,
+        sample_collection,
         config,
         id_map,
         server_id_map,
@@ -368,63 +253,16 @@ def _download_annotations(
         labels_task_map,
         backend=anno_backend,
     )
+    anno_backend.save_run_results(sample_collection, anno_key, results)
 
-    annotations = anno_backend.download_annotations(results)
-    return annotations.get(None, {})
+    if label_types is None:
+        unexpected = "keep"
+    else:
+        unexpected = label_types
 
-
-def _to_single_labels(annos, is_video=False):
-    if is_video:
-        return {k: _to_single_labels(d) for k, d in annos.items()}
-
-    labels = {}
-    for k, d in annos.items():
-        try:
-            _label = next(iter(d.values()))
-        except:
-            _label = None
-
-        if _label is not None:
-            labels[k] = _label
-
-    return labels
-
-
-def _to_list_labels(annos, label_type, is_video=False):
-    if is_video:
-        return {k: _to_list_labels(d, label_type) for k, d in annos.items()}
-
-    label_cls = foua._LABEL_TYPES_MAP[label_type]
-
-    labels = {}
-    for k, d in annos.items():
-        try:
-            _labels = list(d.values())
-        except:
-            _labels = None
-
-        if _labels is not None:
-            labels[k] = label_cls(**{label_cls._LABEL_LIST_FIELD: _labels})
-
-    return labels
-
-
-def _to_frame_numbers(annos, frame_numbers_map):
-    _annos = {}
-    for sample_id, d in annos.items():
-        fns_map = frame_numbers_map.get(sample_id, None)
-        if fns_map is None:
-            continue
-
-        _d = {}
-        for frame_id, value in d.items():
-            frame_number = fns_map.get(frame_id, None)
-            if frame_number is not None:
-                _d[frame_number] = value
-
-        _annos[sample_id] = _d
-
-    return _annos
+    sample_collection.load_annotations(
+        anno_key, unexpected=unexpected, cleanup=False, **kwargs
+    )
 
 
 class CVATImageDatasetImporter(
