@@ -531,7 +531,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = self._build_frame_id_map(samples)
 
         return LabelboxAnnotationResults(
-            samples, config, project_id, id_map, frame_id_map, backend=backend,
+            samples, config, id_map, project_id, frame_id_map, backend=backend
         )
 
     def download_annotations(self, results):
@@ -1218,7 +1218,7 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     """
 
     def __init__(
-        self, samples, config, id_map, project_id, frame_id_map, backend=None,
+        self, samples, config, id_map, project_id, frame_id_map, backend=None
     ):
         super().__init__(samples, config, id_map, backend=backend)
         self.project_id = project_id
