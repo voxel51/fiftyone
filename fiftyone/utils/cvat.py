@@ -23,6 +23,7 @@ import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -34,6 +35,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
+import fiftyone.utils.video as fouv
 
 
 logger = logging.getLogger(__name__)
@@ -47,6 +49,7 @@ def import_annotations(
     data_path=None,
     label_types=None,
     insert_new=True,
+    download_media=False,
     occluded_attr=None,
     backend="cvat",
     **kwargs,
@@ -97,6 +100,9 @@ def import_annotations(
         insert_new (True): whether to create new samples for any media for
             which annotations are found in CVAT but which do not exist in
             ``sample_collection``
+        download_media (False): whether to download the images or videos found
+            in CVAT to the directory or filepaths in ``data_path`` if not
+            already present
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
         backend ("cvat"): the name of the CVAT backend to use
@@ -128,14 +134,21 @@ def import_annotations(
 
     # Build mapping from CVAT filenames to local filepaths
     only_existing = data_path is None
+    data_dir = None
     existing_filepaths = sample_collection.values("filepath")
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
     elif etau.is_str(data_path):
-        data_map = {
-            os.path.basename(f): f
-            for f in etau.list_files(data_path, abs_paths=True, recursive=True)
-        }
+        if data_path.endswith(".json"):
+            data_map = etas.read_json(data_path)
+        else:
+            data_map = {
+                os.path.basename(f): f
+                for f in etau.list_files(
+                    data_path, abs_paths=True, recursive=True
+                )
+            }
+            data_dir = data_path
     else:
         data_map = data_path
 
@@ -144,7 +157,12 @@ def import_annotations(
     ignored_filenames = []
     for task_id in task_ids:
         filepaths_map[task_id] = _get_task_filepaths(
-            api, task_id, data_map, ignored_filenames
+            api,
+            task_id,
+            data_map,
+            ignored_filenames,
+            data_dir=data_dir,
+            download_media=download_media,
         )
 
     if ignored_filenames:
@@ -222,19 +240,80 @@ def import_annotations(
         anno_backend.delete_run(sample_collection, anno_key)
 
 
-def _get_task_filepaths(api, task_id, data_map, ignored_filenames):
+def _get_task_filepaths(
+    api,
+    task_id,
+    data_map,
+    ignored_filenames,
+    data_dir=None,
+    download_media=False,
+):
     resp = api.get(api.task_data_meta_url(task_id)).json()
+    start_frame = resp.get("start_frame", None)
+    stop_frame = resp.get("stop_frame", None)
+    chunk_size = resp.get("chunk_size", None)
     filenames = [frame["name"] for frame in resp["frames"]]
 
     filepaths = []
-    for filename in filenames:
+    for frame_id, filename in enumerate(filenames):
         filepath = data_map.get(filename, None)
+        if download_media:
+            if filepath is None and data_dir:
+                filepath = os.path.join(data_dir, filename)
+
+            if filepath and not os.path.exists(filepath):
+                _download_media(
+                    api,
+                    task_id,
+                    frame_id,
+                    filepath,
+                    start_frame,
+                    stop_frame,
+                    chunk_size,
+                )
+
         if filepath is not None:
             filepaths.append(filepath)
         else:
+            # Filename not in data_map and data_dir not provided
             ignored_filenames.append(filename)
 
     return filepaths
+
+
+def _download_media(
+    api, task_id, frame_id, filepath, start_frame, stop_frame, chunk_size
+):
+    if fom.get_media_type(filepath) == fom.IMAGE:
+        resp = api.get(api.task_data_download_url(task_id, frame_id))
+        img_bytes = resp._content
+        with open(filepath, "wb") as f:
+            f.write(img_bytes)
+
+    else:
+        video_ext = os.path.splitext(filepath)[1]
+
+        # Download individual video chunks stored in CVAT
+        with etau.TempDir() as frames_dir:
+            num_chunks = int(np.ceil((stop_frame - start_frame) / chunk_size))
+            chunk_paths = []
+            for chunk_id in range(num_chunks):
+                resp = api.get(
+                    api.task_data_download_url(
+                        task_id, chunk_id, data_type="chunk"
+                    )
+                )
+                vid_bytes = resp._content
+                chunk_path = os.path.join(
+                    frames_dir, "%d.%s" % (chunk_id, video_ext)
+                )
+                with open(chunk_path, "wb") as f:
+                    f.write(vid_bytes)
+
+                chunk_paths.append(chunk_path)
+
+            # Combine chunks into video
+            fouv.merge_videos(chunk_paths, filepath)
 
 
 def _download_annotations(
@@ -3236,6 +3315,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
 
+    def task_data_download_url(
+        self, task_id, frame_id, data_type="frame", quality="original"
+    ):
+        return "%s/data?type=%s&quality=%s&number=%d" % (
+            self.task_url(task_id),
+            data_type,
+            quality,
+            frame_id,
+        )
+
     def task_data_meta_url(self, task_id):
         return "%s/data/meta" % self.task_url(task_id)
 
@@ -5773,6 +5862,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id = -1
 
         if samples.media_type == fom.VIDEO:
+            samples.ensure_frames()
             sample_ids, frame_ids = samples.values(["id", "frames.id"])
             for _sample_id, _frame_ids in zip(sample_ids, frame_ids):
                 for _frame_id in _frame_ids:

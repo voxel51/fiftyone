@@ -296,6 +296,26 @@ def sample_videos(
     )
 
 
+def merge_videos(input_paths, output_path, verbose=False):
+    """Merges multiple input videos into one output video using FFmpeg
+
+    Args:
+        input_paths: a list of paths to videos to merge in order
+        output_path: the path to write the output video
+        verbose (False): whether to log the ``ffmpeg`` command that is executed
+    """
+    with etau.TempDir() as tmp_dir:
+        input_list_path = os.path.join(tmp_dir, "input_list.txt")
+        with open(input_list_path, "w") as f:
+            f.write("\n".join(["file '%s'" % path for path in input_paths]))
+
+        in_opts = ["-f", "concat", "-safe", "0"]
+        out_opts = ["-c", "copy"]
+
+        with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
+            ffmpeg.run(input_list_path, output_path, verbose=verbose)
+
+
 def reencode_video(input_path, output_path, verbose=False, **kwargs):
     """Re-encodes the video using the H.264 codec.
 
