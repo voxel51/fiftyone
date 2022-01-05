@@ -971,15 +971,23 @@ The example snippet below demonstrates this workflow:
 
     anno_key = "labelbox_edit_labels"
 
-    classes = dataset.distinct("ground_truth.detections.label")
-    attributes = {"iscrowd": {"type": "radio", "values": [True, False]}}
+    label_schema = {
+        "ground_truth_edits": {
+            "type": "detections",
+            "classes": dataset.distinct("ground_truth.detections.label"),
+            "attributes": {
+                "iscrowd": {
+                    "type": "radio",
+                    "values": [True, False],
+                }
+            }
+        }
+    }
 
     edit_view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth_edits",
-        classes=classes,
-        attributes=attributes,
+        label_schema=label_schema,
         launch_editor=True,
     )
 
@@ -992,7 +1000,7 @@ The example snippet below demonstrates this workflow:
     dataset.delete_annotation_run(anno_key)
 
     # In the App, compare the tagged and re-annotated labels
-    session.view = dataset.select_labels(tags="edit", fields="ground_truth")
+    session.view = edit_view
 
     # If the edits look good, merge them into the `ground_truth` field
     # and delete the previously tagged labels
