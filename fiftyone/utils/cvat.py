@@ -5772,14 +5772,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = {}
         frame_id = -1
 
-        sample_ids = samples.values("id")
-
         if samples.media_type == fom.VIDEO:
-            frame_ids = samples.values("frames.id")
+            sample_ids, frame_ids = samples.values(["id", "frames.id"])
             for _sample_id, _frame_ids in zip(sample_ids, frame_ids):
-                if not _frame_ids:
-                    continue
-
                 for _frame_id in _frame_ids:
                     frame_id += 1
                     frame_id_map[frame_id] = {
@@ -5787,6 +5782,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "frame_id": _frame_id,
                     }
         else:
+            sample_ids = samples.values("id")
             for _sample_id in sample_ids:
                 frame_id += 1
                 frame_id_map[frame_id] = {"sample_id": _sample_id}
