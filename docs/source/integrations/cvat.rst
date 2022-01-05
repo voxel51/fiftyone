@@ -2122,9 +2122,8 @@ FiftyOne's CVAT integration is designed to manage the full annotation workflow,
 from task creation to annotation import.
 
 However, if you have created CVAT tasks outside of FiftyOne, you can use the
-:func:`import_dataset() <fiftyone.utils.cvat.import_dataset>` utility to import
-individual task(s) or an entire project into a new or existing FiftyOne
-dataset:
+:func:`import_annotations() <fiftyone.utils.cvat.import_annotations>` utility
+to import individual task(s) or an entire project into a FiftyOne dataset.
 
 .. code:: python
     :linenos:
@@ -2138,23 +2137,32 @@ dataset:
     dataset = foz.load_zoo_dataset("quickstart", max_samples=3).clone()
 
     # Create a pre-existing CVAT project
-    anno_key = "example_import"
     results = dataset.annotate(
-        anno_key,
+        "example_import",
         label_field="ground_truth",
         project_name="example_import",
     )
 
+    #
     # Create a mapping between filenames in the pre-existing CVAT project and
     # the locations of the media locally on disk for the FiftyOne dataset
+    #
+    # Since we're using a CVAT task uploaded via FiftyOne, the mapping is a bit
+    # weird
+    #
     filepaths = dataset.values("filepath")
-    data_path = {
+    data_map = {
         "%06d_%s" % (idx, os.path.basename(p)): p
         for idx, p in enumerate(filepaths)
     }
 
     # Create dataset from pre-existing CVAT project
-    dataset = fouc.import_dataset(data_path, project_name=project_name)
+    dataset = fo.Dataset()
+    fouc.import_annotations(
+        dataset,
+        project_name=project_name,
+        data_path=data_map,
+    )
 
     session = fo.launch_app(dataset)
 
