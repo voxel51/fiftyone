@@ -3698,12 +3698,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data["chunk_size"] = chunk_size
 
         files = {}
-        for idx, path in enumerate(paths):
-            # IMPORTANT: CVAT organizes media within a task alphabetically by
-            # filename, so we must give CVAT filenames whose alphabetical order
-            # matches the order of `paths`
-            filename = "%06d_%s" % (idx, os.path.basename(path))
-            files["client_files[%d]" % idx] = (filename, open(path, "rb"))
+
+        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
+            # Video task
+            filename = os.path.basename(paths[0])
+            files["client_files[0]"] = (filename, open(paths[0], "rb"))
+        else:
+            # Image task
+            for idx, path in enumerate(paths):
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must give CVAT filenames whose
+                # alphabetical order matches the order of `paths`
+                filename = "%06d_%s" % (idx, os.path.basename(path))
+                files["client_files[%d]" % idx] = (filename, open(path, "rb"))
 
         self.post(self.task_data_url(task_id), data=data, files=files)
 
