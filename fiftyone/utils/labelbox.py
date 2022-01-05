@@ -30,7 +30,9 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 
-lb = fou.lazy_import("labelbox")
+lb = fou.lazy_import(
+    "labelbox", callback=lambda: fou.ensure_import("labelbox")
+)
 lbs = fou.lazy_import("labelbox.schema")
 lbo = fou.lazy_import("labelbox.schema.ontology")
 lbr = fou.lazy_import("labelbox.schema.review")
@@ -211,23 +213,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         self._api_key = api_key
         self._experimental = _experimental
         self._roles = None
-
-        self._tool_types_map = {
-            "detections": lbo.Tool.Type.BBOX,
-            "detection": lbo.Tool.Type.BBOX,
-            "instance": lbo.Tool.Type.SEGMENTATION,
-            "instances": lbo.Tool.Type.SEGMENTATION,
-            "segmentation": lbo.Tool.Type.SEGMENTATION,
-            "polyline": lbo.Tool.Type.LINE,
-            "polylines": lbo.Tool.Type.LINE,
-            "polygon": lbo.Tool.Type.POLYGON,
-            "polygons": lbo.Tool.Type.POLYGON,
-            "keypoint": lbo.Tool.Type.POINT,
-            "keypoints": lbo.Tool.Type.POINT,
-            "classification": lbo.Classification,
-            "classifications": lbo.Classification,
-            "scalar": lbo.Classification,
-        }
+        self._tool_types_map = None
 
         self._setup()
 
@@ -247,6 +233,23 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             endpoint=self.base_graphql_url,
             enable_experimental=self._experimental,
         )
+
+        self._tool_types_map = {
+            "detections": lbo.Tool.Type.BBOX,
+            "detection": lbo.Tool.Type.BBOX,
+            "instance": lbo.Tool.Type.SEGMENTATION,
+            "instances": lbo.Tool.Type.SEGMENTATION,
+            "segmentation": lbo.Tool.Type.SEGMENTATION,
+            "polyline": lbo.Tool.Type.LINE,
+            "polylines": lbo.Tool.Type.LINE,
+            "polygon": lbo.Tool.Type.POLYGON,
+            "polygons": lbo.Tool.Type.POLYGON,
+            "keypoint": lbo.Tool.Type.POINT,
+            "keypoints": lbo.Tool.Type.POINT,
+            "classification": lbo.Classification,
+            "classifications": lbo.Classification,
+            "scalar": lbo.Classification,
+        }
 
     @property
     def roles(self):

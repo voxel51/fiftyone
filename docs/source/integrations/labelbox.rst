@@ -78,6 +78,13 @@ The example below demonstrates this workflow.
     :ref:`this section <labelbox-setup>` to avoid entering them manually each
     time you interact with Labelbox.
 
+    You'll also need to install the
+    `Labelbox Python client <https://github.com/Labelbox/labelbox-python>`_:
+
+    .. code-block:: shell
+
+        pip install labelbox
+
 First, we create the annotation tasks in Labelbox:
 
 .. code-block:: python
@@ -185,6 +192,16 @@ FiftyOne supports both
 The easiest way to get started is to use
 `app.labelbox.com <https://app.labelbox.com>`_, which simply requires creating
 an account and then providing your API key as shown below.
+
+Installing the Labelbox client
+------------------------------
+
+In order to use the Labelbox backend, you must install the
+`Labelbox Python client <https://github.com/Labelbox/labelbox-python>`_:
+
+.. code-block:: shell
+
+    pip install labelbox
 
 Using the Labelbox backend
 --------------------------
