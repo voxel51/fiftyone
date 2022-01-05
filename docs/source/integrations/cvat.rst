@@ -464,6 +464,8 @@ In addition, the following CVAT-specific parameters from
 :class:`CVATBackendConfig <fiftyone.utils.cvat.CVATBackendConfig>` can also be
 provided:
 
+-   **task_size** (*None*): an optional maximum number of images to upload per
+    task. Videos are always uploaded one per task
 -   **segment_size** (*None*): the maximum number of images to upload per job.
     Not applicable to videos
 -   **image_quality** (*75*): an int in `[0, 100]` determining the image
@@ -1003,6 +1005,20 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
+Note that CVAT cannot explicitly prevent annotators from creating labels that
+don't obey the run's label schema. However, you can pass the optional
+`unexpected` parameter to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+to configure how to deal with any such unexpected labels that are found. The
+supported values are:
+
+-   `"prompt"` (**default**): present an interactive prompt to direct/discard
+    unexpected labels
+-   `"ignore"`: automatically ignore any unexpected labels
+-   `"return"`: return a dict containing all unexpected labels, if any
+
+See :ref:`this section <cvat-unexpected-annotations>` for more details.
+
 .. _cvat-managing-annotation-runs:
 
 Managing annotation runs
@@ -1080,6 +1096,8 @@ FiftyOne dataset using the CVAT backend.
     All of the examples below assume you have configured your CVAT server and
     credentials as described in :ref:`this section <cvat-setup>`.
 
+.. _cvat-new-label-fields:
+
 Adding new label fields
 -----------------------
 
@@ -1145,6 +1163,8 @@ labeling task:
 .. image:: /images/integrations/cvat_tag.png
    :alt: cvat-tag
    :align: center
+
+.. _cvat-existing-labels:
 
 Editing existing labels
 -----------------------
@@ -1236,6 +1256,8 @@ can be used to annotate new classes and/or attributes:
     cases, it must instead delete the existing label and create a new |Label|
     with the shape's contents. See :ref:`this section <cvat-limitations>` for
     details.
+
+.. _cvat-restricting-label-edits:
 
 Restricting label edits
 -----------------------
@@ -1364,6 +1386,8 @@ attribute be populated without allowing edits to the vehicle's `type`:
     `False` on the annotation schema, this can result in CVAT edits being
     rejected. See :ref:`this section <cvat-limitations>` for details.
 
+.. _cvat-multiple-fields:
+
 Annotating multiple fields
 --------------------------
 
@@ -1416,19 +1440,32 @@ involves multiple fields:
    :alt: cvat-multiple-fields
    :align: center
 
+.. _cvat-unexpected-annotations:
+
 Unexpected annotations
 ----------------------
 
 The :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 method allows you to define the annotation schema that should be followed in
-CVAT. However, you or your annotators may "violate" this schema by adding
-annotations whose types differ from the pre-configured tasks.
+CVAT. However, CVAT does not explicitly allow for restricting the label types
+that can be created, so it is possible that your annotators may accidentally
+violate a task's intended schema.
+
+You can pass the optional `unexpected` parameter to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+to configure how to deal with any such unexpected labels that are found. The
+supported values are:
+
+-   `"prompt"` (**default**): present an interactive prompt to direct/discard
+    unexpected labels
+-   `"ignore"`: automatically ignore any unexpected labels
+-   `"return"`: return a dict containing all unexpected labels, if any
 
 For example, suppose you upload a |Detections| field to CVAT for editing, but
-then polyline annotations are added instead. In such cases, the
+then polyline annotations are added instead. When
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-method will present a command prompt asking you what field(s) (if any) to store
-these unexpected new labels in:
+is called, the default behavior is to present a command prompt asking you what
+field(s) (if any) to store these unexpected labels in:
 
 .. code:: python
     :linenos:
@@ -1453,6 +1490,8 @@ these unexpected new labels in:
 .. image:: /images/integrations/cvat_polyline.png
    :alt: cvat-polyline
    :align: center
+
+.. _cvat-creating-projects:
 
 Creating projects
 -----------------
@@ -1494,6 +1533,8 @@ passing the `cleanup=True` option to
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
+
+.. _cvat-existing-projects:
 
 Uploading to existing projects
 ------------------------------
@@ -1586,6 +1627,8 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
+.. _cvat-assigning-users:
+
 Assigning users
 ---------------
 
@@ -1644,6 +1687,61 @@ will be assigned using a round-robin strategy.
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
+.. _cvat-large-runs:
+
+Large annotation runs
+---------------------
+
+The CVAT API imposes a limit on the size of all requests. By default, all
+images are uploaded to a single CVAT task, which can result in errors when
+uploading annotation runs for large sample collections.
+
+.. note::
+
+    The CVAT maintainers are working on
+    `an update <https://github.com/openvinotoolkit/cvat/pull/3692>`_
+    to resolve this issue natively. In the meantime, the following workflow is
+    our recommended approach to circumvent this issue.
+
+You can use the `task_size` parameter to break image annotation runs into
+multiple CVAT tasks, each with a specified maximum number of images. Note that
+we recommend providing a `project_name` whenever you use the `task_size`
+pararmeter so that the created tasks will be grouped together.
+
+The `task_size` parameter can also be used in conjunction with the
+`segment_size` parameter to configure both the number of images per task as
+well as the number of images per job within each task.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=20).clone()
+
+    anno_key = "batch_upload"
+
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        task_size=6,  # 6 images per task
+        segment_size=2,  # 2 images per job
+        project_name="batch_example",
+        launch_editor=True,
+    )
+
+    # Annotate in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+
+.. note::
+
+    The `task_size` parameter only applies to image datasets, since videos are
+    always uploaded one per task.
+
+.. _cvat-scalar-labels:
+
 Scalar labels
 -------------
 
@@ -1693,6 +1791,8 @@ enter the appropriate scalar in the `value` attribute of the tag.
 .. image:: /images/integrations/cvat_scalar.png
    :alt: cvat-scalar
    :align: center
+
+.. _cvat-alternate-media:
 
 Uploading alternate media
 -------------------------
@@ -1754,6 +1854,8 @@ For example, let's upload some blurred images to CVAT for annotation:
 .. image:: /images/integrations/cvat_alt_media.png
    :alt: cvat-alt-media
    :align: center
+
+.. _cvat-occlusion-widget:
 
 Using CVAT's occlusion widget
 -----------------------------

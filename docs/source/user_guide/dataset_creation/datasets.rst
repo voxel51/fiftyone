@@ -1466,6 +1466,25 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
+.. note::
+
+    By default, only bounding boxes are loaded. However, if your COCO JSON
+    contains segmentation and/or keypoint data, you can load these label types
+    by passing the optional `label_types` argument to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+
+    .. code-block:: python
+
+        # Load bounding boxes and instance segmentations
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types=["detections", "segmentations"],
+            ...
+        )
+
+    See :class:`COCODetectionDatasetImporter <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+    for complete documentation of the available COCO import options.
+
 You can also independently specify the locations of the labels and the root
 directory containing the corresponding media files by providing the
 `labels_path` and `data_path` parameters rather than `dataset_dir`:
@@ -1973,15 +1992,17 @@ omitted, in which case the `data/` directory is listed to determine the
 available images.
 
 The TXT files in `data/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in the following format:
+to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
-where `<target>` is the zero-based integer index of the object class
-label from `obj.names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+where `<target>` is the zero-based integer index of the object class label from
+`obj.names`, the bounding box coordinates are expressed as relative coordinates
+in `[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
+`[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
@@ -2214,15 +2235,17 @@ specific split being imported or exported is specified by the `split` argument
 to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in the following format:
+to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
 where `<target>` is the zero-based integer index of the object class label from
-`names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+`names`, the bounding box coordinates are expressed as relative coordinates in
+`[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
+`[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `labels/`.
 

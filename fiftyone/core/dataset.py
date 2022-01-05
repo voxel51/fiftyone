@@ -2258,8 +2258,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2273,6 +2273,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2414,8 +2415,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2429,6 +2430,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2566,8 +2568,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2581,6 +2583,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -2715,8 +2718,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2730,6 +2733,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -3475,8 +3479,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -3490,6 +3494,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -3582,8 +3587,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -3597,6 +3602,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
