@@ -63,7 +63,7 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: Labelbox
-    :description: Use our Labelbox integration to annotate your FiftyOne datasets using the Labelbox platform.
+    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
     :link: labelbox.html
     :image: ../_static/images/integrations/labelbox.jpeg
     :tags: Annotation

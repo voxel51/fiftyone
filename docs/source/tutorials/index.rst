@@ -65,7 +65,7 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: Annotating with Labelbox 
-    :description: Unlock the power of the Labelbox annotation platform in just one line of code to improve your FiftyOne Datasets. 
+    :description: Unlock the power of the Labelbox platform. See how you can get your FiftyOne datasets annotated with just one line of code.
     :link: labelbox_annotation.html
     :image: ../_static/images/tutorials/labelbox_square.png
     :tags: Annotation,Dataset-Evaluation
