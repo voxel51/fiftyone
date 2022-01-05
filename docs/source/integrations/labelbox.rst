@@ -11,7 +11,7 @@ your data directly from FiftyOne to Labelbox for labeling.
 
 You can create a `free Labelbox account <https://app.labelbox.com/signin>`_ to
 upload and annotate raw data in the user-friendly Labelbox editor. FiftyOne
-provides :ref:`simple setup <labelbox-setup>` instructions that you can use to
+provides :ref:`simple setup instructions <labelbox-setup>` that you can use to
 specify the necessary API key and server endpoint to use.
 
 FiftyOne provides an API to create projects, upload data, define label schemas,
@@ -925,7 +925,7 @@ the following:
 -   Perform the annotation work in Labelbox, and download the results
 -   Use the FiftyOne App to compare the newly loaded labels with the previously
     tagged labels to make sure you're happy with the edits
--   Use :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+-   Use :meth:`merge_labels() <fiftyone.core.collections.SampleCollection.merge_labels>`
     to merge edits into the original label field and then delete the tagged
     labels that you edited
 
@@ -942,34 +942,45 @@ The example snippet below demonstrates this workflow:
 
     session = fo.launch_app(view=view)
 
-    # In the App, tag labels to be edited with the "edit" tag
+    # In the App, tag some ground truth labels with the "edit" tag...
 
-    # Create a view that contains only the tagged labels and their samples
-    edit_view = view.select_labels(tags="edit")
+    # Create view that only contains samples having labels with the "edit" tag
+    edit_view = view.match_labels(tags="edit")
+
+    #
+    # Create an annotation run to reannotate the chosen samples in a new
+    # `ground_truth_edits` field
+    #
 
     anno_key = "labelbox_edit_labels"
 
-    # Create an annotation run to manually reannotate the necessary labels in
-    # the `ground_truth` field
+    classes = dataset.distinct("ground_truth.detections.label")
+    attributes = {"iscrowd": {"type": "radio", "values": [True, False]}}
+
     edit_view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth",
+        label_field="ground_truth_edits",
+        classes=classes,
+        attributes=attributes,
         launch_editor=True,
     )
+
     print(dataset.get_annotation_info(anno_key))
 
-    # In Labelbox, reannotate the relevant objects
+    # In Labelbox, re-annotate the relevant objects...
 
-    # Load the new labels into the `ground_truth` field in FiftyOne
+    # Download the results
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-    # In the App, compare all tagged/edited labels in the relevant samples
-    session.view = dataset.select(edit_view).select_fields("ground_truth")
+    # In the App, compare the tagged and re-annotated labels
+    session.view = dataset.select_labels(tags="edit", fields="ground_truth")
 
-    # Finalize by deleting the tagged labels
-    dataset.delete_labels(view=edit_view)
+    # If the edits look good, merge them into the `ground_truth` field
+    # and delete the previously tagged labels
+    dataset.merge_labels("ground_truth_edits", "ground_truth")
+    dataset.delete_labels(tags="edit")
 
 .. image:: /images/integrations/labelbox_example.png
    :alt: labelbox-example
