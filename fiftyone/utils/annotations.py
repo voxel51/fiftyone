@@ -1012,8 +1012,8 @@ def load_annotations(
         found, in which case a dict containing the extra labels is returned
     """
     results = samples.load_annotation_results(anno_key, **kwargs)
-    label_schema = results.config.label_schema
     annotations = results.backend.download_annotations(results)
+    label_schema = results.config.label_schema
 
     unexpected_annos = defaultdict(dict)
 

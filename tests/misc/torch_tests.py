@@ -12,9 +12,6 @@ from PIL import Image
 import torch
 import torchvision
 
-import numpy as np
-from PIL import Image
-
 import fiftyone as fo
 import fiftyone.utils.torch as fout
 
@@ -100,7 +97,8 @@ def test_torch_image_patches_dataset():
     dataset.add_sample(sample)
 
     image_paths = [sample.filepath]
-    detections = [sample.detections]
+    patches = [sample.detections]
+
     transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.Resize(
@@ -111,7 +109,7 @@ def test_torch_image_patches_dataset():
     )
 
     torch_dataset = fout.TorchImagePatchesDataset(
-        image_paths=image_paths, detections=detections, transform=transform
+        image_paths=image_paths, patches=patches, transform=transform
     )
 
     data_loader = torch.utils.data.DataLoader(torch_dataset, batch_size=1)

@@ -1466,6 +1466,25 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
+.. note::
+
+    By default, only bounding boxes are loaded. However, if your COCO JSON
+    contains segmentation and/or keypoint data, you can load these label types
+    by passing the optional `label_types` argument to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+
+    .. code-block:: python
+
+        # Load bounding boxes and instance segmentations
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types=["detections", "segmentations"],
+            ...
+        )
+
+    See :class:`COCODetectionDatasetImporter <fiftyone.utils.coco.COCODetectionDatasetImporter>`
+    for complete documentation of the available COCO import options.
+
 You can also independently specify the locations of the labels and the root
 directory containing the corresponding media files by providing the
 `labels_path` and `data_path` parameters rather than `dataset_dir`:
