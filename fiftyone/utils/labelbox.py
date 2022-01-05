@@ -50,8 +50,8 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             media files on disk to upload
         url (None): the url of the Labelbox server
         api_key (None): the Labelbox API key
-        project_name (None): the name of the Labelbox project. The default is
-            ``"FiftyOne_<dataset_name>"``
+        project_name (None): a name for the Labelbox project that will be
+            created. The default is ``"FiftyOne_<dataset_name>"``
         members (None): an optional list of ``(email, role)`` tuples specifying
             the email addresses and roles of users to add to the project. If a
             user is not a member of the project's organization, an email

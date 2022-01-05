@@ -9,16 +9,10 @@ Labelbox Integration
 image and video annotation tools available, and we've made it easy to upload
 your data directly from FiftyOne to Labelbox for labeling.
 
-You can create a  `free Labelbox account <https://app.labelbox.com/signin>`_ to
+You can create a `free Labelbox account <https://app.labelbox.com/signin>`_ to
 upload and annotate raw data in the user-friendly Labelbox editor. FiftyOne
 provides :ref:`simple setup <labelbox-setup>` instructions that you can use to
 specify the necessary API key and server endpoint to use.
-
-If you have a `paid Labelbox account <https://labelbox.com/pricing>`_, then you
-can also take advantage of
-`Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
-to upload existing labels from your FiftyOne Datasets to edit them directly
-without needing to annotate them from scratch.
 
 FiftyOne provides an API to create projects, upload data, define label schemas,
 and download annotations using Labelbox, all programmatically in Python. All of
@@ -31,6 +25,14 @@ the following label types are supported, for both image and video datasets:
 - :ref:`Keypoints <keypoints>`
 - :ref:`Scalar fields <adding-sample-fields>`
 - :ref:`Semantic segmentation <semantic-segmentation>`
+
+.. note::
+
+    If you have a `paid Labelbox account <https://labelbox.com/pricing>`_, you
+    **will soon be able to** take advantage of Labelbox's
+    `Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
+    feature to upload existing labels from your FiftyOne Datasets to edit them
+    directly without needing to annotate them from scratch.
 
 .. image:: /images/integrations/labelbox_video.png
    :alt: labelbox-video
@@ -106,8 +108,7 @@ First, we create the annotation tasks in Labelbox:
         .sort_by(F("predictions.detections").length(), reverse=True)
     )
 
-    # Let's edit the ground truth annotations for the sample with the most
-    # high confidence false positives
+    # Retrieve the sample with the most high confidence false positives
     sample_id = most_fp_view.first().id
     view = dataset.select(sample_id)
 
@@ -116,11 +117,23 @@ First, we create the annotation tasks in Labelbox:
     # A unique identifier for this run
     anno_key = "labelbox_basic_recipe"
 
+    label_schema = {
+        "new_ground_truth": {
+            "type": "detections",
+            "classes": dataset.distinct("ground_truth.detections.label"),
+            "attributes": {
+                "iscrowd": {
+                    "type": "radio",
+                    "values": [True, False],
+                },
+            },
+        },
+    }
+
     view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth",
-        attributes=["iscrowd"],
+        label_schema=label_schema,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
@@ -425,29 +438,27 @@ details:
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
 
-
 |br|
 In addition, the following Labelbox-specific parameters from
 :class:`LabelboxBackendConfig <fiftyone.utils.labelbox.LabelboxBackendConfig>`
 can also be provided:
 
--   **project_name** (*None*): the name of the Labelbox project that will be
+-   **project_name** (*None*): a name for the Labelbox project that will be
     created. The default is `"FiftyOne_<dataset_name>"`
 -   **members** (None): an optional list of `(email, role)` tuples specifying
     the email addresses and roles of users to add to the project. If a user is
     not a member of the project's organization, an email invitation will be
     sent to them. The supported roles are
     `["LABELER", "REVIEWER", "TEAM_MANAGER", "ADMIN"]`
--   **classes_as_attrs** (*True*): whether to show every object class at the top
-    level of the editor (False) or whether to show the label field
-    at the top level and annotate the class as a required
-    attribute of each object (True)
+-   **classes_as_attrs** (*True*): whether to show every object class at the
+    top level of the editor (False) or whether to show the label field at the
+    top level and annotate the class as a required attribute of each object
+    (True)
 
 .. note::
 
-    Uploading existing annotations for editing requires access to Labelbox's
-    Model Assited Labeling feature, which is only available for paid Labelbox
-    accounts.
+    See :ref:`this section <labelbox-editing-labels-paid>` for details about
+    editing existing labels.
 
 .. _labelbox-label-schema:
 
@@ -590,6 +601,11 @@ FiftyOne can infer the appropriate values to use:
     :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
     properties of your dataset will be used, if available
 
+.. note::
+
+    See :ref:`this section <labelbox-editing-labels-paid>` for details about
+    editing existing labels.
+
 .. _labelbox-label-attributes:
 
 Label attributes
@@ -657,9 +673,8 @@ types like lists, dictionaries, and arrays will be omitted.
 .. note:: 
 
     Labelbox does not support default values for attributes, so the `default`
-    key :ref:`described here <annotation-label-attributes>` is not included in
-    the examples above and will be ignored if included in label schemas
-    provided when annotating with Labelbox.
+    key :ref:`described here <annotation-label-attributes>` will be ignored if
+    included in label schemas provided when annotating with Labelbox.
 
 .. _labelbox-video-label-attributes:
 
@@ -812,6 +827,8 @@ FiftyOne dataset using the Labelbox backend.
     All of the examples below assume you have configured your Labelbox server
     and API key as described in :ref:`this section <labelbox-setup>`.
 
+.. _labelbox-new-label-fields:
+
 Adding new label fields
 -----------------------
 
@@ -884,6 +901,8 @@ labeling task:
    :alt: labelbox-tag
    :align: center
 
+.. _labelbox-editing-labels-free:
+
 Editing labels with a free Labelbox account
 -------------------------------------------
 
@@ -892,22 +911,23 @@ datasets through FiftyOne.
 
 If you have a paid Labelbox account with access to Labelbox's
 `Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
-feature, see the next section for the recommended workflow for uploading
-existing labels on your FiftyOne datasets to Labelbox for in-place editing.
+feature, see :ref:`this section <labelbox-editing-labels-paid>` for the
+recommended workflow for editing existing labels.
 
 For free Labelbox users, one possible workflow for editing existing labels is
 the following:
 
 -   :ref:`Tag the labels <app-tagging>` that need editing in FiftyOne
--   Upload the samples containing the tagged labels to Labelbox
--   Pass in the name of label field containing the tagged labels to the
+-   Use FiftyOne to construct the label schema for the existing label field
+-   Upload the samples containing the tagged labels to Labelbox using
     :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    method to automatically construct the necessary schema to
-    annotate labels for that field
+    using a new (temporary) label field to hold the edited labels
 -   Perform the annotation work in Labelbox, and download the results
 -   Use the FiftyOne App to compare the newly loaded labels with the previously
     tagged labels to make sure you're happy with the edits
--   Delete the original tagged labels from the label field
+-   Use :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+    to merge edits into the original label field and then delete the tagged
+    labels that you edited
 
 The example snippet below demonstrates this workflow:
 
@@ -959,21 +979,29 @@ The example snippet below demonstrates this workflow:
    :alt: labelbox-new-class
    :align: center
 
+.. _labelbox-editing-labels-paid:
+
 Editing existing labels
 -----------------------
 
 .. warning::
 
     Uploading existing labels is not yet implemented for the Labelbox backend.
-    Instead, see the workflow in the previous section on editing existing
-    labels with a free Labelbox account.
+
+    Note that, when this feature is implemented, it will require a paid
+    Labelbox account with access to Labelbox's
+    `Model Assisted Labeling <https://docs.labelbox.com/docs/model-assisted-labeling>`_
+    feature.
+
+    See :ref:`this section <labelbox-editing-labels-free>` for one possible
+    workflow for editing existing labels with a free Labelbox account.
 
 A common use case is to fix annotation mistakes that you discovered in your
 datasets through FiftyOne.
 
-If you have a paid Labelbox account, you can upload existing labels from a
-FiftyOne dataset for editing by simply passing the name of the field via the
-`label_field` parameter of
+If you have a paid Labelbox account, you will **soon be able to** upload
+existing labels from a FiftyOne dataset for editing by simply passing the name
+of the existing field via the `label_field` parameter of
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
 
 .. code:: python
@@ -1000,6 +1028,8 @@ FiftyOne dataset for editing by simply passing the name of the field via the
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
+.. _labelbox-multiple-fields:
+
 Annotating multiple fields
 --------------------------
 
@@ -1017,11 +1047,12 @@ fields at once:
 
     anno_key = "labelbox_multiple_fields"
 
-    # The details for existing `ground_truth` field are inferred
-    # A new field `new_keypoints` is also added
     label_schema = {
-        "ground_truth": {},
-        "new_keypoints": {
+        "people": {
+            "type": "detections",
+            "classes": ["person"],
+        },
+        "keypoints": {
             "type": "keypoints",
             "classes": ["person", "cat", "dog", "food"],
             "attributes": {
@@ -1041,18 +1072,16 @@ fields at once:
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Add annotations in both Labelbox tasks that were created
+    # Add annotations in Labelbox...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
-
 
 .. image:: /images/integrations/labelbox_multiple_fields.png
    :alt: labelbox-multiple-fields
    :align: center
 
-
-
+.. _labelbox-configuring-projects:
 
 Configuring Labelbox projects
 -----------------------------
@@ -1092,18 +1121,12 @@ an email invitation will be sent to them.
         ("user3@domain.com", "TEAM_MANAGER"),
     ]
 
-    label_schema = {
-        "ground_truth": {},
-        "keypoints": {
-            "type": "keypoints",
-            "classes": ["person"],
-        }
-    }
-
     view.annotate(
         anno_key,
         backend="labelbox",
-        label_schema=label_schema,
+        label_field="people",
+        label_type="detections",
+        classes=["person"],
         project_name=project_name,
         members=members,
         launch_editor=True,
@@ -1114,6 +1137,8 @@ an email invitation will be sent to them.
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
+
+.. _labelbox-scalar-labels:
 
 Scalar labels
 -------------
@@ -1169,6 +1194,8 @@ must enter the appropriate scalar in the `value` attribute of the tag.
 .. image:: /images/integrations/labelbox_scalar.png
    :alt: labelbox-scalar
    :align: center
+
+.. _labelbox-alternate-media:
 
 Uploading alternate media
 -------------------------
@@ -1234,8 +1261,8 @@ For example, let's upload some blurred images to Labelbox for annotation:
  
 .. _labelbox-classes-as-attrs:
 
-Annotate classes directly
--------------------------
+Annotating classes directly
+---------------------------
 
 By default, the Labelbox editor is constructed so that all label fields being
 annotated are shown on the left sidebar at the top-level. When an object is
@@ -1249,9 +1276,8 @@ be set to `False` to provide this functionality.
 
     When `classes_as_attrs=False`, only one label field of each type of spatial
     label is allowed. For example, only one "detections" label field can be
-    annotated. Annotating multiple "scalar", "classification", and "classifications"
-    fields is still allowed.
-
+    annotated. Annotating multiple "scalar", "classification", an
+    "classifications" fields is still allowed.
 
 .. code:: python
     :linenos:
@@ -1267,7 +1293,7 @@ be set to `False` to provide this functionality.
     view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="new_dets",
+        label_field="new_detections",
         label_type="detections",
         classes=["dog", "cat", "person"],
         classes_as_attrs=False,
@@ -1275,16 +1301,14 @@ be set to `False` to provide this functionality.
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Create annotations in Labelbox
+    # Create annotations in Labelbox...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-
 .. image:: /images/integrations/labelbox_classes_as_attrs.png
    :alt: labelbox_classes_as_attrs
    :align: center
-
 
 .. _labelbox-annotating-videos:
 
@@ -1306,18 +1330,19 @@ method.
 
     anno_key = "labelbox_video"
 
-    # Send frame-level detections to Labelbox
     view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="frames.detections",
+        label_field="frames.new_detections",
+        label_type="detections",
+        classes=["person"],
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
 
-    # Edit annotations in Labelbox...
+    # Create annotations in Labelbox...
 
-    # Merge edits back in
+    # Download annotations
     dataset.load_annotations(anno_key)
 
     # Load the view that was annotated in the App
@@ -1352,6 +1377,8 @@ instance.
 
 The sections below highlight some common actions that you may want to perform.
 
+.. _labelbox-project-status:
+
 Viewing project status
 ----------------------
 
@@ -1376,9 +1403,12 @@ annotation run:
     view.annotate(
         anno_key,
         backend="labelbox",
-        label_field="ground_truth",
+        label_field="people",
+        label_type="detections",
+        classes=["person"],
     )
 
+    # Print the project's status
     results = dataset.load_annotation_results(anno_key)
     results.print_status()
 
@@ -1410,6 +1440,8 @@ annotation run:
         Zero: 0
         Negative: 1
 
+.. _labelbox-deleting-projects:
+
 Deleting projects
 -----------------
 
@@ -1434,13 +1466,16 @@ that were created.
 
     anno_key = "labelbox_delete_tasks"
 
-    view.annotate(anno_key, backend="labelbox", label_field="ground_truth")
+    view.annotate(
+        anno_key,
+        backend="labelbox",
+        label_field="people",
+        label_type="detections",
+        classes=["person"],
+    )
 
     results = dataset.load_annotation_results(anno_key)
     api = results.connect_to_api()
-
-    print(results.project_id)
-    # "bktes8fl60p4s0yba11npdjwm"
 
     api.delete_project(results.project_id, delete_datasets=True)
 
