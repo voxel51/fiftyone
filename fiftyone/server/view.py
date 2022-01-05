@@ -40,6 +40,7 @@ def get_view(
             labels
     """
     view = fod.load_dataset(dataset_name)
+
     if stages:
         view = fov.DatasetView._build(view, stages)
 
@@ -179,9 +180,11 @@ def _make_filter_stages(
         if frames:
             field = frame_field_schema[keys[1]]
             keys = keys[2:]
+            prefix = "frames."
         else:
             field = field_schema[keys[0]]
             keys = keys[1:]
+            prefix = ""
 
         if _is_label(field):
             parent = field
@@ -198,7 +201,7 @@ def _make_filter_stages(
                     new_field = None
                 stages.append(
                     fosg.FilterLabels(
-                        parent.name,
+                        prefix + parent.name,
                         expr,
                         _new_field=new_field,
                         only_matches=only_matches,

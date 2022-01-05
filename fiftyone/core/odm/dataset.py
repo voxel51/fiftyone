@@ -93,13 +93,11 @@ def create_field(
         if subfield is not None:
             if inspect.isclass(subfield):
                 if issubclass(subfield, EmbeddedDocumentField):
-                    fields = fields or []
-                    fields += get_embedded_document_fields(embedded_doc_type)
                     subfield = create_field(
                         name,
-                        ftype,
+                        subfield,
                         embedded_doc_type=embedded_doc_type,
-                        fields=fields,
+                        fields=fields or [],
                         parent=parent,
                     )
                 else:
@@ -122,8 +120,6 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
-        fields = fields or []
-        fields += get_embedded_document_fields(embedded_doc_type)
         kwargs.update(
             {"document_type": embedded_doc_type, "fields": fields or []}
         )
@@ -172,8 +168,7 @@ class SampleFieldDocument(EmbeddedDocument):
 
         subfield = self.subfield
         if subfield is not None:
-            args = (embedded_doc_type,) if embedded_doc_type else ()
-            subfield = etau.get_class(subfield)(*args)
+            subfield = etau.get_class(subfield)
 
         fields = None
         if self.fields is not None:
