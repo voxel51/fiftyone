@@ -70,7 +70,7 @@ export const hasFilters = selectorFamily<boolean, boolean>({
   key: "hasFilters",
   get: (modal) => ({ get }) => {
     const f = Object.keys(get(modal ? modalFilters : filters)).length > 0;
-    const hidden = Boolean(!modal || get(hiddenLabelIds).size);
+    const hidden = Boolean(modal && get(hiddenLabelIds).size);
 
     return f || hidden;
   },

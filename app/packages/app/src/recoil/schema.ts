@@ -16,10 +16,10 @@ import {
 import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { isVideoDataset } from "./selectors";
 
 const RESERVED_FIELDS = [
-  "_id",
+  "id",
+  "filepath",
   "_rand",
   "_media_type",
   "metadata",
@@ -35,9 +35,45 @@ const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   return schema;
 };
 
-export const fieldSchema = selectorFamily<Schema, State.SPACE>({
+const fieldFilter = (
+  fields: Schema,
+  view: State.Stage[],
+  space: State.SPACE
+) => {
+  view.forEach(({ _cls, kwargs }) => {
+    if (_cls === "fiftyone.core.stages.SelectFields") {
+      const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+      let names = new Set([...(supplied as []), ...RESERVED_FIELDS]);
+      if (space === State.SPACE.FRAME) {
+        names = new Set(
+          Array.from(names).map((n) => n.slice("frames.".length))
+        );
+      }
+      Object.keys(fields).forEach((f) => {
+        if (!names.has(f)) {
+          delete fields[f];
+        }
+      });
+    } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
+      const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+      let names = Array.from(supplied as string[]);
+
+      if (space === State.SPACE.FRAME) {
+        names = names.map((n) => n.slice("frames.".length));
+      }
+      names.forEach((n) => {
+        delete fields[n];
+      });
+    }
+  });
+};
+
+export const fieldSchema = selectorFamily<
+  Schema,
+  { space: State.SPACE; filtered?: boolean }
+>({
   key: "fieldSchema",
-  get: (space) => ({ get }) => {
+  get: ({ space, filtered }) => ({ get }) => {
     const state = get(atoms.stateDescription);
 
     if (!state.dataset) {
@@ -49,33 +85,7 @@ export const fieldSchema = selectorFamily<Schema, State.SPACE>({
       : state.dataset.sampleFields
     ).reduce(schemaReduce, {});
 
-    const view = get(viewAtoms.view);
-    view.forEach(({ _cls, kwargs }) => {
-      if (_cls === "fiftyone.core.stages.SelectFields") {
-        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
-        let names = new Set([...(supplied as []), ...RESERVED_FIELDS]);
-        if (space === State.SPACE.FRAME) {
-          names = new Set(
-            Array.from(names).map((n) => n.slice("frames.".length))
-          );
-        }
-        Object.keys(fields).forEach((f) => {
-          if (!names.has(f)) {
-            delete fields[f];
-          }
-        });
-      } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
-        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
-        let names = Array.from(supplied as string[]);
-
-        if (space === State.SPACE.FRAME) {
-          names = names.map((n) => n.slice("frames.".length));
-        }
-        names.forEach((n) => {
-          delete fields[n];
-        });
-      }
-    });
+    filtered && fieldFilter(fields, get(viewAtoms.view), space);
 
     return fields;
   },
@@ -84,12 +94,45 @@ export const fieldSchema = selectorFamily<Schema, State.SPACE>({
   },
 });
 
+export const pathIsShown = selectorFamily<boolean, string>({
+  key: "pathIsShown",
+  get: (path) => ({ get }) => {
+    if (path.startsWith("tags.") || path.startsWith("_label_tags.")) {
+      return true;
+    }
+
+    let keys = path.split(".");
+    let schema = get(
+      fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+    );
+
+    if (keys[0] === "frames" && !(keys[0] in schema)) {
+      schema = get(fieldSchema({ space: State.SPACE.FRAME, filtered: true }));
+      keys = keys.slice(1);
+    }
+
+    if (!keys.length) {
+      return false;
+    }
+
+    for (const key of keys) {
+      if (!(key in schema)) {
+        return false;
+      }
+
+      schema = schema[key].fields;
+    }
+
+    return true;
+  },
+});
+
 export const fullSchema = selector<Schema>({
   key: "fullSchema",
   get: ({ get }) => {
-    const schema = get(fieldSchema(State.SPACE.SAMPLE));
+    const schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
 
-    const frames = get(fieldSchema(State.SPACE.FRAME));
+    const frames = get(fieldSchema({ space: State.SPACE.FRAME }));
 
     if (Boolean(Object.keys(frames).length)) {
       return {
@@ -121,10 +164,14 @@ export const fieldPaths = selectorFamily<
       throw new Error("path and space provided");
     }
 
-    const sampleLabels = Object.keys(get(fieldSchema(State.SPACE.SAMPLE)))
+    const sampleLabels = Object.keys(
+      get(fieldSchema({ space: State.SPACE.SAMPLE, filtered: true }))
+    )
       .filter((l) => !l.startsWith("_"))
       .sort();
-    const frameLabels = Object.keys(get(fieldSchema(State.SPACE.FRAME)))
+    const frameLabels = Object.keys(
+      get(fieldSchema({ space: State.SPACE.FRAME, filtered: true }))
+    )
       .filter((l) => !l.startsWith("_"))
       .map((l) => "frames." + l)
       .sort();
@@ -191,7 +238,7 @@ export const field = selectorFamily<Field, string>({
       const framePath = path.slice("frames.".length);
 
       let field: Field = null;
-      let schema = get(fieldSchema(State.SPACE.FRAME));
+      let schema = get(fieldSchema({ space: State.SPACE.FRAME }));
       for (const name of framePath.split(".")) {
         if (schema[name]) {
           field = schema[name];
@@ -205,7 +252,7 @@ export const field = selectorFamily<Field, string>({
     }
 
     let field: Field = null;
-    let schema = get(fieldSchema(State.SPACE.SAMPLE));
+    let schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
     for (const name of path.split(".")) {
       if (schema[name]) {
         field = schema[name];

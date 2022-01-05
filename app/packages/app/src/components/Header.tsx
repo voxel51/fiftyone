@@ -86,8 +86,8 @@ const TitleDiv = styled.div`
 `;
 
 const LogoImg = animated(styled.img`
-  height: 100%;
-  width: auto;
+  height: 40px;
+  width: 40px;
   cursor: pointer;
   margin-right: 1rem;
   will-change: transform;

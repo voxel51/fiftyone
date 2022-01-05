@@ -11,7 +11,6 @@ import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
-import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
@@ -343,7 +342,7 @@ type EventCallback = (event: CustomEvent) => void;
 
 const lookerOptions = selector({
   key: "lookerOptions",
-  get: ({ get, getCallback }) => {
+  get: ({ get }) => {
     const showConfidence = get(selectors.appConfig).showConfidence;
     const showIndex = get(selectors.appConfig).showIndex;
     const showLabel = get(selectors.appConfig).showLabel;
@@ -372,9 +371,7 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      filter: (path, value) => {
-        return filters[path](value);
-      },
+      filter: filters,
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
@@ -439,10 +436,10 @@ const Looker = ({
   const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
   const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema(State.SPACE.SAMPLE)
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
   );
   const frameFieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema(State.SPACE.FRAME)
+    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
   const [showControls, setShowControls] = useState(true);
 

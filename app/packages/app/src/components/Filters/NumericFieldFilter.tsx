@@ -9,16 +9,18 @@ import {
 import styled from "styled-components";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
-import * as schemaAtoms from "../../recoil/schema";
 import * as colorAtoms from "../../recoil/color";
 import * as filterAtoms from "../../recoil/filters";
+import * as schemaAtoms from "../../recoil/schema";
+import * as selectors from "../../recoil/selectors";
 
 import * as numericAtoms from "./numericState";
 import ExcludeOption from "./Exclude";
 import RangeSlider from "../Common/RangeSlider";
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
-import { FLOAT_FIELD } from "@fiftyone/utilities";
+import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
+import { formatDateTime } from "../../utils/generic";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -152,6 +154,7 @@ const NumericFieldFilter = ({
     aggregationAtoms.boundedCount({ modal, path, extended: false })
   );
   const one = bounds[0] === bounds[1];
+  const timeZone = useRecoilValue(selectors.timeZone);
 
   if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none")
     return null;
@@ -191,6 +194,11 @@ const NumericFieldFilter = ({
               path,
               extended: true,
             })}
+            formatter={
+              [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
+                ? (v) => formatDateTime(v, timeZone)
+                : null
+            }
             value={false}
           />
         ) : null}
@@ -205,7 +213,7 @@ const NumericFieldFilter = ({
               color={color}
               name={NONFINITES[key]}
               forceColor={true}
-              disabled={one && nonfinites.length === 1}
+              disabled={one && nonfinites.length === 1 && !(one && hasBounds)}
               {...props}
             />
           ))}

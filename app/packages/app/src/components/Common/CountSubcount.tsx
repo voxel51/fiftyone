@@ -34,7 +34,7 @@ const EntryCounts = ({
     return <Loading />;
   }
 
-  if (count === subcount) {
+  if (count === subcount || count === 0) {
     return <span>{count.toLocaleString()}</span>;
   }
 

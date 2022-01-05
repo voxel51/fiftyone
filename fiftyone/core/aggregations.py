@@ -413,8 +413,11 @@ class Count(Aggregation):
             floating point values
     """
 
-    def __init__(self, field_or_expr=None, expr=None, safe=False):
+    def __init__(
+        self, field_or_expr=None, expr=None, safe=False, _unwind=True
+    ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._unwind = _unwind
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -444,6 +447,7 @@ class Count(Aggregation):
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            unwind=self._unwind,
         )
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":

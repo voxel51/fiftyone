@@ -3,14 +3,17 @@ import { Checkbox as MaterialCheckbox } from "@material-ui/core";
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
+import * as selectors from "../../recoil/selectors";
+
 import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
 import { useTheme } from "../../utils/hooks";
 import { getValueString } from "../Filters/utils";
-import { constSelector, RecoilValueReadOnly } from "recoil";
+import { constSelector, RecoilValueReadOnly, useRecoilValue } from "recoil";
 import { NameAndCountContainer } from "../utils";
 import { SuspenseEntryCounts } from "./CountSubcount";
 import { prettify } from "../../utils/generic";
+import { getFormatter } from "./utils";
 
 interface CheckboxProps<T> {
   color?: string;
@@ -21,6 +24,7 @@ interface CheckboxProps<T> {
   subcountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
   forceColor?: boolean;
+  formatter?: (value: T) => string;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -44,11 +48,12 @@ const Checkbox = <T extends unknown>({
   count,
   disabled,
   forceColor,
+  formatter,
 }: CheckboxProps<T>) => {
   const theme = useTheme();
   color = color ?? theme.brand;
   const props = useHighlightHover(disabled);
-  const [text, coloring] = getValueString(name);
+  const [text, coloring] = getValueString(formatter ? formatter(name) : name);
 
   const countAtom =
     typeof count === "number"

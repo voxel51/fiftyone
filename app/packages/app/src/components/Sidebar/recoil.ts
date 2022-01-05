@@ -12,7 +12,7 @@ import {
 } from "@fiftyone/utilities";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
-import { fieldPaths, fields } from "../../recoil/schema";
+import { fieldPaths, fields, pathIsShown } from "../../recoil/schema";
 import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import { http } from "../../shared/connection";
@@ -25,6 +25,7 @@ import {
   SidebarEntry,
   TailEntry,
 } from "./utils";
+import { string } from "prop-types";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   {
@@ -177,14 +178,32 @@ export const sidebarGroupsDefinition = atomFamily<State.SidebarGroups, boolean>(
   }
 );
 
+const visiblePaths = selector<Set<string>>({
+  key: "visibalePaths",
+  get: ({ get }) => {
+    return new Set(
+      get(sidebarGroups({ modal: false, loadingTags: true })).reduce(
+        (paths, [_, groupPaths]) => {
+          paths.push(...groupPaths);
+          return paths;
+        },
+        []
+      )
+    );
+  },
+});
+
 export const sidebarGroups = selectorFamily<
   State.SidebarGroups,
-  { modal: boolean; loadingTags: boolean }
+  { modal: boolean; loadingTags: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
-  get: ({ modal, loadingTags }) => ({ get }) => {
+  get: ({ modal, loadingTags, filtered = true }) => ({ get }) => {
     let groups = get(sidebarGroupsDefinition(modal))
-      .map(([name, paths]) => [name, [...paths]])
+      .map(([name, paths]) => [
+        name,
+        filtered ? paths.filter((path) => pathIsShown(path)) : paths,
+      ])
       .filter(
         ([name, entries]) => entries.length || name !== "other"
       ) as State.SidebarGroups;
@@ -216,9 +235,17 @@ export const sidebarGroups = selectorFamily<
   set: ({ modal }) => ({ set, get }, groups) => {
     if (groups instanceof DefaultValue) return;
 
+    const visible = get(visiblePaths);
     groups = groups.map(([name, paths]) => [
       name,
-      ["tags", "label tags"].includes(name) ? [] : paths,
+      ["tags", "label tags"].includes(name)
+        ? []
+        : [
+            ...paths,
+            ...get(
+              sidebarGroup({ group: name, modal, loadingTags: true })
+            ).filter((path) => !visible.has(path)),
+          ],
     ]);
 
     set(sidebarGroupsDefinition(modal), groups);
@@ -261,11 +288,13 @@ export const sidebarEntries = selectorFamily<
               shown: paths.length === 0 && shown,
               group: groupName,
             } as EmptyEntry,
-            ...paths.map<PathEntry>((path) => ({
-              path,
-              kind: EntryKind.PATH,
-              shown,
-            })),
+            ...paths
+              .filter((path) => get(pathIsShown(path)))
+              .map<PathEntry>((path) => ({
+                path,
+                kind: EntryKind.PATH,
+                shown,
+              })),
           ];
         })
         .flat(),
@@ -335,7 +364,7 @@ export const disabledPaths = selector<Set<string>>({
 
 export const sidebarGroup = selectorFamily<
   string[],
-  { modal: boolean; group: string; loadingTags: boolean }
+  { modal: boolean; group: string; loadingTags: boolean; filtered?: boolean }
 >({
   key: "sidebarGroup",
   get: ({ group, ...params }) => ({ get }) => {
@@ -348,6 +377,19 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
   get: (modal) => ({ get }) => {
     return get(sidebarGroups({ modal, loadingTags: true })).map(
       ([name]) => name
+    );
+  },
+});
+
+export const groupIsEmpty = selectorFamily<
+  boolean,
+  { modal: boolean; group: string }
+>({
+  key: "groupIsEmpty",
+  get: (params) => ({ get }) => {
+    return Boolean(
+      get(sidebarGroup({ ...params, loadingTags: true, filtered: false }))
+        .length
     );
   },
 });

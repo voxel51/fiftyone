@@ -11,7 +11,7 @@ import tornado
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
-import fiftyone.core.dataset as fod
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -21,6 +21,13 @@ from fiftyone.server.json_util import convert
 from fiftyone.server.state import catch_errors
 from fiftyone.server.utils import AsyncRequestHandler, meets_type
 import fiftyone.server.view as fosv
+
+
+class CountExists(foa.Count):
+    """Named helper aggregation for counting existence"""
+
+    def __init__(self, field):
+        super().__init__(field, _unwind=False)
 
 
 class AggregationsHandler(AsyncRequestHandler):
@@ -156,6 +163,9 @@ def _build_field_aggregations(
         aggregations.append(foa.CountValues(path, _first=3))
     elif meets_type(field, (fof.StringField, fof.ObjectIdField)):
         aggregations.append(_get_categorical_aggregation(path, filters))
+
+    if isinstance(field, fof.ListField) and path != "tags":
+        aggregations.append(CountExists(path))
 
     aggregations.append(foa.Count(path))
 

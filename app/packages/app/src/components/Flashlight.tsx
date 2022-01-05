@@ -339,10 +339,10 @@ export default React.memo(() => {
   const lookerGeneratorRef = useRef<any>();
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema(State.SPACE.SAMPLE)
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
   );
   const frameFieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema(State.SPACE.FRAME)
+    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
   lookerGeneratorRef.current = ({
     sample,

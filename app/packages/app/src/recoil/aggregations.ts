@@ -10,7 +10,6 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   FLOAT_FIELD,
-  Schema,
   toSnakeCase,
 } from "@fiftyone/utilities";
 
@@ -42,6 +41,7 @@ type CountValues<T> = [number, [T, number][]];
 
 type BaseAggregations = {
   Count: Count;
+  CountExists?: Count;
   None: None;
 };
 
@@ -86,7 +86,10 @@ export const addNoneCounts = (
 
     if (path === parent) {
       data[path] = {
-        None: count - data[path].Count,
+        None:
+          data[path].CountExists !== undefined
+            ? count - data[path].CountExists
+            : count - data[path].Count,
         ...data[path],
       };
     } else if (check && path.includes(".") && data[parent] && data[path]) {
@@ -539,8 +542,8 @@ export const boundedCount = selectorFamily<
 >({
   key: "boundedCount",
   get: (params) => ({ get }) => {
-    const nonfinites = Object.values(get(nonfiniteCounts(params))).reduce(
-      (sum, count) => sum + count,
+    const nonfinites = Object.entries(get(nonfiniteCounts(params))).reduce(
+      (sum, [key, count]) => (key === "none" ? sum : sum + count),
       0
     );
 

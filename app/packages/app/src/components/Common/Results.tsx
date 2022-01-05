@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -76,6 +76,8 @@ const Result = <T extends unknown>({
     } else if (!active) {
       wasActive.current = false;
     }
+
+    active && ref.current.scrollIntoView();
   }, [active]);
 
   return (

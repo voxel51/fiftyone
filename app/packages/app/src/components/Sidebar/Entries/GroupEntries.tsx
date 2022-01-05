@@ -30,7 +30,12 @@ import DropdownHandle, {
 } from "../../DropdownHandle";
 import { PillButton } from "../../utils";
 
-import { groupShown, sidebarGroup, sidebarGroups } from "../recoil";
+import {
+  groupIsEmpty,
+  groupShown,
+  sidebarGroup,
+  sidebarGroups,
+} from "../recoil";
 
 import { elementNames } from "../../../recoil/view";
 import { MATCH_LABEL_TAGS, validateGroupName } from "../utils";
@@ -443,6 +448,7 @@ export const PathGroupEntry = React.memo(
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = useDeleteGroup(modal, name);
+    const empty = useRecoilValue(groupIsEmpty({ modal, group: name }));
 
     return (
       <GroupEntry
@@ -452,7 +458,7 @@ export const PathGroupEntry = React.memo(
         setValue={
           modal || dragging || !mutable ? null : (value) => renameGroup(value)
         }
-        onDelete={modal ? null : onDelete}
+        onDelete={!empty}
         pills={
           <Pills
             entries={[
