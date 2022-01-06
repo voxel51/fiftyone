@@ -23,6 +23,7 @@ import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -131,6 +132,8 @@ def import_annotations(
     existing_filepaths = sample_collection.values("filepath")
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
+    elif etau.is_str(data_path) and data_path.endswith(".json"):
+        data_map = etas.read_json(data_path)
     elif etau.is_str(data_path):
         data_map = {
             os.path.basename(f): f
