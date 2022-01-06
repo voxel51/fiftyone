@@ -11,6 +11,8 @@ from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
+import multiprocessing
+import multiprocessing.dummy
 import os
 import warnings
 import webbrowser
@@ -50,6 +52,7 @@ def import_annotations(
     label_types=None,
     insert_new=True,
     download_media=False,
+    num_workers=None,
     occluded_attr=None,
     backend="cvat",
     **kwargs,
@@ -103,6 +106,8 @@ def import_annotations(
         download_media (False): whether to download the images or videos found
             in CVAT to the directory or filepaths in ``data_path`` if not
             already present
+        num_workers (None): the number of processes to use when downloading
+            media. By default, ``multiprocessing.cpu_count()`` is used
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
         backend ("cvat"): the name of the CVAT backend to use
@@ -114,6 +119,9 @@ def import_annotations(
             "Exactly one of 'project_name', 'project_id', or 'task_ids' must "
             "be provided"
         )
+
+    if num_workers is None or num_workers < 1:
+        num_workers = multiprocessing.cpu_count()
 
     config = foua._parse_config(
         backend, None, occluded_attr=occluded_attr, **kwargs
@@ -152,8 +160,9 @@ def import_annotations(
     cvat_id_map = {}
     task_filepaths = []
     ignored_filenames = []
+    download_tasks = []
     for task_id in task_ids:
-        cvat_id_map[task_id] = _parse_task_metadata(
+        cvat_id_map[task_id], _tasks = _parse_task_metadata(
             api,
             task_id,
             data_map,
@@ -162,6 +171,10 @@ def import_annotations(
             data_dir=data_dir,
             download_media=download_media,
         )
+        download_tasks.extend(_tasks)
+
+    if download_media:
+        _download_media(download_tasks, num_workers)
 
     if ignored_filenames:
         logger.warning(
@@ -256,6 +269,7 @@ def _parse_task_metadata(
     chunk_size = resp.get("chunk_size", None)
 
     cvat_id_map = {}
+    download_tasks = []
     for frame_id, frame in enumerate(resp["frames"]):
         filename = frame["name"]
         filepath = data_map.get(filename, None)
@@ -264,14 +278,16 @@ def _parse_task_metadata(
                 filepath = os.path.join(data_dir, filename)
 
             if filepath and not os.path.exists(filepath):
-                _download_media(
-                    api,
-                    task_id,
-                    frame_id,
-                    filepath,
-                    start_frame,
-                    stop_frame,
-                    chunk_size,
+                download_tasks.append(
+                    (
+                        api,
+                        task_id,
+                        frame_id,
+                        filepath,
+                        start_frame,
+                        stop_frame,
+                        chunk_size,
+                    )
                 )
 
         if filepath is not None:
@@ -281,12 +297,33 @@ def _parse_task_metadata(
             # Filename not in data_map and data_dir not provided
             ignored_filenames.append(filename)
 
-    return cvat_id_map
+    return cvat_id_map, download_tasks
 
 
-def _download_media(
-    api, task_id, frame_id, filepath, start_frame, stop_frame, chunk_size
-):
+def _download_media(tasks, num_workers):
+    logger.info("Downloading media...")
+    if num_workers == 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                _do_download_media(task)
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                results = pool.imap_unordered(_do_download_media, tasks)
+                for _ in pb(results):
+                    pass
+
+
+def _do_download_media(task):
+    (
+        api,
+        task_id,
+        frame_id,
+        filepath,
+        start_frame,
+        stop_frame,
+        chunk_size,
+    ) = task
     if fom.get_media_type(filepath) == fom.IMAGE:
         resp = api.get(api.task_data_download_url(task_id, frame_id))
         img_bytes = resp._content
