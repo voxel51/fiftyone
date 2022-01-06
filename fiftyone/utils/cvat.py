@@ -128,7 +128,6 @@ def import_annotations(
         task_ids = list(task_ids)
 
     # Build mapping from CVAT filenames to local filepaths
-    only_existing = data_path is None
     existing_filepaths = sample_collection.values("filepath")
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
@@ -205,7 +204,6 @@ def import_annotations(
                 label_types,
                 anno_backend,
                 anno_key,
-                api,
                 **kwargs,
             )
         else:
@@ -224,7 +222,6 @@ def import_annotations(
                     label_types,
                     anno_backend,
                     anno_key,
-                    api,
                     **kwargs,
                 )
     finally:
@@ -258,7 +255,6 @@ def _download_annotations(
     label_types,
     anno_backend,
     anno_key,
-    api,
     **kwargs,
 ):
     config = anno_backend.config
