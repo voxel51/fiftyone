@@ -2113,6 +2113,66 @@ every 10th frame as a keyframe to provide a better editing experience in CVAT:
     with the shape's contents. See :ref:`this section <cvat-limitations>` for
     details.
 
+.. _cvat-existing-tasks:
+
+Importing existing tasks
+________________________
+
+FiftyOne's CVAT integration is designed to manage the full annotation workflow,
+from task creation to annotation import.
+
+However, if you have created CVAT tasks outside of FiftyOne, you can use the
+:func:`import_annotations() <fiftyone.utils.cvat.import_annotations>` utility
+to import individual task(s) or an entire project into a FiftyOne dataset.
+
+.. code:: python
+    :linenos:
+
+    import os
+
+    import fiftyone as fo
+    import fiftyone.utils.cvat as fouc
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=3).clone()
+
+    # Create a pre-existing CVAT project
+    results = dataset.annotate(
+        "example_import",
+        label_field="ground_truth",
+        project_name="example_import",
+    )
+
+    #
+    # Create a mapping between filenames in the pre-existing CVAT project and
+    # the locations of the media locally on disk for the FiftyOne dataset
+    #
+    # Since we're using a CVAT task uploaded via FiftyOne, the mapping is a bit
+    # weird
+    #
+    filepaths = dataset.values("filepath")
+    data_map = {
+        "%06d_%s" % (idx, os.path.basename(p)): p
+        for idx, p in enumerate(filepaths)
+    }
+
+    # Create dataset from pre-existing CVAT project
+    dataset = fo.Dataset()
+    fouc.import_annotations(
+        dataset,
+        project_name=project_name,
+        data_path=data_map,
+    )
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Another strategy for importing existing CVAT annotations into FiftyOne is
+    to simply export the annotations from the CVAT UI and then import them via
+    the :ref:`CVATImageDataset <CVATImageDataset-import>` or
+    :ref:`CVATVideoDataset <CVATVideoDataset-import>` types.
+
 .. _cvat-utils:
 
 Additional utilities
