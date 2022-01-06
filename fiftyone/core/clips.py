@@ -379,6 +379,9 @@ def make_clips_dataset(
         clips_type = "manual"
 
     dataset = fod.Dataset(_clips=True, _src_collection=sample_collection)
+    dataset._doc.app_sidebar_groups = (
+        sample_collection._dataset._doc.app_sidebar_groups
+    )
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
