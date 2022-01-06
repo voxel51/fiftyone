@@ -123,9 +123,7 @@ const flashlightLookerOptions = selector({
   get: ({ get }) => {
     return {
       coloring: get(colorAtoms.coloring(false)),
-      filter: (path: string, value) => {
-        return get(pathFilter({ modal: false, path }))(value);
-      },
+      filter: get(pathFilter(false)),
       activePaths: get(schemaAtoms.activeFields({ modal: false })),
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,

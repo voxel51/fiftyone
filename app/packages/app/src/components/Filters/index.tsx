@@ -58,33 +58,54 @@ const primitiveFilter = selectorFamily<
 });
 
 export const pathFilter = selectorFamily<
-  (value: any) => boolean,
-  { modal: boolean; path: string }
+  (path: string, value: any) => boolean,
+  boolean
 >({
   key: "pathFilter",
-  get: ({ path, modal }) => ({ get }) => {
-    // force updates
-    get(modal ? modalFilters : filters);
-    const { embeddedDocType } = get(schemaAtoms.field(path));
+  get: (modal) => ({ get }) => {
+    const paths = get(schemaAtoms.activeFields({ modal }));
+    const hidden = get(selectors.hiddenLabelIds);
 
-    if (LABELS.includes(embeddedDocType)) {
-      const expandedPath = get(schemaAtoms.expandPath(path));
-      const labelFields = get(
-        schemaAtoms.fields({ path: expandedPath, ftype: VALID_PRIMITIVE_TYPES })
-      );
-      const hidden = get(selectors.hiddenLabelIds);
+    const filters = paths.reduce((f, path) => {
+      const { embeddedDocType } = get(schemaAtoms.field(path));
 
-      return (value: any) => {
-        return (
-          labelFields.every(({ name, dbField }) => {
-            return get(
-              primitiveFilter({ modal, path: `${expandedPath}.${name}` })
-            )(value[dbField || name]);
-          }) && !hidden.has(value._id)
+      if (LABELS.includes(embeddedDocType)) {
+        const expandedPath = get(schemaAtoms.expandPath(path));
+        const labelFields = get(
+          schemaAtoms.fields({
+            path: expandedPath,
+            ftype: VALID_PRIMITIVE_TYPES,
+          })
         );
-      };
-    }
 
-    return get(primitiveFilter({ modal, path }));
+        const fs = labelFields.map(({ name, dbField }) => {
+          const filter = get(
+            primitiveFilter({ modal, path: `${expandedPath}.${name}` })
+          );
+
+          return (value: any) => filter(value[dbField || name]);
+        });
+
+        f[path] = (value: any) => {
+          if (hidden.has(value._id)) {
+            return false;
+          }
+
+          return fs.every((filter) => filter(value));
+        };
+      } else {
+        f[path] = get(primitiveFilter({ modal, path }));
+      }
+
+      return f;
+    }, {});
+
+    return (path, value) => {
+      if (!filters[path]) {
+        return false;
+      }
+
+      return filters[path](value);
+    };
   },
 });

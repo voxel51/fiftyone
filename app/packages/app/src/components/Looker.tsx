@@ -365,9 +365,7 @@ const lookerOptions = selector({
       showTooltip,
       ...video,
       zoom,
-      filter: (path: string, value) => {
-        return get(pathFilter({ modal: true, path }))(value);
-      },
+      filter: get(pathFilter(true)),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
