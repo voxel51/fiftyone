@@ -178,7 +178,6 @@ const ObjectEditor = ({
   });
 
   useOutsideClick(containerRef, (e) => {
-    e.stopPropagation();
     send("BLUR");
     onClose();
   });

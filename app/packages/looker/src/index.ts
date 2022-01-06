@@ -157,9 +157,6 @@ export abstract class Looker<
     this.state = this.getInitialState(config, options);
     this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
-    if (!this.state.config.thumbnail) {
-      this.state.showControls = true;
-    }
     this.pluckedOverlays = [];
     this.currentOverlays = [];
     this.lookerElement = this.getElements(config);
@@ -183,19 +180,20 @@ export abstract class Looker<
         events[eventType]({
           event,
           update: this.updater,
-          dispatchEvent: this.dispatchEvent,
         });
     }
 
     this.hideControlsTimeout = setTimeout(
       () =>
-        this.updater(({ showOptions, hoveringControls }) => {
-          this.hideControlsTimeout = null;
-          if (!showOptions && !hoveringControls) {
-            return { showControls: false };
+        this.updater(
+          ({ showOptions, hoveringControls, options: { showControls } }) => {
+            this.hideControlsTimeout = null;
+            if (!showOptions && !hoveringControls && showControls) {
+              return { options: { showControls: false } };
+            }
+            return {};
           }
-          return {};
-        }),
+        ),
       3500
     );
   }
@@ -213,11 +211,11 @@ export abstract class Looker<
   }
 
   protected dispatchImpliedEvents(
-    previousState: Readonly<State>,
-    state: Readonly<State>
+    { options: prevOtions }: Readonly<State>,
+    { options }: Readonly<State>
   ): void {
-    if (previousState.showControls !== state.showControls) {
-      this.dispatchEvent("controls", state.showControls);
+    if (options.showJSON !== prevOtions.showJSON) {
+      this.dispatchEvent("options", { showJSON: options.showJSON });
     }
   }
 
@@ -363,27 +361,37 @@ export abstract class Looker<
             showControls: true,
           };
         }),
-      mouseleave: ({ update }) =>
+      mouseleave: ({ update }) => {
+        !this.state.config.thumbnail &&
+          this.dispatchEvent("options", { showControls: false });
         update({
           hovering: false,
           disableControls: false,
-          showControls: false,
-          showOptions: false,
           panning: false,
-        }),
+        });
+      },
       mousemove: ({ update }) => {
+        if (this.state.config.thumbnail) {
+          return;
+        }
         if (this.hideControlsTimeout) {
           clearTimeout(this.hideControlsTimeout);
         }
         this.hideControlsTimeout = setTimeout(
           () =>
-            update(({ showOptions, hoveringControls }) => {
-              this.hideControlsTimeout = null;
-              if (!showOptions && !hoveringControls) {
-                return { showControls: false };
+            update(
+              ({
+                options: { showControls },
+                showOptions,
+                hoveringControls,
+              }) => {
+                this.hideControlsTimeout = null;
+                if (!showOptions && !hoveringControls && showControls) {
+                  this.dispatchEvent("options", { showControls: false });
+                }
+                return {};
               }
-              return {};
-            }),
+            ),
           3500
         );
       },
@@ -396,7 +404,6 @@ export abstract class Looker<
     }
 
     if (element === this.lookerElement.element.parentElement) {
-      this.state.disabled && this.updater({ disabled: false });
       return;
     }
 
@@ -517,7 +524,6 @@ export abstract class Looker<
       disableControls: false,
       hovering: false,
       hoveringControls: false,
-      showControls: false,
       showHelp: false,
       showOptions: false,
       loaded: false,
@@ -1367,6 +1373,8 @@ const f = <T extends {}>({
     const path = [...keys, fieldName].join(".");
     if (fieldName.startsWith("_")) continue;
 
+    if (!filter(path, value)) continue;
+
     result[fieldName] = value[fieldName];
 
     if (field.dbField && field.dbField !== fieldName) {
@@ -1390,9 +1398,8 @@ const f = <T extends {}>({
       value[fieldName] = value[fieldName].map((v) => new Date(v.datetime));
       continue;
     }
-
-    if (!filter(path, value)) continue;
   }
+
   return result as T;
 };
 

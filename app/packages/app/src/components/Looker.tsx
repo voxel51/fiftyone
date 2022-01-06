@@ -355,23 +355,19 @@ const lookerOptions = selector({
       ? get(atoms.cropToContent(true))
       : false;
 
-    const filters = Object.fromEntries(
-      get(schemaAtoms.labelPaths({ expanded: false })).map((path) => [
-        path,
-        get(pathFilter({ modal: true, path })),
-      ])
-    );
-
     return {
       activePaths: get(schemaAtoms.activeFields({ modal: true })),
       showConfidence,
+      showControls: true,
       showIndex,
       showLabel,
       useFrameNumber,
       showTooltip,
       ...video,
       zoom,
-      filter: filters,
+      filter: (path: string, value) => {
+        return get(pathFilter({ modal: true, path }))(value);
+      },
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
@@ -381,7 +377,7 @@ const lookerOptions = selector({
     };
   },
 });
-
+3;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (event: CustomEvent) => {
@@ -441,7 +437,6 @@ const Looker = ({
   const frameFieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
-  const [showControls, setShowControls] = useState(true);
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
@@ -484,17 +479,6 @@ const Looker = ({
   lookerRef && (lookerRef.current = looker);
   const moveRef = useRef<HTMLElement>();
   const headerRef = useRef<HTMLElement>();
-  useEventHandler(looker, "controls", (event) => {
-    if (event.detail) {
-      setShowControls(event.detail);
-    } else if (
-      headerRef.current &&
-      !headerRef.current.contains(moveRef.current)
-    ) {
-      setShowControls(false);
-    }
-  });
-
   useEventHandler(looker, "options", useLookerOptionsUpdate());
   useEventHandler(looker, "fullscreen", useFullscreen());
   onNext && useEventHandler(looker, "next", onNext);
@@ -524,7 +508,7 @@ const Looker = ({
       }}
       onMouseMove={(event) => (moveRef.current = event.target as HTMLElement)}
     >
-      {showControls && (
+      {options.showControls && (
         <Header ref={headerRef}>
           <ModalActionsRow lookerRef={lookerRef} />
         </Header>

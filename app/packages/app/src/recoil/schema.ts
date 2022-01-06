@@ -27,7 +27,7 @@ const RESERVED_FIELDS = [
   "frames",
 ];
 
-const schemaReduce = (schema: Schema, field: StrictField): Schema => {
+export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
     ...field,
     fields: field.fields.reduce(schemaReduce, {}),
@@ -309,6 +309,7 @@ export const labelPaths = selectorFamily<
 export const expandPath = selectorFamily<string, string>({
   key: "expandPath",
   get: (path) => ({ get }) => {
+    console.log(path, get(field(path)));
     const { embeddedDocType } = get(field(path));
 
     if (withPath(LABELS_PATH, LABEL_LISTS).includes(embeddedDocType)) {

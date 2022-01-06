@@ -59,7 +59,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
               (<MouseEvent>event).pageY,
             ],
             rotate: 0,
-            showControls: true,
           };
           if (!this.mousedown) {
             return newState;

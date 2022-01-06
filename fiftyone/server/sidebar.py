@@ -15,9 +15,10 @@ class SidebarHandler(AsyncRequestHandler):
             food.SidebarGroupDocument(**group) for group in data["groups"]
         ]
         dataset = data.get("dataset", None)
+        stages = data.get("view", None)
+        view = fosv.get_view(dataset, stages=stages)
 
-        dataset = fod.load_dataset(dataset)
-        dataset._doc.app_sidebar_groups = groups
-        dataset._doc.save()
+        view._dataset._doc.app_sidebar_groups = groups
+        view._dataset._doc.save()
 
         return {"success": True}

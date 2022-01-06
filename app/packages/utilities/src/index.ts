@@ -189,16 +189,6 @@ export const VALID_LIST_TYPES = [
   "TemporalDetections",
 ];
 
-export const PATCHES_FIELDS = ["Detections", "Polylines"];
-
-export const CLIPS_SAMPLE_FIELDS = ["TemporalDetection", "TemporalDetections"];
-export const CLIPS_FRAME_FIELDS = [
-  "Classifications",
-  "Detections",
-  "Keypoints",
-  "Polylines",
-];
-
 export const VALID_LABEL_TYPES = [
   ...VALID_CLASS_TYPES,
   ...VALID_OBJECT_TYPES,
@@ -270,6 +260,21 @@ export const VALID_NUMERIC_TYPES = [
 ];
 
 export const LABELS_PATH = "fiftyone.core.labels";
+
+export const PATCHES_FIELDS = withPath(LABELS_PATH, [
+  "Detections",
+  "Polylines",
+]);
+export const CLIPS_SAMPLE_FIELDS = withPath(LABELS_PATH, [
+  "TemporalDetection",
+  "TemporalDetections",
+]);
+export const CLIPS_FRAME_FIELDS = withPath(LABELS_PATH, [
+  "Classifications",
+  "Detections",
+  "Keypoints",
+  "Polylines",
+]);
 
 export function withPath(path: string, types: string): string;
 export function withPath(path: string, types: string[]): string[];

@@ -60,7 +60,7 @@ export class NextElement<State extends BaseState> extends BaseElement<
   }
 
   renderSelf({
-    showControls,
+    options: { showControls },
     disableControls,
     options: { hasNext },
   }: Readonly<State>) {
@@ -116,7 +116,7 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   }
 
   renderSelf({
-    showControls,
+    options: { showControls },
     disableControls,
     options: { hasPrevious },
   }: Readonly<State>) {
@@ -165,7 +165,7 @@ export class ControlsElement<State extends BaseState> extends BaseElement<
   }
 
   renderSelf({
-    showControls,
+    options: { showControls },
     disableControls,
     error,
     loaded,

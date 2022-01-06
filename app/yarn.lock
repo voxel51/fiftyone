@@ -1531,12 +1531,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.1.2, @babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.3.1, @babel/runtime@npm:^7.4.4, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.8.3, @babel/runtime@npm:^7.8.4, @babel/runtime@npm:^7.8.7":
+"@babel/runtime@npm:^7.1.2, @babel/runtime@npm:^7.3.1, @babel/runtime@npm:^7.4.4, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.8.3, @babel/runtime@npm:^7.8.4, @babel/runtime@npm:^7.8.7":
   version: 7.14.6
   resolution: "@babel/runtime@npm:7.14.6"
   dependencies:
     regenerator-runtime: ^0.13.4
   checksum: dd931f6ef1c8dab295c4a00c592db6352bf12a5c443f8222304d5c1d3e88d795fa949afcb6f053eec2e69e9827a17ff274524c1cd43813f56b61e3a540274d2f
+  languageName: node
+  linkType: hard
+
+"@babel/runtime@npm:^7.12.5":
+  version: 7.16.7
+  resolution: "@babel/runtime@npm:7.16.7"
+  dependencies:
+    regenerator-runtime: ^0.13.4
+  checksum: 2e2078cd935c4a0f79d1128f3fc5aa2e89b2112b01cc6538fcca0da056252d5b88d20164192893bb891831ec147aafeeedb08172535547592ffbcdde67d82dd4
   languageName: node
   linkType: hard
 
@@ -1687,7 +1696,7 @@ __metadata:
     re-resizable: ^6.8.0
     react: ^17.0.0
     react-dom: ^17.0.0
-    react-error-boundary: ^2.3.1
+    react-error-boundary: ^3.1.4
     react-ga: ^3.1.2
     react-hotkeys: ^2.0.0
     react-input-autosize: ^3.0.0
@@ -6214,14 +6223,14 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"react-error-boundary@npm:^2.3.1":
-  version: 2.3.2
-  resolution: "react-error-boundary@npm:2.3.2"
+"react-error-boundary@npm:^3.1.4":
+  version: 3.1.4
+  resolution: "react-error-boundary@npm:3.1.4"
   dependencies:
-    "@babel/runtime": ^7.11.2
+    "@babel/runtime": ^7.12.5
   peerDependencies:
     react: ">=16.13.1"
-  checksum: 9e6d4ad197fd7d22e0a8fb9c7d7004282276ff2d6fda9ab0cb109ac72ffb324571f392776161af1a9ecc0e650aa08d97b403534110e53f0fd221a6091f0a99cb
+  checksum: 46284fe6294810fe95a2157e20bf8b241d8761f4e5ae5be7f3b3b1085133cdb7af99d1fa8e3f16ffffc1230e7e858fb04e479c8dafbdb41abbf389d74b8538f0
   languageName: node
   linkType: hard
 

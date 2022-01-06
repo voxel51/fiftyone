@@ -48,9 +48,15 @@ const RegularEntry = React.forwardRef(
     return (
       <Container
         ref={ref}
-        onMouseDown={() => (canCommit.current = true)}
-        onMouseMove={() => (canCommit.current = false)}
-        onMouseUp={(event) => canCommit.current && onClick && onClick(event)}
+        onMouseDown={() => {
+          canCommit.current = true;
+        }}
+        onMouseMove={() => {
+          canCommit.current && (canCommit.current = false);
+        }}
+        onMouseUp={(event) => {
+          canCommit.current && onClick && onClick(event);
+        }}
         style={{
           backgroundColor,
           cursor: clickable ? "pointer" : "unset",

@@ -5,6 +5,7 @@ import React, {
   useState,
   MutableRefObject,
 } from "react";
+import { useErrorHandler } from "react-error-boundary";
 import {
   atom,
   RecoilState,
@@ -25,6 +26,7 @@ import {
   VideoLooker,
   zoomAspectRatio,
 } from "@fiftyone/looker";
+import { EMBEDDED_DOCUMENT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
 
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
@@ -42,8 +44,6 @@ import { useEventHandler, useMessageHandler } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarEntries, sidebarGroupsDefinition } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
-import { useErrorHandler } from "react-error-boundary";
-import { EMBEDDED_DOCUMENT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -331,7 +331,6 @@ const getPageParameters = selector<() => Promise<PageParameters>>({
 });
 
 export default React.memo(() => {
-  const handleError = useErrorHandler();
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
   const lookerOptions = useRecoilValue(flashlightLookerOptions);
@@ -344,6 +343,30 @@ export default React.memo(() => {
   const frameFieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
+  const flashlight = useRef<Flashlight<number>>();
+  const cropToContent = useRecoilValue(atoms.cropToContent(false));
+  const filters = useRecoilValue(filterAtoms.filters);
+  const datasetName = useRecoilValue(selectors.datasetName);
+  const view = useRecoilValue(viewAtoms.view);
+  const refresh = useRecoilValue(selectors.refresh);
+  const getPageParams = useRecoilValue(getPageParameters);
+  const selected = useRecoilValue(atoms.selectedSamples);
+  const onThumbnailClick = useThumbnailClick(flashlight);
+  const onSelect = useSelect();
+  const setGridZoomRange = useSetRecoilState(gridZoomRange);
+  const handleError = useErrorHandler();
+  useSampleUpdate();
+  const gridZoomRef = useRef<number>();
+  const gridZoomValue = useRecoilValue(gridZoom);
+  gridZoomRef.current = gridZoomValue;
+  const taggingLabels = useRecoilValue(
+    atoms.tagging({ modal: false, labels: true })
+  );
+
+  const taggingSamples = useRecoilValue(
+    atoms.tagging({ modal: false, labels: false })
+  );
+  const tagging = taggingLabels || taggingSamples;
   lookerGeneratorRef.current = ({
     sample,
     dimensions,
@@ -390,25 +413,6 @@ export default React.memo(() => {
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
   };
-  const flashlight = useRef<Flashlight<number>>();
-  const cropToContent = useRecoilValue(atoms.cropToContent(false));
-  const filters = useRecoilValue(filterAtoms.filters);
-  const datasetName = useRecoilValue(selectors.datasetName);
-  const view = useRecoilValue(viewAtoms.view);
-  const refresh = useRecoilValue(selectors.refresh);
-  const getPageParams = useRecoilValue(getPageParameters);
-
-  const selected = useRecoilValue(atoms.selectedSamples);
-  const onThumbnailClick = useThumbnailClick(flashlight);
-  const onSelect = useSelect();
-  const setGridZoomRange = useSetRecoilState(gridZoomRange);
-  useSampleUpdate();
-  const gridZoomRef = useRef<number>();
-  const gridZoomValue = useRecoilValue(gridZoom);
-  gridZoomRef.current = gridZoomValue;
-  const tagging =
-    useRecoilValue(atoms.tagging({ modal: false, labels: true })) ||
-    useRecoilValue(atoms.tagging({ modal: false, labels: false }));
 
   useEventHandler(
     document,

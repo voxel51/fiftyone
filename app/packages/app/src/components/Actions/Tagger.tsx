@@ -251,7 +251,8 @@ const Section = ({
                   ? elementNames.plural
                   : elementNames.singular
               }`}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
               }}
@@ -261,7 +262,7 @@ const Section = ({
                 height: "2rem",
                 borderRadius: 0,
               }}
-            ></Button>
+            />
           )}
           {hasChanges && !value.length && (
             <Button
@@ -273,7 +274,7 @@ const Section = ({
                 borderRadius: 0,
                 textAlign: "center",
               }}
-            ></Button>
+            />
           )}
         </>
       ) : null}
@@ -388,7 +389,8 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
             : selectedSamples.size
             ? [...selectedSamples]
             : null,
-          labels: selectedLabels.length ? selectedLabels : null,
+          labels:
+            selectedLabels && selectedLabels.length ? selectedLabels : null,
           hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
         }),
       });
@@ -446,7 +448,7 @@ const usePlaceHolder = (
       const labelCount = selection
         ? selectedLabelCount
         : useRecoilValue(
-            aggregationAtoms.labelCount({ modal: true, extended: true })
+            aggregationAtoms.labelCount({ modal, extended: true })
           );
       if (labels) {
         return [

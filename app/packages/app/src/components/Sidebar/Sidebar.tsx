@@ -374,8 +374,7 @@ const Container = animated(styled.div`
 type RenderEntry = (
   group: string,
   entry: SidebarEntry,
-  controller: Controller,
-  dragging: boolean
+  controller: Controller
 ) => { children: React.ReactNode; disabled: boolean };
 
 const InteractiveSidebar = ({
@@ -393,7 +392,6 @@ const InteractiveSidebar = ({
   const start = useRef<number>(0);
   const items = useRef<InteractiveItems>({});
   const container = useRef<HTMLDivElement>();
-  const [isDragging, setIsDragging] = useState(false);
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
   const [width, setWidth] = useRecoilState(sidebarWidth(modal));
@@ -499,23 +497,31 @@ const InteractiveSidebar = ({
     }
   }, []);
 
-  const exit = useCallback((event) => {
-    setIsDragging(false);
-    if (start.current === event.clientY || down.current == null) {
-      down.current = null;
-      start.current = null;
-      return;
-    }
+  const exit = useCallback(
+    (event) => {
+      if (start.current === event.clientY || down.current == null) {
+        down.current = null;
+        start.current = null;
+        return;
+      }
 
-    requestAnimationFrame(() => {
-      const newOrder = getNewOrder(lastDirection.current);
-      order.current = newOrder;
-      setEntries(order.current.map((key) => items.current[key].entry));
-      down.current = null;
-      start.current = null;
-      lastDirection.current = null;
-    });
-  }, []);
+      requestAnimationFrame(() => {
+        const newOrder = getNewOrder(lastDirection.current);
+        order.current = newOrder;
+
+        const newEntries = order.current.map((key) => items.current[key].entry);
+
+        down.current = null;
+        start.current = null;
+        lastDirection.current = null;
+
+        if (JSON.stringify(entries) !== JSON.stringify(newEntries)) {
+          setEntries(newEntries);
+        }
+      });
+    },
+    [entries]
+  );
 
   useEventHandler(document.body, "mouseup", exit);
   useEventHandler(document.body, "mouseleave", exit);
@@ -583,7 +589,6 @@ const InteractiveSidebar = ({
   const trigger = useCallback((event) => {
     if (event.button !== 0) return;
 
-    setIsDragging(true);
     down.current = event.currentTarget.dataset.key;
     start.current = event.clientY;
     last.current = start.current;
@@ -638,8 +643,7 @@ const InteractiveSidebar = ({
             const { children, disabled } = render(
               group,
               entry,
-              items.current[key].controller,
-              isDragging
+              items.current[key].controller
             );
 
             return (

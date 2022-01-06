@@ -35,7 +35,7 @@ export const patching = atom<boolean>({
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
   get: ({ get }) => {
-    const paths = get(schemaAtoms.labelPaths({}));
+    const paths = get(schemaAtoms.labelFields({}));
     return paths.filter((p) =>
       get(
         schemaAtoms.meetsType({

@@ -21,12 +21,10 @@ from fiftyone.core.fields import (
     StringField,
     TargetsField,
 )
-from mongoengine.base.datastructures import BaseDict
 
 from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
-from .utils import get_embedded_document_fields
 
 
 def create_field(

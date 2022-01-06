@@ -437,12 +437,10 @@ export const PathGroupEntry = React.memo(
   ({
     name,
     modal,
-    dragging,
     mutable = true,
   }: {
     name: string;
     modal: boolean;
-    dragging: boolean;
     mutable?: boolean;
   }) => {
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
@@ -455,10 +453,8 @@ export const PathGroupEntry = React.memo(
         title={name.toUpperCase()}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
-        setValue={
-          modal || dragging || !mutable ? null : (value) => renameGroup(value)
-        }
-        onDelete={!empty}
+        setValue={modal || !mutable ? null : (value) => renameGroup(value)}
+        onDelete={!empty ? null : onDelete}
         pills={
           <Pills
             entries={[

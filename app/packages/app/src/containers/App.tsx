@@ -48,6 +48,7 @@ const useStateUpdate = () => {
         ...state,
         filters: filters as State.Filters,
       } as State.Description);
+
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>
           set(atoms.tagging({ modal: i, labels: j }), false)

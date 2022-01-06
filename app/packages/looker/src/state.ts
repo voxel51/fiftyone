@@ -76,6 +76,7 @@ interface BaseOptions {
   coloring: Coloring;
   selectedLabels: string[];
   showConfidence: boolean;
+  showControls: boolean;
   showIndex: boolean;
   showJSON: boolean;
   showLabel: boolean;
@@ -158,7 +159,6 @@ export interface BaseState {
   loaded: boolean;
   hovering: boolean;
   hoveringControls: boolean;
-  showControls: boolean;
   showOptions: boolean;
   config: BaseConfig;
   options: BaseOptions;
@@ -241,6 +241,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activePaths: [],
   selectedLabels: [],
   showConfidence: false,
+  showControls: true,
   showIndex: false,
   showJSON: false,
   showLabel: false,

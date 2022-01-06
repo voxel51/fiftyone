@@ -5,6 +5,7 @@ import {
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
+  Schema,
   StrictField,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
@@ -12,9 +13,15 @@ import {
 } from "@fiftyone/utilities";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
-import { fieldPaths, fields, pathIsShown } from "../../recoil/schema";
+import {
+  fieldPaths,
+  fields,
+  pathIsShown,
+  schemaReduce,
+} from "../../recoil/schema";
 import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
+import * as viewAtoms from "../../recoil/view";
 import { http } from "../../shared/connection";
 
 import {
@@ -25,7 +32,6 @@ import {
   SidebarEntry,
   TailEntry,
 } from "./utils";
-import { string } from "prop-types";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   {
@@ -81,6 +87,16 @@ const DEFAULT_VIDEO_GROUPS = [
 ];
 
 export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
+  const schema = dataset.sampleFields.reduce(schemaReduce, {});
+
+  if (dataset.frameFields && dataset.frameFields.length) {
+    schema.frames = {
+      ftype: LIST_FIELD,
+      name: "frames",
+      fields: dataset.frameFields.reduce(schemaReduce, {}),
+    };
+  }
+
   let source = dataset.appSidebarGroups;
 
   if (!source) {
@@ -95,7 +111,7 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
   ]) as State.SidebarGroups;
   const present = new Set(groups.map(([_, paths]) => paths).flat());
 
-  const updater = groupUpdater(groups);
+  const updater = groupUpdater(groups, schema);
 
   const primitives = dataset.sampleFields
     .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
@@ -154,8 +170,22 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
   return groups;
 };
 
-const groupUpdater = (groups: State.SidebarGroups) => {
+const groupUpdater = (groups: State.SidebarGroups, schema: Schema) => {
   const groupNames = groups.map(([name]) => name);
+
+  for (let i = 0; i < groups.length; i++) {
+    groups[i][1] = groups[i][1].filter((path) => {
+      const keys = path.split(".");
+      let fields = schema;
+
+      for (let j = 0; j < keys.length; j++) {
+        if (!fields[keys[j]]) return false;
+        fields = fields[keys[j]].fields;
+      }
+
+      return true;
+    });
+  }
 
   return (name: string, paths: string[]) => {
     if (paths.length === 0) return;
@@ -260,6 +290,7 @@ export const sidebarGroups = selectorFamily<
         body: JSON.stringify({
           dataset: get(datasetName),
           groups: groups.map(([name, paths]) => ({ name, paths })),
+          view: get(viewAtoms.view),
         }),
       }).catch((error) => {
         throw error;

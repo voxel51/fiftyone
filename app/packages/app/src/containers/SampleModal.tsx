@@ -122,12 +122,7 @@ const SampleModal = () => {
   useSampleUpdate(lookerRef);
 
   const renderEntry = useCallback(
-    (
-      group: string,
-      entry: SidebarEntry,
-      controller: Controller,
-      dragging: boolean
-    ) => {
+    (group: string, entry: SidebarEntry, controller: Controller) => {
       switch (entry.kind) {
         case EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
@@ -188,11 +183,7 @@ const SampleModal = () => {
                   modal={true}
                 />
               ) : (
-                <Entries.PathGroup
-                  name={entry.name}
-                  modal={true}
-                  dragging={dragging}
-                />
+                <Entries.PathGroup name={entry.name} modal={true} />
               ),
             disabled: false,
           };

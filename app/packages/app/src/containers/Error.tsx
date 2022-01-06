@@ -105,8 +105,8 @@ const Error = ({ error = null, resetErrorBoundary }) => {
           <ErrorMessage>
             {error.stack && (
               <Stack>
-                {error.stack.split("\n").map((line) => (
-                  <div>{line}</div>
+                {error.stack.split("\n").map((line, i) => (
+                  <div key={i}>{line}</div>
                 ))}
               </Stack>
             )}

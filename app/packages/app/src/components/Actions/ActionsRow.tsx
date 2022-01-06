@@ -130,14 +130,10 @@ const Tag = ({
   const tagging = useRecoilValue(selectors.anyTagging);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
+
   const [mRef, bounds] = useMeasure();
-  const close = false;
 
   const disabled = tagging;
-
-  useLayoutEffect(() => {
-    close && setOpen(false);
-  }, [close]);
 
   lookerRef &&
     useEventHandler(lookerRef.current, "play", () => {
@@ -158,7 +154,7 @@ const Tag = ({
         ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
       />
-      {open && !close && available && (
+      {open && available && (
         <Tagger
           modal={modal}
           bounds={bounds}

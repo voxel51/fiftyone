@@ -33,6 +33,14 @@ export class LookerElement<State extends BaseState> extends BaseElement<
       mouseenter: ({ update }) => {
         update({ hovering: true });
       },
+      mousemove: ({ update, dispatchEvent }) => {
+        update((state) => {
+          !state.options.showControls &&
+            dispatchEvent("options", { showControls: true });
+
+          return {};
+        });
+      },
     };
   }
 

@@ -87,6 +87,9 @@ class StateDescription(etas.Serializable):
                         _dataset["media_type"] = _tmp["media_type"]
                         _dataset["sample_fields"] = _tmp["sample_fields"]
                         _dataset["frame_fields"] = _tmp["frame_fields"]
+                        _dataset["app_sidebar_groups"] = _tmp.get(
+                            "app_sidebar_groups", None
+                        )
 
             d["dataset"] = _dataset
             d["view"] = _view
