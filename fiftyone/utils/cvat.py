@@ -133,59 +133,58 @@ def import_annotations(
         task_ids = list(task_ids)
 
     # Build mapping from CVAT filenames to local filepaths
-    only_existing = data_path is None
     data_dir = None
     existing_filepaths = sample_collection.values("filepath")
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
+    elif etau.is_str(data_path) and data_path.endswith(".json"):
+        data_map = etas.read_json(data_path)
     elif etau.is_str(data_path):
-        if data_path.endswith(".json"):
-            data_map = etas.read_json(data_path)
-        else:
-            data_map = {
-                os.path.basename(f): f
-                for f in etau.list_files(
-                    data_path, abs_paths=True, recursive=True
-                )
-            }
-            data_dir = data_path
+        data_map = {
+            os.path.basename(f): f
+            for f in etau.list_files(data_path, abs_paths=True, recursive=True)
+        }
+        data_dir = data_path
     else:
         data_map = data_path
 
     # Determine what filepaths we have annotations for
-    filepaths_map = {}
+    cvat_id_map = {}
+    task_filepaths = []
     ignored_filenames = []
     for task_id in task_ids:
-        filepaths_map[task_id] = _get_task_filepaths(
+        cvat_id_map[task_id] = _parse_task_metadata(
             api,
             task_id,
             data_map,
+            task_filepaths,
             ignored_filenames,
             data_dir=data_dir,
             download_media=download_media,
         )
 
     if ignored_filenames:
-        dstr = "input collection" if only_existing else "provided data map"
         logger.warning(
             "Ignoring annotations for %d files in CVAT (eg %s) that do not "
-            "appear in the %s",
+            "appear in the provided data map",
             len(ignored_filenames),
             ignored_filenames[0],
-            dstr,
         )
 
-    task_filepaths = itertools.chain.from_iterable(filepaths_map.values())
+    if not task_filepaths:
+        logger.warning("No applicable annotations found to download")
+        return
+
+    dataset = sample_collection._dataset
+
     new_filepaths = set(task_filepaths) - set(existing_filepaths)
 
     # Insert samples for new filepaths, if necessary and we're allowed to
     if new_filepaths:
         if insert_new:
-            dataset = sample_collection._dataset
             dataset.add_samples(
                 [fos.Sample(filepath=fp) for fp in new_filepaths]
             )
-            sample_collection = dataset
         else:
             logger.warning(
                 "Ignoring annotations for %d filepaths (eg %s) that do not "
@@ -194,8 +193,12 @@ def import_annotations(
                 new_filepaths[0],
             )
 
+    if dataset.media_type == fom.VIDEO:
+        # The download implementation requires IDs for all possible frames
+        dataset.select_by("filepath", task_filepaths).ensure_frames()
+
     anno_key = "tmp_" + str(ObjectId())
-    anno_backend.register_run(sample_collection, anno_key, overwrite=False)
+    anno_backend.register_run(dataset, anno_key, overwrite=False)
 
     # Download annotations
     try:
@@ -207,14 +210,13 @@ def import_annotations(
             )
 
             _download_annotations(
-                sample_collection,
+                dataset,
                 task_ids,
-                filepaths_map,
+                cvat_id_map,
                 label_schema,
                 label_types,
                 anno_backend,
                 anno_key,
-                api,
                 **kwargs,
             )
         else:
@@ -226,24 +228,24 @@ def import_annotations(
                 )
 
                 _download_annotations(
-                    sample_collection,
+                    dataset,
                     [task_id],
-                    filepaths_map,
+                    cvat_id_map,
                     label_schema,
                     label_types,
                     anno_backend,
                     anno_key,
-                    api,
                     **kwargs,
                 )
     finally:
-        anno_backend.delete_run(sample_collection, anno_key)
+        anno_backend.delete_run(dataset, anno_key)
 
 
-def _get_task_filepaths(
+def _parse_task_metadata(
     api,
     task_id,
     data_map,
+    task_filepaths,
     ignored_filenames,
     data_dir=None,
     download_media=False,
@@ -252,10 +254,10 @@ def _get_task_filepaths(
     start_frame = resp.get("start_frame", None)
     stop_frame = resp.get("stop_frame", None)
     chunk_size = resp.get("chunk_size", None)
-    filenames = [frame["name"] for frame in resp["frames"]]
 
-    filepaths = []
-    for frame_id, filename in enumerate(filenames):
+    cvat_id_map = {}
+    for frame_id, frame in enumerate(resp["frames"]):
+        filename = frame["name"]
         filepath = data_map.get(filename, None)
         if download_media:
             if filepath is None and data_dir:
@@ -273,12 +275,13 @@ def _get_task_filepaths(
                 )
 
         if filepath is not None:
-            filepaths.append(filepath)
+            cvat_id_map[filepath] = frame_id
+            task_filepaths.append(filepath)
         else:
             # Filename not in data_map and data_dir not provided
             ignored_filenames.append(filename)
 
-    return filepaths
+    return cvat_id_map
 
 
 def _download_media(
@@ -317,34 +320,31 @@ def _download_media(
 
 
 def _download_annotations(
-    sample_collection,
+    dataset,
     task_ids,
-    filepaths_map,
+    cvat_id_map,
     label_schema,
     label_types,
     anno_backend,
     anno_key,
-    api,
     **kwargs,
 ):
-    frame_id_map = {}
-    for task_id in task_ids:
-        filepaths = filepaths_map[task_id]
-        task_view = sample_collection.select_by("filepath", filepaths)
-        frame_id_map[task_id] = api._build_frame_id_map(task_view)
-
     config = anno_backend.config
     config.label_schema = label_schema
-    anno_backend.update_run_config(sample_collection, anno_key, config)
+    anno_backend.update_run_config(dataset, anno_key, config)
 
     id_map = {}
     server_id_map = {}
     project_ids = []
     job_ids = []
+    frame_id_map = {
+        task_id: _build_sparse_frame_id_map(dataset, cvat_id_map[task_id])
+        for task_id in task_ids
+    }
     labels_task_map = {None: task_ids}
 
     results = CVATAnnotationResults(
-        sample_collection,
+        dataset,
         config,
         id_map,
         server_id_map,
@@ -355,16 +355,45 @@ def _download_annotations(
         labels_task_map,
         backend=anno_backend,
     )
-    anno_backend.save_run_results(sample_collection, anno_key, results)
+    anno_backend.save_run_results(dataset, anno_key, results)
 
     if label_types is None:
         unexpected = "keep"
     else:
         unexpected = label_types
 
-    sample_collection.load_annotations(
+    dataset.load_annotations(
         anno_key, unexpected=unexpected, cleanup=False, **kwargs
     )
+
+
+def _build_sparse_frame_id_map(dataset, cvat_id_map):
+    task_filepaths = list(cvat_id_map.keys())
+    samples = dataset.select_by("filepath", task_filepaths)
+
+    frame_id_map = {}
+
+    if samples.media_type == fom.VIDEO:
+        # Video tasks have exactly one video, and we download labels for all
+        # of its frames
+        frame_id = -1
+        sample_ids, frame_ids = samples.values(["id", "frames.id"])
+        for sample_id, _frame_ids in zip(sample_ids, frame_ids):
+            for _frame_id in _frame_ids:
+                frame_id += 1
+                frame_id_map[frame_id] = {
+                    "sample_id": sample_id,
+                    "frame_id": _frame_id,
+                }
+    else:
+        # For image tasks, only allow downloads for filepaths in `cvat_id_map`
+        sample_ids, filepaths = samples.values(["id", "filepath"])
+        for sample_id, filepath in zip(sample_ids, filepaths):
+            frame_id = cvat_id_map.get(filepath, None)
+            if frame_id is not None:
+                frame_id_map[frame_id] = {"sample_id": sample_id}
+
+    return frame_id_map
 
 
 class CVATImageDatasetImporter(
@@ -3866,9 +3895,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = {}
         labels_task_map = {}
 
-        num_samples = len(samples)
-        batch_size = self._get_batch_size(samples, task_size)
-
         (
             cvat_schema,
             assign_scalar_attrs,
@@ -3882,6 +3908,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # we need to store the updated one
         if project_id is not None or occluded_attr is not None:
             config.label_schema = label_schema
+
+        num_samples = len(samples)
+        batch_size = self._get_batch_size(samples, task_size)
+
+        samples.compute_metadata()
+
+        if samples.media_type == fom.VIDEO:
+            # The current implementation requires frame IDs for all frames that
+            # might get labels
+            samples.ensure_frames()
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
             samples_batch = samples[offset : (offset + batch_size)]
@@ -3929,10 +3965,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 project_id = self.create_project(project_name, cvat_schema)
                 project_ids.append(project_id)
 
-            task_name = (
-                "FiftyOne_%s"
-                % samples_batch._root_dataset.name.replace(" ", "_")
-            )
+            _dataset_name = samples_batch._dataset.name.replace(" ", "_")
+            task_name = "FiftyOne_%s" % _dataset_name
+
             task_id, class_id_map, attr_id_map = self._create_task_upload_data(
                 config,
                 idx,
@@ -4512,13 +4547,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 )
 
     def _get_batch_size(self, samples, task_size):
-        samples.compute_metadata()
-
         if samples.media_type == fom.VIDEO:
-            # The current implementation (both upload and download) requires
-            # frame IDs for all frames that might get labels
-            samples.ensure_frames()
-
             # CVAT only allows for one video per task
             return 1
 
@@ -4895,7 +4924,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # For non-outside tracked objects, the last track goes to the end of
         # the video, so fill remaining frames with copies of the last instance
         if prev_frame is not None and not prev_outside:
-            for frame in range(prev_frame + 1, len(frame_id_map)):
+            for frame in range(prev_frame + 1, max(frame_id_map) + 1):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
                 anno["keyframe"] = False
@@ -4941,13 +4970,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attrs=None,
     ):
         frame = anno["frame"]
-        if len(frames) > frame:
-            metadata = frames[frame]
-        else:
-            metadata = frames[0]
 
         if frame not in frame_id_map:
             return prev_type
+
+        try:
+            metadata = frames[frame]
+        except IndexError:
+            metadata = frames[0]
 
         frame_data = frame_id_map[frame]
         sample_id = frame_data["sample_id"]

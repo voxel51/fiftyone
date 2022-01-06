@@ -225,7 +225,7 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def has_field(self, field_name):
         # pylint: disable=no-member
-        return field_name in self._fields
+        return field_name in self._fields_ordered
 
     def get_field(self, field_name):
         return getattr(self, field_name)
