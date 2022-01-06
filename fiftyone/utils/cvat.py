@@ -128,7 +128,7 @@ def import_annotations(
 
     # Build mapping from CVAT filenames to local filepaths
     only_existing = data_path is None
-    existing_filepaths = sample_collection.values("filepath")
+    existing_filepaths = set(sample_collection.values("filepath"))
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
     elif etau.is_str(data_path):
@@ -157,17 +157,17 @@ def import_annotations(
             dstr,
         )
 
-    task_filepaths = itertools.chain.from_iterable(filepaths_map.values())
-    new_filepaths = set(task_filepaths) - set(existing_filepaths)
+    dataset = sample_collection._dataset
+
+    task_filepaths = set(itertools.chain.from_iterable(filepaths_map.values()))
+    new_filepaths = task_filepaths - existing_filepaths
 
     # Insert samples for new filepaths, if necessary and we're allowed to
     if new_filepaths:
         if insert_new:
-            dataset = sample_collection._dataset
             dataset.add_samples(
                 [fos.Sample(filepath=fp) for fp in new_filepaths]
             )
-            sample_collection = dataset
         else:
             logger.warning(
                 "Ignoring annotations for %d filepaths (eg %s) that do not "
@@ -176,8 +176,12 @@ def import_annotations(
                 new_filepaths[0],
             )
 
+    if dataset.media_type == fom.VIDEO:
+        # The download implementation requires IDs for all possible frames
+        dataset.select_by("filepath", task_filepaths).ensure_frames()
+
     anno_key = "tmp_" + str(ObjectId())
-    anno_backend.register_run(sample_collection, anno_key, overwrite=False)
+    anno_backend.register_run(dataset, anno_key, overwrite=False)
 
     # Download annotations
     try:
@@ -189,7 +193,7 @@ def import_annotations(
             )
 
             _download_annotations(
-                sample_collection,
+                dataset,
                 task_ids,
                 filepaths_map,
                 label_schema,
@@ -208,7 +212,7 @@ def import_annotations(
                 )
 
                 _download_annotations(
-                    sample_collection,
+                    dataset,
                     [task_id],
                     filepaths_map,
                     label_schema,
@@ -219,7 +223,7 @@ def import_annotations(
                     **kwargs,
                 )
     finally:
-        anno_backend.delete_run(sample_collection, anno_key)
+        anno_backend.delete_run(dataset, anno_key)
 
 
 def _get_task_filepaths(api, task_id, data_map, ignored_filenames):
@@ -238,7 +242,7 @@ def _get_task_filepaths(api, task_id, data_map, ignored_filenames):
 
 
 def _download_annotations(
-    sample_collection,
+    dataset,
     task_ids,
     filepaths_map,
     label_schema,
@@ -248,15 +252,16 @@ def _download_annotations(
     api,
     **kwargs,
 ):
+    # @todo need to account for missing filepaths
     frame_id_map = {}
     for task_id in task_ids:
         filepaths = filepaths_map[task_id]
-        task_view = sample_collection.select_by("filepath", filepaths)
+        task_view = dataset.select_by("filepath", filepaths)
         frame_id_map[task_id] = api._build_frame_id_map(task_view)
 
     config = anno_backend.config
     config.label_schema = label_schema
-    anno_backend.update_run_config(sample_collection, anno_key, config)
+    anno_backend.update_run_config(dataset, anno_key, config)
 
     id_map = {}
     server_id_map = {}
@@ -265,7 +270,7 @@ def _download_annotations(
     labels_task_map = {None: task_ids}
 
     results = CVATAnnotationResults(
-        sample_collection,
+        dataset,
         config,
         id_map,
         server_id_map,
@@ -276,14 +281,14 @@ def _download_annotations(
         labels_task_map,
         backend=anno_backend,
     )
-    anno_backend.save_run_results(sample_collection, anno_key, results)
+    anno_backend.save_run_results(dataset, anno_key, results)
 
     if label_types is None:
         unexpected = "keep"
     else:
         unexpected = label_types
 
-    sample_collection.load_annotations(
+    dataset.load_annotations(
         anno_key, unexpected=unexpected, cleanup=False, **kwargs
     )
 
@@ -3777,9 +3782,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = {}
         labels_task_map = {}
 
-        num_samples = len(samples)
-        batch_size = self._get_batch_size(samples, task_size)
-
         (
             cvat_schema,
             assign_scalar_attrs,
@@ -3793,6 +3795,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # we need to store the updated one
         if project_id is not None or occluded_attr is not None:
             config.label_schema = label_schema
+
+        num_samples = len(samples)
+        batch_size = self._get_batch_size(samples, task_size)
+
+        samples.compute_metadata()
+
+        if samples.media_type == fom.VIDEO:
+            # The current implementation requires frame IDs for all frames that
+            # might get labels
+            samples.ensure_frames()
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
             samples_batch = samples[offset : (offset + batch_size)]
@@ -3840,10 +3852,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 project_id = self.create_project(project_name, cvat_schema)
                 project_ids.append(project_id)
 
-            task_name = (
-                "FiftyOne_%s"
-                % samples_batch._root_dataset.name.replace(" ", "_")
-            )
+            _dataset_name = samples_batch._dataset.name.replace(" ", "_")
+            task_name = "FiftyOne_%s" % _dataset_name
+
             task_id, class_id_map, attr_id_map = self._create_task_upload_data(
                 config,
                 idx,
@@ -4423,13 +4434,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 )
 
     def _get_batch_size(self, samples, task_size):
-        samples.compute_metadata()
-
         if samples.media_type == fom.VIDEO:
-            # The current implementation (both upload and download) requires
-            # frame IDs for all frames that might get labels
-            samples.ensure_frames()
-
             # CVAT only allows for one video per task
             return 1
 
@@ -4806,7 +4811,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # For non-outside tracked objects, the last track goes to the end of
         # the video, so fill remaining frames with copies of the last instance
         if prev_frame is not None and not prev_outside:
-            for frame in range(prev_frame + 1, len(frame_id_map)):
+            for frame in range(prev_frame + 1, max(frame_id_map) + 1):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
                 anno["keyframe"] = False
@@ -4852,13 +4857,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attrs=None,
     ):
         frame = anno["frame"]
-        if len(frames) > frame:
-            metadata = frames[frame]
-        else:
-            metadata = frames[0]
 
         if frame not in frame_id_map:
             return prev_type
+
+        try:
+            metadata = frames[frame]
+        except IndexError:
+            metadata = frames[0]
 
         frame_data = frame_id_map[frame]
         sample_id = frame_data["sample_id"]
