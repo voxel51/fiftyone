@@ -35,6 +35,34 @@ export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   return schema;
 };
 
+export const filterPaths = (paths: string[], schema: Schema): string[] => {
+  return paths.filter((path) => {
+    const keys = path.split(".");
+    let fields = schema;
+
+    for (let j = 0; j < keys.length; j++) {
+      if (!fields[keys[j]]) return false;
+      fields = fields[keys[j]].fields;
+    }
+
+    return true;
+  });
+};
+
+export const buildSchema = (dataset: State.Dataset): Schema => {
+  const schema = dataset.sampleFields.reduce(schemaReduce, {});
+
+  if (dataset.frameFields && dataset.frameFields.length) {
+    schema.frames = {
+      ftype: LIST_FIELD,
+      name: "frames",
+      fields: dataset.frameFields.reduce(schemaReduce, {}),
+    };
+  }
+
+  return schema;
+};
+
 const fieldFilter = (
   fields: Schema,
   view: State.Stage[],
@@ -309,7 +337,6 @@ export const labelPaths = selectorFamily<
 export const expandPath = selectorFamily<string, string>({
   key: "expandPath",
   get: (path) => ({ get }) => {
-    console.log(path, get(field(path)));
     const { embeddedDocType } = get(field(path));
 
     if (withPath(LABELS_PATH, LABEL_LISTS).includes(embeddedDocType)) {
@@ -341,12 +368,22 @@ export const labelPath = selectorFamily<string, string>({
   },
 });
 
-export const activeFields = atomFamily<
-  string[],
-  { modal: boolean; space?: State.SPACE }
->({
+const _activeFields = atomFamily<string[], { modal: boolean }>({
+  key: "_activeFields",
+  default: ({ modal }) => labelFields({}),
+});
+
+export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",
-  default: ({ modal, space }) => labelFields({ space }),
+  get: ({ modal }) => ({ get }) => {
+    return filterPaths(
+      get(_activeFields({ modal })),
+      buildSchema(get(atoms.stateDescription).dataset)
+    );
+  },
+  set: ({ modal }) => ({ set }, value) => {
+    set(_activeFields({ modal }), value);
+  },
 });
 
 export const activeField = selectorFamily<
@@ -424,9 +461,9 @@ export const activeLabelFields = selectorFamily<
   { modal: boolean; space?: State.SPACE }
 >({
   key: "activeLabelFields",
-  get: ({ modal, space }) => ({ get }) => {
-    const active = new Set(get(activeFields({ modal, space })));
-    return get(labelFields({ space })).filter((field) => active.has(field));
+  get: ({ modal }) => ({ get }) => {
+    const active = new Set(get(activeFields({ modal })));
+    return get(labelFields({})).filter((field) => active.has(field));
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -439,7 +476,7 @@ export const activeLabelPaths = selectorFamily<
 >({
   key: "activeLabelPaths",
   get: ({ modal, space }) => ({ get }) => {
-    const active = new Set(get(activeFields({ modal, space })));
+    const active = new Set(get(activeFields({ modal })));
     return get(labelFields({}))
       .filter((field) => active.has(field))
       .map((field) => get(labelPath(field)));

@@ -13,6 +13,7 @@ import {
   Snapshot,
   useRecoilCallback,
   useRecoilValue,
+  useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
@@ -287,21 +288,6 @@ const useSelect = () => {
   );
 };
 
-export const useSampleUpdate = () => {
-  const handler = useRecoilCallback(
-    ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
-      updatedSamples.forEach((sample) => {
-        samples.set(sample._id, { ...samples.get(sample._id), sample });
-        lookers.has(sample._id) && lookers.get(sample._id).updateSample(sample);
-      });
-      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
-      set(selectors.anyTagging, false);
-    },
-    []
-  );
-  useMessageHandler("samples_update", handler);
-};
-
 interface PageParameters {
   filters: State.Filters;
   dataset: string;
@@ -331,7 +317,7 @@ const getPageParameters = selector<() => Promise<PageParameters>>({
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
-  const lookerOptions = useRecoilValue(flashlightLookerOptions);
+  const lookerOptions = useRecoilValueLoadable(flashlightLookerOptions);
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
   const isClips = useRecoilValue(viewAtoms.isClipsView);
@@ -353,7 +339,6 @@ export default React.memo(() => {
   const onSelect = useSelect();
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   const handleError = useErrorHandler();
-  useSampleUpdate();
   const gridZoomRef = useRef<number>();
   const gridZoomValue = useRecoilValue(gridZoom);
   gridZoomRef.current = gridZoomValue;
@@ -394,7 +379,7 @@ export default React.memo(() => {
     };
 
     const looker = new constructor(sample, config, {
-      ...lookerOptions,
+      ...lookerOptions.contents,
       selected: selected.has(sample._id),
     });
     looker.addEventListener("error", (event) => handleError(event.detail));
@@ -407,7 +392,7 @@ export default React.memo(() => {
     dimensions: [width, height],
   }: atoms.SampleData) => {
     const aspectRatio = width / height;
-    return lookerOptions.zoom
+    return lookerOptions.contents.zoom
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
   };
@@ -555,7 +540,7 @@ export default React.memo(() => {
         const looker = lookers.get(sampleId);
         looker &&
           looker.updateOptions({
-            ...lookerOptions,
+            ...lookerOptions.contents,
             selected: selected.has(sampleId),
             inSelectionMode: selected.size > 0,
           });

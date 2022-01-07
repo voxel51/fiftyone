@@ -20,7 +20,6 @@ export const view = atom<State.Stage[]>({
           view: newValue,
           selected: [],
           selectedLabels: [],
-          filters: {},
         });
       });
     },

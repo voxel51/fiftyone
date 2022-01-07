@@ -19,7 +19,7 @@ import fiftyone.core.state as fos
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 
-from fiftyone.server.view import get_extended_view, get_view_field
+from fiftyone.server.view import get_extended_view, get_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.notebook as fosn
 import fiftyone.server.utils as fosu
@@ -307,20 +307,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             await self.send_updates(only=self)
 
     @staticmethod
-    async def on_filters_update(self, filters):
-        """Event for updating state filters. Sends an extended dataset
-        statistics message to active App clients.
-
-        Args:
-            filters: a :class:`dict` mapping field path to a serialized
-                :class:fiftyone.core.stages.Stage`
-        """
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        state.filters = filters
-        state.selected_labels = []
-        state.selected = []
-
-    @staticmethod
     async def on_update(caller, state, ignore_polling_client=None):
         """Event for state updates. Sends an update message to all active
         clients, and statistics messages to active App clients.
@@ -408,14 +394,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.on_update(self, StateHandler.state)
 
     @staticmethod
-    async def on_save_filters(caller, add_stages=[], with_selected=False):
+    async def on_save_filters(
+        caller, filters=None, add_stages=[], with_selected=False
+    ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
 
-        view = get_extended_view(view, state.filters)
+        view = get_extended_view(view, filters)
 
         if with_selected:
             if state.selected:
@@ -430,13 +418,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state.selected = []
         state.selected_labels = []
         state.view = view
-        state.filters = {}
 
         await StateHandler.on_update(caller, state.serialize())
 
     @classmethod
     async def send_samples(
-        cls, sample_id, sample_ids, current_frame=None, only=None
+        cls, sample_id, sample_ids, filters=None, current_frame=None, only=None
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -444,7 +431,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = get_extended_view(view, state.filters, count_labels_tags=True)
+        view = get_extended_view(view, filters, count_labels_tags=True)
         view = fov.make_optimized_select_view(view, sample_ids)
 
         if view.media_type == fom.VIDEO and current_frame is not None:
@@ -525,15 +512,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    async def on_distributions(cls, self, group, limit=200):
-        """Sends distribution data with respect to a group to the requesting
-        client.
-
-        Args:
-            group: the distribution group. Valid groups are 'labels', 'scalars',
-                and 'tags'.
-            limit: the number of enumerable results to limit to
-        """
+    async def on_distributions(cls, self, group, limit=200, filters=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
         if state.view is not None:
@@ -543,7 +522,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             results = []
 
-        view = get_extended_view(view, state.filters)
+        view = get_extended_view(view, filters)
 
         if group == "label tags" and results is None:
 

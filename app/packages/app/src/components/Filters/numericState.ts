@@ -6,6 +6,7 @@ import {
 } from "recoil";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
+import { stateDescription } from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import { Range } from "../Common/RangeSlider";
 
@@ -98,6 +99,10 @@ export const boundsAtom = selectorFamily<
     let bounds = get(
       aggregationAtoms.bounds({ path, extended: false, modal: false })
     ) as Range;
+
+    if (!bounds) {
+      return [null, null];
+    }
 
     if (bounds.every((b) => b === null)) {
       return bounds;

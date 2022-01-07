@@ -1,11 +1,7 @@
-import { atom, DefaultValue, selector, selectorFamily } from "recoil";
+import { atom, selectorFamily } from "recoil";
 
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 
-import socket from "../shared/connection";
-import { packageMessage } from "../utils/socket";
-
-import * as atoms from "./atoms";
 import { expandPath, fields } from "./schema";
 import { State } from "./types";
 import { hiddenLabelIds } from "./selectors";
@@ -15,26 +11,9 @@ export const modalFilters = atom<State.Filters>({
   default: {},
 });
 
-export const filters = selector<State.Filters>({
+export const filters = atom<State.Filters>({
   key: "filters",
-  get: ({ get }) => get(atoms.stateDescription).filters,
-  set: ({ get, set }, filters) => {
-    if (filters instanceof DefaultValue) {
-      filters = {};
-    }
-
-    const state: State.Description = {
-      ...get(atoms.stateDescription),
-      filters,
-    };
-    state.selected = [];
-    set(atoms.selectedSamples, new Set());
-    socket.send(packageMessage("filters_update", { filters }));
-    set(atoms.stateDescription, state);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+  default: {},
 });
 
 export const filter = selectorFamily<

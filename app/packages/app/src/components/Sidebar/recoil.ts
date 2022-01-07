@@ -14,10 +14,11 @@ import {
 
 import * as aggregationAtoms from "../../recoil/aggregations";
 import {
+  buildSchema,
   fieldPaths,
   fields,
+  filterPaths,
   pathIsShown,
-  schemaReduce,
 } from "../../recoil/schema";
 import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
@@ -87,16 +88,6 @@ const DEFAULT_VIDEO_GROUPS = [
 ];
 
 export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
-  const schema = dataset.sampleFields.reduce(schemaReduce, {});
-
-  if (dataset.frameFields && dataset.frameFields.length) {
-    schema.frames = {
-      ftype: LIST_FIELD,
-      name: "frames",
-      fields: dataset.frameFields.reduce(schemaReduce, {}),
-    };
-  }
-
   let source = dataset.appSidebarGroups;
 
   if (!source) {
@@ -111,7 +102,7 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
   ]) as State.SidebarGroups;
   const present = new Set(groups.map(([_, paths]) => paths).flat());
 
-  const updater = groupUpdater(groups, schema);
+  const updater = groupUpdater(groups, buildSchema(dataset));
 
   const primitives = dataset.sampleFields
     .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
@@ -174,17 +165,7 @@ const groupUpdater = (groups: State.SidebarGroups, schema: Schema) => {
   const groupNames = groups.map(([name]) => name);
 
   for (let i = 0; i < groups.length; i++) {
-    groups[i][1] = groups[i][1].filter((path) => {
-      const keys = path.split(".");
-      let fields = schema;
-
-      for (let j = 0; j < keys.length; j++) {
-        if (!fields[keys[j]]) return false;
-        fields = fields[keys[j]].fields;
-      }
-
-      return true;
-    });
+    groups[i][1] = filterPaths(groups[i][1], schema);
   }
 
   return (name: string, paths: string[]) => {

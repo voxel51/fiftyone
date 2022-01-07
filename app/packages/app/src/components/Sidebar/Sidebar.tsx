@@ -515,9 +515,7 @@ const InteractiveSidebar = ({
         start.current = null;
         lastDirection.current = null;
 
-        if (JSON.stringify(entries) !== JSON.stringify(newEntries)) {
-          setEntries(newEntries);
-        }
+        setEntries(newEntries);
       });
     },
     [entries]

@@ -9,6 +9,7 @@ import copyToClipboard from "copy-to-clipboard";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  LABELS,
   LIST_FIELD,
   Schema,
 } from "@fiftyone/utilities";
@@ -1369,30 +1370,33 @@ const f = <T extends {}>({
 }): T => {
   const result = {};
   for (let fieldName in schema) {
-    const field = schema[fieldName];
-    const path = [...keys, fieldName].join(".");
     if (fieldName.startsWith("_")) continue;
+
+    const { embeddedDocType, dbField, subfield, ftype } = schema[fieldName];
+    const key = dbField || fieldName;
+
+    if (LABELS.includes(embeddedDocType)) {
+    } else {
+    }
+
+    result[fieldName] = value[key];
+
+    const path = [...keys, fieldName].join(".");
 
     if (!filter(path, value)) continue;
 
     result[fieldName] = value[fieldName];
 
-    if (field.dbField && field.dbField !== fieldName) {
-      result[fieldName] = value[field.dbField];
-      delete value[field.dbField];
-      fieldName = field.dbField;
-    }
-
     if (result[fieldName] === undefined) continue;
 
-    if ([DATE_TIME_FIELD, DATE_FIELD].includes(field.ftype)) {
+    if ([DATE_TIME_FIELD, DATE_FIELD].includes(ftype)) {
       value[fieldName] = new Date(value[fieldName].datetime);
       continue;
     }
 
     if (
-      field.ftype === LIST_FIELD &&
-      [DATE_TIME_FIELD, DATE_FIELD].includes(field.subfield) &&
+      ftype === LIST_FIELD &&
+      [DATE_TIME_FIELD, DATE_FIELD].includes(subfield) &&
       value[fieldName]
     ) {
       value[fieldName] = value[fieldName].map((v) => new Date(v.datetime));

@@ -76,6 +76,7 @@ const Title = styled.div`
 `;
 
 const Distribution = ({ distribution }) => {
+  return null;
   const { name, data, ticks, type } = distribution;
   const [ref, { height }] = useMeasure();
   const barWidth = 24;

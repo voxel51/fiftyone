@@ -17,7 +17,14 @@ import {
   Wallpaper,
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
-import { atom, selectorFamily, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  selectorFamily,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import styled from "styled-components";
 
 import OptionsActions from "./Options";
@@ -26,13 +33,13 @@ import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
+import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
 import socket from "../../shared/connection";
 import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import Similar, { similaritySorting } from "./Similar";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { hasFilters } from "../../recoil/filters";
 
 const Loading = () => {
   const theme = useTheme();
@@ -278,8 +285,26 @@ export const savingFilters = atom<boolean>({
 });
 
 const SaveFilters = () => {
-  const hasFiltersValue = useRecoilValue(hasFilters(false));
-  const [loading, setLoading] = useRecoilState(savingFilters);
+  const hasFiltersValue = useRecoilValue(filterAtoms.hasFilters(false));
+  const loading = useRecoilValue(savingFilters);
+
+  const saveFilters = useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => () => {
+      const loading = get(savingFilters);
+      if (loading) {
+        return;
+      }
+      const filters = get(filterAtoms.filters);
+      set(savingFilters, true);
+      set(filterAtoms.filters, {});
+      socket.send(
+        packageMessage("save_filters", {
+          filters,
+        })
+      );
+    },
+    []
+  );
 
   return hasFiltersValue ? (
     <ActionDiv>
@@ -288,13 +313,7 @@ const SaveFilters = () => {
         highlight={true}
         icon={loading ? <Loading /> : <Bookmark />}
         style={{ cursor: loading ? "default" : "pointer" }}
-        onClick={() => {
-          if (loading) {
-            return;
-          }
-          setLoading(true);
-          socket.send(packageMessage("save_filters", {}));
-        }}
+        onClick={saveFilters}
         title={"Convert current field filters to view stages"}
       />
     </ActionDiv>

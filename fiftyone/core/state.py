@@ -27,7 +27,6 @@ class StateDescription(etas.Serializable):
         datasets (None): the list of available datasets
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
-        filters (None): a dictionary of currently active field filters
         settings (None): a dictionary of the current field settings, if any
         connected (False): whether the session is connected to an App
         active_handle (None): the UUID of the currently active App. Only
@@ -44,7 +43,6 @@ class StateDescription(etas.Serializable):
         datasets=None,
         dataset=None,
         view=None,
-        filters=None,
         connected=False,
         active_handle=None,
         selected=None,
@@ -56,7 +54,6 @@ class StateDescription(etas.Serializable):
         self.datasets = datasets or fod.list_datasets()
         self.dataset = dataset
         self.view = view
-        self.filters = filters or {}
         self.connected = connected
         self.active_handle = active_handle
         self.selected = selected or []
@@ -131,7 +128,6 @@ class StateDescription(etas.Serializable):
         else:
             view = None
 
-        filters = d.get("filters", {})
         connected = d.get("connected", False)
         active_handle = d.get("active_handle", None)
         selected = d.get("selected", [])
@@ -151,7 +147,6 @@ class StateDescription(etas.Serializable):
         return cls(
             dataset=dataset,
             view=view,
-            filters=filters,
             connected=connected,
             active_handle=active_handle,
             selected=selected,

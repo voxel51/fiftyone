@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { Suspense, useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
@@ -119,6 +119,7 @@ const SamplesContainer = React.memo(() => {
   return (
     <Container>
       {showSidebar && <FieldsSidebar render={renderGridEntry} modal={false} />}
+
       <ContentColumn>
         <Flashlight key={"flashlight"} />
         <ContainerHeader key={"header"} />

@@ -1,9 +1,11 @@
 import {
+  Add,
   Check,
   Close,
   Edit,
   FilterList,
   LocalOffer,
+  Remove,
   Visibility,
 } from "@material-ui/icons";
 import React, { useLayoutEffect, useRef, useState } from "react";
@@ -24,10 +26,6 @@ import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
 import { useTheme } from "../../../utils/hooks";
 
-import DropdownHandle, {
-  DropdownHandleProps,
-  PlusMinusButton,
-} from "../../DropdownHandle";
 import { PillButton } from "../../utils";
 
 import {
@@ -263,17 +261,25 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
   );
 };
 
-const GroupHeader = styled(DropdownHandle)`
-  border-width: 0 0 1px 0;
-  border-radius: 0;
+const PlusMinusButton = (expanded) => (expanded ? <Remove /> : <Add />);
+
+const GroupHeader = styled.div`
+  border-bottom: 1px solid ${({ theme }) => theme.border};
+  border-top-radius: 3px;
   padding: 0.25rem;
   text-transform: uppercase;
   display: flex;
   justify-content: space-between;
   vertical-align: middle;
   align-items: center;
+  font-weight: bold;
   color: ${({ theme }) => theme.fontDark};
   background: ${({ theme }) => theme.backgroundTransparent};
+
+  svg {
+    font-size: 1.25em;
+    vertical-align: middle;
+  }
 `;
 
 const GroupInput = styled.input`
@@ -292,17 +298,18 @@ type GroupEntryProps = {
   setValue?: (name: string) => void;
   onDelete?: () => void;
   before?: React.ReactNode;
-} & DropdownHandleProps;
+  expanded: boolean;
+} & React.HTMLProps<HTMLDivElement>;
 
 const GroupEntry = React.memo(
   ({
     title,
-    icon,
     pills,
     onDelete,
     setValue,
     before,
-    ...rest
+    onClick,
+    expanded,
   }: GroupEntryProps) => {
     const [localValue, setLocalValue] = useState(() => title);
     useLayoutEffect(() => {
@@ -311,20 +318,20 @@ const GroupEntry = React.memo(
     const [editing, setEditing] = useState(false);
     const [hovering, setHovering] = useState(false);
     const ref = useRef<HTMLInputElement>();
+    const canCommit = useRef(false);
 
     return (
       <GroupHeader
         title={title}
-        icon={PlusMinusButton}
-        {...rest}
         onMouseEnter={() => !hovering && setHovering(true)}
         onMouseLeave={() => hovering && setHovering(false)}
         onMouseDown={(event) => {
-          editing && event.stopPropagation();
+          editing ? event.stopPropagation() : (canCommit.current = true);
         }}
+        onMouseMove={() => (canCommit.current = false)}
         style={{ cursor: "unset" }}
-        onClick={(event) => {
-          !editing && rest.onClick && rest.onClick(event);
+        onMouseUp={(event) => {
+          canCommit.current && onClick && onClick(event);
         }}
       >
         {before}
@@ -385,6 +392,9 @@ const GroupEntry = React.memo(
             />
           </span>
         )}
+        <span>
+          <PlusMinusButton expande={expanded} />
+        </span>
       </GroupHeader>
     );
   }

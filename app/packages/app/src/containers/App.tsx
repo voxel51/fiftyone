@@ -13,6 +13,8 @@ import { similaritySorting } from "../components/Actions/Similar";
 import { savingFilters } from "../components/Actions/ActionsRow";
 import Header from "../components/Header";
 import NotificationHub from "../components/NotificationHub";
+
+import * as aggregationAtoms from "../recoil/aggregations";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
@@ -29,7 +31,6 @@ import { viewsAreEqual } from "../utils/view";
 import Dataset from "./Dataset";
 import ErrorPage from "./Error";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
-import { aggregationsTick } from "../recoil/aggregations";
 import Loading from "../components/Loading";
 import Setup from "./Setup";
 
@@ -40,6 +41,7 @@ const useStateUpdate = () => {
       const newSamples = new Set<string>(state.selected);
       const counter = get(atoms.viewCounter);
       const view = get(viewAtoms.view);
+      const oldState = get(atoms.stateDescription);
 
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
@@ -67,7 +69,10 @@ const useStateUpdate = () => {
 
         if (JSON.stringify(groups) !== JSON.stringify(current)) {
           set(sidebarGroupsDefinition(false), groups);
-          set(aggregationsTick, get(aggregationsTick) + 1);
+          set(
+            aggregationAtoms.aggregationsTick,
+            get(aggregationAtoms.aggregationsTick) + 1
+          );
         }
       }
 
