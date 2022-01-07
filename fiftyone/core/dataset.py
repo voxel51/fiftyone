@@ -4499,14 +4499,15 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 
 
 def _declare_fields(doc_cls, field_docs):
-    for field in doc_cls._fields.values():
+    for field_name, field in doc_cls._fields.items():
         if isinstance(field, fof.EmbeddedDocumentField):
+            doc = foo.SampleFieldDocument.from_field(field)
+            field = doc.to_field()
             field._set_parent(doc_cls)
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
 
-    if not field_docs:
-        return
-
-    for field_doc in field_docs:
+    for field_doc in field_docs or []:
         doc_cls._declare_field(field_doc.to_field())
 
 
