@@ -11,6 +11,8 @@ from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
+import multiprocessing
+import multiprocessing.dummy
 import os
 import warnings
 import webbrowser
@@ -35,6 +37,7 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
+import fiftyone.utils.video as fouv
 
 
 logger = logging.getLogger(__name__)
@@ -48,6 +51,8 @@ def import_annotations(
     data_path=None,
     label_types=None,
     insert_new=True,
+    download_media=False,
+    num_workers=None,
     occluded_attr=None,
     backend="cvat",
     **kwargs,
@@ -58,11 +63,18 @@ def import_annotations(
     Provide one of ``project_name``, ``project_id``, or ``task_ids`` to perform
     an import.
 
-    In order to use this method, FiftyOne must know how to associate media
-    filenames in CVAT with local filepaths to the same media. You can specify
-    this mapping via the ``data_path`` argument; otherwise, it is assumed that
-    the CVAT filenames correspond to the base filenames of existing sample
-    filepaths in the provided ``sample_collection``.
+    This method can be configured in any of the following three ways:
+
+    1.  Pass the ``data_path`` argument to define a mapping between media
+        filenames in CVAT and local filepaths to the same media.
+
+    2.  Pass the ``download_media=True`` option to download both the
+        annotations and the media files themselves, which are stored in a
+        directory you specify via the ``data_path`` argument.
+
+    3.  Don't provide ``data_path`` or ``download_media=True``, in which case
+        it is assumed that the CVAT filenames correspond to the base filenames
+        of existing sample filepaths in the provided ``sample_collection``.
 
     Args:
         sample_collection: a
@@ -98,6 +110,11 @@ def import_annotations(
         insert_new (True): whether to create new samples for any media for
             which annotations are found in CVAT but which do not exist in
             ``sample_collection``
+        download_media (False): whether to download the images or videos found
+            in CVAT to the directory or filepaths in ``data_path`` if not
+            already present
+        num_workers (None): the number of processes to use when downloading
+            media. By default, ``multiprocessing.cpu_count()`` is used
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
         backend ("cvat"): the name of the CVAT backend to use
@@ -128,16 +145,24 @@ def import_annotations(
         task_ids = list(task_ids)
 
     # Build mapping from CVAT filenames to local filepaths
+    data_dir = None
     existing_filepaths = sample_collection.values("filepath")
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
     elif etau.is_str(data_path) and data_path.endswith(".json"):
         data_map = etas.read_json(data_path)
     elif etau.is_str(data_path):
-        data_map = {
-            os.path.basename(f): f
-            for f in etau.list_files(data_path, abs_paths=True, recursive=True)
-        }
+        if os.path.isdir(data_path):
+            data_map = {
+                os.path.basename(f): f
+                for f in etau.list_files(
+                    data_path, abs_paths=True, recursive=True
+                )
+            }
+        else:
+            data_map = {}
+
+        data_dir = data_path
     else:
         data_map = data_path
 
@@ -145,10 +170,22 @@ def import_annotations(
     cvat_id_map = {}
     task_filepaths = []
     ignored_filenames = []
+    download_tasks = []
     for task_id in task_ids:
         cvat_id_map[task_id] = _parse_task_metadata(
-            api, task_id, data_map, task_filepaths, ignored_filenames
+            api,
+            task_id,
+            data_map,
+            task_filepaths,
+            ignored_filenames,
+            download_tasks,
+            data_dir=data_dir,
+            download_media=download_media,
         )
+
+    # Download media from CVAT, if requested
+    if download_tasks:
+        _download_media(download_tasks, num_workers)
 
     if ignored_filenames:
         logger.warning(
@@ -229,14 +266,40 @@ def import_annotations(
 
 
 def _parse_task_metadata(
-    api, task_id, data_map, task_filepaths, ignored_filenames
+    api,
+    task_id,
+    data_map,
+    task_filepaths,
+    ignored_filenames,
+    download_tasks,
+    data_dir=None,
+    download_media=False,
 ):
     resp = api.get(api.task_data_meta_url(task_id)).json()
+    start_frame = resp.get("start_frame", None)
+    stop_frame = resp.get("stop_frame", None)
+    chunk_size = resp.get("chunk_size", None)
 
     cvat_id_map = {}
     for frame_id, frame in enumerate(resp["frames"]):
         filename = frame["name"]
         filepath = data_map.get(filename, None)
+        if download_media:
+            if filepath is None and data_dir:
+                filepath = os.path.join(data_dir, filename)
+
+            if filepath and not os.path.exists(filepath):
+                download_tasks.append(
+                    (
+                        api,
+                        task_id,
+                        frame_id,
+                        filepath,
+                        start_frame,
+                        stop_frame,
+                        chunk_size,
+                    )
+                )
 
         if filepath is not None:
             cvat_id_map[filepath] = frame_id
@@ -245,6 +308,57 @@ def _parse_task_metadata(
             ignored_filenames.append(filename)
 
     return cvat_id_map
+
+
+def _download_media(tasks, num_workers):
+    if num_workers is None or num_workers < 1:
+        num_workers = multiprocessing.cpu_count()
+
+    logger.info("Downloading media...")
+    if num_workers == 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                _do_download_media(task)
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                for _ in pb(pool.imap_unordered(_do_download_media, tasks)):
+                    pass
+
+
+def _do_download_media(task):
+    (
+        api,
+        task_id,
+        frame_id,
+        filepath,
+        start_frame,
+        stop_frame,
+        chunk_size,
+    ) = task
+
+    if fom.get_media_type(filepath) == fom.VIDEO:
+        ext = os.path.splitext(filepath)[1]
+        num_chunks = int(np.ceil((stop_frame - start_frame) / chunk_size))
+
+        # CVAT stores videos in chunks, so we must download them individually
+        # and then concatenate them...
+        with etau.TempDir() as tmp_dir:
+            chunk_paths = []
+            for chunk_id in range(num_chunks):
+                resp = api.get(
+                    api.task_data_download_url(
+                        task_id, chunk_id, data_type="chunk"
+                    )
+                )
+                chunk_path = os.path.join(tmp_dir, "%d.%s" % (chunk_id, ext))
+                etau.write_file(resp._content, chunk_path)
+                chunk_paths.append(chunk_path)
+
+            fouv.concat_videos(chunk_paths, filepath)
+    else:
+        resp = api.get(api.task_data_download_url(task_id, frame_id))
+        etau.write_file(resp._content, filepath)
 
 
 def _download_annotations(
@@ -3271,6 +3385,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
+
+    def task_data_download_url(
+        self, task_id, frame_id, data_type="frame", quality="original"
+    ):
+        return "%s/data?type=%s&quality=%s&number=%d" % (
+            self.task_url(task_id),
+            data_type,
+            quality,
+            frame_id,
+        )
 
     def task_data_meta_url(self, task_id):
         return "%s/data/meta" % self.task_url(task_id)
