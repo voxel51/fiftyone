@@ -2144,19 +2144,34 @@ to import individual task(s) or an entire project into a FiftyOne dataset.
     )
 
     #
-    # Create a mapping between filenames in the pre-existing CVAT project and
-    # the locations of the media locally on disk for the FiftyOne dataset
+    # In the simplest case, you can download both the annotations and the media
+    # from CVAT
+    #
+
+    dataset = fo.Dataset()
+    fouc.import_annotations(
+        dataset,
+        project_name=project_name,
+        data_path="/tmp/cvat_import",
+        download_media=True,
+    )
+
+    session = fo.launch_app(dataset)
+
+    #
+    # If you already have the media stored locally, you can instead provide a
+    # mapping between filenames in the pre-existing CVAT project and the
+    # locations of the media locally on disk for the FiftyOne dataset
     #
     # Since we're using a CVAT task uploaded via FiftyOne, the mapping is a bit
     # weird
     #
-    filepaths = dataset.values("filepath")
+
     data_map = {
         "%06d_%s" % (idx, os.path.basename(p)): p
-        for idx, p in enumerate(filepaths)
+        for idx, p in enumerate(dataset.values("filepath"))
     }
 
-    # Create dataset from pre-existing CVAT project
     dataset = fo.Dataset()
     fouc.import_annotations(
         dataset,
