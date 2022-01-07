@@ -63,11 +63,18 @@ def import_annotations(
     Provide one of ``project_name``, ``project_id``, or ``task_ids`` to perform
     an import.
 
-    In order to use this method, FiftyOne must know how to associate media
-    filenames in CVAT with local filepaths to the same media. You can specify
-    this mapping via the ``data_path`` argument; otherwise, it is assumed that
-    the CVAT filenames correspond to the base filenames of existing sample
-    filepaths in the provided ``sample_collection``.
+    This method can be configured in any of the following three ways:
+
+    1.  Pass the ``data_path`` argument to define a mapping between media
+        filenames in CVAT and local filepaths to the same media.
+
+    2.  Pass the ``download_media=True`` option to download both the
+        annotations and the media files themselves, which are stored in a
+        directory you specify via the ``data_path`` argument.
+
+    3.  Don't provide ``data_path`` or ``download_media=True``, in which case
+        it is assumed that the CVAT filenames correspond to the base filenames
+        of existing sample filepaths in the provided ``sample_collection``.
 
     Args:
         sample_collection: a
@@ -120,9 +127,6 @@ def import_annotations(
             "be provided"
         )
 
-    if num_workers is None or num_workers < 1:
-        num_workers = multiprocessing.cpu_count()
-
     config = foua._parse_config(
         backend, None, occluded_attr=occluded_attr, **kwargs
     )
@@ -148,10 +152,16 @@ def import_annotations(
     elif etau.is_str(data_path) and data_path.endswith(".json"):
         data_map = etas.read_json(data_path)
     elif etau.is_str(data_path):
-        data_map = {
-            os.path.basename(f): f
-            for f in etau.list_files(data_path, abs_paths=True, recursive=True)
-        }
+        if os.path.isdir(data_path):
+            data_map = {
+                os.path.basename(f): f
+                for f in etau.list_files(
+                    data_path, abs_paths=True, recursive=True
+                )
+            }
+        else:
+            data_map = {}
+
         data_dir = data_path
     else:
         data_map = data_path
@@ -162,18 +172,19 @@ def import_annotations(
     ignored_filenames = []
     download_tasks = []
     for task_id in task_ids:
-        cvat_id_map[task_id], _tasks = _parse_task_metadata(
+        cvat_id_map[task_id] = _parse_task_metadata(
             api,
             task_id,
             data_map,
             task_filepaths,
             ignored_filenames,
+            download_tasks,
             data_dir=data_dir,
             download_media=download_media,
         )
-        download_tasks.extend(_tasks)
 
-    if download_media:
+    # Download media from CVAT, if requested
+    if download_tasks:
         _download_media(download_tasks, num_workers)
 
     if ignored_filenames:
@@ -260,6 +271,7 @@ def _parse_task_metadata(
     data_map,
     task_filepaths,
     ignored_filenames,
+    download_tasks,
     data_dir=None,
     download_media=False,
 ):
@@ -269,7 +281,6 @@ def _parse_task_metadata(
     chunk_size = resp.get("chunk_size", None)
 
     cvat_id_map = {}
-    download_tasks = []
     for frame_id, frame in enumerate(resp["frames"]):
         filename = frame["name"]
         filepath = data_map.get(filename, None)
@@ -294,13 +305,15 @@ def _parse_task_metadata(
             cvat_id_map[filepath] = frame_id
             task_filepaths.append(filepath)
         else:
-            # Filename not in data_map and data_dir not provided
             ignored_filenames.append(filename)
 
-    return cvat_id_map, download_tasks
+    return cvat_id_map
 
 
 def _download_media(tasks, num_workers):
+    if num_workers is None or num_workers < 1:
+        num_workers = multiprocessing.cpu_count()
+
     logger.info("Downloading media...")
     if num_workers == 1:
         with fou.ProgressBar() as pb:
@@ -309,8 +322,7 @@ def _download_media(tasks, num_workers):
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             with fou.ProgressBar(total=len(tasks)) as pb:
-                results = pool.imap_unordered(_do_download_media, tasks)
-                for _ in pb(results):
+                for _ in pb(pool.imap_unordered(_do_download_media, tasks)):
                     pass
 
 
@@ -324,18 +336,14 @@ def _do_download_media(task):
         stop_frame,
         chunk_size,
     ) = task
-    if fom.get_media_type(filepath) == fom.IMAGE:
-        resp = api.get(api.task_data_download_url(task_id, frame_id))
-        img_bytes = resp._content
-        with open(filepath, "wb") as f:
-            f.write(img_bytes)
 
-    else:
-        video_ext = os.path.splitext(filepath)[1]
+    if fom.get_media_type(filepath) == fom.VIDEO:
+        ext = os.path.splitext(filepath)[1]
+        num_chunks = int(np.ceil((stop_frame - start_frame) / chunk_size))
 
-        # Download individual video chunks stored in CVAT
-        with etau.TempDir() as frames_dir:
-            num_chunks = int(np.ceil((stop_frame - start_frame) / chunk_size))
+        # CVAT stores videos in chunks, so we must download them individually
+        # and then concatenate them...
+        with etau.TempDir() as tmp_dir:
             chunk_paths = []
             for chunk_id in range(num_chunks):
                 resp = api.get(
@@ -343,17 +351,14 @@ def _do_download_media(task):
                         task_id, chunk_id, data_type="chunk"
                     )
                 )
-                vid_bytes = resp._content
-                chunk_path = os.path.join(
-                    frames_dir, "%d.%s" % (chunk_id, video_ext)
-                )
-                with open(chunk_path, "wb") as f:
-                    f.write(vid_bytes)
-
+                chunk_path = os.path.join(tmp_dir, "%d.%s" % (chunk_id, ext))
+                etau.write_file(resp._content, chunk_path)
                 chunk_paths.append(chunk_path)
 
-            # Combine chunks into video
-            fouv.merge_videos(chunk_paths, filepath)
+            fouv.concat_videos(chunk_paths, filepath)
+    else:
+        resp = api.get(api.task_data_download_url(task_id, frame_id))
+        etau.write_file(resp._content, filepath)
 
 
 def _download_annotations(
