@@ -491,6 +491,29 @@ class Detection(_HasID, _HasAttributesDict, Label):
 
         return sg.box(x, y, x + w, y + h)
 
+    @classmethod
+    def from_mask(cls, mask, label, **attributes):
+        """Creates a :class:`Detection` instance with its ``mask`` attribute
+        populated from the given full image mask.
+
+        The instance mask for the object is extracted by computing the bounding
+        rectangle of the non-zero values in the image mask.
+
+        Args:
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            **attributes: additional attributes for the :class:`Detection`
+
+        Returns:
+            a :class:`Detection`
+        """
+        if mask.ndim > 2:
+            mask = mask[:, :, 0]
+
+        bbox, mask = _parse_stuff_instance(mask.astype(bool))
+
+        return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
+
 
 class Detections(_HasLabelList, Label):
     """A list of object detections in an image.
@@ -724,6 +747,30 @@ class Polyline(_HasID, _HasAttributesDict, Label):
             return sg.MultiPolygon(list(zip(points, itertools.repeat(None))))
 
         return sg.MultiLineString(points)
+
+    @classmethod
+    def from_mask(cls, mask, label, tolerance=2, **attributes):
+        """Creates a :class:`Polyline` instance with polygons describing the
+        non-zero region(s) of the given full image mask.
+
+        Args:
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polygons for each region. Typical values are 1-3 pixels
+            **attributes: additional attributes for the :class:`Polyline`
+
+        Returns:
+            a :class:`Polyline`
+        """
+        if mask.ndim > 2:
+            mask = mask[:, :, 0]
+
+        points = _get_polygons(mask.astype(bool), tolerance)
+
+        return cls(
+            label=label, points=points, filled=True, closed=True, **attributes
+        )
 
 
 class Polylines(_HasLabelList, Label):

@@ -11,6 +11,8 @@ from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
+import multiprocessing
+import multiprocessing.dummy
 import os
 import warnings
 import webbrowser
@@ -23,6 +25,7 @@ import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -30,12 +33,409 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
+import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
+import fiftyone.utils.video as fouv
 
 
 logger = logging.getLogger(__name__)
+
+
+def import_annotations(
+    sample_collection,
+    project_name=None,
+    project_id=None,
+    task_ids=None,
+    data_path=None,
+    label_types=None,
+    insert_new=True,
+    download_media=False,
+    num_workers=None,
+    occluded_attr=None,
+    backend="cvat",
+    **kwargs,
+):
+    """Imports annotations from the specified CVAT project or task(s) into the
+    given sample collection.
+
+    Provide one of ``project_name``, ``project_id``, or ``task_ids`` to perform
+    an import.
+
+    This method can be configured in any of the following three ways:
+
+    1.  Pass the ``data_path`` argument to define a mapping between media
+        filenames in CVAT and local filepaths to the same media.
+
+    2.  Pass the ``download_media=True`` option to download both the
+        annotations and the media files themselves, which are stored in a
+        directory you specify via the ``data_path`` argument.
+
+    3.  Don't provide ``data_path`` or ``download_media=True``, in which case
+        it is assumed that the CVAT filenames correspond to the base filenames
+        of existing sample filepaths in the provided ``sample_collection``.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        project_name (None): the name of a CVAT project to import
+        project_id (None): the ID of a CVAT project to import
+        task_ids (None): a CVAT task ID or iterable of CVAT task IDs to import
+        data_path (None): a parameter that defines the correspondence between
+            the filenames in CVAT and the filepaths of ``sample_collection``.
+            Can be any of the following:
+
+            -   a directory on disk where the media files reside. In this case,
+                the filenames must match those in CVAT
+            -   a dict mapping CVAT filenames to absolute filepaths to the
+                corresponding media on disk
+            -   the path to a JSON manifest on disk containing a mapping
+                between CVAT filenames and absolute filepaths to the media on
+                disk
+
+            By default, only annotations whose filename matches an existing
+            filepath in ``sample_collection`` will be imported
+        label_types (None): an optional parameter specifying the label types to
+            import. Can be any of the following:
+
+            -   ``None`` (default): all label types will be stored in fields of
+                the same name on ``sample_collection``
+            -   a list of label types to load. In this case, the labels will be
+                stored in fields of the same names in ``sample_collection``
+            -   a dict mapping label types to field names of
+                ``sample_collection`` in which to store the labels
+            -   ``"prompt"``: present an interactive prompt to decide/discard
+                field names in which to store each label type
+        insert_new (True): whether to create new samples for any media for
+            which annotations are found in CVAT but which do not exist in
+            ``sample_collection``
+        download_media (False): whether to download the images or videos found
+            in CVAT to the directory or filepaths in ``data_path`` if not
+            already present
+        num_workers (None): the number of processes to use when downloading
+            media. By default, ``multiprocessing.cpu_count()`` is used
+        occluded_attr (None): an optional attribute name in which to store the
+            occlusion information for all spatial labels
+        backend ("cvat"): the name of the CVAT backend to use
+        **kwargs: CVAT authentication credentials to pass to
+            :class:`CVATBackendConfig`
+    """
+    if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
+        raise ValueError(
+            "Exactly one of 'project_name', 'project_id', or 'task_ids' must "
+            "be provided"
+        )
+
+    config = foua._parse_config(
+        backend, None, occluded_attr=occluded_attr, **kwargs
+    )
+    anno_backend = config.build()
+    api = anno_backend.connect_to_api()
+
+    if project_name is not None:
+        project_id = api.get_project_id(project_name)
+
+    if project_id is not None:
+        task_ids = api.get_project_tasks(project_id)
+
+    if etau.is_str(task_ids):
+        task_ids = [task_ids]
+    else:
+        task_ids = list(task_ids)
+
+    # Build mapping from CVAT filenames to local filepaths
+    data_dir = None
+    existing_filepaths = sample_collection.values("filepath")
+    if data_path is None:
+        data_map = {os.path.basename(f): f for f in existing_filepaths}
+    elif etau.is_str(data_path) and data_path.endswith(".json"):
+        data_map = etas.read_json(data_path)
+    elif etau.is_str(data_path):
+        if os.path.isdir(data_path):
+            data_map = {
+                os.path.basename(f): f
+                for f in etau.list_files(
+                    data_path, abs_paths=True, recursive=True
+                )
+            }
+        else:
+            data_map = {}
+
+        data_dir = data_path
+    else:
+        data_map = data_path
+
+    # Determine what filepaths we have annotations for
+    cvat_id_map = {}
+    task_filepaths = []
+    ignored_filenames = []
+    download_tasks = []
+    for task_id in task_ids:
+        cvat_id_map[task_id] = _parse_task_metadata(
+            api,
+            task_id,
+            data_map,
+            task_filepaths,
+            ignored_filenames,
+            download_tasks,
+            data_dir=data_dir,
+            download_media=download_media,
+        )
+
+    # Download media from CVAT, if requested
+    if download_tasks:
+        _download_media(download_tasks, num_workers)
+
+    if ignored_filenames:
+        logger.warning(
+            "Ignoring annotations for %d files in CVAT (eg %s) that do not "
+            "appear in the provided data map",
+            len(ignored_filenames),
+            ignored_filenames[0],
+        )
+
+    if not task_filepaths:
+        logger.warning("No applicable annotations found to download")
+        return
+
+    dataset = sample_collection._dataset
+
+    new_filepaths = set(task_filepaths) - set(existing_filepaths)
+
+    # Insert samples for new filepaths, if necessary and we're allowed to
+    if new_filepaths:
+        if insert_new:
+            dataset.add_samples(
+                [fos.Sample(filepath=fp) for fp in new_filepaths]
+            )
+        else:
+            logger.warning(
+                "Ignoring annotations for %d filepaths (eg %s) that do not "
+                "appear in the input collection",
+                len(new_filepaths),
+                new_filepaths[0],
+            )
+
+    if dataset.media_type == fom.VIDEO:
+        # The download implementation requires IDs for all possible frames
+        dataset.select_by("filepath", task_filepaths).ensure_frames()
+
+    anno_key = "tmp_" + str(ObjectId())
+    anno_backend.register_run(dataset, anno_key, overwrite=False)
+
+    # Download annotations
+    try:
+        if project_id is not None:
+            # CVAT projects share a label schema, so we can download all tasks
+            # in one batch
+            label_schema = api._get_label_schema(
+                project_id=project_id, occluded_attr=occluded_attr
+            )
+
+            _download_annotations(
+                dataset,
+                task_ids,
+                cvat_id_map,
+                label_schema,
+                label_types,
+                anno_backend,
+                anno_key,
+                **kwargs,
+            )
+        else:
+            # Each task may have a different label schema, so we must download
+            # each task separately
+            for task_id in task_ids:
+                label_schema = api._get_label_schema(
+                    task_id=task_id, occluded_attr=occluded_attr
+                )
+
+                _download_annotations(
+                    dataset,
+                    [task_id],
+                    cvat_id_map,
+                    label_schema,
+                    label_types,
+                    anno_backend,
+                    anno_key,
+                    **kwargs,
+                )
+    finally:
+        anno_backend.delete_run(dataset, anno_key)
+
+
+def _parse_task_metadata(
+    api,
+    task_id,
+    data_map,
+    task_filepaths,
+    ignored_filenames,
+    download_tasks,
+    data_dir=None,
+    download_media=False,
+):
+    resp = api.get(api.task_data_meta_url(task_id)).json()
+    start_frame = resp.get("start_frame", None)
+    stop_frame = resp.get("stop_frame", None)
+    chunk_size = resp.get("chunk_size", None)
+
+    cvat_id_map = {}
+    for frame_id, frame in enumerate(resp["frames"]):
+        filename = frame["name"]
+        filepath = data_map.get(filename, None)
+        if download_media:
+            if filepath is None and data_dir:
+                filepath = os.path.join(data_dir, filename)
+
+            if filepath and not os.path.exists(filepath):
+                download_tasks.append(
+                    (
+                        api,
+                        task_id,
+                        frame_id,
+                        filepath,
+                        start_frame,
+                        stop_frame,
+                        chunk_size,
+                    )
+                )
+
+        if filepath is not None:
+            cvat_id_map[filepath] = frame_id
+            task_filepaths.append(filepath)
+        else:
+            ignored_filenames.append(filename)
+
+    return cvat_id_map
+
+
+def _download_media(tasks, num_workers):
+    if num_workers is None or num_workers < 1:
+        num_workers = multiprocessing.cpu_count()
+
+    logger.info("Downloading media...")
+    if num_workers == 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                _do_download_media(task)
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                for _ in pb(pool.imap_unordered(_do_download_media, tasks)):
+                    pass
+
+
+def _do_download_media(task):
+    (
+        api,
+        task_id,
+        frame_id,
+        filepath,
+        start_frame,
+        stop_frame,
+        chunk_size,
+    ) = task
+
+    if fom.get_media_type(filepath) == fom.VIDEO:
+        ext = os.path.splitext(filepath)[1]
+        num_chunks = int(np.ceil((stop_frame - start_frame) / chunk_size))
+
+        # CVAT stores videos in chunks, so we must download them individually
+        # and then concatenate them...
+        with etau.TempDir() as tmp_dir:
+            chunk_paths = []
+            for chunk_id in range(num_chunks):
+                resp = api.get(
+                    api.task_data_download_url(
+                        task_id, chunk_id, data_type="chunk"
+                    )
+                )
+                chunk_path = os.path.join(tmp_dir, "%d.%s" % (chunk_id, ext))
+                etau.write_file(resp._content, chunk_path)
+                chunk_paths.append(chunk_path)
+
+            fouv.concat_videos(chunk_paths, filepath)
+    else:
+        resp = api.get(api.task_data_download_url(task_id, frame_id))
+        etau.write_file(resp._content, filepath)
+
+
+def _download_annotations(
+    dataset,
+    task_ids,
+    cvat_id_map,
+    label_schema,
+    label_types,
+    anno_backend,
+    anno_key,
+    **kwargs,
+):
+    config = anno_backend.config
+    config.label_schema = label_schema
+    anno_backend.update_run_config(dataset, anno_key, config)
+
+    id_map = {}
+    server_id_map = {}
+    project_ids = []
+    job_ids = []
+    frame_id_map = {
+        task_id: _build_sparse_frame_id_map(dataset, cvat_id_map[task_id])
+        for task_id in task_ids
+    }
+    labels_task_map = {None: task_ids}
+
+    results = CVATAnnotationResults(
+        dataset,
+        config,
+        id_map,
+        server_id_map,
+        project_ids,
+        task_ids,
+        job_ids,
+        frame_id_map,
+        labels_task_map,
+        backend=anno_backend,
+    )
+    anno_backend.save_run_results(dataset, anno_key, results)
+
+    if label_types is None:
+        unexpected = "keep"
+    else:
+        unexpected = label_types
+
+    dataset.load_annotations(
+        anno_key, unexpected=unexpected, cleanup=False, **kwargs
+    )
+
+
+def _build_sparse_frame_id_map(dataset, cvat_id_map):
+    task_filepaths = list(cvat_id_map.keys())
+    samples = dataset.select_by("filepath", task_filepaths)
+
+    frame_id_map = {}
+
+    if samples.media_type == fom.VIDEO:
+        # Video tasks have exactly one video, and we download labels for all
+        # of its frames
+        frame_id = -1
+        sample_ids, frame_ids = samples.values(["id", "frames.id"])
+        for sample_id, _frame_ids in zip(sample_ids, frame_ids):
+            for _frame_id in _frame_ids:
+                frame_id += 1
+                frame_id_map[frame_id] = {
+                    "sample_id": sample_id,
+                    "frame_id": _frame_id,
+                }
+    else:
+        # For image tasks, only allow downloads for filepaths in `cvat_id_map`
+        sample_ids, filepaths = samples.values(["id", "filepath"])
+        for sample_id, filepath in zip(sample_ids, filepaths):
+            frame_id = cvat_id_map.get(filepath, None)
+            if frame_id is not None:
+                frame_id_map[frame_id] = {"sample_id": sample_id}
+
+    return frame_id_map
 
 
 class CVATImageDatasetImporter(
@@ -2986,6 +3386,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
 
+    def task_data_download_url(
+        self, task_id, frame_id, data_type="frame", quality="original"
+    ):
+        return "%s/data?type=%s&quality=%s&number=%d" % (
+            self.task_url(task_id),
+            data_type,
+            quality,
+            frame_id,
+        )
+
     def task_data_meta_url(self, task_id):
         return "%s/data/meta" % self.task_url(task_id)
 
@@ -3138,11 +3548,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the user ID, or None if the user was not found
         """
         user_id = self._get_value_update_map(
-            username,
-            self._user_id_map,
-            "username",
-            self.user_search_url,
-            "User",
+            username, self._user_id_map, "username", self.user_search_url,
         )
 
         if username is not None and user_id is None:
@@ -3165,7 +3571,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._project_id_map,
             "name",
             self.project_search_url,
-            "Project",
         )
 
     def get_project_name(self, project_id):
@@ -3270,6 +3675,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         with fou.ProgressBar() as pb:
             for project_id in pb(list(project_ids)):
                 self.delete_project(project_id)
+
+    def get_project_tasks(self, project_id):
+        """Returns the IDs of the tasks in the given project.
+
+        Args:
+            project_id: a project ID
+
+        Returns:
+            the list of task IDs
+        """
+        resp = self.get(self.project_url(project_id)).json()
+        return [task["id"] for task in resp.get("tasks", [])]
 
     def create_task(
         self,
@@ -3441,12 +3858,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data["chunk_size"] = chunk_size
 
         files = {}
-        for idx, path in enumerate(paths):
-            # IMPORTANT: CVAT organizes media within a task alphabetically by
-            # filename, so we must give CVAT filenames whose alphabetical order
-            # matches the order of `paths`
-            filename = "%06d_%s" % (idx, os.path.basename(path))
-            files["client_files[%d]" % idx] = (filename, open(path, "rb"))
+
+        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
+            # Video task
+            filename = os.path.basename(paths[0])
+            files["client_files[0]"] = (filename, open(paths[0], "rb"))
+        else:
+            # Image task
+            for idx, path in enumerate(paths):
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must give CVAT filenames whose
+                # alphabetical order matches the order of `paths`
+                filename = "%06d_%s" % (idx, os.path.basename(path))
+                files["client_files[%d]" % idx] = (filename, open(path, "rb"))
 
         self.post(self.task_data_url(task_id), data=data, files=files)
 
@@ -3513,9 +3937,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = {}
         labels_task_map = {}
 
-        num_samples = len(samples)
-        batch_size = self._get_batch_size(samples, task_size)
-
         (
             cvat_schema,
             assign_scalar_attrs,
@@ -3529,6 +3950,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # we need to store the updated one
         if project_id is not None or occluded_attr is not None:
             config.label_schema = label_schema
+
+        num_samples = len(samples)
+        batch_size = self._get_batch_size(samples, task_size)
+
+        samples.compute_metadata()
+
+        if samples.media_type == fom.VIDEO:
+            # The current implementation requires frame IDs for all frames that
+            # might get labels
+            samples.ensure_frames()
 
         for idx, offset in enumerate(range(0, num_samples, batch_size)):
             samples_batch = samples[offset : (offset + batch_size)]
@@ -3576,10 +4007,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 project_id = self.create_project(project_name, cvat_schema)
                 project_ids.append(project_id)
 
-            task_name = (
-                "FiftyOne_%s"
-                % samples_batch._root_dataset.name.replace(" ", "_")
-            )
+            _dataset_name = samples_batch._dataset.name.replace(" ", "_")
+            task_name = "FiftyOne_%s" % _dataset_name
+
             task_id, class_id_map, attr_id_map = self._create_task_upload_data(
                 config,
                 idx,
@@ -3839,9 +4269,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return None
 
-    def _get_value_update_map(
-        self, name, id_map, result_name, search_url_fcn, name_type
-    ):
+    def _get_value_update_map(self, name, id_map, result_name, search_url_fcn):
         if name is None:
             return None
 
@@ -3861,7 +4289,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if not self.project_exists(project_id):
             raise ValueError("Project '%s' not found" % project_id)
 
-        return self.get(self.project_url(project_id)).json()["labels"]
+        resp = self.get(self.project_url(project_id)).json()
+        return resp["labels"]
+
+    def _get_task_labels(self, task_id):
+        resp = self.get(self.task_url(task_id)).json()
+        if "labels" not in resp:
+            raise ValueError("Task '%s' not found" % task_id)
+
+        return resp["labels"]
 
     def _parse_project_details(self, project_name, project_id):
         if project_id is not None:
@@ -3874,12 +4310,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return project_name, project_id
 
+    def _get_label_schema(
+        self, project_id=None, task_id=None, occluded_attr=None
+    ):
+        label_schema = {None: {"type": "tmp"}}
+        self._convert_cvat_schema(
+            label_schema,
+            project_id=project_id,
+            task_id=task_id,
+            occluded_attr=occluded_attr,
+        )
+        label_schema[None].pop("type")
+        return label_schema
+
     def _get_cvat_schema(
         self, label_schema, project_id=None, occluded_attr=None
     ):
         if project_id is not None:
             return self._convert_cvat_schema(
-                label_schema, project_id, occluded_attr=occluded_attr
+                label_schema,
+                project_id=project_id,
+                occluded_attr=occluded_attr,
             )
 
         return self._build_cvat_schema(
@@ -3887,9 +4338,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def _convert_cvat_schema(
-        self, label_schema, project_id, occluded_attr=None
+        self,
+        label_schema,
+        project_id=None,
+        task_id=None,
+        occluded_attr=None,
+        update_server=True,
     ):
-        labels = self._get_project_labels(project_id)
+        if project_id is None and task_id is None:
+            raise ValueError(
+                "Either `project_id` or `task_id` must be provided"
+            )
+
+        if project_id is not None:
+            labels = self._get_project_labels(project_id)
+        else:
+            labels = self._get_task_labels(task_id)
 
         cvat_schema = {}
         labels_to_update = []
@@ -3952,7 +4416,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     c: occluded_attr for c in class_names.keys()
                 }
 
-        if labels_to_update:
+        if project_id is not None and labels_to_update and update_server:
             self._add_project_label_ids(project_id, list(labels_to_update))
 
         return (
@@ -3960,6 +4424,135 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             assign_scalar_attrs,
             occluded_attrs,
             label_field_classes,
+        )
+
+    def _build_cvat_schema(self, label_schema, occluded_attr=None):
+        cvat_schema = {}
+        assign_scalar_attrs = {}
+        occluded_attrs = defaultdict(dict)
+        label_field_classes = defaultdict(dict)
+
+        _class_label_fields = {}
+        _duplicate_classes = set()
+        _prev_field_classes = set()
+
+        for label_field, label_info in label_schema.items():
+            _field_classes = set()
+            label_type = label_info.get("type", None)
+            is_existing_field = label_info.get("existing_field", False)
+            classes = label_info["classes"]
+            attributes, occluded_attr_name = self._to_cvat_attributes(
+                label_info["attributes"]
+            )
+            if occluded_attr_name is None and occluded_attr is not None:
+                occluded_attr_name = occluded_attr
+                label_schema[label_field]["attributes"][occluded_attr] = {}
+
+            # Must track label IDs for existing label fields
+            if is_existing_field and label_type != "scalar":
+                if "label_id" in attributes:
+                    raise ValueError(
+                        "Label field '%s' attribute schema cannot use "
+                        "reserved name 'label_id'" % label_field
+                    )
+
+                attributes["label_id"] = {
+                    "name": "label_id",
+                    "input_type": "text",
+                    "mutable": True,
+                }
+
+            if label_type == "scalar":
+                # True: scalars are annotated as tag attributes
+                # False: scalars are annotated as tag labels
+                assign_scalar_attrs[label_field] = not bool(classes)
+            else:
+                assign_scalar_attrs[label_field] = None
+
+            if not classes:
+                classes = [label_field]
+
+                if not attributes:
+                    attributes["value"] = {
+                        "name": "value",
+                        "input_type": "text",
+                        "mutable": True,
+                    }
+
+            # Handle class name clashes and global attributes
+            for _class in classes:
+                if etau.is_str(_class):
+                    _classes = [_class]
+                else:
+                    _classes = _class["classes"]
+
+                for name in _classes:
+                    # If two label fields share a class name, we must append
+                    # `label_field` to all instances of `name` to disambiguate
+                    if (
+                        name in _prev_field_classes
+                        and name not in _duplicate_classes
+                    ):
+                        _duplicate_classes.add(name)
+
+                        prev_field = _class_label_fields[name]
+
+                        new_name = "%s_%s" % (name, prev_field)
+                        cvat_schema[new_name] = cvat_schema.pop(name)
+
+                        label_field_classes[prev_field][name] = new_name
+
+                        if name in occluded_attrs[label_field]:
+                            attr_name = occluded_attrs[label_field].pop(name)
+                            occluded_attrs[label_field][new_name] = attr_name
+
+                    _field_classes.add(name)
+
+                    if name in _duplicate_classes:
+                        new_name = "%s_%s" % (name, label_field)
+                        label_field_classes[label_field][name] = new_name
+                        name = new_name
+                    else:
+                        _class_label_fields[name] = label_field
+                        label_field_classes[label_field][name] = name
+
+                    cvat_schema[name] = deepcopy(attributes)
+                    if occluded_attr_name is not None:
+                        occluded_attrs[label_field][name] = occluded_attr_name
+
+            _prev_field_classes |= _field_classes
+
+            # Class-specific attributes
+            for _class in classes:
+                if etau.is_str(_class):
+                    continue
+
+                _classes = _class["classes"]
+                _attrs, _occluded_attr_name = self._to_cvat_attributes(
+                    _class["attributes"]
+                )
+                if _occluded_attr_name is None and occluded_attr is not None:
+                    _occluded_attr_name = occluded_attr
+
+                if "label_id" in _attrs:
+                    raise ValueError(
+                        "Label field '%s' attribute schema cannot use "
+                        "reserved name 'label_id'" % label_field
+                    )
+
+                for name in _classes:
+                    if name in _duplicate_classes:
+                        name = "%s_%s" % (name, label_field)
+
+                    cvat_schema[name].update(_attrs)
+                    if _occluded_attr_name is not None:
+                        occluded_attrs[label_field][name] = _occluded_attr_name
+
+        return (
+            cvat_schema,
+            assign_scalar_attrs,
+            dict(occluded_attrs),
+            dict(label_field_classes),
         )
 
     def _add_project_label_ids(self, project_id, labels):
@@ -3996,13 +4589,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 )
 
     def _get_batch_size(self, samples, task_size):
-        samples.compute_metadata()
-
         if samples.media_type == fom.VIDEO:
-            # The current implementation (both upload and download) requires
-            # frame IDs for all frames that might get labels
-            samples.ensure_frames()
-
             # CVAT only allows for one video per task
             return 1
 
@@ -4379,7 +4966,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # For non-outside tracked objects, the last track goes to the end of
         # the video, so fill remaining frames with copies of the last instance
         if prev_frame is not None and not prev_outside:
-            for frame in range(prev_frame + 1, len(frame_id_map)):
+            for frame in range(prev_frame + 1, max(frame_id_map) + 1):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
                 anno["keyframe"] = False
@@ -4425,13 +5012,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         occluded_attrs=None,
     ):
         frame = anno["frame"]
-        if len(frames) > frame:
-            metadata = frames[frame]
-        else:
-            metadata = frames[0]
 
         if frame not in frame_id_map:
             return prev_type
+
+        try:
+            metadata = frames[frame]
+        except IndexError:
+            metadata = frames[0]
 
         frame_data = frame_id_map[frame]
         sample_id = frame_data["sample_id"]
@@ -4634,135 +5222,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return arg
 
-    def _build_cvat_schema(self, label_schema, occluded_attr=None):
-        cvat_schema = {}
-        assign_scalar_attrs = {}
-        occluded_attrs = defaultdict(dict)
-        label_field_classes = defaultdict(dict)
-
-        _class_label_fields = {}
-        _duplicate_classes = set()
-        _prev_field_classes = set()
-
-        for label_field, label_info in label_schema.items():
-            _field_classes = set()
-            label_type = label_info["type"]
-            is_existing_field = label_info["existing_field"]
-            classes = label_info["classes"]
-            attributes, occluded_attr_name = self._to_cvat_attributes(
-                label_info["attributes"]
-            )
-            if occluded_attr_name is None and occluded_attr is not None:
-                occluded_attr_name = occluded_attr
-                label_schema[label_field]["attributes"][occluded_attr] = {}
-
-            # Must track label IDs for existing label fields
-            if is_existing_field and label_type != "scalar":
-                if "label_id" in attributes:
-                    raise ValueError(
-                        "Label field '%s' attribute schema cannot use "
-                        "reserved name 'label_id'" % label_field
-                    )
-
-                attributes["label_id"] = {
-                    "name": "label_id",
-                    "input_type": "text",
-                    "mutable": True,
-                }
-
-            if label_type == "scalar":
-                # True: scalars are annotated as tag attributes
-                # False: scalars are annotated as tag labels
-                assign_scalar_attrs[label_field] = not bool(classes)
-            else:
-                assign_scalar_attrs[label_field] = None
-
-            if not classes:
-                classes = [label_field]
-
-                if not attributes:
-                    attributes["value"] = {
-                        "name": "value",
-                        "input_type": "text",
-                        "mutable": True,
-                    }
-
-            # Handle class name clashes and global attributes
-            for _class in classes:
-                if etau.is_str(_class):
-                    _classes = [_class]
-                else:
-                    _classes = _class["classes"]
-
-                for name in _classes:
-                    # If two label fields share a class name, we must append
-                    # `label_field` to all instances of `name` to disambiguate
-                    if (
-                        name in _prev_field_classes
-                        and name not in _duplicate_classes
-                    ):
-                        _duplicate_classes.add(name)
-
-                        prev_field = _class_label_fields[name]
-
-                        new_name = "%s_%s" % (name, prev_field)
-                        cvat_schema[new_name] = cvat_schema.pop(name)
-
-                        label_field_classes[prev_field][name] = new_name
-
-                        if name in occluded_attrs[label_field]:
-                            attr_name = occluded_attrs[label_field].pop(name)
-                            occluded_attrs[label_field][new_name] = attr_name
-
-                    _field_classes.add(name)
-
-                    if name in _duplicate_classes:
-                        new_name = "%s_%s" % (name, label_field)
-                        label_field_classes[label_field][name] = new_name
-                        name = new_name
-                    else:
-                        _class_label_fields[name] = label_field
-                        label_field_classes[label_field][name] = name
-
-                    cvat_schema[name] = deepcopy(attributes)
-                    if occluded_attr_name is not None:
-                        occluded_attrs[label_field][name] = occluded_attr_name
-
-            _prev_field_classes |= _field_classes
-
-            # Class-specific attributes
-            for _class in classes:
-                if etau.is_str(_class):
-                    continue
-
-                _classes = _class["classes"]
-                _attrs, _occluded_attr_name = self._to_cvat_attributes(
-                    _class["attributes"]
-                )
-                if _occluded_attr_name is None and occluded_attr is not None:
-                    _occluded_attr_name = occluded_attr
-
-                if "label_id" in _attrs:
-                    raise ValueError(
-                        "Label field '%s' attribute schema cannot use "
-                        "reserved name 'label_id'" % label_field
-                    )
-
-                for name in _classes:
-                    if name in _duplicate_classes:
-                        name = "%s_%s" % (name, label_field)
-
-                    cvat_schema[name].update(_attrs)
-                    if _occluded_attr_name is not None:
-                        occluded_attrs[label_field][name] = _occluded_attr_name
-
-        return (
-            cvat_schema,
-            assign_scalar_attrs,
-            dict(occluded_attrs),
-            dict(label_field_classes),
-        )
-
     def _to_cvat_attributes(self, attributes):
         cvat_attrs = {}
         occluded_attr_name = None
@@ -4816,6 +5275,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         remapped_attrs = {}
 
         is_video = samples.media_type == fom.VIDEO
+        samples = samples.select_fields(label_field)
 
         if is_video:
             field, _ = samples._handle_frame_field(label_field)
@@ -5470,21 +5930,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return track
 
     def _build_frame_id_map(self, samples):
-        is_video = samples.media_type == fom.VIDEO
+        frame_id_map = {}
         frame_id = -1
 
-        frame_id_map = {}
-        for sample in samples:
-            if is_video:
-                images = sample.frames.values()
-            else:
-                images = [sample]
-
-            for image in images:
+        if samples.media_type == fom.VIDEO:
+            sample_ids, frame_ids = samples.values(["id", "frames.id"])
+            for _sample_id, _frame_ids in zip(sample_ids, frame_ids):
+                for _frame_id in _frame_ids:
+                    frame_id += 1
+                    frame_id_map[frame_id] = {
+                        "sample_id": _sample_id,
+                        "frame_id": _frame_id,
+                    }
+        else:
+            sample_ids = samples.values("id")
+            for _sample_id in sample_ids:
                 frame_id += 1
-                frame_id_map[frame_id] = {"sample_id": sample.id}
-                if is_video:
-                    frame_id_map[frame_id]["frame_id"] = image.id
+                frame_id_map[frame_id] = {"sample_id": _sample_id}
 
         return frame_id_map
 
