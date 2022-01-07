@@ -10,8 +10,12 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   LABELS,
+  LABELS_PATH,
+  LABEL_LISTS,
+  LABEL_LISTS_MAP,
   LIST_FIELD,
   Schema,
+  withPath,
 } from "@fiftyone/utilities";
 
 import {
@@ -1357,6 +1361,31 @@ const toggleZoom = <State extends FrameState | ImageState | VideoState>(
   state.zoomToContent = false;
 };
 
+const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
+const LABELS_SET = new Set(LABELS);
+
+const mapFields = (value, schema: Schema, ftype: string) => {
+  if ([DATE_TIME_FIELD, DATE_FIELD].includes(ftype)) {
+    return new Date(value.datetime);
+  }
+
+  if (typeof value !== "object") {
+    return value;
+  }
+
+  const result = {};
+  for (let fieldName in schema) {
+    const { embeddedDocType, dbField, subfield, ftype } = schema[fieldName];
+    const key = dbField || fieldName;
+
+    if (value[key] === undefined) continue;
+
+    if (ftype === LIST_FIELD) {
+      result[fieldName] = value[key].map();
+    }
+  }
+};
+
 const f = <T extends {}>({
   schema,
   filter,
@@ -1375,31 +1404,27 @@ const f = <T extends {}>({
     const { embeddedDocType, dbField, subfield, ftype } = schema[fieldName];
     const key = dbField || fieldName;
 
-    if (LABELS.includes(embeddedDocType)) {
-    } else {
-    }
-
-    result[fieldName] = value[key];
-
     const path = [...keys, fieldName].join(".");
 
-    if (!filter(path, value)) continue;
+    if (LABELS_SET.has(embeddedDocType)) {
+      if (LABEL_LISTS_PATH.has(embeddedDocType)) {
+      } else {
+        if (!filter(path, value)) continue;
+      }
+    } else {
+      result[fieldName] = value[key];
+    }
 
     result[fieldName] = value[fieldName];
 
     if (result[fieldName] === undefined) continue;
-
-    if ([DATE_TIME_FIELD, DATE_FIELD].includes(ftype)) {
-      value[fieldName] = new Date(value[fieldName].datetime);
-      continue;
-    }
 
     if (
       ftype === LIST_FIELD &&
       [DATE_TIME_FIELD, DATE_FIELD].includes(subfield) &&
       value[fieldName]
     ) {
-      value[fieldName] = value[fieldName].map((v) => new Date(v.datetime));
+      result[fieldName] = result[fieldName].map((v) => new Date(v.datetime));
       continue;
     }
   }
