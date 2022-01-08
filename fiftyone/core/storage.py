@@ -15,8 +15,10 @@ import posixpath
 import re
 import six
 import shutil
+import tempfile
 import urllib.parse as urlparse
 
+import bson
 import ndjson
 from wcmatch import glob
 import yaml
@@ -358,10 +360,10 @@ def make_temp_dir(basedir=None):
     fs = get_file_system(basedir)
 
     if fs == FileSystem.LOCAL:
-        return etau.make_temp_dir(basedir=basedir)
+        ensure_dir(basedir)
+        return tempfile.mkdtemp(dir=basedir)
 
-    client = get_client(fs)
-    raise NotImplementedError()
+    return join(basedir, str(bson.ObjectId()))
 
 
 class TempDir(object):
