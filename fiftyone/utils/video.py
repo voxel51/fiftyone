@@ -6,6 +6,7 @@ Video utilities.
 |
 """
 import itertools
+import logging
 import os
 
 import eta.core.frameutils as etaf
@@ -14,10 +15,14 @@ import eta.core.numutils as etan
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.cache as foc
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+
+
+logger = logging.getLogger(__name__)
 
 
 def extract_clip(
@@ -87,6 +92,7 @@ def reencode_videos(
     sample_collection,
     force_reencode=True,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
     **kwargs
 ):
@@ -115,6 +121,8 @@ def reencode_videos(
             MP4s
         delete_originals (False): whether to delete the original videos after
             re-encoding
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
@@ -126,6 +134,7 @@ def reencode_videos(
         reencode=True,
         force_reencode=force_reencode,
         delete_originals=delete_originals,
+        skip_failures=skip_failures,
         verbose=verbose,
         **kwargs
     )
@@ -142,6 +151,7 @@ def transform_videos(
     reencode=False,
     force_reencode=False,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
     **kwargs
 ):
@@ -183,6 +193,8 @@ def transform_videos(
             already satisfy the specified values
         delete_originals (False): whether to delete the original videos after
             re-encoding
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a video cannot be transformed
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
@@ -200,6 +212,7 @@ def transform_videos(
         reencode=reencode,
         force_reencode=force_reencode,
         delete_originals=delete_originals,
+        skip_failures=skip_failures,
         verbose=verbose,
         **kwargs
     )
@@ -217,6 +230,7 @@ def sample_videos(
     original_frame_numbers=True,
     force_sample=False,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
     **kwargs
 ):
@@ -274,6 +288,8 @@ def sample_videos(
             already exist
         delete_originals (False): whether to delete the original videos after
             sampling
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a video cannot be sampled
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
@@ -293,6 +309,7 @@ def sample_videos(
         frames_patt=frames_patt,
         force_reencode=force_sample,
         delete_originals=delete_originals,
+        skip_failures=skip_failures,
         verbose=verbose,
         **kwargs
     )
@@ -536,6 +553,7 @@ def _transform_videos(
     reencode=False,
     force_reencode=False,
     delete_originals=False,
+    skip_failures=False,
     verbose=False,
     **kwargs
 ):
@@ -547,6 +565,7 @@ def _transform_videos(
             )
 
     view = sample_collection.select_fields()
+    stale_paths = []
 
     if frames is None:
         frames = itertools.repeat(None)
@@ -572,7 +591,7 @@ def _transform_videos(
             else:
                 outpath = inpath
 
-            _transform_video(
+            did_transform = _transform_video(
                 inpath,
                 outpath,
                 frames=_frames,
@@ -586,13 +605,22 @@ def _transform_videos(
                 reencode=reencode,
                 force_reencode=force_reencode,
                 delete_original=delete_originals,
+                skip_failures=skip_failures,
                 verbose=verbose,
                 **kwargs
             )
 
-            if not sample_frames:
-                sample.filepath = outpath
-                sample.save()
+            if outpath != inpath:
+                if not sample_frames:
+                    sample.filepath = outpath
+                    sample.save()
+
+                if delete_originals:
+                    stale_paths.append(inpath)
+            elif did_transform:
+                stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _transform_video(
@@ -610,6 +638,7 @@ def _transform_video(
     reencode=False,
     force_reencode=False,
     delete_original=False,
+    skip_failures=False,
     verbose=False,
     **kwargs
 ):
@@ -629,72 +658,90 @@ def _transform_video(
         min_fps = None
         max_fps = None
 
-    if (
-        fps is not None
-        or min_fps is not None
-        or max_fps is not None
-        or size is not None
-        or min_size is not None
-        or max_size is not None
-    ):
-        fps, size, _frames = _parse_parameters(
-            inpath,
-            fps,
-            min_fps,
-            max_fps,
-            size,
-            min_size,
-            max_size,
-            sample_frames,
-            original_frame_numbers,
+    did_transform = False
+
+    try:
+        if (
+            fps is not None
+            or min_fps is not None
+            or max_fps is not None
+            or size is not None
+            or min_size is not None
+            or max_size is not None
+        ):
+            fps, size, _frames = _parse_parameters(
+                inpath,
+                fps,
+                min_fps,
+                max_fps,
+                size,
+                min_size,
+                max_size,
+                sample_frames,
+                original_frame_numbers,
+            )
+
+            if frames is None:
+                frames = _frames
+
+        if reencode:
+            # Use default reencoding parameters from ``eta.core.video.FFmpeg``
+            kwargs["in_opts"] = None
+            kwargs["out_opts"] = None
+        else:
+            # No reencoding parameters
+            if "in_opts" not in kwargs:
+                kwargs["in_opts"] = []
+
+            if "out_opts" not in kwargs:
+                kwargs["out_opts"] = []
+
+        should_reencode = (
+            force_reencode
+            or fps is not None
+            or size is not None
+            or in_ext.lower() != out_ext.lower()
         )
 
-        if frames is None:
-            frames = _frames
+        if (inpath == outpath) and should_reencode:
+            _inpath = inpath
+            root, ext = os.path.splitext(inpath)
+            inpath = root + "-original" + ext
+            fos.move_file(_inpath, inpath)
 
-    if reencode:
-        # Use default reencoding parameters from ``eta.core.video.FFmpeg``
-        kwargs["in_opts"] = None
-        kwargs["out_opts"] = None
-    else:
-        # No reencoding parameters
-        if "in_opts" not in kwargs:
-            kwargs["in_opts"] = []
+        diff_path = inpath != outpath
 
-        if "out_opts" not in kwargs:
-            kwargs["out_opts"] = []
+        if frames is not None:
+            inpath = fos.to_readable(inpath)
+            with fos.LocalDir(outpath, "w", quiet=True) as local_path:
+                etav.sample_select_frames(
+                    inpath,
+                    frames,
+                    output_patt=local_path,
+                    size=size,
+                    fast=True,
+                )
 
-    should_reencode = (
-        force_reencode
-        or fps is not None
-        or size is not None
-        or in_ext.lower() != out_ext.lower()
-    )
+            did_transform = True
+        elif should_reencode:
+            inpath = fos.to_readable(inpath)
+            outpath = fos.to_writeable(outpath)
+            with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                ffmpeg.run(inpath, outpath, verbose=verbose)
 
-    if (inpath == outpath) and should_reencode:
-        _inpath = inpath
-        root, ext = os.path.splitext(inpath)
-        inpath = root + "-original" + ext
-        fos.move_file(_inpath, inpath)
+            did_transform = True
+        elif diff_path:
+            fos.copy_file(inpath, outpath)
 
-    diff_path = inpath != outpath
+        if delete_original and diff_path:
+            fos.delete_file(inpath)
+    except Exception as e:
+        if not skip_failures:
+            raise
 
-    if frames is not None:
-        inpath = fos.to_readable(inpath)
-        with fos.LocalDir(outpath, "w", quiet=True) as local_path:
-            etav.sample_select_frames(
-                inpath, frames, output_patt=local_path, size=size, fast=True,
-            )
-    elif should_reencode:
-        inpath = fos.to_readable(inpath)
-        outpath = fos.to_writeable(outpath)
-        with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
-            ffmpeg.run(inpath, outpath, verbose=verbose)
-    elif diff_path:
-        fos.copy_file(inpath, outpath)
+        logger.warning(e)
 
-    if delete_original and diff_path:
-        fos.delete_file(inpath)
+    return did_transform
 
 
 def _parse_parameters(
