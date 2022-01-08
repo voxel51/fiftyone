@@ -372,17 +372,19 @@ for task in tasks:
 Cloud-friendly:
 
 ```py
+import fiftyone.core.storage as fos
+
 # If `any_inpaths` contains any cloud paths, they will be downloaded to a
 # temporary local directory (using a thread pool) when the context enters and
 # `local_inpaths` will contain those local paths instead
-with LocalFiles(any_inpaths, "r") as local_inpaths:
+with fos.LocalFiles(any_inpaths, "r") as local_inpaths:
     for local_inpath in local_inpaths:
         f(local_inpath)
 
 # If `any_outpaths` contains any cloud paths, they will be replaced with
 # temporary local paths in `local_outpaths`. When the context exits, these
 # local paths will be uploaded (using a thread pool) to the cloud destinations
-with LocalFiles(any_outpaths, "w") as local_outpaths:
+with fos.LocalFiles(any_outpaths, "w") as local_outpaths:
     for local_inpath in local_inpaths:
         g(local_inpath)
 
@@ -390,7 +392,7 @@ with LocalFiles(any_outpaths, "w") as local_outpaths:
 # to temporary local paths JIT via `get_local_path()`. As in the previous
 # example, any local files are uploaded (using a thread pool) to their cloud
 # destinations when the context exits
-with FileWriter() as writer:
+with fos.FileWriter() as writer:
     for any_inpath in any_inpaths:
         any_outpath = h(any_inpath)
         local_outpath = writer.get_local_path(any_outpath)
