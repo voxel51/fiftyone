@@ -91,6 +91,28 @@ class _SampleMixin(object):
         """
         return self.get_local_path()
 
+    @property
+    def is_local(self):
+        """Determines whether the sample's media is local.
+
+        Returns:
+            True/False
+        """
+        return foc.media_cache.is_local(self.filepath)
+
+    @property
+    def is_local_or_cached(self):
+        """Determines whether the sample's media is either local or a remote
+        file that is currently in FiftyOne's local media cache.
+
+        If this method returns True, calling :meth:`local_path` will not cause
+        a media download.
+
+        Returns:
+            True/False
+        """
+        return foc.media_cache.is_local_or_cached(self.filepath)
+
     def get_local_path(self, download=True, skip_failures=True):
         """Returns the local path to the sample's media.
 
