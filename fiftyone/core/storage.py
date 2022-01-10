@@ -348,8 +348,9 @@ def make_temp_dir(basedir=None):
     """Makes a temporary directory.
 
     Args:
-        basedir (None): an optional directory in which to create the new
-            directory. The default is ``fiftyone.config.default_dataset_dir``
+        basedir (None): an optional local or remote directory in which to
+            create the new directory. The default is
+            ``fiftyone.config.default_dataset_dir``
 
     Returns:
         the temporary directory path
@@ -370,8 +371,9 @@ class TempDir(object):
     """Context manager that creates and destroys a temporary directory.
 
     Args:
-        basedir (None): an optional directory in which to create the new
-            directory. The default is ``fiftyone.config.default_dataset_dir``
+        basedir (None): an optional local or remote directory in which to
+            create the new directory. The default is
+            ``fiftyone.config.default_dataset_dir``
     """
 
     def __init__(self, basedir=None):
@@ -448,6 +450,9 @@ class LocalDir(object):
     ):
         if mode not in ("r", "w"):
             raise ValueError("Unsupported mode '%s'" % mode)
+
+        if basedir is not None and not is_local(basedir):
+            raise ValueError("basedir must be local; found '%s'" % basedir)
 
         self._path = path
         self._mode = mode
@@ -551,6 +556,9 @@ class LocalFile(object):
         if mode not in ("r", "w"):
             raise ValueError("Unsupported mode '%s'" % mode)
 
+        if basedir is not None and not is_local(basedir):
+            raise ValueError("basedir must be local; found '%s'" % basedir)
+
         self._path = path
         self._mode = mode
         self._basedir = basedir
@@ -643,6 +651,9 @@ class LocalFiles(object):
     ):
         if mode not in ("r", "w"):
             raise ValueError("Unsupported mode '%s'" % mode)
+
+        if basedir is not None and not is_local(basedir):
+            raise ValueError("basedir must be local; found '%s'" % basedir)
 
         self._paths = paths
         self._mode = mode
@@ -771,6 +782,9 @@ class FileWriter(object):
     def __init__(
         self, type_str="files", skip_failures=False, quiet=None, basedir=None
     ):
+        if basedir is not None and not is_local(basedir):
+            raise ValueError("basedir must be local; found '%s'" % basedir)
+
         self._type_str = type_str
         self._skip_failures = skip_failures
         self._quiet = quiet
