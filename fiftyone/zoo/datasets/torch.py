@@ -522,18 +522,21 @@ def _download_and_prepare(
     sample_parser.classes = classes
     label_cls = sample_parser.label_cls
 
-    if label_cls is fol.Classification:
+    if not isinstance(label_cls, (list, tuple)):
+        label_cls = [label_cls]
+
+    if fol.Classification in label_cls:
         dataset_type = fot.FiftyOneImageClassificationDataset()
         dataset_exporter = foud.FiftyOneImageClassificationDatasetExporter(
             dataset_dir, classes=classes
         )
-    elif label_cls is fol.Detections:
+    elif fol.Detections in label_cls:
         dataset_type = fot.FiftyOneImageDetectionDataset()
         dataset_exporter = foud.FiftyOneImageDetectionDatasetExporter(
             dataset_dir, classes=classes
         )
     else:
-        raise ValueError("Unsupported label class %s" % label_cls)
+        raise ValueError("Unsupported sample parser %s" % type(sample_parser))
 
     # Write the formatted dataset to `dataset_dir`
     foud.write_dataset(

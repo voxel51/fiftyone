@@ -589,11 +589,11 @@ class ViewExpressionTests(unittest.TestCase):
     def test_dates(self):
         dataset = fo.Dataset()
 
-        date1 = date(2021, 8, 24)
-        date2 = date(2021, 8, 25)
-        date3 = date(2021, 8, 26)
+        date1 = date(1970, 1, 1)
+        date2 = date(1970, 1, 2)
+        date3 = date(1970, 1, 3)
 
-        query_date = datetime(2021, 8, 25, 1, 0, 0)
+        query_date = datetime(1970, 1, 2, 1, 0, 0)
         query_delta = timedelta(hours=2)
 
         dataset.add_samples(
@@ -626,11 +626,11 @@ class ViewExpressionTests(unittest.TestCase):
     def test_datetimes(self):
         dataset = fo.Dataset()
 
-        date1 = datetime(2021, 8, 24, 1, 0, 0)
-        date2 = datetime(2021, 8, 24, 2, 0, 0)
-        date3 = datetime(2021, 8, 24, 3, 0, 0)
+        date1 = datetime(1970, 1, 1, 1, 0, 0)
+        date2 = datetime(1970, 1, 1, 2, 0, 0)
+        date3 = datetime(1970, 1, 1, 3, 0, 0)
 
-        query_date = datetime(2021, 8, 24, 2, 1, 0)
+        query_date = datetime(1970, 1, 1, 2, 1, 0)
         query_delta = timedelta(minutes=30)
 
         dataset.add_samples(
@@ -697,6 +697,58 @@ class SetValuesTests(unittest.TestCase):
                 fo.Sample(filepath="test4.png", int_field=4),
             ]
         )
+
+    def test_set_values_dict(self):
+        values = {1: "1", 3: "3"}
+        self.dataset.set_values("str_field", values, key_field="int_field")
+        view = self.dataset.exists("str_field")
+        values2 = {
+            k: v for k, v in zip(*view.values(["int_field", "str_field"]))
+        }
+        self.assertDictEqual(values, values2)
+
+        # Non-existent keys should raise an error
+        values[0] = "0"
+        with self.assertRaises(ValueError):
+            self.dataset.set_values("str_field", values, key_field="int_field")
+
+    def test_set_values_frames_dicts(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="video1.mp4"),
+                fo.Sample(filepath="video2.mp4"),
+                fo.Sample(filepath="video3.mp4"),
+            ]
+        )
+
+        filepaths = dataset.values("filepath")
+        values = {
+            filepaths[0]: {2: 3, 4: 5},
+            filepaths[1]: {3: 4, 5: 6, 7: 8},
+            filepaths[2]: {4: 5},
+        }
+
+        dataset.set_values("frames.int_field", values, key_field="filepath")
+
+        frame_numbers = dataset.values("frames.frame_number", unwind=True)
+        self.assertListEqual(frame_numbers, [2, 4, 3, 5, 7, 4])
+
+        int_fields = dataset.values("frames.int_field", unwind=True)
+        self.assertListEqual(int_fields, [3, 5, 4, 6, 8, 5])
+
+        values = {
+            filepaths[0]: {2: -1, 3: 4, 4: -1},
+            filepaths[2]: {1: 2, 4: -1, 5: 6},
+        }
+
+        dataset.set_values("frames.int_field", values, key_field="filepath")
+
+        frame_numbers = dataset.values("frames.frame_number", unwind=True)
+        self.assertListEqual(frame_numbers, [2, 3, 4, 3, 5, 7, 1, 4, 5])
+
+        int_fields = dataset.values("frames.int_field", unwind=True)
+        self.assertListEqual(int_fields, [-1, 4, -1, 4, 6, 8, 2, -1, 6])
 
     def test_set_values_dataset(self):
         n = len(self.dataset)

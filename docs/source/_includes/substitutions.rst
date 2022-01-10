@@ -102,8 +102,9 @@
 .. |EmbeddingsMixin| replace:: :class:`EmbeddingsMixin <fiftyone.core.models.EmbeddingsMixin>`
 .. |TorchModelMixin| replace:: :class:`TorchModelMixin <fiftyone.core.models.TorchModelMixin>`
 
-.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
+.. |AnnotationResults| replace:: :class:`AnnotationResults <fiftyone.core.annotation.AnnotationResults>`
 .. |BrainResults| replace:: :class:`BrainResults <fiftyone.core.brain.BrainResults>`
+.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.core.evaluation.EvaluationResults>`
 
 .. |RegressionResults| replace:: :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`
 .. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`

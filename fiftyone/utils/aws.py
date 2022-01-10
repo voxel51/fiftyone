@@ -24,8 +24,8 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-def download_from_s3(
-    urls, download_dir=None, num_workers=None,
+def download_public_s3_files(
+    urls, download_dir=None, num_workers=None, overwrite=True,
 ):
     """Download files from a public AWS S3 bucket using unsigned urls.
 
@@ -38,7 +38,7 @@ def download_from_s3(
           When `urls` is a list, then the `download_dir` argument is required
           and all objects will be downloaded into that directory
 
-        * A dictionary mapping the paths of objects ont-to-one to files on disk
+        * A dictionary mapping the paths of objects to files on disk
           to store each object::
 
             urls = {
@@ -54,6 +54,7 @@ def download_from_s3(
             This is only used if `urls` is a list
         num_workers (None): the number of processes to use when downloading
             files. By default, ``multiprocessing.cpu_count()`` is used
+        overwrite (True): whether to overwrite existing files
     """
     if isinstance(urls, list):
         if download_dir is None:
@@ -76,21 +77,20 @@ def download_from_s3(
         ),
     )
 
-    inputs = _build_inputs(urls, s3_client, download_dir=download_dir)
-    num_samples = len(inputs)
+    inputs = _build_inputs(
+        urls, s3_client, download_dir=download_dir, overwrite=overwrite
+    )
 
-    if num_samples == 0:
-        return 0
+    if not inputs:
+        return
 
     if num_workers == 1:
         _single_thread_download(inputs)
     else:
         _multi_thread_download(inputs, num_workers)
 
-    return num_samples
 
-
-def _build_inputs(urls, s3_client, download_dir=None):
+def _build_inputs(urls, s3_client, download_dir=None, overwrite=True):
     inputs = []
     for url, filepath in urls.items():
         bucket_name, object_path = _parse_url(url)
@@ -99,7 +99,12 @@ def _build_inputs(urls, s3_client, download_dir=None):
         if not os.path.isfile(filepath):
             inputs.append((bucket_name, object_path, filepath, s3_client))
         else:
-            logger.warning("File `%s` already exists, skipping..." % filepath)
+            if overwrite:
+                os.remove(filepath)
+            else:
+                logger.warning(
+                    "File `%s` already exists, skipping..." % filepath
+                )
 
     return inputs
 

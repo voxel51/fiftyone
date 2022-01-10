@@ -1023,6 +1023,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset_dir=export_dir,
             dataset_type=fo.types.YOLOv4Dataset,
             label_field="predictions",
+            include_all_data=True,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -1030,6 +1031,54 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field="predictions",
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field="predictions",
+            include_all_data=True,
+        )
+
+        bounds = dataset.bounds("predictions.detections.confidence")
+        bounds2 = dataset2.bounds("predictions.detections.confidence")
+        self.assertAlmostEqual(bounds[0], bounds2[0])
+        self.assertAlmostEqual(bounds[1], bounds2[1])
+
+        # Labels-only
+
+        data_path = os.path.dirname(dataset.first().filepath)
+        labels_path = os.path.join(self._new_dir(), "labels/")
+
+        dataset.export(
+            dataset_type=fo.types.YOLOv4Dataset, labels_path=labels_path,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            label_field="predictions",
+            include_all_data=True,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(
+            dataset.count("predictions.detections"),
+            dataset2.count("predictions.detections"),
+        )
+        for sample in dataset2:
+            self.assertTrue(os.path.isfile(sample.filepath))
 
     @drop_datasets
     def test_yolov5_dataset(self):
@@ -1054,6 +1103,27 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_field="predictions",
+        )
+
+        bounds = dataset.bounds("predictions.detections.confidence")
+        bounds2 = dataset2.bounds("predictions.detections.confidence")
+        self.assertAlmostEqual(bounds[0], bounds2[0])
+        self.assertAlmostEqual(bounds[1], bounds2[1])
 
 
 class ImageSegmentationDatasetTests(ImageDatasetTests):

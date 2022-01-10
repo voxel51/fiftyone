@@ -11,6 +11,7 @@ import logging
 import numpy as np
 
 import eta.core.numutils as etan
+import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -37,6 +38,7 @@ def compute_ious(
     preds,
     gts,
     iscrowd=None,
+    classwise=False,
     use_masks=False,
     use_boxes=False,
     tolerance=None,
@@ -51,10 +53,14 @@ def compute_ious(
         gt_field: a list of ground truth
             :class:`fiftyone.core.labels.Detection` or
             :class:`fiftyone.core.labels.Polyline` instances
-        iscrowd (None): an optional boolean function that determines whether a
-            ground truth object is a crowd. If provided, the area of the
-            predicted object is used as the "union" area for IoU calculations
-            involving crowd objects
+        iscrowd (None): an optional name of a boolean attribute or boolean
+            function to apply to each label that determines whether a ground
+            truth object is a crowd. If provided, the area of the predicted
+            object is used as the "union" area for IoU calculations involving
+            crowd objects
+        classwise (False): whether to consider objects with different ``label``
+            values as always non-overlapping (True) or to compute IoUs for all
+            objects regardless of label (False)
         use_masks (False): whether to compute IoUs using the instances masks in
             the ``mask`` attribute of the provided objects, which must be
             :class:`fiftyone.core.labels.Detection` instances
@@ -79,11 +85,18 @@ def compute_ious(
     if not preds or not gts:
         return np.zeros((len(preds), len(gts)))
 
+    if etau.is_str(iscrowd):
+        iscrowd = make_iscrowd_fcn(iscrowd)
+
     if isinstance(preds[0], fol.Polyline):
         if use_boxes:
-            return _compute_bbox_ious(preds, gts, iscrowd=iscrowd)
+            return _compute_bbox_ious(
+                preds, gts, iscrowd=iscrowd, classwise=classwise
+            )
 
-        return _compute_polyline_ious(preds, gts, error_level, iscrowd=iscrowd)
+        return _compute_polyline_ious(
+            preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
+        )
 
     if use_masks:
         # @todo when tolerance is None, consider using dense masks rather than
@@ -92,10 +105,15 @@ def compute_ious(
             tolerance = 2
 
         return _compute_mask_ious(
-            preds, gts, tolerance, error_level, iscrowd=iscrowd,
+            preds,
+            gts,
+            tolerance,
+            error_level,
+            iscrowd=iscrowd,
+            classwise=classwise,
         )
 
-    return _compute_bbox_ious(preds, gts, iscrowd=iscrowd)
+    return _compute_bbox_ious(preds, gts, iscrowd=iscrowd, classwise=classwise)
 
 
 def compute_segment_ious(
@@ -150,7 +168,7 @@ def compute_segment_ious(
     return ious
 
 
-def _compute_bbox_ious(preds, gts, iscrowd=None):
+def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     num_pred = len(preds)
     num_gt = len(gts)
 
@@ -169,6 +187,9 @@ def _compute_bbox_ious(preds, gts, iscrowd=None):
         gt_area = gh * gw
 
         for i, pred in enumerate(preds):
+            if classwise and pred.label != gt.label:
+                continue
+
             px, py, pw, ph = pred.bounding_box
             pred_area = ph * pw
 
@@ -195,7 +216,7 @@ def _compute_bbox_ious(preds, gts, iscrowd=None):
 
 
 def _compute_polyline_ious(
-    preds, gts, error_level, iscrowd=None, gt_crowds=None
+    preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
 ):
     with contextlib.ExitStack() as context:
         # We're ignoring errors, so suppress shapely logging that occurs when
@@ -208,10 +229,12 @@ def _compute_polyline_ious(
 
         num_pred = len(preds)
         pred_polys = _polylines_to_shapely(preds, error_level)
+        pred_labels = [pred.label for pred in preds]
         pred_areas = [pred_poly.area for pred_poly in pred_polys]
 
         num_gt = len(gts)
         gt_polys = _polylines_to_shapely(gts, error_level)
+        gt_labels = [gt.label for gt in gts]
         gt_areas = [gt_poly.area for gt_poly in gt_polys]
 
         if iscrowd is not None:
@@ -220,20 +243,23 @@ def _compute_polyline_ious(
             gt_crowds = [False] * num_gt
 
         ious = np.zeros((num_pred, num_gt))
-        for j, (gt_poly, gt_area, gt_crowd) in enumerate(
-            zip(gt_polys, gt_areas, gt_crowds)
+        for j, (gt_poly, gt_label, gt_area, gt_crowd) in enumerate(
+            zip(gt_polys, gt_labels, gt_areas, gt_crowds)
         ):
-            for i, (pred_poly, pred_area) in enumerate(
-                zip(pred_polys, pred_areas)
+            for i, (pred_poly, pred_label, pred_area) in enumerate(
+                zip(pred_polys, pred_labels, pred_areas)
             ):
+                if classwise and pred_label != gt_label:
+                    continue
+
                 try:
                     inter = gt_poly.intersection(pred_poly).area
                 except Exception as e:
                     inter = 0.0
                     fou.handle_error(
                         ValueError(
-                            "Failed to compute intersection of predicted object "
-                            "'%s' and ground truth object '%s'"
+                            "Failed to compute intersection of predicted "
+                            "object '%s' and ground truth object '%s'"
                             % (preds[i].id, gts[j].id)
                         ),
                         error_level,
@@ -250,7 +276,9 @@ def _compute_polyline_ious(
         return ious
 
 
-def _compute_mask_ious(preds, gts, tolerance, error_level, iscrowd=None):
+def _compute_mask_ious(
+    preds, gts, tolerance, error_level, iscrowd=None, classwise=False
+):
     with contextlib.ExitStack() as context:
         # We're ignoring errors, so suppress shapely logging that occurs when
         # invalid geometries are encountered
@@ -269,7 +297,11 @@ def _compute_mask_ious(preds, gts, tolerance, error_level, iscrowd=None):
         gt_crowds = [False] * len(gts)
 
     return _compute_polyline_ious(
-        pred_polys, gt_polys, error_level, gt_crowds=gt_crowds
+        pred_polys,
+        gt_polys,
+        error_level,
+        classwise=classwise,
+        gt_crowds=gt_crowds,
     )
 
 

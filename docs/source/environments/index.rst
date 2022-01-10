@@ -500,7 +500,7 @@ to do this:
 .. code-block:: shell
 
     # On remote machine
-    gcsfuse my-bucket /path/to/mount --implicit-dirs
+    gcsfuse --implicit-dirs my-bucket /path/to/mount
 
 **Step 4**
 
