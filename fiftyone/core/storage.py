@@ -430,13 +430,13 @@ class LocalDir(object):
         mode ("r"): the mode. Supported values are ``("r", "w")``
         type_str ("files"): the type of file being processed. Used only for
             log messages
-        skip_failures (False): whether to gracefully continue without raising
-            an error if a remote upload/download fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of any uploads/downloads. By
-            default, ``fiftyone.config.show_progress_bars`` is used
         basedir (None): an optional directory in which to create temporary
             local directories
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote upload/download fails
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of any uploads/downloads. By
+            default, ``fiftyone.config.show_progress_bars`` is used to set this
     """
 
     def __init__(
@@ -444,9 +444,9 @@ class LocalDir(object):
         path,
         mode="r",
         type_str="files",
+        basedir=None,
         skip_failures=False,
         quiet=None,
-        basedir=None,
     ):
         if mode not in ("r", "w"):
             raise ValueError("Unsupported mode '%s'" % mode)
@@ -457,9 +457,9 @@ class LocalDir(object):
         self._path = path
         self._mode = mode
         self._type_str = type_str
+        self._basedir = basedir
         self._skip_failures = skip_failures
         self._quiet = quiet
-        self._basedir = basedir
         self._dirpath = None
         self._tmpdir = None
 
@@ -631,13 +631,13 @@ class LocalFiles(object):
         mode ("r"): the mode. Supported values are ``("r", "w")``
         type_str ("files"): the type of file being processed. Used only for
             log messages
-        skip_failures (False): whether to gracefully continue without raising
-            an error if a remote upload/download fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of any copies. By default,
-            ``fiftyone.config.show_progress_bars`` is used
         basedir (None): an optional directory in which to create temporary
             local files
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote upload/download fails
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of any uploads/downloads. By
+            default, ``fiftyone.config.show_progress_bars`` is used to set this
     """
 
     def __init__(
@@ -645,9 +645,9 @@ class LocalFiles(object):
         paths,
         mode="r",
         type_str="files",
+        basedir=None,
         skip_failures=False,
         quiet=None,
-        basedir=None,
     ):
         if mode not in ("r", "w"):
             raise ValueError("Unsupported mode '%s'" % mode)
@@ -658,9 +658,9 @@ class LocalFiles(object):
         self._paths = paths
         self._mode = mode
         self._type_str = type_str
+        self._basedir = basedir
         self._skip_failures = skip_failures
         self._quiet = quiet
-        self._basedir = basedir
         self._tmpdir = None
         self._filename_maker = None
         self._local_paths = None
@@ -770,25 +770,25 @@ class FileWriter(object):
     Args:
         type_str ("files"): the type of file being processed. Used only for
             log messages
-        skip_failures (False): whether to gracefully continue without raising
-            an error if a remote upload fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of any uploads. By default,
-            ``fiftyone.config.show_progress_bars`` is used
         basedir (None): an optional directory in which to create temporary
             local files
+        skip_failures (False): whether to gracefully continue without raising
+            an error if a remote upload fails
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of any uploads. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
     """
 
     def __init__(
-        self, type_str="files", skip_failures=False, quiet=None, basedir=None
+        self, type_str="files", basedir=None, skip_failures=False, quiet=None
     ):
         if basedir is not None and not is_local(basedir):
             raise ValueError("basedir must be local; found '%s'" % basedir)
 
         self._type_str = type_str
+        self._basedir = basedir
         self._skip_failures = skip_failures
         self._quiet = quiet
-        self._basedir = basedir
         self._tmpdir = None
         self._filename_maker = None
         self._inpaths = None
@@ -1447,9 +1447,9 @@ def copy_files(inpaths, outpaths, skip_failures=False, quiet=None):
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of the copy. By default,
-            ``fiftyone.config.show_progress_bars`` is used
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of the operation. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
@@ -1466,9 +1466,9 @@ def copy_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of the copy. By default,
-            ``fiftyone.config.show_progress_bars`` is used
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of the operation. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
     """
     if overwrite and isdir(outdir):
         delete_dir(outdir)
@@ -1499,9 +1499,9 @@ def move_files(inpaths, outpaths, skip_failures=False, quiet=None):
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of the move. By default,
-            ``fiftyone.config.show_progress_bars`` is used
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of the operation. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
@@ -1519,9 +1519,9 @@ def move_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of the move. By default,
-            ``fiftyone.config.show_progress_bars`` is used
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of the operation. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
     """
     if overwrite and isdir(outdir):
         delete_dir(outdir)
@@ -1561,9 +1561,9 @@ def delete_files(paths, skip_failures=False, quiet=None):
         paths: a list of paths
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of the deletions. By default,
-            ``fiftyone.config.show_progress_bars`` is used
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of the operation. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
     """
     tasks = [(p, skip_failures) for p in paths]
     if tasks:
@@ -1616,9 +1616,9 @@ def upload_media(
             remote files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of the copy. By default,
-            ``fiftyone.config.show_progress_bars`` is used
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of the operation. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
 
     Returns:
         the list of remote paths
@@ -1651,17 +1651,17 @@ def upload_media(
     return remote_paths
 
 
-def run(fcn, tasks, quiet=None, num_workers=None):
+def run(fcn, tasks, num_workers=None, quiet=None):
     """Applies the given function to each element of the given tasks.
 
     Args:
         fcn: a function that accepts a single argument
         tasks: an iterable of function aguments
-        quiet (None): whether to display (True) or not display (False) a
-            progress bar tracking the status of the optiona. By default,
-            ``fiftyone.config.show_progress_bars`` is used
         num_workers (None): the number of threads to use. By default,
             ``fiftyone.media_cache_config.num_workers`` is used
+        quiet (None): whether to display (False) or not display (True) a
+            progress bar tracking the status of the operation. By default,
+            ``fiftyone.config.show_progress_bars`` is used to set this
 
     Returns:
         the list of function outputs
@@ -1862,6 +1862,6 @@ def _to_bytes(val, encoding="utf-8"):
 
 def _parse_quiet(quiet):
     if quiet is None:
-        return fo.config.show_progress_bars
+        return not fo.config.show_progress_bars
 
     return quiet
